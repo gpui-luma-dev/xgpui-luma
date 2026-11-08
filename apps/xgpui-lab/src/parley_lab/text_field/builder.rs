@@ -8,12 +8,20 @@
 //! `Look::built_in()`.
 use std::sync::Arc;
 
-use gpui::{App, AppContext, Context, Entity, Font, SharedString};
+use gpui::{App, AppContext, Context, Div, Entity, Font, SharedString, Stateful, Window};
 use xgpui_luma::{
-    controls::textfield::{TextFieldLook, TextFieldLookOverride, TextFieldTheme},
+    controls::textfield::{
+        TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
+        TextFieldTemplateHandlers, TextFieldTheme, ThemedTextFieldTemplate,
+    },
     infra::callbacks::EventCallbacks,
+    theme::ControlSize,
 };
-use xgpui_luma_look_radix::{Look, TextFieldSize, TextFieldVariant, textfield_theme_with};
+use xgpui_luma_look_radix::{Look, TextFieldSize, TextFieldVariant, textfield_template, textfield_theme_with};
+
+/// Adjusts the template's root element, as `TextFieldBuilder::with_template_modifier`.
+pub type TemplateModifier =
+    Box<dyn Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
 
 use super::{ParleyTextField, ParleyTextFieldEvent};
 
@@ -31,6 +39,7 @@ pub struct ParleyTextFieldBuilder {
     pub(super) size: TextFieldSize,
     pub(super) enabled: bool,
     pub(super) look_override: Option<TextFieldLookOverride>,
+    modifiers: Vec<TemplateModifier>,
 }
 
 // Mirrors the SDK `TextFieldBuilder`; the lab page uses only part of it.
@@ -50,6 +59,7 @@ impl ParleyTextFieldBuilder {
             size: TextFieldSize::default(),
             enabled: true,
             look_override: None,
+            modifiers: Vec::new(),
         }
     }
 
@@ -85,14 +95,39 @@ impl ParleyTextFieldBuilder {
         self
     }
 
+    /// Adjust the template's root element on every frame, in registration order.
+    pub fn with_template_modifier<F>(mut self, modifier: F) -> Self
+    where
+        F: Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
+    {
+        self.modifiers.push(Box::new(modifier));
+        self
+    }
+
+    fn resolve_look(&self, cx: &App) -> Look {
+        self.look.clone().or_else(|| cx.try_global::<Look>().cloned()).unwrap_or_else(Look::built_in)
+    }
+
     /// The SDK theme this builder draws with: an explicit theme, else the
     /// variant of the explicit, ambient or built-in look.
     pub(super) fn resolve_theme(&self, cx: &App) -> Arc<dyn TextFieldTheme> {
-        if let Some(theme) = &self.theme {
-            return theme.clone();
+        match &self.theme {
+            Some(theme) => theme.clone(),
+            None => textfield_theme_with(&self.resolve_look(cx), self.variant),
         }
-        let look = self.look.clone().or_else(|| cx.try_global::<Look>().cloned()).unwrap_or_else(Look::built_in);
-        textfield_theme_with(&look, self.variant)
+    }
+
+    /// The SDK template that draws the field's chrome, as the look's own text
+    /// field uses it, with this builder's modifiers applied.
+    pub(super) fn take_template(&mut self, cx: &App) -> Arc<dyn TextFieldTemplate> {
+        let base: Arc<dyn TextFieldTemplate> = match &self.theme {
+            Some(theme) => Arc::new(ThemedTextFieldTemplate::new(theme.clone())),
+            None => textfield_template(&self.resolve_look(cx), self.variant),
+        };
+        if self.modifiers.is_empty() {
+            return base;
+        }
+        Arc::new(ModifiedTemplate { base, modifiers: std::mem::take(&mut self.modifiers) })
     }
 
     pub fn value(mut self, value: impl Into<String>) -> Self {
@@ -196,5 +231,39 @@ impl ParleyTextFieldBuilder {
         let control = cx.new(|cx| ParleyTextField::from_builder(self, cx));
         callbacks.bind(&control, cx);
         control
+    }
+}
+
+/// A template with root modifiers, as the SDK's private `ModifiedTextFieldTemplate`.
+struct ModifiedTemplate {
+    base: Arc<dyn TextFieldTemplate>,
+    modifiers: Vec<TemplateModifier>,
+}
+
+impl TextFieldTemplate for ModifiedTemplate {
+    fn resolve_look(&self, state: TextFieldState, enabled: bool, size: ControlSize) -> TextFieldLook {
+        self.base.resolve_look(state, enabled, size)
+    }
+
+    fn resolve_look_with_scale(
+        &self,
+        state: TextFieldState,
+        enabled: bool,
+        size: ControlSize,
+        scale_factor: f32,
+        cx: &mut App,
+    ) -> TextFieldLook {
+        self.base.resolve_look_with_scale(state, enabled, size, scale_factor, cx)
+    }
+
+    fn render(
+        &self,
+        model: &TextFieldRenderModel<'_>,
+        handlers: TextFieldTemplateHandlers,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Stateful<Div> {
+        let root = self.base.render(model, handlers, window, cx);
+        self.modifiers.iter().fold(root, |root, modifier| modifier(root, model))
     }
 }

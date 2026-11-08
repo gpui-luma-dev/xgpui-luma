@@ -497,3 +497,38 @@ fn look_override_adjusts_the_resolved_look() {
     let background = window.update(&mut cx, |field, window, _| field.look(window).background).unwrap();
     assert_eq!(background, red);
 }
+
+#[test]
+fn one_line_chrome_comes_from_the_sdk_template_with_modifiers() {
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| xgpui_luma::init(cx).unwrap());
+    let look = crate::theme::default_look();
+    let window = cx.open_window(size(px(WIDTH), px(80.0)), move |_, cx| {
+        let builder = ParleyTextField::new("templated")
+            .look(&look)
+            .surface()
+            .font(page::font())
+            .value("hello")
+            .with_template_modifier(|root, _| root.debug_selector(|| "template-root".into()));
+        ParleyTextField::from_builder(builder, cx)
+    });
+    let field = window.root(&mut cx).unwrap();
+    let mut visual = VisualTestContext::from_window(window.into(), &cx);
+    let draw = |visual: &mut VisualTestContext| {
+        let field = field.clone();
+        visual.draw(point(px(0.0), px(0.0)), size(px(WIDTH), px(80.0)), move |_, _| div().w(px(WIDTH)).child(field));
+    };
+    draw(&mut visual);
+    let chrome = visual.debug_bounds("template-root").expect("the modifier ran on the template's root");
+    let (viewport, inset) = visual.update(|window, cx| {
+        let field = field.read(cx);
+        let look = field.look(window);
+        let inset = field.theme.metrics().focus.gap + 2.0 * look.border_width.max(0.0) + look.padding_x;
+        (field.geometry.as_ref().expect("painted").viewport, px(inset))
+    });
+    // The Parley text sits inside the template's focus ring, border and padding.
+    assert_eq!(viewport.left(), chrome.left() + inset);
+    assert_eq!(viewport.right(), chrome.right() - inset);
+    assert!(viewport.top() > chrome.top() && viewport.bottom() < chrome.bottom());
+}
