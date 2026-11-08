@@ -93,7 +93,7 @@ impl ParleyPage {
             .as_ref()
             .ok()
             .map(|engine| cx.new(|cx| line::LinePage::new(engine.clone(), look.clone(), cx)));
-        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, cx));
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, true, cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
                 "Shell native backend".into(),

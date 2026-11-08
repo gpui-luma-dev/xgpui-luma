@@ -891,7 +891,8 @@ fn page_lays_out_fields(parley: bool) -> (bool, bool) {
         }
     });
     let look = crate::theme::default_look();
-    let window = cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, cx));
+    let window =
+        cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, false, cx));
     let page = window.root(&mut cx).unwrap();
     let mut visual = VisualTestContext::from_window(window.into(), &cx);
     visual.run_until_parked();
@@ -915,4 +916,132 @@ fn lab_page_edits_on_parley_and_explains_on_the_native_text_system() {
         (false, false),
         "on the native text system, the page shows a note and never lays the fields out"
     );
+}
+
+/// Opens the lab page on Parley at `screen` and reports which fields were laid
+/// out, plus whether the long text area can scroll.
+fn screen_layout(screen: page::Screen) -> (Vec<usize>, bool) {
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| {
+        xgpui_luma::init(cx).unwrap();
+        cx.set_global(crate::parley_lab::ParleyTextSystemActive);
+    });
+    let look = crate::theme::default_look();
+    let window = cx.open_window(size(px(600.0), px(1200.0)), move |_, cx| {
+        let mut page = page::TextFieldPage::new(look, false, false, cx);
+        page.screen = screen;
+        page
+    });
+    let mut visual = VisualTestContext::from_window(window.into(), &cx);
+    visual.run_until_parked();
+    visual.update(|window, _| window.refresh());
+    visual.run_until_parked();
+    window
+        .update(&mut cx, |page, _, cx| {
+            let shown =
+                (0..page.fields.len()).filter(|index| page.fields[*index].read(cx).geometry.is_some()).collect();
+            let long = page.fields.last().unwrap().read(cx);
+            let scrolls = long
+                .geometry
+                .as_ref()
+                .is_some_and(|geometry| geometry.layout.size().height > geometry.viewport.size.height * 3.0);
+            (shown, scrolls)
+        })
+        .unwrap()
+}
+
+#[test]
+fn each_screen_shows_only_its_own_fields() {
+    for (screen, ..) in page::Screen::ALL {
+        let expected: Vec<usize> = (0..page::FIELDS.len()).filter(|index| page::FIELDS[*index].4 == screen).collect();
+        assert!(!expected.is_empty(), "{screen:?} has fields");
+        let (shown, scrolls) = screen_layout(screen);
+        assert_eq!(shown, expected, "{screen:?}");
+        assert_eq!(
+            scrolls,
+            screen == page::Screen::Scrolling,
+            "{screen:?}: the long area is on Text Scrolling and scrolls"
+        );
+    }
+}
+
+/// Let `ticks` autoscroll intervals pass, drawing after each as a window would.
+fn advance_autoscroll(f: &mut Fixture, ticks: u32) {
+    for _ in 0..ticks {
+        f.visual.executor().advance_clock(AUTOSCROLL_TICK);
+        f.visual.run_until_parked();
+        f.draw();
+    }
+}
+
+fn press_and_move(f: &mut Fixture, from: Point<Pixels>, to: Point<Pixels>) {
+    f.mouse_down(from, 1);
+    f.visual.simulate_event(MouseMoveEvent {
+        position: to,
+        pressed_button: Some(MouseButton::Left),
+        modifiers: Modifiers::default(),
+    });
+    f.draw();
+}
+
+#[test]
+fn holding_a_drag_below_a_text_area_keeps_scrolling_and_selecting() {
+    let text = (0..30).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+    let mut f = Fixture::area(&text, 3);
+    let top = format!("{}-up", f.secondary);
+    f.keys(&top);
+    let viewport = f.geometry().viewport;
+    let start = f.point_at(0);
+    press_and_move(&mut f, start, point(viewport.left() + px(10.0), viewport.bottom() + px(40.0)));
+    let (scroll_0, caret_0) = (f.read(|field| field.scroll()), f.selection().1);
+    advance_autoscroll(&mut f, 3);
+    let (scroll_3, caret_3) = (f.read(|field| field.scroll()), f.selection().1);
+    assert!(scroll_3 > scroll_0, "scrolls while held: {scroll_0:?} -> {scroll_3:?}");
+    assert!(caret_3 > caret_0, "the selection follows: {caret_0} -> {caret_3}");
+    assert_eq!(f.selection().0, 0, "the anchor stays");
+    // Releasing stops it.
+    f.visual.simulate_event(MouseUpEvent {
+        button: MouseButton::Left,
+        position: viewport.bottom_left(),
+        modifiers: Modifiers::default(),
+        click_count: 1,
+    });
+    f.draw();
+    let released = f.read(|field| field.scroll());
+    advance_autoscroll(&mut f, 3);
+    assert_eq!(f.read(|field| field.scroll()), released, "stops on release");
+}
+
+#[test]
+fn holding_a_drag_past_a_long_field_scrolls_sideways() {
+    let mut f = Fixture::new(&"sideways ".repeat(20));
+    f.keys("home");
+    let viewport = f.geometry().viewport;
+    let start = f.point_at(0);
+    press_and_move(&mut f, start, point(viewport.right() + px(30.0), start.y));
+    let before = f.read(|field| field.scroll());
+    advance_autoscroll(&mut f, 4);
+    assert!(f.read(|field| field.scroll()) > before, "scrolls towards the text's end");
+    assert!(f.selection().1 > 0);
+}
+
+#[test]
+fn autoscroll_speed_grows_with_distance_and_is_capped() {
+    let text = (0..30).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+    let mut f = Fixture::area(&text, 3);
+    let geometry = f.geometry();
+    let (viewport, unit) = (geometry.viewport, geometry.line_height);
+    let at = |dy: f32| point(viewport.left() + px(5.0), viewport.bottom() + px(dy));
+    let delta = |f: &mut Fixture, position| f.read(|field| field.autoscroll_delta(position));
+    assert_eq!(delta(&mut f, viewport.center()), px(0.0), "inside: no autoscroll");
+    assert_eq!(delta(&mut f, at(1.0)), unit, "just past the edge: one line");
+    assert_eq!(delta(&mut f, at(f32::from(unit) * 3.0)), unit * 3.0);
+    assert_eq!(delta(&mut f, at(10_000.0)), unit * AUTOSCROLL_MAX_LINES, "capped");
+    let above = point(viewport.left(), viewport.top() - px(1.0));
+    assert_eq!(delta(&mut f, above), -unit, "above scrolls up");
+    // Nothing to scroll: no autoscroll.
+    let mut short = Fixture::area("one line", 3);
+    let viewport = short.geometry().viewport;
+    assert_eq!(delta(&mut short, point(viewport.left(), viewport.bottom() + px(50.0))), px(0.0));
 }

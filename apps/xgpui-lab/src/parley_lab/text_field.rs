@@ -44,6 +44,9 @@ const MAX_MEASURE_DOUBLINGS: usize = 40;
 const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
 const CARET_PAUSE: Duration = Duration::from_millis(300);
+/// Drag autoscroll interval and fastest speed in lines per tick, as the SDK text area.
+const AUTOSCROLL_TICK: Duration = Duration::from_millis(33);
+const AUTOSCROLL_MAX_LINES: f32 = 6.0;
 
 /// Semantic events, named as the SDK's `TextFieldEvent` and `TextAreaEvent`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -113,6 +116,8 @@ struct Geometry {
     /// Window position of the layout's local origin (scroll applied).
     origin: Point<Pixels>,
     layout: Arc<dyn PlatformParagraphLayout>,
+    /// Unit of drag autoscroll.
+    line_height: Pixels,
 }
 
 pub struct ParleyTextField {
@@ -145,6 +150,10 @@ pub struct ParleyTextField {
     focused: bool,
     hovered: bool,
     dragging: bool,
+    /// Last pointer position of a drag, for autoscroll while it is held past an edge.
+    drag_position: Option<Point<Pixels>>,
+    autoscroll_epoch: usize,
+    autoscroll_task: Task<()>,
     look_override: Option<TextFieldLookOverride>,
     scroll: Pixels,
     reveal_caret: bool,
@@ -257,6 +266,9 @@ impl ParleyTextField {
             focused: false,
             hovered: false,
             dragging: false,
+            drag_position: None,
+            autoscroll_epoch: 0,
+            autoscroll_task: Task::ready(()),
             look_override: builder.look_override,
             scroll: px(0.0),
             reveal_caret: false,
@@ -588,25 +600,112 @@ impl ParleyTextField {
         } else {
             point(viewport.left() - self.scroll, viewport.top() + (viewport.size.height - layout.size().height) / 2.0)
         };
-        let geometry = Geometry { viewport, origin, layout };
+        let geometry = Geometry { viewport, origin, layout, line_height: px(look.typography.line_height) };
         self.geometry = Some(geometry.clone());
         Some(geometry)
     }
 
     fn hit(&self, position: Point<Pixels>) -> Option<ParagraphPosition> {
+        self.hit_scrolled(position, px(0.0))
+    }
+
+    /// Hit test as if the content had scrolled `delta` further than when it was
+    /// last painted (along the scroll axis), for autoscroll between frames.
+    fn hit_scrolled(&self, position: Point<Pixels>, delta: Pixels) -> Option<ParagraphPosition> {
         let geometry = self.geometry.as_ref()?;
         if geometry.layout.source() != self.value {
             return None;
         }
+        let mut origin = geometry.origin;
+        if self.is_multiline() {
+            origin.y -= delta;
+        } else {
+            origin.x -= delta;
+        }
         let height = geometry.layout.size().height;
         let y = if self.is_multiline() {
             // Above the text is its first line, below it its last.
-            (position.y - geometry.origin.y).clamp(px(0.0), (height - px(1.0)).max(px(0.0)))
+            (position.y - origin.y).clamp(px(0.0), (height - px(1.0)).max(px(0.0)))
         } else {
             // One line: hit test on its vertical center wherever the pointer is.
             height / 2.0
         };
-        geometry.layout.hit_test(point(position.x - geometry.origin.x, y)).ok()
+        geometry.layout.hit_test(point(position.x - origin.x, y)).ok()
+    }
+
+    /// A drag position held inside the visible text, as the SDK's selection hit
+    /// position: past an edge, the selection reaches the text at that edge and
+    /// autoscroll brings more into view.
+    fn clamp_to_viewport(&self, position: Point<Pixels>) -> Point<Pixels> {
+        let Some(geometry) = &self.geometry else {
+            return position;
+        };
+        let viewport = geometry.viewport;
+        point(
+            position.x.clamp(viewport.left(), (viewport.right() - px(1.0)).max(viewport.left())),
+            position.y.clamp(viewport.top(), (viewport.bottom() - px(1.0)).max(viewport.top())),
+        )
+    }
+
+    /// Scroll per autoscroll tick for a pointer past an edge along the scroll
+    /// axis, as the SDK text area: one line per tick, up to six the further out
+    /// the pointer is; zero inside the text or when nothing can scroll.
+    fn autoscroll_delta(&self, position: Point<Pixels>) -> Pixels {
+        let Some(geometry) = &self.geometry else {
+            return px(0.0);
+        };
+        let (viewport, size) = (geometry.viewport, geometry.layout.size());
+        let (at, start, end, content, visible) = if self.is_multiline() {
+            (position.y, viewport.top(), viewport.bottom(), size.height, viewport.size.height)
+        } else {
+            (position.x, viewport.left(), viewport.right(), size.width, viewport.size.width)
+        };
+        if content - visible <= px(0.5) {
+            return px(0.0);
+        }
+        let overflow = if at < start {
+            at - start
+        } else if at > end {
+            at - end
+        } else {
+            return px(0.0);
+        };
+        let unit = geometry.line_height.max(px(1.0));
+        let lines = (f32::from(overflow.abs()) / f32::from(unit)).clamp(1.0, AUTOSCROLL_MAX_LINES);
+        unit * lines * f32::from(overflow).signum()
+    }
+
+    fn schedule_autoscroll(&mut self, cx: &mut Context<Self>) {
+        self.autoscroll_epoch += 1;
+        let epoch = self.autoscroll_epoch;
+        self.autoscroll_task = cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(AUTOSCROLL_TICK).await;
+            if let Some(this) = this.upgrade() {
+                this.update(cx, |this, cx| this.autoscroll_tick(epoch, cx));
+            }
+        });
+    }
+
+    fn autoscroll_tick(&mut self, epoch: usize, cx: &mut Context<Self>) {
+        if epoch != self.autoscroll_epoch || !self.dragging {
+            return;
+        }
+        let Some(position) = self.drag_position else {
+            return;
+        };
+        let delta = self.autoscroll_delta(position);
+        if delta == px(0.0) {
+            return;
+        }
+        // The next frame clamps the offset to the content.
+        self.scroll += delta;
+        if let Some(hit) = self.hit_scrolled(self.clamp_to_viewport(position), delta) {
+            self.caret = hit;
+            self.preferred_x = None;
+        }
+        self.pause_caret_blink(cx);
+        cx.notify();
+        self.schedule_autoscroll(cx);
     }
 
     /// Logical ends of the visual line holding the caret.
@@ -922,14 +1021,24 @@ impl ParleyTextField {
     /// Extend a drag selection to `position`, which may be anywhere in the window:
     /// the field follows the pointer until the button is released.
     fn drag_to(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
-        if self.dragging
-            && let Some(hit) = self.hit(position)
-        {
+        if !self.dragging {
+            return;
+        }
+        self.drag_position = Some(position);
+        if let Some(hit) = self.hit(self.clamp_to_viewport(position)) {
             self.set_caret(hit, true, cx);
+        }
+        if self.autoscroll_delta(position) != px(0.0) {
+            self.schedule_autoscroll(cx);
+        } else {
+            self.autoscroll_epoch += 1; // Back inside: stop.
         }
     }
 
     fn end_drag(&mut self, cx: &mut Context<Self>) {
+        self.drag_position = None;
+        self.autoscroll_epoch += 1;
+        self.autoscroll_task = Task::ready(());
         if self.dragging {
             self.dragging = false;
             cx.notify();
