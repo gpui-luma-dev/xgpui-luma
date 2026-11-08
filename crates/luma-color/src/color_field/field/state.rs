@@ -118,6 +118,11 @@ pub enum ColorFieldEvent {
     EnabledChanged { enabled: bool },
 }
 
+/// Optional field-background painter. Return an error to use the SDK vector fallback.
+/// Bounds are logical pixels; the host retains clipping, thumb, border and input handling.
+pub type ColorFieldBackgroundPainter =
+    Arc<dyn Fn(Bounds<Pixels>, Hsv, &mut Window, &mut App) -> anyhow::Result<()> + Send + Sync>;
+
 pub struct ColorFieldState {
     pub id: SharedString,
     pub hsv: Hsv,
@@ -129,6 +134,8 @@ pub struct ColorFieldState {
     pub show_border: bool,
     pub thumb_position: FieldThumbPosition,
     pub renderer: ColorFieldRenderer,
+    pub(super) background_painter: Option<ColorFieldBackgroundPainter>,
+    pub(super) thumb_painter: Option<ColorFieldBackgroundPainter>,
     pub samples_per_axis: usize,
     pub mouse_behavior: ColorFieldMouseBehavior,
     pub disabled: bool,
@@ -178,6 +185,8 @@ impl ColorFieldState {
             show_border: true,
             thumb_position: FieldThumbPosition::EdgeToEdge,
             renderer: ColorFieldRenderer::RasterImage,
+            background_painter: None,
+            thumb_painter: None,
             samples_per_axis: 180,
             mouse_behavior: ColorFieldMouseBehavior::default(),
             disabled: false,
@@ -194,6 +203,26 @@ impl ColorFieldState {
             hover_inside_domain: false,
             image_cache: None,
         }
+    }
+
+    /// Delegate the background without generating a CPU raster image.
+    /// The callback must implement the current domain/model; errors use the built-in vector painter.
+    pub fn background_painter(mut self, painter: ColorFieldBackgroundPainter) -> Self {
+        self.background_painter = Some(painter);
+        self.image_cache = None;
+        self
+    }
+
+    /// Install a painter, or restore the selected built-in renderer with `None`.
+    pub fn set_background_painter(&mut self, painter: Option<ColorFieldBackgroundPainter>, cx: &mut Context<Self>) {
+        self.background_painter = painter;
+        self.image_cache = None;
+        cx.notify();
+    }
+
+    pub fn thumb_painter(mut self, painter: ColorFieldBackgroundPainter) -> Self {
+        self.thumb_painter = Some(painter);
+        self
     }
 
     pub fn saturation_value_rect(id: impl Into<SharedString>, hsv: Hsv, thumb_size: f32) -> Self {
@@ -341,7 +370,8 @@ impl ColorFieldState {
             self.hsv = clamped;
             // Programmatic updates (slider clicks, reset) should repaint immediately
             // without waiting for a follow-up input event to refresh raster cache.
-            if self.renderer == ColorFieldRenderer::RasterImage
+            if self.background_painter.is_none()
+                && self.renderer == ColorFieldRenderer::RasterImage
                 && self.bounds.size.width > px(0.0)
                 && self.bounds.size.height > px(0.0)
             {
@@ -387,7 +417,7 @@ impl ColorFieldState {
 
     #[allow(dead_code)]
     pub fn prewarm_raster_cache_size_in_place(&mut self, width_px: f32, height_px: f32) {
-        if self.renderer != ColorFieldRenderer::RasterImage {
+        if self.background_painter.is_some() || self.renderer != ColorFieldRenderer::RasterImage {
             return;
         }
         let width = px(width_px.max(1.0));
@@ -666,11 +696,11 @@ impl ColorFieldState {
             self.bounds = bounds;
         }
 
-        if bounds_changed && self.renderer == ColorFieldRenderer::Vector {
+        if bounds_changed && (self.background_painter.is_some() || self.renderer == ColorFieldRenderer::Vector) {
             cx.notify();
         }
 
-        if self.renderer == ColorFieldRenderer::RasterImage {
+        if self.background_painter.is_none() && self.renderer == ColorFieldRenderer::RasterImage {
             let had_image = self.image_cache.is_some();
             let refreshed = self.ensure_raster_image_cache(bounds.size);
             if refreshed || !had_image {
@@ -749,7 +779,7 @@ impl ColorFieldState {
     }
 
     fn ensure_raster_image_cache(&mut self, size: Size<Pixels>) -> bool {
-        if self.renderer != ColorFieldRenderer::RasterImage {
+        if self.background_painter.is_some() || self.renderer != ColorFieldRenderer::RasterImage {
             return false;
         }
 
@@ -778,3 +808,44 @@ impl Styled for ColorFieldState {
 }
 
 impl EventEmitter<ColorFieldEvent> for ColorFieldState {}
+
+#[cfg(all(test, feature = "test-support"))]
+mod painter_tests {
+    use super::{ColorFieldState, Hsv};
+    use gpui::{TestAppContext, px};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    #[test]
+    fn custom_painter_bypasses_raster_cache_and_removal_restores_it() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| gpui_luma::init(cx).unwrap());
+        let calls = Arc::new(AtomicUsize::new(0));
+        let paints = calls.clone();
+        let (field, cx) = app.add_window_view(|_, _| {
+            ColorFieldState::hue_value("painter-test", Hsv { h: 30., s: 0.7, v: 0.8, a: 1. }, 16.).background_painter(
+                Arc::new(move |_, _, _, _| {
+                    paints.fetch_add(1, Ordering::Relaxed);
+                    // Also exercise the built-in vector fallback.
+                    Err(anyhow::anyhow!("simulate unsupported custom paint"))
+                }),
+            )
+        });
+        cx.run_until_parked();
+        assert!(calls.load(Ordering::Relaxed) > 0);
+        field.update(cx, |field, cx| {
+            assert!(field.image_cache.is_none());
+            field.set_hsv_components(120., 0.25, 0.5, cx);
+            field.prewarm_raster_cache_size_in_place(800., 190.);
+            assert!(field.image_cache.is_none());
+            field.set_background_painter(None, cx);
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert!(field.read(cx).image_cache.is_some());
+            assert!(field.read(cx).bounds.size.width > px(0.));
+        });
+    }
+}

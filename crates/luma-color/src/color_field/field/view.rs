@@ -34,11 +34,13 @@ struct ColorFieldLayout {
     outside_color: Hsla,
     show_border: bool,
     renderer: ColorFieldRenderer,
+    background_painter: Option<super::state::ColorFieldBackgroundPainter>,
     cached_image: Option<Arc<RenderImage>>,
     samples_per_axis: usize,
     thumb_size: Pixels,
     thumb_offset: Pixels,
     thumb_color: Hsla,
+    thumb_painter: Option<crate::color_slider::color_thumb::ColorThumbPainter>,
     thumb_uv: (f32, f32),
     thumb_position: FieldThumbPosition,
     should_clip_rect_surface: bool,
@@ -63,11 +65,17 @@ impl ColorField {
             outside_color: cx.theme().background,
             show_border: state.show_border,
             renderer: state.renderer,
+            background_painter: state.background_painter.clone(),
             cached_image: state.cached_image(),
             samples_per_axis: state.samples_per_axis,
             thumb_size: px(state.thumb_size),
             thumb_offset: px(-state.thumb_size * 0.5),
             thumb_color: model.thumb_color(&state.hsv),
+            thumb_painter: state.thumb_painter.clone().map(|painter| {
+                let hsv = state.hsv;
+                Arc::new(move |bounds, window: &mut Window, cx: &mut App| painter(bounds, hsv, window, cx))
+                    as crate::color_slider::color_thumb::ColorThumbPainter
+            }),
             thumb_uv: state.thumb_uv(domain, model),
             thumb_position: state.thumb_position,
             should_clip_rect_surface: domain.is_rect() && state.thumb_position != FieldThumbPosition::EdgeToEdge,
@@ -81,6 +89,25 @@ impl ColorField {
         model: Arc<dyn super::super::model::ColorFieldModel2D>,
         hsv: crate::color_slider::color_spec::Hsv,
     ) -> AnyElement {
+        if let Some(painter) = &layout.background_painter {
+            let painter = painter.clone();
+            let samples = layout.samples_per_axis;
+            let border = layout.border_color;
+            let show_border = layout.show_border && !layout.is_rect && !layout.is_circle;
+            return canvas(
+                |_, _, _| (),
+                move |bounds, _, window, cx| {
+                    if painter(bounds, hsv, window, cx).is_err() {
+                        paint_domain_background(window, bounds, domain.as_ref(), model.as_ref(), hsv, samples);
+                    }
+                    if show_border {
+                        paint_domain_border(window, bounds, domain.as_ref(), border);
+                    }
+                },
+            )
+            .size_full()
+            .into_any_element();
+        }
         match layout.renderer {
             ColorFieldRenderer::Vector => canvas(move |_, _, _| (), {
                 let domain = domain.clone();
@@ -142,7 +169,12 @@ impl ColorField {
             .ml(layout.thumb_offset)
             .mt(layout.thumb_offset)
             .size(layout.thumb_size)
-            .child(ColorThumb::new(layout.thumb_size).color(layout.thumb_color).active(false))
+            .child(
+                ColorThumb::new(layout.thumb_size)
+                    .color(layout.thumb_color)
+                    .active(false)
+                    .when_some(layout.thumb_painter.clone(), |thumb, painter| thumb.background_painter(painter)),
+            )
     }
 
     fn with_global_mouse_watch(root: Stateful<Div>, state_entity: Entity<ColorFieldState>) -> Stateful<Div> {

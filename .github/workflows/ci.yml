@@ -121,6 +121,10 @@ jobs:
           --package gpui-luma-look-shadcn
           --package luma-app-common
 
+      - name: Test XGPUI Lab
+        if: needs.scope.result != 'success' || needs.scope.outputs.native == 'true'
+        run: cargo test --locked -p xgpui-lab --all-targets --features test-support,portable-app
+
       # Only run doc-tests on library packages that actually contain documentation
       - name: Documentation tests
         timeout-minutes: 10
