@@ -27,7 +27,7 @@ pub struct ExtensionPane {
 }
 
 impl ExtensionPane {
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test-support"))]
     pub(crate) fn waves(&self) -> Option<Entity<crate::pastel_waves::PastelWaves>> {
         self.waves.clone()
     }

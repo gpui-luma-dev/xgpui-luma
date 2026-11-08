@@ -76,11 +76,11 @@ impl PastelWaves {
             updated: Instant::now(),
         }
     }
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test-support"))]
     pub(crate) fn play_button(&self) -> Entity<Button> {
         self.buttons[0].clone()
     }
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test-support"))]
     pub(crate) fn is_playing(&self) -> bool {
         self.playing
     }
