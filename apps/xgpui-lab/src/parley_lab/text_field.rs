@@ -19,15 +19,18 @@ use std::{ops::Range, sync::Arc, time::Duration};
 
 use anyhow::{Result, anyhow};
 use gpui::{
-    App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler, EntityInputHandler, EventEmitter,
-    DispatchPhase, FocusHandle, Focusable, Font, FontRun, Hsla, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render, SharedString,
-    ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div, fill, point, prelude::*, px,
-    size,
+    AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler, EntityInputHandler,
+    EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontRun, Hsla, KeyDownEvent, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render,
+    SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div, fill, point,
+    prelude::*, px, size,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
-    controls::textfield::{TextFieldLook, TextFieldLookOverride, TextFieldState, TextFieldTheme},
+    controls::textfield::{
+        TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
+        TextFieldTemplateHandlers, TextFieldTheme,
+    },
     theme::{ControlSize, StandardBoxScale},
 };
 
@@ -70,6 +73,8 @@ struct Geometry {
 pub struct ParleyTextField {
     id: SharedString,
     theme: Arc<dyn TextFieldTheme>,
+    /// Draws a one-line field's chrome; a text area still draws its own.
+    template: Arc<dyn TextFieldTemplate>,
     size: ControlSize,
     font: Font,
     /// Visible lines of a text area; `None` for a one-line field.
@@ -173,11 +178,13 @@ impl ParleyTextField {
     }
 
     /// The control a builder describes; `spawn` also binds its callbacks.
-    pub(crate) fn from_builder(builder: ParleyTextFieldBuilder, cx: &mut Context<Self>) -> Self {
+    pub(crate) fn from_builder(mut builder: ParleyTextFieldBuilder, cx: &mut Context<Self>) -> Self {
         let theme = builder.resolve_theme(cx);
+        let template = builder.take_template(cx);
         let mut this = Self {
             id: builder.id,
             theme,
+            template,
             size: builder.size.control_size(),
             font: builder.font,
             rows: builder.rows,
@@ -909,13 +916,15 @@ impl Render for ParleyTextField {
         )
         .size_full();
 
-        // A text area shows `rows` lines inside the field's padding and border.
+        if self.rows.is_none() {
+            return self.render_with_template(text, look, focus_gap, window, cx);
+        }
+
+        // A text area shows `rows` lines inside the field's padding and border; it
+        // draws its own chrome until it moves to the SDK's text area template.
         let rows = self.rows;
         let viewport_height = line_height * rows.unwrap_or(1) as f32;
-        let control_height = match rows {
-            Some(_) => viewport_height + px(2.0 * (look.padding_y + look.border_width)),
-            None => px(look.min_height),
-        };
+        let control_height = viewport_height + px(2.0 * (look.padding_y + look.border_width));
         let viewport = div().relative().min_w(px(0.0)).flex_1().h(viewport_height).child(text).when(
             show_placeholder,
             |viewport| {
@@ -924,7 +933,6 @@ impl Render for ParleyTextField {
                         .absolute()
                         .inset_0()
                         .flex()
-                        .when(rows.is_none(), |placeholder| placeholder.items_center())
                         .overflow_hidden()
                         .text_color(look.placeholder)
                         .child(self.placeholder.clone()),
@@ -979,6 +987,98 @@ impl Render for ParleyTextField {
                         .rounded(px(look.radius + focus_gap)),
                 )
             })
+            .into_any_element()
+    }
+}
+
+impl ParleyTextField {
+    /// A one-line field: the SDK template draws the chrome (background, border,
+    /// padding, focus ring, placeholder, modifiers) around an empty value, and the
+    /// Parley text is laid over its text area.
+    ///
+    /// The template paints text itself with `shape_line` and has no slot for text
+    /// it does not draw, so the overlay repeats its geometry: focus ring, border
+    /// and horizontal padding. That missing slot is what the SDK template needs
+    /// before this control can move into the SDK.
+    fn render_with_template(
+        &self,
+        text: impl IntoElement,
+        look: TextFieldLook,
+        focus_gap: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let empty = SharedString::default();
+        // The template shows its placeholder for an empty value; hide it under real text.
+        let placeholder = if self.value.is_empty() {
+            self.placeholder.clone()
+        } else {
+            empty.clone()
+        };
+        let state = TextFieldState {
+            hovered: self.hovered,
+            focused: self.focused,
+            focus_visible: self.focused,
+            ..TextFieldState::default()
+        };
+        let model = TextFieldRenderModel {
+            id: &self.id,
+            placeholder: &placeholder,
+            value: &empty,
+            prefix_icon: None,
+            size: self.size,
+            enabled: self.enabled,
+            full_width: true,
+            state,
+            marked_range: None,
+            caret_visible: false,
+            horizontal_scroll: 0.0,
+            character_offsets: vec![0.0],
+            look: look.clone(),
+        };
+        // Pointer input is handled on the wrapper below: in headless tests the
+        // template root's mouse-down listener never fired under the text overlay,
+        // while the wrapper's did. Drags are captured window-wide; see `drag_to`.
+        let handlers = TextFieldTemplateHandlers {
+            hover: Box::new(|_, _, _| {}),
+            mouse_down: Box::new(|_, _, _| {}),
+            mouse_move: Box::new(|_, _, _| {}),
+            mouse_up: Box::new(|_, _, _| {}),
+            mouse_up_out: Box::new(|_, _, _| {}),
+            click: Box::new(|_, _, _| {}),
+            key_down: Box::new(cx.listener(Self::key_down)),
+            drag_move: Box::new(|_, _, _| {}),
+        };
+        // As the SDK text field does, the template's root is the focused element.
+        let chrome = self.template.render(&model, handlers, window, cx).track_focus(&self.focus);
+        let inset = px(focus_gap + look.border_width.max(0.0) + look.padding_x);
+        let line_height = px(look.typography.line_height);
+        div()
+            .id(SharedString::from(format!("{}-parley", self.id)))
+            .relative()
+            .w_full()
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.hovered = *hovered && this.enabled;
+                cx.notify();
+            }))
+            .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
+            .child(chrome)
+            .child(
+                // The chrome's own height, not the wrapper's: a stretched wrapper
+                // must not move the text off the template's text row.
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(look.min_height + 2.0 * focus_gap))
+                    .px(inset)
+                    .flex()
+                    .items_center()
+                    .when(!self.enabled, |overlay| overlay.opacity(look.disabled_opacity))
+                    .child(div().w_full().h(line_height).child(text)),
+            )
+            .into_any_element()
     }
 }
 
