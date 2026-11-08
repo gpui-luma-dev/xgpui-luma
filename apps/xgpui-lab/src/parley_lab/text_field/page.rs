@@ -2,15 +2,21 @@
 //! mixed and long text.
 use std::sync::Arc;
 
-use gpui::{Context, Entity, Font, FontFallbacks, Render, Subscription, Window, div, prelude::*, px};
+use gpui::{Context, Entity, Font, FontFallbacks, Render, Window, div, prelude::*, px};
+use xgpui_luma::controls::{button as radix_button, textfield::TextFieldLook};
+use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma_look_radix::{self as radix, Look};
 
 use super::{ParleyTextField, ParleyTextFieldEvent};
 use crate::theme::ColorVizLookExt;
 
+/// Index of the field that starts disabled.
+const DISABLED: usize = 1;
+
 /// (label, initial value, placeholder, text area rows)
-pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>); 8] = [
+pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>); 9] = [
     ("Empty", "", "Type here; try an IME, emoji or Hebrew", None),
+    ("Disabled (toggle below)", "Not editable while disabled", "", None),
     ("Latin, combining marks and emoji", "office café e\u{301} 👍🏽 🇮🇹 done", "", None),
     ("Hebrew (right-to-left base)", "שלום עולם 123 office", "", None),
     ("Arabic (right-to-left base)", "مرحبا بالعالم 456", "", None),
@@ -38,6 +44,14 @@ pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>); 8] = [
     ),
 ];
 
+/// Testing aid: light text on the look's text color, for contrast while testing.
+fn inverted(mut look: TextFieldLook) -> TextFieldLook {
+    std::mem::swap(&mut look.background, &mut look.foreground);
+    look.placeholder = look.foreground.opacity(0.6);
+    look.caret = look.foreground;
+    look
+}
+
 pub(crate) fn font() -> Font {
     let mut font = gpui::font("IBM Plex Sans");
     font.fallbacks = Some(FontFallbacks::from_fonts(vec!["Noto Sans Hebrew".into(), "Noto Sans Arabic".into()]));
@@ -47,42 +61,51 @@ pub(crate) fn font() -> Font {
 pub struct TextFieldPage {
     look: Arc<Look>,
     pub(crate) fields: Vec<Entity<ParleyTextField>>,
+    /// Toggles the "Disabled" field.
+    toggle: Entity<radix_button::Button>,
     last_event: String,
-    _subscriptions: Vec<Subscription>,
 }
 
 impl TextFieldPage {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let theme = radix::textfield_theme_with(&look, radix::TextFieldVariant::Surface);
         let fields: Vec<_> = FIELDS
             .iter()
             .enumerate()
-            .map(|(index, (_, value, placeholder, rows))| {
-                cx.new(|cx| {
-                    let field = ParleyTextField::new(format!("parley-text-field-{index}"), theme.clone(), font(), cx);
-                    let field = match rows {
-                        Some(rows) => field.with_rows(*rows),
-                        None => field,
-                    };
-                    field.with_value(value).with_placeholder(*placeholder).with_inverted_colors()
-                })
+            .map(|(index, (label, value, placeholder, rows))| {
+                let label = *label;
+                let builder = ParleyTextField::new(format!("parley-text-field-{index}"))
+                    .surface()
+                    .font(font())
+                    .value(*value)
+                    .placeholder(*placeholder)
+                    .enabled(index != DISABLED)
+                    .look_override(inverted)
+                    .on_event(cx, move |this: &mut Self, event, cx| {
+                        this.last_event = match event {
+                            ParleyTextFieldEvent::Change { value } => format!("{label}: changed to {value:?}"),
+                            ParleyTextFieldEvent::Submit { value } => format!("{label}: submitted {value:?}"),
+                            ParleyTextFieldEvent::FocusChanged { focused } => format!("{label}: focused {focused}"),
+                            ParleyTextFieldEvent::EnabledChanged { enabled } => format!("{label}: enabled {enabled}"),
+                        };
+                        cx.notify();
+                    });
+                match rows {
+                    Some(rows) => builder.rows(*rows),
+                    None => builder,
+                }
+                .spawn(cx)
             })
             .collect();
-        let subscriptions = fields
-            .iter()
-            .enumerate()
-            .map(|(index, field)| {
-                cx.subscribe(field, move |this: &mut Self, _, event: &ParleyTextFieldEvent, cx| {
-                    let label = FIELDS[index].0;
-                    this.last_event = match event {
-                        ParleyTextFieldEvent::Change(value) => format!("{label}: changed to {value:?}"),
-                        ParleyTextFieldEvent::Submit(value) => format!("{label}: submitted {value:?}"),
-                    };
-                    cx.notify();
-                })
+        let toggle = radix::Button::new("parley-text-field-toggle-enabled")
+            .look(look.as_ref())
+            .outline()
+            .label("Enable / disable")
+            .on_click(cx, |this: &mut Self, cx| {
+                let field = this.fields[DISABLED].clone();
+                field.update(cx, |field, cx| field.set_enabled(!field.is_enabled(), cx));
             })
-            .collect();
-        Self { look, fields, last_event: "No events yet".into(), _subscriptions: subscriptions }
+            .spawn(cx);
+        Self { look, fields, toggle, last_event: "No events yet".into() }
     }
 }
 
@@ -129,6 +152,7 @@ impl Render for TextFieldPage {
                  Fields: Enter submits. Text areas: Enter adds a line break, Up/Down move by line, \
                  Cmd/Ctrl-Up/Down go to the start or end, and the wheel scrolls.",
             ))
+            .child(self.toggle.clone())
             .children(rows)
             .child(div().text_size(px(12.0)).text_color(chrome.muted_text).child(self.last_event.clone()))
     }

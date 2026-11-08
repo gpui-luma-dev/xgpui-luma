@@ -31,6 +31,8 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         }
         xgpui_luma::focus::bind_default_focus_keys(cx);
         xgpui_luma::key_handling::bind_default_control_keys(cx);
+        // Install the lab look as the ambient one, as a shell does; looks resolve from it.
+        cx.set_global(crate::theme::default_look().as_ref().clone());
         cx.on_action(crate::quit);
         cx.bind_keys([KeyBinding::new("cmd-q", crate::Quit, None)]);
         let result = cx.open_window(
@@ -90,7 +92,8 @@ struct NativeText {
 }
 impl NativeText {
     fn new(backend: String, frames: usize, cx: &mut Context<Self>) -> Self {
-        let look = crate::theme::default_look();
+        let look =
+            Arc::new(cx.try_global::<Look>().cloned().unwrap_or_else(|| crate::theme::default_look().as_ref().clone()));
         let engine = Engine::new().expect("registered source fonts");
         let paragraph = cx.new(|cx| {
             let mut page = paragraph::ParagraphLab::new(engine, vec![], look.clone(), cx);

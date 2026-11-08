@@ -36,16 +36,14 @@ impl Fixture {
             "ctrl"
         };
         let look = crate::theme::default_look();
-        let theme =
-            xgpui_luma_look_radix::textfield_theme_with(&look, xgpui_luma_look_radix::TextFieldVariant::Surface);
         let value = value.to_owned();
         let window = cx.open_window(size(px(WIDTH), px(200.0)), move |_, cx| {
-            let field = ParleyTextField::new("test-field", theme, page::font(), cx);
-            match rows {
-                Some(rows) => field.with_rows(rows),
-                None => field,
-            }
-            .with_value(&value)
+            let builder = ParleyTextField::new("test-field").look(&look).surface().font(page::font()).value(value);
+            let builder = match rows {
+                Some(rows) => builder.rows(rows),
+                None => builder,
+            };
+            ParleyTextField::from_builder(builder, cx)
         });
         let field = window.root(&mut cx).unwrap();
         let events = Rc::new(RefCell::new(Vec::new()));
@@ -146,7 +144,7 @@ fn typing_and_ime_composition_use_utf16_offsets() {
         assert_eq!(handler.marked_text_range(window, cx), None);
     });
     assert_eq!(f.value(), "ab€");
-    assert!(matches!(f.events.borrow().last(), Some(ParleyTextFieldEvent::Change(value)) if value == "ab€"));
+    assert!(matches!(f.events.borrow().last(), Some(ParleyTextFieldEvent::Change { value }) if value == "ab€"));
 }
 
 #[test]
@@ -236,7 +234,7 @@ fn paste_strips_line_breaks_and_enter_submits() {
     f.keys(&paste);
     assert_eq!(f.value(), "onetwothree");
     f.keys("enter");
-    assert_eq!(f.events.borrow().last(), Some(&ParleyTextFieldEvent::Submit("onetwothree".into())));
+    assert_eq!(f.events.borrow().last(), Some(&ParleyTextFieldEvent::Submit { value: "onetwothree".into() }));
     assert_eq!(f.value(), "onetwothree", "enter inserts nothing");
 }
 
@@ -290,7 +288,7 @@ fn text_area_enter_inserts_line_breaks_and_clipboard_uses_newlines() {
     f.visual.simulate_input("cd");
     f.draw();
     assert_eq!(f.value(), "ab\ncd");
-    assert!(f.events.borrow().iter().all(|event| !matches!(event, ParleyTextFieldEvent::Submit(_))));
+    assert!(f.events.borrow().iter().all(|event| !matches!(event, ParleyTextFieldEvent::Submit { .. })));
     let select_all = format!("{}-a", f.secondary);
     let copy = format!("{}-c", f.secondary);
     f.keys(&select_all);
@@ -383,4 +381,119 @@ fn text_area_scrolls_vertically_to_the_caret_and_with_the_wheel() {
         .simulate_click(point(viewport.left() + px(4.0), viewport.bottom() - px(2.0)), Modifiers::default());
     f.draw();
     assert!(f.selection().1 > 0);
+}
+
+#[test]
+fn builder_callbacks_receive_sdk_named_events() {
+    struct Owner {
+        log: Vec<String>,
+    }
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| xgpui_luma::init(cx).unwrap());
+    let owner = cx.new(|_| Owner { log: Vec::new() });
+    let field = owner.update(&mut cx, |_, cx| {
+        ParleyTextField::new("callbacks")
+            .value("hi")
+            .on_value_changed(cx, |owner: &mut Owner, value, _| owner.log.push(format!("change {value}")))
+            .on_submit(cx, |owner: &mut Owner, value, _| owner.log.push(format!("submit {value}")))
+            .on_focus_changed(cx, |owner: &mut Owner, focused, _| owner.log.push(format!("focus {focused}")))
+            .on_enabled_changed(cx, |owner: &mut Owner, enabled, _| owner.log.push(format!("enabled {enabled}")))
+            .spawn(cx)
+    });
+    field.update(&mut cx, |field, cx| {
+        assert_eq!(field.value(), "hi");
+        field.select_all(cx);
+        field.replace(field.selected_range(), "yo", None, false, cx);
+        cx.emit(ParleyTextFieldEvent::Submit { value: field.value() });
+        field.set_enabled(false, cx);
+        field.set_enabled(false, cx); // No change, no event.
+    });
+    cx.run_until_parked();
+    let log = owner.read_with(&cx, |owner, _| owner.log.clone());
+    assert_eq!(log, ["change yo", "submit yo", "enabled false"]);
+}
+
+#[test]
+fn set_value_replaces_the_text_without_a_change_event() {
+    let mut f = Fixture::area("old", 3);
+    let field = f.field.clone();
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_value("one\r\ntwo", cx)));
+    f.draw();
+    assert_eq!(f.value(), "one\ntwo");
+    assert_eq!(f.selection().1, f.read(|field| field.value.len()), "caret at the end");
+    assert!(f.events.borrow().iter().all(|event| !matches!(event, ParleyTextFieldEvent::Change { .. })));
+}
+
+#[test]
+fn disabled_control_ignores_input_and_gives_up_focus() {
+    let mut f = Fixture::new("fixed");
+    assert!(f.read(|field| field.is_focused()));
+    let field = f.field.clone();
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(false, cx)));
+    f.draw();
+    f.draw();
+    assert!(!f.read(|field| field.is_focused()), "disabling blurs");
+    assert!(f.events.borrow().contains(&ParleyTextFieldEvent::EnabledChanged { enabled: false }));
+    assert!(f.events.borrow().contains(&ParleyTextFieldEvent::FocusChanged { focused: false }));
+    let target = f.point_at(2);
+    f.visual.simulate_click(target, Modifiers::default());
+    f.draw();
+    f.visual.simulate_keystrokes("backspace");
+    f.visual.simulate_input("x");
+    f.draw();
+    assert_eq!(f.value(), "fixed");
+    assert!(!f.read(|field| field.is_focused()), "clicks do not focus a disabled control");
+    // Re-enabled, it takes focus and input again.
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(true, cx)));
+    f.draw();
+    f.visual.simulate_click(target, Modifiers::default());
+    f.draw();
+    f.visual.simulate_input("x");
+    f.draw();
+    assert_eq!(f.value(), "fixxed");
+}
+
+/// Background a builder's resolved theme gives a resting, enabled field.
+fn resolved_background(builder: &ParleyTextFieldBuilder, cx: &App) -> Hsla {
+    let theme = builder.resolve_theme(cx);
+    let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0);
+    theme.resolve_look(TextFieldState::default(), true, ControlSize::Md, &scale).background
+}
+
+#[test]
+fn look_resolves_explicit_then_ambient_then_built_in() {
+    use xgpui_luma_look_radix::Look;
+    let cx = TestAppContext::single();
+    cx.update(|cx| {
+        xgpui_luma::init(cx).unwrap();
+        let lab = crate::theme::default_look().as_ref().clone();
+        let built_in = Look::built_in();
+        let builder = || ParleyTextField::new("look");
+        let built_in_background = resolved_background(&builder(), cx);
+        let lab_background = resolved_background(&builder().look(&lab), cx);
+        assert_ne!(built_in_background, lab_background, "the two looks must differ for this test");
+        assert_eq!(built_in_background, resolved_background(&builder().look(&built_in), cx));
+        // A shell installs its look as the ambient one.
+        cx.set_global(lab.clone());
+        assert_eq!(resolved_background(&builder(), cx), lab_background, "ambient look");
+        assert_eq!(resolved_background(&builder().look(&built_in), cx), built_in_background, "explicit wins");
+    });
+}
+
+#[test]
+fn look_override_adjusts_the_resolved_look() {
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| xgpui_luma::init(cx).unwrap());
+    let red = gpui::red();
+    let window = cx.open_window(size(px(WIDTH), px(80.0)), move |_, cx| {
+        let builder = ParleyTextField::new("override").look_override(move |mut look| {
+            look.background = red;
+            look
+        });
+        ParleyTextField::from_builder(builder, cx)
+    });
+    let background = window.update(&mut cx, |field, window, _| field.look(window).background).unwrap();
+    assert_eq!(background, red);
 }
