@@ -169,7 +169,7 @@ mod gpu_tests {
     #[ignore = "requires a native Metal device"]
     fn native_gpu_matches_cpu_color_math_at_1x_and_2x_and_captures_smooth_edges() -> anyhow::Result<()> {
         let shader = program()?;
-        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         let boundary = model::locus();
         let simplified = outline();
         let logical_scale = (420. - 48.) / 0.9;

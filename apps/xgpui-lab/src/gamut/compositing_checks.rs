@@ -21,7 +21,7 @@ pub(super) fn verify(output: &std::path::Path) -> Result<Value> {
 #[cfg(target_os = "macos")]
 fn verify_metal(output: &std::path::Path) -> Result<Value> {
     use std::sync::Arc;
-    let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+    let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
     renderer.set_color_mode(WindowColorMode::WideGamutSdr)?;
     let extent = size(DevicePixels(40), DevicePixels(32));
     let mut cases = 0;

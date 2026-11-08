@@ -45,12 +45,12 @@ xgpui-luma-look-shadcn = { version = "1.0.1", path = "crates/look-shadcn" }
 xgpui-luma-look-radix = { version = "1.0.1", path = "crates/look-radix" }
 xgpui-luma-plot = { version = "1.0.1", path = "crates/plot" }
 luma-app-common = { path = "apps/common" }
-# Published libraries accept compatible xgpui 2.x releases; Cargo.lock pins local validation.
-gpui = { package = "xgpui", version = "2.0.1" }
+# Published libraries accept compatible xgpui 3.x releases; Cargo.lock pins local validation.
+gpui = { package = "xgpui", version = "3.0.1" }
 lucide-svg-static = { package = "lucide-static-svg", version = "1.45.0" }
 gpui_platform = {
   package = "xgpui-platform",
-  version = "=2.0.1",
+  version = "=2.0.3",
   features = ["font-kit"],
 }
 image = "0.25"

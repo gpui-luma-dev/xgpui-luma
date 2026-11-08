@@ -86,7 +86,7 @@ fn focus(field: &Entity<ColorFieldState>, cx: &mut VisualTestContext) {
     cx.update(|window, app| field.read(app).focus_handle(app).focus(window, app));
     cx.run_until_parked();
 }
-fn key(cx: &mut VisualTestContext, stroke: &str, down: bool) {
+fn key(cx: &mut VisualTestContext, stroke: &'static str, down: bool) {
     let keystroke = Keystroke::parse(stroke).unwrap();
     if down {
         cx.simulate_event(KeyDownEvent { keystroke, is_held: false, prefer_character_input: false });
