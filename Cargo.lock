@@ -2240,67 +2240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "xgpui-luma"
-version = "1.0.1"
-dependencies = [
- "anyhow",
- "fasteval",
- "lucide-static-svg",
- "palette",
- "serde",
- "smallvec",
- "toml 0.8.23",
- "ttf-parser",
- "web-time",
- "xgpui",
-]
-
-[[package]]
-name = "xgpui-luma-color"
-version = "1.0.1"
-dependencies = [
- "anyhow",
- "xgpui-luma",
- "image",
- "palette",
- "smallvec",
- "tiny-skia 0.11.4",
- "xgpui",
-]
-
-[[package]]
-name = "xgpui-luma-look-radix"
-version = "1.0.1"
-dependencies = [
- "anyhow",
- "xgpui-luma",
- "serde",
- "toml 0.8.23",
- "xgpui",
-]
-
-[[package]]
-name = "xgpui-luma-look-shadcn"
-version = "1.0.1"
-dependencies = [
- "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "lucide-static-svg",
- "serde",
- "toml 0.8.23",
- "xgpui",
-]
-
-[[package]]
-name = "xgpui-luma-plot"
-version = "1.0.1"
-dependencies = [
- "xgpui-luma",
- "xgpui",
-]
-
-[[package]]
 name = "gpui-shared-string-gpui-unofficial"
 version = "1.26.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3054,11 +2993,11 @@ name = "luma-app-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "tracing",
+ "xgpui",
  "xgpui-luma",
  "xgpui-luma-color",
  "xgpui-luma-look-shadcn",
- "tracing",
- "xgpui",
 ]
 
 [[package]]
@@ -3066,16 +3005,16 @@ name = "luma-docs-embed"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-radix",
- "xgpui-luma-look-shadcn",
- "xgpui-luma-plot",
  "lucide-static-svg",
  "luma-app-common",
  "wasm-bindgen",
  "web-sys",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
+ "xgpui-luma-look-shadcn",
+ "xgpui-luma-plot",
  "xgpui-web",
 ]
 
@@ -3084,10 +3023,10 @@ name = "luma-neumorphic-demo"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
  "gtk",
  "lucide-static-svg",
  "xgpui",
+ "xgpui-luma",
  "xgpui-platform",
 ]
 
@@ -3096,10 +3035,10 @@ name = "luma-plot-viz"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-plot",
  "lucide-static-svg",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-plot",
  "xgpui-platform",
 ]
 
@@ -3108,9 +3047,6 @@ name = "luma-radix-studio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-radix",
  "gtk",
  "image",
  "lucide-static-svg",
@@ -3118,6 +3054,9 @@ dependencies = [
  "smallvec",
  "tiny-skia 0.11.4",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
  "xgpui-platform",
 ]
 
@@ -3126,16 +3065,16 @@ name = "luma-sdk-perf"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-radix",
- "xgpui-luma-look-shadcn",
- "xgpui-luma-plot",
  "libc",
  "lucide-static-svg",
  "luma-app-common",
  "serde_json",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
+ "xgpui-luma-look-shadcn",
+ "xgpui-luma-plot",
  "xgpui-platform",
 ]
 
@@ -3144,12 +3083,12 @@ name = "luma-shell-2026"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
 ]
 
@@ -3158,13 +3097,13 @@ name = "luma-shell-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-shadcn",
  "lucide-static-svg",
  "luma-app-common",
  "tracing",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
 ]
 
@@ -3173,12 +3112,12 @@ name = "luma-shell-detached"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
 ]
 
@@ -3187,14 +3126,14 @@ name = "luma-shell-split-titlebar"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
  "objc2-app-kit 0.3.2",
  "raw-window-handle",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
 ]
 
@@ -3203,12 +3142,12 @@ name = "luma-shell-vscode"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
 ]
 
@@ -3217,9 +3156,6 @@ name = "luma-studio"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-app-common",
@@ -3228,6 +3164,9 @@ dependencies = [
  "thiserror 2.0.20",
  "tracing",
  "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-shadcn",
  "xgpui-platform",
  "zed-font-kit",
 ]
@@ -7326,9 +7265,6 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "clap",
- "xgpui-luma",
- "xgpui-luma-color",
- "xgpui-luma-look-radix",
  "gtk",
  "image",
  "libc",
@@ -7356,6 +7292,9 @@ dependencies = [
  "xgpui-canvas",
  "xgpui-color",
  "xgpui-gamut",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
  "xgpui-media",
  "xgpui-parley",
  "xgpui-platform",
@@ -7408,6 +7347,67 @@ dependencies = [
  "xkbcommon",
  "zed-scap",
  "zed-xim",
+]
+
+[[package]]
+name = "xgpui-luma"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "fasteval",
+ "lucide-static-svg",
+ "palette",
+ "serde",
+ "smallvec",
+ "toml 0.8.23",
+ "ttf-parser",
+ "web-time",
+ "xgpui",
+]
+
+[[package]]
+name = "xgpui-luma-color"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "image",
+ "palette",
+ "smallvec",
+ "tiny-skia 0.11.4",
+ "xgpui",
+ "xgpui-luma",
+]
+
+[[package]]
+name = "xgpui-luma-look-radix"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "serde",
+ "toml 0.8.23",
+ "xgpui",
+ "xgpui-luma",
+]
+
+[[package]]
+name = "xgpui-luma-look-shadcn"
+version = "1.0.1"
+dependencies = [
+ "anyhow",
+ "lucide-static-svg",
+ "serde",
+ "toml 0.8.23",
+ "xgpui",
+ "xgpui-luma",
+ "xgpui-luma-color",
+]
+
+[[package]]
+name = "xgpui-luma-plot"
+version = "1.0.1"
+dependencies = [
+ "xgpui",
+ "xgpui-luma",
 ]
 
 [[package]]
