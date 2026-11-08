@@ -219,7 +219,7 @@ jobs:
           # Or: cargo add xgpui-luma-look-radix@${VERSION}
           # Optional: cargo add xgpui-luma-color@${VERSION}
           # Optional: cargo add xgpui-luma-plot@${VERSION}
-          cargo add gpui-unofficial --rename gpui
+          cargo add xgpui@2.0.1 --rename gpui
           \`\`\`
 
           Imports use \`xgpui_luma\`, \`xgpui_luma_look_shadcn\`,
