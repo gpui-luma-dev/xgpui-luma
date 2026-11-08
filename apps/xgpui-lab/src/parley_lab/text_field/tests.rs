@@ -891,7 +891,8 @@ fn page_lays_out_fields(parley: bool) -> (bool, bool) {
         }
     });
     let look = crate::theme::default_look();
-    let window = cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, cx));
+    let window =
+        cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, false, cx));
     let page = window.root(&mut cx).unwrap();
     let mut visual = VisualTestContext::from_window(window.into(), &cx);
     visual.run_until_parked();
@@ -928,7 +929,7 @@ fn screen_layout(screen: page::Screen) -> (Vec<usize>, bool) {
     });
     let look = crate::theme::default_look();
     let window = cx.open_window(size(px(600.0), px(1200.0)), move |_, cx| {
-        let mut page = page::TextFieldPage::new(look, false, cx);
+        let mut page = page::TextFieldPage::new(look, false, false, cx);
         page.screen = screen;
         page
     });
@@ -959,8 +960,8 @@ fn each_screen_shows_only_its_own_fields() {
         assert_eq!(shown, expected, "{screen:?}");
         assert_eq!(
             scrolls,
-            screen == page::Screen::TextAreas,
-            "{screen:?}: the long area is on Text areas and scrolls"
+            screen == page::Screen::Scrolling,
+            "{screen:?}: the long area is on Text Scrolling and scrolls"
         );
     }
 }
@@ -1043,4 +1044,39 @@ fn autoscroll_speed_grows_with_distance_and_is_capped() {
     let mut short = Fixture::area("one line", 3);
     let viewport = short.geometry().viewport;
     assert_eq!(delta(&mut short, point(viewport.left(), viewport.bottom() + px(50.0))), px(0.0));
+}
+
+#[test]
+fn each_screen_is_an_xgpui_lab_tab() {
+    let parley_tabs = crate::app::SECTIONS
+        .iter()
+        .find(|(workspace, ..)| *workspace == crate::app::Workspace::Parley)
+        .map(|(_, _, tabs)| *tabs)
+        .expect("the xgpui-parley workspace");
+    for (screen, _, label) in page::Screen::ALL {
+        assert_eq!(page::Screen::from_tab(label), Some(screen), "{label}");
+        assert!(parley_tabs.iter().any(|(id, _)| *id == label), "{label} is an xgpui-parley tab");
+    }
+    assert_eq!(page::Screen::from_tab("Paragraphs"), None, "other Parley tabs are not text field screens");
+}
+
+#[test]
+fn choosing_a_lab_tab_shows_that_screen() {
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| {
+        xgpui_luma::init(cx).unwrap();
+        cx.set_global(crate::parley_lab::ParleyTextSystemActive);
+    });
+    let look = crate::theme::default_look();
+    let window = cx.open_window(size(px(900.0), px(1200.0)), move |_, cx| crate::parley_lab::ParleyPage::new(look, cx));
+    for (screen, _, label) in page::Screen::ALL {
+        let shown = window
+            .update(&mut cx, |lab, _, cx| {
+                lab.activate(label.into(), cx);
+                lab.text_field.read(cx).screen
+            })
+            .unwrap();
+        assert_eq!(shown, screen, "{label}");
+    }
 }

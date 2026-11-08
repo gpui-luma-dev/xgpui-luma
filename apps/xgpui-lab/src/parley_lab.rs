@@ -93,7 +93,7 @@ impl ParleyPage {
             .as_ref()
             .ok()
             .map(|engine| cx.new(|cx| line::LinePage::new(engine.clone(), look.clone(), cx)));
-        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, cx));
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, false, cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
                 "Shell native backend".into(),
@@ -208,6 +208,9 @@ impl ParleyPage {
                 page.set_mode(tab == "Line Layout");
                 cx.notify();
             });
+        }
+        if let Some(screen) = text_field::page::Screen::from_tab(&tab) {
+            self.text_field.update(cx, |page, cx| page.set_screen(screen, cx));
         }
         self.active_tab = tab;
         cx.notify();
@@ -347,7 +350,7 @@ impl Render for ParleyPage {
         if self.active_tab == "Line Layout" {
             return div().size_full().children(self.line.clone()).into_any_element();
         }
-        if self.active_tab == "Text Field" {
+        if text_field::page::Screen::from_tab(&self.active_tab).is_some() {
             return div().size_full().child(self.text_field.clone()).into_any_element();
         }
         if self.active_tab == "Paragraphs" {

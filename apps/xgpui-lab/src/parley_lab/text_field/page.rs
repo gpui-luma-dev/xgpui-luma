@@ -1,5 +1,6 @@
-//! Lab page: Parley text fields and text areas, on four screens chosen with a
-//! tab bar: fields, right-to-left, text areas and states & options.
+//! Lab page: Parley text fields and text areas, on five screens. In XGPUI Lab
+//! each screen is its own tab in the xgpui-parley workspace; the standalone
+//! Parley window, which has no lab navigation, chooses them with a tab bar.
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Font, FontFallbacks, Render, Window, div, prelude::*, px};
@@ -29,27 +30,38 @@ pub(crate) enum Screen {
     Fields,
     RightToLeft,
     TextAreas,
+    Scrolling,
     States,
 }
 
 impl Screen {
-    pub(crate) const ALL: [(Self, &'static str, &'static str); 4] = [
-        (Self::Fields, "fields", "Fields"),
-        (Self::RightToLeft, "rtl", "Right-to-left"),
-        (Self::TextAreas, "areas", "Text areas"),
-        (Self::States, "states", "States & options"),
+    /// (screen, id, label); the label is also the screen's tab name in XGPUI Lab.
+    pub(crate) const ALL: [(Self, &'static str, &'static str); 5] = [
+        (Self::Fields, "fields", "Text Fields"),
+        (Self::RightToLeft, "rtl", "Text Right-to-left"),
+        (Self::TextAreas, "areas", "Text Areas"),
+        (Self::Scrolling, "scrolling", "Text Scrolling"),
+        (Self::States, "states", "Text States"),
     ];
 
     fn from_id(id: &str) -> Self {
         Self::ALL.iter().find(|(_, key, _)| *key == id).map_or(Self::Fields, |(screen, ..)| *screen)
     }
 
+    /// The screen shown by an XGPUI Lab tab, if the tab is one of these.
+    pub(crate) fn from_tab(tab: &str) -> Option<Self> {
+        Self::ALL.iter().find(|(_, _, label)| *label == tab).map(|(screen, ..)| *screen)
+    }
+
+    fn title(self) -> &'static str {
+        Self::ALL.iter().find(|(screen, ..)| *screen == self).map_or("", |(_, _, label)| label)
+    }
+
     fn hint(self) -> &'static str {
         match self {
             Self::Fields => {
                 "Left/Right move visually; Alt moves by word; Home/End go to the ends. Backspace removes whole \
-                 characters. Double-click selects a word, triple-click all. Enter submits. Drag past the long \
-                 field's edge and hold: it keeps scrolling."
+                 characters. Double-click selects a word, triple-click all. Enter submits."
             }
             Self::RightToLeft => {
                 "Right-to-left text starts at the right edge; Left/Right still move visually. In the text area \
@@ -58,8 +70,12 @@ impl Screen {
             }
             Self::TextAreas => {
                 "Enter adds a line break; Up/Down move by line and keep the column; Home/End go to the line's \
-                 ends; Cmd/Ctrl-Up/Down go to the start or end. The wheel scrolls. In the long area, drag below \
-                 its bottom edge and hold: it keeps scrolling and selecting."
+                 ends; Cmd/Ctrl-Up/Down go to the start or end."
+            }
+            Self::Scrolling => {
+                "Long field: the caret scrolls into view; press inside and drag past the right edge, then hold \
+                 still: it keeps scrolling and selecting. Long area: the wheel or trackpad scrolls; press inside \
+                 and drag below the bottom edge, then hold still: it keeps scrolling, faster the further out."
             }
             Self::States => {
                 "The button toggles the disabled field; its size must not change. Type a letter in the digits \
@@ -83,7 +99,7 @@ pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>, Screen); 12] = [
         "The quick brown fox jumps over the lazy dog, then keeps going past the end of the field so the caret has to scroll.",
         "",
         None,
-        Screen::Fields,
+        Screen::Scrolling,
     ),
     ("Text area: empty", "", "Several lines; Enter adds a line break", Some(4), Screen::TextAreas),
     (
@@ -103,7 +119,7 @@ pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>, Screen); 12] = [
         Some(4),
         Screen::RightToLeft,
     ),
-    ("Text area: long (60 lines, for scrolling and drag autoscroll)", "", "", Some(6), Screen::TextAreas),
+    ("Text area: long (60 lines)", "", "", Some(6), Screen::Scrolling),
 ];
 
 /// Sixty numbered lines, some long enough to wrap, for the long text area.
@@ -139,16 +155,17 @@ pub struct TextFieldPage {
     pub(crate) fields: Vec<Entity<ParleyTextField>>,
     /// Toggles the "Disabled" field.
     toggle: Entity<radix_button::Button>,
-    /// Chooses the screen.
-    tabs: Entity<Tabs>,
+    /// Chooses the screen in the standalone window; XGPUI Lab uses its own tabs.
+    tabs: Option<Entity<Tabs>>,
     pub(crate) screen: Screen,
     last_event: String,
 }
 
 impl TextFieldPage {
     /// Fields draw with `look`, the application's active look. `invert_colors`
-    /// swaps their text and background for contrast (the standalone window).
-    pub fn new(look: Arc<Look>, invert_colors: bool, cx: &mut Context<Self>) -> Self {
+    /// swaps their text and background for contrast, and `tab_bar` adds a bar to
+    /// choose screens (both for the standalone window).
+    pub fn new(look: Arc<Look>, invert_colors: bool, tab_bar: bool, cx: &mut Context<Self>) -> Self {
         let fields: Vec<_> = FIELDS
             .iter()
             .enumerate()
@@ -193,17 +210,24 @@ impl TextFieldPage {
                 field.update(cx, |field, cx| field.set_enabled(!field.is_enabled(), cx));
             })
             .spawn(cx);
-        let tabs = radix::Tabs::new("parley-text-field-screens")
-            .look(look.as_ref())
-            .line()
-            .items(Screen::ALL.iter().map(|(_, id, label)| TabsItem::new(*id).label(*label)))
-            .active(Screen::ALL[0].1)
-            .on_value_changed(cx, |this: &mut Self, id, _, cx| {
-                this.screen = Screen::from_id(id);
-                cx.notify();
-            })
-            .spawn(cx);
+        let tabs = tab_bar.then(|| {
+            radix::Tabs::new("parley-text-field-screens")
+                .look(look.as_ref())
+                .line()
+                .items(Screen::ALL.iter().map(|(_, id, label)| TabsItem::new(*id).label(*label)))
+                .active(Screen::ALL[0].1)
+                .on_value_changed(cx, |this: &mut Self, id, _, cx| {
+                    this.screen = Screen::from_id(id);
+                    cx.notify();
+                })
+                .spawn(cx)
+        });
         Self { look, fields, toggle, tabs, screen: Screen::Fields, last_event: "No events yet".into() }
+    }
+
+    pub(crate) fn set_screen(&mut self, screen: Screen, cx: &mut Context<Self>) {
+        self.screen = screen;
+        cx.notify();
     }
 }
 
@@ -261,8 +285,8 @@ impl Render for TextFieldPage {
             .gap_4()
             .font_family("IBM Plex Sans")
             .text_color(chrome.body_text)
-            .child(div().text_size(px(22.0)).child("Parley text field and text area"))
-            .child(self.tabs.read(cx).tab_list())
+            .child(div().text_size(px(22.0)).child(screen.title()))
+            .children(self.tabs.as_ref().map(|tabs| tabs.read(cx).tab_list()))
             .child(div().text_size(px(13.0)).child(screen.hint()))
             .when(screen == Screen::States, |page| page.child(self.toggle.clone()))
             .children(rows)

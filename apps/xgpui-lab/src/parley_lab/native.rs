@@ -115,7 +115,7 @@ impl NativeText {
             page.init_controls(look.clone(), cx);
             page
         });
-        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), true, cx));
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), true, true, cx));
         let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling", "Parley text field"]
             .into_iter()
             .enumerate()
