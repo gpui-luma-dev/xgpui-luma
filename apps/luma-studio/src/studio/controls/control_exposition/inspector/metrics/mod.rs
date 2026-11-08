@@ -1,5 +1,5 @@
 use gpui::SharedString;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::box_model::InspectBoxModelSnapshot;
 use super::common::{neutral_box_model_colors, neutral_box_model_label_color};

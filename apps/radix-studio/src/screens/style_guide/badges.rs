@@ -1,8 +1,8 @@
 //! Badge matrices: variants/contrast, named palettes, and all sizes.
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, div, prelude::*, px};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma_look_radix::{Accent, Badge, BadgeSize, BadgeVariant, Gray, Look, Tone};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma_look_radix::{Accent, Badge, BadgeSize, BadgeVariant, Gray, Look, Tone};
 use super::matrix_grid::{column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
 
 pub fn tabbed(look: &Look, navigation: Entity<Tabs>, muted: Hsla, border: Hsla, cx: &App) -> AnyElement {

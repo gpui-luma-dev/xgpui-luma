@@ -2,8 +2,8 @@
 use gpui::{prelude::*, *};
 use std::{sync::Arc, time::Instant};
 use crate::theme::ColorVizLookExt;
-use gpui_luma::{prelude::HasPresenter, controls::button::Button, focus::LumaFocusScopeExt};
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma::{prelude::HasPresenter, controls::button::Button, focus::LumaFocusScopeExt};
+use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_shader::typography::{KineticEffect, SelectableText, TextShadow};
 use xgpui_shader::{Brush, BrushStop};
 
@@ -524,15 +524,15 @@ impl TypographyDemo {
 mod tests {
     use super::{Action, MotionMode, SAMPLES, TypographyDemo};
     use gpui::{Focusable, TestAppContext};
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     use xgpui_shader::typography::KineticEffect;
 
     #[test]
     fn tab_and_shift_tab_reach_and_leave_selectable_text() {
         let mut app = TestAppContext::single();
         app.update(|cx| {
-            gpui_luma::init(cx).unwrap();
-            gpui_luma::focus::bind_default_focus_keys(cx);
+            xgpui_luma::init(cx).unwrap();
+            xgpui_luma::focus::bind_default_focus_keys(cx);
         });
         let (page, cx) = app.add_window_view(|window, cx| {
             let page = TypographyDemo::new(crate::theme::default_look(), cx);
@@ -563,7 +563,7 @@ mod tests {
     #[test]
     fn luma_effects_preserve_canonical_selection_and_unicode_clipboard() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let click = |action, cx: &mut gpui::VisualTestContext| {
@@ -639,7 +639,7 @@ mod tests {
     #[test]
     fn motion_selection_resets_completed_previews_and_toggles_across_samples() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         page.update(cx, |demo, cx| {
@@ -673,7 +673,7 @@ mod tests {
     fn pointer_drag_word_and_line_selection_use_the_original_text() {
         use gpui::{Modifiers, MouseButton, MouseDownEvent, VisualTestContext, div, point, prelude::*, px, size};
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let window =
             app.open_window(size(px(1400.), px(1800.)), |_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
         let page = window.root(&mut app).unwrap();

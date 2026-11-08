@@ -1,11 +1,11 @@
-//! Look-owned text-field builder. Spawn synthesizes the SDK [`gpui_luma::controls::textfield::TextField`].
+//! Look-owned text-field builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textfield::TextField`].
 
-use gpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::infra::attachments::TooltipEntityExt;
 use std::sync::Arc;
 
 use gpui::{App, Context, Div, SharedString, Stateful};
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::controls::textfield::{
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::textfield::{
     TextFieldBuilder, TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, Validator,
 };
 
@@ -16,7 +16,7 @@ type TextFieldModifier = Box<dyn Fn(Stateful<Div>, &TextFieldRenderModel<'_>) ->
 
 /// Builder in the guise of a text field: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct TextField {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::textfield::TextFieldEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::textfield::TextFieldEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -44,7 +44,7 @@ impl TextField {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::textfield::TextFieldEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::textfield::TextFieldEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -57,7 +57,7 @@ impl TextField {
         callback: impl Fn(&mut M, &String, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textfield::TextFieldEvent::Change { value } = event {
+            if let xgpui_luma::controls::textfield::TextFieldEvent::Change { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -70,7 +70,7 @@ impl TextField {
         callback: impl Fn(&mut M, &String, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textfield::TextFieldEvent::Submit { value } = event {
+            if let xgpui_luma::controls::textfield::TextFieldEvent::Submit { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -83,7 +83,7 @@ impl TextField {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textfield::TextFieldEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::textfield::TextFieldEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -96,7 +96,7 @@ impl TextField {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textfield::TextFieldEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::textfield::TextFieldEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -120,7 +120,7 @@ impl TextField {
             clean_on_escape: false,
             select_all_on_tab_focus: false,
             propagate_home_end_to_parent: false,
-            max_clipboard_paste_bytes: Some(gpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+            max_clipboard_paste_bytes: Some(xgpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
             validator: None,
             look_override: None,
             modifiers: Vec::new(),
@@ -232,7 +232,7 @@ impl TextField {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::textfield::TextField {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::textfield::TextField {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -249,7 +249,7 @@ impl TextField {
 
     fn into_sdk_builder(self, look: Look) -> TextFieldBuilder {
         let template = textfield_template(&look, self.variant);
-        let mut builder = gpui_luma::controls::textfield::new(self.id)
+        let mut builder = xgpui_luma::controls::textfield::new(self.id)
             .template(template)
             .placeholder(self.placeholder)
             .value(self.value)
@@ -283,7 +283,7 @@ impl TextField {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {

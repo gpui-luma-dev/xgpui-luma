@@ -1,4 +1,4 @@
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 use super::common::{mirrored_lightness, mirrored_saturation};
 use super::track_context::ColorRingTrackContext;
 use super::types::ColorRingTrackDelegate;

@@ -1,14 +1,14 @@
-//! Look-owned popup-menu builder. Spawn synthesizes the SDK [`gpui_luma::controls::popup_menu::PopupMenu`].
+//! Look-owned popup-menu builder. Spawn synthesizes the SDK [`xgpui_luma::controls::popup_menu::PopupMenu`].
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::controls::popup_menu::{
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::popup_menu::{
     PopupMenuBuilder, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplateModifier, PopupMenuTriggerModel,
     PopupMenuTriggerStyle,
 };
-use gpui_luma::infra::icon::DisclosureIcons;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::infra::presenter::{ControlPresenter, HasPresenter};
+use xgpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::infra::presenter::{ControlPresenter, HasPresenter};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -22,8 +22,8 @@ enum TriggerFace {
 /// Builder in the guise of a popup menu: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct PopupMenu {
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::popup_menu::PopupMenuMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::popup_menu::PopupMenuEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::popup_menu::PopupMenuMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::popup_menu::PopupMenuEvent>,
 
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -49,7 +49,7 @@ impl PopupMenu {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::popup_menu::PopupMenuEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::popup_menu::PopupMenuEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -62,7 +62,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::ActionClick = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::ActionClick = event {
                 callback(owner, cx);
             }
         })
@@ -75,7 +75,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -88,7 +88,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -101,7 +101,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::Dismiss = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -114,7 +114,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -127,7 +127,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -140,7 +140,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -171,7 +171,7 @@ impl PopupMenu {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::popup_menu::PopupMenuMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::popup_menu::PopupMenuMotion, edits motion);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = enabled;
         self
@@ -282,11 +282,11 @@ impl PopupMenu {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::popup_menu::PopupMenu> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::popup_menu::PopupMenu> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
-            use gpui_luma::infra::attachments::TooltipEntityExt;
+            use xgpui_luma::infra::attachments::TooltipEntityExt;
             let theme = crate::tooltip_theme(&look);
             self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
         };
@@ -300,7 +300,7 @@ impl PopupMenu {
 
     pub(crate) fn into_sdk_builder(self, look: ShadcnLook) -> PopupMenuBuilder {
         let template = look.popup_menu_template();
-        let mut builder = gpui_luma::controls::popup_menu::PopupMenu::new(self.id)
+        let mut builder = xgpui_luma::controls::popup_menu::PopupMenu::new(self.id)
             .motion_defaults(look.motion_defaults().popup_menu)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)
@@ -347,7 +347,7 @@ impl HasPresenter<PopupMenuTriggerModel> for PopupMenu {
 
 /// Look-owned builder for the retained SDK SplitButton specialization.
 pub struct SplitButton {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::split_button::SplitButtonEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::split_button::SplitButtonEvent>,
 
     inner: PopupMenu,
     primary_enabled: bool,
@@ -360,7 +360,7 @@ impl SplitButton {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::split_button::SplitButtonEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::split_button::SplitButtonEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -373,7 +373,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::ActionClick = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::ActionClick = event {
                 callback(owner, cx);
             }
         })
@@ -386,7 +386,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -399,7 +399,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -412,7 +412,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::Dismiss = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -425,7 +425,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -438,7 +438,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -451,7 +451,7 @@ impl SplitButton {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::split_button::SplitButtonEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::split_button::SplitButtonEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -575,12 +575,12 @@ impl SplitButton {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::split_button::SplitButton> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::split_button::SplitButton> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let look = self.inner.resolve_look(cx);
         let tooltip_theme = crate::tooltip_theme(&look);
         let template = look.split_button_template();
-        let mut builder = gpui_luma::controls::split_button::SplitButtonBuilder::from_popup_builder(
+        let mut builder = xgpui_luma::controls::split_button::SplitButtonBuilder::from_popup_builder(
             self.inner.into_sdk_builder(look),
         )
         .primary_enabled(self.primary_enabled)
@@ -588,7 +588,7 @@ impl SplitButton {
         for modifier in self.modifiers {
             builder = builder.with_template_modifier(move |root, model| modifier(root, model));
         }
-        use gpui_luma::infra::attachments::TooltipEntityExt;
+        use xgpui_luma::infra::attachments::TooltipEntityExt;
         let control = builder.spawn(cx).with_tooltip_theme(tooltip_theme, cx);
         callbacks.bind(&control, cx);
         control
@@ -629,7 +629,7 @@ mod tests {
 mod split_integration_tests {
     use super::*;
     use gpui::{Focusable, Render, TestAppContext, Window, div, prelude::*};
-    use gpui_luma::controls::split_button::SplitButton as SdkSplitButton;
+    use xgpui_luma::controls::split_button::SplitButton as SdkSplitButton;
     use std::sync::{Arc, Mutex};
 
     struct Preview {
@@ -650,7 +650,7 @@ mod split_integration_tests {
         let capture = snapshots.clone();
         let (preview, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             let control = SplitButton::new("look-split")
                 .look(&ShadcnLook::built_in())
                 .ghost()
@@ -685,8 +685,8 @@ mod split_integration_tests {
                 true,
                 false,
                 PopupMenuTriggerStyle::Ghost,
-                gpui_luma::theme::ControlSize::Sm,
-                gpui_luma::theme::ControlSize::Lg,
+                xgpui_luma::theme::ControlSize::Sm,
+                xgpui_luma::theme::ControlSize::Lg,
                 true
             )));
         assert!(!snapshots.lock().unwrap().is_empty());

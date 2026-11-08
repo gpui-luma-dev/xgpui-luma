@@ -122,7 +122,7 @@ with independent focus/invalid signals. The tokens selected by those recipes are
 authored through validated `PaletteRole` references:
 
 ```rust
-use gpui_luma::theme::stylesheet::{CommonStylesheet, PaletteRole};
+use xgpui_luma::theme::stylesheet::{CommonStylesheet, PaletteRole};
 let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
     sheet.recipes.0.entry("button".into()).or_default().insert(
         PaletteRole::StateHoverBackground,
@@ -187,7 +187,7 @@ logical geometry is snapped only where the existing control recipe requires it.
 ## SDK-only and custom-look example
 
 ```rust
-use gpui_luma::{
+use xgpui_luma::{
     color::GamutMapping,
     controls::progress::{DefaultProgressTheme, ProgressTheme},
     theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},

@@ -1,5 +1,5 @@
 use gpui::{Hsla, Rgba, hsla};
-use gpui_luma_color::color_slider::color_spec::Hsv as SdkHsv;
+use xgpui_luma_color::color_slider::color_spec::Hsv as SdkHsv;
 use palette::{FromColor, Hsl, Hsv as PaletteHsv, Mix, Srgb, Srgba};
 
 use super::paint::GradientType;

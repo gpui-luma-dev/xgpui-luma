@@ -22,8 +22,8 @@
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Layout</span></div><h1>Layout</h1><p class="intro">Arrange SDK controls with layout primitives and macros.</p><section id="stacks"><h2>Stacks &amp; wrapping</h2><p><code>vstack!</code> arranges children vertically, <code>hstack!</code> horizontally, and <code>wrappanel!</code> wraps children onto additional lines. They return GPUI flex elements; they do not spawn control entities or need a Look.</p><p>Use <code>gap</code> for spacing, <code>align</code> for cross-axis alignment, and stack <code>justify</code> options for main-axis distribution. Import GPUI’s prelude for the element methods used by these macros. <code>flow!</code> is a legacy compatibility alias; prefer <code>wrappanel!</code> for new code.</p></section>
 <section id="primitives"><h2>Dock, grid &amp; layers</h2><p><code>DockPanel</code> / <code>dock_panel!</code> place children against edges, with the last child filling the remainder by default. <code>GridLayout</code> / <code>grid_layout!</code> use fixed-pixel or proportional column tracks and support column spans. Both builders expose <code>.build()</code>.</p><p><code>LayerStack</code> paints later layers above earlier layers and applies a shared corner radius to the layer roots. It does not clip arbitrary descendant backgrounds to rounded corners.</p><div class="codebox"><div class="codebar"><span>Rust</span><button class="copy" aria-label="Copy Rust example">Copy</button></div><pre><code class="language-rust">use gpui::{div, prelude::*, px};
-use gpui_luma::{hstack, vstack, wrappanel, dock_panel, grid_layout};
-use gpui_luma::{GridTrack, LayerStack};
+use xgpui_luma::{hstack, vstack, wrappanel, dock_panel, grid_layout};
+use xgpui_luma::{GridTrack, LayerStack};
 
 fn stacks() -&gt; impl IntoElement {
     vstack! { gap=12 align=start;
@@ -55,7 +55,7 @@ fn layers() -&gt; impl IntoElement {
 }</code></pre></div></section>
 <section id="responsive"><h2>Wide Middle</h2><p><code>WideMiddle</code> and <code>WideMiddleLayout</code> provide a responsive three-region layout. At narrow widths, the middle moves below the leading and trailing regions. Retain the host returned by <code>spawn_wide_middle</code>, then compose its regions with <code>WideMiddleLayout::new(...).build(cx)</code>. Configure side widths, middle bounds, and gap on the host.</p></section>
 <section id="containers"><h2>Containers</h2><ul><li><a href="frame.html">Frame</a>: arrange and optionally decorate a container.</li><li><a href="scroll-container.html">Scroll Container</a>: host scrollable content and scrollbar chrome.</li></ul><p>For draggable layout behavior, use the controls <a href="dock-splitter.html">Dock Splitter</a>, <a href="resizable-panels.html">Resizable Panels</a>, and <a href="split-view.html">Split View</a>.</p></section>
-<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/macros.rs">Layout macros</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/layouts/mod.rs">Layout primitives</a></p></section><footer data-site-footer></footer></main>
+<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/macros.rs">Layout macros</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/layouts/mod.rs">Layout primitives</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#stacks">Stacks & wrapping</a><a href="#primitives">Dock, grid & layers</a><a href="#responsive">Wide Middle</a><a href="#containers">Containers</a><a href="#source">Source</a></nav>
 </div>
 </body>

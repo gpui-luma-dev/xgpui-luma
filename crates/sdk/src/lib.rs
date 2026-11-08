@@ -1,7 +1,7 @@
-//! GPUI-Luma controls, layouts, themes, and shared look contracts.
+//! XGPUI-Luma controls, layouts, themes, and shared look contracts.
 //!
-//! Pick a look crate in your app: `gpui-luma-look-shadcn` or
-//! `gpui-luma-look-radix`.
+//! Pick a look crate in your app: `xgpui-luma-look-shadcn` or
+//! `xgpui-luma-look-radix`.
 
 #[macro_use]
 pub mod macros;

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::table::{TableTheme, table_template_with_theme};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::table::{TableTheme, table_template_with_theme};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::controls::table::{table_look, table_row_palette};
 use crate::look::ShadcnLook;
@@ -11,10 +11,10 @@ struct ShadcnTableTheme {
 }
 
 impl TableTheme for ShadcnTableTheme {
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::controls::table::TableDragLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::controls::table::TableDragLook {
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
-        gpui_luma::controls::table::TableDragLook {
+        xgpui_luma::controls::table::TableDragLook {
             geometry: tokens
                 .stylesheet()
                 .common
@@ -29,7 +29,7 @@ impl TableTheme for ShadcnTableTheme {
         }
     }
 
-    fn resolve_look(&self, enabled: bool, focused: bool, size: ControlSize) -> gpui_luma::controls::table::TableLook {
+    fn resolve_look(&self, enabled: bool, focused: bool, size: ControlSize) -> xgpui_luma::controls::table::TableLook {
         let tokens = self.theme.mode_tokens();
         table_look(tokens.as_ref(), enabled, focused, size)
     }
@@ -39,7 +39,7 @@ impl TableTheme for ShadcnTableTheme {
         selected: bool,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::table::TableRowPalette {
+    ) -> xgpui_luma::controls::table::TableRowPalette {
         let tokens = self.theme.mode_tokens();
         table_row_palette(tokens.as_ref(), selected, state, size)
     }
@@ -49,9 +49,9 @@ impl TableTheme for ShadcnTableTheme {
         selected: bool,
         state: InteractionState,
         size: ControlSize,
-        scale: &gpui_luma::theme::ListRowScale,
-    ) -> gpui_luma::controls::table::TableRowLook {
-        let mut look = gpui_luma::controls::table::TableRowLook::from_palette(
+        scale: &xgpui_luma::theme::ListRowScale,
+    ) -> xgpui_luma::controls::table::TableRowLook {
+        let mut look = xgpui_luma::controls::table::TableRowLook::from_palette(
             &self.resolve_row(selected, state, size),
             scale,
             &self.theme.mode_tokens().stylesheet().common,
@@ -61,7 +61,7 @@ impl TableTheme for ShadcnTableTheme {
         look
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 }
@@ -70,6 +70,6 @@ pub fn table_theme(theme: ShadcnLook) -> Arc<dyn TableTheme> {
     Arc::new(ShadcnTableTheme { theme: theme.clone() })
 }
 
-pub fn table_template(theme: ShadcnLook) -> Arc<dyn gpui_luma::controls::table::TableTemplate> {
+pub fn table_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::table::TableTemplate> {
     table_template_with_theme(table_theme(theme))
 }

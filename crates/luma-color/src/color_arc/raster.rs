@@ -1,4 +1,4 @@
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 use super::common::{arc_contains_turn, turn_to_position};
 use super::track_context::ColorArcTrackContext;
 use super::types::ColorArcDelegate;

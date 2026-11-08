@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Render, Window, div, prelude::*, px};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use super::template::controls_mono_font;
 use crate::studio::controls::event_log_view::{EventLogView, EventLogViewLookExt, shadcn_event_log_theme};

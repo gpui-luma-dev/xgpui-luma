@@ -1,6 +1,6 @@
 use gpui::px;
 use crate::theme::AppTheme;
-use gpui_luma_plot::{CartesianChartBuilder, Dataset, Decimation};
+use xgpui_luma_plot::{CartesianChartBuilder, Dataset, Decimation};
 
 use super::{LineExample, dense};
 use crate::theme;

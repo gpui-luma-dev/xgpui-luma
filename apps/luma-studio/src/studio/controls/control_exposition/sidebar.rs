@@ -1,24 +1,24 @@
 //! Navigation sidebar control exposition — `SidebarControl` preview and event log.
 
-use gpui_luma::controls::sidebar::SidebarEventExt;
-use gpui_luma::controls::popup_menu::PopupMenuEventExt;
+use xgpui_luma::controls::sidebar::SidebarEventExt;
+use xgpui_luma::controls::popup_menu::PopupMenuEventExt;
 use std::cell::Cell;
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::motion::VisualTransition;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::motion::VisualTransition;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::{ButtonContentContext, ControlIcon};
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::controls::popup_menu::{HasPresenter, PopupMenu, PopupMenuEvent, PopupMenuPlacement};
-use gpui_luma::infra::presenter::ControlPresenter;
-use gpui_luma::controls::scroll_container::ScrollbarAutoHideActivate;
-use gpui_luma::controls::sidebar::{SidebarPresentation, SidebarControl, SidebarEvent};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
+use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon};
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::controls::popup_menu::{HasPresenter, PopupMenu, PopupMenuEvent, PopupMenuPlacement};
+use xgpui_luma::infra::presenter::ControlPresenter;
+use xgpui_luma::controls::scroll_container::ScrollbarAutoHideActivate;
+use xgpui_luma::controls::sidebar::{SidebarPresentation, SidebarControl, SidebarEvent};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
@@ -459,7 +459,7 @@ fn sidebar_toggle_presenter(icon: ControlIcon) -> ControlPresenter<ButtonContent
         match &icon {
             ControlIcon::Lucide(lucide) => div()
                 .text_size(px(16.0))
-                .child(gpui_luma::infra::icon::lucide_icon(*lucide, color, 16.0))
+                .child(xgpui_luma::infra::icon::lucide_icon(*lucide, color, 16.0))
                 .into_any_element(),
             ControlIcon::SvgPath(path) => {
                 gpui::svg().size(px(16.0)).text_color(color).path(path.clone()).into_any_element()
@@ -486,7 +486,7 @@ fn spawn_sidebar_control(look: &Arc<ShadcnLook>, cx: &mut Context<SidebarControl
 
     shadcn::Sidebar::new("controls-doc-sidebar-control")
         .look(look.as_ref())
-        .drag_drop(gpui_luma::controls::sidebar::SidebarDragDrop::new())
+        .drag_drop(xgpui_luma::controls::sidebar::SidebarDragDrop::new())
         .auto_hide_scrollbar(true)
         .auto_hide_scrollbar_activate(ScrollbarAutoHideActivate::Move)
         .sidebar(
@@ -502,7 +502,7 @@ fn spawn_sidebar_control(look: &Arc<ShadcnLook>, cx: &mut Context<SidebarControl
         .spawn(cx)
 }
 
-fn user_menu_content() -> ControlPresenter<gpui_luma::controls::popup_menu::PopupMenuTriggerModel> {
+fn user_menu_content() -> ControlPresenter<xgpui_luma::controls::popup_menu::PopupMenuTriggerModel> {
     Arc::new(|model, _| {
         div()
             .flex_1()
@@ -562,7 +562,7 @@ fn format_user_menu_event(event: &PopupMenuEvent) -> String {
 fn property_leaf_menu_item(
     _look: &Arc<ShadcnLook>,
     leaf: &PropertyLeaf,
-) -> gpui_luma::controls::sidebar::SidebarMenuItemBuilder {
+) -> xgpui_luma::controls::sidebar::SidebarMenuItemBuilder {
     let mut item = shadcn::Sidebar::menu_item(leaf.id, leaf.label)
         .disabled(!leaf.enabled)
         .active(leaf.id == INITIAL_PROPERTY_SELECTION_ID);

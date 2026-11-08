@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, FontWeight, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::hstack;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::hstack;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AvatarSize {

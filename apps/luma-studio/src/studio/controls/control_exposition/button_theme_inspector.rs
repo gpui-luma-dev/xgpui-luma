@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::Context;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::inspector::{ButtonInspectorAdapter, BUTTON_INSPECTOR_SPEC};
 use super::theme_inspector::ThemeInspector;

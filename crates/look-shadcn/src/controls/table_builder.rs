@@ -1,9 +1,9 @@
-//! Look-owned table builder. Spawn synthesizes the SDK [`gpui_luma::controls::table::Table`].
+//! Look-owned table builder. Spawn synthesizes the SDK [`xgpui_luma::controls::table::Table`].
 
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Entity, IntoElement, ListAlignment, SharedString, Window};
-use gpui_luma::controls::table::{
+use xgpui_luma::controls::table::{
     TableSelectionMode, TableBuilder, TableColumn, TableControl, TableRowRenderModel, TableTemplate, TableTheme,
 };
 use crate::look::{ShadcnLook, resolve_look_from};
@@ -14,7 +14,7 @@ pub struct Table<T>
 where
     T: 'static,
 {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::table::TableEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::table::TableEvent>,
 
     look: Option<ShadcnLook>,
     builder: TableBuilder<T>,
@@ -32,14 +32,14 @@ where
         self
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::table::TableMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::table::TableMotion, builder builder);
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::table::TableEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::table::TableEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -49,7 +49,7 @@ where
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::table::TableRowDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::table::TableRowDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_row_drag(cx, callback)
     }
@@ -61,7 +61,7 @@ where
         callback: impl Fn(&mut M, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
                 callback(owner, *source, keys, cx);
             }
         })
@@ -74,7 +74,7 @@ where
         callback: impl Fn(&mut M, gpui::EntityId, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
                 callback(owner, *source, *target, keys, cx);
             }
         })
@@ -94,7 +94,7 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
                 callback(owner, *source, *target, keys, before, cx);
             }
         })
@@ -113,7 +113,7 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
                 callback(owner, *target, keys, before, cx);
             }
         })
@@ -134,7 +134,8 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } = event
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } =
+                event
             {
                 callback(owner, *source, *target, keys, before, *changed, cx);
             }
@@ -156,7 +157,7 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
                 event
             {
                 callback(owner, *source, *target, keys, before, error, cx);
@@ -172,12 +173,12 @@ where
             &mut M,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            gpui_luma::infra::drag_drop::DragEndReason,
+            xgpui_luma::infra::drag_drop::DragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
                 callback(owner, *source, keys, *reason, cx);
             }
         })
@@ -187,10 +188,10 @@ where
     pub fn on_row_drag<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::table::TableRowDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::table::TableRowDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::RowDrag(event) = event {
+            if let xgpui_luma::controls::table::TableEvent::RowDrag(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -203,7 +204,7 @@ where
         callback: impl Fn(&mut M, &Vec<usize>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::SelectionChanged { selected_indices } = event {
+            if let xgpui_luma::controls::table::TableEvent::SelectionChanged { selected_indices } = event {
                 callback(owner, selected_indices, cx);
             }
         })
@@ -216,7 +217,7 @@ where
         callback: impl Fn(&mut M, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::SelectedKeysChanged { selected_keys } = event {
+            if let xgpui_luma::controls::table::TableEvent::SelectedKeysChanged { selected_keys } = event {
                 callback(owner, selected_keys, cx);
             }
         })
@@ -229,7 +230,7 @@ where
         callback: impl Fn(&mut M, &Option<usize>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::ActiveIndexChanged { active_index } = event {
+            if let xgpui_luma::controls::table::TableEvent::ActiveIndexChanged { active_index } = event {
                 callback(owner, active_index, cx);
             }
         })
@@ -242,7 +243,7 @@ where
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::PageChanged { page } = event {
+            if let xgpui_luma::controls::table::TableEvent::PageChanged { page } = event {
                 callback(owner, *page, cx);
             }
         })
@@ -255,7 +256,7 @@ where
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::PageSizeChanged { page_size } = event {
+            if let xgpui_luma::controls::table::TableEvent::PageSizeChanged { page_size } = event {
                 callback(owner, *page_size, cx);
             }
         })
@@ -268,7 +269,7 @@ where
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::ScrollChanged { top_index } = event {
+            if let xgpui_luma::controls::table::TableEvent::ScrollChanged { top_index } = event {
                 callback(owner, *top_index, cx);
             }
         })
@@ -281,7 +282,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::table::TableEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -294,7 +295,7 @@ where
         callback: impl Fn(&mut M, usize, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::RowHoverChanged { index, hovered } = event {
+            if let xgpui_luma::controls::table::TableEvent::RowHoverChanged { index, hovered } = event {
                 callback(owner, *index, *hovered, cx);
             }
         })
@@ -307,7 +308,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::table::TableEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::table::TableEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -318,7 +319,7 @@ where
             callbacks: Default::default(),
 
             look: None,
-            builder: gpui_luma::controls::table::new_typed(id),
+            builder: xgpui_luma::controls::table::new_typed(id),
             custom_template: false,
             custom_theme: false,
             size: ShadcnSize::Md,
@@ -388,24 +389,24 @@ where
 
     /// Override the SDK interaction policy.
     /// Override focus behavior independently of wheel routing.
-    pub fn pointer_focus_policy(mut self, policy: gpui_luma::interaction::PointerFocusPolicy) -> Self {
+    pub fn pointer_focus_policy(mut self, policy: xgpui_luma::interaction::PointerFocusPolicy) -> Self {
         self.builder = self.builder.pointer_focus_policy(policy);
         self
     }
 
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.builder = self.builder.wheel_scroll_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.builder = self.builder.scroll_boundary_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.builder = self.builder.wheel_focus_scope(policy);
         self
     }
@@ -545,7 +546,7 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn forwards_independent_wheel_policies_after_look_synthesis() {
-    use gpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
+    use xgpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
     let mut app = gpui::TestAppContext::single();
     let control = Table::<usize>::new("policy")
         .wheel_scroll_policy(WheelScrollPolicy::PassThrough)

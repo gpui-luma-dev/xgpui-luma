@@ -1,9 +1,9 @@
-//! Look-owned tabs builder. Spawn synthesizes the SDK [`gpui_luma::controls::tabs::Tabs`].
+//! Look-owned tabs builder. Spawn synthesizes the SDK [`xgpui_luma::controls::tabs::Tabs`].
 
 use gpui::{App, Context, Div, Entity, IntoElement, Render, SharedString, Stateful, Window};
 use std::collections::HashMap;
-use gpui_luma::controls::tabs::{TabsBuilder, TabsContent, TabsItem, TabsRenderModel, TabsWidthMode};
-use gpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::controls::tabs::{TabsBuilder, TabsContent, TabsItem, TabsRenderModel, TabsWidthMode};
+use xgpui_luma::infra::icon::DisclosureIcons;
 
 use crate::look::{Look, resolve_look};
 use crate::tabs::{TabsSize, TabsVariant, tabs_template_for};
@@ -12,7 +12,7 @@ type TabsModifier = Box<dyn Fn(Stateful<Div>, &TabsRenderModel<'_>) -> Stateful<
 
 /// Builder in the guise of tabs: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct Tabs {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::tabs::TabsEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::tabs::TabsEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -23,10 +23,10 @@ pub struct Tabs {
     active_id: Option<SharedString>,
     reordering: bool,
     enabled: bool,
-    content_layout: gpui_luma::controls::tabs::TabsContentLayout,
-    content_transition: Option<gpui_luma::controls::tabs::TabsContentTransition>,
+    content_layout: xgpui_luma::controls::tabs::TabsContentLayout,
+    content_transition: Option<xgpui_luma::controls::tabs::TabsContentTransition>,
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::tabs::TabsMotion>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::tabs::TabsMotion>,
     contents: HashMap<SharedString, TabsContent>,
     disclosure_icons: Option<DisclosureIcons>,
     modifiers: Vec<TabsModifier>,
@@ -39,10 +39,10 @@ impl Tabs {
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tabs::TabsDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tabs::TabsDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::DragDrop(event) = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::DragDrop(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -54,7 +54,7 @@ impl Tabs {
         callback: impl Fn(&mut M, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
                 callback(owner, *source, keys, cx);
             }
         })
@@ -67,7 +67,7 @@ impl Tabs {
         callback: impl Fn(&mut M, gpui::EntityId, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
                 callback(owner, *source, *target, keys, cx);
             }
         })
@@ -87,7 +87,7 @@ impl Tabs {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
                 callback(owner, *source, *target, keys, before, cx);
             }
         })
@@ -106,7 +106,7 @@ impl Tabs {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
                 callback(owner, *target, keys, before, cx);
             }
         })
@@ -127,7 +127,8 @@ impl Tabs {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } = event
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } =
+                event
             {
                 callback(owner, *source, *target, keys, before, *changed, cx);
             }
@@ -149,7 +150,7 @@ impl Tabs {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
                 event
             {
                 callback(owner, *source, *target, keys, before, error, cx);
@@ -165,12 +166,12 @@ impl Tabs {
             &mut M,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            gpui_luma::infra::drag_drop::DragEndReason,
+            xgpui_luma::infra::drag_drop::DragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
                 callback(owner, *source, keys, *reason, cx);
             }
         })
@@ -179,7 +180,7 @@ impl Tabs {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tabs::TabsEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tabs::TabsEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -192,7 +193,7 @@ impl Tabs {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::Change { tab_id, label } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::Change { tab_id, label } = event {
                 callback(owner, tab_id, label, cx);
             }
         })
@@ -205,7 +206,7 @@ impl Tabs {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::Activate { tab_id, label } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::Activate { tab_id, label } = event {
                 callback(owner, tab_id, label, cx);
             }
         })
@@ -218,7 +219,7 @@ impl Tabs {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::Reactivate { tab_id, label } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::Reactivate { tab_id, label } = event {
                 callback(owner, tab_id, label, cx);
             }
         })
@@ -237,7 +238,7 @@ impl Tabs {
         ) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::DropdownRequested { tab_id, label, bounds } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::DropdownRequested { tab_id, label, bounds } = event {
                 callback(owner, tab_id, label, bounds, cx);
             }
         })
@@ -250,7 +251,7 @@ impl Tabs {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::Bounds<gpui::Pixels>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::ItemBoundsChanged { tab_id, bounds } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::ItemBoundsChanged { tab_id, bounds } = event {
                 callback(owner, tab_id, bounds, cx);
             }
         })
@@ -263,7 +264,7 @@ impl Tabs {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -276,7 +277,7 @@ impl Tabs {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tabs::TabsEvent::ItemFocused { tab_id, label } = event {
+            if let xgpui_luma::controls::tabs::TabsEvent::ItemFocused { tab_id, label } = event {
                 callback(owner, tab_id, label, cx);
             }
         })
@@ -372,13 +373,13 @@ impl Tabs {
     }
 
     /// Explicit SDK content sizing; transitions do not change layout policy.
-    pub fn content_layout(mut self, layout: gpui_luma::controls::tabs::TabsContentLayout) -> Self {
+    pub fn content_layout(mut self, layout: xgpui_luma::controls::tabs::TabsContentLayout) -> Self {
         self.content_layout = layout;
         self
     }
 
     /// Choose the SDK content transition, retaining the configured motion timing.
-    pub fn content_transition(mut self, transition: gpui_luma::controls::tabs::TabsContentTransition) -> Self {
+    pub fn content_transition(mut self, transition: xgpui_luma::controls::tabs::TabsContentTransition) -> Self {
         self.content_transition = Some(transition);
         self
     }
@@ -399,7 +400,7 @@ impl Tabs {
         self
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::tabs::TabsMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::tabs::TabsMotion, edits motion);
 
     pub fn motion_enabled(mut self, motion_enabled: bool) -> Self {
         self.motion_enabled = motion_enabled;
@@ -419,7 +420,7 @@ impl Tabs {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::tabs::Tabs> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::tabs::Tabs> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -435,7 +436,7 @@ impl Tabs {
 
     fn into_sdk_builder(self, look: Look) -> TabsBuilder {
         let template = tabs_template_for(&look, self.variant);
-        let mut builder = gpui_luma::controls::tabs::Tabs::new(self.id)
+        let mut builder = xgpui_luma::controls::tabs::Tabs::new(self.id)
             .stylesheet(&look.common_stylesheet())
             .template(template)
             .size(self.size.control_size())
@@ -473,11 +474,11 @@ impl Tabs {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn sdk_motion_roles_inherit_override_and_keep_their_snapshot() {
-        use gpui_luma::motion::{Easing, MotionState, Transition};
+        use xgpui_luma::motion::{Easing, MotionState, Transition};
         let look = Look::built_in();
         look.motion(|m| {
             m.tabs.indicator = Transition::timed(Duration::from_millis(800), Easing::Linear);
@@ -488,7 +489,7 @@ mod tests {
             .motion(|m| m.indicator = Transition::timed(Duration::from_millis(200), Easing::Linear))
             .look(&look)
             .into_sdk_builder(look.clone());
-        let sample = |transition: gpui_luma::motion::Transition| {
+        let sample = |transition: xgpui_luma::motion::Transition| {
             transition.start(MotionState::default(), 1.0).sample(Duration::from_millis(100)).state.value
         };
         assert_eq!(sample(inherited.motion_profile().indicator), 0.125);
@@ -501,8 +502,8 @@ mod tests {
 
     #[test]
     fn look_edits_apply_to_future_builders_only() {
-        use gpui_luma::theme::stylesheet::CommonStylesheet;
-        use gpui_luma::motion::{Transition, Easing};
+        use xgpui_luma::theme::stylesheet::CommonStylesheet;
+        use xgpui_luma::motion::{Transition, Easing};
         let look = Look::built_in();
         let existing = Tabs::new("existing").into_sdk_builder(look.clone());
         look.set_common_stylesheet(CommonStylesheet::default());

@@ -3,7 +3,7 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle};
 
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{resolve_button_metrics_rule};

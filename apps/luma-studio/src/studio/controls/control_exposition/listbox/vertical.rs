@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, IntoElement, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::listbox::{ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode, SelectionPolicy};
-use gpui_luma::hstack;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::listbox::{ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode, SelectionPolicy};
+use xgpui_luma::hstack;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::{ListBoxSampleLayout, VERTICAL_LIST_WIDTH};
 use super::presentation::{ExamplePresentation, SelectionMark};
 use super::markup::listbox;
-use gpui_luma::controls::listbox::{ListBoxControl, ListBoxVirtualization};
+use xgpui_luma::controls::listbox::{ListBoxControl, ListBoxVirtualization};
 use super::super::event_stream::ControlEventStream;
 
 const ID: &str = "listbox-vertical";
@@ -37,7 +37,7 @@ pub(super) struct VerticalListExample {
 }
 
 impl VerticalListExample {
-    pub(super) fn captured_motion(&self) -> (bool, gpui_luma::controls::listbox::ListBoxMotion) {
+    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
         (self.list.is_motion_enabled(), self.list.motion_profile())
     }
 

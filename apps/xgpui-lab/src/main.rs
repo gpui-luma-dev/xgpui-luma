@@ -148,7 +148,7 @@ fn main() {
     if let Some(output) = benchmarks::argument(&args, "--photo-check") {
         let output = std::path::PathBuf::from(output);
         gpui_platform::application().with_assets(Assets).run(move |cx| {
-            if let Err(error) = gpui_luma::init(cx).and_then(|_| photo_viewport::run_check(cx, output)) {
+            if let Err(error) = xgpui_luma::init(cx).and_then(|_| photo_viewport::run_check(cx, output)) {
                 eprintln!("Photo check: {error:#}");
                 std::process::exit(1);
             }
@@ -161,9 +161,9 @@ fn main() {
         cx.on_action(quit);
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("XGPUI Lab").items([MenuItem::action("Quit", Quit)])]);
-        if let Err(error) = gpui_luma::init(cx).and_then(|_| {
-            gpui_luma::focus::bind_default_focus_keys(cx);
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+        if let Err(error) = xgpui_luma::init(cx).and_then(|_| {
+            xgpui_luma::focus::bind_default_focus_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             app_shell::open(cx)
         }) {
             eprintln!("failed to open XGPUI Lab: {error:?}");

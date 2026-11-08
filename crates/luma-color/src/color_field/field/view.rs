@@ -249,7 +249,7 @@ impl ColorField {
                         return;
                     }
                     state.finish_keyboard_adjustment(cx);
-                    if state.pointer_focus == gpui_luma::interaction::PointerFocusPolicy::Focus {
+                    if state.pointer_focus == xgpui_luma::interaction::PointerFocusPolicy::Focus {
                         state.focus_handle(cx).focus(window, cx);
                     }
                     state.begin_interaction(cx);

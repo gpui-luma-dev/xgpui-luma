@@ -1,20 +1,20 @@
-use gpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
 use crate::studio::color_format::{format_color_readout, parse_color_input};
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent, TextFieldLook, TextFieldLookOverride};
-use gpui_luma::vstack;
-use gpui_luma_look_shadcn::{ShadcnFont, ShadcnLook};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent, TextFieldLook, TextFieldLookOverride};
+use xgpui_luma::vstack;
+use xgpui_luma_look_shadcn::{ShadcnFont, ShadcnLook};
+use xgpui_luma_look_shadcn as shadcn;
 
 use super::super::model::TOKEN_CATEGORIES;
 use super::super::parsing::effective_token_color;
 use super::{category_item_id, spawn_compact_textfield};
 use crate::studio::app::LumaStudioApp;
-use gpui_luma::color::ColorValue;
+use xgpui_luma::color::ColorValue;
 use crate::studio::controls::color_picker::{ColorPickerEvent, ColorPickerPopover};
 use crate::studio::overrides::StudioOverrides;
 use crate::studio::token_color_row::token_color_row;
@@ -316,7 +316,7 @@ mod drag_tests {
         }
         struct Page {
             panel: Entity<ColorsPanel>,
-            tabs: Entity<gpui_luma::controls::tabs::Tabs>,
+            tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
         }
         impl Render for Page {
             fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
@@ -326,7 +326,7 @@ mod drag_tests {
         let mut app = TestAppContext::single();
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             let look = Arc::new(ShadcnLook::built_in());
             let panel = cx.new(|cx| ColorsPanel::new(look.clone(), &StudioOverrides::default(), cx));
             let content = panel.clone();
@@ -374,7 +374,7 @@ mod drag_tests {
         panel.update(cx, |p, cx| {
             p.set_all_categories_expanded(false, cx);
             let look = Arc::new(ShadcnLook::built_in());
-            look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+            look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
             p.apply_theme_snapshot(look, &StudioOverrides::default(), cx);
             assert_eq!(p.token_accordion.entity_id(), accordion.entity_id());
             assert_eq!(p.token_fields["background"].entity_id(), field.entity_id());

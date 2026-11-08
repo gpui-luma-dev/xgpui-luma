@@ -1,7 +1,7 @@
 //! Cached native-color programs shared by the spectrum, swatches and SDK tracks.
 use std::sync::Arc;
 use gpui::{Bounds, Pixels, Window};
-use gpui_luma_color::{
+use xgpui_luma_color::{
     color_field::ColorFieldBackgroundPainter,
     color_slider::{ColorSliderDelegate, ColorSliderTrackContext, color_spec::Hsv, types::Axis},
 };
@@ -204,7 +204,7 @@ impl ColorSliderDelegate for NativeTrack {
         &self,
         context: &ColorSliderTrackContext,
         position: f32,
-    ) -> Option<gpui_luma_color::color_slider::color_thumb::ColorThumbPainter> {
+    ) -> Option<xgpui_luma_color::color_slider::color_thumb::ColorThumbPainter> {
         let colors = self.colors.clone();
         let source = self.source;
         let rgb = self.sample(context, position);

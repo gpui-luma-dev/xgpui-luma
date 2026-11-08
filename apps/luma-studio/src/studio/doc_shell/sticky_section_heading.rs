@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use gpui::{AnyElement, Bounds, Hsla, ParentElement, Pixels, div, prelude::*, px};
-use gpui_luma_look_shadcn::LumaTypographyExt;
+use xgpui_luma_look_shadcn::LumaTypographyExt;
 
 pub(crate) const SECTION_HEADING_SHELL_PAD_TOP: f32 = 2.0;
 pub(crate) const SECTION_HEADING_SHELL_PAD_BOTTOM: f32 = 6.0;

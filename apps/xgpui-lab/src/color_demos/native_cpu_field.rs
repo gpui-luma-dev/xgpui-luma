@@ -1,6 +1,6 @@
 //! CPU field rasterization with explicitly tagged linear floating-point storage.
 use std::sync::{Arc, Mutex};
-use gpui_luma_color::{color_field::ColorFieldBackgroundPainter, color_slider::color_spec::Hsv};
+use xgpui_luma_color::{color_field::ColorFieldBackgroundPainter, color_slider::color_spec::Hsv};
 use xgpui_media::{MediaLoader, MediaLimits, ImageJob, MediaImage, LoadStatus};
 use xgpui_media::pipeline::{PixelColor, ImagePrimaries, AlphaMode};
 use xgpui_color::EncodedRgb;

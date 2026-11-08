@@ -13,15 +13,15 @@
 
 use serde::Deserialize;
 
-use gpui_luma::controls::textfield::TextFieldLook;
-use gpui_luma::controls::textfield::TextFieldPalette;
-use gpui_luma::controls::textfield::TextFieldState;
-use gpui_luma::controls::textfield::compose_textfield_look;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::LumaTextStyle;
-use gpui_luma::theme::StandardBoxScale;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::textfield::TextFieldLook;
+use xgpui_luma::controls::textfield::TextFieldPalette;
+use xgpui_luma::controls::textfield::TextFieldState;
+use xgpui_luma::controls::textfield::compose_textfield_look;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::LumaTextStyle;
+use xgpui_luma::theme::StandardBoxScale;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -187,10 +187,10 @@ pub(crate) fn textfield_geometry(
     size: ControlSize,
     scale: &StandardBoxScale,
     typography: &LumaTextStyle,
-) -> gpui_luma::theme::stylesheet::ResolvedTextFieldGeometry {
+) -> xgpui_luma::theme::stylesheet::ResolvedTextFieldGeometry {
     mode.stylesheet().common.textfield.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::TextFieldGeometry {
+        xgpui_luma::theme::stylesheet::TextFieldGeometry {
             min_height: scale.height,
             padding_x: scale.padding_x,
             padding_y: scale.padding_y,
@@ -276,8 +276,8 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::controls::textfield::TextFieldState;
-    use gpui_luma::theme::{ControlSize, ThemeMode};
+    use xgpui_luma::controls::textfield::TextFieldState;
+    use xgpui_luma::theme::{ControlSize, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::color::with_alpha;
@@ -570,10 +570,10 @@ pub struct TextFieldMetricTable {
 
 pub fn resolve_textfield_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TextFieldMetricTable {
-    use gpui_luma::theme::StandardBoxScale;
+    use xgpui_luma::theme::StandardBoxScale;
 
     use crate::tables::metrics::helpers::{
         border_width_metric, control_size_key, focus_ring_offset_metric, focus_ring_width_metric, radius_metric,
@@ -581,7 +581,7 @@ pub fn resolve_textfield_metrics(
     };
     use crate::catalog::SpacingField;
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
     let metrics = ctx.metrics();
     let scale = StandardBoxScale::compute(size, metrics, 1.0);

@@ -12,10 +12,10 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use gpui_luma::controls::resizable_panels::ResizablePanelsLook;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsLook;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -99,7 +99,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -189,21 +189,21 @@ pub struct ResizablePanelsMetricTable {
 }
 
 pub fn resolve_resizable_panels_metrics(
-    handle_size: gpui_luma::controls::resizable_panels::ResizeHandleSize,
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    handle_size: xgpui_luma::controls::resizable_panels::ResizeHandleSize,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
 ) -> ResizablePanelsMetricTable {
     use crate::tables::metrics::helpers::inspect_shared_metric;
 
     let metrics = handle_size.metrics_with_stylesheet(stylesheet);
     let size_label = match handle_size {
-        gpui_luma::controls::resizable_panels::ResizeHandleSize::Sm => "sm",
-        gpui_luma::controls::resizable_panels::ResizeHandleSize::Md => "md",
-        gpui_luma::controls::resizable_panels::ResizeHandleSize::Lg => "lg",
+        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Sm => "sm",
+        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Md => "md",
+        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Lg => "lg",
     };
 
     let geometry = stylesheet.resizable_panels.inspect_geometry(
         size_label,
-        gpui_luma::theme::stylesheet::ResizablePanelsGeometry {
+        xgpui_luma::theme::stylesheet::ResizablePanelsGeometry {
             lane_width: metrics.lane_px,
             hit_target: metrics.hit_target_px,
             grip_cross_axis: metrics.grip_cross_axis_px,

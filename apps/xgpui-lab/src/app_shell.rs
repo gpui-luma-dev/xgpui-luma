@@ -1,5 +1,5 @@
 use gpui::{App, AppContext, Bounds, WindowBounds, WindowOptions, px, size};
-use gpui_luma::shell::{TitleBar, TITLE_BAR_HEIGHT};
+use xgpui_luma::shell::{TitleBar, TITLE_BAR_HEIGHT};
 
 pub(crate) const SHELL_TITLEBAR_HEIGHT: gpui::Pixels = px(40.0);
 

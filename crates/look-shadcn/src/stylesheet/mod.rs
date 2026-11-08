@@ -41,10 +41,11 @@ fn embedded() -> &'static StylesheetConfig {
 }
 
 /// Construct the complete Shadcn common overrides using native definitions.
-pub fn native_shadcn_common_stylesheet() -> gpui_luma::theme::stylesheet::CommonStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
-    motion.tabs.content = Some(TransitionSpec::Timed { duration_ms: 300, easing: gpui_luma::motion::Easing::OutCubic });
+    motion.tabs.content =
+        Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
     CommonStylesheet {
         motion,
         slider: native_shadcn_common_slider(),
@@ -74,7 +75,7 @@ pub use crate::controls::checkbox::{native_shadcn_checkbox, define_shadcn_checkb
 mod tests {
     use super::*;
     use crate::elements::BadgeVariant;
-    use gpui_luma::theme::{InteractionLayer, ThemeMode};
+    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
     #[test]
     fn embedded_stylesheet_parses() {
@@ -168,7 +169,7 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use gpui_luma::theme::stylesheet::{define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
         let original = StylesheetConfig::native_default();
         // Assemble the controls independently from an empty sheet.
         let mut native = StylesheetConfig::default();
@@ -197,19 +198,19 @@ mod tests {
             let tokens = look.mode_tokens();
             for style in [crate::controls::ShadcnButtonStyle::Primary, crate::controls::ShadcnButtonStyle::Secondary] {
                 for size in [
-                    gpui_luma::theme::ControlSize::Sm,
-                    gpui_luma::theme::ControlSize::Md,
-                    gpui_luma::theme::ControlSize::Lg,
+                    xgpui_luma::theme::ControlSize::Sm,
+                    xgpui_luma::theme::ControlSize::Md,
+                    xgpui_luma::theme::ControlSize::Lg,
                 ] {
                     for bits in 0..32 {
-                        let state = gpui_luma::theme::InteractionState {
+                        let state = xgpui_luma::theme::InteractionState {
                             hovered: bits & 1 != 0,
                             pressed: bits & 2 != 0,
                             focused: bits & 4 != 0,
                             disabled: bits & 8 != 0,
                             invalid: bits & 16 != 0,
                         };
-                        use gpui_luma::controls::slider::SliderThumbSize;
+                        use xgpui_luma::controls::slider::SliderThumbSize;
                         for thumb in
                             [None, Some(SliderThumbSize::Sm), Some(SliderThumbSize::Md), Some(SliderThumbSize::Lg)]
                         {

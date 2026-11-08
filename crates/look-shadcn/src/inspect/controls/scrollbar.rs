@@ -1,9 +1,9 @@
 //! Inspect metadata for `scrollbar`.
 
-use gpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
-use gpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 
 pub struct ScrollbarInspectPalette {
     pub track_background: ResolvedColor,

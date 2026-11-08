@@ -1,21 +1,21 @@
 //! Multi mixer composition — per-color-space channel mixers.
 
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Render, Window, div, prelude::*, px};
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_color::color_slider::color_spec::{
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_color::color_slider::color_spec::{
     ColorChannel, ColorSpecification, Hsl, Hsv, HueAlpha, Lab, Oklch, RgbaSpec, slider_step_for_channel,
 };
-use gpui_luma_color::color_slider::{
+use xgpui_luma_color::color_slider::{
     AlphaDelegate, ChannelDelegate, ColorSliderBuilder, ColorSliderDelegate, ColorSliderDomainRenderer, HueDelegate,
     primary_slider_value, refresh_color_slider, update_domain_delegate,
 };
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::theme::ControlSize;
-use gpui_luma::{wrappanel};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::{wrappanel};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
 use super::super::color_exposition_common::{
     detail_row, format_compact_hsla, format_hex_color, composition_inset_radius, render_field_card,

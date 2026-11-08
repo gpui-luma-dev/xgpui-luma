@@ -211,7 +211,7 @@ impl IntoElement for CheckboxControl {
 /// Builder for [`Checkbox`] controls.
 ///
 /// Apps should spawn through a look-owned builder (for example
-/// `gpui_luma_look_shadcn::Checkbox::new(...)`) rather than constructing this type
+/// `xgpui_luma_look_shadcn::Checkbox::new(...)`) rather than constructing this type
 /// directly or styling [`ButtonBuilder<CheckboxData>`] as a switch.
 pub struct CheckboxBuilder {
     callbacks: CheckboxCallbacks,

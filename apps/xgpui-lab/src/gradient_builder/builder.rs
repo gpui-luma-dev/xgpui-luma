@@ -1,19 +1,19 @@
-use gpui_luma::infra::attachments::TooltipEntityExt;
-use gpui_luma::controls::tooltip::Tooltip;
+use xgpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::controls::tooltip::Tooltip;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
 use gpui::{AppContext, Bounds, Context, Entity, Pixels, RenderImage, Size, Subscription, px, size};
-use gpui_luma_color::color_slider::{ColorSliderBuilder, ColorSliderDomainRenderer, ColorSliderTrackContext};
-use gpui_luma::controls::button::{Button, ButtonEvent};
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma::controls::selector::{Selector, SelectorEvent};
-use gpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbPolicy, ThumbId};
-use gpui_luma::controls::tabs::{Tabs, TabsEvent, TabsWidthMode};
-use gpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma_color::color_slider::{ColorSliderBuilder, ColorSliderDomainRenderer, ColorSliderTrackContext};
+use xgpui_luma::controls::button::{Button, ButtonEvent};
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma::controls::selector::{Selector, SelectorEvent};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbPolicy, ThumbId};
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsWidthMode};
+use xgpui_luma::theme::{ControlSize, ThemeMode};
 use crate::theme::{Look, TextSize};
-use gpui_luma_look_radix as radix;
+use xgpui_luma_look_radix as radix;
 use lucide_svg_static::Icon as LucideIcon;
 
 mod actions;
@@ -40,7 +40,7 @@ use mesh::{
 
 pub struct GradientBuilder {
     look: Arc<Look>,
-    section_accordions: Vec<Vec<Entity<gpui_luma::controls::accordion::AccordionControl>>>,
+    section_accordions: Vec<Vec<Entity<xgpui_luma::controls::accordion::AccordionControl>>>,
     selected_tab: BuilderTab,
     gradient_stops: Entity<SliderControl>,
     stop_colors: HashMap<ThumbId, gpui::Hsla>,
@@ -84,10 +84,10 @@ pub struct GradientBuilder {
     field_background_slider: Entity<SliderControl>,
     field_shader_cache: field_shader::Cache,
     freeform_p3: bool,
-    freeform_p3_switch: gpui_luma::controls::switch::Switch,
+    freeform_p3_switch: xgpui_luma::controls::switch::Switch,
     freeform_p3_cache: freeform_p3::Cache,
     mesh_p3: bool,
-    mesh_p3_switch: gpui_luma::controls::switch::Switch,
+    mesh_p3_switch: xgpui_luma::controls::switch::Switch,
     mesh_shader_enabled: bool,
     mesh_renderer_selector: Entity<Selector>,
     mesh_shader_cache: mesh_shader::Cache,
@@ -104,7 +104,7 @@ pub struct GradientBuilder {
     preview_renderer: PreviewRenderer,
     linear_shader_cache: linear_shader::Cache,
     preview_p3: bool,
-    p3_switch: gpui_luma::controls::switch::Switch,
+    p3_switch: xgpui_luma::controls::switch::Switch,
     p3_cache: p3::Cache,
     mesh_palette: usize,
     mesh_palette_animation: bool,
@@ -133,7 +133,7 @@ pub struct GradientBuilder {
     active_mesh_drag: Option<usize>,
     mesh_controls_visible: bool,
     freeform_controls_visible: bool,
-    visibility_button: gpui_luma::controls::switch::Switch,
+    visibility_button: xgpui_luma::controls::switch::Switch,
     copy_css_button: Entity<Button>,
     point_buttons: Vec<[Entity<Button>; 2]>,
     preview_size: Size<Pixels>,
@@ -188,7 +188,7 @@ impl GradientBuilder {
         let slider_builder = ColorSliderBuilder::gradient(
             "color-viz-gradient-stops",
             0.0,
-            vec![start, middle, end].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![start, middle, end].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .thumb_policy(SliderThumbPolicy {
@@ -275,8 +275,8 @@ impl GradientBuilder {
         let blend_selector = radix::Selector::new("color-viz-freeform-blend")
             .look(look.as_ref())
             .items(vec![
-                gpui_luma::controls::selector::SelectorItem::new("rgb").label("RGB"),
-                gpui_luma::controls::selector::SelectorItem::new("hsl").label("HSL"),
+                xgpui_luma::controls::selector::SelectorItem::new("rgb").label("RGB"),
+                xgpui_luma::controls::selector::SelectorItem::new("hsl").label("HSL"),
             ])
             .selected_id("rgb")
             .spawn(cx);
@@ -305,8 +305,8 @@ impl GradientBuilder {
         let mesh_renderer_selector = radix::Selector::new("mesh-preview-renderer")
             .look(look.as_ref())
             .items(vec![
-                gpui_luma::controls::selector::SelectorItem::new("cpu").label("CPU"),
-                gpui_luma::controls::selector::SelectorItem::new("shader").label("Shader paint"),
+                xgpui_luma::controls::selector::SelectorItem::new("cpu").label("CPU"),
+                xgpui_luma::controls::selector::SelectorItem::new("shader").label("Shader paint"),
             ])
             .selected_id("cpu")
             .spawn(cx);
@@ -352,16 +352,16 @@ impl GradientBuilder {
         let freeform_renderer_selector = radix::Selector::new("freeform-renderer")
             .look(&look)
             .items(vec![
-                gpui_luma::controls::selector::SelectorItem::new("cpu").label("CPU"),
-                gpui_luma::controls::selector::SelectorItem::new("gpu").label("GPU field"),
+                xgpui_luma::controls::selector::SelectorItem::new("cpu").label("CPU"),
+                xgpui_luma::controls::selector::SelectorItem::new("gpu").label("GPU field"),
             ])
             .selected_id("cpu")
             .spawn(cx);
         let freeform_mixing_selector = radix::Selector::new("freeform-mixing")
             .look(&look)
             .items(vec![
-                gpui_luma::controls::selector::SelectorItem::new("ordered").label("Ordered"),
-                gpui_luma::controls::selector::SelectorItem::new("normalized").label("Normalized"),
+                xgpui_luma::controls::selector::SelectorItem::new("ordered").label("Ordered"),
+                xgpui_luma::controls::selector::SelectorItem::new("normalized").label("Normalized"),
             ])
             .selected_id("ordered")
             .spawn(cx);
@@ -529,8 +529,8 @@ impl GradientBuilder {
 
         builder._subscriptions.push(cx.subscribe(
             &visibility_button,
-            |this, _, event: &gpui_luma::controls::switch::SwitchEvent, cx| {
-                if let gpui_luma::controls::switch::SwitchEvent::Change { on } = event
+            |this, _, event: &xgpui_luma::controls::switch::SwitchEvent, cx| {
+                if let xgpui_luma::controls::switch::SwitchEvent::Change { on } = event
                     && *on != this.points_visible()
                 {
                     this.toggle_mesh_controls(cx);
@@ -801,7 +801,7 @@ mod tests {
     #[test]
     fn redesigned_inspector_retains_freeform_edits_across_modes() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let look = crate::theme::default_look();
         look.set_mode(ThemeMode::Dark);
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(look.clone(), cx));
@@ -844,7 +844,7 @@ mod tests {
     #[test]
     fn full_aspect_and_visibility_follow_each_mode_and_both_inputs() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         let mut freeform_visible = true;
@@ -899,7 +899,7 @@ mod tests {
     #[test]
     fn row_actions_and_spread_target_the_corresponding_point_after_deletion() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         view.update(cx, |builder, cx| {
             builder.handle_top_tabs_event(
@@ -962,7 +962,7 @@ mod tests {
     #[test]
     fn css_copy_uses_the_displayed_gradient_after_edits() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         view.update(cx, |builder, cx| {
             builder.rotation_deg = 137.0;
@@ -978,7 +978,7 @@ mod tests {
     #[test]
     fn collapsed_accordion_sections_have_uniform_spacing() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         let sections = cx.update(|_, cx| view.read(cx).section_accordions[0].clone());
         for section in sections {
@@ -1003,7 +1003,7 @@ mod tests {
     #[test]
     fn gradient_sections_collapse_independently_and_preserve_controls() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         for (index, id, selector, row_selector) in [
@@ -1044,7 +1044,7 @@ mod tests {
     #[test]
     fn color_lists_start_unselected_and_mode_changes_do_not_select_items() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         cx.update(|_, cx| {
@@ -1078,7 +1078,7 @@ mod tests {
     #[test]
     fn color_lists_own_focus_and_leave_child_controls_interactive() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         let thumb_id = view.update(cx, |builder, cx| builder.ordered_stop_rows(cx)[0].0);
@@ -1149,7 +1149,7 @@ mod tests {
     #[test]
     fn suspension_stops_all_gradient_playback_and_tab_changes_do_not_resume_it() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         view.update(cx, |builder, cx| {
             builder.angle_animation = true;

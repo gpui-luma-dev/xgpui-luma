@@ -1,20 +1,20 @@
 //! Resizable panels control exposition — horizontal, vertical, and controlled splits.
 
-use gpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
 use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Render, Subscription, Window, div, prelude::*, px, transparent_black};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{Button, HasPresenter};
-use gpui_luma::controls::resizable_panels::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{Button, HasPresenter};
+use xgpui_luma::controls::resizable_panels::{
     ResizablePanelSpec, ResizablePanels, ResizablePanelsEvent, ResizablePanelsOrientation, ResizeHandleSize,
 };
-use gpui_luma::resizable_panels;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::resizable_panels;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
@@ -472,7 +472,7 @@ impl ResizablePanelsControlExposition {
                     pane.animated_panels.update(cx, |panels, cx| {
                         panels.toggle_panel_hidden(
                             0,
-                            gpui_luma::controls::resizable_panels::PanelHideMode::Completely,
+                            xgpui_luma::controls::resizable_panels::PanelHideMode::Completely,
                             cx,
                         );
                     });
@@ -503,7 +503,7 @@ impl ResizablePanelsControlExposition {
                     pane.instant_panels.update(cx, |panels, cx| {
                         panels.toggle_panel_hidden(
                             0,
-                            gpui_luma::controls::resizable_panels::PanelHideMode::Completely,
+                            xgpui_luma::controls::resizable_panels::PanelHideMode::Completely,
                             cx,
                         );
                     });

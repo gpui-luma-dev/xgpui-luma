@@ -1,4 +1,4 @@
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma_look_shadcn::inspect::{
     AccordionContentInspectPalette, AccordionTriggerInspectPalette, ListBoxListInspectPalette,
     ListBoxRowInspectPalette, TableInspectPalette, TableRowInspectPalette, SidebarContainerInspectPalette,
     SidebarItemInspectPalette, SidebarSectionInspectPalette, PagerShellInspectPalette, ResizablePanelsInspectPalette,

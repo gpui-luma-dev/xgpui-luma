@@ -1,5 +1,5 @@
 use super::*;
-use gpui_luma::infra::ElementExt;
+use xgpui_luma::infra::ElementExt;
 use gpui::{prelude::*, *};
 use xgpui_media::pipeline::*;
 use anyhow::Context as _;

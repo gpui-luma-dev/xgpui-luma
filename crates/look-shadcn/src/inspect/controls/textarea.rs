@@ -1,13 +1,13 @@
 //! Inspect metadata for `textarea` (delegates to textfield).
 
-use gpui_luma::controls::textarea::TextAreaState;
-use gpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::controls::textarea::TextAreaState;
+use xgpui_luma::theme::{ControlSize, ThemeMode};
 use crate::{ShadcnModeTokens, ShadcnTextFieldStyle};
 
 use super::textfield::{TextFieldInspectMetrics, TextFieldInspectPalette, inspect_textfield_color_palette};
 
-fn textfield_state_from(state: TextAreaState) -> gpui_luma::controls::textfield::TextFieldState {
-    gpui_luma::controls::textfield::TextFieldState {
+fn textfield_state_from(state: TextAreaState) -> xgpui_luma::controls::textfield::TextFieldState {
+    xgpui_luma::controls::textfield::TextFieldState {
         hovered: state.hovered,
         focused: state.focused,
         focus_visible: state.focus_visible,
@@ -35,7 +35,7 @@ pub fn inspect_textarea_metrics(
 ) -> TextFieldInspectMetrics {
     let mut table = crate::tables::metrics::resolve_textfield_metrics(mode, theme_mode, size);
     // Textarea owns geometry independently of configured textfield dimensions.
-    let scale = gpui_luma::theme::StandardBoxScale::compute(size, &mode.metrics, 1.0);
+    let scale = xgpui_luma::theme::StandardBoxScale::compute(size, &mode.metrics, 1.0);
     let geometry = crate::controls::textarea::textarea_geometry(mode, size, &scale, &mode.typography.text.body);
     table.min_height = crate::tables::metrics::helpers::prefer_shared_metric(
         geometry.min_height,

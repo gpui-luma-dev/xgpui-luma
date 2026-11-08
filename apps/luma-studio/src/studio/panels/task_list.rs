@@ -1,5 +1,5 @@
 use gpui::{FontWeight, SharedString, div, prelude::*, px};
-use gpui_luma::controls::table::{TableColumn, column_template_with_modifier, default_text_column_template};
+use xgpui_luma::controls::table::{TableColumn, column_template_with_modifier, default_text_column_template};
 use lucide_svg_static::Icon as LucideIcon;
 
 #[derive(Clone)]
@@ -77,6 +77,6 @@ pub(crate) fn status_cell(status: &'static str) -> impl IntoElement {
         .flex()
         .items_center()
         .gap(px(6.0))
-        .child(div().text_color(color).child(gpui_luma::infra::icon::lucide_icon(icon, color, 16.0)))
+        .child(div().text_color(color).child(xgpui_luma::infra::icon::lucide_icon(icon, color, 16.0)))
         .child(div().flex_1().min_w(px(0.0)).truncate().child(status))
 }

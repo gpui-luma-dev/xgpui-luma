@@ -4,11 +4,11 @@ use std::f32::consts::SQRT_2;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
-use gpui_luma_color::color_ring::{ColorRingBuilder, primary_slider_value};
-use gpui_luma_color::color_slider::color_spec::Hsv;
-use gpui_luma_color::composition::ColorCompositionSync;
-use gpui_luma::controls::slider::SliderControl;
+use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
+use xgpui_luma_color::color_ring::{ColorRingBuilder, primary_slider_value};
+use xgpui_luma_color::color_slider::color_spec::Hsv;
+use xgpui_luma_color::composition::ColorCompositionSync;
+use xgpui_luma::controls::slider::SliderControl;
 use crate::theme::{Look, TextSize};
 
 use super::super::color_exposition_common::{

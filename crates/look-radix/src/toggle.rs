@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use gpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
+use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
 
 use crate::button::{ButtonVariant, Paint, button_family_theme_with, button_family_theme_for_size};
 use crate::look::Look;
@@ -41,7 +41,7 @@ fn toggle_template_for_variant(
 }
 
 fn toggle_template_with_family(
-    family: Arc<dyn gpui_luma::controls::button_family::ButtonFamilyTheme>,
+    family: Arc<dyn xgpui_luma::controls::button_family::ButtonFamilyTheme>,
 ) -> Arc<dyn ButtonTemplate<ToggleData>> {
     let theme_for_mod = Arc::clone(&family);
     Arc::new(DefaultButtonTemplate::<ToggleData>::new(family).with_modifier(move |element, model| {

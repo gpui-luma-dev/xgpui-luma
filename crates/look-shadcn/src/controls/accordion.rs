@@ -14,12 +14,12 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use gpui_luma::controls::accordion::AccordionContentPalette;
-use gpui_luma::controls::accordion::AccordionPalette;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::accordion::AccordionContentPalette;
+use xgpui_luma::controls::accordion::AccordionPalette;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -155,7 +155,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -315,18 +315,18 @@ pub struct AccordionMetricTable {
 
 pub fn resolve_accordion_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
     scale_factor: f32,
 ) -> AccordionMetricTable {
-    use gpui_luma::controls::accordion::AccordionScale;
+    use xgpui_luma::controls::accordion::AccordionScale;
 
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
         control_size_key, derived_metric, radius_metric, scaffold_control_metric, spacing_control_metric,
     };
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let scale = AccordionScale::compute_with_stylesheet(size, metrics, scale_factor, &mode.stylesheet().common);
@@ -350,7 +350,7 @@ pub fn resolve_accordion_metrics(
     };
     let geometry = mode.stylesheet().common.accordion.inspect_geometry(
         size_key,
-        gpui_luma::theme::stylesheet::AccordionGeometry {
+        xgpui_luma::theme::stylesheet::AccordionGeometry {
             trigger_height: scale.trigger_height,
             padding_x: scale.padding_x,
             padding_y: scale.padding_y,
@@ -389,8 +389,8 @@ pub fn resolve_accordion_metrics(
 
 impl AccordionMetricTable {
     /// Converts the complete resolved table to the SDK layout contract.
-    pub fn scale(&self) -> gpui_luma::controls::accordion::AccordionScale {
-        gpui_luma::controls::accordion::AccordionScale {
+    pub fn scale(&self) -> xgpui_luma::controls::accordion::AccordionScale {
+        xgpui_luma::controls::accordion::AccordionScale {
             disabled_opacity: self.disabled_opacity.value_px,
             drag_handle_padding: self.drag_handle_padding.value_px,
             trigger_height: self.trigger_height.value_px,

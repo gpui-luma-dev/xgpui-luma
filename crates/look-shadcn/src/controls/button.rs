@@ -1,16 +1,16 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::controls::button_family::ButtonFamilyLook;
-use gpui_luma::controls::button_family::ButtonFamilyPalette;
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::button_family::compose_button_family_look;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::StandardBoxScale;
-use gpui_luma::theme::ThemeMode;
-use gpui_luma::theme::snap_to_pixel;
+use xgpui_luma::controls::button_family::ButtonFamilyLook;
+use xgpui_luma::controls::button_family::ButtonFamilyPalette;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::button_family::compose_button_family_look;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::StandardBoxScale;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::snap_to_pixel;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -51,7 +51,7 @@ impl ButtonRadiusPreset {
 
 pub fn resolve_button_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &gpui_luma::theme::MetricTokens,
+    metrics: &xgpui_luma::theme::MetricTokens,
     height: f32,
 ) -> f32 {
     match preset {
@@ -230,8 +230,8 @@ pub(crate) fn resolve_family_geometry(
     size: ControlSize,
     toggle: bool,
     scale_factor: f32,
-) -> (gpui_luma::theme::stylesheet::ResolvedButtonGeometry, f32) {
-    use gpui_luma::theme::stylesheet::{ButtonGeometry, ResolvedButtonGeometry, ToggleGeometry};
+) -> (xgpui_luma::theme::stylesheet::ResolvedButtonGeometry, f32) {
+    use xgpui_luma::theme::stylesheet::{ButtonGeometry, ResolvedButtonGeometry, ToggleGeometry};
     let scale = StandardBoxScale::compute(size, ctx.metrics(), scale_factor);
     let typography = ctx.tokens.typography.text.label;
     let mut fallback = ButtonGeometry {
@@ -301,9 +301,9 @@ pub(crate) fn resolve_family_geometry(
         stylesheet.common.button.inspect_geometry(key, fallback)
     };
     let family = if toggle { "toggle" } else { "button" };
-    if matches!(geometry.height.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    if matches!(geometry.height.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
         if let Some(token) = height_source {
-            geometry.height.source = gpui_luma::theme::provenance::MetricSource::Derived {
+            geometry.height.source = xgpui_luma::theme::provenance::MetricSource::Derived {
                 note: format!("stylesheet · {family}.tokens.{key}.height → {token}"),
             };
         }
@@ -410,11 +410,11 @@ mod tests {
 
     use super::*;
     use crate::stylesheet::embedded_stylesheet;
-    use gpui_luma::controls::button_family::ButtonFamilyRole;
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
     use crate::catalog::CssTokenMap;
     use crate::controls::toggle::toggle_look;
     use crate::mode::ShadcnModeTokens;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     fn retro_arcade_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -551,7 +551,7 @@ mod tests {
         assert!((hovered.background.a - 0.50).abs() < f32::EPSILON);
         assert_eq!(hovered.background.h, input.h);
         assert_eq!(hovered.foreground, catalog.color("accent-foreground").expect("accent-foreground"));
-        assert_eq!(gpui_luma::controls::button_family::button_family_effective_border(hovered.border), input);
+        assert_eq!(xgpui_luma::controls::button_family::button_family_effective_border(hovered.border), input);
     }
 
     #[test]
@@ -738,7 +738,7 @@ mod tests {
 
         assert_eq!(toggle.border, icon.border);
         assert!(
-            gpui_luma::controls::button_family::button_family_effective_border(toggle.border).a <= 0.0,
+            xgpui_luma::controls::button_family::button_family_effective_border(toggle.border).a <= 0.0,
             "ghost toggle off-state should be borderless"
         );
     }
@@ -756,7 +756,7 @@ mod tests {
         );
 
         assert!(
-            gpui_luma::controls::button_family::button_family_effective_border(toggle.border).a > 0.0,
+            xgpui_luma::controls::button_family::button_family_effective_border(toggle.border).a > 0.0,
             "primary toggle off-state should keep outline border"
         );
     }
@@ -1053,8 +1053,8 @@ pub struct ButtonMetricTokensRule {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_button_stylesheet() -> gpui_luma::theme::stylesheet::ButtonStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_button_stylesheet() -> xgpui_luma::theme::stylesheet::ButtonStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ButtonStylesheet {
         sizes: [("sm", 12.0, 12.0, 14.0), ("md", 16.0, 14.0, 16.0), ("lg", 20.0, 16.0, 18.0)]
             .into_iter()
@@ -1089,11 +1089,11 @@ pub struct ButtonMetricTable {
 
 pub fn resolve_button_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
+    theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    role: gpui_luma::controls::button_family::ButtonFamilyRole,
-    size: gpui_luma::theme::ControlSize,
-    state: gpui_luma::theme::InteractionState,
+    role: xgpui_luma::controls::button_family::ButtonFamilyRole,
+    size: xgpui_luma::theme::ControlSize,
+    state: xgpui_luma::theme::InteractionState,
 ) -> ButtonMetricTable {
     resolve_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, role, size, state)
 }
@@ -1101,11 +1101,11 @@ pub fn resolve_button_metrics(
 pub fn resolve_button_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    theme_mode: gpui_luma::theme::ThemeMode,
+    theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    role: gpui_luma::controls::button_family::ButtonFamilyRole,
-    size: gpui_luma::theme::ControlSize,
-    state: gpui_luma::theme::InteractionState,
+    role: xgpui_luma::controls::button_family::ButtonFamilyRole,
+    size: xgpui_luma::theme::ControlSize,
+    state: xgpui_luma::theme::InteractionState,
 ) -> ButtonMetricTable {
     let look = crate::controls::button::button_look_with_stylesheet(
         mode, stylesheet, theme_mode, style, role, size, None, state,
@@ -1115,12 +1115,12 @@ pub fn resolve_button_metrics_with_stylesheet(
     let catalog = ctx.catalog();
 
     let size_key = crate::tables::metrics::helpers::control_size_key(size);
-    let family = if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
+    let family = if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
         "toggle"
     } else {
         "button"
     };
-    let legacy = if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
+    let legacy = if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
         stylesheet.toggle.metrics_for_size(size)
     } else {
         stylesheet.button.metrics_for_size(size)
@@ -1159,12 +1159,12 @@ pub fn resolve_button_metrics_with_stylesheet(
                 look.icon_size,
             )
         },
-        padding_x: if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
+        padding_x: if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
             crate::tables::metrics::helpers::derived_metric("icon button has no padding", look.padding_x)
         } else {
             stylesheet_metric("padding_horizontal", look.padding_x)
         },
-        padding_y: if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
+        padding_y: if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
             crate::tables::metrics::helpers::derived_metric("icon button has no padding", look.padding_y)
         } else {
             crate::tables::metrics::helpers::spacing_control_metric(
@@ -1180,7 +1180,7 @@ pub fn resolve_button_metrics_with_stylesheet(
             crate::catalog::SpacingField::Gap,
             look.gap,
         ),
-        radius: if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
+        radius: if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
             crate::tables::metrics::helpers::pill_radius_metric(catalog, look.radius)
         } else {
             stylesheet_metric("corner_radius", look.radius)
@@ -1194,7 +1194,7 @@ pub fn resolve_button_metrics_with_stylesheet(
             source: crate::MetricSource::Scaffold { path: "MetricTokens.focus.width".into() },
         },
         focus_ring_offset: focus_ring_offset_metric(
-            gpui_luma::controls::button_family::button_family_effective_border(look.border),
+            xgpui_luma::controls::button_family::button_family_effective_border(look.border),
             metrics,
         ),
     };
@@ -1202,11 +1202,11 @@ pub fn resolve_button_metrics_with_stylesheet(
         &ctx,
         stylesheet,
         size,
-        matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }),
+        matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }),
         1.0,
     );
-    let shared = |metric: gpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
-        if matches!(metric.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    let shared = |metric: xgpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
+        if matches!(metric.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
             fallback
         } else {
             crate::tables::metrics::helpers::inspect_shared_metric(metric)
@@ -1214,10 +1214,10 @@ pub fn resolve_button_metrics_with_stylesheet(
     };
     table.height = shared(geometry.height, table.height);
     table.icon_size = shared(geometry.icon_size, table.icon_size);
-    if !matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
+    if !matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Icon) {
         table.padding_x = shared(geometry.padding_x, table.padding_x);
         table.padding_y = shared(geometry.padding_y, table.padding_y);
-        let tokens = if matches!(role, gpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
+        let tokens = if matches!(role, xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { .. }) {
             &stylesheet.toggle.tokens
         } else {
             &stylesheet.button.tokens
@@ -1237,7 +1237,7 @@ pub fn resolve_button_metrics_with_stylesheet(
     table
 }
 
-fn focus_ring_offset_metric(border: gpui::Hsla, metrics: &gpui_luma::theme::MetricTokens) -> crate::ResolvedMetric {
+fn focus_ring_offset_metric(border: gpui::Hsla, metrics: &xgpui_luma::theme::MetricTokens) -> crate::ResolvedMetric {
     let border_width = metrics.border_width.default;
     let focus = metrics.focus.width;
     if border.a <= 0.0 {

@@ -262,7 +262,7 @@ mod tests {
     #[test]
     fn paragraph_ime_edits_utf16_and_wrapped_candidate_geometry() -> Result<()> {
         let mut cx = TestAppContext::single();
-        cx.update(|cx| gpui_luma::init(cx).unwrap());
+        cx.update(|cx| xgpui_luma::init(cx).unwrap());
         let window = cx.open_window(size(px(580.0), px(1000.0)), |_, cx| {
             ParagraphLab::new(
                 crate::parley_lab::Engine::new().unwrap(),

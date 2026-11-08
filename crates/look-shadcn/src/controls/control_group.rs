@@ -10,9 +10,9 @@ use crate::stylesheet::config::EnabledColorRule;
 use crate::stylesheet::config::find_enabled_color_rule;
 use serde::Deserialize;
 
-use gpui_luma::controls::control_group::ControlGroupListLook;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::control_group::ControlGroupListLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -60,7 +60,7 @@ pub fn control_group_list_look(mode: &ShadcnModeTokens, enabled: bool) -> Contro
     let colors = resolve_control_group_list_colors(&resolver, enabled)
         .unwrap_or_else(|_| ControlGroupListColorTable::fallback());
 
-    let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().control_group.authored_geometry("md");
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().control_group.authored_geometry("md");
     let recipe = mode.stylesheet().common.control_group.authored_geometry("md").with_fallback(&baseline);
     ControlGroupListLook {
         background: colors.background.hsla(),
@@ -80,7 +80,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -173,12 +173,12 @@ pub struct ControlGroupMetricTable {
 
 pub fn resolve_control_group_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> ControlGroupMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric};
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
     let look = crate::paint::control_group_list_look(mode, true);
 
@@ -190,7 +190,7 @@ pub fn resolve_control_group_metrics(
     };
     let geometry = mode.stylesheet().common.control_group.inspect_geometry(
         "md",
-        gpui_luma::theme::stylesheet::ControlGroupGeometry {
+        xgpui_luma::theme::stylesheet::ControlGroupGeometry {
             padding_x: table.padding_x.value_px,
             padding_y: table.padding_y.value_px,
             gap: table.gap.value_px,

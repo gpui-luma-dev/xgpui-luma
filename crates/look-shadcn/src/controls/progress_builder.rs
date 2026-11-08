@@ -1,7 +1,7 @@
-//! Look-owned progress builder. Spawn synthesizes the SDK [`gpui_luma::controls::progress::Progress`].
+//! Look-owned progress builder. Spawn synthesizes the SDK [`xgpui_luma::controls::progress::Progress`].
 
-use gpui_luma::controls::progress::{ProgressBuilder, ProgressDirection, ProgressOrientation};
-use gpui_luma::infra::value::ControlRange;
+use xgpui_luma::controls::progress::{ProgressBuilder, ProgressDirection, ProgressOrientation};
+use xgpui_luma::infra::value::ControlRange;
 use gpui::{Context, SharedString};
 
 use crate::look::{ShadcnLook, resolve_look_from};
@@ -16,17 +16,17 @@ pub struct Progress {
 }
 
 impl Progress {
-    gpui_luma::forward_motion!(gpui_luma::controls::progress::ProgressMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::progress::ProgressMotion, builder builder);
 
     pub fn new(id: impl Into<SharedString>) -> Self {
-        Self { look: None, linear: false, builder: gpui_luma::controls::progress::new(id), size: ShadcnSize::Md }
+        Self { look: None, linear: false, builder: xgpui_luma::controls::progress::new(id), size: ShadcnSize::Md }
     }
 
     pub fn linear(id: impl Into<SharedString>) -> Self {
         Self {
             look: None,
             linear: true,
-            builder: gpui_luma::controls::progress::new(id).linear(),
+            builder: xgpui_luma::controls::progress::new(id).linear(),
             size: ShadcnSize::Md,
         }
     }
@@ -94,7 +94,7 @@ impl Progress {
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::progress::Progress {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::progress::Progress {
         let look = resolve_look_from(self.look.as_ref(), cx);
         self.into_sdk_builder(look).spawn(cx)
     }

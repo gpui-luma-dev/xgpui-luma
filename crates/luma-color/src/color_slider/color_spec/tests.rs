@@ -383,7 +383,7 @@ fn slider_step_for_channel_uses_fine_default_on_unit_ranges() {
 fn source_conversion_preserves_extended_lab_and_rgb() {
     let lab = Lab { l: 65.0, a: 110.0, b: -90.0, alpha: 0.345678, auto_clamp: false, dynamic_range: false };
     let source = lab.to_color_value();
-    assert!(!source.is_in_gamut(gpui_luma::color::Gamut::Srgb).unwrap());
+    assert!(!source.is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap());
     let restored = Lab::from_color_value(source).unwrap();
     assert!((restored.l - lab.l).abs() < 0.001);
     assert!((restored.a - lab.a).abs() < 0.001);

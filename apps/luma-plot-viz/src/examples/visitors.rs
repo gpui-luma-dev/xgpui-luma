@@ -1,23 +1,23 @@
-use gpui_luma::controls::button;
-use gpui_luma::controls::selector;
-use gpui_luma::controls::selector_list;
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::controls::button;
+use xgpui_luma::controls::selector;
+use xgpui_luma::controls::selector_list;
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma::motion::{Transition, Easing};
 mod data;
 
-use gpui_luma::controls::selector::SelectorEventExt;
+use xgpui_luma::controls::selector::SelectorEventExt;
 use std::time::Duration;
 
 use gpui::{App, Context, Entity, IntoElement, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{
     controls::button::{Button},
     motion::VisualTransition,
     controls::selector::{Selector, SelectorEvent},
     hstack, vstack,
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     AreaLayer, LineLayer, AxisSide, CartesianChartBuilder, ChartMetrics, Dataset, DatasetError, Interpolation,
     LegendItem, LegendPresentation, LegendView, SwatchPresentation, NumericScale, CartesianStyleProvider,
 };

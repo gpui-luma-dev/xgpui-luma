@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
-use gpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, default_button_template};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::theme::InteractionState;
-use gpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, ShadcnShadow};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, default_button_template};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, ShadcnShadow};
 
 use crate::studio::style::shared::button_matrix::{
     BUTTON_STYLE_VARIANTS, BUTTON_TABLE_STATE_COLUMN_WIDTH, SIZE_PREVIEW_STYLE, button_look_for_style,

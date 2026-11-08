@@ -23,9 +23,9 @@
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><a href="colors.html">Color controls</a></div><h1>Color Arc</h1><p class="intro">Edit a color channel on a partial circular track.</p>
 <section id="preview"><h2>Try it</h2><p>Drag the hue arc to update the preview and committed hue. This preview runs the exact code sample below.</p><div class="live-example live-example--tall"><iframe data-luma-example src="examples/embed.html?id=color-arc-basic" title="Live Color Arc code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=color-arc-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section>
 <section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Hue arc with preview and commit</span><button class="copy" aria-label="Copy Hue arc with preview and commit">Copy</button></div><pre><code class="language-rust" data-live-example="color-arc-basic">use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::slider::{SliderControl, SliderEventExt};
-use gpui_luma_color::color_arc::ColorArcBuilder;
-use gpui_luma_color::style::Size;
+use xgpui_luma::controls::slider::{SliderControl, SliderEventExt};
+use xgpui_luma_color::color_arc::ColorArcBuilder;
+use xgpui_luma_color::style::Size;
 
 struct Example {
     control: Entity&lt;SliderControl&gt;,
@@ -72,7 +72,7 @@ impl Render for Example {
 </table>
 </div><p>These are SDK <code>SliderEvent</code> callbacks, available through <code>SliderEventExt</code>. The builders return <code>Entity&lt;SliderControl&gt;</code>. Each callback receives the owner, the listed payload values, and the owner context. Register callbacks after <code>spawn</code>; use <code>on_event</code> or <code>cx.subscribe</code> for the full event stream. See <a href="slider.html#events">Slider events</a>.</p></section>
 <section id="keyboard"><h2>Keyboard and synchronization</h2><p>The arc uses the SDK Slider’s angular input strategy over a bounded start/sweep range. It does not enable the full ring’s wrapping policy. Use the normal SDK slider keyboard bindings and configure scalar <code>step</code> for channel snapping.</p><p>Retain <code>domain_renderer()</code> and <code>track_context()</code> before spawning. Update dependent color delegates and refresh thumb previews with <code>update_arc_delegate</code> / <code>refresh_color_arc</code>, or use the corresponding <code>ColorCompositionSync</code> helper. Numeric value changes alone do not update the base colors of the track.</p></section>
-<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/luma-color/src/color_arc/mod.rs">Implementation</a> · <a href="colors.html">Color controls</a></p></section>
+<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/luma-color/src/color_arc/mod.rs">Implementation</a> · <a href="colors.html">Color controls</a></p></section>
 <footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#preview">Try it</a><a href="#use">Basic use</a><a href="#options">Channels and appearance</a><a href="#events">Events</a><a href="#keyboard">Keyboard and synchronization</a><a href="#source">Source</a></nav>
 </div>

@@ -1,6 +1,6 @@
 //! Semantic role → scale family + step mappings for the Radix look.
 
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::scale::{ModeScales, ScaleFamily, ScaleStep};
 
@@ -52,7 +52,7 @@ impl SemanticRole {
         }
     }
 
-    pub fn resolve(self, scales: ModeScales, mode: ThemeMode) -> gpui_luma::theme::provenance::ResolvedColor {
+    pub fn resolve(self, scales: ModeScales, mode: ThemeMode) -> xgpui_luma::theme::provenance::ResolvedColor {
         let map = self.mapping(mode);
         scales.resolved(map.family, map.step)
     }

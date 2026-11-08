@@ -9,7 +9,7 @@ use std::sync::atomic::Ordering;
 #[test]
 fn tree_fixture_has_exact_unique_node_counts_and_nested_paths() {
     fn visit(
-        items: &[gpui_luma::controls::tree_view::TreeNode<Row>],
+        items: &[xgpui_luma::controls::tree_view::TreeNode<Row>],
         ids: &mut std::collections::HashSet<SharedString>,
         depth: usize,
         max: &mut usize,

@@ -13,7 +13,7 @@ use crate::color_slider::{
     ColorSliderDelegate, ColorSliderDomainRenderer, ColorSliderTrackContext, refresh_color_slider,
     update_domain_delegate,
 };
-use gpui_luma::controls::slider::SliderControl;
+use xgpui_luma::controls::slider::SliderControl;
 
 const DEFAULT_EPSILON: f32 = 0.001;
 

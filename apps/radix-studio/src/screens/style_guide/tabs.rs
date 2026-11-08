@@ -1,14 +1,14 @@
 //! Tabs examples using the same three preview pages as other controls.
 
-use gpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Entity, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::controls::tabs::{
+use xgpui_luma::controls::tabs::{
     Tabs, TabsEvent, TabsItem, TabsTheme, TabsListLook, TabsItemLook, TabsBaseline, ThemedTabsTemplate,
 };
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, TabsSize};
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, TabsSize};
 
 use super::matrix_grid::{preview_tabbed, fixed_grid, equal_data_columns};
 
@@ -21,7 +21,7 @@ pub struct TabsExamples {
 }
 
 fn example<M: 'static>(id: String, look: &Look, size: TabsSize, enabled: bool, cx: &mut Context<M>) -> Entity<Tabs> {
-    gpui_luma_look_radix::Tabs::new(id)
+    xgpui_luma_look_radix::Tabs::new(id)
         .look(look)
         .line()
         .size(size)
@@ -39,7 +39,7 @@ fn example<M: 'static>(id: String, look: &Look, size: TabsSize, enabled: bool, c
 
 impl TabsExamples {
     pub fn spawn<M: 'static>(look: &Look, cx: &mut Context<M>) -> Self {
-        let navigation = gpui_luma_look_radix::Tabs::new("guide-tabs-preview-navigation")
+        let navigation = xgpui_luma_look_radix::Tabs::new("guide-tabs-preview-navigation")
             .look(look)
             .with_template_modifier(|root, _| root.w_full())
             .items([
@@ -158,7 +158,7 @@ impl TabsTheme for ContrastTabsTheme {
 }
 
 fn color_example<M: 'static>(id: String, look: &Look, contrast: bool, cx: &mut Context<M>) -> Entity<Tabs> {
-    let base = gpui_luma_look_radix::tabs_theme(look);
+    let base = xgpui_luma_look_radix::tabs_theme(look);
     let theme: Arc<dyn TabsTheme> = if contrast {
         Arc::new(ContrastTabsTheme { base, look: look.clone() })
     } else {
@@ -175,12 +175,12 @@ fn color_example<M: 'static>(id: String, look: &Look, contrast: bool, cx: &mut C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn contrast_indicator_tracks_palette_and_mode_without_changing_labels() {
         let look = Look::built_in();
-        let base = gpui_luma_look_radix::tabs_theme(&look);
+        let base = xgpui_luma_look_radix::tabs_theme(&look);
         let contrast = ContrastTabsTheme { base: base.clone(), look: look.clone() };
         for accent in [Accent::Gold, Accent::Bronze] {
             look.set_palettes(accent, Gray::Auto);

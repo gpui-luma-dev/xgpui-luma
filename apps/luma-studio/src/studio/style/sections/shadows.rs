@@ -1,6 +1,6 @@
 use gpui::{AnyElement, IntoElement, div, prelude::*, px};
-use gpui_luma::vstack;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::vstack;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use crate::studio::style::shared::shell::section_shell_with_width;
 

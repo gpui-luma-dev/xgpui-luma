@@ -1,26 +1,26 @@
 pub(crate) mod navigation_regression;
 use gpui::{Context, Entity, FocusHandle, Render, Window, div, prelude::*, px};
-use gpui_luma_color::style::{ColorControlTheme, set_active_color_control_theme};
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_radix::Look;
+use xgpui_luma_color::style::{ColorControlTheme, set_active_color_control_theme};
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_radix::Look;
 use crate::theme::ColorVizLookExt;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
 use std::{cell::RefCell, rc::Rc};
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     resizable_panels::{
         ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, PanelHideMode, ResizeHandleVisibility,
         ResizeCollapseBehavior, ResizeCollapseMode, ResizeCollapseDirection,
     },
     accordion::{Accordion, AccordionContent, AccordionItem, AccordionTrigger},
 };
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
-use gpui_luma::theme::LumaThemeSyncExt;
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
+use xgpui_luma::theme::LumaThemeSyncExt;
 
 use crate::gradient_builder::GradientBuilder;
 use crate::compositions::ColorCompositions;
@@ -171,7 +171,7 @@ const SECTIONS: &[Section] = &[
 struct NavigationEntry {
     workspace: Workspace,
     page: &'static str,
-    button: Entity<gpui_luma::controls::button::Button>,
+    button: Entity<xgpui_luma::controls::button::Button>,
     selected: Arc<AtomicBool>,
 }
 
@@ -184,7 +184,7 @@ pub struct XgpuiLabApp {
     color_gamut: Option<Entity<crate::color_gamut_page::Page>>,
     navigation: Vec<NavigationEntry>,
     panels: Entity<ResizablePanels>,
-    rail: Entity<gpui_luma::controls::frame::FrameControl>,
+    rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: gpui::Pixels,
     titlebar: TitlebarControls,
     content: Rc<RefCell<gpui::AnyView>>,
@@ -230,25 +230,25 @@ impl XgpuiLabApp {
                 let entry_look = nav_look.clone();
                 let label_look = nav_look.clone();
                 let label_selected = selected.clone();
-                let button = gpui_luma_look_radix::Button::new(format!("index-{label}-{page}"))
+                let button = xgpui_luma_look_radix::Button::new(format!("index-{label}-{page}"))
                     .look(nav_look.as_ref())
                     .ghost()
                     .gray()
-                    .size(gpui_luma_look_radix::ButtonSize::One)
+                    .size(xgpui_luma_look_radix::ButtonSize::One)
                     .content(move |_, _| {
                         let step = if label_selected.load(Ordering::Relaxed) { 12 } else { 11 };
                         div()
-                            .text_color(label_look.resolve_step(gpui_luma_look_radix::ScaleFamily::Gray, step).hsla())
+                            .text_color(label_look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Gray, step).hsla())
                             .child(title)
                     })
                     .with_template_modifier(|row, _| row.w_full())
                     .on_click(cx, move |this: &mut Self, cx| this.activate(workspace, page, cx))
                     .spawn(cx);
-                let template = gpui_luma::controls::button::DefaultButtonTemplate::new(
-                    gpui_luma_look_radix::button_family_theme_with(
+                let template = xgpui_luma::controls::button::DefaultButtonTemplate::new(
+                    xgpui_luma_look_radix::button_family_theme_with(
                         &nav_look,
-                        gpui_luma_look_radix::ButtonVariant::Ghost,
-                        gpui_luma_look_radix::Paint::gray(),
+                        xgpui_luma_look_radix::ButtonVariant::Ghost,
+                        xgpui_luma_look_radix::Paint::gray(),
                     ),
                 )
                 .with_modifier(move |row, model| {
@@ -273,8 +273,8 @@ impl XgpuiLabApp {
                 .expanded(workspace == Workspace::Gradients),
             );
         }
-        let accordion: Accordion = gpui_luma_look_radix::accordion_builder(&nav_look, "lab-explorer")
-            .size(gpui_luma::theme::ControlSize::Sm)
+        let accordion: Accordion = xgpui_luma_look_radix::accordion_builder(&nav_look, "lab-explorer")
+            .size(xgpui_luma::theme::ControlSize::Sm)
             .template(nav_accordion::template(&nav_look))
             .multiple()
             .collapsible(true)
@@ -286,7 +286,7 @@ impl XgpuiLabApp {
         let content_view = content.clone();
         let sidebar_look = nav_look.clone();
         let content_look = look.clone();
-        let panels = gpui_luma_look_radix::resizable_panels_builder(&look, "shell-2026-panels")
+        let panels = xgpui_luma_look_radix::resizable_panels_builder(&look, "shell-2026-panels")
             .show_border(false)
             .motion_enabled(true)
             .handle_visibility(ResizeHandleVisibility::Hover)
@@ -357,7 +357,7 @@ impl XgpuiLabApp {
             this.titlebar.theme_toggle.update(cx, |button, cx| {
                 button.set_presenter(
                     Arc::new(move |model, _| {
-                        gpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
+                        xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
                     }),
                     cx,
                 );
@@ -433,8 +433,8 @@ impl XgpuiLabApp {
 }
 
 // Preserve shell-2026's complete destination rail and footer.
-fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<gpui_luma::controls::frame::FrameControl> {
-    use gpui_luma::controls::sidebar::*;
+fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<xgpui_luma::controls::frame::FrameControl> {
+    use xgpui_luma::controls::sidebar::*;
     use lucide_svg_static::Icon;
     let mut menu = SidebarMenuBuilder::new("shell-2026-destinations");
     for (id, label, icon) in [
@@ -447,7 +447,7 @@ fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<gpui_luma::c
     ] {
         menu = menu.item(SidebarMenuItemBuilder::new(id, label).icon(icon).active(id == "home"));
     }
-    let navigation = gpui_luma_look_radix::sidebar_builder(look, "shell-2026-rail")
+    let navigation = xgpui_luma_look_radix::sidebar_builder(look, "shell-2026-rail")
         .presentation(SidebarPresentation::Icons)
         .motion_enabled(false)
         .auto_hide_scrollbar(true)
@@ -462,7 +462,7 @@ fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<gpui_luma::c
         )
         .spawn(cx);
     // shell-2026's transparent, square sidebar frame has an 8 px inset.
-    gpui_luma::controls::frame::FrameBuilder::new("shell-2026-rail-frame")
+    xgpui_luma::controls::frame::FrameBuilder::new("shell-2026-rail-frame")
         .p(px(8.0))
         .bg(gpui::transparent_black())
         .rounded(px(0.0))
@@ -573,7 +573,7 @@ mod tests {
     #[test]
     fn sidebar_routes_duplicate_labels_and_retains_workspaces() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
         cx.update(|_, cx| {
@@ -627,7 +627,7 @@ mod tests {
                     .button
                     .clone()
             });
-            button.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            button.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let shell = view.read(cx);
@@ -653,7 +653,7 @@ mod tests {
     }
 
     use super::titlebar::{CLOSED_TITLEBAR_WIDTH, titlebar_compartment_width};
-    use gpui_luma::shell::TITLE_BAR_LEFT_PADDING;
+    use xgpui_luma::shell::TITLE_BAR_LEFT_PADDING;
     use gpui::{MouseButton, MouseDownEvent, VisualTestContext, point};
 
     fn assert_aligned(cx: &mut VisualTestContext) {
@@ -674,7 +674,7 @@ mod tests {
     fn rendered_separator_tracks_drag_and_restores_from_both_collapse_paths() {
         let mut app = TestAppContext::single();
         let (view, cx) = app.add_window_view(|window, cx| {
-            gpui_luma::init(cx).unwrap();
+            xgpui_luma::init(cx).unwrap();
             XgpuiLabApp::new(window, cx)
         });
         assert_aligned(cx);
@@ -755,7 +755,7 @@ mod tests {
     #[test]
     fn folder_icon_precedes_label_and_tracks_expansion_without_changing_page() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
         let label = cx.debug_bounds("nav-label-Gradients").unwrap();
@@ -777,12 +777,12 @@ mod tests {
     #[test]
     fn theme_toggle_switches_radix_and_keeps_selected_page() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
         let toggle = cx.update(|_, cx| view.read(cx).titlebar.theme_toggle.clone());
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            toggle.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let shell = view.read(cx);
@@ -795,7 +795,7 @@ mod tests {
     #[test]
     fn sidebar_toggle_retains_width_and_selected_content() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
         let (split, toggle) = cx.update(|_, cx| {
@@ -804,7 +804,7 @@ mod tests {
         });
         let width = cx.update(|_, cx| split.read(cx).panel_sizes_px()[0]);
         for collapsed in [true, false] {
-            toggle.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
             cx.run_until_parked();
             cx.update(|_, cx| {
                 assert_eq!(split.read(cx).is_panel_hidden(0), collapsed);
@@ -820,7 +820,7 @@ mod tests {
     #[test]
     fn index_stops_waves_before_switching_pages_and_never_resumes_on_return() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
         let select = |workspace, page, cx: &mut gpui::VisualTestContext| {
@@ -833,7 +833,7 @@ mod tests {
                     .button
                     .clone()
             });
-            button.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            button.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
         };
         let mut retained = None;
         for (workspace, page) in
@@ -861,7 +861,7 @@ mod tests {
                 }
             });
             let play = cx.update(|_, cx| waves.read(cx).play_button());
-            play.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            play.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
             cx.update(|_, cx| assert!(waves.read(cx).is_playing()));
             select(workspace, page, cx);
             cx.update(|_, cx| {

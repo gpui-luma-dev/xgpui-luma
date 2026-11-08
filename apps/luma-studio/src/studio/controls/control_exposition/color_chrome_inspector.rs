@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, IntoElement, Render, SharedString, Window, div, px};
 use gpui::prelude::*;
-use gpui_luma::controls::accordion::{
+use xgpui_luma::controls::accordion::{
     AccordionContent, AccordionControl, AccordionItem, AccordionSelectionMode, AccordionTrigger,
 };
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::inspector::color_chrome::{ColorChromeProfile, ColorChromeSection, resolve_color_chrome_sections};

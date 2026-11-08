@@ -15,8 +15,8 @@ mod matrices;
 
 use std::sync::LazyLock;
 use gpui::Hsla;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::theme::ThemeMode;
 use crate::ColorScale;
 use color::Color;
 
@@ -234,7 +234,7 @@ mod tests {
             let colors = generate_colors(inputs, ThemeMode::Light).unwrap();
             assert_eq!(colors.inputs.accent, accent);
             assert_eq!(colors.accent.source_step(9), accent);
-            assert!(!colors.accent.source_step(9).is_in_gamut(gpui_luma::color::Gamut::Srgb).unwrap());
+            assert!(!colors.accent.source_step(9).is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap());
             assert_eq!(colors.accent.step(9), gpui_bridge::to_hsla(accent, GamutMapping::CssLocalMinde).unwrap());
             let rgb: gpui::Rgba = colors.accent.step(3).into();
             assert!([rgb.r, rgb.g, rgb.b].iter().any(|value| (value * 255.0 - (value * 255.0).round()).abs() > 0.01));

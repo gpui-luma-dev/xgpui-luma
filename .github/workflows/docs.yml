@@ -1,12 +1,8 @@
 name: Check and deploy documentation site
 
+# Disabled: manual dispatch only; every job is also gated off below.
 on:
   workflow_dispatch:
-  pull_request:
-    paths: ["docs/**", "apps/docs-embed/**", "apps/common/**", "crates/**", "Cargo.*", ".github/workflows/docs.yml"]
-  push:
-    branches: [main]
-    paths: ["docs/**", "apps/docs-embed/**", "apps/common/**", "crates/**", "Cargo.*", ".github/workflows/docs.yml"]
 
 permissions:
   contents: read
@@ -19,7 +15,8 @@ concurrency:
 jobs:
   check:
     name: Browser checks
-    if: github.event_name == 'pull_request'
+    # Previous condition: if: github.event_name == 'pull_request'
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -41,7 +38,8 @@ jobs:
 
   build:
     name: Build deployment runtime
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Previous condition: if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -85,7 +83,8 @@ jobs:
           path: docs/
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Previous condition: if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: ${{ false }}
     needs: build
     runs-on: ubuntu-latest
     permissions:

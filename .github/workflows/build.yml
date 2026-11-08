@@ -1,5 +1,6 @@
 name: Build Luma Studio Executables
 
+# Disabled: manual dispatch only; every job is also gated off below.
 on:
   workflow_dispatch:
 
@@ -11,6 +12,7 @@ env:
 
 jobs:
   build:
+    if: ${{ false }}
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:

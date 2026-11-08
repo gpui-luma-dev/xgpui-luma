@@ -1,8 +1,8 @@
-# gpui-luma-look-radix
+# xgpui-luma-look-radix
 
-Source repository: [gpui-luma-dev/gpui-luma](https://github.com/gpui-luma-dev/gpui-luma).
+Source repository: [gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
-Radix theme and look adapter for **GPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
+Radix theme and look adapter for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
 
 Provides palette scales, semantic token resolution, custom color generation, light/dark mode handling, and concrete control builders adhering to the Radix design language.
 
@@ -15,22 +15,24 @@ Provides palette scales, semantic token resolution, custom color generation, lig
 
 ## Installation
 
+The installation commands below apply once version 1.0.1 is published to crates.io.
+
 ```sh
-cargo add gpui-luma
-cargo add gpui-luma-look-radix
-cargo add gpui-unofficial --rename gpui
+cargo add xgpui-luma@1.0.1
+cargo add xgpui-luma-look-radix@1.0.1
+cargo add xgpui@2.0.1 --rename gpui
 ```
 
-The package is named `gpui-luma-look-radix`; Rust imports use `gpui_luma_look_radix`.
+The package is named `xgpui-luma-look-radix`; Rust imports use `xgpui_luma_look_radix`.
 
 ## Quick Start
 
 ```rust,no_run
 use gpui::{Context, Entity};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_radix::{Look, Button, ButtonSize};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_radix::{Look, Button, ButtonSize};
 
-fn save_button<M: 'static>(look: &Look, cx: &mut Context<M>) -> Entity<gpui_luma::controls::button::Button> {
+fn save_button<M: 'static>(look: &Look, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::button::Button> {
     Button::new("save")
         .look(look)
         .solid()
@@ -46,7 +48,7 @@ to builders so controls share the same palette and styling settings.
 ## Build
 
 In your application, run `cargo check` or `cargo build`.
-From the Luma repository, run `cargo check -p gpui-luma-look-radix`.
+From the Luma repository, run `cargo check -p xgpui-luma-look-radix`.
 
 ## License
 

@@ -2,12 +2,12 @@
 
 use crate::inspect::format_inspect_css_key;
 use gpui::{px, Hsla, Pixels};
-use gpui_luma_color::chrome_tokens::{disabled_overlay, slider_blocked_overlay, swatch_checkerboard_colors};
-use gpui_luma_color::color_arc::visual::default_color_arc_visual;
-use gpui_luma_color::color_ring::visual::default_color_ring_visual;
-use gpui_luma_color::color_slider::color_thumb::ThumbStyle;
-use gpui_luma_color::color_slider::visual::default_color_slider_visual;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma_color::chrome_tokens::{disabled_overlay, slider_blocked_overlay, swatch_checkerboard_colors};
+use xgpui_luma_color::color_arc::visual::default_color_arc_visual;
+use xgpui_luma_color::color_ring::visual::default_color_ring_visual;
+use xgpui_luma_color::color_slider::color_thumb::ThumbStyle;
+use xgpui_luma_color::color_slider::visual::default_color_slider_visual;
+use xgpui_luma::theme::ThemeMode;
 use crate::{sync_color_control_theme, ColorSource, MetricSource, ResolvedColor, ResolvedMetric, ShadcnLook};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,8 +118,8 @@ fn shared_theme_section(
 }
 
 fn slider_track_section(
-    enabled: gpui_luma_color::color_slider::visual::ColorSliderVisual,
-    disabled: gpui_luma_color::color_slider::visual::ColorSliderVisual,
+    enabled: xgpui_luma_color::color_slider::visual::ColorSliderVisual,
+    disabled: xgpui_luma_color::color_slider::visual::ColorSliderVisual,
     border: &ResolvedColor,
     background: &ResolvedColor,
     theme_mode: ThemeMode,
@@ -159,7 +159,7 @@ fn slider_track_section(
 }
 
 fn ring_section(
-    disabled: gpui_luma_color::color_ring::visual::ColorRingVisual,
+    disabled: xgpui_luma_color::color_ring::visual::ColorRingVisual,
     border: &ResolvedColor,
     background: &ResolvedColor,
 ) -> ColorChromeInspectSection {
@@ -181,7 +181,7 @@ fn ring_section(
 }
 
 fn arc_section(
-    disabled: gpui_luma_color::color_arc::visual::ColorArcVisual,
+    disabled: xgpui_luma_color::color_arc::visual::ColorArcVisual,
     border: &ResolvedColor,
     background: &ResolvedColor,
 ) -> ColorChromeInspectSection {
@@ -321,7 +321,7 @@ fn format_hsl(value: Hsla) -> String {
 
 #[cfg(test)]
 mod tests {
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     use crate::{ColorSource, LookResolver, ShadcnModeTokens};
 
     use super::*;

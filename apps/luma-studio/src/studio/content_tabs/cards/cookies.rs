@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::switch::{Switch, SwitchEvent};
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma::{declare_form, hstack, vstack};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::switch::{Switch, SwitchEvent};
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::{declare_form, hstack, vstack};
 
 use super::common::titled_card;
 
@@ -85,7 +85,7 @@ fn cookie_row(
     title: &'static str,
     body: &'static str,
     switch: &Switch,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
 ) -> impl IntoElement {
     hstack! {
         justify=between align=start gap=12;

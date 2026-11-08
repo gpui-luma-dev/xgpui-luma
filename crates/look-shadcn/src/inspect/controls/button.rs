@@ -1,14 +1,14 @@
 //! Inspect metadata for `button`.
 
 use gpui::{BoxShadow, Hsla};
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{
     LookContext, MetricSource, ResolvedColor, ResolvedMetric, ResolvedTypography, ShadcnButtonStyle, ShadcnModeTokens,
 };
 use crate::stylesheet::{find_button_elevation_rule, resolve_stylesheet_shadow_token};
 
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::infra::shadow_layout::shadow_projection_extent;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::infra::shadow_layout::shadow_projection_extent;
 
 pub struct ButtonInspectPalette {
     pub background: ResolvedColor,

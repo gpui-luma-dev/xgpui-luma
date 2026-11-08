@@ -17,9 +17,9 @@ mod template;
 use std::sync::Arc;
 
 use gpui::{AnyView, Context, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::scroll_container::ScrollContainer;
-use gpui_luma::controls::scrollbar::ScrollbarEvent;
-use gpui_luma_look_radix::Look;
+use xgpui_luma::controls::scroll_container::ScrollContainer;
+use xgpui_luma::controls::scrollbar::ScrollbarEvent;
+use xgpui_luma_look_radix::Look;
 
 use color_harmonies::ColorHarmoniesControlExposition;
 use color_hsv_plane::ColorHsvPlaneControlExposition;

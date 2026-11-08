@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use gpui::Hsla;
-use gpui_luma::controls::tooltip::Tooltip;
+use xgpui_luma::controls::tooltip::Tooltip;
 use crate::{Sample, SeriesId};
 
 /// One original observation selected by pointer hit testing, never a curve estimate.

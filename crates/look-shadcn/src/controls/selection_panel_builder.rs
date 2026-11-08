@@ -1,11 +1,11 @@
-//! Look-owned selection-panel builder. Spawn synthesizes the SDK [`gpui_luma::controls::selection_panel::SelectionPanelControl`].
+//! Look-owned selection-panel builder. Spawn synthesizes the SDK [`xgpui_luma::controls::selection_panel::SelectionPanelControl`].
 
 use gpui::{App, Context, Entity, IntoElement, SharedString};
-use gpui_luma::controls::selection_panel::{
+use xgpui_luma::controls::selection_panel::{
     SelectionPanelBuilder, SelectionPanelControl, SelectionPanelItem, SelectionPanelItemLike,
     SelectionPanelItemRenderModel, SelectionPanelLookProvider,
 };
-use gpui_luma::infra::icon::SelectionStatusIcons;
+use xgpui_luma::infra::icon::SelectionStatusIcons;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -14,7 +14,7 @@ pub struct SelectionPanel<T = SelectionPanelItem>
 where
     T: SelectionPanelItemLike + 'static,
 {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::selection_panel::SelectionPanelEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::selection_panel::SelectionPanelEvent>,
 
     look: Option<ShadcnLook>,
     builder: SelectionPanelBuilder<T>,
@@ -37,7 +37,7 @@ where
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::selection_panel::SelectionPanelEvent, &mut gpui::Context<M>)
+        callback: impl Fn(&mut M, &xgpui_luma::controls::selection_panel::SelectionPanelEvent, &mut gpui::Context<M>)
         + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
@@ -51,7 +51,7 @@ where
         callback: impl Fn(&mut M, &Option<usize>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selection_panel::SelectionPanelEvent::HoverChanged { visible_index } = event {
+            if let xgpui_luma::controls::selection_panel::SelectionPanelEvent::HoverChanged { visible_index } = event {
                 callback(owner, visible_index, cx);
             }
         })
@@ -64,7 +64,7 @@ where
         callback: impl Fn(&mut M, usize, usize, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selection_panel::SelectionPanelEvent::ActivateRow {
+            if let xgpui_luma::controls::selection_panel::SelectionPanelEvent::ActivateRow {
                 source_index,
                 visible_index,
                 item_id,
@@ -82,7 +82,7 @@ where
         callback: impl Fn(&mut M, &Option<usize>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selection_panel::SelectionPanelEvent::ActiveIndexChanged { visible_index } =
+            if let xgpui_luma::controls::selection_panel::SelectionPanelEvent::ActiveIndexChanged { visible_index } =
                 event
             {
                 callback(owner, visible_index, cx);
@@ -97,7 +97,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selection_panel::SelectionPanelEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::selection_panel::SelectionPanelEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -110,7 +110,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selection_panel::SelectionPanelEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::selection_panel::SelectionPanelEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -170,37 +170,37 @@ where
 
     /// Override the SDK interaction policy.
     /// Override focus behavior independently of wheel routing.
-    pub fn pointer_focus_policy(mut self, policy: gpui_luma::interaction::PointerFocusPolicy) -> Self {
+    pub fn pointer_focus_policy(mut self, policy: xgpui_luma::interaction::PointerFocusPolicy) -> Self {
         self.builder = self.builder.pointer_focus_policy(policy);
         self
     }
 
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.builder = self.builder.wheel_scroll_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.builder = self.builder.scroll_boundary_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.builder = self.builder.wheel_focus_scope(policy);
         self
     }
 
     /// Select embedded or popup hover defaults.
-    pub fn role(mut self, role: gpui_luma::controls::selection_panel::SelectionPanelRole) -> Self {
+    pub fn role(mut self, role: xgpui_luma::controls::selection_panel::SelectionPanelRole) -> Self {
         self.builder = self.builder.role(role);
         self
     }
     /// Explicitly override hover activation; does not focus or select.
     pub fn hover_activation_policy(
         mut self,
-        policy: gpui_luma::controls::selection_panel::HoverActivationPolicy,
+        policy: xgpui_luma::controls::selection_panel::HoverActivationPolicy,
     ) -> Self {
         self.builder = self.builder.hover_activation_policy(policy);
         self
@@ -229,7 +229,7 @@ where
     /// Always show, hide, or auto-hide the panel scrollbar.
     pub fn scrollbar_visibility(
         mut self,
-        visibility: gpui_luma::controls::scroll_container::ScrollbarVisibility,
+        visibility: xgpui_luma::controls::scroll_container::ScrollbarVisibility,
     ) -> Self {
         self.builder = self.builder.scrollbar_visibility(visibility);
         self
@@ -238,7 +238,7 @@ where
     /// Choose hover, timed scroll activity, or both for auto-hiding chrome.
     pub fn scrollbar_auto_hide_activate(
         mut self,
-        activate: gpui_luma::controls::scroll_container::ScrollbarAutoHideActivate,
+        activate: xgpui_luma::controls::scroll_container::ScrollbarAutoHideActivate,
     ) -> Self {
         self.builder = self.builder.scrollbar_auto_hide_activate(activate);
         self
@@ -342,7 +342,7 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn forwards_independent_wheel_policies_after_look_synthesis() {
-    use gpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
+    use xgpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
     let mut app = gpui::TestAppContext::single();
     let control = SelectionPanel::new("policy")
         .wheel_scroll_policy(WheelScrollPolicy::PassThrough)

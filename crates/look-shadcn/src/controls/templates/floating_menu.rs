@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::floating_menu::FloatingMenuTheme;
+use xgpui_luma::controls::floating_menu::FloatingMenuTheme;
 
 use crate::controls::floating_menu::floating_menu_look;
 use crate::look::ShadcnLook;
@@ -10,9 +10,9 @@ struct ShadcnFloatingMenuTheme {
 }
 
 impl FloatingMenuTheme for ShadcnFloatingMenuTheme {
-    fn resolve(&self) -> gpui_luma::controls::floating_menu::FloatingMenuLook {
+    fn resolve(&self) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
         let tokens = self.theme.mode_tokens();
-        floating_menu_look(tokens.as_ref(), self.theme.mode(), gpui_luma::theme::ControlSize::Md)
+        floating_menu_look(tokens.as_ref(), self.theme.mode(), xgpui_luma::theme::ControlSize::Md)
     }
 }
 

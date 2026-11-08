@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::{sync::Arc, collections::HashMap};
 
-use gpui_luma::theme::{InteractionLayer, LumaTypography, MetricTokens, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, LumaTypography, MetricTokens, ThemeMode};
 
 use crate::catalog::{CssTokenMap, metrics_from_catalog, typography_from_catalog};
 use crate::palette::ShadcnPalette;
@@ -45,9 +45,9 @@ impl ShadcnModeTokens {
                 shadow_previews.insert(token.to_string(), previews);
             }
         }
-        let data_positive = gpui_luma::color::gpui_bridge::to_hsla(
+        let data_positive = xgpui_luma::color::gpui_bridge::to_hsla(
             stylesheet.common.tokens.source(theme_mode).palette.data.positive,
-            gpui_luma::color::GamutMapping::CssLocalMinde,
+            xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
         Ok(Self {
             data_positive,
@@ -77,7 +77,7 @@ impl ShadcnModeTokens {
         &self,
         token: ShadcnToken,
         layer: InteractionLayer,
-    ) -> gpui_luma::color::ColorValue {
+    ) -> xgpui_luma::color::ColorValue {
         self.state_colors.source(token, layer)
     }
 

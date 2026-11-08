@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::split_view::SplitViewTheme;
+use xgpui_luma::controls::split_view::SplitViewTheme;
 
 use crate::controls::split_view::split_view_look;
 use crate::look::ShadcnLook;
@@ -14,7 +14,7 @@ struct ShadcnSplitViewTheme {
 }
 
 impl SplitViewTheme for ShadcnSplitViewTheme {
-    fn resolve(&self, hovered: bool, enabled: bool) -> gpui_luma::controls::split_view::SplitViewLook {
+    fn resolve(&self, hovered: bool, enabled: bool) -> xgpui_luma::controls::split_view::SplitViewLook {
         let tokens = self.theme.mode_tokens();
         split_view_look(tokens.as_ref(), self.theme.mode(), hovered, enabled)
     }

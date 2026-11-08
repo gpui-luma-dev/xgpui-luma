@@ -3,9 +3,9 @@
 mod listbox {
     use std::sync::Arc;
 
-    use gpui_luma::theme::InteractionState;
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma::theme::InteractionState;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
     use lucide_svg_static::Icon as LucideIcon;
 
     use super::super::super::collection::{listbox_list_color_rows, listbox_row_color_rows};
@@ -114,7 +114,7 @@ mod listbox {
                     if selection.state_id == "keyboard-active" {
                         rows.push(InspectColorRow {
                             label: "focus border",
-                            value: gpui_luma_look_shadcn::paint::focus_ring_color(&look.mode_tokens().catalog)
+                            value: xgpui_luma_look_shadcn::paint::focus_ring_color(&look.mode_tokens().catalog)
                                 .unwrap_or_else(|_| look.chrome().body_text),
                             source: "ring".into(),
                             detail: None,
@@ -136,8 +136,8 @@ pub use listbox::{LISTBOX_INSPECTOR_SPEC, ListBoxInspectorAdapter};
 mod table {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::{table_row_color_rows, table_surface_color_rows};
     use super::super::super::common::{table_row_selected, listbox_row_state, progress_enabled};
@@ -234,8 +234,8 @@ pub use table::{TABLE_INSPECTOR_SPEC, TableInspectorAdapter};
 mod tree_view {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::tree_view_row_color_rows;
     use super::super::super::common::{interaction_state, listbox_row_state};
@@ -305,8 +305,8 @@ pub use tree_view::{TREE_VIEW_INSPECTOR_SPEC, TreeViewInspectorAdapter};
 mod tabs {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::{tabs_item_color_rows, tabs_list_color_rows};
     use super::super::super::common::{interaction_state, progress_enabled, tabs_active};
@@ -398,8 +398,8 @@ pub use tabs::{TABS_INSPECTOR_SPEC, TabsInspectorAdapter};
 mod accordion {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::{accordion_content_color_rows, accordion_trigger_color_rows};
     use super::super::super::common::{accordion_content_expanded, interaction_state};
@@ -492,8 +492,8 @@ pub use accordion::{ACCORDION_INSPECTOR_SPEC, AccordionInspectorAdapter};
 mod sidebar {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::{
         sidebar_container_color_rows, sidebar_item_color_rows, sidebar_section_color_rows,

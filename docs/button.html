@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Build a GPUI-Luma button, handle activation, and choose a look. A practical SDK guide.">
+<meta name="description" content="Build a XGPUI-Luma button, handle activation, and choose a look. A practical SDK guide.">
 <title>Button · Luma SDK</title>
 <script src="theme-init.js"></script>
 <link rel="stylesheet" href="site.css">
@@ -24,7 +24,7 @@
 <div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div>
 <h1>Button</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div>
 <p class="intro">One action, clearly expressed. Create a button, respond to activation, and give it a look.</p>
-<div class="meta"><code>gpui_luma::controls::button</code><span>Native GPUI control</span></div>
+<div class="meta"><code>xgpui_luma::controls::button</code><span>Native GPUI control</span></div>
 <section id="preview"><h2>Try it</h2>
 <p>Run the Radix code sample below. Click Save, or focus it and press Enter or Space, to update the save count.</p>
 <div class="live-example"><iframe data-luma-example src="examples/embed.html?id=button-basic" title="Live Radix Save button code sample" loading="lazy"></iframe></div>
@@ -33,9 +33,9 @@
 <section id="create"><h2><span class="number">01</span>Create a button</h2>
 <p>Create the SDK button through the Radix builder. The SDK owns its state and events; Radix supplies presentation.</p>
 <div class="codebox"><div class="codebar"><span>Rust · SDK button via Radix</span><button class="copy" aria-label="Copy SDK button example">Copy</button></div><pre><code class="language-rust" data-live-example="button-basic">use gpui::{Context, Entity};
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_radix as radix;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_radix as radix;
 
 struct Example {
     control: Entity&lt;Button&gt;,
@@ -63,7 +63,7 @@ impl Example {
 <p class="small">The live preview compiles this exact code block. Its host initializes Luma, fonts, the Radix look, and keyboard bindings, then renders <code>self.control.clone()</code> with the save count and focus state.</p>
 <div class="callout"><p><strong>Behavior lives in the SDK.</strong> A look supplies styling and templates. Its builder still creates the same SDK button entity.</p></div>
 </section>
-<section id="factory"><h2>Buttons from shared factories</h2><p>Import <code>ButtonEventExt</code> to attach the same callbacks to an existing SDK Button entity. The methods return that entity and retain the callbacks automatically.</p><div class="codebox"><div class="codebar"><span>Rust · Existing Button entity</span><button class="copy" aria-label="Copy factory callback example">Copy</button></div><pre><code class="language-rust">use gpui_luma::controls::button::ButtonEventExt;
+<section id="factory"><h2>Buttons from shared factories</h2><p>Import <code>ButtonEventExt</code> to attach the same callbacks to an existing SDK Button entity. The methods return that entity and retain the callbacks automatically.</p><div class="codebox"><div class="codebar"><span>Rust · Existing Button entity</span><button class="copy" aria-label="Copy factory callback example">Copy</button></div><pre><code class="language-rust">use xgpui_luma::controls::button::ButtonEventExt;
 
 // A shared factory has already created this SDK Button entity.
 fn bind_factory_button(control: Entity&lt;Button&gt;, cx: &amp;mut Context&lt;Example&gt;) -&gt; Entity&lt;Button&gt; {
@@ -72,7 +72,7 @@ fn bind_factory_button(control: Entity&lt;Button&gt;, cx: &amp;mut Context&lt;Ex
         cx.notify();
     })
 }</code></pre></div><p class="small">When a captured entity can own this Button, capture it weakly to avoid an ownership cycle.</p></section>
-<section id="events"><h2>Events</h2><p>Builder callbacks update the owning app through its <code>Context</code>. The Button retains them automatically; no application subscription field is needed. <code>cx.notify()</code> requests an owner redraw. Use <code>.on_event(cx, ...)</code> for the complete event enum; ordinary <code>cx.subscribe</code> observers still work.</p><div class="event-table"><table><thead><tr><th scope="col">Event / payload</th><th scope="col">Callback</th><th scope="col">Application use</th></tr></thead><tbody><tr><td><code>Click</code></td><td><code>.on_click(cx, ...)</code></td><td>Execute the application command.</td></tr><tr><td><code>FocusChanged { focused: bool }</code></td><td><code>.on_focus_changed(cx, ...)</code></td><td>Focus state changed.</td></tr><tr><td><code>EnabledChanged { enabled: bool }</code></td><td><code>.on_enabled_changed(cx, ...)</code></td><td>Enabled state changed.</td></tr><tr><td><code>HoverChanged { hovered: bool }</code></td><td><code>.on_hover_changed(cx, ...)</code></td><td>Pointer hover state changed.</td></tr></tbody></table></div><p class="small">Builder callbacks append and run in registration order. They hold the owner weakly: after it is released they do nothing. Captures are released when the Button or unspawned builder is dropped. Separate entity bindings and subscribers follow GPUI ordering. Callback-triggered state changes use the same event queue; <code>set_enabled</code> emits only when state changes.</p><p class="small"><code>ButtonEvent</code> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/core.rs">Event definitions</a>. Match the events you need; allow for other variants.</p></section>
+<section id="events"><h2>Events</h2><p>Builder callbacks update the owning app through its <code>Context</code>. The Button retains them automatically; no application subscription field is needed. <code>cx.notify()</code> requests an owner redraw. Use <code>.on_event(cx, ...)</code> for the complete event enum; ordinary <code>cx.subscribe</code> observers still work.</p><div class="event-table"><table><thead><tr><th scope="col">Event / payload</th><th scope="col">Callback</th><th scope="col">Application use</th></tr></thead><tbody><tr><td><code>Click</code></td><td><code>.on_click(cx, ...)</code></td><td>Execute the application command.</td></tr><tr><td><code>FocusChanged { focused: bool }</code></td><td><code>.on_focus_changed(cx, ...)</code></td><td>Focus state changed.</td></tr><tr><td><code>EnabledChanged { enabled: bool }</code></td><td><code>.on_enabled_changed(cx, ...)</code></td><td>Enabled state changed.</td></tr><tr><td><code>HoverChanged { hovered: bool }</code></td><td><code>.on_hover_changed(cx, ...)</code></td><td>Pointer hover state changed.</td></tr></tbody></table></div><p class="small">Builder callbacks append and run in registration order. They hold the owner weakly: after it is released they do nothing. Captures are released when the Button or unspawned builder is dropped. Separate entity bindings and subscribers follow GPUI ordering. Callback-triggered state changes use the same event queue; <code>set_enabled</code> emits only when state changes.</p><p class="small"><code>ButtonEvent</code> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/core.rs">Event definitions</a>. Match the events you need; allow for other variants.</p></section>
 <section id="disabled"><h2><span class="number">03</span>Disable an unavailable action</h2>
 <p>Update the entity when application state changes. Disabling the control prevents activation; changing its appearance alone does not.</p>
 <div class="codebox"><div class="codebar"><span>Rust · After creation</span><button class="copy" aria-label="Copy disabled state example">Copy</button></div><pre><code class="language-rust">self.control.update(cx, |button, cx| {
@@ -81,7 +81,7 @@ fn bind_factory_button(control: Entity&lt;Button&gt;, cx: &amp;mut Context&lt;Ex
 <p class="small">Pass <code>true</code> to enable it again. To start disabled, add <code>.enabled(false)</code> to the builder before <code>.spawn(cx)</code>.</p>
 </section>
 <section id="behavior"><h2>Interaction notes</h2><ul class="notes"><li>The button participates in focus navigation by default.</li><li>Keyboard activation uses the SDK’s command key profile. Keep Luma’s initialization and key bindings in place.</li><li>Use a unique, stable control ID within the containing view.</li><li>These are focused integration snippets, not a complete runnable application.</li></ul>
-<p class="small">Explore the implementation: <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/control.rs">SDK button</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">Shadcn builder</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/button_builder.rs">Radix builder</a></p>
+<p class="small">Explore the implementation: <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/control.rs">SDK button</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">Shadcn builder</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/button_builder.rs">Radix builder</a></p>
 </section>
 <footer data-site-footer></footer>
 </main>

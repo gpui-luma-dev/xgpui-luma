@@ -1,10 +1,10 @@
-//! Look-owned radio builder. Spawn synthesizes the SDK [`gpui_luma::controls::radio_button::RadioButton`].
+//! Look-owned radio builder. Spawn synthesizes the SDK [`xgpui_luma::controls::radio_button::RadioButton`].
 
-use gpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::infra::attachments::TooltipEntityExt;
 use gpui::{App, Context, SharedString};
-use gpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::radio_button::{RadioButtonBuilder, RadioButtonData};
+use xgpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::radio_button::{RadioButtonBuilder, RadioButtonData};
 
 use crate::button::Paint;
 use crate::look::{Look, resolve_look};
@@ -13,8 +13,8 @@ use crate::tone::Tone;
 
 /// Builder in the guise of a radio: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct Radio {
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::radio_button::RadioMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::radio_button::RadioButtonEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::radio_button::RadioMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::radio_button::RadioButtonEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -37,7 +37,7 @@ impl Radio {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::radio_button::RadioButtonEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::radio_button::RadioButtonEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -50,7 +50,7 @@ impl Radio {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_button::RadioButtonEvent::Change { selected } = event {
+            if let xgpui_luma::controls::radio_button::RadioButtonEvent::Change { selected } = event {
                 callback(owner, *selected, cx);
             }
         })
@@ -63,7 +63,7 @@ impl Radio {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_button::RadioButtonEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::radio_button::RadioButtonEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -76,7 +76,7 @@ impl Radio {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_button::RadioButtonEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::radio_button::RadioButtonEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -89,7 +89,7 @@ impl Radio {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_button::RadioButtonEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::radio_button::RadioButtonEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -116,7 +116,7 @@ impl Radio {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::radio_button::RadioMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::radio_button::RadioMotion, edits motion);
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &Look) -> Self {
@@ -202,7 +202,7 @@ impl Radio {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::radio_button::RadioButton {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::radio_button::RadioButton {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -219,7 +219,7 @@ impl Radio {
 
     fn into_sdk_builder(self, look: Look) -> RadioButtonBuilder {
         let template = radio_template_for(&look, self.variant, self.paint, self.size);
-        let mut builder = gpui_luma::controls::radio_button::new(self.id)
+        let mut builder = xgpui_luma::controls::radio_button::new(self.id)
             .motion_defaults(look.motion_defaults().radio)
             .with_motion_overrides(self.motion)
             .template(template)
@@ -253,8 +253,8 @@ impl HasPresenter<ButtonContentContext<RadioButtonData>> for Radio {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::HasPresenter;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {

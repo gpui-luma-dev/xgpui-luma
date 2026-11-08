@@ -7,9 +7,9 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
-use gpui_luma::controls::button::ButtonTemplate;
-use gpui_luma::controls::checkbox::{CheckboxPalette, CheckboxScale, CheckboxTheme, ThemedCheckboxTemplate};
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::checkbox::{CheckboxPalette, CheckboxScale, CheckboxTheme, ThemedCheckboxTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::button_layout::Radius;
@@ -112,14 +112,14 @@ pub fn checkbox_scale_for(size: CheckboxSize, radius: Radius) -> CheckboxScale {
 }
 
 fn checkbox_scale_with_stylesheet(
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
     size: CheckboxSize,
     radius: Radius,
 ) -> CheckboxScale {
     let fallback = CheckboxScale::compute(size.control_size(), &MetricTokens::default(), 1.0);
     let geometry = stylesheet.checkbox.resolve_geometry(
         size.as_str(),
-        gpui_luma::theme::stylesheet::CheckboxGeometry {
+        xgpui_luma::theme::stylesheet::CheckboxGeometry {
             indicator_size: fallback.indicator_size,
             glyph_size: fallback.glyph_size,
             gap: fallback.gap,
@@ -296,7 +296,7 @@ pub fn checkbox_template(
     look: &Look,
     variant: CheckboxVariant,
     paint: Paint,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::checkbox::CheckboxData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::checkbox::CheckboxData>> {
     Arc::new(ThemedCheckboxTemplate::new(checkbox_theme_with(look, variant, paint)))
 }
 
@@ -306,7 +306,7 @@ pub fn checkbox_template_for(
     paint: Paint,
     size: CheckboxSize,
     radius: Radius,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::checkbox::CheckboxData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::checkbox::CheckboxData>> {
     Arc::new(ThemedCheckboxTemplate::new(checkbox_theme_for(look, variant, paint, size, radius)))
 }
 
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn pressed_face_preserves_focused_fill_for_every_variant() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for variant in [CheckboxVariant::Classic, CheckboxVariant::Surface, CheckboxVariant::Soft] {
                 for checked in [false, true] {
@@ -435,8 +435,8 @@ mod tests {
 }
 
 /// Constructs the native Radix checkbox definition in pure Rust without preloading TOML.
-pub fn native_radix_checkbox() -> gpui_luma::theme::stylesheet::CheckboxStylesheet {
-    let mut checkbox = gpui_luma::theme::stylesheet::CheckboxStylesheet::default();
+pub fn native_radix_checkbox() -> xgpui_luma::theme::stylesheet::CheckboxStylesheet {
+    let mut checkbox = xgpui_luma::theme::stylesheet::CheckboxStylesheet::default();
     checkbox
         .gap(8.0)
         .size("1", |m| {
@@ -452,6 +452,6 @@ pub fn native_radix_checkbox() -> gpui_luma::theme::stylesheet::CheckboxStyleshe
 }
 
 /// Applies Radix checkbox geometry in Rust.
-pub(crate) fn apply_radix_checkbox_stylesheet(sheet: &mut gpui_luma::theme::stylesheet::CommonStylesheet) {
+pub(crate) fn apply_radix_checkbox_stylesheet(sheet: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
     native_radix_checkbox().apply_to(&mut sheet.checkbox);
 }

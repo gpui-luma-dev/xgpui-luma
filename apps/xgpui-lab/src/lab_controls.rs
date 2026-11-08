@@ -1,8 +1,8 @@
 //! Labeled, directly selectable lab settings. Numeric IDs stay independent of display labels.
 use std::{cell::RefCell, rc::Rc};
 use gpui::{prelude::*, Context, Entity, SharedString, div};
-use gpui_luma::controls::selector::{Selector, SelectorItem};
-use gpui_luma_look_radix::{Look, Selector as RadixSelector};
+use xgpui_luma::controls::selector::{Selector, SelectorItem};
+use xgpui_luma_look_radix::{Look, Selector as RadixSelector};
 
 #[derive(Clone)]
 pub(crate) struct Choice {
@@ -76,7 +76,7 @@ impl Choice {
         let label = self.labels.borrow()[index].clone();
         self.selector.update(cx, |selector, cx| {
             selector.set_selected_id(index.to_string(), cx);
-            cx.emit(gpui_luma::controls::selector::SelectorEvent::Change {
+            cx.emit(xgpui_luma::controls::selector::SelectorEvent::Change {
                 item_id: index.to_string().into(),
                 label: label.into(),
             });

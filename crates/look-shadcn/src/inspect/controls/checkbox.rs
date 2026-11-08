@@ -1,6 +1,6 @@
 //! Inspect metadata for `checkbox`.
 
-use gpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{ResolvedColor, ResolvedMetric, ShadcnButtonStyle, ShadcnModeTokens};
 
 pub struct CheckboxInspectPalette {
@@ -56,7 +56,7 @@ pub struct CheckboxInspectMetrics {
 pub fn inspect_checkbox_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> CheckboxInspectMetrics {
     let table = crate::tables::metrics::resolve_checkbox_metrics(mode, theme_mode, size);
     table.into()
@@ -83,7 +83,7 @@ pub(crate) fn inspect_checkbox_elevation_with_stylesheet(
     style: ShadcnButtonStyle,
     checked: bool,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
     use crate::stylesheet::resolve_stylesheet_shadow_token;
     use crate::inspect::controls::button::{button_style_key, inspect_layered_elevation};
 

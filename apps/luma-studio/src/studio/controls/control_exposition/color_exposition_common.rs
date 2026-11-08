@@ -1,10 +1,10 @@
 //! Shared layout and readout helpers for color control expositions.
 
 use gpui::{FontWeight, Hsla, div, prelude::*, px};
-use gpui_luma_color::color_field::ColorFieldEvent;
-use gpui_luma::controls::slider::SliderEvent;
-use gpui_luma::{GridLayout, GridTrack};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnRadius, ShadcnTextRole, ShadcnTextSize};
+use xgpui_luma_color::color_field::ColorFieldEvent;
+use xgpui_luma::controls::slider::SliderEvent;
+use xgpui_luma::{GridLayout, GridTrack};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnRadius, ShadcnTextRole, ShadcnTextSize};
 
 /// Fixed label column for compact slider rows (gallery color-slider-revealed layout).
 const SLIDER_LABEL_WIDTH: f32 = 74.0;
@@ -203,7 +203,7 @@ pub(super) fn centered_field(content: impl gpui::IntoElement) -> gpui::AnyElemen
 pub(super) fn slider_labeled_row(
     look: &ShadcnLook,
     label: &'static str,
-    slider: gpui::Entity<gpui_luma::controls::slider::SliderControl>,
+    slider: gpui::Entity<xgpui_luma::controls::slider::SliderControl>,
 ) -> gpui::AnyElement {
     slider_labeled_row_with_width(look, label, slider, SLIDER_LABEL_WIDTH)
 }
@@ -211,7 +211,7 @@ pub(super) fn slider_labeled_row(
 pub(super) fn slider_labeled_row_wide(
     look: &ShadcnLook,
     label: &'static str,
-    slider: gpui::Entity<gpui_luma::controls::slider::SliderControl>,
+    slider: gpui::Entity<xgpui_luma::controls::slider::SliderControl>,
 ) -> gpui::AnyElement {
     slider_labeled_row_with_width(look, label, slider, SLIDER_LABEL_WIDTH_WIDE)
 }
@@ -219,7 +219,7 @@ pub(super) fn slider_labeled_row_wide(
 fn slider_labeled_row_with_width(
     look: &ShadcnLook,
     label: &'static str,
-    slider: gpui::Entity<gpui_luma::controls::slider::SliderControl>,
+    slider: gpui::Entity<xgpui_luma::controls::slider::SliderControl>,
     label_width: f32,
 ) -> gpui::AnyElement {
     div()
@@ -234,7 +234,7 @@ fn slider_labeled_row_with_width(
 
 pub(super) fn slider_grid_stack<const N: usize>(
     look: &ShadcnLook,
-    rows: [(&'static str, gpui::Entity<gpui_luma::controls::slider::SliderControl>); N],
+    rows: [(&'static str, gpui::Entity<xgpui_luma::controls::slider::SliderControl>); N],
 ) -> gpui::AnyElement {
     let mut grid = GridLayout::new()
         .rows(N)

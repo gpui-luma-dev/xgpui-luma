@@ -1,8 +1,8 @@
 //! Convenient imports for shadcn look styling and control construction.
 //!
 //! ```ignore
-//! use gpui_luma_look_shadcn as shadcn;
-//! use gpui_luma_look_shadcn::prelude::*;
+//! use xgpui_luma_look_shadcn as shadcn;
+//! use xgpui_luma_look_shadcn::prelude::*;
 //!
 //! let submit = shadcn::Button::new("submit").look(&look).primary().label("Submit").spawn(cx);
 //! with_look(&look, || {

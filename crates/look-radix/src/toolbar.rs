@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use gpui_luma::controls::toolbar::{
+use xgpui_luma::controls::toolbar::{
     ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant, toolbar_template_with_theme,
 };
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 
 use crate::{Look, ScaleFamily};
 
@@ -44,7 +44,7 @@ impl ToolbarTheme for RadixToolbarTheme {
         let fallback = ToolbarStyle::default();
         let geometry = self.look.common_stylesheet().toolbar.resolve_geometry(
             "",
-            gpui_luma::theme::stylesheet::ToolbarGeometry {
+            xgpui_luma::theme::stylesheet::ToolbarGeometry {
                 padding_x: fallback.padding_x,
                 padding_y: fallback.padding_y,
                 gap: fallback.gap,
@@ -96,7 +96,7 @@ pub fn toolbar_template(look: &Look) -> Arc<dyn ToolbarTemplate> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn custom_geometry_keeps_palette_resolution_and_defaults_independent() {
@@ -130,8 +130,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_toolbar_stylesheet() -> gpui_luma::theme::stylesheet::ToolbarStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_toolbar_stylesheet() -> xgpui_luma::theme::stylesheet::ToolbarStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ToolbarStylesheet {
         geometry: ToolbarGeometryStylesheet {
             padding_x: Some(4.0),

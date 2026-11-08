@@ -1,7 +1,7 @@
 use std::ops::RangeInclusive;
 
 use gpui::Hsla;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use palette::{Clamp, FromColor, IsWithinBounds, Oklch as PaletteOklch, Srgb};
 use palette::convert::FromColorUnclamped;
 

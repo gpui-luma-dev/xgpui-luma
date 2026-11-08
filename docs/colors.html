@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Color sliders, fields, rings, arcs, and swatches from gpui-luma-color.">
+<meta name="description" content="Color sliders, fields, rings, arcs, and swatches from xgpui-luma-color.">
 <title>Color controls · Luma SDK</title>
 <script src="theme-init.js"></script>
 <link rel="stylesheet" href="site.css">
@@ -20,8 +20,8 @@
 <div data-site-mobile-nav></div>
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
-<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><a href="colors.html">Color controls</a></div><h1>Color controls</h1><p class="intro">Color sliders, fields, rings, arcs, and swatches from gpui-luma-color.</p>
-<section id="setup"><h2>Use the color crate</h2><p>Add the color crate alongside the SDK:</p><div class="codebox"><div class="codebar"><span>Cargo.toml</span><button class="copy" aria-label="Copy Cargo.toml">Copy</button></div><pre><code class="language-toml">gpui-luma-color = &quot;0.1.10&quot;</code></pre></div><p>Rust imports use <code>gpui_luma_color</code>. These controls reuse SDK interaction engines; they do not require a separate Look-specific builder.</p></section>
+<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><a href="colors.html">Color controls</a></div><h1>Color controls</h1><p class="intro">Color sliders, fields, rings, arcs, and swatches from xgpui-luma-color.</p>
+<section id="setup"><h2>Use the color crate</h2><p>Add the color crate alongside the SDK:</p><div class="codebox"><div class="codebar"><span>Cargo.toml</span><button class="copy" aria-label="Copy Cargo.toml">Copy</button></div><pre><code class="language-toml">xgpui-luma-color = &quot;0.1.10&quot;</code></pre></div><p>Rust imports use <code>xgpui_luma_color</code>. These controls reuse SDK interaction engines; they do not require a separate Look-specific builder.</p></section>
 <section id="controls"><h2>Choose a control</h2><div class="event-table">
 <table><thead><tr><th scope="col">Control</th><th scope="col">Use it for</th></tr></thead><tbody>
 <tr><td><a href="color-slider.html">Color Slider</a></td><td>Hue, alpha, color-space channels, and gradients on a linear track.</td></tr>
@@ -31,16 +31,16 @@
 <tr><td><a href="color-swatch.html">Color Swatch</a></td><td>A color preview, or a button-backed picker trigger.</td></tr>
 </tbody></table>
 </div></section>
-<section id="values"><h2>Keep source colors in your model</h2><div class="codebox"><div class="codebar"><span>Retained source and preview</span><button class="copy" aria-label="Copy Retained source and preview">Copy</button></div><pre><code class="language-rust">use gpui_luma::color::ColorValue;
-use gpui_luma_color::ColorSwatch;
+<section id="values"><h2>Keep source colors in your model</h2><div class="codebox"><div class="codebar"><span>Retained source and preview</span><button class="copy" aria-label="Copy Retained source and preview">Copy</button></div><pre><code class="language-rust">use xgpui_luma::color::ColorValue;
+use xgpui_luma_color::ColorSwatch;
 
 fn accent_preview() -&gt; ColorSwatch {
     let source = ColorValue::display_p3(1.0, 0.2, 0.0, 0.75);
     ColorSwatch::new(source).checkerboard(true)
 }</code></pre></div><p><code>ColorValue</code> retains source space and alpha. Swatches resolve a preview for GPUI without replacing that source. Color specifications use degrees for hue; unit channels such as alpha use <code>0..=1</code>. Preserve the source separately when using HSV interaction views. See the <a href="color-values.md">color-value contract</a>.</p></section>
-<section id="compose"><h2>Build a picker or mixer</h2><p>Combine a field, hue/alpha sliders, swatch, and SDK popup controls. A channel mixer is a set of <code>ColorSliderBuilder::channel</code> controls driven by a <code>ColorSpecification</code>; supplied specifications include <code>HueAlpha</code>, <code>RgbaSpec</code>, <code>Hsl</code>, <code>Hsv</code>, <code>Lab</code>, and <code>Oklch</code>.</p><p>When one channel changes, update the shared color model and refresh dependent delegates so their tracks and thumb colors follow it. <code>ColorCompositionSync</code> provides a synchronization guard and helpers for updating slider values and delegates.</p><p>Studio’s <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/apps/luma-studio/src/studio/controls/color_picker.rs">color picker</a> is an application composition, not an exported SDK ColorPicker. Its <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/apps/luma-studio/src/studio/controls/catalog.rs">Multi Mixer and Color Slider Revealed galleries</a> demonstrate channel mixing and styling.</p></section>
+<section id="compose"><h2>Build a picker or mixer</h2><p>Combine a field, hue/alpha sliders, swatch, and SDK popup controls. A channel mixer is a set of <code>ColorSliderBuilder::channel</code> controls driven by a <code>ColorSpecification</code>; supplied specifications include <code>HueAlpha</code>, <code>RgbaSpec</code>, <code>Hsl</code>, <code>Hsv</code>, <code>Lab</code>, and <code>Oklch</code>.</p><p>When one channel changes, update the shared color model and refresh dependent delegates so their tracks and thumb colors follow it. <code>ColorCompositionSync</code> provides a synchronization guard and helpers for updating slider values and delegates.</p><p>Studio’s <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/apps/luma-studio/src/studio/controls/color_picker.rs">color picker</a> is an application composition, not an exported SDK ColorPicker. Its <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/apps/luma-studio/src/studio/controls/catalog.rs">Multi Mixer and Color Slider Revealed galleries</a> demonstrate channel mixing and styling.</p></section>
 <section id="theme"><h2>Theme and focus</h2><p>Color chrome reads the active <code>ColorControlTheme</code>. Shadcn applications can use <code>sync_color_control_theme</code> when synchronizing their Look; standalone integrations can set it with <code>set_active_color_control_theme</code>. Rebuild configured tracks when changing construction-time visual options.</p><p>Use the application’s normal SDK focus scope and default control/focus key bindings for slider controls. Color fields handle their own arrow input. The individual pages describe keyboard behavior.</p></section>
-<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/luma-color/src/lib.rs">Implementation</a> · <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/luma-color/src/composition.rs">Synchronization helpers</a></p></section>
+<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/luma-color/src/lib.rs">Implementation</a> · <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/luma-color/src/composition.rs">Synchronization helpers</a></p></section>
 <footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#setup">Use the color crate</a><a href="#controls">Choose a control</a><a href="#values">Keep source colors in your model</a><a href="#compose">Build a picker or mixer</a><a href="#theme">Theme and focus</a><a href="#source">Source</a></nav>
 </div>

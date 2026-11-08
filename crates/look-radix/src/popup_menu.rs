@@ -3,12 +3,12 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, FontWeight, black, point, px};
-use gpui_luma::controls::floating_menu::FloatingMenuLook;
-use gpui_luma::controls::popup_menu::{
+use xgpui_luma::controls::floating_menu::FloatingMenuLook;
+use xgpui_luma::controls::popup_menu::{
     PopupMenuPalette, PopupMenuTemplate, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
     ThemedPopupMenuTemplate, compose_popup_menu_look,
 };
-use gpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 use crate::look::Look;
 use crate::semantic::SemanticRole;
@@ -80,9 +80,9 @@ impl PopupMenuTheme for PopupMenuThemeAdapter {
 
         let geometry = self.look.common_stylesheet().popup_menu.resolve_geometry(
             "",
-            gpui_luma::theme::stylesheet::PopupMenuGeometry {
-                font_size: gpui_luma::theme::ThemeTokens::default().typography.text.label.size,
-                line_height: gpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
+            xgpui_luma::theme::stylesheet::PopupMenuGeometry {
+                font_size: xgpui_luma::theme::ThemeTokens::default().typography.text.label.size,
+                line_height: xgpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
                 ..Default::default()
             },
         );
@@ -111,11 +111,11 @@ impl PopupMenuTheme for PopupMenuThemeAdapter {
         state: InteractionState,
         scale_factor: f32,
         _cx: &mut gpui::App,
-    ) -> gpui_luma::controls::popup_menu::PopupMenuLook {
+    ) -> xgpui_luma::controls::popup_menu::PopupMenuLook {
         let mut scale = StandardBoxScale::compute(metrics.size, &self.metrics(), scale_factor);
         let geometry = self.look.common_stylesheet().popup_menu.resolve_geometry(
             "",
-            gpui_luma::theme::stylesheet::PopupMenuGeometry {
+            xgpui_luma::theme::stylesheet::PopupMenuGeometry {
                 height: scale.height,
                 padding_x: scale.padding_x,
                 padding_y: scale.padding_y,
@@ -146,7 +146,7 @@ impl PopupMenuTheme for PopupMenuThemeAdapter {
 /// Explicit and forked Looks are used directly; no ambient Look is consulted.
 /// Uses the existing Radix menu size (`"2"`) and its shared stylesheet overrides.
 pub fn floating_menu_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> FloatingMenuLook {
-    floating_menu_look_for(look, variant, tone, gpui_luma::theme::ControlSize::Md)
+    floating_menu_look_for(look, variant, tone, xgpui_luma::theme::ControlSize::Md)
 }
 
 /// Size-aware shared menu chrome. Size keys are Radix `1`, `2`, and `3`.
@@ -155,7 +155,7 @@ pub fn floating_menu_look_for(
     look: &Look,
     variant: PopupMenuVariant,
     tone: Tone,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> FloatingMenuLook {
     let metrics = look.metrics();
     let key = crate::look::sdk_size_key(size);
@@ -166,7 +166,7 @@ pub fn floating_menu_look_for(
     };
 
     let base_recipe =
-        gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().floating_menu.authored_geometry(key);
+        xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().floating_menu.authored_geometry(key);
     let recipe = look.common_stylesheet().floating_menu.authored_geometry(key).with_fallback(&base_recipe);
     let mut resolved = FloatingMenuLook {
         window_margin: look
@@ -177,11 +177,11 @@ pub fn floating_menu_look_for(
             .window_margin
             .unwrap_or_default(),
         border_width: recipe.border_width.unwrap_or(metrics.border_width.default),
-        positive: gpui_luma::color::gpui_bridge::to_hsla(
+        positive: xgpui_luma::color::gpui_bridge::to_hsla(
             look.common_stylesheet().tokens.source(look.mode()).palette.data.positive,
-            gpui_luma::color::GamutMapping::CssLocalMinde,
+            xgpui_luma::color::GamutMapping::CssLocalMinde,
         )
-        .unwrap_or_else(|_| gpui_luma::theme::ThemeTokens::default().palette.data.positive),
+        .unwrap_or_else(|_| xgpui_luma::theme::ThemeTokens::default().palette.data.positive),
         background: look.resolve_role(SemanticRole::Surface).hsla(),
         foreground: look.resolve_role(SemanticRole::Foreground).hsla(),
         border: look.resolve_role(SemanticRole::Border).hsla(),
@@ -213,7 +213,7 @@ pub fn floating_menu_look_for(
     };
     let geometry = look.common_stylesheet().floating_menu.resolve_geometry(
         key,
-        gpui_luma::theme::stylesheet::FloatingMenuGeometry {
+        xgpui_luma::theme::stylesheet::FloatingMenuGeometry {
             border_width: resolved.border_width,
             padding: resolved.padding,
             min_width: resolved.min_width,
@@ -319,8 +319,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_popup_menu_stylesheet() -> gpui_luma::theme::stylesheet::PopupMenuStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_popup_menu_stylesheet() -> xgpui_luma::theme::stylesheet::PopupMenuStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     PopupMenuStylesheet {
         geometry: PopupMenuGeometryStylesheet { font_size: Some(14.0), line_height: Some(20.0), ..Default::default() },
         ..Default::default()

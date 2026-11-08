@@ -28,12 +28,12 @@
 <p>Implement the existing control’s template trait and install your template with <code>.template(...)</code>. This SplitButton example styles interaction states and connects events to a small in-memory editor:</p>
 <div class="codebox"><div class="codebar"><span>Custom template · integration snippet</span><button class="copy" aria-label="Copy Custom template · integration snippet">Copy</button></div><pre><code class="language-rust">use std::sync::Arc;
 use gpui::{App, Context, Div, Entity, Render, Stateful, Window, div, prelude::*, px, rgb};
-use gpui_luma::controls::split_button::{
+use xgpui_luma::controls::split_button::{
     SplitButton, SplitButtonRenderModel, SplitButtonTemplate,
     SplitButtonTemplateHandlers, ThemedSplitButtonTemplate,
 };
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 struct SaveTemplate(ThemedSplitButtonTemplate);
 
@@ -163,7 +163,7 @@ impl Render for Editor {
 <li><strong>Tests:</strong> cover changed pointer, keyboard, disabled-state, and focus behavior.</li>
 <li><strong>Studio and documentation:</strong> add an example, control reference, and Look support entry.</li>
 </ul>
-<p>SplitButton’s <a href="https://github.com/gpui-luma-dev/gpui-luma/tree/main/crates/sdk/src/controls/button/split_button">SDK module</a> shows this packaging. See its <a href="split-button.html">control reference</a> for API and migration details.</p>
+<p>SplitButton’s <a href="https://github.com/gpui-luma-dev/xgpui-luma/tree/main/crates/sdk/src/controls/button/split_button">SDK module</a> shows this packaging. See its <a href="split-button.html">control reference</a> for API and migration details.</p>
 </section>
 <footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#template">Create your template</a><a href="#contribute">Contribute to the repository</a></nav>

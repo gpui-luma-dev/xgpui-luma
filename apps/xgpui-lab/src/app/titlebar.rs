@@ -1,11 +1,11 @@
-// Titlebar composition from gpui-luma/apps/shells/shell-2026, using Radix.
+// Titlebar composition from xgpui-luma/apps/shells/shell-2026, using Radix.
 use std::sync::Arc;
 
 use gpui::{Context, IntoElement, Pixels, Window, div, prelude::*, px};
 use gpui::Entity;
-use gpui_luma::shell::{TITLE_BAR_LEFT_PADDING, TitleBar};
-use gpui_luma_look_radix::Look;
-use gpui_luma::prelude::HasPresenter;
+use xgpui_luma::shell::{TITLE_BAR_LEFT_PADDING, TitleBar};
+use xgpui_luma_look_radix::Look;
+use xgpui_luma::prelude::HasPresenter;
 use crate::theme::ColorVizLookExt;
 use lucide_svg_static::Icon;
 
@@ -19,14 +19,14 @@ pub(super) const CLOSED_TITLEBAR_WIDTH: Pixels =
     px(BUTTON_SIZE * 4.0 + BUTTON_GAP * 3.0 + NAVIGATION_LEADING_INSET + 12.0);
 
 pub(super) struct TitlebarControls {
-    back: Entity<gpui_luma::controls::button::Button>,
-    forward: Entity<gpui_luma::controls::button::Button>,
-    pub(super) sidebar_toggle: Entity<gpui_luma::controls::button::Button>,
-    compose: Entity<gpui_luma::controls::button::Button>,
-    pub(super) theme_toggle: Entity<gpui_luma::controls::button::Button>,
-    more: Entity<gpui_luma::controls::button::Button>,
-    layout: Entity<gpui_luma::controls::button::Button>,
-    new_item: Entity<gpui_luma::controls::button::Button>,
+    back: Entity<xgpui_luma::controls::button::Button>,
+    forward: Entity<xgpui_luma::controls::button::Button>,
+    pub(super) sidebar_toggle: Entity<xgpui_luma::controls::button::Button>,
+    compose: Entity<xgpui_luma::controls::button::Button>,
+    pub(super) theme_toggle: Entity<xgpui_luma::controls::button::Button>,
+    more: Entity<xgpui_luma::controls::button::Button>,
+    layout: Entity<xgpui_luma::controls::button::Button>,
+    new_item: Entity<xgpui_luma::controls::button::Button>,
 }
 
 impl TitlebarControls {
@@ -136,13 +136,15 @@ fn icon_button(
     enabled: bool,
     look: &Look,
     cx: &mut Context<XgpuiLabApp>,
-) -> Entity<gpui_luma::controls::button::Button> {
-    gpui_luma_look_radix::Button::new(id)
-        .role(gpui_luma::controls::button_family::ButtonFamilyRole::Icon)
-        .content(move |model, _| gpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size))
+) -> Entity<xgpui_luma::controls::button::Button> {
+    xgpui_luma_look_radix::Button::new(id)
+        .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+        .content(move |model, _| {
+            xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
+        })
         .look(look)
         .content_only()
-        .size(gpui_luma_look_radix::ButtonSize::Two)
+        .size(xgpui_luma_look_radix::ButtonSize::Two)
         .enabled(enabled)
         .with_template_modifier(move |root, _| root.debug_selector(move || id.into()).size(px(BUTTON_SIZE)))
         .spawn(cx)

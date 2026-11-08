@@ -5,15 +5,15 @@ use gpui::{
     AnyElement, App, Hsla, MouseButton, Pixels, SharedString, Stateful, Window, anchored, deferred, div, point,
     prelude::*, px, transparent_black,
 };
-use gpui_luma::infra::icon::{DisclosureIcons, render_disclosure_icon};
-use gpui_luma::controls::search_selector::{
+use xgpui_luma::infra::icon::{DisclosureIcons, render_disclosure_icon};
+use xgpui_luma::controls::search_selector::{
     SearchSelectorItemRenderModel, SearchSelectorPanelRenderModel, SearchSelectorPanelTemplate,
     SearchSelectorRenderModel, SearchSelectorTemplate, SearchSelectorTemplateHandlers, SelectionItem,
     default_search_selector_panel_template,
 };
-use gpui_luma::controls::selector::SelectorTheme;
-use gpui_luma::theme::{InteractionState, StandardBoxScale};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::selector::SelectorTheme;
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+use xgpui_luma_look_shadcn::ShadcnLook;
 use luma_app_common::{BuiltInTheme, built_in_look, fallback_look};
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -124,7 +124,7 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
 
         let interaction = selector_interaction(&model);
         let look = self.selector_theme.resolve_look(
-            gpui_luma::controls::selector::SelectorTriggerStyle::Outline,
+            xgpui_luma::controls::selector::SelectorTriggerStyle::Outline,
             interaction,
             model.size,
             &StandardBoxScale::compute(model.size, &self.selector_theme.metrics(), window.scale_factor()),

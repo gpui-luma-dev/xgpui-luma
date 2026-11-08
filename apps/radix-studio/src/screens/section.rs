@@ -1,7 +1,7 @@
 //! Titled section block shared by the documentation-style screens.
 
 use gpui::{AnyElement, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::vstack;
+use xgpui_luma::vstack;
 
 pub fn section(
     title: impl Into<SharedString>,

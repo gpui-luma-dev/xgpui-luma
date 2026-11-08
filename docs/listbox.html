@@ -21,10 +21,10 @@
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>List Box</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">A keyed, selectable flat collection.</p><p class="small">Supports drag and drop. See the <a href="drag-drop.html">shared DnD guide</a> for lifecycle, callbacks, and transaction rules.</p><section id="preview"><h2>Try it</h2><p>Interact with the control below. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--tall"><iframe data-luma-example src="examples/embed.html?id=listbox-basic" title="Live listbox code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=listbox-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust" data-live-example="listbox-basic">use gpui::{Context, Render, Window, div, prelude::*};
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxInput, ListBoxState, ListBoxError, SelectionMode, make_listbox_item_template,
 };
-use gpui_luma_look_radix as radix;
+use xgpui_luma_look_radix as radix;
 
 struct Example {
     list: ListBoxControl&lt;Self, String, String&gt;,
@@ -63,7 +63,7 @@ impl Example {
 impl Render for Example {
     fn render(&amp;mut self, window: &amp;mut Window, cx: &amp;mut Context&lt;Self&gt;) -&gt; impl IntoElement {
         let template = make_listbox_item_template(
-            |model: &amp;gpui_luma::controls::listbox::ListBoxItemRenderModel&lt;'_, String&gt;, _| {
+            |model: &amp;xgpui_luma::controls::listbox::ListBoxItemRenderModel&lt;'_, String&gt;, _| {
                 div().child(model.item.clone())
             },
         );
@@ -74,11 +74,11 @@ impl Render for Example {
 <p>Shadcn <code>ListBoxBuilder::from_control</code>, <code>ShadcnLook::render_listbox</code>, and Radix <code>ListBoxBuilder::new</code> consume that configuration automatically. The example below shows both Looks using the same control.</p>
 <p><strong>Compatibility:</strong> the borrowed Shadcn <code>ListBoxBuilder::new</code> with <code>drag_and_drop(list, on_drop, on_event, preview)</code> remains available for raw host composition with arbitrary source tags and custom previews. Its raw <code>DropProposal</code> returns batches that the host must deliver, outside <code>ListBoxEvent</code>. To migrate, retain a <code>ListBoxControl</code>, configure <code>ListBoxDragDrop</code>, register handlers on the control, use the control-based Look adapter, and remove manual completion delivery.</p><h3>Validate proposals and observe completion</h3><p>Compiled by <code>scripts/check_control_docs.py</code>.</p><pre><code class="language-rust">mod drag_drop_example {
     use gpui::{Context, Render, Window, prelude::*};
-    use gpui_luma::controls::listbox::{
+    use xgpui_luma::controls::listbox::{
         ListBoxControl, ListBoxDragDrop, ListBoxDropProposal, ListBoxError, ListBoxInput,
         ListBoxSnapshot, ListBoxState, SelectionMode,
     };
-    use gpui_luma_look_shadcn::ListBoxBuilder;
+    use xgpui_luma_look_shadcn::ListBoxBuilder;
 
     struct Queue {
         list: ListBoxControl&lt;Self, String, String&gt;,
@@ -145,12 +145,12 @@ impl Render for Example {
     }
     // The same persistent control, configuration, and callbacks work in Radix.
     fn render_radix(queue: &amp;mut Queue, window: &amp;mut Window, cx: &amp;mut Context&lt;Queue&gt;) -&gt; impl IntoElement {
-        gpui_luma_look_radix::ListBoxBuilder::new(&quot;queue&quot;, &amp;mut queue.list,
-            gpui_luma_look_radix::listbox_template(|row: &amp;String| row.clone().into()))
+        xgpui_luma_look_radix::ListBoxBuilder::new(&quot;queue&quot;, &amp;mut queue.list,
+            xgpui_luma_look_radix::listbox_template(|row: &amp;String| row.clone().into()))
             .build(window, cx)
     }
 }
-</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/collection/listbox/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/listbox.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
+</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/collection/listbox/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/listbox.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#events">Events</a><a href="#preview">Try it</a><a href="#use">Basic use</a><a href="#sdk">SDK behavior</a><a href="#drag-drop">Drag/drop</a><a href="#source">Source</a></nav>
 </div>
 </body>

@@ -1,11 +1,11 @@
-//! Look-owned button builder. Spawn synthesizes the SDK [`gpui_luma::controls::button::Button`].
+//! Look-owned button builder. Spawn synthesizes the SDK [`xgpui_luma::controls::button::Button`].
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::button::{
+use xgpui_luma::controls::button::{
     ButtonCallbacks, ButtonEvent, ButtonBuilder, ButtonContentContext, ButtonRenderModel, ButtonTemplateModifier,
     ControlIcon, ControlPresenter, DefaultButtonTemplate, HasPresenter,
 };
-use gpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use super::button::{ButtonRadiusPreset, ShadcnButtonStyle, button_look_with_stylesheet};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
@@ -244,12 +244,12 @@ impl<D: Clone + 'static> Button<D> {
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::button::Button<D>> {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::button::Button<D>> {
         let look = self.resolve_look(cx);
         let theme = crate::tooltip_theme(&look);
         let entity = self.into_sdk_builder(look).spawn(cx);
         entity.update(cx, |control, _| {
-            gpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
+            xgpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
         });
         entity
     }
@@ -265,7 +265,7 @@ impl<D: Clone + 'static> Button<D> {
             look.clone(),
             style,
         )));
-        let mut builder = gpui_luma::controls::button::Button::new(self.id)
+        let mut builder = xgpui_luma::controls::button::Button::new(self.id)
             .typed(self.data)
             .with_callbacks(self.callbacks)
             .template(template)
@@ -317,7 +317,7 @@ impl<D: 'static> HasPresenter<ButtonContentContext<D>> for Button<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::controls::button::HasPresenter;
 
     #[test]
     fn default_style_is_secondary() {
@@ -366,7 +366,7 @@ mod callback_tests {
     use super::*;
     use gpui::{AppContext, TestAppContext};
     struct Owner {
-        button: Entity<gpui_luma::controls::button::Button<u32>>,
+        button: Entity<xgpui_luma::controls::button::Button<u32>>,
         log: Vec<String>,
     }
 

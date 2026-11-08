@@ -1,6 +1,6 @@
 use super::*;
-use gpui_luma::controls::scrollbar::ScrollbarViewport;
-use gpui_luma_plot::{Sample, Series};
+use xgpui_luma::controls::scrollbar::ScrollbarViewport;
+use xgpui_luma_plot::{Sample, Series};
 
 #[test]
 fn scrollbar_extent_and_thumb_follow_dataset_coordinates() {

@@ -50,7 +50,7 @@ impl LineLayer {
     /// Select how retained observations are connected, independently of line styling.
     ///
     /// ```
-    /// use gpui_luma_plot::{Interpolation, LineLayer};
+    /// use xgpui_luma_plot::{Interpolation, LineLayer};
     /// let line = LineLayer::new("signal").interpolation(Interpolation::Monotone);
     /// ```
     pub fn interpolation(mut self, interpolation: Interpolation) -> Self {

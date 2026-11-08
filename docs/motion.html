@@ -25,8 +25,8 @@
 <section id="ownership"><h2>Controls define roles; looks set defaults</h2><p>The SDK owns interaction targets, accessibility, events, presence, and frame scheduling. Each control exposes a typed motion profile: Switch has <code>state</code>; Tabs has <code>indicator</code>, <code>content</code>, <code>disclosure</code>, and <code>drop_layout</code>. A look supplies transitions for those roles. Consumers override individual roles through the SDK’s <code>.motion(...)</code> builder method.</p><p>Shadcn and Radix use the same SDK profiles. A look author can change timing, easing, or physics without rewriting control behavior.</p></section>
 <section id="sdk-defaults"><h2>Build with the SDK alone</h2><p>SDK controls have vanilla templates and motion defaults; an application does not need Shadcn or Radix. Motion values are authored in Rust in the SDK’s <code>theme/stylesheet/motion.rs</code>. <code>CommonStylesheet::sdk_default()</code> exposes the cached native stylesheet; <code>MotionDefaults::vanilla()</code> exposes its cached motion profiles. <code>MotionDefaults::default()</code> clones those profiles. Use <code>CommonStylesheet::motion_defaults()</code> to resolve application-authored settings, then supply a component profile through <code>motion_defaults(...)</code>.</p><div class="codebox"><div class="codebar"><span>SDK-only application · integration example</span><button class="copy" aria-label="Copy SDK-only application · integration example">Copy</button></div><pre><code class="language-rust">fn notifications&lt;M: &#x27;static&gt;(
     cx: &amp;mut gpui::Context&lt;M&gt;,
-) -&gt; Result&lt;gpui_luma::controls::switch::Switch, Box&lt;dyn std::error::Error&gt;&gt; {
-    use gpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
+) -&gt; Result&lt;xgpui_luma::controls::switch::Switch, Box&lt;dyn std::error::Error&gt;&gt; {
+    use xgpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
     // No look dependency is required: switch::new(&quot;id&quot;).spawn(cx) works as-is.
     let sheet = CommonStylesheet::parse(r#&quot;
 [common.motion.switch.state]
@@ -38,8 +38,8 @@ damping = 28.0
         .motion_defaults(sheet.motion_defaults().switch)
         .spawn(cx))
 }</code></pre></div></section>
-<section id="stylesheet"><h2>Configure roles in Rust</h2><p>Both looks inherit the native SDK baseline before applying their own common stylesheet. Clone the baseline and set only the roles you want to change. Nested presence roles expose independent enter and exit definitions.</p><div class="codebox"><div class="codebar"><span>Rust · shared motion roles</span><button class="copy" aria-label="Copy shared motion roles">Copy</button></div><pre><code class="language-rust">fn configured_motion() -&gt; gpui_luma::theme::MotionDefaults {
-    use gpui_luma::{motion::Easing, theme::stylesheet::{CommonStylesheet, TransitionSpec}};
+<section id="stylesheet"><h2>Configure roles in Rust</h2><p>Both looks inherit the native SDK baseline before applying their own common stylesheet. Clone the baseline and set only the roles you want to change. Nested presence roles expose independent enter and exit definitions.</p><div class="codebox"><div class="codebar"><span>Rust · shared motion roles</span><button class="copy" aria-label="Copy shared motion roles">Copy</button></div><pre><code class="language-rust">fn configured_motion() -&gt; xgpui_luma::theme::MotionDefaults {
+    use xgpui_luma::{motion::Easing, theme::stylesheet::{CommonStylesheet, TransitionSpec}};
     let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
         sheet.motion.switch.state = Some(TransitionSpec::Timed {
             duration_ms: 160,
@@ -56,8 +56,8 @@ damping = 28.0
 }</code></pre></div><p>Each authored transition replaces its complete role. Missing roles inherit. Timed definitions specify duration and easing; springs use positive finite stiffness and damping. Instant transitions and zero durations settle immediately. A zero loop period stops the phase. External TOML loading remains available through the same typed validation path.</p></section>
 <section id="configure"><h2>Set defaults and override a control</h2><div class="codebox"><div class="codebar"><span>Shadcn · integration example</span><button class="copy" aria-label="Copy Shadcn · integration example">Copy</button></div><pre><code class="language-rust">use std::time::Duration;
 use gpui::{Context, Entity};
-use gpui_luma::{controls::tabs::Tabs, motion::{Easing, Transition}};
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
+use xgpui_luma::{controls::tabs::Tabs, motion::{Easing, Transition}};
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
 
 fn settings&lt;M: &#x27;static&gt;(look: &amp;ShadcnLook, cx: &amp;mut Context&lt;M&gt;) -&gt; Entity&lt;Tabs&gt; {
     // Configure once when setting up the look, before creating controls.
@@ -76,14 +76,14 @@ fn settings&lt;M: &#x27;static&gt;(look: &amp;ShadcnLook, cx: &amp;mut Context&l
 <section id="resolution"><h2>Inheritance and lifetime</h2><ol><li>The SDK’s native Rust baseline provides every motion profile.</li><li>Authored <code>common.motion</code> roles override the SDK baseline.</li><li>Look-level <code>motion</code> edits apply in registration order.</li><li>The control snapshots the look profile at spawn.</li><li>Instance <code>.motion</code> edits run in registration order.</li><li><code>motion_enabled(false)</code> makes all roles immediate while retaining the authored profile.</li></ol><p>Assigning a role replaces its complete transition. Untouched roles inherit. The order of <code>.look(...)</code> and <code>.motion(...)</code> calls does not change precedence. <code>Transition::default()</code> explicitly means 200 ms cubic out; it does not mean “inherit.”</p><p>Existing controls retain their snapshot when the look changes; later controls receive the new defaults. Persistent ListBox controls capture defaults on first composition and reuse them. Look clones share edits; Radix forks and Shadcn independent copies isolate subsequent edits.</p></section>
 <section id="transitions"><h2>Choose a transition</h2><div class="codebox"><div class="codebar"><span>Transition constructors</span><button class="copy" aria-label="Copy Transition constructors">Copy</button></div><pre><code class="language-rust">fn transition_choices() {
     use std::time::Duration;
-    use gpui_luma::motion::{Easing, Transition};
+    use xgpui_luma::motion::{Easing, Transition};
     
     let timed = Transition::timed(Duration::from_millis(180), Easing::OutCubic);
     let spring = Transition::spring(300.0, 28.0); // stiffness, damping; unit mass
     let immediate = Transition::instant();
 }</code></pre></div><p>The SDK stylesheet’s <code>common.motion.transition</code> defines <code>Transition::default()</code> for standalone helpers. Control profiles use their explicit roles from the same file.</p><p>Built-in easing is <code>Linear</code> or <code>OutCubic</code>. Springs support under-, critically-, and over-damped motion. Stiffness and damping must be positive and finite; invalid parameters settle immediately.</p><p>On interruption, motion starts from the last displayed position. Springs also retain velocity. Timed transitions begin a new easing curve from that position. Position may overshoot; bounded paint properties such as opacity clamp their displayed values.</p><p>Closing content stays painted until its exit transition completes, including when a spring crosses zero before settling. Completion snaps to the exact target and stops frame requests.</p></section>
 <section id="policy"><h2>Disable motion or one role</h2><div class="codebox"><div class="codebar"><span>Control-wide policy and a role-specific override</span><button class="copy" aria-label="Copy Control-wide policy and a role-specific override">Copy</button></div><pre><code class="language-rust">fn motion_policy() {
-    use gpui_luma::{controls::tabs::Tabs, motion::Transition};
+    use xgpui_luma::{controls::tabs::Tabs, motion::Transition};
     
     let tabs = Tabs::new(&quot;settings&quot;).motion_enabled(false);
     let tabs_with_instant_disclosure = Tabs::new(&quot;files&quot;)

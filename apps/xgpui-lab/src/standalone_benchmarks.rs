@@ -4,11 +4,11 @@ mod field;
 mod dense;
 use anyhow::{Result, ensure};
 use gpui::{prelude::*, *};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use serde_json::{json, Value};
 use std::{
     path::{Path, PathBuf},
@@ -511,7 +511,7 @@ mod tests {
     #[::core::prelude::v1::test]
     fn luma_selectors_preserve_settings_across_benchmark_pages() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let count = cx.update(|_, cx| page.read(cx).count.clone());

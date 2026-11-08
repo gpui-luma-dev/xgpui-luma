@@ -17,7 +17,7 @@
 //!
 //! ```
 //! use gpui::rgb;
-//! use gpui_luma_plot::{
+//! use xgpui_luma_plot::{
 //!     Axis, AxisSide, AxisPresentation, CartesianChartBuilder, Dataset,
 //!     LineLayer, LinePresentation, NumericScale, Sample, Series,
 //! };
@@ -37,13 +37,13 @@
 //!         Axis::new(AxisSide::Right, axis).title("Value"),
 //!     ])
 //!     .build();
-//! # Ok::<(), gpui_luma_plot::DatasetError>(())
+//! # Ok::<(), xgpui_luma_plot::DatasetError>(())
 //! ```
 //!
 //! Category coordinates are zero-based indices; numeric ticks can be selected explicitly:
 //!
 //! ```
-//! use gpui_luma_plot::{CartesianChartBuilder, CategoryScale, Dataset, LineLayer, NumericScale, Sample, Series};
+//! use xgpui_luma_plot::{CartesianChartBuilder, CategoryScale, Dataset, LineLayer, NumericScale, Sample, Series};
 //! let data = Dataset::new().with_series(Series::new("temperature", "Temperature", [
 //!     Sample::new(0.0, 18.0), Sample::new(1.0, 21.0), Sample::new(2.0, 27.0),
 //! ]))?;
@@ -52,7 +52,7 @@
 //!     .y_scale(NumericScale::new().tick_values([18.0, 21.0, 24.0, 27.0]))
 //!     .line(LineLayer::new("temperature"))
 //!     .build();
-//! # Ok::<(), gpui_luma_plot::DatasetError>(())
+//! # Ok::<(), xgpui_luma_plot::DatasetError>(())
 //! ```
 
 pub mod data;

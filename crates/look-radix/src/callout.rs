@@ -1,7 +1,7 @@
 //! Soft informational callout built from the current Radix accent scale.
 
 use gpui::{Div, SharedString, div, prelude::*, px, svg};
-use gpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::button::ControlIcon;
 
 use crate::{Look, ScaleFamily};
 
@@ -26,12 +26,12 @@ pub fn callout(look: &Look, text: impl Into<SharedString>, icon: impl Into<Contr
         .child(div().text_size(px(geometry.font_size)).text_color(foreground).child(text.into()))
 }
 
-pub(crate) fn resolve_geometry(look: &Look) -> gpui_luma::theme::stylesheet::CalloutGeometry {
+pub(crate) fn resolve_geometry(look: &Look) -> xgpui_luma::theme::stylesheet::CalloutGeometry {
     let metrics = look.metrics();
-    let typography = gpui_luma::theme::ThemeTokens::default().typography.text.label;
+    let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
     look.common_stylesheet().callout.resolve_geometry(
         "",
-        gpui_luma::theme::stylesheet::CalloutGeometry {
+        xgpui_luma::theme::stylesheet::CalloutGeometry {
             padding: metrics.spacing.s4,
             gap: metrics.control.md.gap,
             icon_size: metrics.control.md.icon_size,
@@ -41,8 +41,8 @@ pub(crate) fn resolve_geometry(look: &Look) -> gpui_luma::theme::stylesheet::Cal
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_callout_stylesheet() -> gpui_luma::theme::stylesheet::CalloutStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_callout_stylesheet() -> xgpui_luma::theme::stylesheet::CalloutStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     CalloutStylesheet {
         geometry: CalloutGeometryStylesheet {
             padding: Some(12.0),

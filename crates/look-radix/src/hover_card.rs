@@ -4,10 +4,10 @@ use gpui::{
     AnyElement, App, Context, Entity, EventEmitter, IntoElement, Render, SharedString, Subscription, Task, Window, div,
     prelude::*, px,
 };
-use gpui_luma::controls::button::{Button, ButtonEvent};
-use gpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy};
-use gpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode};
-use gpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::controls::button::{Button, ButtonEvent};
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy};
+use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode};
+use xgpui_luma::theme::{ControlSize, ThemeMode};
 use crate::{Look, ScaleFamily};
 use crate::look::resolve_look;
 
@@ -38,9 +38,9 @@ type HoverCardContent = Arc<dyn Fn(&mut Window, &mut App) -> AnyElement>;
 
 /// Look-owned builder for an interactive card attached to an SDK button.
 pub struct HoverCardBuilder {
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::popover_button::PopoverMotion>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::popover_button::PopoverMotion>,
     motion_enabled: bool,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<HoverCardEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<HoverCardEvent>,
     id: SharedString,
     trigger: Entity<Button>,
     look: Option<Look>,
@@ -94,7 +94,7 @@ impl HoverCard {
     }
 }
 impl HoverCardBuilder {
-    gpui_luma::forward_motion!(gpui_luma::controls::popover_button::PopoverMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::popover_button::PopoverMotion, edits motion);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = enabled;
         self
@@ -251,7 +251,7 @@ impl HoverCardEventExt for Entity<HoverCard> {
         cx: &mut Context<M>,
         callback: impl Fn(&mut M, &HoverCardEvent, &mut Context<M>) + 'static,
     ) -> Self {
-        gpui_luma::infra::callbacks::EventCallbacks::default().on_event(cx, callback).bind(&self, cx);
+        xgpui_luma::infra::callbacks::EventCallbacks::default().on_event(cx, callback).bind(&self, cx);
         self
     }
 }

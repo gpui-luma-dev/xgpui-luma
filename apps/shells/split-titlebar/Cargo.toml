@@ -8,10 +8,10 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 gpui = { workspace = true }
-gpui-luma.workspace = true
+xgpui-luma.workspace = true
 lucide-svg-static.workspace = true
 gpui_platform = { workspace = true }
-gpui-luma-look-shadcn.workspace = true
+xgpui-luma-look-shadcn.workspace = true
 luma-shell-common = { path = "../common" }
 
 [target.'cfg(target_os = "macos")'.dependencies]

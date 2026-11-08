@@ -1,10 +1,10 @@
 use gpui::FontWeight;
-use gpui_luma::controls::button_family::ButtonFamilyLook;
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::pager::PagerLook;
-use gpui_luma::controls::pager::PagerStyle;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::button_family::ButtonFamilyLook;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::pager::PagerLook;
+use xgpui_luma::controls::pager::PagerStyle;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionState;
 
 use crate::look::ShadcnLook;
 
@@ -14,7 +14,7 @@ pub fn pager_look(theme: &ShadcnLook, enabled: bool, style: PagerStyle) -> Pager
     let metrics = &tokens.metrics;
     let typography = theme.typography_scale(crate::ShadcnTextSize::Xs);
     let key = style.stylesheet_key();
-    let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry(key);
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry(key);
     let recipe = tokens.stylesheet().common.pager.authored_geometry(key).with_fallback(&baseline);
 
     let mut look = PagerLook {
@@ -60,7 +60,7 @@ pub fn pager_look(theme: &ShadcnLook, enabled: bool, style: PagerStyle) -> Pager
     };
     let geometry = tokens.stylesheet().common.pager.inspect_geometry(
         key,
-        gpui_luma::theme::stylesheet::PagerGeometry {
+        xgpui_luma::theme::stylesheet::PagerGeometry {
             button_size: look.button_size,
             button_min_width: look.button_min_width,
             control_height: look.control_height,
@@ -123,8 +123,8 @@ pub fn pager_button_look(
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_pager_stylesheet() -> gpui_luma::theme::stylesheet::PagerStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_pager_stylesheet() -> xgpui_luma::theme::stylesheet::PagerStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     PagerStylesheet {
         geometry: PagerGeometryStylesheet {
             padding_x: Some(8.0),
@@ -132,7 +132,7 @@ pub(crate) fn native_pager_stylesheet() -> gpui_luma::theme::stylesheet::PagerSt
             gap: Some(4.0),
             ..Default::default()
         },
-        sizes: gpui_luma::theme::ControlSizes::from([
+        sizes: xgpui_luma::theme::ControlSizes::from([
             (
                 "minimal".into(),
                 PagerGeometryStylesheet {
@@ -170,19 +170,19 @@ pub struct PagerMetricTable {
 
 pub fn resolve_pager_metrics(
     look: &crate::ShadcnLook,
-    style: gpui_luma::controls::pager::PagerStyle,
+    style: xgpui_luma::controls::pager::PagerStyle,
 ) -> PagerMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
     let pager = crate::paint::pager_look(look, true, style);
     let style_label = pager_style_label(style);
     let button = look.resolve_outline_button(
-        gpui_luma::controls::button_family::ButtonFamilyRole::Toggle { selected: false },
-        gpui_luma::theme::ControlSize::Sm,
-        gpui_luma::theme::InteractionState::default(),
+        xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { selected: false },
+        xgpui_luma::theme::ControlSize::Sm,
+        xgpui_luma::theme::InteractionState::default(),
     );
     let reserved_shadow_extent =
-        gpui_luma::infra::shadow_layout::shadow_projection_extent(button.shadow.as_deref(), 1.0, true);
+        xgpui_luma::infra::shadow_layout::shadow_projection_extent(button.shadow.as_deref(), 1.0, true);
 
     let mut table = PagerMetricTable {
         control_height: derived_metric(format!("{style_label} page-size trigger height"), pager.control_height),
@@ -201,7 +201,7 @@ pub fn resolve_pager_metrics(
     };
     let geometry = look.mode_tokens().stylesheet().common.pager.inspect_geometry(
         style_label,
-        gpui_luma::theme::stylesheet::PagerGeometry {
+        xgpui_luma::theme::stylesheet::PagerGeometry {
             control_height: table.control_height.value_px,
             button_size: table.button_size.value_px,
             button_min_width: table.button_min_width.value_px,
@@ -242,10 +242,10 @@ fn pager_font_family(look: &crate::ShadcnLook) -> crate::ResolvedTypography {
     }
 }
 
-fn pager_style_label(style: gpui_luma::controls::pager::PagerStyle) -> &'static str {
+fn pager_style_label(style: xgpui_luma::controls::pager::PagerStyle) -> &'static str {
     match style {
-        gpui_luma::controls::pager::PagerStyle::Minimal => "minimal",
-        gpui_luma::controls::pager::PagerStyle::MinimalEdge => "minimal-edge",
-        gpui_luma::controls::pager::PagerStyle::Numeric => "numeric",
+        xgpui_luma::controls::pager::PagerStyle::Minimal => "minimal",
+        xgpui_luma::controls::pager::PagerStyle::MinimalEdge => "minimal-edge",
+        xgpui_luma::controls::pager::PagerStyle::Numeric => "numeric",
     }
 }

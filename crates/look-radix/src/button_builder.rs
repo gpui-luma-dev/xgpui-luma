@@ -1,11 +1,11 @@
-//! Look-owned button builder. Spawn synthesizes the SDK [`gpui_luma::controls::button::Button`].
+//! Look-owned button builder. Spawn synthesizes the SDK [`xgpui_luma::controls::button::Button`].
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::button::{
+use xgpui_luma::controls::button::{
     ButtonCallbacks, ButtonEvent, ButtonBuilder, ButtonContentContext, ButtonRenderModel, ButtonTemplateModifier,
     ControlIcon, ControlPresenter, HasPresenter,
 };
-use gpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
 use crate::button::{Paint, ButtonVariant, button_look_for, button_template};
 use crate::button_layout::{ButtonSize, Radius};
@@ -267,12 +267,12 @@ impl<D: Clone + 'static> Button<D> {
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::button::Button<D>> {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::button::Button<D>> {
         let look = self.resolve_look(cx);
         let theme = crate::tooltip::tooltip_theme(&look);
         let entity = self.into_sdk_builder(look).spawn(cx);
         entity.update(cx, |control, _| {
-            gpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
+            xgpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
         });
         entity
     }
@@ -281,7 +281,7 @@ impl<D: Clone + 'static> Button<D> {
         resolve_look(self.look.as_ref(), cx.try_global::<Look>())
     }
 
-    fn look_source(&self, look: &Look) -> gpui_luma::controls::button::ButtonLookSource<D> {
+    fn look_source(&self, look: &Look) -> xgpui_luma::controls::button::ButtonLookSource<D> {
         let geometry = button_look_for(look, self.variant, self.paint, self.size, self.radius);
         let icon_size = self.icon_size;
         std::sync::Arc::new(move |model| {
@@ -296,7 +296,7 @@ impl<D: Clone + 'static> Button<D> {
     fn into_sdk_builder(self, look: Look) -> ButtonBuilder<D> {
         let template = button_template(&look, self.variant, self.paint);
         let geometry = self.look_source(&look);
-        let mut builder = gpui_luma::controls::button::Button::new(self.id)
+        let mut builder = xgpui_luma::controls::button::Button::new(self.id)
             .typed(self.data)
             .with_callbacks(self.callbacks)
             .template(template)
@@ -332,8 +332,8 @@ mod tests {
     use super::*;
     use crate::button_layout::button_box_for;
     use crate::look::resolve_look;
-    use gpui_luma::controls::button::HasPresenter;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::theme::ControlSize;
 
     fn primary(look: &Look) -> gpui::Hsla {
         look.resolve_role(crate::semantic::SemanticRole::Primary).hsla()
@@ -349,12 +349,12 @@ mod tests {
             .role(ButtonFamilyRole::Icon)
             .icon_size(20.0)
             .typed(());
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for focused in [false, true] {
                 let model = ButtonRenderModel::<()> {
                     role: ButtonFamilyRole::Icon,
-                    state: gpui_luma::theme::InteractionState { focused, ..Default::default() },
+                    state: xgpui_luma::theme::InteractionState { focused, ..Default::default() },
                     ..Default::default()
                 };
                 let resolved = button.look_source(&look)(&model);
@@ -376,7 +376,7 @@ mod tests {
     fn explicit_look_wins_over_ambient() {
         let ambient = Look::built_in();
         let fork = ambient.fork();
-        fork.set_accent_seed(gpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.05, 0.9, 0.5, 1.0)))
+        fork.set_accent_seed(xgpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.05, 0.9, 0.5, 1.0)))
             .unwrap();
         let resolved = resolve_look(Some(&fork), Some(&ambient));
         assert_eq!(primary(&resolved), primary(&fork));
@@ -387,7 +387,7 @@ mod tests {
     fn ambient_is_used_when_look_is_omitted() {
         let ambient = Look::built_in().fork();
         ambient
-            .set_accent_seed(gpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.12, 0.8, 0.4, 1.0)))
+            .set_accent_seed(xgpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.12, 0.8, 0.4, 1.0)))
             .unwrap();
         let resolved = resolve_look(None, Some(&ambient));
         assert_eq!(primary(&resolved), primary(&ambient));
@@ -466,7 +466,7 @@ mod callback_tests {
     use super::*;
     use gpui::{AppContext, TestAppContext};
     struct Owner {
-        button: Entity<gpui_luma::controls::button::Button<u32>>,
+        button: Entity<xgpui_luma::controls::button::Button<u32>>,
         log: Vec<String>,
     }
 

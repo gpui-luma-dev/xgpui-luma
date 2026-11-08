@@ -65,9 +65,9 @@
 <section id="drop-motion"><h2>Motion after a drop</h2>
 <p>Changed drops animate mounted items from their previous keyed positions to the committed layout. The shared SDK <code>DropLayoutMotion</code> uses <code>VisualTransition</code> with 200 ms cubic ease-out by default. Data, selection and lifecycle callbacks commit immediately; animation does not delay <code>Dropped</code> or <code>DragEnded</code>. Valid no-ops, rejected drops and cancellations do not start motion.</p>
 <p>Configure <code>[common.motion.&lt;control&gt;.drop_layout]</code> in the look stylesheet or edit the role with <code>.motion(...)</code>. Untouched roles inherit the look defaults. <code>Transition::instant()</code> disables one role; <code>motion_enabled(false)</code> disables all roles. GPUI reduced motion also settles immediately. Inspect authored transitions through <code>motion_profile()</code>.</p>
-<div class="codebox"><div class="codebar"><span>SDK · drop motion</span><button class="copy" aria-label="Copy drop motion example">Copy</button></div><pre><code class="language-rust">use gpui_luma::{controls::tabs::Tabs, motion::Transition};
+<div class="codebox"><div class="codebar"><span>SDK · drop motion</span><button class="copy" aria-label="Copy drop motion example">Copy</button></div><pre><code class="language-rust">use xgpui_luma::{controls::tabs::Tabs, motion::Transition};
 
-fn settings_tabs() -&gt; gpui_luma::controls::tabs::TabsBuilder {
+fn settings_tabs() -&gt; xgpui_luma::controls::tabs::TabsBuilder {
     Tabs::new("settings")
         .motion(|m| m.drop_layout = Transition::spring(300.0, 28.0))
 }</code></pre></div>
@@ -90,7 +90,7 @@ fn settings_tabs() -&gt; gpui_luma::controls::tabs::TabsBuilder {
 <p>Accordion, Sidebar and Tabs do not emit unsupported removal/addition phases. The inventory distinguishes collection transactions from existing scalar and geometry drags; adding support to another control is separate work.</p>
 </section>
 <section id="source"><h2>Source</h2>
-<p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/infra/drag_drop/mod.rs">Shared keyed lifecycle</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/collection/listbox/drag.rs">ListBox integration</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/collection/tree_view/drag.rs">Tree projection</a></p>
+<p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/infra/drag_drop/mod.rs">Shared keyed lifecycle</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/collection/listbox/drag.rs">ListBox integration</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/collection/tree_view/drag.rs">Tree projection</a></p>
 </section><footer data-site-footer></footer>
 </main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#setup">Choose a control</a><a href="#proposals">Proposals &amp; completion</a><a href="#callbacks">Callbacks &amp; ownership</a><a href="#lifecycle">Lifecycle &amp; payloads</a><a href="#scopes">Scopes &amp; validation</a><a href="#drop-motion">Drop motion</a><a href="#coverage">Coverage</a><a href="#source">Source</a></nav>

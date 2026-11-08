@@ -1,6 +1,6 @@
 //! Owner-bound callbacks for color fields.
 use gpui::{Context, Entity};
-use gpui_luma::infra::callbacks::EventCallbacks;
+use xgpui_luma::infra::callbacks::EventCallbacks;
 
 use super::{ColorFieldEvent, ColorFieldState};
 use crate::color_slider::color_spec::Hsv;

@@ -13,11 +13,11 @@ pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{prelude::*, *};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_shader::{ControlPoint, Gradient, GradientStop, MeshGradient, MeshGrid};
 use xgpui_shader::instanced::{ShaderProgram, presets::*};
 use crate::theme::ColorVizLookExt;
@@ -641,12 +641,12 @@ impl ShaderPage {
 mod tests {
     use super::{ShaderPage, Action, Parameter};
     use gpui::TestAppContext;
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
 
     #[test]
     fn stop_selector_tracks_edits_and_retains_each_gradient_selection() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| ShaderPage::new(crate::theme::default_look(), cx));
         let choose = |action, index, cx: &mut gpui::VisualTestContext| {
             let choice =
@@ -679,7 +679,7 @@ mod tests {
     #[test]
     fn shader_tabs_render_and_luma_controls_edit_retained_lab_state() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app.add_window_view(|_, cx| ShaderPage::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         cx.update(|_, cx| assert!(page.read(cx).programs.is_ok(), "lab WGSL must validate"));

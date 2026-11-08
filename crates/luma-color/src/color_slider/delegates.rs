@@ -1,4 +1,4 @@
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge::SrgbRenderCache};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge::SrgbRenderCache};
 use gpui::*;
 
 use super::color_spec::{self, ColorChannel, ColorSpecification};
@@ -781,8 +781,8 @@ mod tests {
     fn gradient_delegate_uses_explicit_stop_positions_for_sampling() {
         let delegate = GradientDelegate::new(
             vec![
-                GradientStop { position: 0.2, color: gpui_luma::color::gpui_bridge::from_hsla(black()) },
-                GradientStop { position: 0.8, color: gpui_luma::color::gpui_bridge::from_hsla(white()) },
+                GradientStop { position: 0.2, color: xgpui_luma::color::gpui_bridge::from_hsla(black()) },
+                GradientStop { position: 0.8, color: xgpui_luma::color::gpui_bridge::from_hsla(white()) },
             ],
             GamutMapping::CssLocalMinde,
         )
@@ -800,7 +800,7 @@ mod tests {
     #[::core::prelude::v1::test]
     fn gradient_delegate_from_colors_evenly_spaces_stops() {
         let delegate = GradientDelegate::from_colors(
-            vec![black(), white(), black()].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![black(), white(), black()].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .unwrap();
 
@@ -903,7 +903,7 @@ mod gradient_source_tests {
             !mapped
                 .source_at_position(0.5, ColorInterpolation::Rgb)
                 .unwrap()
-                .is_in_gamut(gpui_luma::color::Gamut::Srgb)
+                .is_in_gamut(xgpui_luma::color::Gamut::Srgb)
                 .unwrap()
         );
     }

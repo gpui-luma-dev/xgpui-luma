@@ -1,7 +1,7 @@
 //! Radix ownership, state precedence, and shared geometry contracts.
 use super::*;
-use gpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::controls::{button_family::ButtonFamilyRole, pager::PagerStyle};
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
 
 #[test]
 fn group_rows_reuse_radix_button_colors_across_modes_palettes_sizes_and_states() {

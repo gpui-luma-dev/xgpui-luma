@@ -1,8 +1,8 @@
 //! Selection panel — same popover list surface as selector items panel.
 
-use gpui_luma::controls::selection_panel::SelectionPanelLook;
-use gpui_luma::controls::selector_list::SelectorItemsPanelLook;
-use gpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::controls::selection_panel::SelectionPanelLook;
+use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
+use xgpui_luma::theme::{ControlSize, ThemeMode};
 
 use super::selector_items_panel::selector_items_panel_look;
 use crate::mode::ShadcnModeTokens;

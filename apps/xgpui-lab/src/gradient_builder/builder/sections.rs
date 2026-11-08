@@ -3,14 +3,14 @@ use super::view::{INSPECTOR_WIDTH, compact_slider_row, render_mesh_background_ro
 
 use crate::theme::{ColorVizLookExt, TypographyExt};
 use gpui::{IntoElement, MouseButton, Window, div, prelude::*};
-use gpui_luma::{form_field};
+use xgpui_luma::{form_field};
 use super::mesh::render_info_row;
-use gpui_luma::infra::StyledExt;
-use gpui_luma::controls::accordion::{
+use xgpui_luma::infra::StyledExt;
+use xgpui_luma::controls::accordion::{
     AccordionBuilder, AccordionContent, AccordionEvent, AccordionItem, AccordionTrigger, AccordionTheme,
     AccordionPalette, AccordionContentPalette, AccordionScale, ThemedAccordionTemplate,
 };
-use gpui_luma::theme::{InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const SECTION_SPACING: f32 = 8.0;

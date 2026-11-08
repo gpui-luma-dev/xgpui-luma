@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::textfield::{TextFieldState, TextFieldTheme, ThemedTextFieldTemplate};
-use gpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::controls::textfield::{TextFieldState, TextFieldTheme, ThemedTextFieldTemplate};
+use xgpui_luma::theme::{ControlSize, StandardBoxScale};
 
 use crate::look::ShadcnLook;
 
@@ -10,7 +10,7 @@ struct ShadcnTextFieldTheme {
 }
 
 impl TextFieldTheme for ShadcnTextFieldTheme {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> gpui_luma::controls::textfield::TextFieldPalette {
+    fn resolve(&self, state: TextFieldState, enabled: bool) -> xgpui_luma::controls::textfield::TextFieldPalette {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_palette(
             tokens.as_ref(),
@@ -21,7 +21,7 @@ impl TextFieldTheme for ShadcnTextFieldTheme {
         )
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 
@@ -31,7 +31,7 @@ impl TextFieldTheme for ShadcnTextFieldTheme {
         enabled: bool,
         size: ControlSize,
         scale: &StandardBoxScale,
-    ) -> gpui_luma::controls::textfield::TextFieldLook {
+    ) -> xgpui_luma::controls::textfield::TextFieldLook {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -45,7 +45,7 @@ impl TextFieldTheme for ShadcnTextFieldTheme {
     }
 }
 
-pub fn textfield_template(theme: ShadcnLook) -> Arc<dyn gpui_luma::controls::textfield::TextFieldTemplate> {
+pub fn textfield_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::textfield::TextFieldTemplate> {
     Arc::new(ThemedTextFieldTemplate::new(Arc::new(ShadcnTextFieldTheme { theme: theme.clone() })))
 }
 
@@ -58,7 +58,7 @@ struct ShadcnInputTextFieldTheme {
 }
 
 impl TextFieldTheme for ShadcnInputTextFieldTheme {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> gpui_luma::controls::textfield::TextFieldPalette {
+    fn resolve(&self, state: TextFieldState, enabled: bool) -> xgpui_luma::controls::textfield::TextFieldPalette {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_palette(
             tokens.as_ref(),
@@ -69,7 +69,7 @@ impl TextFieldTheme for ShadcnInputTextFieldTheme {
         )
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 
@@ -79,7 +79,7 @@ impl TextFieldTheme for ShadcnInputTextFieldTheme {
         enabled: bool,
         size: ControlSize,
         scale: &StandardBoxScale,
-    ) -> gpui_luma::controls::textfield::TextFieldLook {
+    ) -> xgpui_luma::controls::textfield::TextFieldLook {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -97,7 +97,7 @@ pub fn input_textfield_theme(theme: ShadcnLook) -> Arc<dyn TextFieldTheme> {
     Arc::new(ShadcnInputTextFieldTheme { theme: theme.clone() })
 }
 
-pub fn input_textfield_template(theme: ShadcnLook) -> Arc<dyn gpui_luma::controls::textfield::TextFieldTemplate> {
+pub fn input_textfield_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::textfield::TextFieldTemplate> {
     Arc::new(ThemedTextFieldTemplate::new(Arc::new(ShadcnInputTextFieldTheme { theme: theme.clone() })))
 }
 
@@ -106,7 +106,7 @@ struct ShadcnSurfaceTextFieldTheme {
 }
 
 impl TextFieldTheme for ShadcnSurfaceTextFieldTheme {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> gpui_luma::controls::textfield::TextFieldPalette {
+    fn resolve(&self, state: TextFieldState, enabled: bool) -> xgpui_luma::controls::textfield::TextFieldPalette {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_palette(
             tokens.as_ref(),
@@ -117,7 +117,7 @@ impl TextFieldTheme for ShadcnSurfaceTextFieldTheme {
         )
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 
@@ -127,7 +127,7 @@ impl TextFieldTheme for ShadcnSurfaceTextFieldTheme {
         enabled: bool,
         size: ControlSize,
         scale: &StandardBoxScale,
-    ) -> gpui_luma::controls::textfield::TextFieldLook {
+    ) -> xgpui_luma::controls::textfield::TextFieldLook {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -150,7 +150,7 @@ struct ShadcnPrimaryTextFieldTheme {
 }
 
 impl TextFieldTheme for ShadcnPrimaryTextFieldTheme {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> gpui_luma::controls::textfield::TextFieldPalette {
+    fn resolve(&self, state: TextFieldState, enabled: bool) -> xgpui_luma::controls::textfield::TextFieldPalette {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_palette(
             tokens.as_ref(),
@@ -161,7 +161,7 @@ impl TextFieldTheme for ShadcnPrimaryTextFieldTheme {
         )
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 
@@ -171,7 +171,7 @@ impl TextFieldTheme for ShadcnPrimaryTextFieldTheme {
         enabled: bool,
         size: ControlSize,
         scale: &StandardBoxScale,
-    ) -> gpui_luma::controls::textfield::TextFieldLook {
+    ) -> xgpui_luma::controls::textfield::TextFieldLook {
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -189,6 +189,6 @@ pub fn primary_textfield_theme(theme: ShadcnLook) -> Arc<dyn TextFieldTheme> {
     Arc::new(ShadcnPrimaryTextFieldTheme { theme: theme.clone() })
 }
 
-pub fn primary_textfield_template(theme: ShadcnLook) -> Arc<dyn gpui_luma::controls::textfield::TextFieldTemplate> {
+pub fn primary_textfield_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::textfield::TextFieldTemplate> {
     Arc::new(ThemedTextFieldTemplate::new(Arc::new(ShadcnPrimaryTextFieldTheme { theme: theme.clone() })))
 }

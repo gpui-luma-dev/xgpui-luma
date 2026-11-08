@@ -79,7 +79,7 @@ impl CartesianChartBuilder {
 
     /// Add a filled area; interpolation and decimation reuse the line boundary rules.
     /// ```
-    /// use gpui_luma_plot::{AreaLayer, CartesianChartBuilder, Dataset, Interpolation};
+    /// use xgpui_luma_plot::{AreaLayer, CartesianChartBuilder, Dataset, Interpolation};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .area(AreaLayer::new("level").baseline(0.0).interpolation(Interpolation::Monotone))
     ///     .build();
@@ -98,7 +98,7 @@ impl CartesianChartBuilder {
 
     /// Set the shared grouping, width, gap, and category alignment.
     /// ```
-    /// use gpui_luma_plot::{BarAlignment, BarGrouping, BarLayout, BarOrientation,
+    /// use xgpui_luma_plot::{BarAlignment, BarGrouping, BarLayout, BarOrientation,
     ///     BarLayer, CartesianChartBuilder, CategoryScale, Dataset, Sample, Series};
     /// let data = Dataset::new()
     ///     .with_series(Series::new("sales", "Sales", [Sample::new(0.0, 12.0)]))?;
@@ -109,7 +109,7 @@ impl CartesianChartBuilder {
     ///     .bar_orientation(BarOrientation::Right)
     ///     .bar(BarLayer::new("sales"))
     ///     .build();
-    /// # Ok::<(), gpui_luma_plot::DatasetError>(())
+    /// # Ok::<(), xgpui_luma_plot::DatasetError>(())
     /// ```
     pub fn bar_layout(mut self, layout: BarLayout) -> Self {
         self.plot = self.plot.bar_layout(layout);
@@ -124,7 +124,7 @@ impl CartesianChartBuilder {
     /// Supply a GPUI element template for each resolved bar segment.
     /// ```
     /// use gpui::{div, prelude::*};
-    /// use gpui_luma_plot::{BarRenderModel, CartesianChartBuilder, Dataset};
+    /// use xgpui_luma_plot::{BarRenderModel, CartesianChartBuilder, Dataset};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .bar_template(|bar: &BarRenderModel, _: &mut gpui::Window, _: &mut gpui::App| {
     ///         div().w(bar.bounds.size.width).h(bar.bounds.size.height)
@@ -141,7 +141,7 @@ impl CartesianChartBuilder {
     /// Inside labels that do not fit are omitted. Outside labels stay within the
     /// chart canvas; reserve endpoint room with the value domain when needed.
     /// ```
-    /// use gpui_luma_plot::{BarLabel, BarLabelPlacement, CartesianChartBuilder, Dataset, TextPresentation};
+    /// use xgpui_luma_plot::{BarLabel, BarLabelPlacement, CartesianChartBuilder, Dataset, TextPresentation};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .bar_labels(|bar| vec![
     ///         BarLabel::new(format!("Item {}", bar.sample_index + 1), TextPresentation::new(gpui::black()))
@@ -162,15 +162,15 @@ impl CartesianChartBuilder {
     /// Uses `tooltip_motion` for the anchor transition. Takes precedence over
     /// point tooltips when both are configured.
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset};
-    /// use gpui_luma::controls::tooltip::Tooltip;
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset};
+    /// use xgpui_luma::controls::tooltip::Tooltip;
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .bar_tooltip(|bar| Tooltip::new(format!("{}: {}", bar.label, bar.sample.y)))
     ///     .tooltip_motion(std::time::Duration::from_millis(250)).build();
     /// ```
     pub fn bar_tooltip(
         mut self,
-        tooltip: impl Fn(&PlotPoint) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&PlotPoint) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.bar_options.tooltip = Some(PointTooltipFactory::Point(std::sync::Arc::new(tooltip)));
         self
@@ -237,7 +237,7 @@ impl CartesianChartBuilder {
     /// Bind a static style or a provider resolved on every render. Replaces the
     /// previous source and its overrides; apply local customization afterward.
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset, CartesianStyle};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset, CartesianStyle};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .style(CartesianStyle::default())
     ///     .style_override(|style| style.line.stroke.width = gpui::px(3.0))
@@ -258,7 +258,7 @@ impl CartesianChartBuilder {
     /// Override a series' appearance without adding a drawing layer or changing data.
     /// Line/area values override just that component; `SeriesStyle` can supply both.
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset, LineLayer, CartesianStyle, SeriesStyle};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset, LineLayer, CartesianStyle, SeriesStyle};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .style(CartesianStyle::default())
     ///     .series_style("desktop", SeriesStyle::new(gpui::rgb(0x2563eb).into()))
@@ -285,7 +285,7 @@ impl CartesianChartBuilder {
     /// restore full drawing. The host owns timing and replay state.
     ///
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset};
     /// let chart = CartesianChartBuilder::new(Dataset::new()).draw_progress(0.5).build();
     /// ```
     pub fn draw_progress(mut self, progress: f32) -> Self {
@@ -304,15 +304,15 @@ impl CartesianChartBuilder {
     /// activate a tooltip. SDK timing and dismissal remain intact.
     ///
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset};
-    /// use gpui_luma::controls::tooltip::Tooltip;
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset};
+    /// use xgpui_luma::controls::tooltip::Tooltip;
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .point_tooltip(|point| Tooltip::new(format!("{}: {}", point.label, point.sample.y)))
     ///     .build();
     /// ```
     pub fn point_tooltip(
         mut self,
-        tooltip: impl Fn(&PlotPoint) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&PlotPoint) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.point_tooltip = Some(PointTooltipFactory::Point(std::sync::Arc::new(tooltip)));
         self
@@ -321,15 +321,15 @@ impl CartesianChartBuilder {
     /// One SDK tooltip for a shared X slice. Replaces `point_tooltip`; point
     /// proximity mode supplies a single observation through the same callback.
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset};
-    /// use gpui_luma::controls::tooltip::Tooltip;
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset};
+    /// use xgpui_luma::controls::tooltip::Tooltip;
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .slice_tooltip(|slice| Tooltip::new(format!("{}: {} series", slice.coordinate, slice.points.len())))
     ///     .build();
     /// ```
     pub fn slice_tooltip(
         mut self,
-        tooltip: impl Fn(&PlotSlice) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&PlotSlice) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.point_tooltip = Some(PointTooltipFactory::Slice(std::sync::Arc::new(tooltip)));
         self
@@ -343,7 +343,7 @@ impl CartesianChartBuilder {
     /// Use a zero SDK tooltip delay to make the hover-entry slide visible.
     /// ```
     /// use std::time::Duration;
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .tooltip_motion(Duration::from_millis(250)).build();
     /// ```
@@ -359,7 +359,7 @@ impl CartesianChartBuilder {
     /// work without tooltips. Hover callbacks run after rendering, so hosts may
     /// update their UI directly. Click picks do not retain a selection in the plot.
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset, PlotPointEvent};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset, PlotPointEvent};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .on_point_event(|event, _cx| {
     ///         if let PlotPointEvent::Select { points } = event {

@@ -1,4 +1,4 @@
-use gpui_luma::theme::{ControlSize, InteractionLayer};
+use xgpui_luma::theme::{ControlSize, InteractionLayer};
 use serde::Deserialize;
 
 use super::selector::interaction_layer_key;
@@ -37,7 +37,7 @@ pub use crate::controls::autocomplete::{AutocompleteStylesheet, AutocompleteChro
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
 pub struct StylesheetConfig {
     #[serde(default)]
-    pub common: gpui_luma::theme::stylesheet::CommonStylesheet,
+    pub common: xgpui_luma::theme::stylesheet::CommonStylesheet,
     #[serde(default)]
     pub typography: TypographyStylesheet,
     #[serde(default)]
@@ -124,7 +124,7 @@ impl StylesheetConfig {
     /// Applications own file access and any limits required for untrusted input.
     pub fn parse(source: &str) -> anyhow::Result<Self> {
         let mut stylesheet: Self = toml::from_str(source).map_err(|err| anyhow::anyhow!("parse stylesheet: {err}"))?;
-        stylesheet.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[source])?;
+        stylesheet.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[source])?;
         Ok(stylesheet)
     }
 }

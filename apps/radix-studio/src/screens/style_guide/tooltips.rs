@@ -1,6 +1,6 @@
 use gpui::{IntoElement, div, prelude::*, px};
-use gpui_luma::controls::tooltip::{TooltipRenderModel, bubble};
-use gpui_luma_look_radix::{self as radix, Look, SemanticRole};
+use xgpui_luma::controls::tooltip::{TooltipRenderModel, bubble};
+use xgpui_luma_look_radix::{self as radix, Look, SemanticRole};
 
 const SAMPLES: [(&str, &str, Option<&str>); 3] = [
     ("Basic help", "Create a new item", None),

@@ -1,15 +1,15 @@
 use std::sync::Arc;
-use gpui_luma::prelude::HasPresenter;
+use xgpui_luma::prelude::HasPresenter;
 
 use gpui::{Context, Entity, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{
         button::Button,
         tooltip::{Tooltip, TooltipRenderModel, bubble},
     },
     infra::attachments::TooltipEntityExt,
 };
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
 use crate::studio::style::shared::shell::section_shell_with_width;
 
 const SAMPLES: [(&str, &str, Option<&str>); 3] = [

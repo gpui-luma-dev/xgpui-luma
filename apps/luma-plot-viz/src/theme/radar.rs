@@ -1,5 +1,5 @@
 use crate::theme::AppTheme;
-use gpui_luma_plot::RadarPresentation;
+use xgpui_luma_plot::RadarPresentation;
 use crate::theme;
 
 pub(crate) fn style(look: &AppTheme) -> RadarPresentation {

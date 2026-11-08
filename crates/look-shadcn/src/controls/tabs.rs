@@ -14,11 +14,11 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use gpui_luma::controls::tabs::TabsItemLook;
-use gpui_luma::controls::tabs::TabsListLook;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::tabs::TabsItemLook;
+use xgpui_luma::controls::tabs::TabsListLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -172,7 +172,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -388,8 +388,8 @@ pub struct TabsItemColorRule {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_tabs_stylesheet() -> gpui_luma::theme::stylesheet::TabsStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_tabs_stylesheet() -> xgpui_luma::theme::stylesheet::TabsStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     TabsStylesheet {
         geometry: TabsGeometryStylesheet { indicator_height: Some(3.0), ..Default::default() },
         ..Default::default()
@@ -410,13 +410,13 @@ pub struct TabsMetricTable {
 pub(crate) fn resolve_common_tabs_geometry(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: gpui_luma::theme::ControlSize,
-) -> gpui_luma::theme::stylesheet::ResolvedTabsGeometry {
-    use gpui_luma::theme::stylesheet::ResolvedTabsGeometry;
+    size: xgpui_luma::theme::ControlSize,
+) -> xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
+    use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
     use crate::tables::metrics::helpers::spacing_control_metric;
-    let defaults = gpui_luma::controls::tabs::default_tabs_theme();
+    let defaults = xgpui_luma::controls::tabs::default_tabs_theme();
     let default_list = defaults.resolve_list(true, size);
-    let default_item = defaults.resolve_item(true, gpui_luma::theme::InteractionState::default(), size);
+    let default_item = defaults.resolve_item(true, xgpui_luma::theme::InteractionState::default(), size);
     stylesheet.common.tabs.inspect_geometry(
         "default",
         ResolvedTabsGeometry {
@@ -429,25 +429,25 @@ pub(crate) fn resolve_common_tabs_geometry(
                 );
                 let source = match value.source {
                     crate::MetricSource::Derived { note } => {
-                        gpui_luma::theme::provenance::MetricSource::Derived { note }
+                        xgpui_luma::theme::provenance::MetricSource::Derived { note }
                     }
                     crate::MetricSource::Scaffold { path } => {
-                        gpui_luma::theme::provenance::MetricSource::Scaffold { path }
+                        xgpui_luma::theme::provenance::MetricSource::Scaffold { path }
                     }
                     crate::MetricSource::CssVar { token } => {
-                        gpui_luma::theme::provenance::MetricSource::Authored { key: token }
+                        xgpui_luma::theme::provenance::MetricSource::Authored { key: token }
                     }
                     crate::MetricSource::Constant { label } => {
-                        gpui_luma::theme::provenance::MetricSource::Constant { label }
+                        xgpui_luma::theme::provenance::MetricSource::Constant { label }
                     }
                 };
-                gpui_luma::theme::provenance::ResolvedMetric::new(value.value_px, source)
+                xgpui_luma::theme::provenance::ResolvedMetric::new(value.value_px, source)
             },
-            list_padding: gpui_luma::theme::provenance::ResolvedMetric::constant(
+            list_padding: xgpui_luma::theme::provenance::ResolvedMetric::constant(
                 default_list.padding,
                 "SDK tabs list padding",
             ),
-            indicator_height: gpui_luma::theme::provenance::ResolvedMetric::constant(
+            indicator_height: xgpui_luma::theme::provenance::ResolvedMetric::constant(
                 default_item.indicator_height,
                 "SDK tabs indicator height",
             ),
@@ -457,8 +457,8 @@ pub(crate) fn resolve_common_tabs_geometry(
 
 pub fn resolve_tabs_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TabsMetricTable {
     resolve_tabs_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -467,20 +467,20 @@ pub fn resolve_tabs_metrics(
 pub fn resolve_tabs_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TabsMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
     use crate::catalog::SpacingField;
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
     let list = crate::controls::tabs::tabs_list_look_with_stylesheet(mode, stylesheet, true, size);
     let item = crate::controls::tabs::tabs_item_look_with_stylesheet(
         mode,
         stylesheet,
         true,
-        gpui_luma::theme::InteractionState::default(),
+        xgpui_luma::theme::InteractionState::default(),
         size,
     );
     let geometry = resolve_common_tabs_geometry(mode, stylesheet, size);

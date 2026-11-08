@@ -1,6 +1,6 @@
 use gpui::px;
 use crate::theme::AppTheme;
-use gpui_luma_plot::{PiePresentation, TextPresentation, LegendPresentation, EmptyStatePresentation};
+use xgpui_luma_plot::{PiePresentation, TextPresentation, LegendPresentation, EmptyStatePresentation};
 use crate::theme;
 
 pub(crate) fn style(look: &AppTheme) -> PiePresentation {
@@ -34,9 +34,9 @@ mod tests {
     #[test]
     fn pie_text_resolves_the_current_theme_mode() {
         let look = AppTheme::new();
-        look.set_mode(gpui_luma::theme::ThemeMode::Light);
+        look.set_mode(xgpui_luma::theme::ThemeMode::Light);
         let light = style(&look);
-        look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+        look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         let dark = style(&look);
         assert_ne!(light.label_text.color, dark.label_text.color);
         assert_ne!(light.center_title.color, dark.center_title.color);

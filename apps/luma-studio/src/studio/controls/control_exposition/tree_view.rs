@@ -1,17 +1,17 @@
 //! Tree view control exposition — virtualized file tree with an integrated scrollbar.
 
-use gpui_luma::controls::tree_view::TreeViewEventExt;
+use xgpui_luma::controls::tree_view::TreeViewEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, IntoElement, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::ScrollbarVisibility;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::tree_view::{TreeNode, TreeView, TreeViewEvent, TreeViewSelectionMode};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::ScrollbarVisibility;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::tree_view::{TreeNode, TreeView, TreeViewEvent, TreeViewSelectionMode};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

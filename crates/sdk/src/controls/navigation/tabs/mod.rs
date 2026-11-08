@@ -6,7 +6,7 @@
 //! ```no_run
 //! use std::time::Duration;
 //! use gpui::{Context, div, prelude::*};
-//! use gpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
+//! use xgpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
 //!
 //! # fn build<M: 'static>(cx: &mut Context<M>) {
 //! let tabs = Tabs::new("settings")
@@ -58,7 +58,7 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity, Render};
-//! use gpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
+//! use xgpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
 //!
 //! fn build<M: 'static, V: Render + 'static>(page: Entity<V>, cx: &mut Context<M>) {
 //!     // Construct `page` once, outside the presenter. Its state survives switching.
@@ -74,7 +74,7 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity, Focusable, Render, Window};
-//! use gpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
+//! use xgpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
 //!
 //! fn restore<V: Render + Focusable + 'static>(
 //!     tabs: &Entity<Tabs>, page: &Entity<V>, window: &mut Window, cx: &mut Context<V>,
@@ -91,7 +91,7 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity, SharedString, div, prelude::*};
-//! use gpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
+//! use xgpui_luma::{controls::tabs::Tabs, motion::{Transition, Easing}};
 //!
 //! struct Document { title: SharedString }
 //! fn build<M: 'static>(document: Entity<Document>, cx: &mut Context<M>) {

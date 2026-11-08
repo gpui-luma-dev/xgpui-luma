@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{Context, IntoElement, Pixels, Window, div, prelude::*, px};
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::shell::{TITLE_BAR_LEFT_PADDING, TitleBar};
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook, ShadcnSize};
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::shell::{TITLE_BAR_LEFT_PADDING, TitleBar};
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook, ShadcnSize};
 use luma_shell_common::chrome::spawn_theme_toggle_button;
 use lucide_svg_static::Icon;
 

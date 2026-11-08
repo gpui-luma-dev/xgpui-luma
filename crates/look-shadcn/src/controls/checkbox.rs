@@ -10,11 +10,11 @@ use crate::stylesheet::config::LayeredElevationRule;
 use crate::stylesheet::config::matches_optional_bool;
 use serde::Deserialize;
 
-use gpui_luma::controls::checkbox::CheckboxPalette;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::checkbox::CheckboxPalette;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::provenance::LookResolver;
@@ -198,9 +198,12 @@ pub(crate) fn checkbox_scale_with_stylesheet(
     stylesheet: &StylesheetConfig,
     size: ControlSize,
     scale_factor: f32,
-) -> (gpui_luma::controls::checkbox::CheckboxScale, gpui_luma::theme::stylesheet::ResolvedCheckboxGeometry) {
-    use gpui_luma::controls::checkbox::CheckboxScale;
-    use gpui_luma::theme::{snap_to_pixel, stylesheet::CheckboxGeometry};
+) -> (
+    xgpui_luma::controls::checkbox::CheckboxScale,
+    xgpui_luma::theme::stylesheet::ResolvedCheckboxGeometry,
+) {
+    use xgpui_luma::controls::checkbox::CheckboxScale;
+    use xgpui_luma::theme::{snap_to_pixel, stylesheet::CheckboxGeometry};
     let mut scale = CheckboxScale::compute_with_stylesheet(size, ctx.metrics(), scale_factor, &stylesheet.common);
     let mut geometry = stylesheet.common.checkbox.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
@@ -234,7 +237,7 @@ mod tests {
     use super::*;
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     fn retro_arcade_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -439,8 +442,8 @@ pub struct CheckboxMetricTable {
 
 pub fn resolve_checkbox_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> CheckboxMetricTable {
     resolve_checkbox_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -448,8 +451,8 @@ pub fn resolve_checkbox_metrics(
 pub(crate) fn resolve_checkbox_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> CheckboxMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
@@ -457,12 +460,12 @@ pub(crate) fn resolve_checkbox_metrics_with_stylesheet(
         radius_metric, scaffold_control_metric, spacing_control_metric,
     };
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let (scale, geometry) = crate::controls::checkbox::checkbox_scale_with_stylesheet(&ctx, stylesheet, size, 1.0);
-    let authored = |metric: gpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
-        if matches!(metric.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    let authored = |metric: xgpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
+        if matches!(metric.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
             fallback
         } else {
             crate::tables::metrics::helpers::inspect_shared_metric(metric)

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::SharedString;
-use gpui_luma::controls::textarea::TextAreaState;
-use gpui_luma::theme::{ControlSize, StandardBoxScale};
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
+use xgpui_luma::controls::textarea::TextAreaState;
+use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
 
 use super::model::EventLogViewBuilder;
 use super::theme::{EventLogTheme, compose_event_log_look};
@@ -13,7 +13,7 @@ struct ShadcnEventLogTheme {
 }
 
 impl EventLogTheme for ShadcnEventLogTheme {
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.look.mode_tokens().metrics
     }
 

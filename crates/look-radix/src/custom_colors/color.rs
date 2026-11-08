@@ -1,6 +1,6 @@
 //! The Color.js operations used by the Radix generator, in f64 until source storage.
 //! Lab mixing uses D50; OKLab/OKLCH use D65. See LICENSES.txt for attribution.
-use gpui_luma::color::ColorValue;
+use xgpui_luma::color::ColorValue;
 use super::matrices::*;
 
 type Triple = [f64; 3];

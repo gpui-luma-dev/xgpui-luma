@@ -13,8 +13,8 @@
 use crate::stylesheet::config::{LayeredElevationRule, matches_optional_layer};
 use serde::Deserialize;
 
-use gpui_luma::controls::slider::{SliderLook, SliderThumbSize};
-use gpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState, ThemeMode};
+use xgpui_luma::controls::slider::{SliderLook, SliderThumbSize};
+use xgpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState, ThemeMode};
 
 use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
 use crate::look_context::LookContext;
@@ -30,7 +30,7 @@ use crate::stylesheet::{
 /// Medium/large/full resolve to a pill/circle for the given cross-axis size.
 fn resolve_slider_part_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &gpui_luma::theme::MetricTokens,
+    metrics: &xgpui_luma::theme::MetricTokens,
     cross_axis_size: f32,
 ) -> f32 {
     match preset {
@@ -43,7 +43,7 @@ fn resolve_slider_part_radius_preset(
 /// Thumb corner radius presets for slider controls.
 pub fn resolve_slider_thumb_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &gpui_luma::theme::MetricTokens,
+    metrics: &xgpui_luma::theme::MetricTokens,
     thumb_size: f32,
 ) -> f32 {
     resolve_slider_part_radius_preset(preset, metrics, thumb_size)
@@ -52,7 +52,7 @@ pub fn resolve_slider_thumb_radius_preset(
 /// Track end-cap radius presets for slider controls.
 pub fn resolve_slider_track_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &gpui_luma::theme::MetricTokens,
+    metrics: &xgpui_luma::theme::MetricTokens,
     track_height: f32,
 ) -> f32 {
     resolve_slider_part_radius_preset(preset, metrics, track_height)
@@ -169,13 +169,13 @@ fn slider_elevation_shadow(
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
     use super::slider_look;
     use crate::catalog::CssTokenMap;
     use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
     use crate::mode::ShadcnModeTokens;
-    use gpui_luma::controls::slider::SliderThumbSize;
+    use xgpui_luma::controls::slider::SliderThumbSize;
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -374,7 +374,7 @@ mod tests {
     #[test]
     fn slider_radius_presets_use_square_and_pill_shapes() {
         use super::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset};
-        use gpui_luma::theme::MetricTokens;
+        use xgpui_luma::theme::MetricTokens;
 
         let metrics = MetricTokens::default();
         let thumb_size = 16.0;
@@ -471,8 +471,8 @@ pub struct SliderColorRule {
 }
 
 /// Constructs the native Shadcn common slider sizes in pure Rust without preloading TOML.
-pub fn native_shadcn_common_slider() -> gpui_luma::theme::stylesheet::SliderStylesheet {
-    use gpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
+pub fn native_shadcn_common_slider() -> xgpui_luma::theme::stylesheet::SliderStylesheet {
+    use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
     SliderStylesheet {
         geometry: SliderGeometryStylesheet::default(),
         sizes: ControlSizes {
@@ -585,14 +585,14 @@ pub(crate) fn slider_geometry_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
     size: ControlSize,
-    thumb_size: Option<gpui_luma::controls::slider::SliderThumbSize>,
+    thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
 ) -> (
-    gpui_luma::theme::stylesheet::SliderGeometry,
-    gpui_luma::theme::stylesheet::SliderGeometrySources,
+    xgpui_luma::theme::stylesheet::SliderGeometry,
+    xgpui_luma::theme::stylesheet::SliderGeometrySources,
     f32,
 ) {
-    use gpui_luma::controls::slider::SliderThumbSize;
-    use gpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
+    use xgpui_luma::controls::slider::SliderThumbSize;
+    use xgpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
     let mut fallback = SliderGeometry::sdk_default(&mode.metrics, size, thumb_size, CommonStylesheet::sdk_default());
     let mut radius = mode.metrics.radius.pill;
     if let Some(rule) = stylesheet.slider.metrics_for_size(size) {
@@ -628,7 +628,7 @@ pub(crate) fn slider_geometry_with_stylesheet(
     });
     let (geometry, mut sources) = stylesheet.common.slider.inspect_geometry(size, thumb_key, &fallback);
     if let Some(note) = legacy_thumb_source {
-        sources.thumb_size = gpui_luma::theme::provenance::MetricSource::Derived { note };
+        sources.thumb_size = xgpui_luma::theme::provenance::MetricSource::Derived { note };
     }
     (geometry, sources, radius)
 }
@@ -637,14 +637,14 @@ pub fn resolve_slider_metrics_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
     size: ControlSize,
-    thumb_size: Option<gpui_luma::controls::slider::SliderThumbSize>,
+    thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
 ) -> SliderMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, inspect_shared_metric, pill_radius_metric};
     let (geometry, sources, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size, thumb_size);
     let size_key = crate::tables::metrics::helpers::control_size_key(size);
     let legacy = stylesheet.slider.metrics_for_size(size).is_some();
-    let metric = |field: &str, value: gpui_luma::theme::provenance::ResolvedMetric| {
-        if legacy && matches!(value.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    let metric = |field: &str, value: xgpui_luma::theme::provenance::ResolvedMetric| {
+        if legacy && matches!(value.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
             derived_metric(format!("stylesheet · slider.metrics.{size_key}.{field}"), value.value_px)
         } else {
             inspect_shared_metric(value)
@@ -653,22 +653,22 @@ pub fn resolve_slider_metrics_with_stylesheet(
     SliderMetricTable {
         width: metric(
             "width",
-            gpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.width, source: sources.width },
+            xgpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.width, source: sources.width },
         ),
         height: metric(
             "height",
-            gpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.height, source: sources.height },
+            xgpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.height, source: sources.height },
         ),
         track_height: metric(
             "track_height",
-            gpui_luma::theme::provenance::ResolvedMetric {
+            xgpui_luma::theme::provenance::ResolvedMetric {
                 value_px: geometry.track_height,
                 source: sources.track_height,
             },
         ),
         thumb_size: metric(
             "thumb_size",
-            gpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.thumb_size, source: sources.thumb_size },
+            xgpui_luma::theme::provenance::ResolvedMetric { value_px: geometry.thumb_size, source: sources.thumb_size },
         ),
         radius: if legacy {
             derived_metric(format!("stylesheet · slider.metrics.{size_key}.radius"), radius)

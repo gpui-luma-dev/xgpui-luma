@@ -1,6 +1,6 @@
 //! Inspect metadata for `pager`.
 
-use gpui_luma::controls::pager::PagerStyle;
+use xgpui_luma::controls::pager::PagerStyle;
 use crate::{ColorSource, ResolvedColor, ResolvedMetric, ResolvedTypography, ShadcnLook};
 
 #[derive(Clone, Debug)]

@@ -1,18 +1,18 @@
-//! Look-owned accordion builder. Spawn synthesizes the SDK [`gpui_luma::controls::accordion::Accordion`].
+//! Look-owned accordion builder. Spawn synthesizes the SDK [`xgpui_luma::controls::accordion::Accordion`].
 
 use std::sync::Arc;
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::accordion::{
+use xgpui_luma::controls::accordion::{
     AccordionBuilder, AccordionControl, AccordionItem, AccordionSelectionMode, AccordionTemplate,
 };
-use gpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::infra::icon::DisclosureIcons;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of an accordion: Shadcn template plus SDK options, until `.spawn(cx)`.
 pub struct Accordion {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::accordion::AccordionEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::accordion::AccordionEvent>,
 
     look: Option<ShadcnLook>,
     builder: AccordionBuilder,
@@ -21,14 +21,14 @@ pub struct Accordion {
 }
 
 impl Accordion {
-    gpui_luma::forward_motion!(gpui_luma::controls::accordion::AccordionMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::accordion::AccordionMotion, builder builder);
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::accordion::AccordionEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::accordion::AccordionEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -38,10 +38,10 @@ impl Accordion {
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::accordion::AccordionDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::accordion::AccordionDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::DragDrop(event) = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::DragDrop(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -53,7 +53,7 @@ impl Accordion {
         callback: impl Fn(&mut M, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragStarted { source, keys } = event {
                 callback(owner, *source, keys, cx);
             }
         })
@@ -66,7 +66,7 @@ impl Accordion {
         callback: impl Fn(&mut M, gpui::EntityId, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsRemoved { source, target, keys } = event {
                 callback(owner, *source, *target, keys, cx);
             }
         })
@@ -86,7 +86,7 @@ impl Accordion {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsAdded { source, target, keys, before } = event {
                 callback(owner, *source, *target, keys, before, cx);
             }
         })
@@ -105,7 +105,7 @@ impl Accordion {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::ItemsReordered { target, keys, before } = event {
                 callback(owner, *target, keys, before, cx);
             }
         })
@@ -126,7 +126,8 @@ impl Accordion {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } = event
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::Dropped { source, target, keys, before, changed } =
+                event
             {
                 callback(owner, *source, *target, keys, before, *changed, cx);
             }
@@ -148,7 +149,7 @@ impl Accordion {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DropRejected { source, target, keys, before, error } =
                 event
             {
                 callback(owner, *source, *target, keys, before, error, cx);
@@ -164,12 +165,12 @@ impl Accordion {
             &mut M,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            gpui_luma::infra::drag_drop::DragEndReason,
+            xgpui_luma::infra::drag_drop::DragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
+            if let xgpui_luma::infra::drag_drop::DragDropEvent::DragEnded { source, keys, reason } = event {
                 callback(owner, *source, keys, *reason, cx);
             }
         })
@@ -182,7 +183,7 @@ impl Accordion {
         callback: impl Fn(&mut M, &gpui::SharedString, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::ExpandedChanged { item_id, expanded } = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::ExpandedChanged { item_id, expanded } = event {
                 callback(owner, item_id, *expanded, cx);
             }
         })
@@ -195,7 +196,7 @@ impl Accordion {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -208,7 +209,7 @@ impl Accordion {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::ItemFocused { item_id } = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::ItemFocused { item_id } = event {
                 callback(owner, item_id, cx);
             }
         })
@@ -221,7 +222,7 @@ impl Accordion {
         callback: impl Fn(&mut M, &gpui::SharedString, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::ItemHoverChanged { item_id, hovered } = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::ItemHoverChanged { item_id, hovered } = event {
                 callback(owner, item_id, *hovered, cx);
             }
         })
@@ -234,7 +235,7 @@ impl Accordion {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::accordion::AccordionEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::accordion::AccordionEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -245,7 +246,7 @@ impl Accordion {
             callbacks: Default::default(),
 
             look: None,
-            builder: gpui_luma::controls::accordion::new(id),
+            builder: xgpui_luma::controls::accordion::new(id),
             custom_template: false,
             size: ShadcnSize::Md,
         }
@@ -374,7 +375,7 @@ impl Accordion {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::accordion::{AccordionContent, AccordionTrigger};
+    use xgpui_luma::controls::accordion::{AccordionContent, AccordionTrigger};
 
     #[test]
     fn into_sdk_builder_does_not_panic() {

@@ -19,4 +19,4 @@ pub use sync::{primary_slider_value, refresh_color_arc, update_arc_delegate};
 pub use template::{ColorArcTemplate, ColorArcTemplateConfig, color_arc_template, default_color_arc_template};
 pub use track_context::{ColorArcTrackContext, arc_angle_range, sizing, turn_to_angle};
 pub use types::ColorArcDelegate;
-pub use gpui_luma::controls::slider::{SliderControl, SliderEvent};
+pub use xgpui_luma::controls::slider::{SliderControl, SliderEvent};

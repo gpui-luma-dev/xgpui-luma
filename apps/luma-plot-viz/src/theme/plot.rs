@@ -1,6 +1,6 @@
 use gpui::{Hsla, px, linear_gradient, linear_color_stop};
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     AreaPresentation, AxisPresentation, ChartMetrics, EmptyStatePresentation, GridPresentation, LinePresentation,
     MarkerPresentation, CartesianStyle, CartesianStyleProvider, SeriesId, SeriesStyle, TextPresentation,
 };
@@ -43,7 +43,7 @@ impl SdkCartesianStyle {
             linear_color_stop(color.opacity(0.02), 1.0),
         ))
         .outline(LinePresentation::new(color));
-        SeriesStyle { line: Some(line), area: Some(area), bar: Some(gpui_luma_plot::BarPresentation::new(color)) }
+        SeriesStyle { line: Some(line), area: Some(area), bar: Some(xgpui_luma_plot::BarPresentation::new(color)) }
     }
 }
 impl CartesianStyleProvider for SdkCartesianStyle {
@@ -86,7 +86,7 @@ impl CartesianStyleProvider for SdkCartesianStyle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn retained_sdk_provider_resolves_current_mode_and_explicit_series_assignments() {

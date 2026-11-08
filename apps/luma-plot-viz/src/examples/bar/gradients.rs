@@ -1,5 +1,5 @@
 use gpui::{Hsla, Background, linear_gradient, linear_color_stop};
-use gpui_luma_plot::CartesianChartBuilder;
+use xgpui_luma_plot::CartesianChartBuilder;
 
 /// Native gradients resolve from the live series palette and fit each bar's bounds.
 pub(super) fn apply(chart: CartesianChartBuilder, angle: f32) -> CartesianChartBuilder {

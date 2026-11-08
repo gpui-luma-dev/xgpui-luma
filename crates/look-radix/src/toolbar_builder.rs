@@ -1,10 +1,10 @@
 //! Look-owned toolbar composition, including its icon-button recipe.
 
 use gpui::{Context, SharedString};
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::toolbar::{ToolbarBuilder, ToolbarItem};
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::toolbar::{ToolbarBuilder, ToolbarItem};
+use xgpui_luma::theme::ControlSize;
 
 use crate::{Button, ButtonSize, Look, ToolbarStyle, toolbar_template_with};
 
@@ -16,7 +16,7 @@ enum Item {
 /// Radix toolbar with compact, neutral icon buttons and a static outline.
 /// Command IDs, labels, icons, and hosted controls are supplied by the application.
 pub struct Toolbar {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::toolbar::ToolbarEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::toolbar::ToolbarEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -33,7 +33,7 @@ impl Toolbar {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::toolbar::ToolbarEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::toolbar::ToolbarEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -46,7 +46,7 @@ impl Toolbar {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::toolbar::ToolbarEvent::Click { id } = event {
+            if let xgpui_luma::controls::toolbar::ToolbarEvent::Click { id } = event {
                 callback(owner, id, cx);
             }
         })
@@ -56,11 +56,11 @@ impl Toolbar {
     pub fn on_value_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui::SharedString, &gpui_luma::controls::toolbar::ToolbarValue, &mut gpui::Context<M>)
+        callback: impl Fn(&mut M, &gpui::SharedString, &xgpui_luma::controls::toolbar::ToolbarValue, &mut gpui::Context<M>)
         + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::toolbar::ToolbarEvent::Change { id, value } = event {
+            if let xgpui_luma::controls::toolbar::ToolbarEvent::Change { id, value } = event {
                 callback(owner, id, value, cx);
             }
         })
@@ -132,7 +132,7 @@ impl Toolbar {
         self.item(ToolbarItem::separator(id))
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::toolbar::Toolbar {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::toolbar::Toolbar {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = crate::look::resolve_look(self.look.as_ref(), cx.try_global::<Look>());

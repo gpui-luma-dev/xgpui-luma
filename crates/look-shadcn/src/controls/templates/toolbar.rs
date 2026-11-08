@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::toolbar::{ThemedToolbarTemplate, ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant};
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::controls::toolbar::{ThemedToolbarTemplate, ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant};
+use xgpui_luma::theme::ControlSize;
 
 use crate::look::ShadcnLook;
 
@@ -17,7 +17,7 @@ impl ToolbarTheme for ShadcnToolbarTheme {
 
         let chrome = tokens.stylesheet().common.toolbar.resolve_geometry(
             size.stylesheet_key(),
-            gpui_luma::theme::stylesheet::ToolbarGeometry {
+            xgpui_luma::theme::stylesheet::ToolbarGeometry {
                 border_width: tokens.metrics.border_width.default,
                 separator_width: tokens.metrics.border_width.default,
                 ..Default::default()

@@ -3,11 +3,11 @@
 use std::sync::Arc;
 
 use gpui::{Background, BoxShadow, Hsla, black, linear_color_stop, linear_gradient, point, prelude::*, px};
-use gpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
-use gpui_luma::controls::button_family::{
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, compose_button_family_look,
 };
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
 
 use crate::button_layout::{ButtonSize, Radius, apply_button_box, button_box_with_stylesheet};
 use crate::look::Look;
@@ -89,7 +89,7 @@ impl ButtonFamilyTheme for ButtonFamilyThemeAdapter {
         let mut palette = self.resolve(role, size, state);
         let geometry = self.look.stylesheet_snapshot().button.resolve_geometry(
             self.size.map(ButtonSize::as_str).unwrap_or_else(|| crate::look::sdk_size_key(size)),
-            gpui_luma::theme::stylesheet::ButtonGeometry {
+            xgpui_luma::theme::stylesheet::ButtonGeometry {
                 height: scale.height,
                 padding_x: scale.padding_x,
                 padding_y: scale.padding_y,
@@ -134,7 +134,7 @@ pub fn button_look_for<D: 'static>(
     paint: Paint,
     size: ButtonSize,
     radius: Radius,
-) -> gpui_luma::controls::button::ButtonLookSource<D> {
+) -> xgpui_luma::controls::button::ButtonLookSource<D> {
     let look = look.clone();
     Arc::new(move |model| {
         let palette = resolve_button_palette(&look, variant, paint, model.role, model.state);
@@ -370,7 +370,7 @@ pub fn classic_button_template_with<D: Clone + 'static>(look: &Look, paint: Pain
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::InteractionState;
+    use xgpui_luma::theme::InteractionState;
 
     #[test]
     fn solid_default_uses_primary_steps() {
@@ -455,7 +455,7 @@ mod tests {
             crate::palette::Accent::Lime,
             crate::palette::Gray::Auto,
             Default::default(),
-            gpui_luma::theme::ThemeMode::Light,
+            xgpui_luma::theme::ThemeMode::Light,
         );
         let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent());
         let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
@@ -570,7 +570,7 @@ mod tests {
     #[test]
     fn ghost_quiet_has_no_background_or_border_in_any_state() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for paint in [Paint::accent(), Paint::gray(), Paint { tone: Tone::Accent, high_contrast: true }] {
                 let quiet = button_family_theme_with(&look, ButtonVariant::GhostQuiet, paint);
@@ -608,8 +608,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_button_stylesheet() -> gpui_luma::theme::stylesheet::ButtonStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_button_stylesheet() -> xgpui_luma::theme::stylesheet::ButtonStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ButtonStylesheet {
         geometry: ButtonGeometryStylesheet { padding_y: Some(0.0), ..Default::default() },
         sizes: [

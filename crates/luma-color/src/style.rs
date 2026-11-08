@@ -1,8 +1,8 @@
 use gpui::{AppContext, Hsla, Pixels};
-use gpui_luma::theme::ThemeTokens;
+use xgpui_luma::theme::ThemeTokens;
 use std::cell::RefCell;
 
-pub use gpui_luma::infra::{ElementExt, StyledExt};
+pub use xgpui_luma::infra::{ElementExt, StyledExt};
 
 thread_local! {
     static ACTIVE_COLOR_CONTROL_THEME: RefCell<Option<ColorControlTheme>> = const { RefCell::new(None) };

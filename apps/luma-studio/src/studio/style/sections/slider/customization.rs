@@ -1,11 +1,11 @@
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::f32::consts::PI;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::slider::{Slider, SliderEvent, SliderThumbPolicy, ThumbId};
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::slider::{Slider, SliderEvent, SliderThumbPolicy, ThumbId};
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 /// Vertical gap between label, control, and value within each customization demo.
 const DEMO_STACK_GAP: f32 = 4.0;

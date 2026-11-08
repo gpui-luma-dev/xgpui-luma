@@ -1,8 +1,8 @@
-//! Look-owned toolbar builder. Spawn synthesizes the SDK [`gpui_luma::controls::toolbar::ToolbarControl`].
+//! Look-owned toolbar builder. Spawn synthesizes the SDK [`xgpui_luma::controls::toolbar::ToolbarControl`].
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::control_group::ControlGroupFocusStrategy;
-use gpui_luma::controls::toolbar::{ToolbarBuilder, ToolbarItem, ToolbarRenderModel, ToolbarVariant};
+use xgpui_luma::controls::control_group::ControlGroupFocusStrategy;
+use xgpui_luma::controls::toolbar::{ToolbarBuilder, ToolbarItem, ToolbarRenderModel, ToolbarVariant};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -10,7 +10,7 @@ type ToolbarModifier = Box<dyn Fn(Stateful<Div>, &ToolbarRenderModel<'_>) -> Sta
 
 /// Builder in the guise of a toolbar: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct Toolbar {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::toolbar::ToolbarEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::toolbar::ToolbarEvent>,
 
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -28,7 +28,7 @@ impl Toolbar {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::toolbar::ToolbarEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::toolbar::ToolbarEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -41,7 +41,7 @@ impl Toolbar {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::toolbar::ToolbarEvent::Click { id } = event {
+            if let xgpui_luma::controls::toolbar::ToolbarEvent::Click { id } = event {
                 callback(owner, id, cx);
             }
         })
@@ -51,11 +51,11 @@ impl Toolbar {
     pub fn on_value_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui::SharedString, &gpui_luma::controls::toolbar::ToolbarValue, &mut gpui::Context<M>)
+        callback: impl Fn(&mut M, &gpui::SharedString, &xgpui_luma::controls::toolbar::ToolbarValue, &mut gpui::Context<M>)
         + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::toolbar::ToolbarEvent::Change { id, value } = event {
+            if let xgpui_luma::controls::toolbar::ToolbarEvent::Change { id, value } = event {
                 callback(owner, id, value, cx);
             }
         })
@@ -140,7 +140,7 @@ impl Toolbar {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::toolbar::ToolbarControl> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::toolbar::ToolbarControl> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -155,7 +155,7 @@ impl Toolbar {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ToolbarBuilder {
-        let mut builder = gpui_luma::controls::toolbar::new(self.id)
+        let mut builder = xgpui_luma::controls::toolbar::new(self.id)
             .template(look.toolbar_template())
             .items(self.items)
             .enabled(self.enabled)

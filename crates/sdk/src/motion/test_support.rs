@@ -6,7 +6,7 @@ macro_rules! test_look_motion_contract {
         #[test]
         fn motion_profiles_inherit_override_and_snapshot_across_control_families() {
             use gpui::AppContext;
-            use gpui_luma::motion::{Transition, Easing, MotionState};
+            use xgpui_luma::motion::{Transition, Easing, MotionState};
             use std::time::Duration;
             let look = $make_look;
             look.motion(|m| {
@@ -73,7 +73,7 @@ macro_rules! test_stylesheet_motion_contract {
         #[test]
         fn stylesheet_motion_reaches_controls_before_look_and_instance_overrides() {
             use gpui::AppContext;
-            use gpui_luma::motion::{Transition, Easing, MotionState};
+            use xgpui_luma::motion::{Transition, Easing, MotionState};
             use std::time::Duration;
             let source = r#"
 [common.motion.tabs.indicator]
@@ -86,7 +86,7 @@ duration_ms = 800
 easing = "linear"
 "#;
             let look = ($make_look)(source);
-            let vanilla = gpui_luma::theme::MotionDefaults::vanilla();
+            let vanilla = xgpui_luma::theme::MotionDefaults::vanilla();
             let inherited = look.motion_defaults();
             assert_eq!(inherited.switch.state.description(), vanilla.switch.state.description());
             assert_eq!(
@@ -110,9 +110,9 @@ easing = "linear"
                         .motion(|m| m.indicator = Transition::instant())
                         .look(&look)
                         .motion(move |m| {
-                            m.content = gpui_luma::motion::Transition::timed(
+                            m.content = xgpui_luma::motion::Transition::timed(
                                 Duration::from_secs(1),
-                                gpui_luma::motion::Easing::OutCubic,
+                                xgpui_luma::motion::Easing::OutCubic,
                             )
                         })
                         .motion(|m| m.content = Transition::instant())

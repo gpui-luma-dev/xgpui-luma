@@ -64,7 +64,7 @@ The Shadcn form idle trace estimates 1.31% main-thread CPU in the steady window,
 
 ## Native timing boundaries
 
-CPU estimates sum running main-thread sample weights in trace seconds 2–12 and divide by that ten-second window. They describe one core's sampled CPU use, not wall-clock rendering duration or GPU utilization. Native runs are single captures, not a statistical comparison across repeated trials. The CPU JSON retains raw sample counts, weights, leaf symbols, and inclusive symbols matching `gpui_luma`, including GPUI generics instantiated with SDK types.
+CPU estimates sum running main-thread sample weights in trace seconds 2–12 and divide by that ten-second window. They describe one core's sampled CPU use, not wall-clock rendering duration or GPU utilization. Native runs are single captures, not a statistical comparison across repeated trials. The CPU JSON retains raw sample counts, weights, leaf symbols, and inclusive symbols matching `xgpui_luma`, including GPUI generics instantiated with SDK types.
 
 The animation trace identified one 150 ms potentially expensive update during startup and no app-attributed hitches in the selected steady window. This is a short, instrumented observation, not a smoothness guarantee. Display frame-lifetime/render tables lack process identity; application presentation percentiles have not been derived. Driver callback counts are not presented FPS. Event-to-paint latency and display-specific frame-budget misses remain unmeasured.
 

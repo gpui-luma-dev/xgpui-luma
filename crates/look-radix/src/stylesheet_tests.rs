@@ -1,7 +1,7 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 use super::*;
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
-use gpui_luma::controls::{
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::controls::{
     button_family::ButtonFamilyRole, textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant,
 };
 
@@ -180,7 +180,7 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     );
     assert_eq!(
         overlay_window_theme(&fork)
-            .resolve(ControlSize::Sm, gpui_luma::controls::overlay_window::OverlayWindowMode::Modal)
+            .resolve(ControlSize::Sm, xgpui_luma::controls::overlay_window::OverlayWindowMode::Modal)
             .min_width,
         300.0
     );
@@ -213,7 +213,7 @@ fn toggle_size_four_is_not_collapsed_into_sdk_lg() {
 #[test]
 fn sparse_configuration_keeps_composition_fallbacks_visible_and_zero_distinct() {
     let look = Look::built_in();
-    let mut stylesheet = gpui_luma::theme::stylesheet::CommonStylesheet::default();
+    let mut stylesheet = xgpui_luma::theme::stylesheet::CommonStylesheet::default();
     look.set_common_stylesheet(stylesheet.clone());
     assert!(crate::callout::resolve_geometry(&look).font_size > 0.0);
     assert!(crate::segmented::resolve_geometry(&look).height > 0.0);
@@ -226,14 +226,14 @@ fn sparse_configuration_keeps_composition_fallbacks_visible_and_zero_distinct() 
 
 #[test]
 fn slide_panel_uses_captured_common_visual_defaults() {
-    use gpui_luma::controls::slide_panel::{SlidePanelSizeConfig, SlidePanelTopAnchor};
+    use xgpui_luma::controls::slide_panel::{SlidePanelSizeConfig, SlidePanelTopAnchor};
     let look = Look::built_in().fork();
     let mut sheet = look.common_stylesheet();
     sheet.slide_panel.geometry.side_width = Some(501.0);
     sheet.resizable_panels.geometry.grip_radius = Some(0.0);
     look.set_common_stylesheet(sheet);
     let panel = look.slide_panel_state(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 0.0, 900.0));
-    look.set_common_stylesheet(gpui_luma::theme::stylesheet::CommonStylesheet::default());
+    look.set_common_stylesheet(xgpui_luma::theme::stylesheet::CommonStylesheet::default());
     assert_eq!(panel.geometry().side_width, Some(501.0));
     assert_eq!(panel.resize_handle_metrics().grip_radius, 0.0);
 }

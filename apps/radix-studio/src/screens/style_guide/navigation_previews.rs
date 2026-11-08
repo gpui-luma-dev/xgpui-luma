@@ -1,15 +1,15 @@
 //! Presentation-only SDK template matrices for groups and navigation.
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use gpui::{AnyElement, App, Context, Entity, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::{accordion, control_group as group, dock_splitter, split_view, pager, sidebar, stepper};
-use gpui_luma::controls::{progress::ProgressDirection, scroll_container::ScrollContainer, tabs::Tabs};
-use gpui_luma::infra::{
+use xgpui_luma::controls::{accordion, control_group as group, dock_splitter, split_view, pager, sidebar, stepper};
+use xgpui_luma::controls::{progress::ProgressDirection, scroll_container::ScrollContainer, tabs::Tabs};
+use xgpui_luma::infra::{
     icon::{DisclosureIcons, SelectionStatusIcons},
     state::{CompositeItemState, ControlFocusState},
 };
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma::GridTrack;
-use gpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::GridTrack;
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
 use super::{
     matrix_grid::{column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label},
     preview_handlers, states,
@@ -648,7 +648,7 @@ fn sidebar_sample(
 mod tests {
     use super::*;
     use gpui::{Render, TestAppContext};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     struct Harness {
         look: Arc<Look>,
         previews: Previews,

@@ -1,8 +1,8 @@
 //! Text area — surface/filled/soft variants share the text field token resolver.
 
-use gpui_luma::controls::textarea::{TextAreaLook, TextAreaPalette, TextAreaState, compose_textarea_look};
-use gpui_luma::controls::textfield::TextFieldState;
-use gpui_luma::theme::{ControlSize, StandardBoxScale, ThemeMode};
+use xgpui_luma::controls::textarea::{TextAreaLook, TextAreaPalette, TextAreaState, compose_textarea_look};
+use xgpui_luma::controls::textfield::TextFieldState;
+use xgpui_luma::theme::{ControlSize, StandardBoxScale, ThemeMode};
 
 use super::textfield::{ShadcnTextFieldStyle, textfield_palette_base_for_size};
 use crate::mode::ShadcnModeTokens;
@@ -70,11 +70,11 @@ pub(crate) fn textarea_geometry(
     mode: &ShadcnModeTokens,
     size: ControlSize,
     scale: &StandardBoxScale,
-    typography: &gpui_luma::theme::LumaTextStyle,
-) -> gpui_luma::theme::stylesheet::ResolvedTextAreaGeometry {
+    typography: &xgpui_luma::theme::LumaTextStyle,
+) -> xgpui_luma::theme::stylesheet::ResolvedTextAreaGeometry {
     mode.stylesheet().common.textarea.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::TextAreaGeometry {
+        xgpui_luma::theme::stylesheet::TextAreaGeometry {
             min_height: scale.height,
             padding_x: scale.padding_x,
             padding_y: scale.padding_y,
@@ -97,7 +97,7 @@ fn textfield_state_from(state: TextAreaState) -> TextFieldState {
     }
 }
 
-fn textarea_from_textfield(textfield: gpui_luma::controls::textfield::TextFieldPalette) -> TextAreaPalette {
+fn textarea_from_textfield(textfield: xgpui_luma::controls::textfield::TextFieldPalette) -> TextAreaPalette {
     TextAreaPalette {
         background: textfield.background,
         foreground: textfield.foreground,
@@ -116,9 +116,9 @@ fn textarea_from_textfield(textfield: gpui_luma::controls::textfield::TextFieldP
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::controls::textfield::TextFieldState;
+    use xgpui_luma::controls::textfield::TextFieldState;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -168,7 +168,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnTextFieldStyle::Primary,
-            gpui_luma::controls::textarea::TextAreaState::default(),
+            xgpui_luma::controls::textarea::TextAreaState::default(),
             true,
         );
 

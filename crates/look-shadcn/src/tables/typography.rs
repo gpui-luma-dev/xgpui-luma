@@ -1,6 +1,6 @@
 //! Resolved runtime text style and its source metadata.
 use gpui::SharedString;
-use gpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle};
 use crate::{ShadcnModeTokens, TypographySource};
 use crate::stylesheet::{StylesheetConfig, resolve_button_metrics_rule};
 
@@ -121,8 +121,8 @@ pub(crate) fn common_typography_overrides(
 /// Apply common typography while preserving the existing ratio for an unset line height.
 pub(crate) fn apply_resolved_geometry_typography(
     style: &mut LumaTextStyle,
-    font: &gpui_luma::theme::provenance::ResolvedMetric,
-    line: &gpui_luma::theme::provenance::ResolvedMetric,
+    font: &xgpui_luma::theme::provenance::ResolvedMetric,
+    line: &xgpui_luma::theme::provenance::ResolvedMetric,
 ) {
     let ratio = if style.size > 0.0 {
         style.line_height / style.size
@@ -130,8 +130,8 @@ pub(crate) fn apply_resolved_geometry_typography(
         1.0
     };
     style.size = font.value_px;
-    style.line_height = if matches!(line.source, gpui_luma::theme::provenance::MetricSource::Constant { .. })
-        && !matches!(font.source, gpui_luma::theme::provenance::MetricSource::Constant { .. })
+    style.line_height = if matches!(line.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. })
+        && !matches!(font.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. })
     {
         font.value_px * ratio
     } else {

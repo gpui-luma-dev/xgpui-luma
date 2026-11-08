@@ -168,7 +168,7 @@ fn run(kind: SceneKind, look: LookKind, count: usize, cycles: usize, out: &mut d
 
 fn infrastructure(out: &mut dyn Write) -> anyhow::Result<()> {
     use std::hint::black_box;
-    use gpui_luma::{
+    use xgpui_luma::{
         theme::{ControlSize, MetricTokens, StandardBoxScale, ThemeTokens},
         motion::{MotionState, Transition},
     };

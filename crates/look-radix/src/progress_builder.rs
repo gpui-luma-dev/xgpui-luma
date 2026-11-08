@@ -1,7 +1,7 @@
 //! Look-owned progress builder backed by the SDK's progress value and animation model.
 use gpui::{Context, Div, SharedString, Stateful};
-use gpui_luma::controls::progress::{ProgressBuilder, ProgressDirection, ProgressRenderModel};
-use gpui_luma::infra::value::ControlRange;
+use xgpui_luma::controls::progress::{ProgressBuilder, ProgressDirection, ProgressRenderModel};
+use xgpui_luma::infra::value::ControlRange;
 use crate::look::resolve_look;
 use crate::{Look, Paint, ProgressSize, ProgressVariant, Radius, Tone, progress_template};
 
@@ -11,9 +11,9 @@ type TemplateModifier = Box<dyn Fn(Stateful<Div>, &ProgressRenderModel<'_>) -> S
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma_look_radix::{Look, Progress, ProgressSize, Radius};
+/// use xgpui_luma_look_radix::{Look, Progress, ProgressSize, Radius};
 ///
-/// fn loading<M: 'static>(look: &Look, cx: &mut Context<M>) -> gpui_luma::controls::progress::Progress {
+/// fn loading<M: 'static>(look: &Look, cx: &mut Context<M>) -> xgpui_luma::controls::progress::Progress {
 ///     Progress::new("loading").look(look).soft().size(ProgressSize::Three)
 ///         .radius(Radius::Full).high_contrast(true).range(0..100).value(40).spawn(cx)
 /// }
@@ -28,7 +28,7 @@ pub struct Progress {
     modifiers: Vec<TemplateModifier>,
 }
 impl Progress {
-    gpui_luma::forward_motion!(gpui_luma::controls::progress::ProgressMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::progress::ProgressMotion, builder builder);
 
     pub fn new(id: impl Into<SharedString>) -> Self {
         Self {
@@ -102,7 +102,7 @@ impl Progress {
         self.modifiers.push(Box::new(modifier));
         self
     }
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::progress::Progress {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::progress::Progress {
         let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
         let mut builder = self
             .builder

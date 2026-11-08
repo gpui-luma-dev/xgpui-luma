@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use gpui::{FontWeight, px};
-use gpui_luma::controls::sidebar::SidebarMetricScale;
-use gpui_luma::theme::{ControlSize, InteractionLayer, LumaTextStyle, MetricTokens};
+use xgpui_luma::controls::sidebar::SidebarMetricScale;
+use xgpui_luma::theme::{ControlSize, InteractionLayer, LumaTextStyle, MetricTokens};
 
 use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
@@ -235,7 +235,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use gpui::px;
-    use gpui_luma::theme::{ControlSize, MetricTokens, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, MetricTokens, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::provenance::LookResolver;

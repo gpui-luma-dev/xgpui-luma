@@ -134,9 +134,9 @@ def main():
                       f'version = {json.dumps(spec["req"])}',
                       f'features = {json.dumps(spec["features"])}']
             manifest.append(f'{name} = {{ {", ".join(fields)} }}')
-        for name, path in [("gpui-luma", "sdk"), ("gpui-luma-look-radix", "look-radix"),
-                           ("gpui-luma-look-shadcn", "look-shadcn"), ("gpui-luma-plot", "plot"),
-                           ("gpui-luma-color", "luma-color")]:
+        for name, path in [("xgpui-luma", "sdk"), ("xgpui-luma-look-radix", "look-radix"),
+                           ("xgpui-luma-look-shadcn", "look-shadcn"), ("xgpui-luma-plot", "plot"),
+                           ("xgpui-luma-color", "luma-color")]:
             manifest.append(f'{name} = {{ path = {json.dumps(str(ROOT / "crates" / path))} }}')
         manifest.append(f'luma-app-common = {{ path = {json.dumps(str(ROOT / "apps/common"))} }}')
         (package / "Cargo.toml").write_text("\n".join(manifest) + "\n")

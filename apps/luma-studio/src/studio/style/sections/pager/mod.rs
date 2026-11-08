@@ -1,15 +1,15 @@
-use gpui_luma::controls::pager::PagerEventExt;
+use xgpui_luma::controls::pager::PagerEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::pager::{Pager, PagerEvent, PagerStyle};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::{vstack, wrappanel};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::pager::{Pager, PagerEvent, PagerStyle};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::{vstack, wrappanel};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, ShadcnTextSize};
 
 use crate::studio::style::shared::shell::section_shell_with_width;
 
@@ -358,7 +358,7 @@ fn render_sample(
     label: &'static str,
     pager: Pager,
     muted_text: gpui::Hsla,
-    label_style: gpui_luma::theme::LumaTextStyle,
+    label_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     div()
         .w_full()

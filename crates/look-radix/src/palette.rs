@@ -5,7 +5,7 @@
 //! recommended pairing). Both resolve to real `@radix-ui/colors` steps, so `indigo` here is
 //! Radix's indigo rather than an approximation of it.
 
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::colors::family_source_steps;
 #[cfg(test)]
@@ -226,7 +226,7 @@ fn named_scale(palette: &'static str, mode: ThemeMode) -> ColorScale {
     family_source_steps(mode, palette)
         .ok()
         .flatten()
-        .and_then(|steps| ColorScale::named(palette, steps, gpui_luma::color::GamutMapping::CssLocalMinde).ok())
+        .and_then(|steps| ColorScale::named(palette, steps, xgpui_luma::color::GamutMapping::CssLocalMinde).ok())
         .unwrap_or_else(ColorScale::black)
 }
 
@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(accent_9.hsla(), crate::colors::parse_color("#3e63dd"));
         assert_eq!(gray_9.hsla(), crate::colors::parse_color("#8b8d98"));
         match accent_9.source {
-            gpui_luma::theme::provenance::ColorSource::ScaleStep { family, step } => {
+            xgpui_luma::theme::provenance::ColorSource::ScaleStep { family, step } => {
                 assert_eq!(family, "indigo");
                 assert_eq!(step, 9);
             }

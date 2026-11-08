@@ -1,17 +1,17 @@
 //! One runtime selection policy shared by every ListBox exposition example.
 
-use gpui_luma::controls::selector::SelectorEventExt;
-use gpui_luma::controls::checkbox::CheckboxEventExt;
+use xgpui_luma::controls::selector::SelectorEventExt;
+use xgpui_luma::controls::checkbox::CheckboxEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::checkbox::{Checkbox};
-use gpui_luma::controls::listbox::{SelectionMode, SelectionPolicy};
-use gpui_luma::controls::selector::{Selector, SelectorEvent, SelectorItem};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::vstack;
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook, LumaTypographyExt, ShadcnTextSize};
-use gpui_luma_look_shadcn::prelude::*;
+use xgpui_luma::controls::checkbox::{Checkbox};
+use xgpui_luma::controls::listbox::{SelectionMode, SelectionPolicy};
+use xgpui_luma::controls::selector::{Selector, SelectorEvent, SelectorItem};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::vstack;
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook, LumaTypographyExt, ShadcnTextSize};
+use xgpui_luma_look_shadcn::prelude::*;
 
 pub(super) const DEFAULT_POLICY: SelectionPolicy =
     SelectionPolicy { mode: SelectionMode::Extended, toggle_off: true, selection_follows_active: false };
@@ -147,7 +147,7 @@ impl Render for SelectionControls {
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
-    use gpui_luma::controls::checkbox::CheckboxEvent;
+    use xgpui_luma::controls::checkbox::CheckboxEvent;
     use super::*;
     use std::{cell::RefCell, rc::Rc};
     use gpui::TestAppContext;

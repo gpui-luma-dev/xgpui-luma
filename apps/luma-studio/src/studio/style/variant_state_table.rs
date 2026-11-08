@@ -1,5 +1,5 @@
 use gpui::{AnyElement, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::theme::LumaChrome;
+use xgpui_luma::theme::LumaChrome;
 
 const DEFAULT_VARIANT_COLUMN_WIDTH: f32 = 188.0;
 const DEFAULT_STATE_COLUMN_WIDTH: f32 = 92.0;

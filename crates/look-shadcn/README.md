@@ -1,8 +1,8 @@
-# gpui-luma-look-shadcn
+# xgpui-luma-look-shadcn
 
-Source repository: [gpui-luma-dev/gpui-luma](https://github.com/gpui-luma-dev/gpui-luma).
+Source repository: [gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
-Shadcn theme and look adapter for **GPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
+Shadcn theme and look adapter for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
 
 Provides token resolution, CSS stylesheet ingestion, shadow ladders, light/dark mode transitions, and concrete control builders adhering to the Shadcn design language.
 
@@ -14,25 +14,27 @@ Provides token resolution, CSS stylesheet ingestion, shadow ladders, light/dark 
 
 ## Installation
 
+The installation commands below apply once version 1.0.1 is published to crates.io.
+
 ```sh
-cargo add gpui-luma
-cargo add gpui-luma-look-shadcn
-cargo add gpui-unofficial --rename gpui
+cargo add xgpui-luma@1.0.1
+cargo add xgpui-luma-look-shadcn@1.0.1
+cargo add xgpui@2.0.1 --rename gpui
 ```
 
-The package is named `gpui-luma-look-shadcn`; Rust imports use `gpui_luma_look_shadcn`.
+The package is named `xgpui-luma-look-shadcn`; Rust imports use `xgpui_luma_look_shadcn`.
 
 ## Quick Start
 
 ```rust,no_run
 use gpui::{Context, Entity};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn::{ShadcnLook, Button, ShadcnSize};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn::{ShadcnLook, Button, ShadcnSize};
 
 fn save_button<M: 'static>(
     look: &ShadcnLook,
     cx: &mut Context<M>,
-) -> Entity<gpui_luma::controls::button::Button> {
+) -> Entity<xgpui_luma::controls::button::Button> {
     Button::new("save")
         .look(look)
         .primary()
@@ -48,13 +50,13 @@ Use `ShadcnLook::built_in()` for the bundled fallback theme, or
 To enable optional theme inspection:
 
 ```sh
-cargo add gpui-luma-look-shadcn --features inspect
+cargo add xgpui-luma-look-shadcn@1.0.1 --features inspect
 ```
 
 ## Build
 
 In your application, run `cargo check` or `cargo build`.
-From the Luma repository, run `cargo check -p gpui-luma-look-shadcn`.
+From the Luma repository, run `cargo check -p xgpui-luma-look-shadcn`.
 
 ## License
 

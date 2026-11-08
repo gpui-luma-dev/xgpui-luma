@@ -24,7 +24,7 @@ type SliceCallback = dyn Fn(PieSliceEvent, &mut App);
 #[derive(Clone)]
 pub(crate) struct PieEvents(pub std::rc::Rc<SliceCallback>);
 #[derive(Clone)]
-pub(crate) struct PieTooltip(pub Arc<dyn Fn(&PieSlice) -> gpui_luma::controls::tooltip::Tooltip>);
+pub(crate) struct PieTooltip(pub Arc<dyn Fn(&PieSlice) -> xgpui_luma::controls::tooltip::Tooltip>);
 #[derive(Clone, Default)]
 pub(crate) struct PieInteraction {
     pub events: Option<PieEvents>,
@@ -56,13 +56,13 @@ type PieOverride = dyn Fn(&mut PiePresentation) + Send + Sync;
 impl PieChartBuilder {
     /// Construct a pie from one series. Y stores positive weights, not percentages.
     /// ```
-    /// use gpui_luma_plot::{Dataset, Series, Sample, PieChartBuilder};
+    /// use xgpui_luma_plot::{Dataset, Series, Sample, PieChartBuilder};
     /// let data = Dataset::new().with_series(Series::new("visits", "Visits", [
     ///     Sample::new(0.0, 275.0), Sample::new(1.0, 200.0),
     /// ]))?;
     /// let view = PieChartBuilder::new(data, "visits").id("browser-share")
     ///     .slice_names(["Chrome", "Safari"]).inner_radius(0.6).build();
-    /// # Ok::<(), gpui_luma_plot::DatasetError>(())
+    /// # Ok::<(), xgpui_luma_plot::DatasetError>(())
     /// ```
     pub fn new(data: Dataset, series: impl Into<crate::SeriesId>) -> Self {
         Self {
@@ -156,7 +156,7 @@ impl PieChartBuilder {
     /// on the returned tooltip; leaving a sector cancels pending display.
     pub fn slice_tooltip(
         mut self,
-        tooltip: impl Fn(&PieSlice) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&PieSlice) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.interaction.tooltip = Some(PieTooltip(Arc::new(tooltip)));
         self

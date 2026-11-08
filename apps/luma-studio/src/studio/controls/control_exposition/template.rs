@@ -1,5 +1,5 @@
 use gpui::{AnyElement, FontWeight, IntoElement, div, prelude::*, px};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use super::model::ControlExpositionLayout;
 use crate::studio::controls::catalog::ControlDocEntry;
@@ -74,7 +74,7 @@ pub(crate) fn render_control_exposition_card(
 fn render_card_section(
     content: AnyElement,
     borderless: bool,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
     pad: f32,
 ) -> gpui::Div {
     if borderless {

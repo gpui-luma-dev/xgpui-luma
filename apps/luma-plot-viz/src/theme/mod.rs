@@ -7,8 +7,8 @@ pub(crate) use plot::SdkCartesianStyle;
 use std::sync::Arc;
 
 use gpui::{Edges, Styled, px};
-use gpui_luma::controls::frame::{FrameBuilder, FrameLook};
-use gpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography};
+use xgpui_luma::controls::frame::{FrameBuilder, FrameLook};
+use xgpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography};
 mod live;
 pub(crate) use live::AppTheme;
 

@@ -1,9 +1,9 @@
 //! Reproducible SDK workloads shared by headless measurements and an opt-in native app.
 use std::{rc::Rc, sync::Arc};
 use gpui::{prelude::*, AnyView, App, Context, Entity, Window, div, px};
-use gpui_luma::{controls::*, theme::LumaThemeSyncExt};
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_radix as radix;
+use xgpui_luma::{controls::*, theme::LumaThemeSyncExt};
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_radix as radix;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SceneKind {
@@ -252,7 +252,7 @@ impl Scene {
         self.add(
             popup_menu::PopupMenuBuilder::new("menu")
                 .label("Actions")
-                .items((0..count).map(|index| gpui_luma::infra::menu_item::MenuItem::new(format!("action-{index}"))))
+                .items((0..count).map(|index| xgpui_luma::infra::menu_item::MenuItem::new(format!("action-{index}"))))
                 .spawn(cx),
         );
         let selector = selector::SelectorBuilder::new("selector")
@@ -315,7 +315,7 @@ impl Scene {
 
     fn color(&mut self, count: usize, cx: &mut Context<Self>) {
         for index in 0..count {
-            use gpui_luma_color::{color_field::ColorFieldState, color_slider::color_spec::Hsv};
+            use xgpui_luma_color::{color_field::ColorFieldState, color_slider::color_spec::Hsv};
             let field = cx.new(|_| {
                 ColorFieldState::saturation_value_rect(
                     format!("color-field-{index}"),
@@ -331,10 +331,10 @@ impl Scene {
                 change.update(app, |control, cx| control.set_hsv_components((step % 360) as f32, 0.5, 0.5, cx))
             }));
             self.add(field);
-            let ring = gpui_luma_color::color_ring::ColorRingBuilder::new(
+            let ring = xgpui_luma_color::color_ring::ColorRingBuilder::new(
                 format!("ring-{index}"),
                 120.0,
-                Arc::new(gpui_luma_color::color_ring::HueRingDelegate { saturation: 0.8, lightness: 0.5 }),
+                Arc::new(xgpui_luma_color::color_ring::HueRingDelegate { saturation: 0.8, lightness: 0.5 }),
             )
             .size(px(120.0))
             .spawn(cx);
@@ -348,7 +348,7 @@ impl Scene {
     }
 
     fn plot(&mut self, count: usize, cx: &mut Context<Self>) -> anyhow::Result<()> {
-        use gpui_luma_plot::{Dataset, Series, Sample};
+        use xgpui_luma_plot::{Dataset, Series, Sample};
         let dataset = Dataset::new().with_series(Series::new(
             "series",
             "Signal",
@@ -374,11 +374,11 @@ impl Render for Scene {
 }
 
 struct PlotScene {
-    dataset: gpui_luma_plot::Dataset,
+    dataset: xgpui_luma_plot::Dataset,
 }
 impl Render for PlotScene {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        use gpui_luma_plot::{CartesianChartBuilder, LineLayer};
+        use xgpui_luma_plot::{CartesianChartBuilder, LineLayer};
         div()
             .w(px(900.0))
             .h(px(500.0))

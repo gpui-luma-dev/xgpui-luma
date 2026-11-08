@@ -1,6 +1,6 @@
 # SDK color values and GPUI previews
 
-`gpui_luma::color::ColorValue` retains tagged Palette values: encoded sRGB,
+`xgpui_luma::color::ColorValue` retains tagged Palette values: encoded sRGB,
 linear sRGB, encoded Display P3, or Oklch. Display P3 support requires Palette
 0.7.7; SDK dependencies use the workspace version.
 
@@ -32,7 +32,7 @@ independently of UI tokens. See [stylesheet authoring](shared-stylesheet.md).
 ## Preview bridge
 
 ```rust
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
 let source = ColorValue::display_p3(1.0, 0.0, 0.0, 0.5);
 let preview = gpui_bridge::to_rgba(source, GamutMapping::CssLocalMinde)?;
@@ -128,8 +128,8 @@ the bridge cache to avoid repeated mapping of identical colors. Built-in light
 and dark palette snapshots are shared and need no per-frame gamut mapping.
 
 ```rust
-use gpui_luma::color::{ColorValue, GamutMapping};
-use gpui_luma::theme::{LumaThemeMode, ThemeTokens};
+use xgpui_luma::color::{ColorValue, GamutMapping};
+use xgpui_luma::theme::{LumaThemeMode, ThemeTokens};
 
 let mut source = LumaThemeMode::light();
 source.palette.state.selected.background = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);

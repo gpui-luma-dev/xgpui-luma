@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Context as _, Result};
 use gpui::{BoxShadow, point, px};
 use crate::catalog::CssTokenMap;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
 pub const SHADOW_LADDER_TOKENS: [&str; 8] = [
     "shadow-2xs",

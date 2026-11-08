@@ -14,7 +14,7 @@ use xgpui_canvas::{
 };
 
 pub struct Lab {
-    controls: Vec<Entity<gpui_luma::controls::button::Button>>,
+    controls: Vec<Entity<xgpui_luma::controls::button::Button>>,
     active: bool,
     results: Option<PathBuf>,
     status: String,
@@ -389,8 +389,8 @@ fn make_scene(count: usize) -> Scene<usize> {
 }
 
 impl Lab {
-    pub fn new(look: Arc<gpui_luma_look_radix::Look>, cx: &mut Context<Self>) -> Self {
-        use gpui_luma::prelude::HasPresenter;
+    pub fn new(look: Arc<xgpui_luma_look_radix::Look>, cx: &mut Context<Self>) -> Self {
+        use xgpui_luma::prelude::HasPresenter;
         let controls = [
             "Reset",
             "10k / 100k cards",
@@ -406,7 +406,7 @@ impl Lab {
         .into_iter()
         .enumerate()
         .map(|(index, label)| {
-            gpui_luma_look_radix::Button::new(format!("canvas-action-{index}"))
+            xgpui_luma_look_radix::Button::new(format!("canvas-action-{index}"))
                 .look(&look)
                 .label(label)
                 .on_click(cx, move |this: &mut Self, cx| {
@@ -531,11 +531,11 @@ impl Lab {
 #[cfg(all(test, feature = "test-support"))]
 mod luma_tests {
     use super::*;
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     #[::core::prelude::v1::test]
     fn luma_canvas_controls_change_scene_and_suspend_pending_work() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Lab::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let controls = cx.update(|_, cx| page.read(cx).controls.clone());

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::selector::{SelectorItemLike, SelectorTheme, SelectorVisualState, ThemedSelectorTemplate};
-use gpui_luma::controls::selector_list::default_selector_items_template;
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::selector::{SelectorItemLike, SelectorTheme, SelectorVisualState, ThemedSelectorTemplate};
+use xgpui_luma::controls::selector_list::default_selector_items_template;
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::look::ShadcnLook;
 
@@ -17,10 +17,10 @@ struct ShadcnSelectorTheme {
 impl SelectorTheme for ShadcnSelectorTheme {
     fn resolve(
         &self,
-        trigger_style: gpui_luma::controls::selector::SelectorTriggerStyle,
+        trigger_style: xgpui_luma::controls::selector::SelectorTriggerStyle,
         state: InteractionState,
         without_elevation: bool,
-    ) -> gpui_luma::controls::selector::SelectorPalette {
+    ) -> xgpui_luma::controls::selector::SelectorPalette {
         let tokens = self.theme.mode_tokens();
         crate::controls::selector::selector_palette(
             tokens.as_ref(),
@@ -31,18 +31,18 @@ impl SelectorTheme for ShadcnSelectorTheme {
         )
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 
     fn resolve_look(
         &self,
-        trigger_style: gpui_luma::controls::selector::SelectorTriggerStyle,
+        trigger_style: xgpui_luma::controls::selector::SelectorTriggerStyle,
         state: InteractionState,
         size: ControlSize,
-        scale: &gpui_luma::theme::StandardBoxScale,
+        scale: &xgpui_luma::theme::StandardBoxScale,
         without_elevation: bool,
-    ) -> gpui_luma::controls::selector::SelectorLook {
+    ) -> xgpui_luma::controls::selector::SelectorLook {
         let tokens = self.theme.mode_tokens();
         crate::controls::selector::selector_look(
             tokens.as_ref(),
@@ -57,12 +57,12 @@ impl SelectorTheme for ShadcnSelectorTheme {
 
     fn resolve_visual_look(
         &self,
-        trigger_style: gpui_luma::controls::selector::SelectorTriggerStyle,
+        trigger_style: xgpui_luma::controls::selector::SelectorTriggerStyle,
         visual_state: SelectorVisualState,
         size: ControlSize,
-        scale: &gpui_luma::theme::StandardBoxScale,
+        scale: &xgpui_luma::theme::StandardBoxScale,
         without_elevation: bool,
-    ) -> gpui_luma::controls::selector::SelectorLook {
+    ) -> xgpui_luma::controls::selector::SelectorLook {
         let tokens = self.theme.mode_tokens();
         let look = crate::controls::selector::selector_look_with_visual_state(
             tokens.as_ref(),
@@ -77,7 +77,7 @@ impl SelectorTheme for ShadcnSelectorTheme {
     }
 }
 
-pub fn selector_template<T>(theme: ShadcnLook) -> Arc<dyn gpui_luma::controls::selector::SelectorTemplate<T>>
+pub fn selector_template<T>(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::selector::SelectorTemplate<T>>
 where
     T: SelectorItemLike + 'static,
 {

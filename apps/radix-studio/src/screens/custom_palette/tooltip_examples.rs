@@ -1,6 +1,6 @@
 //! Optional tooltip customization examples, kept out of ordinary control setup.
 use std::time::Duration;
-use gpui_luma::controls::tooltip::{Tooltip, bubble};
+use xgpui_luma::controls::tooltip::{Tooltip, bubble};
 
 /// Once-only help with a shortcut and a local template override.
 pub fn search_help() -> Tooltip {

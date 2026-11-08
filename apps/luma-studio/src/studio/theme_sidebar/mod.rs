@@ -8,12 +8,12 @@ mod theme_selector;
 use std::sync::{Arc, RwLock};
 
 use gpui::{Context, Entity, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::search_selector::SearchSelector;
-use gpui_luma::controls::tabs::{Tabs, TabsWidthMode};
+use xgpui_luma::controls::search_selector::SearchSelector;
+use xgpui_luma::controls::tabs::{Tabs, TabsWidthMode};
 
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::{ShadcnLook};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::{ShadcnLook};
+use xgpui_luma_look_shadcn as shadcn;
 
 use self::model::TOKEN_CATEGORIES;
 use self::panels::{ColorsPanel, OtherPanel, PanelContextMenuHost, TypographyPanel};
@@ -28,7 +28,7 @@ use crate::studio::overrides::StudioOverrides;
 
 pub struct ThemeSidebar {
     look: std::sync::Arc<ShadcnLook>,
-    global_overrides: std::collections::HashMap<String, gpui_luma::color::ColorValue>,
+    global_overrides: std::collections::HashMap<String, xgpui_luma::color::ColorValue>,
     theme_selector: SearchSelector,
     theme_selector_swatches: Arc<RwLock<ThemeSelectorSwatchCache>>,
     theme_selector_selected_id: Arc<RwLock<SharedString>>,
@@ -188,7 +188,7 @@ fn sidebar_scroll_body() -> gpui::Stateful<gpui::Div> {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use gpui_luma::motion::{Transition, Easing};
+    use xgpui_luma::motion::{Transition, Easing};
 
     struct Panel(&'static str);
     impl Render for Panel {

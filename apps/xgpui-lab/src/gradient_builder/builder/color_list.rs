@@ -1,6 +1,6 @@
 use super::*;
 use gpui::{AnyElement, IntoElement, MouseButton, Window, div, prelude::*};
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::listbox::{
     ListBoxAxis, ListBoxBinding, ListBoxEvent, ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode,
     SelectionPolicy,
 };
@@ -30,7 +30,7 @@ impl ColorFieldList {
         rows: Vec<(u64, AnyElement)>,
         selected: Option<u64>,
         id: &'static str,
-        chrome: gpui_luma::theme::LumaChrome,
+        chrome: xgpui_luma::theme::LumaChrome,
         interaction: crate::theme::InteractionColors,
         window: &mut Window,
         cx: &mut Context<GradientBuilder>,

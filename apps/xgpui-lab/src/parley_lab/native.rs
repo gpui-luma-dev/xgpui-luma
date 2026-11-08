@@ -24,13 +24,13 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
     let benchmark_output = output.clone();
     let report_backend = name.clone();
     application.run(move |cx| {
-        if let Err(error) = gpui_luma::init(cx) {
+        if let Err(error) = xgpui_luma::init(cx) {
             eprintln!("Luma initialization: {error:#}");
             cx.quit();
             return;
         }
-        gpui_luma::focus::bind_default_focus_keys(cx);
-        gpui_luma::key_handling::bind_default_control_keys(cx);
+        xgpui_luma::focus::bind_default_focus_keys(cx);
+        xgpui_luma::key_handling::bind_default_control_keys(cx);
         cx.on_action(crate::quit);
         cx.bind_keys([KeyBinding::new("cmd-q", crate::Quit, None)]);
         let result = cx.open_window(

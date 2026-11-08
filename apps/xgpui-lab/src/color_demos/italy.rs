@@ -2,10 +2,10 @@ use std::sync::{
     Arc, RwLock,
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-use gpui_luma::{controls::button::Button, prelude::HasPresenter};
+use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
 
 use gpui::{prelude::*, *};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use xgpui_media::{ImageJob, LoadStatus, MediaImage, MediaLimits, MediaLoader, UploadStatus};
 use crate::{
     lab_controls::{Choice, labels},
@@ -65,11 +65,11 @@ impl ItalyLab {
             .enumerate()
             .map(|(index, &label)| {
                 let state = thumbnail_state.clone();
-                let geometry = gpui_luma_look_radix::button_look_for::<()>(
+                let geometry = xgpui_luma_look_radix::button_look_for::<()>(
                     &look,
-                    gpui_luma_look_radix::ButtonVariant::Ghost,
-                    gpui_luma_look_radix::Paint::gray(),
-                    gpui_luma_look_radix::ButtonSize::One,
+                    xgpui_luma_look_radix::ButtonVariant::Ghost,
+                    xgpui_luma_look_radix::Paint::gray(),
+                    xgpui_luma_look_radix::ButtonSize::One,
                     Default::default(),
                 );
                 let button = Button::new(format!("italy-thumb-{index}"))
@@ -118,11 +118,11 @@ impl ItalyLab {
                     .spawn(cx);
                 let state = thumbnail_state.clone();
                 let paint_look = look.clone();
-                let template = gpui_luma::controls::button::DefaultButtonTemplate::new(
-                    gpui_luma_look_radix::button_family_theme_with(
+                let template = xgpui_luma::controls::button::DefaultButtonTemplate::new(
+                    xgpui_luma_look_radix::button_family_theme_with(
                         &look,
-                        gpui_luma_look_radix::ButtonVariant::Ghost,
-                        gpui_luma_look_radix::Paint::gray(),
+                        xgpui_luma_look_radix::ButtonVariant::Ghost,
+                        xgpui_luma_look_radix::Paint::gray(),
                     ),
                 )
                 .with_modifier(move |row, model| {
@@ -302,7 +302,7 @@ mod tests {
     #[test]
     fn three_thumbnail_buttons_select_the_large_photo() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| ItalyLab::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         for index in [0, 2, 1] {
@@ -324,9 +324,9 @@ mod tests {
 
     #[test]
     fn photo_and_cards_preserve_aspect_ratio_and_wrap_in_both_themes() {
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             let mut app = TestAppContext::single();
-            app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+            app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
             let look = crate::theme::default_look();
             look.set_mode(mode);
             let (_view, cx) = app.add_window_view(|_, cx| ItalyLab::new(look, cx));
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn native_photo_and_presentation_selectors_keep_the_same_selected_source() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| ItalyLab::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |lab, cx| lab.select_photo(2, cx));

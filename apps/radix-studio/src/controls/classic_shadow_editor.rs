@@ -4,7 +4,7 @@
 //! whole app retunes as you drag. The readout under the preview is the literal to paste
 //! back into `ClassicButtonParams::default` once the numbers look right.
 
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -12,13 +12,13 @@ use gpui::{
     AnyElement, ClipboardItem, Context, Entity, EventEmitter, FontWeight, Hsla, IntoElement, Render, Window, div,
     prelude::*, px,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::slider::{Slider, SliderEvent};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_radix as radix;
-use gpui_luma_look_radix::{ClassicButtonParams, ButtonSize, Look, SemanticRole};
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::slider::{Slider, SliderEvent};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_radix as radix;
+use xgpui_luma_look_radix::{ClassicButtonParams, ButtonSize, Look, SemanticRole};
 
 use crate::assets::{icon_named, react_icon};
 

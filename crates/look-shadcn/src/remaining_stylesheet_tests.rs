@@ -1,6 +1,6 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
 use std::collections::HashMap;
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
 use crate::{ShadcnLook, ShadcnTextFieldStyle, StylesheetConfig};
 
 const OVERRIDES: &str = r#"
@@ -142,7 +142,7 @@ fn input_families_resolve_independent_dimensions_and_typography() {
                 ShadcnTextFieldStyle::Surface,
             ] {
                 for bits in 0..32 {
-                    let state = gpui_luma::controls::textfield::TextFieldState {
+                    let state = xgpui_luma::controls::textfield::TextFieldState {
                         hovered: bits & 1 != 0,
                         focused: bits & 2 != 0,
                         focus_visible: bits & 4 != 0,
@@ -156,7 +156,7 @@ fn input_families_resolve_independent_dimensions_and_typography() {
                         &tokens,
                         mode,
                         style,
-                        gpui_luma::controls::textarea::TextAreaState {
+                        xgpui_luma::controls::textarea::TextAreaState {
                             hovered: state.hovered,
                             focused: state.focused,
                             focus_visible: state.focus_visible,
@@ -197,7 +197,7 @@ fn input_families_resolve_independent_dimensions_and_typography() {
 #[cfg(feature = "inspect")]
 #[test]
 fn remaining_common_geometry_reaches_paint_and_inspection() {
-    use gpui_luma::controls::{
+    use xgpui_luma::controls::{
         scrollbar::{ScrollbarOrientation, ScrollbarStyle},
         overlay_window::OverlayWindowMode,
         pager::PagerStyle,
@@ -266,14 +266,14 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             let popup = crate::controls::popup_menu::popup_menu_palette(
                 &tokens,
                 mode,
-                gpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline,
-                gpui_luma::controls::popup_menu::PopupMenuTriggerMetrics { size, ..Default::default() },
+                xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline,
+                xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics { size, ..Default::default() },
                 InteractionState::default(),
             );
             assert_eq!((popup_scale.height, popup_scale.padding_x, popup_scale.icon_size), (51.0, 11.0, 21.0));
             assert_eq!((popup.trigger_typography.size, popup.trigger_typography.line_height), (17.0, 25.0));
             let p = inspect
-                .inspect_popup_menu_metrics(gpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline, size);
+                .inspect_popup_menu_metrics(xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline, size);
             assert_eq!(p.trigger.height.value_px, popup_scale.height);
             assert!(format!("{:?}", p.trigger.icon_size.source).contains("common.popup_menu"));
             let card = crate::controls::card::card_look(&look, size);
@@ -322,7 +322,7 @@ fn selected_configuration_survives_color_copies_token_edits_and_live_replacement
     let copy = look
         .with_color_overrides(&HashMap::from([(
             "primary".into(),
-            gpui_luma::color::ColorValue::srgb(0.0, 0.0, 0.0, 1.0),
+            xgpui_luma::color::ColorValue::srgb(0.0, 0.0, 0.0, 1.0),
         )]))
         .unwrap();
     let progress = copy.progress_theme();
@@ -339,7 +339,7 @@ fn selected_configuration_survives_color_copies_token_edits_and_live_replacement
 
 #[test]
 fn migrated_literal_families_keep_their_bundled_size_baselines() {
-    use gpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
     let look = crate::test_support::fallback_look();
     for (size, diameter, track, thumb, badge) in [
         (ControlSize::Sm, 48.0, 4.0, 12.0, 24.0),
@@ -431,9 +431,9 @@ fn selected_color_rules_follow_the_same_configuration_as_geometry() {
 
 #[test]
 fn selector_panel_and_trigger_apply_independent_common_overrides() {
-    use gpui_luma::controls::selector::SelectorTriggerStyle;
+    use xgpui_luma::controls::selector::SelectorTriggerStyle;
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.selector.geometry]
 radius=9
 menu_offset_y=0
@@ -468,9 +468,9 @@ item_height=0
 
 #[test]
 fn pager_and_resize_handle_overrides_reach_paint_and_inspection() {
-    use gpui_luma::controls::{pager::PagerStyle, resizable_panels::ResizeHandleSize};
+    use xgpui_luma::controls::{pager::PagerStyle, resizable_panels::ResizeHandleSize};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.pager.geometry]
 radius=13
 disabled_opacity=0
@@ -497,8 +497,8 @@ edge_max_viewport_ratio="math(2 / 3)"
         (17.0, 23.0, 47.0, 0.0)
     );
     let panel = look.slide_panel_state(
-        gpui_luma::controls::slide_panel::SlidePanelTopAnchor::WindowEdge,
-        gpui_luma::controls::slide_panel::SlidePanelSizeConfig::new(0.0, 0.0, 900.0),
+        xgpui_luma::controls::slide_panel::SlidePanelTopAnchor::WindowEdge,
+        xgpui_luma::controls::slide_panel::SlidePanelSizeConfig::new(0.0, 0.0, 900.0),
     );
     assert_eq!(panel.geometry().side_width, Some(507.0));
     #[cfg(feature = "inspect")]
@@ -517,7 +517,7 @@ edge_max_viewport_ratio="math(2 / 3)"
 #[test]
 fn panel_and_group_chrome_use_selected_common_stylesheet() {
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.control_group.geometry]
 padding_x=0
 radius=7
@@ -553,7 +553,7 @@ radius=11
 #[test]
 fn resize_chrome_uses_common_stylesheet_including_zero_width() {
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.resizable_panels.geometry]
 border_width=0
 divider_width=3
@@ -572,9 +572,9 @@ disabled_opacity=0.2
 
 #[test]
 fn table_strokes_and_header_padding_use_selected_stylesheet() {
-    use gpui_luma::controls::table::{DefaultTableTheme, TableTheme};
+    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.table.geometry]
 border_width=0
 header_divider_width=3
@@ -584,7 +584,10 @@ column_resize_line_width=0
 column_resize_vertical_extension=7
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultTableTheme::new(tokens).resolve_look(true, false, ControlSize::Md);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = crate::controls::table::table_look(&look.mode_tokens(), true, false, ControlSize::Md);
@@ -606,9 +609,9 @@ column_resize_vertical_extension=7
 
 #[test]
 fn table_drag_preview_uses_selected_size_and_zero_strokes() {
-    use gpui_luma::controls::table::{DefaultTableTheme, TableTheme};
+    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.table.geometry]
 drag_offset=5
 drag_width=180
@@ -620,7 +623,10 @@ drag_marker_width=0
 drag_width=310
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultTableTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.table_theme();
@@ -634,10 +640,10 @@ drag_width=310
 
 #[test]
 fn table_row_chrome_uses_selected_stylesheet_and_size() {
-    use gpui_luma::controls::table::{DefaultTableTheme, TableTheme};
-    use gpui_luma::theme::ListRowScale;
+    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
+    use xgpui_luma::theme::ListRowScale;
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.table.geometry]
 column_padding_x=0
 column_muted_opacity=0
@@ -650,7 +656,10 @@ row_disabled_opacity=0.3
 row_radius=11
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultTableTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.table_theme();
@@ -672,9 +681,9 @@ row_radius=11
 
 #[test]
 fn pager_popup_chrome_uses_shared_stylesheet_and_presentation_overrides() {
-    use gpui_luma::controls::pager::{DefaultPagerTheme, PagerStyle, PagerTheme};
+    use xgpui_luma::controls::pager::{DefaultPagerTheme, PagerStyle, PagerTheme};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.pager.geometry]
 border_width=0
 page_size_label_gap=17
@@ -687,7 +696,10 @@ popup_item_radius_inset=0
 popup_padding=11
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultPagerTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.pager_theme();
@@ -707,16 +719,19 @@ popup_padding=11
 
 #[test]
 fn context_menu_chrome_uses_shared_stylesheet_with_zero_overrides() {
-    use gpui_luma::controls::context_menu::{DefaultContextMenuTheme, ContextMenuTheme};
+    use xgpui_luma::controls::context_menu::{DefaultContextMenuTheme, ContextMenuTheme};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.context_menu.geometry]
 border_width=0
 disabled_opacity=0
 window_margin=19
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultContextMenuTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.context_menu_theme();
@@ -728,9 +743,9 @@ window_margin=19
 
 #[test]
 fn overlay_shell_chrome_uses_shared_stylesheet_and_size() {
-    use gpui_luma::controls::overlay_window::{DefaultOverlayWindowTheme, OverlayWindowTheme, OverlayWindowMode};
+    use xgpui_luma::controls::overlay_window::{DefaultOverlayWindowTheme, OverlayWindowTheme, OverlayWindowMode};
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.overlay_window.geometry]
 border_width=0
 radius=0
@@ -739,7 +754,10 @@ border_width=3
 radius=17
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk = DefaultOverlayWindowTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.overlay_window_theme();
@@ -763,7 +781,7 @@ radius=17
 
 #[test]
 fn remaining_control_chrome_inherits_shared_overrides() {
-    use gpui_luma::controls::{
+    use xgpui_luma::controls::{
         checkbox::{DefaultCheckboxTheme, CheckboxTheme},
         radio_button::{DefaultRadioButtonTheme, RadioButtonTheme},
         switch::{DefaultSwitchTheme, SwitchTheme},
@@ -773,7 +791,7 @@ fn remaining_control_chrome_inherits_shared_overrides() {
         dock_splitter::{DefaultDockSplitterTheme, DockSplitterTheme},
     };
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.checkbox.geometry]
 disabled_opacity=0
 [common.radio.geometry]
@@ -800,7 +818,10 @@ container_gap=0
 subtitle_opacity=0.2
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk_checkbox = DefaultCheckboxTheme::new(tokens.clone());
     let sdk_radio = DefaultRadioButtonTheme::new(tokens.clone());
     let sdk_switch = DefaultSwitchTheme::new(tokens.clone());
@@ -837,12 +858,12 @@ subtitle_opacity=0.2
 
 #[test]
 fn range_and_tooltip_decoration_use_selected_common_stylesheet() {
-    use gpui_luma::controls::{
+    use xgpui_luma::controls::{
         slider::{DefaultSliderTheme, SliderTheme},
         progress::{DefaultProgressTheme, ProgressTheme},
     };
     let mut config = crate::embedded_stylesheet().clone();
-    config.common = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.slider.geometry]
 dial_size=160
 track_radius=52
@@ -857,7 +878,10 @@ pointer_size=9
 shortcut_opacity=0
 "#])
     .unwrap();
-    let tokens = config.common.theme_tokens(ThemeMode::Light, gpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let tokens = config
+        .common
+        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
+        .unwrap();
     let sdk_slider = DefaultSliderTheme::new(tokens.clone());
     let sdk_progress = DefaultProgressTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();

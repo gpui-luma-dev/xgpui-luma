@@ -10,9 +10,9 @@ use gpui::{prelude::*, *};
 use crate::checkerboard_paint::{DEFAULT_CHECKERBOARD_SQUARE_SIZE, paint_masked_checkerboard};
 use crate::chrome_tokens::swatch_checkerboard_colors;
 use crate::style::ActiveTheme;
-use gpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::theme::ControlSize;
 
 /// Typed payload for a button-backed color swatch.
 /// The source space/components are retained; rendering resolves a cached sRGB preview.
@@ -272,7 +272,7 @@ impl RenderOnce for ColorSwatch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::color::gpui_bridge::SrgbRenderCache;
+    use xgpui_luma::color::gpui_bridge::SrgbRenderCache;
 
     #[::core::prelude::v1::test]
     fn swatch_source_survives_clone_and_preview_resolution() {

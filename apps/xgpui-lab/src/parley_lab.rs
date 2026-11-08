@@ -10,11 +10,11 @@ mod line;
 use std::{sync::Arc};
 use anyhow::Result;
 use gpui::{prelude::*, *};
-use gpui_luma::{
+use xgpui_luma::{
     prelude::HasPresenter,
     controls::{button::Button, slider::Slider},
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 
 struct Engine {
@@ -445,12 +445,12 @@ impl Render for ParleyPage {
 mod tests {
     use super::{ParleyPage, samples};
     use gpui::TestAppContext;
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
 
     #[test]
     fn parley_tabs_render_actual_masks_and_luma_diagnostics() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| ParleyPage::new(crate::theme::default_look(), cx));
         for tab in ["Text Shaping", "Line Layout", "Paragraphs", "Fonts & Fallback", "Rasterization"] {
             page.update(cx, |page, cx| page.activate(tab.into(), cx));

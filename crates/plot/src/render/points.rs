@@ -1,5 +1,5 @@
 use gpui::{AnyElement, App, AvailableSpace, Bounds, Pixels, Point, Window, div, point, prelude::*, px, size};
-use gpui_luma::{
+use xgpui_luma::{
     infra::attachments::{AttachmentHost, AttachmentTarget, TooltipEntityExt},
     theme::InteractionState,
 };

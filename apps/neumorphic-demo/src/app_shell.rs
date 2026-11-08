@@ -1,5 +1,5 @@
 use gpui::{App, AppContext, Bounds, WindowBounds, WindowOptions, px, size};
-use gpui_luma::shell::TitleBar;
+use xgpui_luma::shell::TitleBar;
 
 use crate::app::NeumorphicDemoApp;
 

@@ -6,9 +6,9 @@ pub(crate) mod benchmarks;
 use std::sync::Arc;
 
 use gpui::{Context, CustomGeometry, Render, Rgba, Window, WindowColorMode, canvas, div, prelude::*, px};
-use gpui_luma_look_radix::{self as radix, Look};
-use gpui_luma::controls::button::{Button, ButtonEvent};
-use gpui_luma::prelude::HasPresenter;
+use xgpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma::controls::button::{Button, ButtonEvent};
+use xgpui_luma::prelude::HasPresenter;
 use gpui::{Entity, Subscription, SharedString};
 use xgpui_gamut::color::GamutMapping;
 use xgpui_gamut::instanced::WidePainter;
@@ -82,7 +82,7 @@ pub struct GamutPage {
     route: usize,
     controls: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
-    switches: Vec<(Action, gpui_luma::controls::switch::Switch)>,
+    switches: Vec<(Action, xgpui_luma::controls::switch::Switch)>,
     benchmarks: Entity<benchmarks::Benchmarks>,
     last_lab_tab: SharedString,
     paint_errors: std::rc::Rc<std::cell::RefCell<Vec<String>>>,
@@ -385,7 +385,7 @@ mod tests {
     #[test]
     fn gamut_tabs_render_with_srgb_fallback_and_retained_controls() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app
             .add_window_view(|_, cx| GamutPage::new(crate::theme::default_look(), Some("headless backend".into()), cx));
         for tab in ["Wide Color Fills", "Wide Gradients", "Gamut Mapping", "Presentation"] {
@@ -411,7 +411,7 @@ mod tests {
             switch.update(cx, |switch, cx| {
                 let on = !*switch.data();
                 switch.set_data(on, cx);
-                cx.emit(gpui_luma::controls::switch::SwitchEvent::Change { on });
+                cx.emit(xgpui_luma::controls::switch::SwitchEvent::Change { on });
             });
             cx.run_until_parked();
         }

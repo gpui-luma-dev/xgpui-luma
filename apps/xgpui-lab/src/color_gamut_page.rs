@@ -1,11 +1,11 @@
 //! Color & Gamut uses the same SDK section tabs as the other lab workspaces.
 use std::sync::Arc;
 use gpui::{prelude::*, *};
-use gpui_luma::{
+use xgpui_luma::{
     controls::tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode},
     theme::ControlSize,
 };
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use crate::{chromaticity::Lab, theme::ColorVizLookExt};
 
 pub(crate) struct Page {

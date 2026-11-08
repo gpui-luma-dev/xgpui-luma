@@ -7,8 +7,8 @@ Issue [#111](https://github.com/gpui-luma-dev/gpui-luma/issues/111) measures sha
 Run from the repository root, without launching an application:
 
 ```sh
-cargo bench --locked -p gpui-luma --bench render_hot_paths -- --measure
-cargo test --locked --release -p gpui-luma --features test-support --lib perf_tests::measure_ -- --ignored --nocapture --test-threads=1
+cargo bench --locked -p xgpui-luma --bench render_hot_paths -- --measure
+cargo test --locked --release -p xgpui-luma --features test-support --lib perf_tests::measure_ -- --ignored --nocapture --test-threads=1
 ```
 
 The second command uses GPUI's test platform and TestWindow, not a native application window. The measurements are ignored during ordinary tests. Run the commands sequentially, with no other builds in progress. The test fixtures exercise production methods rather than copies of their algorithms.
@@ -94,7 +94,7 @@ Completed checks:
 ```sh
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets --all-features
-cargo test --locked -p gpui-luma --all-features --lib
+cargo test --locked -p xgpui-luma --all-features --lib
 ```
 
 The SDK suite passes 811 tests with five manual measurements ignored. All four new release measurement tests and the standalone shadow benchmark also complete successfully. Run the full interaction suite in its normal test profile: GPUI release builds omit debug selectors used by existing interaction tests.

@@ -1,9 +1,9 @@
-use gpui_luma::controls::scrollbar;
+use xgpui_luma::controls::scrollbar;
 mod input;
 
-use gpui_luma::controls::scrollbar::ScrollbarEventExt;
+use xgpui_luma::controls::scrollbar::ScrollbarEventExt;
 use gpui::{App, Context, Entity, FocusHandle, IntoElement, MouseButton, Render, Window, div, prelude::*, px};
-use gpui_luma::{
+use xgpui_luma::{
     controls::scrollbar::{Scrollbar, ScrollbarEvent},
     key_handling::{
         ControlKeyProfile, DecreaseValue, DecreaseValueLarge, IncreaseValue, IncreaseValueLarge, MoveToStart, MoveToEnd,
@@ -11,7 +11,7 @@ use gpui_luma::{
     vstack,
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{Dataset, Decimation, NumericScale};
+use xgpui_luma_plot::{Dataset, Decimation, NumericScale};
 
 use super::{dense, diagnostics::Diagnostics};
 use crate::theme::{self, TypographyExt};

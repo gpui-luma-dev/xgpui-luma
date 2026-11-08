@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::sidebar::{SidebarPanelTemplate, SidebarTheme, ThemedSidebarPanelTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::sidebar::{SidebarPanelTemplate, SidebarTheme, ThemedSidebarPanelTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use super::floating_menu::floating_menu_theme;
 use crate::controls::sidebar::{sidebar_branch_look, sidebar_container_look, sidebar_item_look, sidebar_section_look};
@@ -12,20 +12,20 @@ struct ShadcnSidebarTheme {
 }
 
 impl SidebarTheme for ShadcnSidebarTheme {
-    fn typography(&self) -> gpui_luma::theme::LumaTypography {
+    fn typography(&self) -> xgpui_luma::theme::LumaTypography {
         self.theme.mode_tokens().typography.clone()
     }
     fn section_font_features(&self) -> gpui::FontFeatures {
         self.theme.stylesheet().common.font_features.resolve("sidebar_section")
     }
 
-    fn geometry(&self) -> gpui_luma::theme::stylesheet::SidebarGeometry {
+    fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
         self.theme.mode_tokens().stylesheet().common.sidebar.resolve_geometry("", Default::default())
     }
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
-        gpui_luma::infra::drag_drop::DragDropLook {
+        xgpui_luma::infra::drag_drop::DragDropLook {
             geometry: self.theme.stylesheet().common.shared_geometry(),
             background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
@@ -41,7 +41,7 @@ impl SidebarTheme for ShadcnSidebarTheme {
         sidebar_container_look(self.theme.mode_tokens().as_ref()).foreground
     }
 
-    fn resolve_section(&self) -> gpui_luma::controls::sidebar::SidebarSectionLook {
+    fn resolve_section(&self) -> xgpui_luma::controls::sidebar::SidebarSectionLook {
         sidebar_section_look(&self.theme)
     }
 
@@ -49,7 +49,7 @@ impl SidebarTheme for ShadcnSidebarTheme {
         &self,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::sidebar::SidebarItemLook {
+    ) -> xgpui_luma::controls::sidebar::SidebarItemLook {
         sidebar_branch_look(&self.theme, state, size)
     }
 
@@ -58,11 +58,11 @@ impl SidebarTheme for ShadcnSidebarTheme {
         selected: bool,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::sidebar::SidebarItemLook {
+    ) -> xgpui_luma::controls::sidebar::SidebarItemLook {
         sidebar_item_look(&self.theme, selected, state, size)
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 }

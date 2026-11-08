@@ -6,9 +6,9 @@ mod scrolling;
 mod interpolation;
 
 use gpui::{App, Entity, IntoElement, Pixels, div, prelude::*, px};
-use gpui_luma::{controls::frame::FrameBuilder, vstack};
+use xgpui_luma::{controls::frame::FrameBuilder, vstack};
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     Axis, AxisSide, CartesianChartBuilder, CategoryScale, Dataset, DatasetError, LineLayer, NumericScale, Sample,
     Series,
 };

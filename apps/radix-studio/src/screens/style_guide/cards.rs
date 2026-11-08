@@ -1,6 +1,6 @@
 //! Card variants and sizes with local profile content.
 use gpui::{AnyElement, Hsla, div, prelude::*, px};
-use gpui_luma_look_radix::{CardSize, CardVariant, Look};
+use xgpui_luma_look_radix::{CardSize, CardVariant, Look};
 use super::matrix_grid::{column_header, empty_corner, equal_data_columns, fixed_grid, row_label};
 
 pub fn matrix(look: &Look, muted: Hsla) -> AnyElement {

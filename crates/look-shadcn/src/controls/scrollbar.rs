@@ -14,12 +14,12 @@ use crate::stylesheet::config::matches_optional_str;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::controls::scrollbar::ScrollbarLook;
-use gpui_luma::controls::scrollbar::ScrollbarOrientation;
-use gpui_luma::controls::scrollbar::ScrollbarStyle;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::scrollbar::ScrollbarLook;
+use xgpui_luma::controls::scrollbar::ScrollbarOrientation;
+use xgpui_luma::controls::scrollbar::ScrollbarStyle;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -81,7 +81,7 @@ pub fn scrollbar_look(
     let colors = resolve_scrollbar_colors(&resolver, style, state.disabled, layer)
         .unwrap_or_else(|_| ScrollbarColorTable::fallback());
 
-    let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .scrollbar
         .resolve_geometry(size.stylesheet_key(), Default::default());
     let length = match orientation {
@@ -113,7 +113,7 @@ pub fn scrollbar_look(
     };
     let geometry = mode.stylesheet().common.scrollbar.resolve_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::ScrollbarGeometry {
+        xgpui_luma::theme::stylesheet::ScrollbarGeometry {
             thickness: look.thickness,
             track_thickness: look.track_thickness,
             thumb_thickness: look.thumb_thickness,
@@ -145,11 +145,11 @@ fn scrollbar_style_key(style: ScrollbarStyle) -> &'static str {
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::controls::scrollbar::ScrollbarOrientation;
-    use gpui_luma::controls::scrollbar::ScrollbarStyle;
-    use gpui_luma::theme::InteractionState;
+    use xgpui_luma::controls::scrollbar::ScrollbarOrientation;
+    use xgpui_luma::controls::scrollbar::ScrollbarStyle;
+    use xgpui_luma::theme::InteractionState;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -181,7 +181,7 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Md,
+            xgpui_luma::theme::ControlSize::Md,
             ScrollbarStyle::Ghost,
         );
 
@@ -196,21 +196,21 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Sm,
+            xgpui_luma::theme::ControlSize::Sm,
             ScrollbarStyle::Ghost,
         );
         let medium = scrollbar_look(
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Md,
+            xgpui_luma::theme::ControlSize::Md,
             ScrollbarStyle::Ghost,
         );
         let large = scrollbar_look(
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Lg,
+            xgpui_luma::theme::ControlSize::Lg,
             ScrollbarStyle::Ghost,
         );
 
@@ -230,14 +230,14 @@ mod tests {
             &mode,
             InteractionState { hovered: true, ..InteractionState::default() },
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Md,
+            xgpui_luma::theme::ControlSize::Md,
             ScrollbarStyle::Ghost,
         );
         let focused = scrollbar_look(
             &mode,
             InteractionState { focused: true, ..InteractionState::default() },
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Md,
+            xgpui_luma::theme::ControlSize::Md,
             ScrollbarStyle::Ghost,
         );
 
@@ -253,7 +253,7 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            gpui_luma::theme::ControlSize::Md,
+            xgpui_luma::theme::ControlSize::Md,
             ScrollbarStyle::Soft,
         );
 
@@ -332,8 +332,8 @@ pub struct ScrollbarColorRule {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_scrollbar_stylesheet() -> gpui_luma::theme::stylesheet::ScrollbarStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_scrollbar_stylesheet() -> xgpui_luma::theme::stylesheet::ScrollbarStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ScrollbarStylesheet {
         geometry: ScrollbarGeometryStylesheet { length_h: Some(260.0), length_v: Some(180.0), ..Default::default() },
         sizes: ["sm", "md", "lg"]
@@ -355,26 +355,26 @@ pub struct ScrollbarMetricTable {
 
 pub fn resolve_scrollbar_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    orientation: gpui_luma::controls::scrollbar::ScrollbarOrientation,
-    style: gpui_luma::controls::scrollbar::ScrollbarStyle,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
+    style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
 ) -> ScrollbarMetricTable {
-    resolve_scrollbar_metrics_for_size(mode, theme_mode, orientation, style, gpui_luma::theme::ControlSize::Md)
+    resolve_scrollbar_metrics_for_size(mode, theme_mode, orientation, style, xgpui_luma::theme::ControlSize::Md)
 }
 
 /// Resolve the selected look's Scrollbar dimensions and their sources for a size.
 pub fn resolve_scrollbar_metrics_for_size(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    orientation: gpui_luma::controls::scrollbar::ScrollbarOrientation,
-    style: gpui_luma::controls::scrollbar::ScrollbarStyle,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
+    style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
+    size: xgpui_luma::theme::ControlSize,
 ) -> ScrollbarMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, pill_radius_metric};
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let look =
-        crate::paint::scrollbar_look(mode, gpui_luma::theme::InteractionState::default(), orientation, size, style);
+        crate::paint::scrollbar_look(mode, xgpui_luma::theme::InteractionState::default(), orientation, size, style);
     let catalog = ctx.catalog();
 
     let mut table = ScrollbarMetricTable {
@@ -387,7 +387,7 @@ pub fn resolve_scrollbar_metrics_for_size(
     };
     let geometry = mode.stylesheet().common.scrollbar.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::ScrollbarGeometry {
+        xgpui_luma::theme::stylesheet::ScrollbarGeometry {
             thickness: table.thickness.value_px,
             track_thickness: table.track_thickness.value_px,
             thumb_thickness: table.thumb_thickness.value_px,
@@ -406,8 +406,8 @@ pub fn resolve_scrollbar_metrics_for_size(
         crate::tables::metrics::helpers::prefer_shared_metric(geometry.min_thumb_length, table.min_thumb_length);
     table.length = crate::tables::metrics::helpers::prefer_shared_metric(
         match orientation {
-            gpui_luma::controls::scrollbar::ScrollbarOrientation::Horizontal => geometry.length_h,
-            gpui_luma::controls::scrollbar::ScrollbarOrientation::Vertical => geometry.length_v,
+            xgpui_luma::controls::scrollbar::ScrollbarOrientation::Horizontal => geometry.length_h,
+            xgpui_luma::controls::scrollbar::ScrollbarOrientation::Vertical => geometry.length_v,
         },
         table.length,
     );

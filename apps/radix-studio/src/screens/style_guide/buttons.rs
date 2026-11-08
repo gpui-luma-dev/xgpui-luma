@@ -8,12 +8,12 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate, ControlPresenter};
-use gpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize as SdkButtonSize};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::infra::icon::lucide_icon;
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_radix::{
+use xgpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate, ControlPresenter};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize as SdkButtonSize};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::infra::icon::lucide_icon;
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_radix::{
     Accent, Paint, ButtonSize, ButtonVariant, Gray, Look, LookControlExt, Radius, ScaleFamily, button_look_for,
 };
 use lucide_svg_static::Icon as LucideIcon;

@@ -13,9 +13,9 @@ pub(super) mod vertical;
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::vstack;
-use gpui_luma::controls::listbox::ListBoxMotion;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::vstack;
+use xgpui_luma::controls::listbox::ListBoxMotion;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use horizontal::HorizontalListExample;
 use filtering::FilteringExample;

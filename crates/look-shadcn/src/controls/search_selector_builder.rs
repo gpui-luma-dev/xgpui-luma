@@ -1,19 +1,19 @@
-//! Look-owned search-selector builder. Spawn synthesizes the SDK [`gpui_luma::controls::search_selector::SearchSelector`].
+//! Look-owned search-selector builder. Spawn synthesizes the SDK [`xgpui_luma::controls::search_selector::SearchSelector`].
 
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, IntoElement, SharedString};
-use gpui_luma::controls::search_selector::{
+use xgpui_luma::controls::search_selector::{
     SearchSelectorBuilder, SearchSelectorControl, SearchSelectorItemRenderModel, SearchSelectorPanelTemplate,
     SearchSelectorTemplate, SelectionItem,
 };
-use gpui_luma::controls::selector::SelectorTriggerStyle;
+use xgpui_luma::controls::selector::SelectorTriggerStyle;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of a search selector: Shadcn templates plus SDK options, until `.spawn(cx)`.
 pub struct SearchSelector {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::search_selector::SearchSelectorEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::search_selector::SearchSelectorEvent>,
 
     look: Option<ShadcnLook>,
     builder: SearchSelectorBuilder,
@@ -21,7 +21,7 @@ pub struct SearchSelector {
 }
 
 impl SearchSelector {
-    gpui_luma::forward_motion!(gpui_luma::controls::search_selector::SearchSelectorMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::search_selector::SearchSelectorMotion, builder builder);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.builder = self.builder.motion_enabled(enabled);
         self
@@ -32,7 +32,7 @@ impl SearchSelector {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::search_selector::SearchSelectorEvent, &mut gpui::Context<M>)
+        callback: impl Fn(&mut M, &xgpui_luma::controls::search_selector::SearchSelectorEvent, &mut gpui::Context<M>)
         + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
@@ -46,7 +46,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::Change { query } = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::Change { query } = event {
                 callback(owner, query, cx);
             }
         })
@@ -59,7 +59,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -72,7 +72,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::Complete { item_id, label } = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::Complete { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -85,7 +85,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::Clear = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::Clear = event {
                 callback(owner, cx);
             }
         })
@@ -98,7 +98,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -111,7 +111,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -124,7 +124,7 @@ impl SearchSelector {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::search_selector::SearchSelectorEvent::Dismiss = event {
+            if let xgpui_luma::controls::search_selector::SearchSelectorEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -134,7 +134,7 @@ impl SearchSelector {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: gpui_luma::controls::search_selector::new(id, items),
+            builder: xgpui_luma::controls::search_selector::new(id, items),
             size: ShadcnSize::Md,
         }
     }
@@ -161,19 +161,19 @@ impl SearchSelector {
     }
 
     /// Configure popup wheel routing independently.
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.builder = self.builder.wheel_scroll_policy(policy);
         self
     }
 
     /// Configure popup wheel routing independently.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.builder = self.builder.scroll_boundary_policy(policy);
         self
     }
 
     /// Configure popup wheel routing independently.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.builder = self.builder.wheel_focus_scope(policy);
         self
     }
@@ -266,7 +266,7 @@ impl SearchSelector {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look_from(self.look.as_ref(), cx);
-            use gpui_luma::infra::attachments::TooltipEntityExt;
+            use xgpui_luma::infra::attachments::TooltipEntityExt;
             let theme = crate::tooltip_theme(&look);
             self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
         };

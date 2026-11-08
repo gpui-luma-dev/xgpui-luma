@@ -1,16 +1,16 @@
 //! Accordion control exposition — single, multiple, and interactive content samples.
 
-use gpui_luma::controls::textfield::TextFieldEventExt;
-use gpui_luma::controls::accordion::AccordionEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::accordion::AccordionEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionEvent, AccordionItem, AccordionTrigger};
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent};
-use gpui_luma::vstack;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionEvent, AccordionItem, AccordionTrigger};
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
+use xgpui_luma::vstack;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
@@ -129,7 +129,7 @@ impl AccordionControlExposition {
             .look(look.as_ref())
             .multiple()
             .items([
-                demo_item("faq-1", "What is GPUI-Luma?", LucideIcon::CircleQuestionMark, "A GPUI component library."),
+                demo_item("faq-1", "What is XGPUI-Luma?", LucideIcon::CircleQuestionMark, "A GPUI component library."),
                 demo_item(
                     "faq-2",
                     "How do I theme controls?",

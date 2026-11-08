@@ -1,13 +1,13 @@
 //! Forced-state SDK template previews, with palette and size tabs like other controls.
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, Hsla, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, scrollbar, selector};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::controls::textfield::TextFieldState;
-use gpui_luma::infra::{icon::SelectionStatusIcons, state::ControlFocusState, value::ControlRange};
-use gpui_luma::motion::overlay_presence::OverlayPresence;
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
-use gpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, Tone};
+use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, scrollbar, selector};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::controls::textfield::TextFieldState;
+use xgpui_luma::infra::{icon::SelectionStatusIcons, state::ControlFocusState, value::ControlRange};
+use xgpui_luma::motion::overlay_presence::OverlayPresence;
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, Tone};
 use super::{preview_handlers, states};
 use super::matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
 

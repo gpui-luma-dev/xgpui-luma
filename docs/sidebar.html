@@ -20,11 +20,11 @@
 <div data-site-mobile-nav></div>
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
-<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Sidebar</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">Grouped application navigation.</p><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust">use gpui_luma_look_radix as radix;
+<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Sidebar</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">Grouped application navigation.</p><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust">use xgpui_luma_look_radix as radix;
 use gpui::{Context};
 
 struct Example {
-    control: gpui::Entity&lt;gpui_luma::controls::sidebar::SidebarControl&gt;,
+    control: gpui::Entity&lt;xgpui_luma::controls::sidebar::SidebarControl&gt;,
     active_destination: String,
 }
 
@@ -46,8 +46,8 @@ impl Example {
 <p><code>SidebarDropLocation { group_id, parent_id, before }</code> identifies a group, optional parent, and optional next sibling. <code>before=None</code> appends. <code>SidebarDragEvent</code> uses the shared phases with this <code>location</code> in place of a flat gap. Group moves and reparenting emit a same-control reorder; removal/addition phases are available filters but are not emitted. Cycles, duplicate IDs, missing targets and stale sessions fail before mutation. Selection, expanded state, focus handles, tooltips, scroll and complete subtrees survive moves.</p>
 <p>The SDK commits automatically. Use <code>set_drop_handler</code> for synchronous policy and answer with <code>commit_drop</code> or <code>reject_drop</code>; unanswered handlers reject. Replacing data, disabling DnD or changing presentation cancels an active session. The content viewport scrolls at its edges during an admitted drag. Custom templates attach <code>RenderedNavNode.drag_drop</code> to the row only and use SDK <code>drag_boundary()</code> around embedded interactive actions.</p><div class="codebox"><div class="codebar"><span>DnD · integration snippet</span><button class="copy" aria-label="Copy DnD integration snippet">Copy</button></div><pre><code class="language-rust">mod dnd_example {
 use gpui::{Context, Entity};
-use gpui_luma::controls::sidebar::*;
-use gpui_luma_look_shadcn::{ShadcnLook, Sidebar};
+use xgpui_luma::controls::sidebar::*;
+use xgpui_luma_look_shadcn::{ShadcnLook, Sidebar};
 struct Owner;
 fn navigation(look: &amp;ShadcnLook, cx: &amp;mut Context&lt;Owner&gt;) -&gt; Entity&lt;SidebarControl&gt; {
     Sidebar::new(&quot;nav&quot;).look(look)
@@ -66,7 +66,7 @@ fn navigation(look: &amp;ShadcnLook, cx: &amp;mut Context&lt;Owner&gt;) -&gt; En
         })
         .spawn(cx)
 }
-}</code></pre></div><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/navigation/sidebar/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/sidebar.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
+}</code></pre></div><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/navigation/sidebar/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/sidebar.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#events">Events</a><a href="#use">Basic use</a><a href="#radix">Radix styling</a><a href="#sdk">SDK behavior</a><a href="#drag-drop">Drag and drop</a><a href="#source">Source</a></nav>
 </div>
 </body>

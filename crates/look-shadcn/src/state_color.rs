@@ -1,9 +1,9 @@
 use gpui::Hsla;
 
-use gpui_luma::theme::{InteractionLayer, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
 use crate::catalog::CssTokenMap;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use crate::palette::ShadcnPalette;
 use crate::tokens::ShadcnToken;
 
@@ -187,7 +187,7 @@ fn all_layers() -> [InteractionLayer; 4] {
 mod tests {
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
     use crate::palette::ShadcnPalette;
@@ -195,7 +195,7 @@ mod tests {
     use super::{algorithmic_state_color, catalog_state_color, StateColorTable};
     use crate::tokens::ShadcnToken;
 
-    use gpui_luma::theme::InteractionLayer;
+    use xgpui_luma::theme::InteractionLayer;
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([

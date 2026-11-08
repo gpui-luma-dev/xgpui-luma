@@ -1,21 +1,21 @@
 [package]
-name = "gpui-luma-color"
+name = "xgpui-luma-color"
 version.workspace = true
 edition = "2024"
 license = "Apache-2.0"
 publish = ["crates-io"]
-description = "Color primitives and interactive color controls for GPUI-Luma"
+description = "Color primitives and interactive color controls for XGPUI-Luma"
 repository.workspace = true
 homepage.workspace = true
 keywords = ["gpui", "gui", "color", "color-picker", "widgets"]
 categories = ["gui", "graphics"]
 
 [features]
-test-support = ["gpui-luma/test-support"]
+test-support = ["xgpui-luma/test-support"]
 
 [dependencies]
 gpui.workspace = true
-gpui-luma.workspace = true
+xgpui-luma.workspace = true
 anyhow.workspace = true
 tiny-skia.workspace = true
 palette.workspace = true

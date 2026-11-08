@@ -1,16 +1,16 @@
 //! TextField exposition — live preview, event stream, and theme inspector.
 
-use gpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;

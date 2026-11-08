@@ -9,12 +9,12 @@ crate-type = ["cdylib", "rlib"]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 gpui.workspace = true
-gpui-luma.workspace = true
-gpui-luma-look-radix.workspace = true
-gpui-luma-look-shadcn.workspace = true
+xgpui-luma.workspace = true
+xgpui-luma-look-radix.workspace = true
+xgpui-luma-look-shadcn.workspace = true
 luma-app-common.workspace = true
-gpui-luma-color.workspace = true
-gpui-luma-plot.workspace = true
+xgpui-luma-color.workspace = true
+xgpui-luma-plot.workspace = true
 anyhow.workspace = true
 lucide-svg-static.workspace = true
 gpui_web = { package = "xgpui-web", version = "2.0.1", default-features = false }

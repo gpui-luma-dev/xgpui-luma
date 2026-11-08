@@ -5,7 +5,7 @@ use crate::{
     Sample, Series,
 };
 use gpui::{Context, Edges, IntoElement, Render, TestAppContext};
-use gpui_luma::controls::tooltip::{Tooltip, TooltipEvent};
+use xgpui_luma::controls::tooltip::{Tooltip, TooltipEvent};
 use std::{
     cell::RefCell,
     rc::Rc,

@@ -3,8 +3,8 @@
 mod checkbox {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{
         choice_elevation_applies, choice_indicator_only, choice_variant_style, interaction_state, value_flag,
@@ -107,8 +107,8 @@ pub use checkbox::{CHECKBOX_INSPECTOR_SPEC, CheckboxInspectorAdapter};
 mod radio_button {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{
         choice_elevation_applies, choice_indicator_only, choice_variant_style, interaction_state, value_flag,
@@ -211,8 +211,8 @@ pub use radio_button::{RADIO_BUTTON_INSPECTOR_SPEC, RadioButtonInspectorAdapter}
 mod switch {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{choice_elevation_applies, choice_variant_style, interaction_state, value_flag};
     use super::super::super::metrics::switch_layout_section;
@@ -312,9 +312,9 @@ pub use switch::{SWITCH_INSPECTOR_SPEC, SwitchInspectorAdapter};
 mod toggle {
     use std::sync::Arc;
 
-    use gpui_luma::controls::button_family::ButtonFamilyRole;
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{choice_variant_style, interaction_state, value_flag};
     use super::super::super::metrics::toggle_layout_section;
@@ -392,7 +392,7 @@ pub use toggle::{TOGGLE_INSPECTOR_SPEC, ToggleInspectorAdapter};
 mod motion_only {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::ShadcnLook;
 
     use super::super::super::schema::{
         ControlInspectorResolver, ControlInspectorSpec, InspectorCategoryContent, InspectorSelection,

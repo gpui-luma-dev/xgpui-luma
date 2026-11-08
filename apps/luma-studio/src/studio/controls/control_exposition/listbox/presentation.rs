@@ -3,10 +3,10 @@
 use std::{fmt::Debug, sync::Arc};
 
 use gpui::{App, Context, Div, Entity, FontWeight, IntoElement, RenderOnce, Stateful, Window, div, prelude::*, px};
-use gpui_luma::controls::listbox::ListBoxEvent;
-use gpui_luma::infra::icon::lucide_icon;
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::controls::listbox::ListBoxEvent;
+use xgpui_luma::infra::icon::lucide_icon;
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::super::event_stream::ControlEventStream;

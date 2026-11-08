@@ -35,7 +35,7 @@ fn palette_hues(points: &[MeshPoint], background: Hsla) -> Vec<f32> {
     points
         .iter()
         .map(|point| {
-            let midpoint = gpui_luma_color::color_slider::color_spec::interpolate_hsl(background, point.color, 0.5);
+            let midpoint = xgpui_luma_color::color_slider::color_spec::interpolate_hsl(background, point.color, 0.5);
             let half_delta = (midpoint.h - background.h + 0.5).rem_euclid(1.0) - 0.5;
             background.h + half_delta * 2.0
         })

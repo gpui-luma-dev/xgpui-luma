@@ -21,8 +21,8 @@
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>Luma</span><span aria-hidden="true">/</span><span>Create your own Look</span></div><h1>Create your own Look</h1><p class="intro">Start with one control. Reuse its SDK behavior.</p><section id="start"><h2>Start small</h2><p>A Look can begin as an application helper. Keep your visual decisions together and return SDK control entities.</p><div class="codebox"><div class="codebar"><span>Local Look helper · integration snippet</span><button class="copy" aria-label="Copy Local Look helper · integration snippet">Copy</button></div><pre><code class="language-rust">use gpui::{prelude::*, Context, Entity, px};
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
 
 fn action_button&lt;M: &#x27;static&gt;(cx: &amp;mut Context&lt;M&gt;) -&gt; Entity&lt;Button&gt; {
     Button::new(&quot;action&quot;)
@@ -31,7 +31,7 @@ fn action_button&lt;M: &#x27;static&gt;(cx: &amp;mut Context&lt;M&gt;) -&gt; Ent
         .spawn(cx)
 }</code></pre></div><p class="small">This customizes the fallback template’s geometry. It is a starting seam, not a complete visual system.</p></section><section id="baseline"><h2>Inherit the SDK baseline</h2>
 <p>The authoritative baseline is authored in Rust and cached by <code>CommonStylesheet::sdk_default()</code>, with monochrome light/dark UI colors. SDK-only applications and custom Looks can clone that baseline to inherit shared tokens, control geometry, icons and semantic state recipes. Configure only your differences, then capture a theme snapshot:</p>
-<div class="codebox"><div class="codebar"><span>Rust · SDK theme snapshot</span><button class="copy" aria-label="Copy SDK theme snapshot">Copy</button></div><pre><code class="language-rust">use gpui_luma::{
+<div class="codebox"><div class="codebar"><span>Rust · SDK theme snapshot</span><button class="copy" aria-label="Copy SDK theme snapshot">Copy</button></div><pre><code class="language-rust">use xgpui_luma::{
     color::GamutMapping,
     controls::progress::{DefaultProgressTheme, ProgressTheme},
     theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},
@@ -46,10 +46,10 @@ fn configured_progress_theme() -&gt; Result&lt;DefaultProgressTheme, Box&lt;dyn 
     assert_eq!(theme.resolve(true, ControlSize::Md).track_height, 9.0);
     Ok(theme)
 }</code></pre></div>
-<p>Pass the theme to the existing SDK themed template. Existing snapshots keep their styling; rebuild themes after editing configuration. Missing values inherit, while zero remains an explicit override. Palette, metrics, typography and elevation are configured under <code>common.tokens</code>. The complete control/helper inventory records which layout and interaction constants remain in Rust. See the <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/docs/shared-stylesheet.md">stylesheet contract</a> for current coverage.</p><h3>Customize shared styles in Rust</h3>
+<p>Pass the theme to the existing SDK themed template. Existing snapshots keep their styling; rebuild themes after editing configuration. Missing values inherit, while zero remains an explicit override. Palette, metrics, typography and elevation are configured under <code>common.tokens</code>. The complete control/helper inventory records which layout and interaction constants remain in Rust. See the <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/docs/shared-stylesheet.md">stylesheet contract</a> for current coverage.</p><h3>Customize shared styles in Rust</h3>
 <p>Clone the SDK baseline, then edit its typed fields. Semantic mappings reference palette roles without copying colors.</p>
-<div class="codebox"><div class="codebar"><span>Rust · custom look differences</span><button class="copy" aria-label="Copy custom look differences">Copy</button></div><pre><code class="language-rust">fn custom_stylesheet() -&gt; gpui_luma::theme::stylesheet::CommonStylesheet {
-    use gpui_luma::theme::stylesheet::{CommonStylesheet, PaletteRole};
+<div class="codebox"><div class="codebar"><span>Rust · custom look differences</span><button class="copy" aria-label="Copy custom look differences">Copy</button></div><pre><code class="language-rust">fn custom_stylesheet() -&gt; xgpui_luma::theme::stylesheet::CommonStylesheet {
+    use xgpui_luma::theme::stylesheet::{CommonStylesheet, PaletteRole};
     CommonStylesheet::sdk_default().clone().with(|sheet| {
         sheet.recipes.0.entry(&quot;button&quot;.into()).or_default().insert(
             PaletteRole::StateHoverBackground,
@@ -60,7 +60,7 @@ fn configured_progress_theme() -&gt; Result&lt;DefaultProgressTheme, Box&lt;dyn 
     })
 }</code></pre></div>
 <p>Use floating-point expressions for ratios. Direct edits change the named fields; changing general geometry does not clear inherited size-specific values. Set the relevant size entries when needed. Explicit consumer icons, geometry and row limits override captured defaults. SDK themes capture snapshots; rebuild them after changing configuration. Motion keeps its existing independent snapshot policy.</p>
-</section><section id="grow"><h2>Grow it when needed</h2><p>For a worked example of creating a template and adding behavior functions where needed, see <a href="control-specialization.html">How to create a control specialization</a>.</p><p>For live light/dark switching, keep mode state in the application and bind themes that resolve the selected SDK snapshot. Changing a mode variable does not update an existing <code>Default*Theme</code> snapshot. Request an owner redraw and preserve control entities so selection, focus, and scroll state survive. Plot Viz demonstrates this with <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/apps/luma-plot-viz/src/theme/live.rs">application-local SDK theme adapters</a>; chart series colors live in independent named HSLA palettes.</p><p>Add shared palette and metric configuration. Supply theme resolution or your own templates, then expose convenient builders. Keep focus, activation, and events in the SDK.</p><p><a class="source-link" href="architecture.html#template">Template replacement example</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">A complete Look adapter</a></p></section><footer data-site-footer></footer></main>
+</section><section id="grow"><h2>Grow it when needed</h2><p>For a worked example of creating a template and adding behavior functions where needed, see <a href="control-specialization.html">How to create a control specialization</a>.</p><p>For live light/dark switching, keep mode state in the application and bind themes that resolve the selected SDK snapshot. Changing a mode variable does not update an existing <code>Default*Theme</code> snapshot. Request an owner redraw and preserve control entities so selection, focus, and scroll state survive. Plot Viz demonstrates this with <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/apps/luma-plot-viz/src/theme/live.rs">application-local SDK theme adapters</a>; chart series colors live in independent named HSLA palettes.</p><p>Add shared palette and metric configuration. Supply theme resolution or your own templates, then expose convenient builders. Keep focus, activation, and events in the SDK.</p><p><a class="source-link" href="architecture.html#template">Template replacement example</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">A complete Look adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#start">Start small</a><a href="#baseline">Inherit the SDK baseline</a><a href="#grow">Grow it when needed</a></nav>
 </div>
 </body>

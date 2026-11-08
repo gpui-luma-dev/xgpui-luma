@@ -4,12 +4,12 @@ use gpui::{
     AnyElement, Context, Entity, FocusHandle, IntoElement, ParentElement, Render, Styled, Subscription, Window, div,
     px, rgb,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::controls::split_view::{SplitView, SplitViewSeparatorVisibility, render_pane};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::controls::split_view::{SplitView, SplitViewSeparatorVisibility, render_pane};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use luma_shell_common::{
     chrome::{
         HasShellTheme, handle_theme_toggle, render_app_root, render_title_bar, spawn_theme_toggle_button,
@@ -30,7 +30,7 @@ pub struct DetachedShellApp {
     pane_focus: FocusHandle,
     look: Arc<ShadcnLook>,
     split_view: Entity<SplitView>,
-    sidebar: Entity<gpui_luma::controls::frame::FrameControl>,
+    sidebar: Entity<xgpui_luma::controls::frame::FrameControl>,
     toggle_button: IconButton,
     theme_toggle_button: IconButton,
     _subscriptions: Vec<Subscription>,
@@ -139,7 +139,7 @@ impl Render for DetachedShellApp {
     }
 }
 
-fn detached_nav_pane_with_sidebar(sidebar: Entity<gpui_luma::controls::frame::FrameControl>) -> AnyElement {
+fn detached_nav_pane_with_sidebar(sidebar: Entity<xgpui_luma::controls::frame::FrameControl>) -> AnyElement {
     div().size_full().p(px(SIDEBAR_PADDING)).child(sidebar).into_any_element()
 }
 

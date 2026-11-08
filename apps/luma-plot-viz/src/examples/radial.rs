@@ -1,9 +1,9 @@
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::motion::{Transition, Easing};
 use std::time::Duration;
 use gpui::{App, Context, Entity, Render, Window, IntoElement, div, px, prelude::*};
-use gpui_luma::{DockPanel, vstack, motion::VisualTransition};
+use xgpui_luma::{DockPanel, vstack, motion::VisualTransition};
 use crate::theme::AppTheme;
-use gpui_luma_plot::{Dataset, DatasetError, Series, Sample, RadialChartBuilder, RadialLayout};
+use xgpui_luma_plot::{Dataset, DatasetError, Series, Sample, RadialChartBuilder, RadialLayout};
 use crate::theme::{self, TypographyExt};
 pub(crate) struct RadialGallery {
     selected: String,
@@ -66,13 +66,13 @@ impl Render for RadialGallery {
             let mut chart=RadialChartBuilder::new(data,series).id(("radial-example",index)).draw_progress(progress).style(move|| {
                 let mut style=theme::radial::style(&look);
                 if index==1 {style.label_text.color=crate::theme::palette::LABEL_WHITE;style.label_text.font_size=px(11.0);style.label_text.line_height=px(12.0);}
-                if index==2 {style.track=None;style.grid=Some(gpui_luma_plot::Stroke{color:theme::chrome(&look).border,width:px(1.0)});}
+                if index==2 {style.track=None;style.grid=Some(xgpui_luma_plot::Stroke{color:theme::chrome(&look).border,width:px(1.0)});}
                 if index==3 {style.inner_radius=0.88;style.rounded=true;style.palette=vec![crate::theme::palette::BLUE_BRIGHT.into()];}
                 if index==4 {style.inner_radius=0.72;style.palette=vec![crate::theme::palette::BLUE_BRIGHT.into()];}
                 if index==5 {style.inner_radius=0.77;style.rounded=true;}
                 style
-            }).bar_tooltip(move|bar|gpui_luma::controls::tooltip::Tooltip::new(bar.label.clone()).shortcut(format!("{} visitors",bar.sample.y)).theme(std::sync::Arc::new(tooltip_look.clone())).delay(Duration::from_millis(250))).tooltip_motion(Duration::from_millis(250)).on_bar_event(move|event,cx|{
-                if let gpui_luma_plot::SelectionEvent::Select{target}=event {
+            }).bar_tooltip(move|bar|xgpui_luma::controls::tooltip::Tooltip::new(bar.label.clone()).shortcut(format!("{} visitors",bar.sample.y)).theme(std::sync::Arc::new(tooltip_look.clone())).delay(Duration::from_millis(250))).tooltip_motion(Duration::from_millis(250)).on_bar_event(move|event,cx|{
+                if let xgpui_luma_plot::SelectionEvent::Select{target}=event {
                     let text=format!("Selected {}",target.label);let _=host.update(cx,|this,cx|{this.selected=text;cx.notify();});
                 }
             });

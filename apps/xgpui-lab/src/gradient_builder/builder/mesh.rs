@@ -1,7 +1,7 @@
 use gpui::{Corners, Pixels, SharedString, Size, div, prelude::*, px, size};
-use gpui_luma::controls::selector::SelectorItem;
-use gpui_luma::controls::tabs::TabsItem;
-use gpui_luma::theme::LumaTextStyle;
+use xgpui_luma::controls::selector::SelectorItem;
+use xgpui_luma::controls::tabs::TabsItem;
+use xgpui_luma::theme::LumaTextStyle;
 use crate::theme::TypographyExt;
 
 use super::super::paint::{GradientType, MeshPoint};
@@ -386,7 +386,7 @@ pub(super) fn render_info_row(
     value: impl Into<SharedString>,
     label_style: LumaTextStyle,
     value_style: LumaTextStyle,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
 ) -> impl IntoElement {
     div()
         .w_full()
@@ -438,7 +438,7 @@ mod animation_tests {
     #[test]
     fn palette_animation_blends_wraps_and_preserves_mesh_edits() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |view, _| {

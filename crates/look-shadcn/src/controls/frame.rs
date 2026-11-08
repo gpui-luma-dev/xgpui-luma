@@ -4,7 +4,7 @@
 //! sidebar tokens. GPUI's `Styled` methods override either preset, including
 //! border widths per edge, asymmetric padding, min/max bounds, and flex layout.
 use gpui::{App, Context, Edges, Entity, IntoElement, SharedString, Stateful, Div, StyleRefinement, Styled, px};
-use gpui_luma::controls::frame::{FrameBuilder, FrameControl, FrameLook};
+use xgpui_luma::controls::frame::{FrameBuilder, FrameControl, FrameLook};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::ShadcnRadius;
 use super::sidebar::sidebar_container_look;
@@ -76,7 +76,7 @@ fn frame_look(look: &ShadcnLook, sidebar: bool) -> FrameLook {
 mod tests {
     use super::*;
     use gpui::TestAppContext;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn generic_and_sidebar_presets_resolve_independently_after_theme_changes() {

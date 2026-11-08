@@ -20,9 +20,9 @@
 <div data-site-mobile-nav></div>
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
-<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Table</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">Records in rows and columns.</p><p class="small">Supports drag and drop. See the <a href="drag-drop.html">shared DnD guide</a> for lifecycle, callbacks, and transaction rules.</p><section id="preview"><h2>Try it</h2><p>Select a task in this eight-row table with Task, Owner, and Status columns. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--chart"><iframe data-luma-example src="examples/embed.html?id=table-basic" title="Live table code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=table-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust" data-live-example="table-basic">use gpui_luma_look_radix as radix;
+<main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Table</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">Records in rows and columns.</p><p class="small">Supports drag and drop. See the <a href="drag-drop.html">shared DnD guide</a> for lifecycle, callbacks, and transaction rules.</p><section id="preview"><h2>Try it</h2><p>Select a task in this eight-row table with Task, Owner, and Status columns. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--chart"><iframe data-luma-example src="examples/embed.html?id=table-basic" title="Live table code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=table-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust" data-live-example="table-basic">use xgpui_luma_look_radix as radix;
 use gpui::{Context, ParentElement};
-use gpui_luma::controls::table::TableSelectionMode;
+use xgpui_luma::controls::table::TableSelectionMode;
 
 #[derive(Clone)]
 struct Task {
@@ -32,7 +32,7 @@ struct Task {
 }
 
 struct Example {
-    control: gpui::Entity&lt;gpui_luma::controls::table::TableControl&lt;Task&gt;&gt;,
+    control: gpui::Entity&lt;xgpui_luma::controls::table::TableControl&lt;Task&gt;&gt;,
     selected_rows: Vec&lt;usize&gt;,
 }
 
@@ -70,7 +70,7 @@ impl Example {
 <p>SDK TableBuilder, PagingTableBuilder, TableEventExt (plain and paging entities), and Shadcn Table expose the shared named helpers. Their exact arguments are in the <a href="drag-drop.html#lifecycle">shared payload table</a> with <code>K=SharedString</code>. The aggregate payload <code>TableRowDragEvent</code> aliases <code>DragDropEvent&lt;EntityId, SharedString&gt;</code>, nested in <code>TableEvent::RowDrag</code>; <code>on_drag_drop</code> is a compatible alias of <code>on_row_drag</code>.</p>
 <p>Table currently supports same-table row reordering. Transfer-phase helpers filter the shared event type but do not enable cross-table transfer. Paging forwards the inner table events, whose source/target IDs identify that inner table.</p><h3>Validate proposals and observe completion</h3><p>This integration example is compiled by <code>scripts/check_control_docs.py</code>.</p><pre><code class="language-rust">mod drag_drop_example {
     use gpui::{Context, Entity};
-    use gpui_luma::controls::table::{TableBuilder, TableControl, TableReorderError, TableSelectionError};
+    use xgpui_luma::controls::table::{TableBuilder, TableControl, TableReorderError, TableSelectionError};
 
     #[derive(Default)]
     struct Queue { dirty: bool, error: Option&lt;String&gt; }
@@ -105,7 +105,7 @@ impl Example {
         Ok(control)
     }
 }
-</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/collection/table/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/table.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
+</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/collection/table/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/table.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#events">Events</a><a href="#preview">Try it</a><a href="#use">Basic use</a><a href="#radix">Radix styling</a><a href="#sdk">SDK behavior</a><a href="#drag-drop">Drag/drop</a><a href="#source">Source</a></nav>
 </div>
 </body>

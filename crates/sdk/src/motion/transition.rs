@@ -39,7 +39,7 @@ pub trait RunningMotion: Debug + Send + Sync {
 /// [`super::VisualTransition`] without selecting an animation implementation.
 ///
 /// ```no_run
-/// use gpui_luma::{controls::{switch, tabs::Tabs}, motion::Transition};
+/// use xgpui_luma::{controls::{switch, tabs::Tabs}, motion::Transition};
 ///
 /// let switch = switch::new("notifications")
 ///     .motion(|m| m.state = Transition::spring(300.0, 28.0));

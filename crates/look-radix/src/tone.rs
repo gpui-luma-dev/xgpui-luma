@@ -5,7 +5,7 @@
 //! accent is. `Tone` is that switch, so a control can be previewed or placed as either.
 
 use gpui::Hsla;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look::Look;
 use crate::scale::{ScaleFamily, ScaleStep};

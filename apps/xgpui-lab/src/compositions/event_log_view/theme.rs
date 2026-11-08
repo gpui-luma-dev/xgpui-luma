@@ -1,6 +1,6 @@
 use gpui::Hsla;
 
-use gpui_luma::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
 
 #[derive(Clone, Debug)]
 pub struct EventLogLook {

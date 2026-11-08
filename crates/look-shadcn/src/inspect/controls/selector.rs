@@ -1,8 +1,8 @@
 //! Inspect metadata for `selector`.
 
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::selector::SelectorTriggerStyle;
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::selector::SelectorTriggerStyle;
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{ResolvedColor, ShadcnButtonStyle, ShadcnModeTokens};
 
 use super::button::{inspect_button_color_palette, inspect_button_metrics};
@@ -66,7 +66,7 @@ pub fn inspect_selector_metrics(
         ),
         items_panel: crate::inspect::controls::floating_menu::inspect_floating_menu_metrics(mode, theme_mode, size),
     };
-    let scale = gpui_luma::theme::StandardBoxScale::compute(size, &mode.metrics, 1.0);
+    let scale = xgpui_luma::theme::StandardBoxScale::compute(size, &mode.metrics, 1.0);
     let geometry = crate::controls::selector::selector_geometry(mode, size, &scale, &mode.typography.text.label);
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
@@ -90,7 +90,7 @@ pub fn inspect_selector_metrics(
         crate::tables::metrics::helpers::prefer_shared_metric(geometry.radius, result.trigger.radius);
     let panel = mode.stylesheet().common.selector_list.inspect_geometry(
         size.stylesheet_key(),
-        gpui_luma::theme::stylesheet::SelectorListGeometry {
+        xgpui_luma::theme::stylesheet::SelectorListGeometry {
             padding: result.items_panel.padding.value_px,
             min_width: result.items_panel.min_width.value_px,
             item_height: result.items_panel.item_height.value_px,

@@ -1,14 +1,14 @@
-//! Look-owned scrollbar builder. Spawn synthesizes the SDK [`gpui_luma::controls::scrollbar::Scrollbar`].
+//! Look-owned scrollbar builder. Spawn synthesizes the SDK [`xgpui_luma::controls::scrollbar::Scrollbar`].
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::scrollbar::{ScrollbarBuilder, ScrollbarOrientation, ScrollbarStyle};
-use gpui_luma::infra::value::ControlRange;
+use xgpui_luma::controls::scrollbar::{ScrollbarBuilder, ScrollbarOrientation, ScrollbarStyle};
+use xgpui_luma::infra::value::ControlRange;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of a scrollbar: Shadcn template plus SDK options, until `.spawn(cx)`.
 pub struct Scrollbar {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::scrollbar::ScrollbarEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::scrollbar::ScrollbarEvent>,
 
     look: Option<ShadcnLook>,
     builder: ScrollbarBuilder,
@@ -22,7 +22,7 @@ impl Scrollbar {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::scrollbar::ScrollbarEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::scrollbar::ScrollbarEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -35,7 +35,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::Change { value } = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::Change { value } = event {
                 callback(owner, *value, cx);
             }
         })
@@ -48,7 +48,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::DragStart = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::DragStart = event {
                 callback(owner, cx);
             }
         })
@@ -61,7 +61,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::DragEnd { value } = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::DragEnd { value } = event {
                 callback(owner, *value, cx);
             }
         })
@@ -74,7 +74,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -87,7 +87,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -100,7 +100,7 @@ impl Scrollbar {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::scrollbar::ScrollbarEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::scrollbar::ScrollbarEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -111,7 +111,7 @@ impl Scrollbar {
             callbacks: Default::default(),
 
             look: None,
-            builder: gpui_luma::controls::scrollbar::Scrollbar::new(id),
+            builder: xgpui_luma::controls::scrollbar::Scrollbar::new(id),
             custom_template: false,
             size: ShadcnSize::Md,
         }
@@ -193,13 +193,16 @@ impl Scrollbar {
         self
     }
 
-    pub fn template(mut self, template: std::sync::Arc<dyn gpui_luma::controls::scrollbar::ScrollbarTemplate>) -> Self {
+    pub fn template(
+        mut self,
+        template: std::sync::Arc<dyn xgpui_luma::controls::scrollbar::ScrollbarTemplate>,
+    ) -> Self {
         self.custom_template = true;
         self.builder = self.builder.template(template);
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::scrollbar::Scrollbar> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::scrollbar::Scrollbar> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look_from(self.look.as_ref(), cx);

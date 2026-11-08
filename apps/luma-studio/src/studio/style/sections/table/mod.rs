@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Entity, FontWeight, IntoElement, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::table::Table;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma_look_shadcn::{ShadcnLook};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::table::Table;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma_look_shadcn::{ShadcnLook};
+use xgpui_luma_look_shadcn as shadcn;
 
 use crate::studio::style::shared::shell::section_shell_with_width;
 

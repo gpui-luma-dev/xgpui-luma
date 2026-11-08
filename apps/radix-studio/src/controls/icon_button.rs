@@ -1,8 +1,8 @@
 //! Bare icon chrome: no face, border or shadow in any interaction state.
 
 use gpui::SharedString;
-use gpui_luma::controls::button::{Button, ButtonBuilder};
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma::controls::button::{Button, ButtonBuilder};
+use xgpui_luma_look_radix::{self as radix, Look};
 
 /// Bind the inner SDK button face, rather than only clearing the outer wrapper.
 pub(crate) fn ghost_no_hover<D: Clone + 'static>(

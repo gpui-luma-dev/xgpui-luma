@@ -1,4 +1,4 @@
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 pub(crate) fn id(mode: ThemeMode) -> &'static str {
     match mode {

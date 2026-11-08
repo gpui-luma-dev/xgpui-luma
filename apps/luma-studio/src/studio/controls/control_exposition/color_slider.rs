@@ -1,20 +1,20 @@
 //! Color slider control exposition — gallery-aligned hue/saturation/alpha, gradients, and channels.
 
-use gpui_luma::controls::slider::SliderEventExt;
-use gpui_luma::color::gpui_bridge::from_hsla;
+use xgpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::color::gpui_bridge::from_hsla;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Hsla, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
-use gpui_luma_color::color_slider::{
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
+use xgpui_luma_color::color_slider::{
     AlphaDelegate, ChannelDelegate, ColorInterpolation, ColorSliderBuilder, ColorSliderDomainRenderer,
     ColorSpecification, refresh_color_slider, update_domain_delegate,
 };
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::color_chrome_exposition::{
@@ -212,7 +212,7 @@ impl ColorSliderControlExposition {
         let gradient_rgb = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-gradient-rgb",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Rgb)
@@ -220,7 +220,7 @@ impl ColorSliderControlExposition {
         let gradient_hsl = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-gradient-hsl",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Hsl)
@@ -228,7 +228,7 @@ impl ColorSliderControlExposition {
         let gradient_lab = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-gradient-lab",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Lab)

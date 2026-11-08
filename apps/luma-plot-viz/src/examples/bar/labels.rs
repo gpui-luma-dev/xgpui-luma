@@ -1,7 +1,7 @@
 use gpui::{App, IntoElement, div, prelude::*, px};
-use gpui_luma::vstack;
+use xgpui_luma::vstack;
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     BarLabel, BarLabelPlacement, BarLayer, BarLayout, BarOrientation, CartesianChartBuilder, CategoryScale, Dataset,
     DatasetError, NumericScale, Sample, Series, TextPresentation,
 };

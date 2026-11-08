@@ -9,8 +9,8 @@ use xgpui_media::pipeline::*;
 use crate::theme::ColorVizLookExt;
 
 pub struct TiledDemo {
-    look: Arc<gpui_luma_look_radix::Look>,
-    buttons: Vec<Entity<gpui_luma::controls::button::Button>>,
+    look: Arc<xgpui_luma_look_radix::Look>,
+    buttons: Vec<Entity<xgpui_luma::controls::button::Button>>,
     blur_choice: crate::lab_controls::Choice,
     render_scale: f64,
     canvas: TileCanvas,
@@ -36,8 +36,8 @@ impl TiledDemo {
     pub(super) fn requires_sdr(&self) -> bool {
         self.blur_index > 0
     }
-    pub fn new(look: std::sync::Arc<gpui_luma_look_radix::Look>, cx: &mut Context<Self>) -> Self {
-        use gpui_luma::prelude::HasPresenter;
+    pub fn new(look: std::sync::Arc<xgpui_luma_look_radix::Look>, cx: &mut Context<Self>) -> Self {
+        use xgpui_luma::prelude::HasPresenter;
         let blur_choice = crate::lab_controls::Choice::new(
             "tile-blur",
             "Blur radius",
@@ -67,7 +67,7 @@ impl TiledDemo {
         .into_iter()
         .enumerate()
         .map(|(index, label)| {
-            gpui_luma_look_radix::Button::new(format!("tile-control-{index}"))
+            xgpui_luma_look_radix::Button::new(format!("tile-control-{index}"))
                 .look(look.as_ref())
                 .outline()
                 .label(label)

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::button::ButtonTemplate;
-use gpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
-use gpui_luma::controls::radio_button::{RadioButtonData, RadioButtonTheme, ThemedRadioButtonTemplate};
-use gpui_luma::controls::radio_group::{RadioGroupLayout, radio_group_buttons_template};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
+use xgpui_luma::controls::radio_button::{RadioButtonData, RadioButtonTheme, ThemedRadioButtonTemplate};
+use xgpui_luma::controls::radio_group::{RadioGroupLayout, radio_group_buttons_template};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::controls::button::ShadcnButtonStyle;
 use crate::controls::radio::{radio_button_look_with_stylesheet, radio_scale_with_stylesheet};
@@ -21,7 +21,7 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
         selected: bool,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::radio_button::RadioButtonPalette {
+    ) -> xgpui_luma::controls::radio_button::RadioButtonPalette {
         let tokens = self.theme.mode_tokens();
         radio_button_look_with_stylesheet(
             &crate::LookContext::new(tokens.as_ref(), self.theme.mode(), state),
@@ -32,7 +32,7 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
         )
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> gpui_luma::controls::radio_button::RadioScale {
+    fn scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::radio_button::RadioScale {
         let tokens = self.theme.mode_tokens();
         radio_scale_with_stylesheet(
             &crate::LookContext::new(tokens.as_ref(), self.theme.mode(), InteractionState::default()),
@@ -43,7 +43,7 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
         .0
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 }

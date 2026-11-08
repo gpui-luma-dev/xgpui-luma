@@ -1,20 +1,20 @@
 use std::sync::Arc;
 
-pub(crate) use gpui_luma_look_radix::Look;
-use gpui_luma_look_radix::{Accent, CustomColors, Gray, SemanticRole};
-use gpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography, ThemeMode};
+pub(crate) use xgpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::{Accent, CustomColors, Gray, SemanticRole};
+use xgpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography, ThemeMode};
 use gpui::{Styled, px};
 
 /// Custom Radix accent and neutral palette used at startup.
 pub(crate) fn default_look() -> Arc<Look> {
     let look = Look::built_in();
     look.set_palettes(Accent::Gray, Gray::Sand);
-    let seed = gpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
+    let seed = xgpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
         // Match Radix Studio's theme visualizer: black in dark mode, white in light.
         let value = if mode == ThemeMode::Dark { 0. } else { 1. };
-        let background = gpui_luma::color::ColorValue::srgb(value, value, value, 1.);
+        let background = xgpui_luma::color::ColorValue::srgb(value, value, value, 1.);
         look.set_custom_colors(CustomColors { accent: seed, gray: seed, background })
             .expect("opaque sRGB palette seeds are valid");
     }
@@ -27,7 +27,7 @@ pub(crate) trait ColorVizLookExt {
     fn chrome(&self) -> LumaChrome;
     fn interaction_colors(&self) -> InteractionColors;
     fn typography_scale(&self, size: TextSize) -> LumaTextStyle;
-    fn scrollbar_template(&self) -> Arc<dyn gpui_luma::controls::scrollbar::ScrollbarTemplate>;
+    fn scrollbar_template(&self) -> Arc<dyn xgpui_luma::controls::scrollbar::ScrollbarTemplate>;
 }
 
 /// Radix neutral state hierarchy, resolved from the shared custom palette.
@@ -39,7 +39,7 @@ pub(crate) struct InteractionColors {
     pub focus_border: gpui::Hsla,
 }
 impl InteractionColors {
-    pub fn background(self, selected: bool, state: gpui_luma::theme::InteractionState) -> Option<gpui::Hsla> {
+    pub fn background(self, selected: bool, state: xgpui_luma::theme::InteractionState) -> Option<gpui::Hsla> {
         if state.disabled {
             None
         } else if state.pressed {
@@ -76,7 +76,7 @@ impl ColorVizLookExt for Look {
     }
 
     fn interaction_colors(&self) -> InteractionColors {
-        let gray = |step| self.resolve_step(gpui_luma_look_radix::ScaleFamily::Gray, step).hsla();
+        let gray = |step| self.resolve_step(xgpui_luma_look_radix::ScaleFamily::Gray, step).hsla();
         InteractionColors { selected: gray(3), hovered: gray(4), pressed: gray(5), focus_border: gray(8) }
     }
 
@@ -89,8 +89,8 @@ impl ColorVizLookExt for Look {
         }
     }
 
-    fn scrollbar_template(&self) -> Arc<dyn gpui_luma::controls::scrollbar::ScrollbarTemplate> {
-        Arc::new(gpui_luma::controls::scrollbar::ThemedScrollbarTemplate::new(Arc::new(ColorVizScrollbarTheme(
+    fn scrollbar_template(&self) -> Arc<dyn xgpui_luma::controls::scrollbar::ScrollbarTemplate> {
+        Arc::new(xgpui_luma::controls::scrollbar::ThemedScrollbarTemplate::new(Arc::new(ColorVizScrollbarTheme(
             self.clone(),
         ))))
     }
@@ -106,28 +106,28 @@ impl<T: Styled> TypographyExt for T {}
 pub(crate) fn icon_button(
     id: impl Into<gpui::SharedString>,
     icon: lucide_svg_static::Icon,
-) -> gpui_luma_look_radix::Button {
-    gpui_luma_look_radix::Button::new(id)
-        .role(gpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+) -> xgpui_luma_look_radix::Button {
+    xgpui_luma_look_radix::Button::new(id)
+        .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
         .icon(icon)
 }
 
 struct ColorVizScrollbarTheme(Look);
-impl gpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme {
+impl xgpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme {
     fn resolve(
         &self,
-        state: gpui_luma::theme::InteractionState,
-        orientation: gpui_luma::controls::scrollbar::ScrollbarOrientation,
-        size: gpui_luma::theme::ControlSize,
-        style: gpui_luma::controls::scrollbar::ScrollbarStyle,
-    ) -> gpui_luma::controls::scrollbar::ScrollbarLook {
-        use gpui_luma::controls::scrollbar::{DefaultScrollbarTheme};
+        state: xgpui_luma::theme::InteractionState,
+        orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
+        size: xgpui_luma::theme::ControlSize,
+        style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
+    ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
+        use xgpui_luma::controls::scrollbar::{DefaultScrollbarTheme};
         let mut resolved = DefaultScrollbarTheme::default().resolve(state, orientation, size, style);
         resolved.track_background = gpui::transparent_black();
         resolved.thumb_background = self
             .0
             .resolve_step(
-                gpui_luma_look_radix::ScaleFamily::Gray,
+                xgpui_luma_look_radix::ScaleFamily::Gray,
                 if state.pressed {
                     10
                 } else if state.hovered {
@@ -139,7 +139,7 @@ impl gpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme {
             .hsla();
         resolved
     }
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.0.metrics()
     }
 }

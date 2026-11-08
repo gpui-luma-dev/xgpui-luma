@@ -152,7 +152,7 @@ mod control_tests {
     #[test]
     fn freeform_p3_resets_adjustments_and_preserves_field_transforms() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |view, cx| {

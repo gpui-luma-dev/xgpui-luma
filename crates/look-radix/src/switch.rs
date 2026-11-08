@@ -7,9 +7,9 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
-use gpui_luma::controls::button::ButtonTemplate;
-use gpui_luma::controls::switch::{SwitchPalette, SwitchScale, SwitchTheme, ThemedSwitchTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::switch::{SwitchPalette, SwitchScale, SwitchTheme, ThemedSwitchTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::button_layout::Radius;
@@ -96,7 +96,7 @@ pub fn switch_scale_for(size: SwitchSize, radius: Radius) -> SwitchScale {
 }
 
 fn switch_scale_from_stylesheet(
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
     metrics: &MetricTokens,
     size: SwitchSize,
     radius: Radius,
@@ -109,7 +109,7 @@ fn switch_scale_from_stylesheet(
 }
 
 /// Shared authored dimensions and provenance used by the Radix switch adapter.
-pub fn switch_geometry(look: &Look, size: SwitchSize) -> gpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
+pub fn switch_geometry(look: &Look, size: SwitchSize) -> xgpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
     let fallback = SwitchScale::compute(size.control_size(), &look.metrics(), 1.0);
     look.stylesheet_snapshot().switch.inspect_geometry(size.as_str(), fallback, 1.0)
 }
@@ -250,7 +250,7 @@ pub fn switch_template(
     look: &Look,
     variant: SwitchVariant,
     paint: Paint,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::switch::SwitchData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::switch::SwitchData>> {
     Arc::new(ThemedSwitchTemplate::new(switch_theme_with(look, variant, paint)))
 }
 
@@ -260,7 +260,7 @@ pub fn switch_template_for(
     paint: Paint,
     size: SwitchSize,
     radius: Radius,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::switch::SwitchData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::switch::SwitchData>> {
     Arc::new(ThemedSwitchTemplate::new(switch_theme_for(look, variant, paint, size, radius)))
 }
 
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn shared_geometry_preserves_radix_sizes_and_radius_recipes() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for (size, width, height, thumb) in [
                 (SwitchSize::One, 28.0, 16.0, 14.0),
@@ -335,9 +335,9 @@ mod tests {
                 InteractionState { disabled: true, ..Default::default() },
             ] {
                 for on in [false, true] {
-                    look.set_mode(gpui_luma::theme::ThemeMode::Light);
+                    look.set_mode(xgpui_luma::theme::ThemeMode::Light);
                     let light = theme.resolve(on, state, ControlSize::Md);
-                    look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+                    look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
                     let dark = theme.resolve(on, state, ControlSize::Md);
                     assert_eq!(light.thumb_background, dark.thumb_background);
                     assert_eq!(light.thumb_border, dark.thumb_border);
@@ -393,8 +393,8 @@ mod tests {
 }
 
 /// Constructs the native Radix switch definition in pure Rust without preloading TOML.
-pub fn native_radix_switch() -> gpui_luma::theme::stylesheet::SwitchStylesheet {
-    let mut switch = gpui_luma::theme::stylesheet::SwitchStylesheet::default();
+pub fn native_radix_switch() -> xgpui_luma::theme::stylesheet::SwitchStylesheet {
+    let mut switch = xgpui_luma::theme::stylesheet::SwitchStylesheet::default();
     switch
         .track_padding(1.0)
         .gap(8.0)
@@ -411,6 +411,6 @@ pub fn native_radix_switch() -> gpui_luma::theme::stylesheet::SwitchStylesheet {
 }
 
 /// Applies Radix switch geometry in Rust.
-pub(crate) fn apply_radix_switch_stylesheet(sheet: &mut gpui_luma::theme::stylesheet::CommonStylesheet) {
+pub(crate) fn apply_radix_switch_stylesheet(sheet: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
     native_radix_switch().apply_to(&mut sheet.switch);
 }

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::overlay_window::{
+use xgpui_luma::controls::overlay_window::{
     OverlayWindowLook, OverlayWindowMode, OverlayWindowTemplate, OverlayWindowTheme, ThemedOverlayWindowTemplate,
 };
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 
 use crate::controls::overlay_window::overlay_window_look;
 use crate::look::ShadcnLook;

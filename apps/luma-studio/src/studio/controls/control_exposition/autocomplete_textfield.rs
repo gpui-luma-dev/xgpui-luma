@@ -1,14 +1,14 @@
-use gpui_luma::controls::autocomplete::AutocompleteEventExt;
-use gpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::autocomplete::AutocompleteEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::autocomplete::{Autocomplete, AutocompleteEvent, SelectionItem};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::toggle::{Toggle};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::autocomplete::{Autocomplete, AutocompleteEvent, SelectionItem};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::toggle::{Toggle};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::inspector::{AutocompleteInspectorAdapter, AUTOCOMPLETE_INSPECTOR_SPEC, autocomplete_motion_report};

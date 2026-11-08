@@ -1,4 +1,4 @@
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     CartesianChartBuilder, CartesianStyle, CartesianStyleProvider, Dataset, PlotStyle, PlotStyleProvider, presentation,
 };
 

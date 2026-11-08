@@ -4,9 +4,9 @@ mod labels;
 mod scrolling;
 
 use gpui::{App, Context, Entity, Render, Window, IntoElement, div, prelude::*, px};
-use gpui_luma::vstack;
+use xgpui_luma::vstack;
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     BarAlignment, BarGrouping, BarLayout, BarOrientation, BarLayer, CartesianChartBuilder, CategoryScale, Dataset,
     DatasetError, NumericScale, Sample, Series,
 };
@@ -102,7 +102,7 @@ impl BarExample {
             theme::panel_frame(&self.look, id).p_4().render(cx).child(
                 div().grid().grid_cols(2).gap(px(20.0)).children(charts.into_iter().map(|(label, chart)| {
                     let host=cx.weak_entity();
-                    let chart=chart.on_bar_event(move|event,cx|{if let gpui_luma_plot::PlotPointEvent::Select{points}=event&&let Some(point)=points.first(){let text=format!("Selected {} · category {} · value {}",point.label,point.sample.x,point.sample.y);let _=host.update(cx,|this,cx|{this.selected=text;cx.notify();});}});
+                    let chart=chart.on_bar_event(move|event,cx|{if let xgpui_luma_plot::PlotPointEvent::Select{points}=event&&let Some(point)=points.first(){let text=format!("Selected {} · category {} · value {}",point.label,point.sample.x,point.sample.y);let _=host.update(cx,|this,cx|{this.selected=text;cx.notify();});}});
                     vstack! { gap=8;
                         div().typography_style(typography.text.caption).child(label),
                         div().h(px(240.0)).child(chart.id(format!("{id}-{label}")).draw_progress(self.entrance).build()),

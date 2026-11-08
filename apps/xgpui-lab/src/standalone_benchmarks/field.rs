@@ -9,11 +9,11 @@ use std::{collections::BTreeMap, fs, path::PathBuf, time::Instant};
 use workload::Method;
 
 const SOURCE: &str =
-    "gpui-luma/crates/luma-color/src/color_field/field/paint_vector.rs @ b5a4a23ce6ed98731c1e3aef0abec02da4879274";
+    "xgpui-luma/crates/luma-color/src/color_field/field/paint_vector.rs @ b5a4a23ce6ed98731c1e3aef0abec02da4879274";
 
 #[derive(Clone, Parser)]
 #[command(
-    about = "SV color-field quad rendering, adapted from gpui-luma-color",
+    about = "SV color-field quad rendering, adapted from xgpui-luma-color",
     args_override_self = true
 )]
 #[allow(dead_code)] // Original validated CLI fields; windowed launch options are not used by the embedded runner.

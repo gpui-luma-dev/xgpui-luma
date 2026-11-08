@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
-use gpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate};
-use gpui_luma::controls::toggle::ToggleData;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::theme::InteractionState;
-use gpui_luma_look_shadcn::{ButtonRadiusPreset, ShadcnButtonStyle, ShadcnLook};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::toggle::ToggleData;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma_look_shadcn::{ButtonRadiusPreset, ShadcnButtonStyle, ShadcnLook};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::style::shared::button_matrix::{
@@ -240,7 +240,7 @@ fn render_toggle_size_radius_cell(
         radius_label_id(radius),
         if icon_only { "icon" } else { "text" }
     ));
-    let content: gpui_luma::controls::button::ControlPresenter<ButtonContentContext<ToggleData>> = if icon_only {
+    let content: xgpui_luma::controls::button::ControlPresenter<ButtonContentContext<ToggleData>> = if icon_only {
         Arc::new(move |model, _| {
             let icon_size = button_preview_look(model).map(|look| look.icon_size).unwrap_or(16.0);
             render_lucide_icon(
@@ -303,7 +303,7 @@ fn render_toggle_state_sample(
         if icon_only { "icon" } else { "text" },
         sample.id
     ));
-    let content: gpui_luma::controls::button::ControlPresenter<ButtonContentContext<ToggleData>> = if icon_only {
+    let content: xgpui_luma::controls::button::ControlPresenter<ButtonContentContext<ToggleData>> = if icon_only {
         Arc::new(move |model, _| round_icon_glyph(model, selected))
     } else {
         let label = SharedString::from("Toggle");
@@ -340,10 +340,10 @@ fn render_toggle_state_sample(
 fn toggle_icon_look_for_style(
     theme: Arc<ShadcnLook>,
     style: ShadcnButtonStyle,
-) -> gpui_luma::controls::button::ButtonLookSource<ToggleData> {
+) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
         let tokens = theme.mode_tokens();
-        gpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
+        xgpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
             tokens.as_ref(),
             theme.mode(),
             style,
@@ -361,10 +361,10 @@ fn toggle_icon_look_for_semantic(
     size: ButtonSize,
     radius: ButtonRadiusPreset,
     selected: bool,
-) -> gpui_luma::controls::button::ButtonLookSource<ToggleData> {
+) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
         let tokens = theme.mode_tokens();
-        gpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
+        xgpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
             tokens.as_ref(),
             theme.mode(),
             style,
@@ -382,10 +382,10 @@ fn toggle_look_for_semantic(
     size: ButtonSize,
     radius: ButtonRadiusPreset,
     selected: bool,
-) -> gpui_luma::controls::button::ButtonLookSource<ToggleData> {
+) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
         let tokens = theme.mode_tokens();
-        gpui_luma_look_shadcn::paint::toggle_look_semantic(
+        xgpui_luma_look_shadcn::paint::toggle_look_semantic(
             tokens.as_ref(),
             theme.mode(),
             style,
@@ -399,14 +399,14 @@ fn toggle_look_for_semantic(
 
 fn button_preview_look(
     model: &ButtonContentContext<ToggleData>,
-) -> Option<gpui_luma::controls::button_family::ButtonFamilyLook> {
+) -> Option<xgpui_luma::controls::button_family::ButtonFamilyLook> {
     Some(model.look.clone())
 }
 
 fn toggle_button_look_for_style(
     theme: Arc<ShadcnLook>,
     style: ShadcnButtonStyle,
-) -> gpui_luma::controls::button::ButtonLookSource<ToggleData> {
+) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
         let role = ButtonFamilyRole::Toggle { selected: model.data.selected };
         match style {

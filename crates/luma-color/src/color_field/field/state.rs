@@ -142,7 +142,7 @@ pub struct ColorFieldState {
     pub(super) focus_handle: std::cell::OnceCell<FocusHandle>,
     pub(super) blur_subscription: Option<Subscription>,
     pub(super) tab_stop: bool,
-    pub(super) pointer_focus: gpui_luma::interaction::PointerFocusPolicy,
+    pub(super) pointer_focus: xgpui_luma::interaction::PointerFocusPolicy,
     pub(super) keyboard_step: f32,
     pub(super) keyboard_large_step: f32,
     pub(super) held_arrows: u8,
@@ -193,7 +193,7 @@ impl ColorFieldState {
             focus_handle: std::cell::OnceCell::new(),
             blur_subscription: None,
             tab_stop: true,
-            pointer_focus: gpui_luma::interaction::PointerFocusPolicy::Focus,
+            pointer_focus: xgpui_luma::interaction::PointerFocusPolicy::Focus,
             keyboard_step: 0.01,
             keyboard_large_step: 0.1,
             held_arrows: 0,
@@ -821,7 +821,7 @@ mod painter_tests {
     #[test]
     fn custom_painter_bypasses_raster_cache_and_removal_restores_it() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let calls = Arc::new(AtomicUsize::new(0));
         let paints = calls.clone();
         let (field, cx) = app.add_window_view(|_, _| {

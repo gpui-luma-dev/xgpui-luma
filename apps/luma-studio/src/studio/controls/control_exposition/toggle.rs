@@ -1,15 +1,15 @@
 //! Toggle control exposition — gallery-aligned primary/secondary text and round-icon toggles.
 
-use gpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::infra::icon::lucide_icon;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::toggle::{Toggle, ToggleEvent};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::infra::icon::lucide_icon;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

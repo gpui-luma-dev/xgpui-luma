@@ -8,10 +8,10 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 gpui = { workspace = true }
-gpui-luma.workspace = true
-gpui-luma-color.workspace = true
+xgpui-luma.workspace = true
+xgpui-luma-color.workspace = true
 luma-app-common.workspace = true
 gpui_platform = { workspace = true }
 lucide-svg-static = { workspace = true }
-gpui-luma-look-shadcn.workspace = true
+xgpui-luma-look-shadcn.workspace = true
 tracing = "0.1"

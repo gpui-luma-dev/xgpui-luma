@@ -6,8 +6,8 @@
 //! - radius from `--radius-{size}` × `--radius-factor`, or pill when `full`
 
 use gpui::FontWeight;
-use gpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
-use gpui_luma::theme::{ControlSize, ControlMetricTokens, LumaTextStyle, MetricTokens, RadiusTokens};
+use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
+use xgpui_luma::theme::{ControlSize, ControlMetricTokens, LumaTextStyle, MetricTokens, RadiusTokens};
 
 /// Radix `size` prop on Button. Default is [`Self::Two`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -137,16 +137,16 @@ pub fn button_box_for(size: ButtonSize, radius: Radius) -> ButtonBox {
 }
 
 pub(crate) fn button_box_with_stylesheet(
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
     size: ButtonSize,
     radius: Radius,
 ) -> ButtonBox {
     let metrics = MetricTokens::default();
     let control = metrics.for_size(size.control_size());
-    let typography = gpui_luma::theme::ThemeTokens::default().typography.text.label;
+    let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
     let geometry = stylesheet.button.resolve_geometry(
         size.as_str(),
-        gpui_luma::theme::stylesheet::ButtonGeometry {
+        xgpui_luma::theme::stylesheet::ButtonGeometry {
             height: control.height,
             padding_x: control.padding_x,
             padding_y: control.padding_y,

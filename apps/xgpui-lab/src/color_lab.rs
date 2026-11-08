@@ -3,11 +3,11 @@ mod views;
 
 use std::sync::Arc;
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_color::{
     ColorInterpolation, EncodedRgb, GamutMapping, HueInterpolation, LinearGradient, LinearRgb, LinearRgba, RgbSpace,
 };
@@ -72,7 +72,7 @@ pub struct ColorPage {
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
-    transparency: gpui_luma::controls::switch::Switch,
+    transparency: xgpui_luma::controls::switch::Switch,
 }
 
 impl ColorPage {
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn color_tabs_render_and_luma_controls_retain_independent_lab_state() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app.add_window_view(|_, cx| ColorPage::new(crate::theme::default_look(), cx));
         for tab in ["Conversions", "Interpolation", "Gamut Mapping", "CPU Gradients"] {
             page.update(cx, |page, cx| {
@@ -308,7 +308,7 @@ mod tests {
         let transparency = cx.update(|_, cx| page.read(cx).transparency.clone());
         transparency.update(cx, |switch, cx| {
             switch.set_data(true, cx);
-            cx.emit(gpui_luma::controls::switch::SwitchEvent::Change { on: true });
+            cx.emit(xgpui_luma::controls::switch::SwitchEvent::Change { on: true });
         });
         cx.update(|_, cx| source.select(1, cx));
         red.update(cx, |slider, cx| {
@@ -342,7 +342,7 @@ mod tests {
     #[test]
     fn cpu_gradient_projects_geometry_extends_endpoints_and_handles_coincident_axis() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app.add_window_view(|_, cx| ColorPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, _| {
             page.translucent = true;

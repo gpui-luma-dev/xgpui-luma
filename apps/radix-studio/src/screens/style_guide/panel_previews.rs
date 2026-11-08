@@ -1,9 +1,9 @@
 //! Static, bounded SDK panel surfaces; no live example controls or window overlays.
 use std::sync::Arc;
 use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::{resizable_panels::*, slide_panel::*, tabs::Tabs};
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_radix::{self as radix, Accent, Gray, Look, ScaleFamily, SemanticRole};
+use xgpui_luma::controls::{resizable_panels::*, slide_panel::*, tabs::Tabs};
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, ScaleFamily, SemanticRole};
 use super::{matrix_grid::*, preview_handlers, states};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -245,7 +245,7 @@ fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
 mod tests {
     use super::*;
     use gpui::{Render, TestAppContext};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     struct Harness {
         look: Arc<Look>,
         previews: Previews,

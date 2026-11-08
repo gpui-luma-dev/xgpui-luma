@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Bounds, IntoElement, Pixels, SharedString, Window, div, prelude::*, px};
 use lucide_svg_static::Icon as LucideIcon;
-use gpui_luma::controls::tabs::{
+use xgpui_luma::controls::tabs::{
     ControlFocusState as TabsControlFocusState, TabsBoundsHandler, TabsClickHandler, TabsHoverHandler, TabsItem,
     TabsItemState, TabsMouseDownHandler, TabsMouseUpHandler, TabsRenderItem, TabsRenderModel, TabsTemplate,
     TabsTemplateHandlers, TabsWidthMode,
 };
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::style::shared::preview_handlers::{
     input_noop_click, input_noop_hover, input_noop_mouse_down, input_noop_mouse_up,
@@ -112,7 +112,10 @@ fn render_tabs_state_sample(
         },
         indicator: None,
         indicator_motion: None,
-        disclosure_icons: &gpui_luma::infra::icon::DisclosureIcons::new(LucideIcon::ChevronUp, LucideIcon::ChevronDown),
+        disclosure_icons: &xgpui_luma::infra::icon::DisclosureIcons::new(
+            LucideIcon::ChevronUp,
+            LucideIcon::ChevronDown,
+        ),
     };
 
     div()

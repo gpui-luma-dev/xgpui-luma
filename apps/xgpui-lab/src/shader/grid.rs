@@ -275,9 +275,9 @@ mod tests {
     #[cfg(feature = "test-support")]
     #[::core::prelude::v1::test]
     fn controls_edit_reset_and_suspend_retained_grid_state() {
-        use gpui_luma::controls::button::ButtonEvent;
+        use xgpui_luma::controls::button::ButtonEvent;
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (pane, cx) = app.add_window_view(|_, cx| GridPane::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let slider = cx.update(|_, cx| pane.read(cx).sliders[0].clone());

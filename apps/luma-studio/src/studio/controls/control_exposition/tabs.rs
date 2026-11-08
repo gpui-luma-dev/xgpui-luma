@@ -1,14 +1,14 @@
 //! Tabs navigation control exposition — intrinsic and uniform width examples.
 
-use gpui_luma::controls::tabs::TabsEventExt;
-use gpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::infra::presenter::HasPresenter;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode, TabsContent};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode, TabsContent};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
@@ -316,7 +316,7 @@ struct RetainedTabPage {
     look: Arc<ShadcnLook>,
     label: gpui::SharedString,
     count: usize,
-    increment: Entity<gpui_luma::controls::button::Button>,
+    increment: Entity<xgpui_luma::controls::button::Button>,
 }
 impl RetainedTabPage {
     fn new(label: gpui::SharedString, look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {

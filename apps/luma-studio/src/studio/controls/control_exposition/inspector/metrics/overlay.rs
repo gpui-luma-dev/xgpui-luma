@@ -1,5 +1,5 @@
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::inspect::{
     ContextMenuInspectMetrics, FloatingMenuInspectMetrics, OverlayWindowInspectMetrics, ShadcnInspect,
 };
 
@@ -24,7 +24,7 @@ pub fn overlay_window_layout_section(
     variant_id: &str,
     size_id: &str,
 ) -> InspectLayoutSection {
-    use gpui_luma::controls::overlay_window::OverlayWindowMode;
+    use xgpui_luma::controls::overlay_window::OverlayWindowMode;
 
     let size = control_size(size_id);
     let mode = match variant_id {

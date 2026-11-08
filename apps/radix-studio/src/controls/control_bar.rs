@@ -1,8 +1,8 @@
 //! Independently rendered navigation chrome driven by actual page offsets.
 use std::{sync::Arc, time::Duration};
 use gpui::{Context, Entity, Hsla, Render, Window, div, prelude::*};
-use gpui_luma::motion::{Easing, Transition, VisualTransition};
-use gpui_luma_look_radix::{Look, SemanticRole};
+use xgpui_luma::motion::{Easing, Transition, VisualTransition};
+use xgpui_luma_look_radix::{Look, SemanticRole};
 use super::ScreenNav;
 use crate::tabs::RadixStudioTab;
 
@@ -80,7 +80,7 @@ mod tests {
         app.update(|cx| {
             let look = Arc::new(Look::built_in());
             let nav = cx.new(|cx| {
-                let tabs = gpui_luma_look_radix::Tabs::new("bar-pages").look(&look).spawn(cx);
+                let tabs = xgpui_luma_look_radix::Tabs::new("bar-pages").look(&look).spawn(cx);
                 ScreenNav::new(&look, &look, tabs, cx)
             });
             let mut bar = ControlBar::new(&look, nav);

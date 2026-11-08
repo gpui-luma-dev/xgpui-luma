@@ -1,15 +1,15 @@
-//! Look-owned autocomplete builder. Spawn synthesizes the SDK [`gpui_luma::controls::autocomplete::Autocomplete`].
+//! Look-owned autocomplete builder. Spawn synthesizes the SDK [`xgpui_luma::controls::autocomplete::Autocomplete`].
 
 use std::sync::Arc;
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::autocomplete::{AutocompleteBuilder, AutocompleteControl, SelectionItem};
+use xgpui_luma::controls::autocomplete::{AutocompleteBuilder, AutocompleteControl, SelectionItem};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of an autocomplete: Shadcn templates plus SDK options, until `.spawn(cx)`.
 pub struct Autocomplete {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::autocomplete::AutocompleteEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::autocomplete::AutocompleteEvent>,
 
     look: Option<ShadcnLook>,
     builder: AutocompleteBuilder,
@@ -17,7 +17,7 @@ pub struct Autocomplete {
 }
 
 impl Autocomplete {
-    gpui_luma::forward_motion!(gpui_luma::controls::autocomplete::AutocompleteMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::autocomplete::AutocompleteMotion, builder builder);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.builder = self.builder.motion_enabled(enabled);
         self
@@ -28,7 +28,7 @@ impl Autocomplete {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::autocomplete::AutocompleteEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::autocomplete::AutocompleteEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -41,7 +41,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::Change { query } = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::Change { query } = event {
                 callback(owner, query, cx);
             }
         })
@@ -54,7 +54,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -67,7 +67,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::Complete { item_id, label } = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::Complete { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -80,7 +80,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::Clear = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::Clear = event {
                 callback(owner, cx);
             }
         })
@@ -93,7 +93,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -106,7 +106,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -119,7 +119,7 @@ impl Autocomplete {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::autocomplete::AutocompleteEvent::Dismiss = event {
+            if let xgpui_luma::controls::autocomplete::AutocompleteEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -129,7 +129,7 @@ impl Autocomplete {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: gpui_luma::controls::autocomplete::new(id, items),
+            builder: xgpui_luma::controls::autocomplete::new(id, items),
             size: ShadcnSize::Md,
         }
     }
@@ -151,19 +151,19 @@ impl Autocomplete {
     }
 
     /// Configure popup wheel routing independently.
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.builder = self.builder.wheel_scroll_policy(policy);
         self
     }
 
     /// Configure popup wheel routing independently.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.builder = self.builder.scroll_boundary_policy(policy);
         self
     }
 
     /// Configure popup wheel routing independently.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.builder = self.builder.wheel_focus_scope(policy);
         self
     }

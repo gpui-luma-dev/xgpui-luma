@@ -8,7 +8,7 @@ use std::sync::{
 };
 
 use gpui::SharedString;
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     button_family::{
         ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme,
     },
@@ -20,7 +20,7 @@ use gpui_luma::controls::{
     tabs::{DefaultTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
 };
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
@@ -125,7 +125,7 @@ impl RadioButtonTheme for AppTheme {
 }
 
 impl TabsTheme for AppTheme {
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         self.current().tabs.resolve_drag(size)
     }
 

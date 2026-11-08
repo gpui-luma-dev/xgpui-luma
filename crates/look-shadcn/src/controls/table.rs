@@ -13,11 +13,11 @@ use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::controls::table::TableLook;
-use gpui_luma::controls::table::TableRowPalette;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::table::TableLook;
+use xgpui_luma::controls::table::TableRowPalette;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -128,7 +128,7 @@ pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: 
         .and_then(|max| resolve_stylesheet_metric(max, metrics, size))
         .map_or(radius, |max| radius.min(max));
 
-    let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .table
         .authored_geometry(size.stylesheet_key());
     let recipe = mode.stylesheet().common.table.authored_geometry(size.stylesheet_key()).with_fallback(&baseline);
@@ -153,7 +153,7 @@ pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: 
     };
     let geometry = mode.stylesheet().common.table.resolve_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::TableGeometry {
+        xgpui_luma::theme::stylesheet::TableGeometry {
             padding_x: look.padding_x,
             padding_y: look.padding_y,
             ..Default::default()
@@ -192,9 +192,9 @@ pub fn table_row_palette(
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::theme::{ControlSize, InteractionState};
+    use xgpui_luma::theme::{ControlSize, InteractionState};
 
     use crate::catalog::CssTokenMap;
     use crate::color::with_alpha;
@@ -399,17 +399,17 @@ pub struct TableMetricTable {
 
 pub fn resolve_table_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TableMetricTable {
-    use gpui_luma::theme::ListRowScale;
+    use xgpui_luma::theme::ListRowScale;
 
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
         control_size_key, derived_metric, radius_metric, scaffold_control_metric, spacing_control_metric,
     };
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let look = crate::paint::table_look(mode, true, false, size);
@@ -426,7 +426,7 @@ pub fn resolve_table_metrics(
     };
     let geometry = mode.stylesheet().common.table.inspect_geometry(
         size_key,
-        gpui_luma::theme::stylesheet::TableGeometry {
+        xgpui_luma::theme::stylesheet::TableGeometry {
             padding_x: table.padding_x.value_px,
             padding_y: table.padding_y.value_px,
             ..Default::default()

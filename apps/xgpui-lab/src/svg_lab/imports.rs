@@ -1,5 +1,5 @@
 use super::*;
-use gpui_luma::infra::ElementExt;
+use xgpui_luma::infra::ElementExt;
 use gpui::{Pixels, Point, SvgRenderer, PathPromptOptions, px};
 use anyhow::{Context as _, ensure};
 use std::{

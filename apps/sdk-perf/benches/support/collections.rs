@@ -7,7 +7,7 @@ use gpui::{
     prelude::*, App, AppContext, Context, Entity, Focusable, Render, SharedString, TestAppContext, VisualTestContext,
     Window, div, point, px, size,
 };
-use gpui_luma::controls::{table::*, tree_view::*};
+use xgpui_luma::controls::{table::*, tree_view::*};
 
 #[derive(Clone)]
 pub struct Row {
@@ -220,7 +220,7 @@ pub fn setup(
     let paints = Arc::new(Paints::default());
     let (host, cx) = app.add_window_view(|window, cx| {
         window.activate_window();
-        gpui_luma::key_handling::bind_default_control_keys(cx);
+        xgpui_luma::key_handling::bind_default_control_keys(cx);
         Host {
             control: Some(control(case, count, paints.clone(), cx)),
             source: if case.is_tree() {
@@ -258,7 +258,7 @@ pub fn operate(host: &Entity<Host>, cx: &mut VisualTestContext, phase: &str, cou
         // Fixed fixture columns and the SDK theme define the actual divider.
         // GPUI debug selectors are absent in release; integration tests verify
         // these coordinates against measured geometry and the committed resize.
-        let look = DefaultTableTheme::default().resolve_look(true, true, gpui_luma::theme::ControlSize::Md);
+        let look = DefaultTableTheme::default().resolve_look(true, true, xgpui_luma::theme::ControlSize::Md);
         let start = point(
             px(look.border_width + look.padding_x + 150.0 + if step.is_multiple_of(2) { 24.0 } else { 0.0 }),
             px(look.border_width + look.padding_y + look.header_typography.line_height * 0.5),

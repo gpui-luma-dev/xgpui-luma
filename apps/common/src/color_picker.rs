@@ -1,27 +1,27 @@
 //! Color picker composition shared by Studio and browser documentation demos.
 
-use gpui_luma::controls::slider::SliderEventExt;
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, ClipboardItem, Context, Entity, EventEmitter, IntoElement, Render, Subscription, Window, div,
     prelude::*, px, size,
 };
-use gpui_luma_color::{ColorSwatchButtonTemplate, ColorSwatchData};
-use gpui_luma::controls::button::{Button, HasPresenter};
-use gpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
-use gpui_luma_color::color_slider::color_spec::{Hsv, ColorSpecification};
-use gpui_luma_color::color_slider::{
+use xgpui_luma_color::{ColorSwatchButtonTemplate, ColorSwatchData};
+use xgpui_luma::controls::button::{Button, HasPresenter};
+use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
+use xgpui_luma_color::color_slider::color_spec::{Hsv, ColorSpecification};
+use xgpui_luma_color::color_slider::{
     AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value, sizing,
 };
-use gpui_luma_color::composition::ColorCompositionSync;
-use gpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, PopoverPlacement};
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma_color::composition::ColorCompositionSync;
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, PopoverPlacement};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
+use xgpui_luma_look_shadcn as shadcn;
 
 #[derive(Clone, Debug)]
 pub enum ColorPickerEvent {

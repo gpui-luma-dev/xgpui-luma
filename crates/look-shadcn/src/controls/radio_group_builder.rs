@@ -1,8 +1,8 @@
-//! Look-owned radio-group builder. Spawn synthesizes the SDK [`gpui_luma::controls::radio_group::RadioGroup`].
+//! Look-owned radio-group builder. Spawn synthesizes the SDK [`xgpui_luma::controls::radio_group::RadioGroup`].
 
 use gpui::{Context, SharedString};
-use gpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
-use gpui_luma::controls::radio_group::{
+use xgpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
+use xgpui_luma::controls::radio_group::{
     RadioGroupBuilder, RadioGroupLayout, radio_group_button_item_element_template, radio_group_buttons_template,
 };
 
@@ -14,7 +14,7 @@ pub struct RadioGroup<T>
 where
     T: ControlGroupItemLike + Clone + Send + Sync + 'static,
 {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::radio_group::RadioGroupEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::radio_group::RadioGroupEvent>,
 
     look: Option<ShadcnLook>,
     style: ShadcnButtonStyle,
@@ -27,7 +27,7 @@ impl<T> RadioGroup<T>
 where
     T: ControlGroupItemLike + Clone + Send + Sync + 'static,
 {
-    gpui_luma::forward_motion!(gpui_luma::controls::control_group::ControlGroupMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::control_group::ControlGroupMotion, builder builder);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.builder = self.builder.motion_enabled(enabled);
         self
@@ -38,7 +38,7 @@ where
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::radio_group::RadioGroupEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::radio_group::RadioGroupEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -51,7 +51,7 @@ where
         callback: impl Fn(&mut M, &Option<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_group::RadioGroupEvent::Change { value } = event {
+            if let xgpui_luma::controls::radio_group::RadioGroupEvent::Change { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -64,7 +64,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_group::RadioGroupEvent::Activate { value } = event {
+            if let xgpui_luma::controls::radio_group::RadioGroupEvent::Activate { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -77,7 +77,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_group::RadioGroupEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::radio_group::RadioGroupEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -90,7 +90,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::radio_group::RadioGroupEvent::ItemFocused { item_id } = event {
+            if let xgpui_luma::controls::radio_group::RadioGroupEvent::ItemFocused { item_id } = event {
                 callback(owner, item_id, cx);
             }
         })
@@ -103,7 +103,7 @@ where
             look: None,
             style: ShadcnButtonStyle::Primary,
             horizontal: false,
-            builder: gpui_luma::controls::radio_group::new(id),
+            builder: xgpui_luma::controls::radio_group::new(id),
             custom_template: false,
         }
     }
@@ -115,7 +115,7 @@ where
             look: None,
             style: ShadcnButtonStyle::Primary,
             horizontal: true,
-            builder: gpui_luma::controls::radio_group::horizontal(id),
+            builder: xgpui_luma::controls::radio_group::horizontal(id),
             custom_template: false,
         }
     }
@@ -172,7 +172,7 @@ where
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::radio_group::RadioGroup<T> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::radio_group::RadioGroup<T> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look_from(self.look.as_ref(), cx);
@@ -205,7 +205,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::radio_group::RadioGroupItem;
+    use xgpui_luma::controls::radio_group::RadioGroupItem;
 
     #[test]
     fn into_sdk_builder_does_not_panic() {

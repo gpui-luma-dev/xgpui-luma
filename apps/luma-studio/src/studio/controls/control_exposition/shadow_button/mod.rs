@@ -1,25 +1,25 @@
 mod button;
 
-use gpui_luma::controls::textfield::TextFieldEventExt;
-use gpui_luma::controls::slider::SliderEventExt;
-use gpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, Context, Entity, FontWeight, Hsla, IntoElement, Render, SharedString, Window, div, prelude::*, px,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
-use gpui_luma::controls::button::{Button, ButtonContentContext, ButtonEvent, ButtonRenderModel, ButtonTemplate};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::slider::{Slider, SliderEvent};
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent, Validator};
-use gpui_luma::controls::toggle::{Toggle, ToggleEvent};
-use gpui_luma::theme::{InteractionState, LumaChrome};
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button::{Button, ButtonContentContext, ButtonEvent, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::slider::{Slider, SliderEvent};
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent, Validator};
+use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
+use xgpui_luma::theme::{InteractionState, LumaChrome};
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::color_exposition_common::format_compact_hsla;
@@ -732,7 +732,7 @@ fn render_button_state_sample(
 ) -> AnyElement {
     let id = SharedString::from(format!("controls-doc-shadow-preview-{}", sample.id));
     let label = SharedString::from("Button");
-    let content: gpui_luma::controls::button::ControlPresenter<ButtonContentContext<()>> =
+    let content: xgpui_luma::controls::button::ControlPresenter<ButtonContentContext<()>> =
         Arc::new(move |_: &ButtonContentContext<()>, _| div().child(label.clone()).into_any_element());
     let model = ButtonRenderModel {
         id,

@@ -1,16 +1,16 @@
 //! Reference control exposition template — copy this module when adding a new control doc.
 
-use gpui_luma::controls::switch::SwitchEventExt;
+use xgpui_luma::controls::switch::SwitchEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{Button, ButtonEvent};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::switch::{Switch};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{Button, ButtonEvent};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::switch::{Switch};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::button_theme_inspector::ButtonThemeInspector;

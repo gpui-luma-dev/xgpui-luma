@@ -1,6 +1,6 @@
 use std::time::Duration;
 use gpui::{AnyElement, App, Bounds, Context, Pixels, Window, div, point, px, size, prelude::*};
-use gpui_luma::{
+use xgpui_luma::{
     infra::attachments::{AttachmentHost, AttachmentTarget, TooltipEntityExt},
     theme::InteractionState,
 };

@@ -3,7 +3,7 @@
 use super::model::{ColorFieldModel2D, ColorFieldModelKind};
 use crate::color_slider::color_spec::Hsv;
 use gpui::Hsla;
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 use palette::convert::FromColorUnclamped;
 use std::f32::consts::TAU;
 

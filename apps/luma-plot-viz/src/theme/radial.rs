@@ -1,5 +1,5 @@
 use crate::theme::AppTheme;
-use gpui_luma_plot::RadialPresentation;
+use xgpui_luma_plot::RadialPresentation;
 use crate::theme;
 pub(crate) fn style(look: &AppTheme) -> RadialPresentation {
     let pie = theme::pie::style(look);
@@ -8,7 +8,7 @@ pub(crate) fn style(look: &AppTheme) -> RadialPresentation {
         label_text: pie.label_text,
         center_title: pie.center_title,
         center_caption: pie.center_caption,
-        empty_state: Some(gpui_luma_plot::EmptyStatePresentation::new(
+        empty_state: Some(xgpui_luma_plot::EmptyStatePresentation::new(
             "No positive radial values",
             theme::chrome(look).muted_text,
         )),

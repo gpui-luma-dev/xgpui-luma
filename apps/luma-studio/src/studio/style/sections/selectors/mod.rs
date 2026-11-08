@@ -3,36 +3,36 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, App, Entity, FontWeight, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px, svg,
 };
-use gpui_luma::controls::autocomplete::{
+use xgpui_luma::controls::autocomplete::{
     AutocompleteItemsRenderModel, AutocompleteItemsTemplateHandlers, AutocompleteRenderModel,
     AutocompleteTemplateHandlers, default_autocomplete_items_template, default_autocomplete_template,
 };
-use gpui_luma::controls::combobox::{
+use xgpui_luma::controls::combobox::{
     ComboBoxItemsRenderModel, ComboBoxItemsTemplate, ComboBoxItemsTemplateHandlers, ComboBoxPanelRenderModel,
     ComboBoxPanelTemplate, ComboBoxRenderModel, ComboBoxTemplateHandlers, SelectionItem as ComboBoxSelectionItem,
     default_combobox_items_template, default_combobox_panel_template, default_combobox_template,
 };
-use gpui_luma::controls::search_selector::{
+use xgpui_luma::controls::search_selector::{
     SearchSelectorItemsRenderModel, SearchSelectorItemsTemplate, SearchSelectorItemsTemplateHandlers,
     SearchSelectorPanelRenderModel, SearchSelectorPanelTemplate, SearchSelectorRenderModel,
     SearchSelectorTemplateHandlers, SelectionItem as SearchSelectorSelectionItem,
     default_search_selector_items_template, default_search_selector_panel_template, default_search_selector_template,
 };
-use gpui_luma::controls::selector::{
+use xgpui_luma::controls::selector::{
     ControlFocusState, SelectorIcons, SelectorItem, SelectorPath, SelectorPlacement, SelectorRenderModel,
     SelectorTemplateHandlers, SelectorVisualState,
 };
-use gpui_luma::motion::overlay_presence::OverlayPresence;
-use gpui_luma::controls::selector_list::{
+use xgpui_luma::motion::overlay_presence::OverlayPresence;
+use xgpui_luma::controls::selector_list::{
     SelectorItem as SelectorPanelItem, SelectorItemsPanelLook, SelectorItemsRenderModel, SelectorItemsTemplateHandlers,
     SelectorPanelClickHandler, SelectorPanelHoverHandler, default_selector_items_template,
 };
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
-use gpui_luma::controls::textfield::TextFieldLook;
-use gpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, StandardBoxScale};
-use gpui_luma_look_shadcn::stylesheet::{embedded_stylesheet, resolve_button_metrics_rule};
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
+use xgpui_luma::controls::textfield::TextFieldLook;
+use xgpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, StandardBoxScale};
+use xgpui_luma_look_shadcn::stylesheet::{embedded_stylesheet, resolve_button_metrics_rule};
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::style::shared::preview_handlers::{input_noop_click, input_noop_hover, input_textfield_handlers};
@@ -98,7 +98,7 @@ struct ComboBoxPopupTemplates<'a> {
 }
 
 struct SearchSelectorPopupTemplates<'a> {
-    geometry: gpui_luma::theme::stylesheet::SearchSelectorGeometry,
+    geometry: xgpui_luma::theme::stylesheet::SearchSelectorGeometry,
     items: &'a Arc<dyn SearchSelectorItemsTemplate>,
     panel: &'a Arc<dyn SearchSelectorPanelTemplate>,
 }
@@ -439,7 +439,7 @@ fn render_selector_autocomplete_trigger(
         icons: look.stylesheet().common.icons.clone(),
         geometry: look.stylesheet().common.autocomplete.resolve_geometry(
             size.stylesheet_key(),
-            gpui_luma::theme::stylesheet::AutocompleteGeometry {
+            xgpui_luma::theme::stylesheet::AutocompleteGeometry {
                 status_font_size: status_theme.status_typography.size,
                 status_line_height: status_theme.status_typography.line_height,
                 ..Default::default()
@@ -666,7 +666,7 @@ fn render_selector_selector_trigger(
         panel_template: None,
         focus: state.selector_focus,
         state: state.selector_state,
-        visual_state: gpui_luma::controls::selector::SelectorVisualState {
+        visual_state: xgpui_luma::controls::selector::SelectorVisualState {
             interaction: state.selector_state,
             open: state.selector_open,
             selected: state.selector_selected,
@@ -1042,7 +1042,7 @@ fn selector_preview_textfield_look(
     enabled: bool,
     size: ControlSize,
     window: &Window,
-) -> gpui_luma::controls::textfield::TextFieldLook {
+) -> xgpui_luma::controls::textfield::TextFieldLook {
     let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
     apply_selector_preview_textfield_size(look, theme.resolve_look(state, enabled, size, &scale), size)
 }

@@ -1,9 +1,9 @@
 //! Theme choices and wiring; segmented styling is supplied by the Radix look.
 
 use gpui::{Context, FontWeight, div, prelude::*, px};
-use gpui_luma::controls::radio_group::{self, RadioGroup, RadioGroupItem, RadioGroupItemLike};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_radix::{Look, ScaleFamily};
+use xgpui_luma::controls::radio_group::{self, RadioGroup, RadioGroupItem, RadioGroupItemLike};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_radix::{Look, ScaleFamily};
 use crate::assets::{icon_named, react_icon};
 
 pub fn mode_id(mode: ThemeMode) -> &'static str {
@@ -20,7 +20,7 @@ pub fn spawn<M: 'static>(id: &'static str, look: &Look, cx: &mut Context<M>) -> 
         .selection_follows_active(true)
         .items([RadioGroupItem::new("light").label("Light"), RadioGroupItem::new("dark").label("Dark")])
         .selected(mode_id(look.mode()))
-        .template(gpui_luma_look_radix::segmented_radio_template(look))
+        .template(xgpui_luma_look_radix::segmented_radio_template(look))
         .with_item_template(move |item, _, _| {
             let name = if item.item.id().as_ref() == "light" {
                 "sun"

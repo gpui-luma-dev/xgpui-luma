@@ -1,62 +1,63 @@
-# gpui-luma
+# xgpui-luma
 
 Component library built on [xgpui](https://xgpui.dev/), with a lookless
 control SDK, Shadcn and Radix look adapters, color controls, and desktop example apps. Documentation is hosted at
 [gpui-luma.dev](https://gpui-luma.dev). Source lives at
-[gpui-luma-dev/gpui-luma](https://github.com/gpui-luma-dev/gpui-luma).
+[gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
 Requires a recent Rust stable toolchain (`rust-toolchain.toml` tracks `stable`).
 
 ## Build an app
 
-Luma now uses xgpui 1.0.0 instead of gpui-unofficial. The dependency aliases
+Luma now uses xgpui 2.0.1 instead of gpui-unofficial. The dependency aliases
 `gpui` and `gpui_platform` keep existing Rust imports unchanged. Browser builds
 use `xgpui-web`, aliased as `gpui_web`.
 
-Use the published crates directly; a GitHub checkout is only needed to run the
-repository’s example apps or contribute to the libraries.
+The examples below target this repository’s crate names and versions. Once these
+versions are published to crates.io, use them directly with the commands below.
+To build from this checkout, see [Example programs](#example-programs).
 
 ```bash
 cargo new my-luma-app
 cd my-luma-app
-cargo add gpui-luma@0.2 gpui-luma-look-shadcn@0.2
-cargo add xgpui@=1.0.0 --rename gpui
-cargo add xgpui-platform@=1.0.0 --rename gpui_platform --features font-kit
+cargo add xgpui-luma@1.0.1 xgpui-luma-look-shadcn@1.0.1
+cargo add xgpui@=2.0.1 --rename gpui
+cargo add xgpui-platform@=2.0.1 --rename gpui_platform --features font-kit
 ```
 
 Add the [complete app example](https://gpui-luma.dev/#sample) to `src/main.rs`, then
 run `cargo build` or `cargo run`. Choose the Radix look instead of Shadcn, or use
 the SDK’s built-in styling. Add color controls and plots as needed.
 
-Use `0.2` for Luma dependencies to accept compatible `0.2.x` releases. Run
+Use `1.0.1` for Luma dependencies to accept compatible `1.x` releases. Run
 `cargo update` to refresh versions already recorded in `Cargo.lock`.
 
 ```toml
 [dependencies]
-gpui = { package = "xgpui", version = "=1.0.0" }
-gpui_platform = { package = "xgpui-platform", version = "=1.0.0", features = ["font-kit"] }
-gpui-luma = "0.2"
-gpui-luma-look-shadcn = "0.2"
-# Alternatively: gpui-luma-look-radix = "0.2"
-# Optional: gpui-luma-color = "0.2"
-# Optional: gpui-luma-plot = "0.2"
+gpui = { package = "xgpui", version = "=2.0.1" }
+gpui_platform = { package = "xgpui-platform", version = "=2.0.1", features = ["font-kit"] }
+xgpui-luma = "1.0.1"
+xgpui-luma-look-shadcn = "1.0.1"
+# Alternatively: xgpui-luma-look-radix = "1.0.1"
+# Optional: xgpui-luma-color = "1.0.1"
+# Optional: xgpui-luma-plot = "1.0.1"
 ```
 
 ## Library crates
 
 | Crate | Purpose |
 |---|---|
-| [`gpui-luma`](https://crates.io/crates/gpui-luma) | Lookless controls, layouts, focus, interaction, motion, and shared theme contracts |
-| [`gpui-luma-look-shadcn`](https://crates.io/crates/gpui-luma-look-shadcn) | Shadcn themes, CSS tokens, styled builders, and optional inspection tooling |
-| [`gpui-luma-look-radix`](https://crates.io/crates/gpui-luma-look-radix) | Radix themes, palette scales, custom colors, and styled builders |
-| [`gpui-luma-color`](https://crates.io/crates/gpui-luma-color) | Color fields, rings, sliders, swatches, and color rendering primitives |
-| [`gpui-luma-plot`](https://crates.io/crates/gpui-luma-plot) | Cartesian, pie, radar, and radial charts |
+| [`xgpui-luma`](https://crates.io/crates/xgpui-luma) | Lookless controls, layouts, focus, interaction, motion, and shared theme contracts |
+| [`xgpui-luma-look-shadcn`](https://crates.io/crates/xgpui-luma-look-shadcn) | Shadcn themes, CSS tokens, styled builders, and optional inspection tooling |
+| [`xgpui-luma-look-radix`](https://crates.io/crates/xgpui-luma-look-radix) | Radix themes, palette scales, custom colors, and styled builders |
+| [`xgpui-luma-color`](https://crates.io/crates/xgpui-luma-color) | Color fields, rings, sliders, swatches, and color rendering primitives |
+| [`xgpui-luma-plot`](https://crates.io/crates/xgpui-luma-plot) | Cartesian, pie, radar, and radial charts |
 
-Depend on **`gpui-luma`**, then choose a look adapter. Add `gpui-luma-color` for
-color controls. All five library crates are available on crates.io.
+Depend on **`xgpui-luma`**, then choose a look adapter. Add `xgpui-luma-color` for
+color controls. The links above point to the registry destinations for these crates.
 
-Import the SDK with `use gpui_luma::…`. Look adapter imports use
-`gpui_luma_look_shadcn` or `gpui_luma_look_radix`.
+Import the SDK with `use xgpui_luma::…`. Look adapter imports use
+`xgpui_luma_look_shadcn` or `xgpui_luma_look_radix`.
 
 ## Styling
 
@@ -70,8 +71,8 @@ Use the SDK’s built-in light/dark styling, or choose the
 Clone the repository to run its desktop examples:
 
 ```bash
-git clone https://github.com/gpui-luma-dev/gpui-luma.git
-cd gpui-luma
+git clone https://github.com/gpui-luma-dev/xgpui-luma.git
+cd xgpui-luma
 ```
 
 **Use release builds for optimal app performance. Debug builds are intended for
@@ -100,7 +101,7 @@ just app-radix
 # Debug: just --set profile dev app-radix
 ```
 
-**Luma Plot Viz** — chart galleries using `gpui-luma-plot` and the SDK’s built-in styling, with line, area, bar, pie, radar, and radial examples:
+**Luma Plot Viz** — chart galleries using `xgpui-luma-plot` and the SDK’s built-in styling, with line, area, bar, pie, radar, and radial examples:
 
 ![Luma Plot Viz showing bar charts in dark mode](docs/screenshots/luma-plot.png)
 
@@ -132,11 +133,10 @@ just shell-vscode retro-arcade
 
 ## Prebuilt executables
 
-The [Build Luma Studio](https://github.com/gpui-luma-dev/gpui-luma/actions/workflows/build.yml)
-workflow runs **manually only** using GitHub Actions' **Run workflow** button.
-It builds `luma-studio` for macOS Apple Silicon, Windows x64, and Windows ARM64.
-Download the executable ZIPs from a successful run's **Artifacts** section;
-artifacts are retained for seven days.
+The [Build Luma Studio](https://github.com/gpui-luma-dev/xgpui-luma/actions/workflows/build.yml)
+workflow is disabled in its YAML configuration. All GitHub workflows have their
+jobs gated off, and automatic push and pull-request triggers are removed. Manual
+dispatch skips every job until the YAML configuration is re-enabled.
 
 ## Development checks
 
@@ -175,6 +175,19 @@ install the tools with `brew install node actionlint`. Native-only Rust linker
 flags are cleared for the WASM check.
 
 The `test-support` features enable headless GPUI interaction tests.
+
+To package and compile-verify the five release archives without publishing:
+
+```bash
+cargo package --locked --registry crates-io \
+  -p xgpui-luma -p xgpui-luma-color -p xgpui-luma-look-radix \
+  -p xgpui-luma-look-shadcn -p xgpui-luma-plot
+```
+
+Add `--allow-dirty` to check uncommitted changes. Keep registry access enabled:
+with Cargo 1.99.1, `--offline` fails to verify unpublished workspace dependencies
+with a temporary-registry `no hash listed` error. Archives are written to
+`target/package/`. This command does not publish crates.
 
 ## License
 

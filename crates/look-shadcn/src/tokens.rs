@@ -1,4 +1,4 @@
-use gpui_luma::theme::{LumaTextRole, LumaTextScale};
+use xgpui_luma::theme::{LumaTextRole, LumaTextScale};
 
 /// Semantic shadcn color tokens mapped from CSS custom properties.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -7,15 +7,15 @@ publish = false
 
 [features]
 # Headless builder dispatch tests; does not launch Studio.
-test-support = ["gpui-luma/test-support", "luma-app-common/test-support"]
+test-support = ["xgpui-luma/test-support", "luma-app-common/test-support"]
 
 [dependencies]
 anyhow = { workspace = true }
 gpui = { workspace = true }
-gpui-luma.workspace = true
-gpui-luma-color.workspace = true
+xgpui-luma.workspace = true
+xgpui-luma-color.workspace = true
 luma-app-common.workspace = true
-gpui-luma-look-shadcn = { workspace = true, features = ["inspect"] }
+xgpui-luma-look-shadcn = { workspace = true, features = ["inspect"] }
 lucide-svg-static.workspace = true
 gpui_platform = { workspace = true }
 font-kit.workspace = true

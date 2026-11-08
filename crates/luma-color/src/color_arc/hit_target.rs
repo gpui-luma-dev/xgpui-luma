@@ -1,6 +1,6 @@
 use gpui::{Bounds, Pixels, Point};
 
-use gpui_luma::controls::slider::RadialHitTarget;
+use xgpui_luma::controls::slider::RadialHitTarget;
 
 use super::common::{arc_geometry, pointer_hits_arc_target, position_to_turn};
 use super::track_context::ColorArcTrackContext;

@@ -1,9 +1,9 @@
 // Shared native-dispatch contract exercised by each ListBox Look adapter.
 use gpui::{Context, Entity, MouseButton, Render, TestAppContext, Window, div, point, prelude::*, px};
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxDragDrop, ListBoxDropProposal, ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode,
 };
-use gpui_luma::infra::drag_drop::{DragDropEvent, DragEndReason};
+use xgpui_luma::infra::drag_drop::{DragDropEvent, DragEndReason};
 
 #[derive(Clone, Copy)]
 enum Decision {
@@ -20,7 +20,7 @@ struct DragHarness {
 }
 impl DragHarness {
     fn new(cx: &mut Context<Self>) -> Self {
-        gpui_luma::focus::bind_default_focus_keys(cx);
+        xgpui_luma::focus::bind_default_focus_keys(cx);
         let lists = std::array::from_fn(|side| {
             let state =
                 ListBoxState::try_new((1..=4).map(|key| key + side as u32 * 10), |key| *key, SelectionMode::Multiple)
@@ -34,7 +34,7 @@ impl DragHarness {
             )
             .drag_drop(ListBoxDragDrop::new(cx.entity_id(), Self::drop))
             .on_event(cx, move |owner: &mut Self, event, _| {
-                if let gpui_luma::controls::listbox::ListBoxEvent::DragDrop(event) = event {
+                if let xgpui_luma::controls::listbox::ListBoxEvent::DragDrop(event) = event {
                     owner.events.push((side, event.clone()));
                 }
             })
@@ -274,7 +274,7 @@ fn committed_list_motion_keeps_callback_order_and_animates_visible_siblings() {
     for destination in [(30.,185.),(300.,185.)] {
         let mut app=TestAppContext::single();let(view,cx)=app.add_window_view(|window,cx|{
             window.activate_window();let mut host=DragHarness::new(cx);host.lists[0].state.set_selected_keys([1,2]).unwrap();
-            host.lists = host.lists.map(|list| list.motion(|m| m.drop_layout = gpui_luma::motion::Transition::timed(Duration::from_secs(10), gpui_luma::motion::Easing::OutCubic)));host
+            host.lists = host.lists.map(|list| list.motion(|m| m.drop_layout = xgpui_luma::motion::Transition::timed(Duration::from_secs(10), xgpui_luma::motion::Easing::OutCubic)));host
         });cx.run_until_parked();
         let first=cx.debug_bounds("sdk-left-item-0").unwrap();let third=cx.debug_bounds("sdk-left-item-2").unwrap();
         start_native(cx,destination);cx.simulate_mouse_up(point(px(destination.0),px(destination.1)),MouseButton::Left,Default::default());cx.run_until_parked();

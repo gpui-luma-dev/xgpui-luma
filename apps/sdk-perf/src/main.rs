@@ -16,9 +16,9 @@ fn main() -> anyhow::Result<()> {
     anyhow::ensure!(count > 0 && count <= 100_000, "size must be 1..100000");
     anyhow::ensure!(kind == SceneKind::Forms || look == LookKind::Sdk, "only forms compare look adapters");
     gpui_platform::application().with_assets(Assets).run(move |cx| {
-        let result = gpui_luma::init(cx).and_then(|_| {
+        let result = xgpui_luma::init(cx).and_then(|_| {
             luma_app_common::register_all(cx)?;
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             let bounds = Bounds::centered(None, size(px(1200.0), px(800.0)), cx);
             let handle = cx.open_window(
                 WindowOptions {

@@ -1,7 +1,7 @@
 //! Shared label typography for radix control themes.
 
 use gpui::{FontWeight, SharedString};
-use gpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle};
 
 use crate::look::Look;
 

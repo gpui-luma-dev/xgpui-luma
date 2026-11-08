@@ -1,14 +1,14 @@
 use crate::studio::color_format::{preview_color, parse_compact_hsla};
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 use std::collections::HashMap;
 
 use gpui::Hsla;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::model::{DEFAULT_RADIUS_REM, DEFAULT_SPACING_REM, REM_IN_PX};
 use crate::studio::export::{token_css_name};
 use crate::studio::overrides::StudioOverrides;
-use gpui_luma::color::ColorValue;
+use xgpui_luma::color::ColorValue;
 
 fn parse_number(value: &str, min: f32, max: f32) -> Option<f32> {
     value
@@ -115,7 +115,7 @@ pub(super) fn token_color_with_fallback(
         .copied()
         .or_else(|| look.token_source_color(token).ok())
         .and_then(|source| {
-            gpui_luma::color::gpui_bridge::to_hsla(source, gpui_luma::color::GamutMapping::CssLocalMinde).ok()
+            xgpui_luma::color::gpui_bridge::to_hsla(source, xgpui_luma::color::GamutMapping::CssLocalMinde).ok()
         })
         .unwrap_or(fallback)
 }

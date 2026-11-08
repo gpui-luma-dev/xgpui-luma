@@ -1,7 +1,7 @@
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::motion::{Transition, Easing};
 use std::{collections::HashMap, time::Duration};
 use gpui::{AnyElement, App, Bounds, Context, Pixels, Window, div, point, px, size, prelude::*};
-use gpui_luma::{
+use xgpui_luma::{
     motion::VisualTransition,
     infra::attachments::{AttachmentHost, AttachmentTarget, TooltipEntityExt},
     theme::InteractionState,

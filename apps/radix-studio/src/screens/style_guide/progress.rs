@@ -1,10 +1,10 @@
 //! Progress template previews: values, contrast, radii, colors, and sizes.
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::progress::{ProgressDirection, ProgressRenderModel};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::infra::value::ControlRange;
-use gpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, Paint, ProgressSize, ProgressVariant, Radius};
+use xgpui_luma::controls::progress::{ProgressDirection, ProgressRenderModel};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::infra::value::ControlRange;
+use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, Paint, ProgressSize, ProgressVariant, Radius};
 use super::matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
 
 pub fn tabbed(
@@ -38,7 +38,7 @@ fn sample(look: &Look, id: String, sample: Sample, window: &mut Window, cx: &mut
     let Sample { variant, size, radius, high_contrast, value, enabled, indeterminate } = sample;
     let id = SharedString::from(format!("guide-progress-{id}"));
     let template =
-        look.progress_template(variant, Paint { tone: gpui_luma_look_radix::Tone::Accent, high_contrast }, radius);
+        look.progress_template(variant, Paint { tone: xgpui_luma_look_radix::Tone::Accent, high_contrast }, radius);
     let model = ProgressRenderModel {
         id: &id,
         range: ControlRange::from(0..100),

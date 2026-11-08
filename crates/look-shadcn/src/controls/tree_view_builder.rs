@@ -1,11 +1,11 @@
-//! Look-owned tree-view builder. Spawn synthesizes the SDK [`gpui_luma::controls::tree_view::TreeView`].
+//! Look-owned tree-view builder. Spawn synthesizes the SDK [`xgpui_luma::controls::tree_view::TreeView`].
 
 use std::sync::Arc;
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::tree_view::{TreeNode, TreeViewBuilder, TreeViewControl, TreeViewSelectionMode, TreeViewTemplate};
-use gpui_luma::infra::icon::DisclosureIcons;
-use gpui_luma::controls::tree_view::TreeViewError;
+use xgpui_luma::controls::tree_view::{TreeNode, TreeViewBuilder, TreeViewControl, TreeViewSelectionMode, TreeViewTemplate};
+use xgpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::controls::tree_view::TreeViewError;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -14,7 +14,7 @@ pub struct TreeView<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::tree_view::TreeViewEvent<T>>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::tree_view::TreeViewEvent<T>>,
 
     look: Option<ShadcnLook>,
     builder: TreeViewBuilder<T>,
@@ -26,14 +26,14 @@ impl<T> TreeView<T>
 where
     T: Clone + Send + Sync + 'static,
 {
-    gpui_luma::forward_motion!(gpui_luma::controls::tree_view::TreeViewMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::tree_view::TreeViewMotion, builder builder);
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewEvent<T>, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewEvent<T>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -53,7 +53,7 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsRemoved {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsRemoved {
                 source,
                 target,
                 node_id,
@@ -75,12 +75,12 @@ where
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsAdded {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsAdded {
                 source,
                 target,
                 node_id,
@@ -102,12 +102,12 @@ where
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsReordered {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsReordered {
                 target,
                 node_id,
                 node_ids,
@@ -127,7 +127,7 @@ where
         + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Started { source, node_id, node_ids } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Started { source, node_id, node_ids } = event {
                 callback(owner, *source, node_id, node_ids, cx);
             }
         })
@@ -143,13 +143,13 @@ where
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             bool,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Dropped {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Dropped {
                 source,
                 target,
                 node_id,
@@ -178,7 +178,7 @@ where
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Rejected {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Rejected {
                 source,
                 target,
                 node_id,
@@ -200,12 +200,12 @@ where
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            gpui_luma::controls::tree_view::TreeDragEndReason,
+            xgpui_luma::controls::tree_view::TreeDragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Ended { source, node_id, node_ids, reason } =
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Ended { source, node_id, node_ids, reason } =
                 event
             {
                 callback(owner, *source, node_id, node_ids, *reason, cx);
@@ -217,10 +217,10 @@ where
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::DragDrop(event) = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::DragDrop(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -233,7 +233,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeActivated { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeActivated { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -243,10 +243,11 @@ where
     pub fn on_selection_policy_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewSelectionPolicy, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewSelectionPolicy, &mut gpui::Context<M>)
+        + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::SelectionPolicyChanged { policy } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::SelectionPolicyChanged { policy } = event {
                 callback(owner, policy, cx);
             }
         })
@@ -259,7 +260,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeExpanded { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeExpanded { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -272,7 +273,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeCollapsed { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeCollapsed { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -285,7 +286,7 @@ where
         callback: impl Fn(&mut M, &std::collections::HashSet<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::SelectionChanged { selected_ids } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::SelectionChanged { selected_ids } = event {
                 callback(owner, selected_ids, cx);
             }
         })
@@ -298,7 +299,7 @@ where
         callback: impl Fn(&mut M, &Option<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::ActiveNodeChanged { node_id } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::ActiveNodeChanged { node_id } = event {
                 callback(owner, node_id, cx);
             }
         })
@@ -311,7 +312,7 @@ where
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::ScrollChanged { top_index } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::ScrollChanged { top_index } = event {
                 callback(owner, *top_index, cx);
             }
         })
@@ -324,7 +325,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -337,7 +338,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, usize, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::RowHoverChanged { node_id, index, hovered } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::RowHoverChanged { node_id, index, hovered } = event {
                 callback(owner, node_id, *index, *hovered, cx);
             }
         })
@@ -350,7 +351,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -361,7 +362,7 @@ where
             callbacks: Default::default(),
 
             look: None,
-            builder: gpui_luma::controls::tree_view::new(id),
+            builder: xgpui_luma::controls::tree_view::new(id),
             custom_template: false,
             size: ShadcnSize::Md,
         }
@@ -404,31 +405,31 @@ where
     }
 
     /// Configure selection mode, repeated-click deselection and keyboard selection.
-    pub fn selection_policy(mut self, policy: gpui_luma::controls::tree_view::TreeViewSelectionPolicy) -> Self {
+    pub fn selection_policy(mut self, policy: xgpui_luma::controls::tree_view::TreeViewSelectionPolicy) -> Self {
         self.builder = self.builder.selection_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
     /// Override focus behavior independently of wheel routing.
-    pub fn pointer_focus_policy(mut self, policy: gpui_luma::interaction::PointerFocusPolicy) -> Self {
+    pub fn pointer_focus_policy(mut self, policy: xgpui_luma::interaction::PointerFocusPolicy) -> Self {
         self.builder = self.builder.pointer_focus_policy(policy);
         self
     }
 
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.builder = self.builder.wheel_scroll_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.builder = self.builder.scroll_boundary_policy(policy);
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.builder = self.builder.wheel_focus_scope(policy);
         self
     }
@@ -463,14 +464,14 @@ where
     }
 
     /// Set scrollbar chrome visibility. AutoHide (the default) shows while scrolling.
-    pub fn scrollbar_visibility(mut self, visibility: gpui_luma::controls::ScrollbarVisibility) -> Self {
+    pub fn scrollbar_visibility(mut self, visibility: xgpui_luma::controls::ScrollbarVisibility) -> Self {
         self.builder = self.builder.scrollbar_visibility(visibility);
         self
     }
 
     /// Enable scoped dragging and host-owned drop transactions.
     /// The configuration can opt into dragging selected groups.
-    pub fn drag_drop(mut self, config: gpui_luma::controls::tree_view::TreeViewDragDrop<T>) -> Self {
+    pub fn drag_drop(mut self, config: xgpui_luma::controls::tree_view::TreeViewDragDrop<T>) -> Self {
         self.builder = self.builder.drag_drop(config);
         self
     }
@@ -478,7 +479,7 @@ where
     /// Named or inline content inside the Shadcn branch row shell.
     pub fn branch_content<F, E>(mut self, content: F) -> Self
     where
-        F: Fn(&gpui_luma::controls::tree_view::FlatTreeNode<'_, T>, &mut gpui::Window, &mut gpui::App) -> E + 'static,
+        F: Fn(&xgpui_luma::controls::tree_view::FlatTreeNode<'_, T>, &mut gpui::Window, &mut gpui::App) -> E + 'static,
         E: gpui::IntoElement + 'static,
     {
         self.builder = self.builder.branch_content(content);
@@ -488,7 +489,7 @@ where
     /// Named or inline content inside the Shadcn leaf row shell.
     pub fn leaf_content<F, E>(mut self, content: F) -> Self
     where
-        F: Fn(&gpui_luma::controls::tree_view::FlatTreeNode<'_, T>, &mut gpui::Window, &mut gpui::App) -> E + 'static,
+        F: Fn(&xgpui_luma::controls::tree_view::FlatTreeNode<'_, T>, &mut gpui::Window, &mut gpui::App) -> E + 'static,
         E: gpui::IntoElement + 'static,
     {
         self.builder = self.builder.leaf_content(content);
@@ -551,7 +552,7 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn forwards_independent_wheel_policies_after_look_synthesis() {
-    use gpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
+    use xgpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
     let mut app = gpui::TestAppContext::single();
     let control = TreeView::<()>::new("policy")
         .wheel_scroll_policy(WheelScrollPolicy::PassThrough)

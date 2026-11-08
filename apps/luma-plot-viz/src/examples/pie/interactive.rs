@@ -1,13 +1,13 @@
-use gpui_luma::controls::button;
-use gpui_luma::controls::selector;
-use gpui_luma::controls::selector_list;
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma::motion::{Transition, Easing};
-use gpui_luma::controls::selector::SelectorEventExt;
+use xgpui_luma::controls::button;
+use xgpui_luma::controls::selector;
+use xgpui_luma::controls::selector_list;
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma::motion::{Transition, Easing};
+use xgpui_luma::controls::selector::SelectorEventExt;
 use std::time::Duration;
 use gpui::{App, Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{
     DockPanel, vstack, hstack,
     controls::{
         selector::{Selector, SelectorEvent},
@@ -16,7 +16,7 @@ use gpui_luma::{
     motion::VisualTransition,
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{Dataset, DatasetError, Series, Sample, PieChartBuilder, PieRingPresentation, PieSliceEvent};
+use xgpui_luma_plot::{Dataset, DatasetError, Series, Sample, PieChartBuilder, PieRingPresentation, PieSliceEvent};
 use crate::theme::{self, TypographyExt};
 
 pub(crate) const MONTHS: [&str; 6] = ["January", "February", "March", "April", "May", "June"];
@@ -36,7 +36,7 @@ fn chart(data: Dataset, look: &AppTheme) -> PieChartBuilder {
         .style(move || theme::pie::style(&live))
         .slice_style(5, crate::theme::palette::BLUE_LIGHT_SECONDARY)
         .slice_tooltip(move |slice| {
-            gpui_luma::controls::tooltip::Tooltip::new(format!("{} · {}", slice.label, slice.series))
+            xgpui_luma::controls::tooltip::Tooltip::new(format!("{} · {}", slice.label, slice.series))
                 .shortcut(format!("{} visitors · {:.1}%", slice.sample.y, slice.fraction * 100.0))
                 .theme(std::sync::Arc::new(tooltip_look.clone()))
                 .delay(Duration::from_millis(250))
@@ -44,7 +44,7 @@ fn chart(data: Dataset, look: &AppTheme) -> PieChartBuilder {
         .tooltip_motion(Duration::from_millis(250))
 }
 pub(super) struct Stacked {
-    selection: Option<gpui_luma_plot::PieSlice>,
+    selection: Option<xgpui_luma_plot::PieSlice>,
     entrance: f32,
     data: Dataset,
     look: AppTheme,

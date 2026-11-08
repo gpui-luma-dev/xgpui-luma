@@ -3,10 +3,10 @@
 use std::sync::Arc;
 
 use gpui::{Context, Div, SharedString, div, prelude::*};
-use gpui_luma::controls::tree_view::{
+use xgpui_luma::controls::tree_view::{
     TreeNode, TreeViewBuilder, TreeViewPalette, TreeViewTemplate, TreeViewTheme, ThemedTreeViewTemplate,
 };
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
 
 use crate::{Look, ScaleFamily};
 
@@ -27,12 +27,12 @@ impl TreeViewTheme for RadixTreeViewTheme {
     fn drag_preview_shadow(&self) -> Vec<gpui::BoxShadow> {
         self.look
             .common_stylesheet()
-            .theme_tokens(self.look.mode(), gpui_luma::color::GamutMapping::CssLocalMinde)
+            .theme_tokens(self.look.mode(), xgpui_luma::color::GamutMapping::CssLocalMinde)
             .map(|tokens| tokens.elevation.drag_preview.to_box_shadows())
             .unwrap_or_default()
     }
 
-    fn icon(&self, role: gpui_luma::theme::stylesheet::IconRole) -> gpui_luma::infra::icon::IconSource {
+    fn icon(&self, role: xgpui_luma::theme::stylesheet::IconRole) -> xgpui_luma::infra::icon::IconSource {
         self.look.common_stylesheet().icons.resolve(role)
     }
     fn resolve_row(&self, state: InteractionState, selected: bool, size: ControlSize) -> TreeViewPalette {
@@ -75,8 +75,8 @@ impl TreeViewTheme for RadixTreeViewTheme {
         (state.hovered && !state.disabled).then(|| self.look.resolve_step(ScaleFamily::Color, 8).hsla())
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> gpui_luma::controls::tree_view::TreeViewScale {
-        gpui_luma::controls::tree_view::TreeViewScale::compute_with_stylesheet(
+    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::tree_view::TreeViewScale {
+        xgpui_luma::controls::tree_view::TreeViewScale::compute_with_stylesheet(
             size,
             &self.metrics(),
             scale_factor,
@@ -102,14 +102,14 @@ pub fn tree_view_template<T: Send + Sync + 'static>(look: &Look) -> Arc<dyn Tree
 
 /// Look-owned tree builder using Radix colors and typography.
 pub struct TreeView<T: Clone + Send + Sync + 'static> {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::tree_view::TreeViewEvent<T>>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::tree_view::TreeViewEvent<T>>,
 
     look: Option<Look>,
     builder: TreeViewBuilder<T>,
 }
 
 impl<T: Clone + Send + Sync + 'static> TreeView<T> {
-    gpui_luma::forward_motion!(gpui_luma::controls::tree_view::TreeViewMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::tree_view::TreeViewMotion, builder builder);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.builder = self.builder.motion_enabled(enabled);
         self
@@ -120,7 +120,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewEvent<T>, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewEvent<T>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -140,7 +140,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsRemoved {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsRemoved {
                 source,
                 target,
                 node_id,
@@ -162,12 +162,12 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsAdded {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsAdded {
                 source,
                 target,
                 node_id,
@@ -189,12 +189,12 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::ItemsReordered {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::ItemsReordered {
                 target,
                 node_id,
                 node_ids,
@@ -214,7 +214,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Started { source, node_id, node_ids } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Started { source, node_id, node_ids } = event {
                 callback(owner, *source, node_id, node_ids, cx);
             }
         })
@@ -230,13 +230,13 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::tree_view::TreeDropLocation,
+            &xgpui_luma::controls::tree_view::TreeDropLocation,
             bool,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Dropped {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Dropped {
                 source,
                 target,
                 node_id,
@@ -265,7 +265,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Rejected {
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Rejected {
                 source,
                 target,
                 node_id,
@@ -287,12 +287,12 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
             gpui::EntityId,
             &gpui::SharedString,
             &Vec<gpui::SharedString>,
-            gpui_luma::controls::tree_view::TreeDragEndReason,
+            xgpui_luma::controls::tree_view::TreeDragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewDragEvent::Ended { source, node_id, node_ids, reason } =
+            if let xgpui_luma::controls::tree_view::TreeViewDragEvent::Ended { source, node_id, node_ids, reason } =
                 event
             {
                 callback(owner, *source, node_id, node_ids, *reason, cx);
@@ -304,10 +304,10 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::DragDrop(event) = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::DragDrop(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -320,7 +320,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeActivated { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeActivated { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -330,10 +330,11 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
     pub fn on_selection_policy_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::tree_view::TreeViewSelectionPolicy, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::tree_view::TreeViewSelectionPolicy, &mut gpui::Context<M>)
+        + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::SelectionPolicyChanged { policy } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::SelectionPolicyChanged { policy } = event {
                 callback(owner, policy, cx);
             }
         })
@@ -346,7 +347,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeExpanded { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeExpanded { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -359,7 +360,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &T, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::NodeCollapsed { node_id, data } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::NodeCollapsed { node_id, data } = event {
                 callback(owner, node_id, data, cx);
             }
         })
@@ -372,7 +373,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &std::collections::HashSet<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::SelectionChanged { selected_ids } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::SelectionChanged { selected_ids } = event {
                 callback(owner, selected_ids, cx);
             }
         })
@@ -385,7 +386,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &Option<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::ActiveNodeChanged { node_id } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::ActiveNodeChanged { node_id } = event {
                 callback(owner, node_id, cx);
             }
         })
@@ -398,7 +399,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::ScrollChanged { top_index } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::ScrollChanged { top_index } = event {
                 callback(owner, *top_index, cx);
             }
         })
@@ -411,7 +412,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -424,7 +425,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, usize, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::RowHoverChanged { node_id, index, hovered } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::RowHoverChanged { node_id, index, hovered } = event {
                 callback(owner, node_id, *index, *hovered, cx);
             }
         })
@@ -437,7 +438,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::tree_view::TreeViewEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::tree_view::TreeViewEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -459,7 +460,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
     }
 
     /// Enable scoped, host-owned drag/drop transactions using the SDK policy.
-    pub fn drag_drop(mut self, config: gpui_luma::controls::tree_view::TreeViewDragDrop<T>) -> Self {
+    pub fn drag_drop(mut self, config: xgpui_luma::controls::tree_view::TreeViewDragDrop<T>) -> Self {
         self.builder = self.builder.drag_drop(config);
         self
     }
@@ -469,7 +470,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::tree_view::TreeView<T> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::tree_view::TreeView<T> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = crate::look::resolve_look(self.look.as_ref(), cx.try_global::<Look>());
@@ -487,7 +488,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn rows_follow_mode_and_custom_accent_changes() {
@@ -499,7 +500,7 @@ mod tests {
             assert_eq!(selected.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));
             assert_eq!(selected.foreground, look.resolve_step(ScaleFamily::Color, 12).hsla());
             let before = selected.background;
-            look.set_accent_seed(gpui_luma::color::gpui_bridge::from_rgba(gpui::rgb(0xd6409f))).unwrap();
+            look.set_accent_seed(xgpui_luma::color::gpui_bridge::from_rgba(gpui::rgb(0xd6409f))).unwrap();
             let custom = theme.resolve_row(Default::default(), true, ControlSize::Md);
             assert_ne!(custom.background, before);
             assert_eq!(custom.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));

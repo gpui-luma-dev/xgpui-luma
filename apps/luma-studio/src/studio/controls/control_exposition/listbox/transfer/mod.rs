@@ -7,16 +7,16 @@ mod item;
 use std::sync::Arc;
 
 use gpui::{Context, Div, Entity, FontWeight, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::listbox::{ListBoxBinding, ListBoxInput, ListBoxScrollHandle, SelectionPolicy};
-use gpui_luma::interaction::{ScrollBoundaryPolicy, WheelScrollPolicy};
-use gpui_luma::infra::drag_drop::{DragDropElementExt, DragDropEvent, DropProposal};
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::controls::listbox::{ListBoxBinding, ListBoxInput, ListBoxScrollHandle, SelectionPolicy};
+use xgpui_luma::interaction::{ScrollBoundaryPolicy, WheelScrollPolicy};
+use xgpui_luma::infra::drag_drop::{DragDropElementExt, DragDropEvent, DropProposal};
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use model::{Side, TransferModel};
 use item::{DragPreview, TransferRow};
-use gpui_luma_look_shadcn::ListBoxBuilder;
-use gpui_luma::controls::listbox::{ListBoxLayout, ListBoxVirtualization};
+use xgpui_luma_look_shadcn::ListBoxBuilder;
+use xgpui_luma::controls::listbox::{ListBoxLayout, ListBoxVirtualization};
 use super::{ListBoxSampleLayout, VERTICAL_LIST_WIDTH};
 use super::presentation::ExamplePresentation;
 use super::super::event_stream::ControlEventStream;
@@ -40,7 +40,7 @@ type ItemDrop = DropProposal<Side, u32>;
 
 pub(super) struct TransferExample {
     model: TransferModel,
-    drop_layout: [gpui_luma::motion::DropLayoutMotion<u32>; 2],
+    drop_layout: [xgpui_luma::motion::DropLayoutMotion<u32>; 2],
     bindings: [ListBoxBinding; 2],
     scrolls: [ListBoxScrollHandle<u32>; 2],
     presentations: [ExamplePresentation; 2],
@@ -52,7 +52,7 @@ impl TransferExample {
         for list in &mut model.lists {
             list.set_selection_policy(super::selection_controls::DEFAULT_POLICY);
         }
-        let drop_layout: [gpui_luma::motion::DropLayoutMotion<u32>; 2] = std::array::from_fn(|_| Default::default());
+        let drop_layout: [xgpui_luma::motion::DropLayoutMotion<u32>; 2] = std::array::from_fn(|_| Default::default());
         Self {
             model,
             drop_layout,

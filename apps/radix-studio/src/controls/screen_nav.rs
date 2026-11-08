@@ -1,22 +1,22 @@
 //! Toggle-style page navigation backed by the SDK screen content slots.
 
-use gpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
 
 use gpui::{
     AnyElement, Hsla, FontWeight, px, Context, Entity, EventEmitter, Focusable, IntoElement, Render, Subscription,
     Window, div, prelude::*,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::tabs::{Tabs};
-use gpui_luma::controls::toggle::{Toggle, ToggleEvent};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::prelude::TooltipEntityExt;
-use gpui_luma::controls::tooltip::{Tooltip, TooltipSettings};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_radix::Look;
-use gpui_luma_look_radix as radix;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::tabs::{Tabs};
+use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::prelude::TooltipEntityExt;
+use xgpui_luma::controls::tooltip::{Tooltip, TooltipSettings};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_radix::Look;
+use xgpui_luma_look_radix as radix;
 
 use crate::assets::{icon_named, react_icon};
 use crate::tabs::RadixStudioTab;
@@ -98,7 +98,7 @@ impl ScreenNav {
                     .unwrap_or_else(|| div().into_any_element())
             })
             .spawn(cx)
-            .help("View gpui-luma on GitHub", cx);
+            .help("View xgpui-luma on GitHub", cx);
 
         let radix_link = radix::Button::new("screen-nav-radix")
             .look(look)
@@ -151,7 +151,7 @@ impl ScreenNav {
             cx.open_url("https://www.radix-ui.com/primitives/docs/overview/introduction");
         });
         github.clone().on_click(cx, |_, cx| {
-            cx.open_url("https://github.com/gpui-luma-dev/gpui-luma");
+            cx.open_url("https://github.com/gpui-luma-dev/xgpui-luma");
         });
         theme_reset.clone().on_click(cx, |_, cx| {
             cx.emit(ScreenNavEvent::ResetTheme);
@@ -275,7 +275,7 @@ impl Render for ScreenNav {
                         div()
                             .text_sm()
                             .text_color(self.look.resolve_role(radix::SemanticRole::Foreground).hsla())
-                            .child("Made with GPUI-LUMA"),
+                            .child("Made with XGPUI-LUMA"),
                     ),
             )
             .child(

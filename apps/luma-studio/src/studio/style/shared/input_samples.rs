@@ -1,4 +1,4 @@
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::theme::InteractionState;
 
 #[derive(Clone, Copy)]
 pub(crate) struct InputInteractionSample {

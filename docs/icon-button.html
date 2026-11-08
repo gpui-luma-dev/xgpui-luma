@@ -21,18 +21,18 @@
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Icon Button</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">An icon-only command button.</p><section id="preview"><h2>Try it</h2><p>Interact with the control below. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--tall"><iframe data-luma-example src="examples/embed.html?id=icon-button-basic" title="Live icon button code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=icon-button-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust" data-live-example="icon-button-basic">use gpui::{Context};
-use gpui_luma_look_radix as radix;
-use gpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_radix as radix;
+use xgpui_luma::infra::presenter::HasPresenter;
 
 struct Example {
-    control: gpui::Entity&lt;gpui_luma::controls::button::Button&gt;,
+    control: gpui::Entity&lt;xgpui_luma::controls::button::Button&gt;,
     open_requests: usize,
 }
 
 impl Example {
     fn new(cx: &amp;mut Context&lt;Self&gt;) -&gt; Self {
         let control = radix::Button::new("open")
-            .icon(gpui_luma::controls::button::ControlIcon::SvgPath("icons/open.svg".into()))
+            .icon(xgpui_luma::controls::button::ControlIcon::SvgPath("icons/open.svg".into()))
             .label("Open")
             .on_click(cx, |app: &amp;mut Self, cx| {
                 app.open_requests += 1;
@@ -42,7 +42,7 @@ impl Example {
 
         Self { control, open_requests: 0 }
     }
-}</code></pre></div><p class="small">Integration snippet, checked against the current SDK and Radix crates. <code>cx</code> is the initialized owner context. The control retains its callbacks; callback owners are held weakly. Render <code>self.control.clone()</code> in the owner’s view.</p></section><section id="sdk"><h2>SDK behavior & customization</h2><p>A Button preset, not a separate interaction engine. Provide an accessible label or description.</p></section><section id="events"><h2>Events</h2><p>The callback updates application state. Use <code>.on_click</code> for activation and <code>.on_event</code> for all Button events; registrations are additive and hold the owner weakly. <code>cx.notify()</code> requests an owner redraw.</p><div class="event-table"><table><thead><tr><th scope="col">Event / payload</th><th scope="col">Application use</th></tr></thead><tbody><tr><td><code>Click</code></td><td>Execute the application command.</td></tr><tr><td><code>FocusChanged { focused: bool }</code></td><td>Focus state changed.</td></tr><tr><td><code>EnabledChanged { enabled: bool }</code></td><td>Enabled state changed.</td></tr><tr><td><code>HoverChanged { hovered: bool }</code></td><td>Pointer hover state changed.</td></tr></tbody></table></div><p class="small"><code>ButtonEvent</code> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/core.rs">Event definitions</a>. Match the events you need; allow for other variants.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/icon_button/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/button_builder.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
+}</code></pre></div><p class="small">Integration snippet, checked against the current SDK and Radix crates. <code>cx</code> is the initialized owner context. The control retains its callbacks; callback owners are held weakly. Render <code>self.control.clone()</code> in the owner’s view.</p></section><section id="sdk"><h2>SDK behavior & customization</h2><p>A Button preset, not a separate interaction engine. Provide an accessible label or description.</p></section><section id="events"><h2>Events</h2><p>The callback updates application state. Use <code>.on_click</code> for activation and <code>.on_event</code> for all Button events; registrations are additive and hold the owner weakly. <code>cx.notify()</code> requests an owner redraw.</p><div class="event-table"><table><thead><tr><th scope="col">Event / payload</th><th scope="col">Application use</th></tr></thead><tbody><tr><td><code>Click</code></td><td>Execute the application command.</td></tr><tr><td><code>FocusChanged { focused: bool }</code></td><td>Focus state changed.</td></tr><tr><td><code>EnabledChanged { enabled: bool }</code></td><td>Enabled state changed.</td></tr><tr><td><code>HoverChanged { hovered: bool }</code></td><td>Pointer hover state changed.</td></tr></tbody></table></div><p class="small"><code>ButtonEvent</code> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/core.rs">Event definitions</a>. Match the events you need; allow for other variants.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/icon_button/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/button_builder.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#events">Events</a><a href="#preview">Try it</a><a href="#use">Basic use</a><a href="#sdk">SDK behavior</a><a href="#source">Source</a></nav>
 </div>
 </body>

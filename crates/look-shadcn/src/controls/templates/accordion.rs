@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::accordion::{AccordionTemplate, AccordionTheme, ThemedAccordionTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::accordion::{AccordionTemplate, AccordionTheme, ThemedAccordionTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::controls::accordion::{accordion_content_palette, accordion_trigger_palette};
 use crate::look::ShadcnLook;
@@ -11,22 +11,22 @@ struct ShadcnAccordionTheme {
 }
 
 impl AccordionTheme for ShadcnAccordionTheme {
-    fn drag_handle_icon(&self) -> gpui_luma::infra::icon::IconSource {
+    fn drag_handle_icon(&self) -> xgpui_luma::infra::icon::IconSource {
         self.theme
             .mode_tokens()
             .stylesheet()
             .common
             .icons
-            .resolve(gpui_luma::theme::stylesheet::IconRole::DragHandle)
+            .resolve(xgpui_luma::theme::stylesheet::IconRole::DragHandle)
     }
-    fn drag_tooltip_theme(&self) -> Arc<dyn gpui_luma::controls::tooltip::TooltipTheme> {
+    fn drag_tooltip_theme(&self) -> Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme> {
         crate::tooltip_theme(&self.theme)
     }
 
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
-        gpui_luma::infra::drag_drop::DragDropLook {
+        xgpui_luma::infra::drag_drop::DragDropLook {
             geometry: self.theme.stylesheet().common.shared_geometry(),
             background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
@@ -42,17 +42,17 @@ impl AccordionTheme for ShadcnAccordionTheme {
         &self,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::accordion::AccordionPalette {
+    ) -> xgpui_luma::controls::accordion::AccordionPalette {
         let tokens = self.theme.mode_tokens();
         accordion_trigger_palette(tokens.as_ref(), self.theme.mode(), state, size)
     }
 
-    fn resolve_content(&self, expanded: bool) -> gpui_luma::controls::accordion::AccordionContentPalette {
+    fn resolve_content(&self, expanded: bool) -> xgpui_luma::controls::accordion::AccordionContentPalette {
         let tokens = self.theme.mode_tokens();
         accordion_content_palette(tokens.as_ref(), self.theme.mode(), expanded)
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> gpui_luma::controls::accordion::AccordionScale {
+    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::accordion::AccordionScale {
         crate::tables::metrics::resolve_accordion_metrics(
             &self.theme.mode_tokens(),
             self.theme.mode(),
@@ -62,7 +62,7 @@ impl AccordionTheme for ShadcnAccordionTheme {
         .scale()
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 }
@@ -80,7 +80,7 @@ mod drag_tests {
     use super::*;
     #[test]
     fn drag_palette_follows_live_look_in_both_modes() {
-        use gpui_luma::theme::ThemeMode;
+        use xgpui_luma::theme::ThemeMode;
         let look = ShadcnLook::built_in();
         let theme = accordion_theme(look.clone());
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
