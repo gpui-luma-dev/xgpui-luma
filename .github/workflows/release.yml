@@ -2,7 +2,7 @@ name: Release Library Crates to crates.io
 
 # Publishes the five library crates, then tags the verified commit and creates a release.
 
-# Disabled: manual dispatch only; every job is also gated off below.
+# Manual dispatch only; verification is the default and publishing is opt-in.
 on:
   workflow_dispatch:
     inputs:
@@ -36,8 +36,7 @@ env:
 jobs:
   publish:
     name: Verify, publish, tag, and release
-    # Previous condition: if: github.ref == 'refs/heads/main'
-    if: ${{ false }}
+    if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
     timeout-minutes: 60
 
