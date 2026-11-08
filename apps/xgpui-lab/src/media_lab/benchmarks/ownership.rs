@@ -344,7 +344,7 @@ fn validate_pixels(image: &image::RgbaImage, family: &str) -> Result<()> {
 }
 
 fn transition(family: &str, mode: &str, output: &FilePath, fixture: &FilePath) -> Result<Value> {
-    let mut renderer = MetalHeadlessRenderer::new();
+    let mut renderer = MetalHeadlessRenderer::new()?;
     let mut probe = make(family, &mut renderer, fixture)?;
     let extent = size(DevicePixels(32), DevicePixels(32));
     if let Some(image) = probe.image_status.take() {
@@ -549,7 +549,7 @@ fn window_data(fixture: &FilePath) -> Result<Rc<WindowData>> {
     ] {
         paints.push(Arc::new(Tracked { inner: paint(family)?, arm: Some(arm.clone()), calls: AtomicUsize::new(0) }));
     }
-    let mut renderer = MetalHeadlessRenderer::new();
+    let mut renderer = MetalHeadlessRenderer::new()?;
     let mut image_probe = make("media-image", &mut renderer, fixture)?;
     let media = image_probe.image_status.take().context("missing media fixture")?;
     drop(image_probe);

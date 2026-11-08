@@ -91,7 +91,7 @@ where
         let current = self.model.effective_selected_ids();
         let next_selected_ids = if self.model.selection_mode == ControlSelectionMode::Multiple
             && !self.model.independent_toggles
-            && !(modifiers.secondary() || modifiers.shift)
+            && !(modifiers.secondary(cx) || modifiers.shift)
         {
             vec![item.id().clone()]
         } else {

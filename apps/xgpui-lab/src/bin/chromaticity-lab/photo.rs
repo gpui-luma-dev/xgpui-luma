@@ -283,7 +283,7 @@ mod tests {
             });
         }
         scene.finish();
-        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         renderer.set_color_mode(WindowColorMode::WideGamutSdr)?;
         let frame = loop {
             let frame =

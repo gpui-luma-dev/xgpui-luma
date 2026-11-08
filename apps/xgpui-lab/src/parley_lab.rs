@@ -7,7 +7,7 @@ pub(crate) mod native;
 mod workload;
 mod line;
 
-use std::{sync::Arc};
+use std::{rc::Rc, sync::Arc};
 use anyhow::Result;
 use gpui::{prelude::*, *};
 use xgpui_luma::{
@@ -23,7 +23,7 @@ struct Engine {
     cache: WindowTextSystem,
 }
 impl Engine {
-    fn new() -> Result<Arc<Self>> {
+    fn new() -> Result<Rc<Self>> {
         let mut fonts = parley::FontContext::new();
         for data in [samples::PLEX, samples::INTER, paragraph::FONTS[0], paragraph::FONTS[1]] {
             fonts.collection.register_fonts(parley::fontique::Blob::new(Arc::new(data.to_vec())), None);
@@ -31,7 +31,7 @@ impl Engine {
         let backend = Arc::new(xgpui_parley::ParleyTextSystem::new(fonts, "IBM Plex Sans")?);
         let system = Arc::new(TextSystem::new(backend.clone()));
         let cache = WindowTextSystem::new(system.clone());
-        Ok(Arc::new(Self { backend, system, cache }))
+        Ok(Rc::new(Self { backend, system, cache }))
     }
 }
 struct Row {
@@ -48,7 +48,7 @@ struct Row {
 pub struct ParleyPage {
     pub active_tab: SharedString,
     look: Arc<Look>,
-    engine: Result<Arc<Engine>>,
+    engine: Result<Rc<Engine>>,
     paragraph: Option<Entity<paragraph::ParagraphLab>>,
     line: Option<Entity<line::LinePage>>,
     scroll: Entity<workload::ScrollLab>,

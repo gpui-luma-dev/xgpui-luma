@@ -264,7 +264,7 @@ mod gpu_tests {
     #[test]
     #[ignore = "requires a native Metal device"]
     fn native_field_swatches_and_tracks_preserve_source_primaries_at_1x_and_2x() -> anyhow::Result<()> {
-        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         let status = renderer.set_color_mode(gpui::WindowColorMode::WideGamutSdr)?;
         anyhow::ensure!(status.effective() == gpui::WindowColorMode::WideGamutSdr, "wide presentation required");
         for scale in [1., 2.] {
@@ -351,7 +351,7 @@ mod gpu_tests {
     #[test]
     #[ignore = "requires a native Metal device"]
     fn srgb_contour_and_stripes_are_confined_to_wide_field_gamut_regions() -> anyhow::Result<()> {
-        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         renderer.set_color_mode(gpui::WindowColorMode::WideGamutSdr)?;
         for scale in [1., 2.] {
             let width = (360. * scale) as u32;
@@ -428,7 +428,7 @@ mod gpu_tests {
             MediaLoader, MediaLimits, UploadStatus,
             pipeline::{PixelColor, AlphaMode},
         };
-        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new();
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         renderer.set_color_mode(gpui::WindowColorMode::WideGamutSdr)?;
         let loader = MediaLoader::new(MediaLimits::default())?;
         for source in [1, 2, 3] {

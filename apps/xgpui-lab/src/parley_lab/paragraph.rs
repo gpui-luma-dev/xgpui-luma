@@ -99,7 +99,7 @@ pub fn measure(system: Arc<TextSystem>, iterations: usize) -> Result<Vec<Timing>
 }
 
 pub struct ParagraphLab {
-    engine: Arc<super::Engine>,
+    engine: std::rc::Rc<super::Engine>,
     buttons: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
     sample_choice: crate::lab_controls::Choice,
     look: Arc<xgpui_luma_look_radix::Look>,
@@ -122,7 +122,7 @@ pub struct ParagraphLab {
 }
 impl ParagraphLab {
     pub fn new(
-        engine: Arc<super::Engine>,
+        engine: std::rc::Rc<super::Engine>,
         timings: Vec<Timing>,
         look: Arc<xgpui_luma_look_radix::Look>,
         cx: &mut Context<Self>,

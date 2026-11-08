@@ -64,7 +64,8 @@ impl CharClass {
 
 pub(crate) fn typed_text_from_event(event: &KeyDownEvent) -> Option<&str> {
     let modifiers = &event.keystroke.modifiers;
-    let shortcut_modifier = modifiers.secondary() || modifiers.control || modifiers.platform || modifiers.function;
+    // Covers the secondary modifier on every platform (command or control).
+    let shortcut_modifier = modifiers.control || modifiers.platform || modifiers.function;
     if shortcut_modifier {
         return None;
     }
@@ -244,10 +245,13 @@ fn move_vertical_target(
     ((next_start + column).min(next_end), column)
 }
 
+/// `secondary` is whether the platform's secondary modifier (command on macOS,
+/// control elsewhere) is held; callers resolve it with `Modifiers::secondary(cx)`.
 pub(crate) fn handle_key_down<S: TextSelectionState>(
     state: &mut S,
     value: &str,
     event: &KeyDownEvent,
+    secondary: bool,
     clipboard_text: Option<&str>,
     policy: EditableTextPolicy,
 ) -> KeyHandlingResult {
@@ -256,7 +260,6 @@ pub(crate) fn handle_key_down<S: TextSelectionState>(
 
     let mut result = KeyHandlingResult { value: value.to_string(), ..Default::default() };
     let selecting = event.keystroke.modifiers.shift;
-    let secondary = event.keystroke.modifiers.secondary();
     let modifiers = event.keystroke.modifiers;
 
     match event.keystroke.key.as_str() {
@@ -565,7 +568,7 @@ mod tests {
     #[test]
     fn typed_text_ignores_secondary_shortcuts() {
         let event = KeyDownEvent {
-            keystroke: Keystroke { modifiers: Modifiers::secondary_key(), key: "a".into(), key_char: Some("a".into()) },
+            keystroke: Keystroke { modifiers: secondary_modifiers(), key: "a".into(), key_char: Some("a".into()) },
             is_held: false,
             prefer_character_input: false,
         };
@@ -613,7 +616,7 @@ mod tests {
             prefer_character_input: false,
         };
 
-        let result = handle_key_down(
+        let result = handle(
             &mut state,
             "ab",
             &event,
@@ -664,16 +667,16 @@ mod tests {
             ..Default::default()
         };
 
-        let result = handle_key_down(&mut state, "ab\ncdef\nxy", &event_down, None, policy);
+        let result = handle(&mut state, "ab\ncdef\nxy", &event_down, None, policy);
         assert!(result.handled);
         assert_eq!(state.cursor, 4);
         assert_eq!(state.preferred_column, Some(1));
 
-        let result = handle_key_down(&mut state, "ab\ncdef\nxy", &event_down, None, policy);
+        let result = handle(&mut state, "ab\ncdef\nxy", &event_down, None, policy);
         assert!(result.handled);
         assert_eq!(state.cursor, 9);
 
-        let result = handle_key_down(&mut state, "ab\ncdef\nxy", &event_up, None, policy);
+        let result = handle(&mut state, "ab\ncdef\nxy", &event_up, None, policy);
         assert!(result.handled);
         assert_eq!(state.cursor, 4);
     }
@@ -700,11 +703,11 @@ mod tests {
         };
         let mut state = TestState { cursor: 4, ..Default::default() };
 
-        let result = handle_key_down(&mut state, "ab\ncdef\nxy", &event_home, None, policy);
+        let result = handle(&mut state, "ab\ncdef\nxy", &event_home, None, policy);
         assert!(result.handled);
         assert_eq!(state.cursor, 3);
 
-        let result = handle_key_down(&mut state, "ab\ncdef\nxy", &event_end, None, policy);
+        let result = handle(&mut state, "ab\ncdef\nxy", &event_end, None, policy);
         assert!(result.handled);
         assert_eq!(state.cursor, 7);
     }
@@ -721,18 +724,18 @@ mod tests {
             ..Default::default()
         };
 
-        let copy = handle_key_down(&mut state, "abcdef", &event("c", secondary_modifiers()), None, policy);
+        let copy = handle(&mut state, "abcdef", &event("c", secondary_modifiers()), None, policy);
         assert_eq!(copy.clipboard_write.as_deref(), Some("bcd"));
         assert!(!copy.changed);
 
-        let cut = handle_key_down(&mut state, "abcdef", &event("x", secondary_modifiers()), None, policy);
+        let cut = handle(&mut state, "abcdef", &event("x", secondary_modifiers()), None, policy);
         assert_eq!(cut.clipboard_write.as_deref(), Some("bcd"));
         assert!(cut.changed);
         assert_eq!(cut.value, "aef");
         assert_eq!(state.cursor, 1);
         assert_eq!(state.selection_range(), None);
 
-        let paste = handle_key_down(&mut state, "aef", &event("v", secondary_modifiers()), Some("x\ny"), policy);
+        let paste = handle(&mut state, "aef", &event("v", secondary_modifiers()), Some("x\ny"), policy);
         assert!(paste.changed);
         assert_eq!(paste.value, "axyef");
     }
@@ -741,7 +744,7 @@ mod tests {
     fn paste_respects_configured_byte_budget() {
         let mut state = TestState { cursor: 0, ..Default::default() };
         let policy = EditableTextPolicy { max_clipboard_paste_bytes: Some(8), ..Default::default() };
-        let paste = handle_key_down(&mut state, "", &event("v", secondary_modifiers()), Some("hello world"), policy);
+        let paste = handle(&mut state, "", &event("v", secondary_modifiers()), Some("hello world"), policy);
         assert!(paste.changed);
         assert_eq!(paste.value, "hello wo");
     }
@@ -750,7 +753,7 @@ mod tests {
     fn paste_without_budget_keeps_the_full_clipboard() {
         let mut state = TestState { cursor: 0, ..Default::default() };
         let policy = EditableTextPolicy { max_clipboard_paste_bytes: None, ..Default::default() };
-        let paste = handle_key_down(&mut state, "", &event("v", secondary_modifiers()), Some("hello world"), policy);
+        let paste = handle(&mut state, "", &event("v", secondary_modifiers()), Some("hello world"), policy);
         assert!(paste.changed);
         assert_eq!(paste.value, "hello world");
     }
@@ -773,6 +776,18 @@ mod tests {
             is_held: false,
             prefer_character_input: false,
         }
+    }
+
+    /// `handle_key_down` with the secondary modifier resolved as on the test platform.
+    fn handle<S: TextSelectionState>(
+        state: &mut S,
+        value: &str,
+        event: &KeyDownEvent,
+        clipboard_text: Option<&str>,
+        policy: EditableTextPolicy,
+    ) -> KeyHandlingResult {
+        let secondary = event.keystroke.modifiers == secondary_modifiers();
+        handle_key_down(state, value, event, secondary, clipboard_text, policy)
     }
 
     #[cfg(target_os = "macos")]
