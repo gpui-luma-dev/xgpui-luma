@@ -8,10 +8,20 @@ bounds, theme synchronization, and callback readouts.
 
 ## Build and preview
 
-The workspace uses the published `xgpui` and `xgpui-platform` 1.0.0 crates.
+The workspace uses the published `xgpui` and `xgpui-platform` 2.0.1 crates.
 See [xgpui](https://xgpui.dev/) for framework documentation.
-This browser app uses `xgpui-web` 1.0.0, aliased as `gpui_web`; Rust imports
-retain the `gpui` name through the workspace dependency alias.
+The direct framework package names and local Cargo aliases are:
+
+| Cargo package | Local alias / Rust import |
+|---|---|
+| `xgpui` | `gpui` |
+| `xgpui-platform` | `gpui_platform` |
+| `xgpui-web` (2.0.1, browser runtime) | `gpui_web` |
+
+Use the full Cargo package name when referring to a dependency. For example,
+`gpui::Context` here comes from `xgpui` via an alias. `gpui-unofficial` and packages
+ending in `-gpui-unofficial` are separate registry packages; retain their actual
+names when describing transitive dependencies.
 
 Requirements: Rust, Python 3, the `wasm32-unknown-unknown` target, and a
 `wasm-bindgen-cli` version matching `wasm-bindgen` in `Cargo.lock`.
@@ -86,26 +96,16 @@ context-menu regression uses a headless GPUI TestWindow, without launching Studi
 
 ## Deployment
 
-`.github/workflows/docs.yml` runs WASM Clippy, packaging tests, and JavaScript
-syntax checks on relevant pull requests. PRs do not install wasm-bindgen CLI,
-compile a release runtime, or upload a site artifact. Superseded PR checks cancel.
+All GitHub workflows are currently disabled in their YAML files: automatic push
+and pull-request triggers are removed, and every job has `if: ${{ false }}`.
+Manual dispatch also skips all jobs. Local build and validation commands above
+remain available.
 
-Main-branch pushes and manual runs on `main` build and validate the release
-runtime, upload the full site as `docs-site`, and deploy through GitHub Pages.
-The wasm-bindgen CLI cache is keyed by its locked version and runner platform;
-check and release Rust caches are separate.
-
-In `.github/workflows/ci.yml`, changes confined to `docs/` and `apps/docs-embed/`
-keep formatting and compile all documentation snippets in a focused job. They
-skip native workspace Clippy and test suites. Shared Rust, dependency, script,
-and workflow changes retain full native CI. Missing comparison history defaults
-to full checks; a source file moved into docs also retains native coverage.
-Routing tests run with `python3 -B -m unittest discover -s scripts -p 'test_*.py'`.
-
-For the initial rollout, after the workflow reaches `main`, set repository
-Settings → Pages → Build and deployment → Source to **GitHub Actions**, retain
-`gpui-luma.dev`, and run the workflow on `main`. Branch-based Pages deployment
-cannot publish ignored generated runtime assets.
+The documentation workflow retains the build and GitHub Pages deployment steps
+for future re-enablement. It builds the WASM runtime, validates its package, and
+uploads the complete `docs/` directory, including ignored generated assets. A
+branch-based Pages deployment cannot publish those ignored runtime files.
+The configured documentation domain remains `gpui-luma.dev`.
 
 ## Follow-ups
 
