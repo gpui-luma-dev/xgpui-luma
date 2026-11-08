@@ -27,9 +27,13 @@ use gpui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
-    controls::textfield::{
-        TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
-        TextFieldTemplateHandlers, TextFieldTheme,
+    controls::{
+        button::ControlIcon,
+        text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES,
+        textfield::{
+            TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
+            TextFieldTemplateHandlers, TextFieldTheme, Validator,
+        },
     },
     theme::{ControlSize, StandardBoxScale},
 };
@@ -60,6 +64,45 @@ pub enum ParleyTextFieldEvent {
     },
 }
 
+/// Builder options with the SDK `TextFieldBuilder`'s meanings.
+#[derive(Clone)]
+pub(super) struct Options {
+    pub prefix_icon: Option<ControlIcon>,
+    pub tab_stop: bool,
+    pub compact: bool,
+    pub full_width: bool,
+    pub clean_on_escape: bool,
+    pub select_all_on_tab_focus: bool,
+    pub propagate_home_end_to_parent: bool,
+    pub max_clipboard_paste_bytes: Option<usize>,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            prefix_icon: None,
+            tab_stop: true,
+            compact: false,
+            full_width: true,
+            clean_on_escape: false,
+            select_all_on_tab_focus: false,
+            propagate_home_end_to_parent: false,
+            max_clipboard_paste_bytes: Some(DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+        }
+    }
+}
+
+/// Truncate pasted text to `max_bytes` UTF-8 bytes on a character boundary, as the SDK does.
+fn cap_paste(text: &str, max_bytes: Option<usize>) -> &str {
+    let Some(mut end) = max_bytes.filter(|max| *max < text.len()) else {
+        return text;
+    };
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
+}
+
 /// Geometry of the last painted frame, for hit testing and IME bounds.
 #[derive(Clone)]
 struct Geometry {
@@ -80,6 +123,9 @@ pub struct ParleyTextField {
     /// Visible lines of a text area; `None` for a one-line field.
     rows: Option<usize>,
     enabled: bool,
+    options: Options,
+    invalid: bool,
+    validator: Option<Validator>,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
     placeholder: SharedString,
@@ -189,13 +235,16 @@ impl ParleyTextField {
             font: builder.font,
             rows: builder.rows,
             enabled: builder.enabled,
+            options: builder.options.clone(),
+            invalid: false,
+            validator: builder.validator.clone(),
             value: String::new(),
             placeholder: builder.placeholder,
             preferred_x: None,
             anchor: at(0),
             caret: at(0),
             marked: None,
-            focus: cx.focus_handle().tab_stop(builder.enabled),
+            focus: cx.focus_handle().tab_stop(builder.enabled && builder.options.tab_stop),
             focused: false,
             hovered: false,
             dragging: false,
@@ -211,7 +260,49 @@ impl ParleyTextField {
         this.value = this.normalize(&builder.value);
         this.anchor = at(this.value.len());
         this.caret = this.anchor;
+        this.recompute_invalid();
         this
+    }
+
+    /// The validator's verdict on the current text, if there is a validator.
+    fn recompute_invalid(&mut self) {
+        if let Some(validator) = &self.validator {
+            self.invalid = !validator(&self.value());
+        }
+    }
+
+    /// Mark the text invalid (or valid) until the validator next runs.
+    pub fn set_invalid(&mut self, invalid: bool, cx: &mut Context<Self>) {
+        if self.invalid != invalid {
+            self.invalid = invalid;
+            cx.notify();
+        }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        self.invalid
+    }
+
+    pub fn set_validator(&mut self, validator: Option<Validator>, cx: &mut Context<Self>) {
+        self.validator = validator;
+        self.recompute_invalid();
+        cx.notify();
+    }
+
+    pub fn set_tab_stop(&mut self, tab_stop: bool, cx: &mut Context<Self>) {
+        self.options.tab_stop = tab_stop;
+        self.focus = self.focus.clone().tab_stop(self.enabled && tab_stop);
+        cx.notify();
+    }
+
+    pub fn set_clean_on_escape(&mut self, clean_on_escape: bool, cx: &mut Context<Self>) {
+        self.options.clean_on_escape = clean_on_escape;
+        cx.notify();
+    }
+
+    pub fn set_max_clipboard_paste_bytes(&mut self, max_bytes: Option<usize>, cx: &mut Context<Self>) {
+        self.options.max_clipboard_paste_bytes = max_bytes;
+        cx.notify();
     }
 
     /// Replace the text, putting the caret at its end; emits no `Change`.
@@ -219,6 +310,7 @@ impl ParleyTextField {
         self.value = self.normalize(&value.into());
         self.marked = None;
         self.geometry = None;
+        self.recompute_invalid();
         self.anchor = at(self.value.len());
         self.set_caret(self.anchor, false, cx);
     }
@@ -240,7 +332,7 @@ impl ParleyTextField {
             return;
         }
         self.enabled = enabled;
-        self.focus = self.focus.clone().tab_stop(enabled);
+        self.focus = self.focus.clone().tab_stop(enabled && self.options.tab_stop);
         if !enabled {
             self.hovered = false;
             self.dragging = false;
@@ -278,9 +370,11 @@ impl ParleyTextField {
         }
     }
 
-    /// Replace the selection with the clipboard text; a field drops its line breaks.
+    /// Replace the selection with the clipboard text, capped at
+    /// `max_clipboard_paste_bytes`; a field drops its line breaks.
     pub fn paste(&mut self, cx: &mut Context<Self>) {
         if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            let text = cap_paste(&text, self.options.max_clipboard_paste_bytes).to_owned();
             self.replace(self.selected_range(), &text, None, false, cx);
         }
     }
@@ -330,10 +424,22 @@ impl ParleyTextField {
 
     fn look(&self, window: &Window) -> TextFieldLook {
         let scale = StandardBoxScale::compute(self.size, &self.theme.metrics(), window.scale_factor());
-        let state = TextFieldState { hovered: self.hovered, ..TextFieldState::default() };
+        let state = TextFieldState { hovered: self.hovered, invalid: self.invalid, ..TextFieldState::default() };
         let mut look = self.theme.resolve_look(state, self.enabled, self.size, &scale);
-        let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
-        look.focus_border = Some(self.theme.resolve_look(focus_state, true, self.size, &scale).border);
+        if self.options.compact {
+            look.padding_y = look.helper_geometry.compact_textfield_padding_y;
+            look.min_height = look.helper_geometry.compact_textfield_height;
+        }
+        // An invalid or disabled field keeps its resting border and shows no focus
+        // ring, but the ring's room stays reserved (a transparent ring), so the
+        // field does not change size with its state. The SDK text field leaves the
+        // ring out instead, which shrinks the field when disabled or invalid.
+        look.focus_border = Some(if self.enabled && !self.invalid {
+            let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
+            self.theme.resolve_look(focus_state, true, self.size, &scale).border
+        } else {
+            gpui::transparent_black()
+        });
         match &self.look_override {
             Some(look_override) => look_override(look),
             None => look,
@@ -540,6 +646,7 @@ impl ParleyTextField {
         self.geometry = None;
         self.reveal_caret = true;
         if changed {
+            self.recompute_invalid();
             cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         }
         self.pause_caret_blink(cx);
@@ -697,6 +804,13 @@ impl ParleyTextField {
                 self.move_to_line_end(key == "end", modifiers.shift, cx);
                 true
             }
+            "escape" => {
+                // As the SDK: Escape is always handled; it clears the text if asked to.
+                if self.options.clean_on_escape && !self.value.is_empty() {
+                    self.replace(0..self.value.len(), "", None, false, cx);
+                }
+                true
+            }
             "enter" if self.is_multiline() => {
                 self.replace(self.selected_range(), "\n", None, false, cx);
                 true
@@ -709,7 +823,10 @@ impl ParleyTextField {
         };
         if handled {
             window.prevent_default();
-            cx.stop_propagation();
+            let to_parent = self.options.propagate_home_end_to_parent && matches!(key, "home" | "end");
+            if !to_parent {
+                cx.stop_propagation();
+            }
         }
     }
 
@@ -764,9 +881,18 @@ impl ParleyTextField {
         self.focused = focused;
         self.dragging = false;
         if focused {
+            // As the SDK: Tab into the field selects all of it; a click does not.
+            if self.options.select_all_on_tab_focus && window.last_input_was_keyboard() {
+                self.anchor = at(0);
+                self.caret = at(self.value.len());
+            }
             self.reveal_caret = true;
             self.start_caret_blink(cx);
         } else {
+            if self.options.select_all_on_tab_focus {
+                self.caret = at(self.value.len());
+                self.anchor = self.caret;
+            }
             self.caret_epoch += 1;
             self.caret_visible = false;
         }
@@ -843,7 +969,13 @@ impl Render for ParleyTextField {
         let look = self.look(window);
         let enabled = self.enabled;
         let focused = self.focused;
-        let focus_gap = self.theme.metrics().focus.gap + look.border_width.max(0.0);
+        // As the template: room for the focus ring whenever a ring color is set,
+        // which `look` always does.
+        let focus_gap = if look.focus_border.is_some() {
+            self.theme.metrics().focus.gap + look.border_width.max(0.0)
+        } else {
+            0.0
+        };
         let show_placeholder = self.value.is_empty() && !focused;
         let entity = cx.entity();
         let focus = self.focus.clone();
@@ -1033,16 +1165,17 @@ impl ParleyTextField {
             hovered: self.hovered,
             focused: self.focused,
             focus_visible: self.focused,
+            invalid: self.invalid,
             ..TextFieldState::default()
         };
         let model = TextFieldRenderModel {
             id: &self.id,
             placeholder: &placeholder,
             value: &empty,
-            prefix_icon: None,
+            prefix_icon: self.options.prefix_icon.as_ref(),
             size: self.size,
             enabled: self.enabled,
-            full_width: true,
+            full_width: self.options.full_width,
             state,
             marked_range: None,
             caret_visible: false,
@@ -1066,32 +1199,37 @@ impl ParleyTextField {
         // As the SDK text field does, the template's root is the focused element.
         let chrome = self.template.render(&model, handlers, window, cx).track_focus(&self.focus);
         let inset = px(focus_gap + look.border_width.max(0.0) + look.padding_x);
+        // The template puts a prefix icon before the text, on the left.
+        let icon = if self.options.prefix_icon.is_some() {
+            px(look.icon_size + look.gap)
+        } else {
+            px(0.0)
+        };
         let line_height = px(look.typography.line_height);
+        // The overlay belongs to the template's root, so it follows the root's own
+        // width (with or without `full_width`) and height, not the wrapper's.
+        let overlay = div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .right_0()
+            .h(px(look.min_height + 2.0 * focus_gap))
+            .pl(inset + icon)
+            .pr(inset)
+            .flex()
+            .items_center()
+            .when(!self.enabled, |overlay| overlay.opacity(look.disabled_opacity))
+            .child(div().w_full().h(line_height).child(text));
         div()
             .id(SharedString::from(format!("{}-parley", self.id)))
             .relative()
-            .w_full()
+            .when(self.options.full_width, |wrapper| wrapper.w_full())
             .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
                 this.hovered = *hovered && this.enabled;
                 cx.notify();
             }))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
-            .child(chrome)
-            .child(
-                // The chrome's own height, not the wrapper's: a stretched wrapper
-                // must not move the text off the template's text row.
-                div()
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .right_0()
-                    .h(px(look.min_height + 2.0 * focus_gap))
-                    .px(inset)
-                    .flex()
-                    .items_center()
-                    .when(!self.enabled, |overlay| overlay.opacity(look.disabled_opacity))
-                    .child(div().w_full().h(line_height).child(text)),
-            )
+            .child(chrome.child(overlay))
             .into_any_element()
     }
 }

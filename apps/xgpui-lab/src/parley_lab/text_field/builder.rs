@@ -12,8 +12,9 @@ use gpui::{App, AppContext, Context, Div, Entity, Font, SharedString, Stateful, 
 use xgpui_luma::{
     controls::textfield::{
         TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
-        TextFieldTemplateHandlers, TextFieldTheme, ThemedTextFieldTemplate,
+        TextFieldTemplateHandlers, TextFieldTheme, ThemedTextFieldTemplate, Validator,
     },
+    controls::button::ControlIcon,
     infra::callbacks::EventCallbacks,
     theme::ControlSize,
 };
@@ -23,7 +24,7 @@ use xgpui_luma_look_radix::{Look, TextFieldSize, TextFieldVariant, textfield_tem
 pub type TemplateModifier =
     Box<dyn Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
 
-use super::{ParleyTextField, ParleyTextFieldEvent};
+use super::{Options, ParleyTextField, ParleyTextFieldEvent};
 
 pub struct ParleyTextFieldBuilder {
     callbacks: EventCallbacks<ParleyTextFieldEvent>,
@@ -39,6 +40,8 @@ pub struct ParleyTextFieldBuilder {
     pub(super) size: TextFieldSize,
     pub(super) enabled: bool,
     pub(super) look_override: Option<TextFieldLookOverride>,
+    pub(super) options: Options,
+    pub(super) validator: Option<Validator>,
     modifiers: Vec<TemplateModifier>,
 }
 
@@ -59,6 +62,8 @@ impl ParleyTextFieldBuilder {
             size: TextFieldSize::default(),
             enabled: true,
             look_override: None,
+            options: Options::default(),
+            validator: None,
             modifiers: Vec::new(),
         }
     }
@@ -147,6 +152,59 @@ impl ParleyTextFieldBuilder {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = enabled;
+        self
+    }
+
+    /// An icon before the text, drawn by the template.
+    pub fn prefix_icon(mut self, icon: impl Into<ControlIcon>) -> Self {
+        self.options.prefix_icon = Some(icon.into());
+        self
+    }
+
+    pub fn tab_stop(mut self, tab_stop: bool) -> Self {
+        self.options.tab_stop = tab_stop;
+        self
+    }
+
+    /// The stylesheet's shorter text field height and padding.
+    pub fn compact(mut self) -> Self {
+        self.options.compact = true;
+        self
+    }
+
+    /// Fill the width available (the default here; the SDK's default is `false`).
+    pub fn full_width(mut self, full_width: bool) -> Self {
+        self.options.full_width = full_width;
+        self
+    }
+
+    /// Escape clears the text.
+    pub fn clean_on_escape(mut self, clean: bool) -> Self {
+        self.options.clean_on_escape = clean;
+        self
+    }
+
+    /// Focusing the field with the keyboard selects all of it.
+    pub fn select_all_on_tab_focus(mut self, select_all: bool) -> Self {
+        self.options.select_all_on_tab_focus = select_all;
+        self
+    }
+
+    /// Let Home and End also reach the parent, for example a list that scrolls.
+    pub fn propagate_home_end_to_parent(mut self, propagate: bool) -> Self {
+        self.options.propagate_home_end_to_parent = propagate;
+        self
+    }
+
+    /// Cap pasted text at this many UTF-8 bytes; `None` pastes everything.
+    pub fn max_clipboard_paste_bytes(mut self, max_bytes: Option<usize>) -> Self {
+        self.options.max_clipboard_paste_bytes = max_bytes;
+        self
+    }
+
+    /// The field is invalid while this returns `false` for its text.
+    pub fn validator(mut self, validator: Validator) -> Self {
+        self.validator = Some(validator);
         self
     }
 
