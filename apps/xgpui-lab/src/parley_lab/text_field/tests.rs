@@ -874,3 +874,83 @@ fn an_unbreakable_word_wider_than_the_field_scrolls_both_ways() {
         assert_ne!(start, end, "{text}: scrolling moves between the ends");
     }
 }
+
+/// Let `ticks` autoscroll intervals pass, drawing after each as a window would.
+fn advance_autoscroll(f: &mut Fixture, ticks: u32) {
+    for _ in 0..ticks {
+        f.visual.executor().advance_clock(AUTOSCROLL_TICK);
+        f.visual.run_until_parked();
+        f.draw();
+    }
+}
+
+fn press_and_move(f: &mut Fixture, from: Point<Pixels>, to: Point<Pixels>) {
+    f.mouse_down(from, 1);
+    f.visual.simulate_event(MouseMoveEvent {
+        position: to,
+        pressed_button: Some(MouseButton::Left),
+        modifiers: Modifiers::default(),
+    });
+    f.draw();
+}
+
+#[test]
+fn holding_a_drag_below_a_text_area_keeps_scrolling_and_selecting() {
+    let text = (0..30).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+    let mut f = Fixture::area(&text, 3);
+    let top = format!("{}-up", f.secondary);
+    f.keys(&top);
+    let viewport = f.geometry().viewport;
+    let start = f.point_at(0);
+    press_and_move(&mut f, start, point(viewport.left() + px(10.0), viewport.bottom() + px(40.0)));
+    let (scroll_0, caret_0) = (f.read(|field| field.scroll()), f.selection().1);
+    advance_autoscroll(&mut f, 3);
+    let (scroll_3, caret_3) = (f.read(|field| field.scroll()), f.selection().1);
+    assert!(scroll_3 > scroll_0, "scrolls while held: {scroll_0:?} -> {scroll_3:?}");
+    assert!(caret_3 > caret_0, "the selection follows: {caret_0} -> {caret_3}");
+    assert_eq!(f.selection().0, 0, "the anchor stays");
+    // Releasing stops it.
+    f.visual.simulate_event(MouseUpEvent {
+        button: MouseButton::Left,
+        position: viewport.bottom_left(),
+        modifiers: Modifiers::default(),
+        click_count: 1,
+    });
+    f.draw();
+    let released = f.read(|field| field.scroll());
+    advance_autoscroll(&mut f, 3);
+    assert_eq!(f.read(|field| field.scroll()), released, "stops on release");
+}
+
+#[test]
+fn holding_a_drag_past_a_long_field_scrolls_sideways() {
+    let mut f = Fixture::new(&"sideways ".repeat(20));
+    f.keys("home");
+    let viewport = f.geometry().viewport;
+    let start = f.point_at(0);
+    press_and_move(&mut f, start, point(viewport.right() + px(30.0), start.y));
+    let before = f.read(|field| field.scroll());
+    advance_autoscroll(&mut f, 4);
+    assert!(f.read(|field| field.scroll()) > before, "scrolls towards the text's end");
+    assert!(f.selection().1 > 0);
+}
+
+#[test]
+fn autoscroll_speed_grows_with_distance_and_is_capped() {
+    let text = (0..30).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+    let mut f = Fixture::area(&text, 3);
+    let geometry = f.geometry();
+    let (viewport, unit) = (geometry.viewport, geometry.line_height);
+    let at = |dy: f32| point(viewport.left() + px(5.0), viewport.bottom() + px(dy));
+    let delta = |f: &mut Fixture, position| f.read(|field| field.autoscroll_delta(position));
+    assert_eq!(delta(&mut f, viewport.center()), px(0.0), "inside: no autoscroll");
+    assert_eq!(delta(&mut f, at(1.0)), unit, "just past the edge: one line");
+    assert_eq!(delta(&mut f, at(f32::from(unit) * 3.0)), unit * 3.0);
+    assert_eq!(delta(&mut f, at(10_000.0)), unit * AUTOSCROLL_MAX_LINES, "capped");
+    let above = point(viewport.left(), viewport.top() - px(1.0));
+    assert_eq!(delta(&mut f, above), -unit, "above scrolls up");
+    // Nothing to scroll: no autoscroll.
+    let mut short = Fixture::area("one line", 3);
+    let viewport = short.geometry().viewport;
+    assert_eq!(delta(&mut short, point(viewport.left(), viewport.bottom() + px(50.0))), px(0.0));
+}
