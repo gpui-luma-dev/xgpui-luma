@@ -1,6 +1,6 @@
-//! Lab page: Parley text fields and text areas, on five screens. In XGPUI Lab
-//! each screen is its own tab in the xgpui-parley workspace; the standalone
-//! Parley window, which has no lab navigation, chooses them with a tab bar.
+//! Lab page: Parley text fields and text areas, on five screens. In the
+//! standalone Parley window each screen is one of the window's own tabs; in
+//! XGPUI Lab's "Text Field" tab a tab bar on the page chooses them.
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Font, FontFallbacks, Render, Window, div, prelude::*, px};
@@ -35,7 +35,7 @@ pub(crate) enum Screen {
 }
 
 impl Screen {
-    /// (screen, id, label); the label is also the screen's tab name in XGPUI Lab.
+    /// (screen, id, label); the label is also the screen's tab in the standalone window.
     pub(crate) const ALL: [(Self, &'static str, &'static str); 5] = [
         (Self::Fields, "fields", "Text Fields"),
         (Self::RightToLeft, "rtl", "Text Right-to-left"),
@@ -46,11 +46,6 @@ impl Screen {
 
     fn from_id(id: &str) -> Self {
         Self::ALL.iter().find(|(_, key, _)| *key == id).map_or(Self::Fields, |(screen, ..)| *screen)
-    }
-
-    /// The screen shown by an XGPUI Lab tab, if the tab is one of these.
-    pub(crate) fn from_tab(tab: &str) -> Option<Self> {
-        Self::ALL.iter().find(|(_, _, label)| *label == tab).map(|(screen, ..)| *screen)
     }
 
     fn title(self) -> &'static str {
@@ -155,7 +150,7 @@ pub struct TextFieldPage {
     pub(crate) fields: Vec<Entity<ParleyTextField>>,
     /// Toggles the "Disabled" field.
     toggle: Entity<radix_button::Button>,
-    /// Chooses the screen in the standalone window; XGPUI Lab uses its own tabs.
+    /// Chooses the screen in XGPUI Lab; the standalone window uses its own tabs.
     tabs: Option<Entity<Tabs>>,
     pub(crate) screen: Screen,
     last_event: String,
@@ -163,8 +158,8 @@ pub struct TextFieldPage {
 
 impl TextFieldPage {
     /// Fields draw with `look`, the application's active look. `invert_colors`
-    /// swaps their text and background for contrast, and `tab_bar` adds a bar to
-    /// choose screens (both for the standalone window).
+    /// swaps their text and background for contrast (the standalone window), and
+    /// `tab_bar` adds a bar to choose screens (XGPUI Lab).
     pub fn new(look: Arc<Look>, invert_colors: bool, tab_bar: bool, cx: &mut Context<Self>) -> Self {
         let fields: Vec<_> = FIELDS
             .iter()

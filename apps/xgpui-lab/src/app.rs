@@ -33,7 +33,7 @@ use shell_style::*;
 use titlebar::TitlebarControls;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Workspace {
+enum Workspace {
     Gradients,
     Compositions,
     ColorGamut,
@@ -47,9 +47,9 @@ pub(crate) enum Workspace {
     Standalone,
 }
 
-pub(crate) type Section = (Workspace, &'static str, &'static [(&'static str, &'static str)]);
+type Section = (Workspace, &'static str, &'static [(&'static str, &'static str)]);
 
-pub(crate) const SECTIONS: &[Section] = &[
+const SECTIONS: &[Section] = &[
     (
         Workspace::Canvas,
         "xgpui-canvas",
@@ -129,11 +129,7 @@ pub(crate) const SECTIONS: &[Section] = &[
             ("Text Shaping", "Text Shaping"),
             ("Line Layout", "Line Layout"),
             ("Paragraphs", "Paragraphs"),
-            ("Text Fields", "Text Fields"),
-            ("Text Right-to-left", "Text Right-to-left"),
-            ("Text Areas", "Text Areas"),
-            ("Text Scrolling", "Text Scrolling"),
-            ("Text States", "Text States"),
+            ("Text Field", "Text Field"),
             ("Fonts & Fallback", "Fonts & Fallback"),
             ("Rasterization", "Rasterization"),
             ("Scrolling", "Scrolling"),
