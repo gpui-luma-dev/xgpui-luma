@@ -8,25 +8,25 @@ use std::{cell::RefCell, rc::Rc};
 /// frames must lay it out at the same width.
 const WIDTH: f32 = 240.0;
 
-struct Fixture {
-    field: Entity<ParleyTextField>,
-    visual: VisualTestContext,
-    events: Rc<RefCell<Vec<ParleyTextFieldEvent>>>,
+pub(super) struct Fixture {
+    pub(super) field: Entity<ParleyTextField>,
+    pub(super) visual: VisualTestContext,
+    pub(super) events: Rc<RefCell<Vec<ParleyTextFieldEvent>>>,
     /// `cmd` on macOS hosts, `ctrl` elsewhere: the field's secondary modifier.
-    secondary: &'static str,
+    pub(super) secondary: &'static str,
 }
 
 impl Fixture {
-    fn new(value: &str) -> Self {
+    pub(super) fn new(value: &str) -> Self {
         Self::build(value, None)
     }
 
     /// A text area showing `rows` lines.
-    fn area(value: &str, rows: usize) -> Self {
+    pub(super) fn area(value: &str, rows: usize) -> Self {
         Self::build(value, Some(rows))
     }
 
-    fn build(value: &str, rows: Option<usize>) -> Self {
+    pub(super) fn build(value: &str, rows: Option<usize>) -> Self {
         Self::with(value, move |builder| match rows {
             Some(rows) => builder.rows(rows),
             None => builder,
@@ -34,7 +34,10 @@ impl Fixture {
     }
 
     /// A field with builder options applied on top of the standard ones.
-    fn with(value: &str, configure: impl FnOnce(ParleyTextFieldBuilder) -> ParleyTextFieldBuilder + 'static) -> Self {
+    pub(super) fn with(
+        value: &str,
+        configure: impl FnOnce(ParleyTextFieldBuilder) -> ParleyTextFieldBuilder + 'static,
+    ) -> Self {
         let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
         let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
         cx.update(|cx| xgpui_luma::init(cx).unwrap());
@@ -63,63 +66,63 @@ impl Fixture {
         fixture
     }
 
-    fn draw(&mut self) {
+    pub(super) fn draw(&mut self) {
         let field = self.field.clone();
         self.visual
             .draw(point(px(0.0), px(0.0)), size(px(WIDTH), px(200.0)), move |_, _| div().w(px(WIDTH)).child(field));
     }
 
-    fn focus(&mut self) {
+    pub(super) fn focus(&mut self) {
         let field = self.field.clone();
         self.visual.update(|window, cx| window.focus(&field.focus_handle(cx), cx));
         self.draw();
         self.draw(); // Focus syncs during render; the second frame paints with it.
     }
 
-    fn keys(&mut self, keystrokes: &str) {
+    pub(super) fn keys(&mut self, keystrokes: &str) {
         for keystroke in keystrokes.split_whitespace() {
             self.visual.simulate_keystrokes(keystroke);
             self.draw(); // Visual movement uses the painted layout.
         }
     }
 
-    fn read<R>(&mut self, f: impl FnOnce(&ParleyTextField) -> R) -> R {
+    pub(super) fn read<R>(&mut self, f: impl FnOnce(&ParleyTextField) -> R) -> R {
         let field = self.field.clone();
         self.visual.update(|_, cx| f(field.read(cx)))
     }
 
-    fn value(&mut self) -> String {
+    pub(super) fn value(&mut self) -> String {
         self.read(|field| field.value().to_owned())
     }
 
-    fn selection(&mut self) -> (usize, usize) {
+    pub(super) fn selection(&mut self) -> (usize, usize) {
         self.read(|field| (field.anchor.byte_index, field.caret.byte_index))
     }
 
-    fn geometry(&mut self) -> Geometry {
+    pub(super) fn geometry(&mut self) -> Geometry {
         self.read(|field| field.geometry.clone().expect("painted geometry"))
     }
 
     /// Window position of the caret before `byte_index`.
-    fn point_at(&mut self, byte_index: usize) -> Point<Pixels> {
+    pub(super) fn point_at(&mut self, byte_index: usize) -> Point<Pixels> {
         let geometry = self.geometry();
         let caret = geometry.layout.caret_bounds(at(byte_index)).unwrap();
         geometry.origin + caret.center()
     }
 
-    fn handler(&mut self) -> ElementInputHandler<ParleyTextField> {
+    pub(super) fn handler(&mut self) -> ElementInputHandler<ParleyTextField> {
         ElementInputHandler::new(self.geometry().viewport, self.field.clone())
     }
 
     /// The text viewport and the control height the resolved look gives.
-    fn viewport_and_height(mut self) -> (Bounds<Pixels>, f32) {
+    pub(super) fn viewport_and_height(mut self) -> (Bounds<Pixels>, f32) {
         let viewport = self.geometry().viewport;
         let field = self.field.clone();
         let height = self.visual.update(|window, cx| field.read(cx).look(window).min_height);
         (viewport, height)
     }
 
-    fn mouse_down(&mut self, position: Point<Pixels>, click_count: usize) {
+    pub(super) fn mouse_down(&mut self, position: Point<Pixels>, click_count: usize) {
         self.visual.simulate_event(MouseDownEvent {
             button: MouseButton::Left,
             position,

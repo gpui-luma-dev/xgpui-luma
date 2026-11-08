@@ -202,6 +202,13 @@ impl ParleyTextFieldBuilder {
         self
     }
 
+    /// Tab types a tab character instead of moving focus (Shift-Tab still moves
+    /// focus back). Off by default, as the SDK's text field and text area.
+    pub fn allow_tab_character(mut self, allow: bool) -> Self {
+        self.options.allow_tab_character = allow;
+        self
+    }
+
     /// The field is invalid while this returns `false` for its text.
     pub fn validator(mut self, validator: Validator) -> Self {
         self.validator = Some(validator);
