@@ -1,8 +1,8 @@
-# gpui-luma-color
+# xgpui-luma-color
 
-Source repository: [gpui-luma-dev/gpui-luma](https://github.com/gpui-luma-dev/gpui-luma).
+Source repository: [gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
-Color system primitives and interactive controls for **GPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
+Color system primitives and interactive controls for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
 
 Provides domain renderers, checkerboard painting, palette calculations, and interactive color manipulation components built on the lookless Luma SDK.
 
@@ -16,31 +16,33 @@ Provides domain renderers, checkerboard painting, palette calculations, and inte
 
 ## Installation
 
+The installation commands below apply once version 1.0.1 is published to crates.io.
+
 ```sh
-cargo add gpui-luma
-cargo add gpui-luma-color
-cargo add gpui-unofficial --rename gpui
+cargo add xgpui-luma@1.0.1
+cargo add xgpui-luma-color@1.0.1
+cargo add xgpui@2.0.1 --rename gpui
 ```
 
-The package is named `gpui-luma-color`; Rust imports use `gpui_luma_color`.
+The package is named `xgpui-luma-color`; Rust imports use `xgpui_luma_color`.
 
 ## Usage
 
 Create a swatch to include in a GPUI view:
 
 ```rust,no_run
-use gpui::hsla;
-use gpui_luma_color::ColorSwatch;
+use xgpui_luma::color::ColorValue;
+use xgpui_luma_color::ColorSwatch;
 
 fn accent_swatch() -> ColorSwatch {
-    ColorSwatch::new(hsla(0.6, 0.8, 0.5, 1.0))
+    ColorSwatch::new(ColorValue::srgb(0.2, 0.4, 0.8, 1.0))
 }
 ```
 
 ## Build
 
 In your application, run `cargo check` or `cargo build`.
-From the Luma repository, run `cargo check -p gpui-luma-color`.
+From the Luma repository, run `cargo check -p xgpui-luma-color`.
 
 ## License
 

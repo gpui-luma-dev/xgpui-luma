@@ -1,8 +1,8 @@
-# gpui-luma
+# xgpui-luma
 
-Source repository: [gpui-luma-dev/gpui-luma](https://github.com/gpui-luma-dev/gpui-luma).
+Source repository: [gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
-Lookless control SDK and interaction engine for **GPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
+Lookless control SDK and interaction engine for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
 
 Provides component logic, event routing, keyboard navigation, focus management, drag-and-drop, and theme contracts independent of any visual theme or styling adapter.
 
@@ -17,23 +17,25 @@ Provides component logic, event routing, keyboard navigation, focus management, 
 
 ## Usage
 
-Depend on `gpui-luma` directly and choose a look adapter for styled controls:
+The installation commands below apply once version 1.0.1 is published to crates.io.
+
+Depend on `xgpui-luma` directly and choose a look adapter for styled controls:
 
 ```sh
-cargo add gpui-luma
+cargo add xgpui-luma@1.0.1
 ```
 Choose a look adapter:
 
 ```sh
-cargo add gpui-luma-look-shadcn
+cargo add xgpui-luma-look-shadcn@1.0.1
 # Or:
-cargo add gpui-luma-look-radix
+cargo add xgpui-luma-look-radix@1.0.1
 ```
 
-The package is named `gpui-luma`; Rust imports use `gpui_luma`.
+The package is named `xgpui-luma`; Rust imports use `xgpui_luma`.
 
 Build your application with `cargo check` or `cargo build`. In this repository,
-check the SDK with `cargo check -p gpui-luma`.
+check the SDK with `cargo check -p xgpui-luma`.
 
 ## License
 
