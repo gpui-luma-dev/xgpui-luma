@@ -82,6 +82,7 @@ struct NativeText {
     look: Arc<Look>,
     paragraph: Entity<paragraph::ParagraphLab>,
     scroll: Entity<workload::ScrollLab>,
+    text_field: Entity<text_field::page::TextFieldPage>,
     buttons: Vec<Entity<Button>>,
     active: usize,
     samples: Vec<samples::Sample>,
@@ -107,7 +108,8 @@ impl NativeText {
             page.init_controls(look.clone(), cx);
             page
         });
-        let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling"]
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), cx));
+        let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling", "Parley text field"]
             .into_iter()
             .enumerate()
             .map(|(id, label)| {
@@ -126,8 +128,16 @@ impl NativeText {
             look,
             paragraph,
             scroll,
+            text_field,
             buttons,
-            active: if frames > 0 { 2 } else { 0 },
+            // `--text-field` opens the Parley text field tab directly.
+            active: if frames > 0 {
+                2
+            } else if std::env::args().any(|arg| arg == "--text-field") {
+                3
+            } else {
+                0
+            },
             samples: samples::samples().unwrap(),
             backend,
         }
@@ -149,6 +159,7 @@ impl Render for NativeText {
         match self.active {
             1 => root = root.child(div().flex_1().min_h_0().child(self.paragraph.clone())),
             2 => root = root.child(div().flex_1().min_h_0().child(self.scroll.clone())),
+            3 => root = root.child(div().flex_1().min_h_0().child(self.text_field.clone())),
             _ => {
                 let rows = div()
                     .id("native-atlas-samples")
