@@ -6,6 +6,18 @@ Radix theme and look adapter for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-lu
 
 Provides palette scales, semantic token resolution, custom color generation, light/dark mode handling, and concrete control builders adhering to the Radix design language.
 
+This crate is part of the **xgui ecosystem**, built on [xgpui](https://xgpui.dev/).
+The XGPUI-Luma crates generally release shortly after xgpui releases to track
+framework updates. Luma and xgpui have separate version numbers; use the
+compatible versions shown in the installation examples.
+
+The framework dependency is the Cargo package **`xgpui`**. In these examples,
+`gpui` is a local dependency alias for `xgpui`, so `gpui::` imports refer to xgpui.
+The `gpui-unofficial` package and packages ending in `-gpui-unofficial` are distinct
+registry packages; retain their full package names when referring to them. The
+original [gpui-luma](https://github.com/gpui-luma-dev/gpui-luma), based on
+`gpui-unofficial`, remains a separate project.
+
 ## Features
 
 * **Stepped Palette Scales**: Full 12-step Radix color scales for accent and neutral palettes.
