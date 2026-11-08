@@ -874,3 +874,45 @@ fn an_unbreakable_word_wider_than_the_field_scrolls_both_ways() {
         assert_ne!(start, end, "{text}: scrolling moves between the ends");
     }
 }
+
+/// Draws the lab page; reports whether its first field was laid out, and
+/// whether it tried and failed.
+fn page_lays_out_fields(parley: bool) -> (bool, bool) {
+    let mut cx = if parley {
+        let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+        TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend)
+    } else {
+        TestAppContext::single()
+    };
+    cx.update(|cx| {
+        xgpui_luma::init(cx).unwrap();
+        if parley {
+            cx.set_global(crate::parley_lab::ParleyTextSystemActive);
+        }
+    });
+    let look = crate::theme::default_look();
+    let window = cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, cx));
+    let page = window.root(&mut cx).unwrap();
+    let mut visual = VisualTestContext::from_window(window.into(), &cx);
+    visual.run_until_parked();
+    let page = page.clone();
+    visual.draw(point(px(0.0), px(0.0)), size(px(600.0), px(900.0)), move |_, _| {
+        div().size_full().child(page.clone())
+    });
+    window
+        .update(&mut cx, |page, _, cx| {
+            let field = page.fields[0].read(cx);
+            (field.geometry.is_some(), field.layout_error().is_some())
+        })
+        .unwrap()
+}
+
+#[test]
+fn lab_page_edits_on_parley_and_explains_on_the_native_text_system() {
+    assert_eq!(page_lays_out_fields(true), (true, false), "on Parley, the fields are live");
+    assert_eq!(
+        page_lays_out_fields(false),
+        (false, false),
+        "on the native text system, the page shows a note and never lays the fields out"
+    );
+}
