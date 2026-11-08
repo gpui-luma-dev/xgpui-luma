@@ -388,12 +388,15 @@ impl ParleyTextField {
         self.rows.is_some()
     }
 
+    /// Stored form of inserted text: line breaks per the control, and no other
+    /// control characters (tabs included), as the SDK's typed-text filter.
     fn normalize(&self, text: &str) -> String {
-        if self.is_multiline() {
+        let lines = if self.is_multiline() {
             multi_line(text)
         } else {
             single_line(text)
-        }
+        };
+        lines.chars().filter(|ch| !ch.is_control()).collect()
     }
 
     /// Logical selection as (anchor, caret) positions.
@@ -802,6 +805,15 @@ impl ParleyTextField {
             }
             "home" | "end" => {
                 self.move_to_line_end(key == "end", modifiers.shift, cx);
+                true
+            }
+            // As the SDK: Tab and Shift-Tab move focus and never insert a tab.
+            "tab" => {
+                if modifiers.shift {
+                    window.focus_prev(cx);
+                } else {
+                    window.focus_next(cx);
+                }
                 true
             }
             "escape" => {
@@ -1346,3 +1358,7 @@ pub(crate) mod page;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "text_field/tests.rs"]
 mod tests;
+
+#[cfg(all(test, feature = "test-support"))]
+#[path = "text_field/sdk_parity_tests.rs"]
+mod sdk_parity_tests;
