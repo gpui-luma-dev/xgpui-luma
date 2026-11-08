@@ -916,3 +916,51 @@ fn lab_page_edits_on_parley_and_explains_on_the_native_text_system() {
         "on the native text system, the page shows a note and never lays the fields out"
     );
 }
+
+/// Opens the lab page on Parley at `screen` and reports which fields were laid
+/// out, plus whether the long text area can scroll.
+fn screen_layout(screen: page::Screen) -> (Vec<usize>, bool) {
+    let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+    let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+    cx.update(|cx| {
+        xgpui_luma::init(cx).unwrap();
+        cx.set_global(crate::parley_lab::ParleyTextSystemActive);
+    });
+    let look = crate::theme::default_look();
+    let window = cx.open_window(size(px(600.0), px(1200.0)), move |_, cx| {
+        let mut page = page::TextFieldPage::new(look, false, cx);
+        page.screen = screen;
+        page
+    });
+    let mut visual = VisualTestContext::from_window(window.into(), &cx);
+    visual.run_until_parked();
+    visual.update(|window, _| window.refresh());
+    visual.run_until_parked();
+    window
+        .update(&mut cx, |page, _, cx| {
+            let shown =
+                (0..page.fields.len()).filter(|index| page.fields[*index].read(cx).geometry.is_some()).collect();
+            let long = page.fields.last().unwrap().read(cx);
+            let scrolls = long
+                .geometry
+                .as_ref()
+                .is_some_and(|geometry| geometry.layout.size().height > geometry.viewport.size.height * 3.0);
+            (shown, scrolls)
+        })
+        .unwrap()
+}
+
+#[test]
+fn each_screen_shows_only_its_own_fields() {
+    for (screen, ..) in page::Screen::ALL {
+        let expected: Vec<usize> = (0..page::FIELDS.len()).filter(|index| page::FIELDS[*index].4 == screen).collect();
+        assert!(!expected.is_empty(), "{screen:?} has fields");
+        let (shown, scrolls) = screen_layout(screen);
+        assert_eq!(shown, expected, "{screen:?}");
+        assert_eq!(
+            scrolls,
+            screen == page::Screen::TextAreas,
+            "{screen:?}: the long area is on Text areas and scrolls"
+        );
+    }
+}
