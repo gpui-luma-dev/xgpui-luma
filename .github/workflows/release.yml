@@ -6,6 +6,10 @@ name: Release Library Crates to crates.io
 on:
   workflow_dispatch:
     inputs:
+      registry_only:
+        description: Only check registry/version readiness (publish always runs full verification)
+        type: boolean
+        default: false
       publish:
         description: Publish verified crates and create the GitHub release (false verifies only)
         type: boolean
@@ -37,7 +41,8 @@ jobs:
   publish:
     name: Verify, publish, tag, and release
     if: github.ref == 'refs/heads/main'
-    runs-on: macos-latest
+    # Registry checks need no native build; publishing always uses macOS and all checks.
+    runs-on: ${{ inputs.registry_only && !inputs.publish && 'ubuntu-latest' || 'macos-latest' }}
     timeout-minutes: 60
 
     steps:
@@ -52,7 +57,30 @@ jobs:
           components: rustfmt, clippy
 
       - name: Setup Rust cache
+        if: ${{ !inputs.registry_only || inputs.publish }}
         uses: Swatinem/rust-cache@v2
+        with:
+          # Separate these artifacts from the previous optimized verification builds.
+          key: fast-verification-v1
+
+      - name: Configure faster verification builds
+        if: ${{ !inputs.registry_only || inputs.publish }}
+        run: |
+          python3 - <<'PYCONFIG'
+          import os
+          from pathlib import Path
+          import re
+
+          # Config overrides the workspace's explicit per-package optimization settings.
+          # Keep local development profiles unchanged and include package verification.
+          packages = re.findall(r'^\[profile\.dev\.package\.([A-Za-z0-9_-]+)\]$',
+                                Path('Cargo.toml').read_text(), re.MULTILINE)
+          config = Path(os.environ['CARGO_HOME']) / 'config.toml'
+          with config.open('a') as output:
+              output.write('\n[profile.dev]\nopt-level = 0\ndebug = 0\ncodegen-units = 256\n')
+              for name in packages:
+                  output.write(f'\n[profile.dev.package."{name}"]\nopt-level = 0\n')
+          PYCONFIG
 
       - name: Resolve version and tag
         id: meta
@@ -99,9 +127,11 @@ jobs:
         run: python3 -B scripts/release.py preflight
 
       - name: Format check
+        if: ${{ !inputs.registry_only || inputs.publish }}
         run: cargo fmt --all --check
 
       - name: Clippy library crates
+        if: ${{ !inputs.registry_only || inputs.publish }}
         run: |
           # shellcheck disable=SC2086
           cargo clippy --locked \
@@ -109,21 +139,21 @@ jobs:
             --all-targets --all-features
 
       - name: Test library crates (including inspection, headless support, and docs)
+        if: ${{ !inputs.registry_only || inputs.publish }}
         run: |
           cargo test --locked \
             $(printf -- '--package %s ' ${LIB_PACKAGES}) \
             --all-features
-          cargo test --locked \
-            $(printf -- '--package %s ' ${LIB_PACKAGES}) \
-            --doc --all-features
 
       - name: Package and verify all library crates
+        if: ${{ !inputs.registry_only || inputs.publish }}
         run: |
           set -euo pipefail
           cargo package --locked --registry crates-io \
             $(printf -- '--package %s ' ${LIB_PACKAGES})
 
       - name: Publish missing crates and verify contents
+        if: ${{ !inputs.registry_only || inputs.publish }}
         env:
           VERSION: ${{ steps.meta.outputs.workspace_version }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -226,6 +256,9 @@ jobs:
           RELEASE_JOB_STATUS: ${{ job.status }}
         run: |
           echo "Workflow result before reporting: ${RELEASE_JOB_STATUS}" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.registry_only }}" == "true" && "${{ inputs.publish }}" != "true" ]]; then
+            echo "Registry-only preflight: native checks and package verification were not run." >> "$GITHUB_STEP_SUMMARY"
+          fi
           python3 -B scripts/release.py summary
 
       - name: Preserve release diagnostics
