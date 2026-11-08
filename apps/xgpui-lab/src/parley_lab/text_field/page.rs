@@ -12,11 +12,17 @@ use crate::theme::ColorVizLookExt;
 
 /// Index of the field that starts disabled.
 const DISABLED: usize = 1;
+/// Index of the field with a digits-only validator.
+const DIGITS: usize = 2;
+/// Index of the compact search field.
+const SEARCH: usize = 3;
 
 /// (label, initial value, placeholder, text area rows)
-pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>); 9] = [
+pub(crate) const FIELDS: [(&str, &str, &str, Option<usize>); 11] = [
     ("Empty", "", "Type here; try an IME, emoji or Hebrew", None),
     ("Disabled (toggle below)", "Not editable while disabled", "", None),
+    ("Digits only (validator; type a letter for the invalid state)", "12345", "", None),
+    ("Search: compact, prefix icon, Escape clears", "", "Search", None),
     ("Latin, combining marks and emoji", "office café e\u{301} 👍🏽 🇮🇹 done", "", None),
     ("Hebrew (right-to-left base)", "שלום עולם 123 office", "", None),
     ("Arabic (right-to-left base)", "مرحبا بالعالم 456", "", None),
@@ -89,6 +95,11 @@ impl TextFieldPage {
                         };
                         cx.notify();
                     });
+                let builder = match index {
+                    DIGITS => builder.validator(Arc::new(|text: &str| text.chars().all(|ch| ch.is_ascii_digit()))),
+                    SEARCH => builder.compact().prefix_icon(lucide_svg_static::Icon::Search).clean_on_escape(true),
+                    _ => builder,
+                };
                 match rows {
                     Some(rows) => builder.rows(*rows),
                     None => builder,
@@ -118,7 +129,8 @@ impl Render for TextFieldPage {
             let status = match state.layout_error() {
                 Some(error) => format!("Layout error: {error}"),
                 None => format!(
-                    "{} bytes · anchor {} {:?} · caret {} {:?} · scroll {:.0}px",
+                    "{}{} bytes · anchor {} {:?} · caret {} {:?} · scroll {:.0}px",
+                    if state.is_invalid() { "invalid · " } else { "" },
                     state.value().len(),
                     anchor.byte_index,
                     anchor.affinity,
@@ -149,7 +161,7 @@ impl Render for TextFieldPage {
             .child(div().text_size(px(13.0)).child(
                 "Left/Right move visually; Alt moves by word; Cmd/Ctrl-Left/Right and Home/End go to the line's ends. \
                  Backspace removes whole characters. Shift extends; double-click selects a word, triple-click all. \
-                 Fields: Enter submits. Text areas: Enter adds a line break, Up/Down move by line, \
+                 Fields: Enter submits; Escape clears the search field. Text areas: Enter adds a line break, Up/Down move by line, \
                  Cmd/Ctrl-Up/Down go to the start or end, and the wheel scrolls.",
             ))
             .child(self.toggle.clone())

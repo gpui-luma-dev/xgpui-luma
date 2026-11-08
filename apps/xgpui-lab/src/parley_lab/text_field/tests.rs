@@ -27,6 +27,14 @@ impl Fixture {
     }
 
     fn build(value: &str, rows: Option<usize>) -> Self {
+        Self::with(value, move |builder| match rows {
+            Some(rows) => builder.rows(rows),
+            None => builder,
+        })
+    }
+
+    /// A field with builder options applied on top of the standard ones.
+    fn with(value: &str, configure: impl FnOnce(ParleyTextFieldBuilder) -> ParleyTextFieldBuilder + 'static) -> Self {
         let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
         let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
         cx.update(|cx| xgpui_luma::init(cx).unwrap());
@@ -39,10 +47,7 @@ impl Fixture {
         let value = value.to_owned();
         let window = cx.open_window(size(px(WIDTH), px(200.0)), move |_, cx| {
             let builder = ParleyTextField::new("test-field").look(&look).surface().font(page::font()).value(value);
-            let builder = match rows {
-                Some(rows) => builder.rows(rows),
-                None => builder,
-            };
+            let builder = configure(builder);
             ParleyTextField::from_builder(builder, cx)
         });
         let field = window.root(&mut cx).unwrap();
@@ -104,6 +109,14 @@ impl Fixture {
 
     fn handler(&mut self) -> ElementInputHandler<ParleyTextField> {
         ElementInputHandler::new(self.geometry().viewport, self.field.clone())
+    }
+
+    /// The text viewport and the control height the resolved look gives.
+    fn viewport_and_height(mut self) -> (Bounds<Pixels>, f32) {
+        let viewport = self.geometry().viewport;
+        let field = self.field.clone();
+        let height = self.visual.update(|window, cx| field.read(cx).look(window).min_height);
+        (viewport, height)
     }
 
     fn mouse_down(&mut self, position: Point<Pixels>, click_count: usize) {
@@ -604,4 +617,134 @@ fn selecting_across_line_breaks_marks_each_break() {
     // A selection ending exactly at a line's end does not include its break.
     let to_end = layout.selection_bounds(at(0), at(2)).unwrap();
     assert_eq!(rows(&to_end), 1);
+}
+
+#[test]
+fn validator_marks_the_field_invalid_and_drops_its_focus_ring() {
+    let digits: Validator = Arc::new(|text: &str| text.chars().all(|ch| ch.is_ascii_digit()));
+    let mut f = Fixture::with("123", move |builder| builder.validator(digits));
+    assert!(!f.read(|field| field.is_invalid()));
+    let ring = |f: &mut Fixture| f.visual.update(|window, cx| f.field.read(cx).look(window).focus_border.is_some());
+    assert!(ring(&mut f), "a valid, enabled field has a focus ring");
+    f.visual.simulate_input("x");
+    f.draw();
+    assert!(f.read(|field| field.is_invalid()), "typing a letter fails the validator");
+    assert!(!ring(&mut f), "as the SDK, an invalid field keeps its resting border");
+    f.keys("backspace");
+    assert!(!f.read(|field| field.is_invalid()));
+    let field = f.field.clone();
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_invalid(true, cx)));
+    assert!(f.read(|field| field.is_invalid()), "set_invalid holds until the text changes");
+}
+
+#[test]
+fn escape_clears_only_with_clean_on_escape() {
+    let mut f = Fixture::new("keep");
+    f.keys("escape");
+    assert_eq!(f.value(), "keep");
+    let mut f = Fixture::with("clear me", |builder| builder.clean_on_escape(true));
+    f.keys("escape");
+    assert_eq!(f.value(), "");
+    assert!(matches!(f.events.borrow().last(), Some(ParleyTextFieldEvent::Change { value }) if value.is_empty()));
+}
+
+#[test]
+fn paste_is_capped_on_a_character_boundary() {
+    let mut f = Fixture::with("", |builder| builder.max_clipboard_paste_bytes(Some(4)));
+    f.visual.update(|_, cx| cx.write_to_clipboard(ClipboardItem::new_string("héllo".into())));
+    let paste = format!("{}-v", f.secondary);
+    f.keys(&paste);
+    assert_eq!(f.value(), "hél", "4 bytes would split nothing; 'é' is 2 bytes");
+    let mut f = Fixture::with("", |builder| builder.max_clipboard_paste_bytes(Some(2)));
+    f.visual.update(|_, cx| cx.write_to_clipboard(ClipboardItem::new_string("héllo".into())));
+    f.keys(&paste);
+    assert_eq!(f.value(), "h", "2 bytes would split 'é', so it stops before it");
+}
+
+#[test]
+fn keyboard_focus_selects_all_and_blur_collapses_to_the_end() {
+    let mut f = Fixture::with("select me", |builder| builder.select_all_on_tab_focus(true));
+    f.visual.update(|window, cx| window.blur(cx));
+    f.draw();
+    f.visual.simulate_keystrokes("shift"); // The last input is now the keyboard.
+    f.focus();
+    assert_eq!(f.selection(), (0, 9), "keyboard focus selects all");
+    f.visual.update(|window, cx| window.blur(cx));
+    f.draw();
+    assert_eq!(f.selection(), (9, 9), "blur collapses to the end");
+    // A click focuses without selecting all.
+    let target = f.point_at(3);
+    f.visual.simulate_click(target, Modifiers::default());
+    f.draw();
+    assert_eq!(f.selection(), (3, 3));
+}
+
+#[test]
+fn prefix_icon_and_compact_follow_the_template() {
+    let (plain, plain_height) = Fixture::new("text").viewport_and_height();
+    let (with_icon, _) =
+        Fixture::with("text", |builder| builder.prefix_icon(lucide_svg_static::Icon::Search)).viewport_and_height();
+    let (_, compact_height) = Fixture::with("text", |builder| builder.compact()).viewport_and_height();
+    let shift = with_icon.left() - plain.left();
+    assert!(shift > px(8.0), "text starts after the icon: {shift:?}");
+    assert_eq!(with_icon.right(), plain.right(), "the icon only takes room on the left");
+    assert!(compact_height < plain_height, "compact uses the stylesheet's shorter height");
+}
+
+/// A parent view whose key listener counts Home presses that reach it.
+struct Host {
+    field: Entity<ParleyTextField>,
+    homes: Rc<RefCell<usize>>,
+}
+
+impl Render for Host {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let homes = self.homes.clone();
+        div()
+            .w(px(WIDTH))
+            .on_key_down(move |event: &KeyDownEvent, _, _| {
+                if event.keystroke.key == "home" {
+                    *homes.borrow_mut() += 1;
+                }
+            })
+            .child(self.field.clone())
+    }
+}
+
+#[test]
+fn home_and_end_reach_the_parent_only_when_asked() {
+    for propagate in [false, true] {
+        let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+        let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+        cx.update(|cx| xgpui_luma::init(cx).unwrap());
+        let homes = Rc::new(RefCell::new(0));
+        let seen = homes.clone();
+        let window = cx.open_window(size(px(WIDTH), px(80.0)), move |_, cx| {
+            let field = ParleyTextField::new("host-field")
+                .font(page::font())
+                .value("text")
+                .propagate_home_end_to_parent(propagate)
+                .spawn(cx);
+            Host { field, homes: seen }
+        });
+        let field = window.update(&mut cx, |host, _, _| host.field.clone()).unwrap();
+        let mut visual = VisualTestContext::from_window(window.into(), &cx);
+        visual.update(|window, cx| window.focus(&field.focus_handle(cx), cx));
+        visual.run_until_parked();
+        visual.simulate_keystrokes("home");
+        let caret = visual.update(|_, cx| field.read(cx).caret.byte_index);
+        assert_eq!(caret, 0, "the field still moves");
+        assert_eq!(*homes.borrow() > 0, propagate, "propagate {propagate}");
+    }
+}
+
+#[test]
+fn tab_stop_follows_the_option_and_the_enabled_state() {
+    let mut f = Fixture::with("text", |builder| builder.tab_stop(false));
+    assert!(!f.read(|field| field.focus.tab_stop));
+    let field = f.field.clone();
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_tab_stop(true, cx)));
+    assert!(f.read(|field| field.focus.tab_stop));
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(false, cx)));
+    assert!(!f.read(|field| field.focus.tab_stop), "disabled fields are never tab stops");
 }
