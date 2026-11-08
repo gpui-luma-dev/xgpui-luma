@@ -1,15 +1,15 @@
 //! A large, concrete collection with a richer item template for virtualization testing.
-use gpui_luma::color::gpui_bridge::from_hsla;
+use xgpui_luma::color::gpui_bridge::from_hsla;
 use std::{cell::Cell, ops::Range, sync::Arc};
 
 use gpui::{Context, Div, Entity, Hsla, Render, SharedString, Window, div, hsla, prelude::*, px};
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxInput, ListBoxItemRenderModel, ListBoxState, ListBoxVirtualization, SelectionMode,
     SelectionPolicy,
 };
-use gpui_luma::{hstack, vstack};
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 
 use super::{
     VERTICAL_LIST_WIDTH,
@@ -106,7 +106,7 @@ pub(super) struct SpectrumListExample {
 }
 
 impl SpectrumListExample {
-    pub(super) fn captured_motion(&self) -> (bool, gpui_luma::controls::listbox::ListBoxMotion) {
+    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
         (self.list.is_motion_enabled(), self.list.motion_profile())
     }
 

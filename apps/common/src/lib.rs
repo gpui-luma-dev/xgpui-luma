@@ -9,10 +9,10 @@ mod fonts;
 
 pub use built_in::{BuiltInTheme, built_in_theme, built_in_themes};
 pub use fonts::{GEIST_MONO_FAMILY, JETBRAINS_MONO_FAMILY, RAJDHANI_FAMILY, register, register_all};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 /// Canonical fallback theme CSS bundled by the shadcn look crate.
-pub use gpui_luma_look_shadcn::FALLBACK_CSS;
+pub use xgpui_luma_look_shadcn::FALLBACK_CSS;
 
 /// Independently mutable look parsed from [`FALLBACK_CSS`].
 ///
@@ -40,7 +40,7 @@ mod tests {
             let look =
                 ShadcnLook::from_css_str(theme.css).unwrap_or_else(|error| panic!("theme {}: {error}", theme.id));
             for tokens in [look.light_tokens(), look.dark_tokens()] {
-                for token in gpui_luma_look_shadcn::ShadcnToken::ALL {
+                for token in xgpui_luma_look_shadcn::ShadcnToken::ALL {
                     if tokens.catalog.get(token.css_name()).is_some() {
                         tokens.catalog.source_color(token.css_name()).unwrap().validate().unwrap();
                     }

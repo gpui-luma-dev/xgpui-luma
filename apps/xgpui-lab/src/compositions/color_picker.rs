@@ -1,16 +1,16 @@
 //! Color picker control exposition — Photoshop-style SV field, hue, and alpha composition.
 
-use gpui_luma::color::gpui_bridge::from_hsla;
+use xgpui_luma::color::gpui_bridge::from_hsla;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
-use gpui_luma_color::color_slider::color_spec::Hsv;
-use gpui_luma_color::color_slider::{AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value};
-use gpui_luma_color::composition::ColorCompositionSync;
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
+use xgpui_luma_color::color_slider::color_spec::Hsv;
+use xgpui_luma_color::color_slider::{AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value};
+use xgpui_luma_color::composition::ColorCompositionSync;
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::theme::ControlSize;
 use crate::theme::{Look, TextSize};
 
 use super::color_exposition_common::{
@@ -32,7 +32,7 @@ pub struct ColorPickerControlExposition {
 
 impl ColorPickerControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        gpui_luma::theme::observe_theme_revision(cx, |this, cx| this.sync_look(this.look.clone(), cx)).detach();
+        xgpui_luma::theme::observe_theme_revision(cx, |this, cx| this.sync_look(this.look.clone(), cx)).detach();
 
         let state = cx.new(|cx| ColorPickerDemo::new(look.clone(), cx));
 
@@ -305,8 +305,8 @@ mod tests {
     fn composition_pages_render_and_preserve_picker_edits_when_switching() {
         let mut app = TestAppContext::single();
         app.update(|cx| {
-            gpui_luma::init(cx).expect("initialize SDK");
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::init(cx).expect("initialize SDK");
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
         });
         let (gallery, cx) = app.add_window_view(|window, cx| {
             window.activate_window();

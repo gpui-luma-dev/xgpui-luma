@@ -1,10 +1,10 @@
 //! Radix Studio app shell — shared state, page routing, and window chrome.
 
-use gpui_luma::controls::radio_group::RadioGroupEventExt;
-use gpui_luma::controls::popup_menu::PopupMenuEventExt;
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::prelude::TooltipEntityExt;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::controls::radio_group::RadioGroupEventExt;
+use xgpui_luma::controls::popup_menu::PopupMenuEventExt;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::prelude::TooltipEntityExt;
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
 use std::sync::Arc;
 
@@ -12,19 +12,19 @@ use gpui::{
     Context, Entity, FocusHandle, Hsla, Render, RenderImage, AnyElement, ScrollHandle, Subscription, Task, Window, div,
     prelude::*, px,
 };
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::popup_menu::{PopupMenu, PopupMenuEvent};
-use gpui_luma::controls::radio_group::{RadioGroup, RadioGroupItem, RadioGroupEvent};
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::popup_menu::{PopupMenu, PopupMenuEvent};
+use xgpui_luma::controls::radio_group::{RadioGroup, RadioGroupItem, RadioGroupEvent};
 use crate::controls::theme_mode;
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma::infra::menu_item::{MenuItem, MenuItemIcon};
-use gpui_luma::shell::TitleBar;
-use gpui_luma::infra::element_ext::ElementExt;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::theme::ThemeMode;
-use gpui_luma::{WideMiddle, dock_panel, spawn_wide_middle, vstack};
-use gpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, SemanticRole};
-use gpui_luma_look_radix as radix;
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma::infra::menu_item::{MenuItem, MenuItemIcon};
+use xgpui_luma::shell::TitleBar;
+use xgpui_luma::infra::element_ext::ElementExt;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma::{WideMiddle, dock_panel, spawn_wide_middle, vstack};
+use xgpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, SemanticRole};
+use xgpui_luma_look_radix as radix;
 
 use crate::screens::custom_palette::{MeshCache, MeshRequest};
 use crate::controls::{
@@ -170,7 +170,7 @@ impl RadixStudioApp {
             .look(&theme)
             .line()
             .active("page-custom-palette")
-            .content_layout(gpui_luma::controls::tabs::TabsContentLayout::Fill)
+            .content_layout(xgpui_luma::controls::tabs::TabsContentLayout::Fill)
             .content_transition(crate::screen_transition::directional_slide().focus_target({
                 let app = cx.entity().downgrade();
                 move |id, _, cx| {
@@ -178,9 +178,9 @@ impl RadixStudioApp {
                 }
             }))
             .motion(|motion| {
-                motion.content = gpui_luma::motion::Transition::timed(
+                motion.content = xgpui_luma::motion::Transition::timed(
                     std::time::Duration::from_millis(400),
-                    gpui_luma::motion::Easing::OutCubic,
+                    xgpui_luma::motion::Easing::OutCubic,
                 )
             });
         for (screen, id, label) in SCREEN_TABS {
@@ -333,7 +333,7 @@ impl RadixStudioApp {
                 if let Some((_, handle)) = this.screen_scrolls.iter().find(|(screen, _)| screen == tab) {
                     this.page_scroll = handle.clone();
                     let duration = match this.screens.read(cx).motion_profile().content.description() {
-                        gpui_luma::motion::TransitionDescription::Timed { duration, .. } => duration,
+                        xgpui_luma::motion::TransitionDescription::Timed { duration, .. } => duration,
                         _ => std::time::Duration::from_millis(400),
                     };
                     this.control_bar.update(cx, |bar, cx| bar.select(*tab, f32::from(handle.offset().y), duration, cx));

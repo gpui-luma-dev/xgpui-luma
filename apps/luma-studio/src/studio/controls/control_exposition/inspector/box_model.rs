@@ -1,9 +1,9 @@
 #![allow(clippy::too_many_arguments, dead_code)]
 
 use gpui::{AnyElement, Div, FontWeight, Hsla, IntoElement, SharedString, div, hsla, px, prelude::*};
-use gpui_luma::theme::LumaTextStyle;
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma::theme::LumaTextStyle;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::inspect::{
     ButtonInspectMetrics, CheckboxInspectMetrics, RadioButtonInspectMetrics, SwitchInspectMetrics,
 };
 
@@ -203,7 +203,7 @@ impl InspectBoxModelSnapshot {
         }
     }
 
-    pub fn from_textfield_metrics(metrics: &gpui_luma_look_shadcn::inspect::TextFieldInspectMetrics) -> Self {
+    pub fn from_textfield_metrics(metrics: &xgpui_luma_look_shadcn::inspect::TextFieldInspectMetrics) -> Self {
         Self {
             height: metrics.min_height.value_px,
             padding_x: metrics.padding_x.value_px,
@@ -216,7 +216,7 @@ impl InspectBoxModelSnapshot {
         }
     }
 
-    pub fn from_badge_metrics(metrics: &gpui_luma_look_shadcn::inspect::BadgeInspectMetrics) -> Self {
+    pub fn from_badge_metrics(metrics: &xgpui_luma_look_shadcn::inspect::BadgeInspectMetrics) -> Self {
         Self {
             height: metrics.min_height.value_px,
             padding_x: metrics.padding_x.value_px,

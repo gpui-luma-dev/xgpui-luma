@@ -1,6 +1,6 @@
 //! Advanced color controls built on the lookless Luma SDK.
 //!
-//! Package name: `gpui-luma-color`. Rustc / `use` path: `gpui_luma_color`.
+//! Package name: `xgpui-luma-color`. Rustc / `use` path: `xgpui_luma_color`.
 
 pub mod checkerboard_paint;
 pub mod chrome_tokens;

@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn gamut_navigation_down_then_up_retains_the_shell_and_selected_route() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.simulate_resize(size(px(1400.), px(2200.)));
         for _ in 0..3 {
@@ -84,7 +84,7 @@ mod tests {
                         .button
                         .clone()
                 });
-                button.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+                button.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
                 cx.run_until_parked();
                 cx.update(|_, cx| {
                     let shell = view.read(cx);

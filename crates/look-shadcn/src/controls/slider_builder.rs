@@ -1,15 +1,15 @@
-//! Look-owned slider builder. Spawn synthesizes the SDK [`gpui_luma::controls::slider::Slider`].
+//! Look-owned slider builder. Spawn synthesizes the SDK [`xgpui_luma::controls::slider::Slider`].
 
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use gpui::{App, Context, Div, Hsla, SharedString, Stateful, px};
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderBuilder, SliderOrientation, SliderRenderModel, SliderTemplate, SliderTemplateModifier, SliderThumbPolicy,
     TrackPresentation,
 };
-use gpui_luma::infra::value::ControlRange;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::infra::value::ControlRange;
+use xgpui_luma::theme::InteractionState;
 
 use super::button::{ButtonRadiusPreset, ShadcnButtonStyle};
 use super::slider::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset, slider_look};
@@ -18,8 +18,8 @@ use crate::size::ShadcnSize;
 
 /// Builder in the guise of a slider: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct Slider {
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::slider::SliderMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::slider::SliderEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::slider::SliderMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::slider::SliderEvent>,
 
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -49,7 +49,7 @@ impl Slider {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::SliderEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::SliderEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -59,10 +59,10 @@ impl Slider {
     pub fn on_value_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::Change { thumb_id, value } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::Change { thumb_id, value } = event {
                 callback(owner, thumb_id, *value, cx);
             }
         })
@@ -72,10 +72,10 @@ impl Slider {
     pub fn on_release<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::Release { thumb_id, value } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::Release { thumb_id, value } = event {
                 callback(owner, thumb_id, *value, cx);
             }
         })
@@ -85,10 +85,10 @@ impl Slider {
     pub fn on_drag_start<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::DragStart { thumb_id } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::DragStart { thumb_id } = event {
                 callback(owner, thumb_id, cx);
             }
         })
@@ -98,10 +98,10 @@ impl Slider {
     pub fn on_drag_end<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::DragEnd { thumb_id, value } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::DragEnd { thumb_id, value } = event {
                 callback(owner, thumb_id, *value, cx);
             }
         })
@@ -111,10 +111,10 @@ impl Slider {
     pub fn on_thumb_added<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, f32, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::ThumbAdded { thumb_id, value } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::ThumbAdded { thumb_id, value } = event {
                 callback(owner, thumb_id, *value, cx);
             }
         })
@@ -124,10 +124,10 @@ impl Slider {
     pub fn on_thumb_removed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::ThumbRemoved { thumb_id } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::ThumbRemoved { thumb_id } = event {
                 callback(owner, thumb_id, cx);
             }
         })
@@ -137,10 +137,10 @@ impl Slider {
     pub fn on_thumb_selected<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::slider::ThumbId, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::ThumbSelected { thumb_id } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::ThumbSelected { thumb_id } = event {
                 callback(owner, thumb_id, cx);
             }
         })
@@ -153,7 +153,7 @@ impl Slider {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -166,7 +166,7 @@ impl Slider {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -179,7 +179,7 @@ impl Slider {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::slider::SliderEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::slider::SliderEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -213,7 +213,7 @@ impl Slider {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::slider::SliderMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::slider::SliderMotion, edits motion);
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &ShadcnLook) -> Self {
@@ -339,14 +339,14 @@ impl Slider {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> gpui_luma::controls::slider::Slider {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> xgpui_luma::controls::slider::Slider {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
             let theme = crate::tooltip_theme(&look);
             let entity = self.into_sdk_builder(look).spawn(cx);
             entity.update(cx, |control, _| {
-                gpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
+                xgpui_luma::infra::attachments::AttachmentTarget::attachments_mut(control).set_tooltip_theme(theme);
             });
             entity
         };
@@ -360,7 +360,7 @@ impl Slider {
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SliderBuilder {
         let template = self.template.unwrap_or_else(|| look.slider_template_with_style(self.style));
-        let mut builder = gpui_luma::controls::slider::new(self.id)
+        let mut builder = xgpui_luma::controls::slider::new(self.id)
             .motion_defaults(look.motion_defaults().slider)
             .with_motion_overrides(self.motion)
             .template(template)

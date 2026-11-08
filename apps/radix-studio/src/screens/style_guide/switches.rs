@@ -8,12 +8,12 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-use gpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
-use gpui_luma::controls::switch::SwitchData;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_radix::{Accent, Paint, Gray, Look, LookControlExt, Radius, SwitchSize, SwitchVariant, ScaleFamily};
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::switch::SwitchData;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_radix::{Accent, Paint, Gray, Look, LookControlExt, Radius, SwitchSize, SwitchVariant, ScaleFamily};
 
 use super::matrix_grid::{
     COL_GAP, centered, column_header, corner_label, empty_corner, equal_data_columns, fixed_grid, preview_tabbed,
@@ -270,7 +270,7 @@ fn render_switch(
     id: &str,
     on: bool,
     size: ButtonSize,
-    state: gpui_luma::theme::InteractionState,
+    state: xgpui_luma::theme::InteractionState,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {

@@ -25,4 +25,4 @@ pub use sync::{primary_slider_value, refresh_color_slider, update_domain_delegat
 pub use template::{ColorSliderTemplate, ColorSliderTemplateConfig, color_slider_template, default_color_slider_template};
 pub use track_context::ColorSliderTrackContext;
 pub use types::{Axis, ColorInterpolation, ColorSliderDelegate, ThumbPosition, ThumbSize, sizing};
-pub use gpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbSize};
+pub use xgpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbSize};

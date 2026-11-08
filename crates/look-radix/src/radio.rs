@@ -7,9 +7,9 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
-use gpui_luma::controls::button::ButtonTemplate;
-use gpui_luma::controls::radio_button::{RadioButtonPalette, RadioButtonTheme, RadioScale, ThemedRadioButtonTemplate};
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::radio_button::{RadioButtonPalette, RadioButtonTheme, RadioScale, ThemedRadioButtonTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::look::Look;
@@ -85,13 +85,13 @@ pub fn radio_scale_for(size: RadioSize) -> RadioScale {
 }
 
 fn radio_scale_with_stylesheet(
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
     size: RadioSize,
 ) -> RadioScale {
     let fallback = RadioScale::compute(size.control_size(), &MetricTokens::default(), 1.0);
     let geometry = stylesheet.radio.resolve_geometry(
         size.as_str(),
-        gpui_luma::theme::stylesheet::RadioGeometry {
+        xgpui_luma::theme::stylesheet::RadioGeometry {
             indicator_size: fallback.indicator_size,
             dot_size: fallback.dot_size,
             gap: fallback.gap,
@@ -251,7 +251,7 @@ pub fn radio_template(
     look: &Look,
     variant: RadioVariant,
     paint: Paint,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::radio_button::RadioButtonData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::radio_button::RadioButtonData>> {
     Arc::new(ThemedRadioButtonTemplate::new(radio_theme_with(look, variant, paint)))
 }
 
@@ -260,7 +260,7 @@ pub fn radio_template_for(
     variant: RadioVariant,
     paint: Paint,
     size: RadioSize,
-) -> Arc<dyn ButtonTemplate<gpui_luma::controls::radio_button::RadioButtonData>> {
+) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::radio_button::RadioButtonData>> {
     Arc::new(ThemedRadioButtonTemplate::new(radio_theme_for(look, variant, paint, size)))
 }
 
@@ -276,7 +276,7 @@ mod tests {
     #[test]
     fn pressed_face_preserves_focused_fill_for_every_variant() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
                 for checked in [false, true] {
@@ -367,8 +367,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_radio_stylesheet() -> gpui_luma::theme::stylesheet::RadioStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_radio_stylesheet() -> xgpui_luma::theme::stylesheet::RadioStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     RadioStylesheet {
         geometry: RadioGeometryStylesheet { gap: Some(8.0), ..Default::default() },
         sizes: [("1", 14.0, 5.6), ("2", 16.0, 6.4), ("3", 20.0, 8.0)]

@@ -24,15 +24,15 @@ use gpui::{
     AnyElement, App, Axis, Context, Div, ElementId, Entity, EntityId, Hsla, Render, Stateful, Window, div, prelude::*,
     px,
 };
-use gpui_luma::controls::frame::FrameBuilder;
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::frame::FrameBuilder;
+use xgpui_luma::controls::listbox::{
     ListBoxAxis, ListBoxBinding, ListBoxControl, ListBoxFlow, ListBoxInput, ListBoxItemRenderModel, ListBoxLayout,
     ListBoxScrollHandle, ListBoxState, ListBoxVisibleItem, ListBoxVirtualization,
 };
-use gpui_luma::infra::drag_drop::{
+use xgpui_luma::infra::drag_drop::{
     DragDropElementExt, DragDropEvent, DropEdge, DropProposal, DropZone, KeyedDrag, KeyedDropTarget, bind_drag_source,
 };
-use gpui_luma::vstack;
+use xgpui_luma::vstack;
 use crate::look::{ShadcnLook, resolve_look_from};
 
 const CORNER_RADIUS: f32 = 8.0;
@@ -53,9 +53,9 @@ struct DragDropBindings<'a, M: 'static, T, K> {
 /// Look-owned fixed-size or content-sized list composition. Reuse SDK state and handles between renders.
 /// No DnD handlers or gap overlays are installed unless `drag_and_drop` is used.
 pub struct ListBoxBuilder<'a, M: 'static, T, K> {
-    motion_edits: gpui_luma::motion::MotionOverrides<gpui_luma::controls::listbox::ListBoxMotion>,
+    motion_edits: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::listbox::ListBoxMotion>,
     motion_enabled: Option<bool>,
-    raw_motion: gpui_luma::motion::MotionConfig<gpui_luma::controls::listbox::ListBoxMotion>,
+    raw_motion: xgpui_luma::motion::MotionConfig<xgpui_luma::controls::listbox::ListBoxMotion>,
     id: &'static str,
     look: Option<ShadcnLook>,
     state: &'a ListBoxState<T, K>,
@@ -72,12 +72,12 @@ pub struct ListBoxBuilder<'a, M: 'static, T, K> {
     label: &'static str,
     empty: Option<AnyElement>,
     drag_drop: Option<DragDropBindings<'a, M, T, K>>,
-    drop_layout: Option<gpui_luma::motion::DropLayoutMotion<K>>,
-    motion_config: Option<&'a mut gpui_luma::motion::MotionConfig<gpui_luma::controls::listbox::ListBoxMotion>>,
+    drop_layout: Option<xgpui_luma::motion::DropLayoutMotion<K>>,
+    motion_config: Option<&'a mut xgpui_luma::motion::MotionConfig<xgpui_luma::controls::listbox::ListBoxMotion>>,
 }
 
 impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<'a, M, T, K> {
-    gpui_luma::forward_motion!(gpui_luma::controls::listbox::ListBoxMotion, edits motion_edits);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::listbox::ListBoxMotion, edits motion_edits);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = Some(enabled);
         self
@@ -142,21 +142,21 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
 
     fn motion_config(
         mut self,
-        config: &'a mut gpui_luma::motion::MotionConfig<gpui_luma::controls::listbox::ListBoxMotion>,
+        config: &'a mut xgpui_luma::motion::MotionConfig<xgpui_luma::controls::listbox::ListBoxMotion>,
     ) -> Self {
         self.motion_config = Some(config);
         self
     }
 
     /// Reuse SDK-owned drop motion for raw/host-owned composition.
-    pub fn drop_layout_motion(mut self, motion: gpui_luma::motion::DropLayoutMotion<K>) -> Self {
+    pub fn drop_layout_motion(mut self, motion: xgpui_luma::motion::DropLayoutMotion<K>) -> Self {
         self.drop_layout = Some(motion);
         self
     }
 
     fn control_drag_drop(
         mut self,
-        binding: Option<gpui_luma::controls::listbox::ListBoxDragDropBinding<M, K>>,
+        binding: Option<xgpui_luma::controls::listbox::ListBoxDragDropBinding<M, K>>,
         label: fn(&T) -> gpui::SharedString,
     ) -> Self {
         if let Some(binding) = binding {
@@ -295,25 +295,25 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
     }
 
     /// Override focus behavior independently of wheel routing.
-    pub fn pointer_focus_policy(self, policy: gpui_luma::interaction::PointerFocusPolicy) -> Self {
+    pub fn pointer_focus_policy(self, policy: xgpui_luma::interaction::PointerFocusPolicy) -> Self {
         self.binding.set_pointer_focus_policy(policy);
         self
     }
 
     /// Configure wheel eligibility without changing boundary behavior.
-    pub fn wheel_scroll_policy(self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.scroll.set_wheel_scroll_policy(policy);
         self
     }
 
     /// Override this retained list's interaction settings.
-    pub fn scroll_boundary_policy(self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.scroll.set_scroll_boundary_policy(policy);
         self
     }
 
     /// Override this retained list's interaction settings.
-    pub fn wheel_focus_scope(self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.scroll.set_wheel_focus_scope(policy);
         self
     }
@@ -558,7 +558,7 @@ impl ShadcnLook {
 mod persistent_drag_tests {
     fn render_drag_list(
         side: usize,
-        list: &mut gpui_luma::controls::listbox::ListBoxControl<DragHarness, u32, u32>,
+        list: &mut xgpui_luma::controls::listbox::ListBoxControl<DragHarness, u32, u32>,
         window: &mut gpui::Window,
         cx: &mut gpui::Context<DragHarness>,
     ) -> gpui::Stateful<gpui::Div> {
@@ -572,7 +572,7 @@ mod persistent_drag_tests {
 
     #[test]
     fn retained_list_captures_typed_look_roles_once() {
-        use gpui_luma::motion::{Transition, Easing};
+        use xgpui_luma::motion::{Transition, Easing};
         use std::time::Duration;
         let make_look = |ms| {
             let source =

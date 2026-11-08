@@ -1,9 +1,9 @@
-//! Look-owned stepper builder. Spawn synthesizes the SDK [`gpui_luma::controls::stepper::Stepper`].
+//! Look-owned stepper builder. Spawn synthesizes the SDK [`xgpui_luma::controls::stepper::Stepper`].
 
 use gpui::{AnyElement, App, Context, SharedString, Window};
-use gpui_luma::controls::progress::ProgressDirection;
-use gpui_luma::controls::stepper::{StepperBuilder, StepperLabelPlacement, StepState};
-use gpui_luma::infra::icon::SelectionStatusIcons;
+use xgpui_luma::controls::progress::ProgressDirection;
+use xgpui_luma::controls::stepper::{StepperBuilder, StepperLabelPlacement, StepState};
+use xgpui_luma::infra::icon::SelectionStatusIcons;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -16,12 +16,12 @@ pub struct Stepper {
 }
 
 impl Stepper {
-    gpui_luma::forward_motion!(gpui_luma::controls::stepper::StepperMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::stepper::StepperMotion, builder builder);
 
     pub fn new(id: impl Into<SharedString>, step_count: usize) -> Self {
         Self {
             look: None,
-            builder: gpui_luma::controls::stepper::stepper(id, step_count),
+            builder: xgpui_luma::controls::stepper::stepper(id, step_count),
             custom_template: false,
             size: ShadcnSize::Md,
         }
@@ -96,13 +96,13 @@ impl Stepper {
         self
     }
 
-    pub fn template(mut self, template: std::sync::Arc<dyn gpui_luma::controls::stepper::StepperTemplate>) -> Self {
+    pub fn template(mut self, template: std::sync::Arc<dyn xgpui_luma::controls::stepper::StepperTemplate>) -> Self {
         self.custom_template = true;
         self.builder = self.builder.template(template);
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::stepper::Stepper {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::stepper::Stepper {
         let look = resolve_look_from(self.look.as_ref(), cx);
         self.into_sdk_builder(look).spawn(cx)
     }

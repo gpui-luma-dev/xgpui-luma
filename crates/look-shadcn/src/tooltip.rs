@@ -1,6 +1,6 @@
 //! Tooltip presentation bound to the control's mutable Shadcn look.
 use std::sync::Arc;
-use gpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
+use xgpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
 use crate::{ShadcnLook, ShadcnToken, ShadcnRadius};
 struct ShadcnTooltipTheme(ShadcnLook);
 impl TooltipTheme for ShadcnTooltipTheme {
@@ -8,7 +8,7 @@ impl TooltipTheme for ShadcnTooltipTheme {
         let tokens = self.0.mode_tokens();
         let geometry = tokens.stylesheet().common.tooltip.resolve_geometry(
             "default",
-            gpui_luma::theme::stylesheet::TooltipGeometry {
+            xgpui_luma::theme::stylesheet::TooltipGeometry {
                 padding: 8.0,
                 padding_y: 4.0,
                 max_width: 260.0,
@@ -42,7 +42,7 @@ pub fn tooltip_theme(look: &ShadcnLook) -> Arc<dyn TooltipTheme> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn tooltip_tracks_bound_look_mode() {
         let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS");
@@ -60,11 +60,11 @@ mod tests {
 mod coverage_tests {
     use super::*;
     use gpui::{AnyView, Context, IntoElement, Render, TestAppContext, Window};
-    use gpui_luma::{
+    use xgpui_luma::{
         controls::tooltip::{Tooltip, bubble},
         infra::attachments::TooltipEntityExt,
     };
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     use std::{
         sync::{Arc, Mutex},
         time::Duration,
@@ -140,11 +140,11 @@ mod coverage_tests {
     coverage!(selector_help_tracks_look, crate::Selector::new("selector"));
     coverage!(
         search_selector_help_tracks_look,
-        crate::SearchSelector::new("search", [gpui_luma::controls::search_selector::SelectionItem::new("one", "One")])
+        crate::SearchSelector::new("search", [xgpui_luma::controls::search_selector::SelectionItem::new("one", "One")])
     );
     coverage!(
         combobox_help_tracks_look,
-        crate::ComboBox::new("combo", [gpui_luma::controls::combobox::SelectionItem::new("one", "One")])
+        crate::ComboBox::new("combo", [xgpui_luma::controls::combobox::SelectionItem::new("one", "One")])
     );
 
     macro_rules! popup_behavior {
@@ -153,7 +153,7 @@ mod coverage_tests {
             fn $name() {
                 use $event as ControlEvent;
                 let mut app = TestAppContext::single();
-                app.update(gpui_luma::key_handling::bind_default_control_keys);
+                app.update(xgpui_luma::key_handling::bind_default_control_keys);
                 let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS");
                 let tips = Arc::new(Mutex::new(Vec::new()));
                 let openings = Arc::new(Mutex::new(Vec::new()));
@@ -183,7 +183,7 @@ mod coverage_tests {
                 let position = gpui::point(gpui::px(10.0), gpui::px(10.0));
                 cx.simulate_event(gpui::MouseMoveEvent { position, ..Default::default() });
                 cx.run_until_parked();
-                assert_eq!(tips.lock().unwrap().as_slice(), &[gpui_luma::controls::tooltip::TooltipEvent::Shown]);
+                assert_eq!(tips.lock().unwrap().as_slice(), &[xgpui_luma::controls::tooltip::TooltipEvent::Shown]);
                 cx.simulate_click(position, Default::default());
                 cx.run_until_parked();
                 if openings.lock().unwrap().last() != Some(&true) {
@@ -192,7 +192,7 @@ mod coverage_tests {
                     cx.run_until_parked();
                 }
                 assert_eq!(openings.lock().unwrap().last(), Some(&true));
-                assert_eq!(tips.lock().unwrap().last(), Some(&gpui_luma::controls::tooltip::TooltipEvent::Hidden));
+                assert_eq!(tips.lock().unwrap().last(), Some(&xgpui_luma::controls::tooltip::TooltipEvent::Hidden));
                 let count = tips.lock().unwrap().len();
                 cx.simulate_event(gpui::MouseMoveEvent {
                     position: gpui::point(gpui::px(600.0), gpui::px(600.0)),
@@ -213,26 +213,26 @@ mod coverage_tests {
     }
     popup_behavior!(
         popup_help_preserves_activation,
-        crate::PopupMenu::new("popup").items([gpui_luma::infra::menu_item::MenuItem::new("one").label("One")]),
-        gpui_luma::controls::popup_menu::PopupMenuEvent,
+        crate::PopupMenu::new("popup").items([xgpui_luma::infra::menu_item::MenuItem::new("one").label("One")]),
+        xgpui_luma::controls::popup_menu::PopupMenuEvent,
         ControlEvent::Select { .. }
     );
     popup_behavior!(
         selector_help_preserves_selection,
-        crate::Selector::new("selector").items([gpui_luma::controls::selector::SelectorItem::new("one").label("One")]),
-        gpui_luma::controls::selector::SelectorEvent,
+        crate::Selector::new("selector").items([xgpui_luma::controls::selector::SelectorItem::new("one").label("One")]),
+        xgpui_luma::controls::selector::SelectorEvent,
         ControlEvent::Change { .. }
     );
     popup_behavior!(
         search_help_preserves_selection,
-        crate::SearchSelector::new("search", [gpui_luma::controls::search_selector::SelectionItem::new("one", "One")]),
-        gpui_luma::controls::search_selector::SearchSelectorEvent,
+        crate::SearchSelector::new("search", [xgpui_luma::controls::search_selector::SelectionItem::new("one", "One")]),
+        xgpui_luma::controls::search_selector::SearchSelectorEvent,
         ControlEvent::Select { .. } | ControlEvent::Complete { .. }
     );
     popup_behavior!(
         combo_help_preserves_selection,
-        crate::ComboBox::new("combo", [gpui_luma::controls::combobox::SelectionItem::new("one", "One")]),
-        gpui_luma::controls::combobox::ComboBoxEvent,
+        crate::ComboBox::new("combo", [xgpui_luma::controls::combobox::SelectionItem::new("one", "One")]),
+        xgpui_luma::controls::combobox::ComboBoxEvent,
         ControlEvent::Select { .. } | ControlEvent::Complete { .. }
     );
 
@@ -280,8 +280,8 @@ mod coverage_tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_tooltip_stylesheet() -> gpui_luma::theme::stylesheet::TooltipStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_tooltip_stylesheet() -> xgpui_luma::theme::stylesheet::TooltipStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     TooltipStylesheet {
         geometry: TooltipGeometryStylesheet {
             padding: Some(8.0),

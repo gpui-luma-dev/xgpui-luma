@@ -2,9 +2,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, FocusHandle, Hsla, IntoElement, Pixels, SharedString, div, px, prelude::*};
-use gpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizeHandleSize, ResizeHandleVisibility};
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::resizable_panels::{
+    ResizablePanelSpec, ResizablePanels, ResizeHandleSize, ResizeHandleVisibility,
+};
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 pub const LEFT_SIDEBAR_PANEL_INDEX: usize = 0;
 pub const CONTENT_PANEL_INDEX: usize = 1;
@@ -72,7 +74,7 @@ impl WorkbenchLayout {
 
     pub fn sync_theme<T>(
         &self,
-        theme: &Arc<dyn gpui_luma::controls::resizable_panels::ResizablePanelsTheme>,
+        theme: &Arc<dyn xgpui_luma::controls::resizable_panels::ResizablePanelsTheme>,
         cx: &mut Context<T>,
     ) {
         self.panels.update(cx, |panels, cx| panels.set_theme(theme.clone(), cx));

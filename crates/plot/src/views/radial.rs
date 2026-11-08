@@ -10,7 +10,7 @@ pub struct RadialBar {
     pub label: SharedString,
     pub fraction: f64,
 }
-pub(crate) type RadialTooltip = dyn Fn(&RadialBar) -> gpui_luma::controls::tooltip::Tooltip;
+pub(crate) type RadialTooltip = dyn Fn(&RadialBar) -> xgpui_luma::controls::tooltip::Tooltip;
 type RadialLabels = dyn Fn(&RadialBar) -> SharedString;
 /// Native concentric bars or stacked arcs. Host owns timing and center text.
 #[derive(Clone)]
@@ -31,7 +31,7 @@ pub struct RadialChartBuilder {
 impl RadialChartBuilder {
     /// Finite positive weights preserve source order, names and original indices.
     /// ```
-    /// use gpui_luma_plot::*;
+    /// use xgpui_luma_plot::*;
     /// let data = Dataset::new().with_series(Series::new("a","A",[
     ///     Sample::new(0.0,200.0), Sample::new(1.0,120.0),
     /// ]))?;
@@ -101,7 +101,7 @@ impl RadialChartBuilder {
     /// SDK tooltip for a visible bar; configure delay on the returned tooltip.
     pub fn bar_tooltip(
         mut self,
-        tooltip: impl Fn(&RadialBar) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&RadialBar) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.tooltip = Some(Arc::new(tooltip));
         self

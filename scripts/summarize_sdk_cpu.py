@@ -48,7 +48,7 @@ def summarize(path, start_ns=2_000_000_000, end_ns=12_000_000_000):
         if names:
             leaf[names[0]] += weight
         for name in set(names):
-            if "gpui_luma" in name:
+            if "xgpui_luma" in name:
                 sdk[name] += weight
     if not observed_main_rows:
         raise ValueError("trace has no fixture main-thread samples")

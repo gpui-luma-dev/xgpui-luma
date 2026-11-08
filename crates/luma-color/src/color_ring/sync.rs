@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use gpui::{App, Entity};
 
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 
 use super::domain_renderer::ColorRingDomainRenderer;
 use super::track_context::ColorRingTrackContext;

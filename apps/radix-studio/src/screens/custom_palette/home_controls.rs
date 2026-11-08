@@ -1,6 +1,6 @@
 //! Home-screen control construction. Bind every example explicitly to the draft look.
 use gpui::{Context, Entity, div, prelude::*, px};
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     button::Button,
     popup_menu::PopupMenu,
     tabs::{Tabs, TabsItem},
@@ -8,9 +8,9 @@ use gpui_luma::controls::{
     toolbar::Toolbar,
     tree_view::TreeView,
 };
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::prelude::TooltipEntityExt;
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::prelude::TooltipEntityExt;
+use xgpui_luma_look_radix::{self as radix, Look};
 use super::super::shared::tree_view;
 
 #[derive(Clone)]
@@ -21,7 +21,7 @@ pub struct PreviewControls {
     pub tree: TreeView<()>,
     pub search_field: TextField,
     pub search_submit: Entity<Button>,
-    pub tooltip_slider: gpui_luma::controls::slider::Slider,
+    pub tooltip_slider: xgpui_luma::controls::slider::Slider,
     pub sign_up_name: TextField,
     pub sign_up_email: TextField,
     pub sign_up_password: TextField,

@@ -566,7 +566,7 @@ impl CommonStylesheet {
     /// after editing the sheet; existing themes retain their captured styling.
     ///
     /// ```
-    /// use gpui_luma::{
+    /// use xgpui_luma::{
     ///     color::GamutMapping,
     ///     controls::progress::{DefaultProgressTheme, ProgressTheme},
     ///     theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},

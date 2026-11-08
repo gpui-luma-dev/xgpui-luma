@@ -19,7 +19,7 @@ impl LegendPresentation {
 /// Filled swatches use the legend's configured height; lines use their stroke width.
 /// ```
 /// use gpui::{black, white, px, linear_gradient, linear_color_stop};
-/// use gpui_luma_plot::{Stroke, SwatchPresentation};
+/// use xgpui_luma_plot::{Stroke, SwatchPresentation};
 /// let line = SwatchPresentation::Line(Stroke { color: black(), width: px(3.0) });
 /// let solid = SwatchPresentation::Fill(black().into());
 /// let gradient = SwatchPresentation::Fill(linear_gradient(

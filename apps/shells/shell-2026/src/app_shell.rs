@@ -1,5 +1,5 @@
 use gpui::{App, AppContext, Bounds, WindowBounds, WindowOptions, px, size};
-use gpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
+use xgpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
 use luma_shell_common::ShellThemeChoice;
 
 use crate::app::{SHELL_TITLEBAR_HEIGHT, Shell2026App};

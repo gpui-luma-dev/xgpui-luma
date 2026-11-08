@@ -1,7 +1,7 @@
 //! Radix pagination using shared button styling and SDK pager geometry.
 use std::sync::Arc;
 use gpui::SharedString;
-use gpui_luma::controls::pager::*;
+use xgpui_luma::controls::pager::*;
 use crate::{ButtonVariant, Look, Paint, ScaleFamily, SemanticRole, Tone};
 struct PagerThemeAdapter {
     look: Look,
@@ -36,7 +36,7 @@ impl PagerTheme for PagerThemeAdapter {
         resolved.shadow.clear();
         resolved
     }
-    fn button_template(&self, _: &PagerLook) -> Arc<dyn gpui_luma::controls::button::ButtonTemplate<()>> {
+    fn button_template(&self, _: &PagerLook) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<()>> {
         crate::button_template(&self.look, ButtonVariant::Ghost, Paint::accent())
     }
 }

@@ -1,18 +1,18 @@
 [package]
-name = "gpui-luma-plot"
+name = "xgpui-luma-plot"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 publish = ["crates-io"]
 homepage.workspace = true
-description = "Native plotting SDK foundations for GPUI-Luma"
+description = "Native plotting SDK foundations for XGPUI-Luma"
 keywords = ["gpui", "plotting", "charts", "gui"]
 categories = ["gui", "visualization"]
 
 [dependencies]
 gpui.workspace = true
-gpui-luma.workspace = true
+xgpui-luma.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }

@@ -1,15 +1,15 @@
 use gpui::Subscription;
-use gpui_luma::controls::tabs::TabsEventExt;
-use gpui_luma::controls::popover_button::PopoverButtonEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::popover_button::PopoverButtonEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Bounds, Context, Entity, Focusable, Pixels, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
-use gpui_luma::controls::tabs::{Tabs, TabsContent, TabsEvent, TabsItem, TabsTemplate, TabsWidthMode};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::paint::floating_menu_look;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
+use xgpui_luma::controls::tabs::{Tabs, TabsContent, TabsEvent, TabsItem, TabsTemplate, TabsWidthMode};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::paint::floating_menu_look;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::cards::render_demo_board;
 use super::controls;
@@ -302,7 +302,7 @@ fn scrollable_body() -> gpui::Div {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use gpui_luma::motion::{Transition, Easing};
+    use xgpui_luma::motion::{Transition, Easing};
 
     #[test]
     fn main_tabs_route_panels_through_the_inherited_content_role() {

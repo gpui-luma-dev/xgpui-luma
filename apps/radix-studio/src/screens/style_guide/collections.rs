@@ -1,12 +1,12 @@
 //! Live Radix listbox, checkbox-group, and non-segmented radio-group examples.
-use gpui_luma::controls::radio_group::RadioGroupEventExt;
-use gpui_luma::controls::control_group::ControlGroupEventExt;
+use xgpui_luma::controls::radio_group::RadioGroupEventExt;
+use xgpui_luma::controls::control_group::ControlGroupEventExt;
 use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
-use gpui_luma::controls::radio_group::{RadioGroup, RadioGroupEvent};
-use gpui_luma::controls::listbox::{ListBoxControl, ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode};
-use gpui_luma::vstack;
-use gpui_luma_look_radix::{self as radix, Look, SemanticRole};
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
+use xgpui_luma::controls::radio_group::{RadioGroup, RadioGroupEvent};
+use xgpui_luma::controls::listbox::{ListBoxControl, ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode};
+use xgpui_luma::vstack;
+use xgpui_luma_look_radix::{self as radix, Look, SemanticRole};
 use super::super::section::section;
 
 pub(crate) struct Collections {
@@ -232,8 +232,8 @@ mod tests {
         let mut app = TestAppContext::single();
         let (view, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::focus::bind_default_focus_keys(cx);
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::focus::bind_default_focus_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             Collections::new(&Look::built_in(), cx)
         });
         cx.simulate_resize(gpui::size(px(900.0), px(1200.0)));

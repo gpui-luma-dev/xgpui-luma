@@ -1,11 +1,11 @@
 //! Tooltip options exercised against one retained preview.
-use gpui_luma::controls::textfield::TextFieldEventExt;
-use gpui_luma::controls::slider::SliderEventExt;
-use gpui_luma::controls::switch::SwitchEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::switch::SwitchEventExt;
 use std::{sync::Arc, time::Duration};
 use gpui::{AnyElement, FontWeight, Context, Entity, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{
     controls::{
         button::{Button},
         slider::{Slider, SliderEvent},
@@ -15,7 +15,7 @@ use gpui_luma::{
     },
     prelude::{HasPresenter, TooltipEntityExt},
 };
-use gpui_luma_look_radix::{self as radix, Look, SemanticRole};
+use xgpui_luma_look_radix::{self as radix, Look, SemanticRole};
 use crate::assets::{icon_named, react_icon};
 
 const DEFAULT_TEXT: &str = "This is a theme-aware tooltip";
@@ -51,7 +51,7 @@ pub struct TooltipPlayground {
     reset_all: Entity<Button>,
 
     #[cfg(all(test, feature = "test-support"))]
-    render_probe: Option<gpui_luma::controls::tooltip::TooltipTemplate>,
+    render_probe: Option<xgpui_luma::controls::tooltip::TooltipTemplate>,
 }
 
 impl TooltipPlayground {
@@ -297,7 +297,7 @@ fn reset_button<M: 'static>(id: &'static str, help: &'static str, look: &Look, c
     radix::Button::new(id)
         .look(look)
         .ghost_quiet()
-        .role(gpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+        .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
         .content(|model, _| {
             icon_named("reset")
                 .map(|icon| react_icon(icon, model.look.foreground, 15.0))
@@ -581,7 +581,7 @@ mod tests {
         let look = Arc::new(Look::built_in());
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             Page { playground: cx.new(|cx| TooltipPlayground::new(&look, cx)) }
         });
         cx.simulate_resize(gpui::size(px(1300.0), px(2600.0)));
@@ -640,7 +640,7 @@ mod tests {
         let look = Arc::new(Look::built_in());
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             Page { playground: cx.new(|cx| TooltipPlayground::new(&look, cx)) }
         });
         cx.simulate_resize(gpui::size(px(1300.0), px(2600.0)));
@@ -769,7 +769,7 @@ mod tests {
         cx.executor().advance_clock(Duration::from_millis(delay_ms));
         cx.run_until_parked();
         assert!(rendered.load(Ordering::Relaxed) > dismissed);
-        use gpui_luma::controls::tooltip::TooltipEvent;
+        use xgpui_luma::controls::tooltip::TooltipEvent;
         cx.executor().advance_clock(Duration::from_millis(duration_ms - 1));
         cx.run_until_parked();
         assert_eq!(events.lock().unwrap().last(), Some(&TooltipEvent::Shown));

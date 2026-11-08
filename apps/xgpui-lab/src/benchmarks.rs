@@ -1,8 +1,8 @@
 //! Embedded Parley, Shader and SVG workloads. Isolated jobs launch only this executable.
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
-use gpui_luma::{controls::button::Button, prelude::HasPresenter};
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
+use xgpui_luma_look_radix::{self as radix, Look};
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},
@@ -499,7 +499,7 @@ pub fn run_cli(args: &[String], suite: Suite, flag: &str) -> Result<()> {
         "selected SVG benchmark requires --input <file>"
     );
     gpui_platform::application().with_assets(crate::assets::Assets).run(move |cx| {
-        if let Err(error) = gpui_luma::init(cx) {
+        if let Err(error) = xgpui_luma::init(cx) {
             eprintln!("{error:#}");
             std::process::exit(1);
         }

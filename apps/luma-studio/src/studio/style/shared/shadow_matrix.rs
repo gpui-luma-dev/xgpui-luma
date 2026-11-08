@@ -1,5 +1,5 @@
 use gpui::{AnyElement, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnShadow};
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnShadow};
 
 #[derive(Clone, Copy)]
 pub(crate) enum ShadowPreviewShape {

@@ -1,5 +1,5 @@
 use gpui::{InteractiveElement, StatefulInteractiveElement, Styled, px};
-use gpui_luma::theme::{LumaTextScale, LumaTextStyle, LumaTypography};
+use xgpui_luma::theme::{LumaTextScale, LumaTextStyle, LumaTypography};
 
 use crate::context::with_active_look;
 use crate::tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};

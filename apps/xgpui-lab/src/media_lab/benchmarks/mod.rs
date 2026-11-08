@@ -395,7 +395,7 @@ pub(crate) fn run_cli(args: &[String]) -> Result<()> {
     std::fs::create_dir_all(&output)?;
     let output = output.canonicalize()?;
     gpui_platform::application().with_assets(crate::assets::Assets).run(move |cx| {
-        if let Err(error) = gpui_luma::init(cx) {
+        if let Err(error) = xgpui_luma::init(cx) {
             eprintln!("{error:#}");
             std::process::exit(1);
         }
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn cancelled_queued_run_releases_busy_state_without_opening_a_workload_window() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Benchmarks::new(crate::theme::default_look(), cx));
         let output = tempfile::tempdir().unwrap();
         let before = cx.update(|_, cx| cx.windows().len());

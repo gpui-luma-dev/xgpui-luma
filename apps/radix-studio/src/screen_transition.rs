@@ -1,7 +1,7 @@
 //! App-owned, interruption-aware slide using public SDK APIs.
 use std::collections::HashMap;
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, relative};
-use gpui_luma::controls::tabs::{
+use xgpui_luma::controls::tabs::{
     TabsContentTransition, TabsTransitionChange, TabsTransitionDirection, TabsTransitionFrame, TabsTransitionRenderer,
 };
 

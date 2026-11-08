@@ -1,17 +1,17 @@
 //! Scrolling table control exposition — task grid that fills the available pane.
 
-use gpui_luma::controls::table::TableEventExt;
+use xgpui_luma::controls::table::TableEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::table::{Table, TableEvent};
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::{column, column_emphasis};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::table::{Table, TableEvent};
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::{column, column_emphasis};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
@@ -145,7 +145,7 @@ impl ScrollingTableControlExposition {
         let entry = *catalog_entry("scrolling-table").expect("scrolling-table catalog entry");
 
         let tasks = build_task_rows_with_count(TASK_COUNT);
-        let table = gpui_luma_look_shadcn::Table::new("controls-doc-table-scroll")
+        let table = xgpui_luma_look_shadcn::Table::new("controls-doc-table-scroll")
             .look(&look)
             .items(tasks)
             .extended()
@@ -181,7 +181,7 @@ impl ScrollingTableControlExposition {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(gpui_luma::infra::icon::lucide_icon(
+                        .child(xgpui_luma::infra::icon::lucide_icon(
                             LucideIcon::EllipsisVertical,
                             gpui::hsla(0.0, 0.0, 0.5, 1.0),
                             16.0,
@@ -205,17 +205,17 @@ impl ScrollingTableControlExposition {
             .spawn(cx);
         table.update(cx, |table, cx| table.set_row_key(|row| row.id.clone(), cx)).expect("unique task IDs");
         table.update(cx, |table, cx| table.set_row_reordering(true, cx)).expect("keyed table");
-        let sort_button = gpui_luma_look_shadcn::Button::new("table-sort")
+        let sort_button = xgpui_luma_look_shadcn::Button::new("table-sort")
             .look(&look)
             .outline()
             .label("Reverse row order")
             .spawn(cx);
-        let select_button = gpui_luma_look_shadcn::Button::new("table-owner-selection")
+        let select_button = xgpui_luma_look_shadcn::Button::new("table-owner-selection")
             .look(&look)
             .outline()
             .label("Select tasks 1–3")
             .spawn(cx);
-        let jump_button = gpui_luma_look_shadcn::Button::new("table-jump-last")
+        let jump_button = xgpui_luma_look_shadcn::Button::new("table-jump-last")
             .look(&look)
             .outline()
             .label("Jump to last row")
@@ -265,7 +265,7 @@ impl ScrollingTableControlExposition {
 
         let left_pane = cx.new(|cx: &mut Context<ScrollingTableExpositionLeftPane>| {
             let pane = cx.entity().downgrade();
-            let details = gpui_luma_look_shadcn::Accordion::new("scrolling-table-details")
+            let details = xgpui_luma_look_shadcn::Accordion::new("scrolling-table-details")
                 .look(&look)
                 .single()
                 .collapsible(true)

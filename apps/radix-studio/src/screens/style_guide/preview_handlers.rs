@@ -5,15 +5,15 @@ use std::sync::Arc;
 use gpui::{
     App, Bounds, ClickEvent, DragMoveEvent, KeyDownEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Window,
 };
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderBoundsHandler, SliderDrag, SliderHoverHandler, SliderMouseDownHandler, SliderMouseMoveHandler,
     SliderMouseUpHandler, SliderTemplateHandlers, ThumbId,
 };
-use gpui_luma::controls::textarea::{
+use xgpui_luma::controls::textarea::{
     TextAreaClickHandler, TextAreaDrag, TextAreaHoverHandler, TextAreaKeyDownHandler, TextAreaMouseDownHandler,
     TextAreaMouseMoveHandler, TextAreaMouseUpHandler, TextAreaTemplateHandlers,
 };
-use gpui_luma::controls::textfield::{
+use xgpui_luma::controls::textfield::{
     TextFieldClickHandler, TextFieldDrag, TextFieldDragMoveHandler, TextFieldHoverHandler, TextFieldKeyDownHandler,
     TextFieldMouseDownHandler, TextFieldMouseMoveHandler, TextFieldMouseUpHandler, TextFieldTemplateHandlers,
 };
@@ -69,8 +69,8 @@ pub fn slider_handlers() -> SliderTemplateHandlers {
     }
 }
 
-pub fn selection_panel_handlers(count: usize) -> gpui_luma::controls::selection_panel::SelectionPanelTemplateHandlers {
-    gpui_luma::controls::selection_panel::SelectionPanelTemplateHandlers {
+pub fn selection_panel_handlers(count: usize) -> xgpui_luma::controls::selection_panel::SelectionPanelTemplateHandlers {
+    xgpui_luma::controls::selection_panel::SelectionPanelTemplateHandlers {
         item_hovers: (0..count).map(|_| Box::new(noop_hover) as _).collect(),
         item_mouse_downs: (0..count).map(|_| Box::new(noop_mouse_down) as _).collect(),
         item_mouse_ups: (0..count).map(|_| Box::new(noop_mouse_up) as _).collect(),
@@ -79,8 +79,8 @@ pub fn selection_panel_handlers(count: usize) -> gpui_luma::controls::selection_
     }
 }
 
-pub fn scrollbar_handlers() -> gpui_luma::controls::scrollbar::ScrollbarTemplateHandlers {
-    gpui_luma::controls::scrollbar::ScrollbarTemplateHandlers {
+pub fn scrollbar_handlers() -> xgpui_luma::controls::scrollbar::ScrollbarTemplateHandlers {
+    xgpui_luma::controls::scrollbar::ScrollbarTemplateHandlers {
         track_bounds: Box::new(noop_bounds),
         thumb_bounds: Box::new(noop_bounds),
         hover: Box::new(noop_hover),
@@ -92,8 +92,8 @@ pub fn scrollbar_handlers() -> gpui_luma::controls::scrollbar::ScrollbarTemplate
     }
 }
 
-pub fn control_group_handlers(count: usize) -> gpui_luma::controls::control_group::ControlGroupTemplateHandlers {
-    gpui_luma::controls::control_group::ControlGroupTemplateHandlers {
+pub fn control_group_handlers(count: usize) -> xgpui_luma::controls::control_group::ControlGroupTemplateHandlers {
+    xgpui_luma::controls::control_group::ControlGroupTemplateHandlers {
         item_bounds: (0..count).map(|_| Box::new(noop_bounds) as _).collect(),
         item_hovers: (0..count).map(|_| Box::new(noop_hover) as _).collect(),
         item_mouse_downs: (0..count).map(|_| Box::new(noop_mouse_down) as _).collect(),
@@ -102,8 +102,8 @@ pub fn control_group_handlers(count: usize) -> gpui_luma::controls::control_grou
         item_clicks: (0..count).map(|_| Box::new(noop_click) as _).collect(),
     }
 }
-pub fn accordion_handlers(count: usize) -> gpui_luma::controls::accordion::AccordionTemplateHandlers {
-    gpui_luma::controls::accordion::AccordionTemplateHandlers {
+pub fn accordion_handlers(count: usize) -> xgpui_luma::controls::accordion::AccordionTemplateHandlers {
+    xgpui_luma::controls::accordion::AccordionTemplateHandlers {
         drag: None,
         trigger_hovers: (0..count).map(|_| Box::new(noop_hover) as _).collect(),
         trigger_mouse_downs: (0..count).map(|_| Box::new(noop_mouse_down) as _).collect(),
@@ -112,8 +112,8 @@ pub fn accordion_handlers(count: usize) -> gpui_luma::controls::accordion::Accor
         content_height_reports: (0..count).map(|_| Box::new(|_: f32, _: &mut Window, _: &mut App| {}) as _).collect(),
     }
 }
-pub fn pager_handlers() -> gpui_luma::controls::pager::PagerTemplateHandlers {
-    gpui_luma::controls::pager::PagerTemplateHandlers {
+pub fn pager_handlers() -> xgpui_luma::controls::pager::PagerTemplateHandlers {
+    xgpui_luma::controls::pager::PagerTemplateHandlers {
         outside_mouse_down: Arc::new(noop_mouse_down),
         toggle_page_size: Arc::new(noop_click),
         set_page: Arc::new(|_, _, _, _| {}),
@@ -121,8 +121,8 @@ pub fn pager_handlers() -> gpui_luma::controls::pager::PagerTemplateHandlers {
     }
 }
 
-pub fn dock_splitter_handlers() -> gpui_luma::controls::dock_splitter::DockSplitterTemplateHandlers {
-    gpui_luma::controls::dock_splitter::DockSplitterTemplateHandlers {
+pub fn dock_splitter_handlers() -> xgpui_luma::controls::dock_splitter::DockSplitterTemplateHandlers {
+    xgpui_luma::controls::dock_splitter::DockSplitterTemplateHandlers {
         hover: Box::new(noop_hover),
         mouse_down: Box::new(noop_mouse_down),
         mouse_up: Box::new(noop_mouse_up),
@@ -130,8 +130,8 @@ pub fn dock_splitter_handlers() -> gpui_luma::controls::dock_splitter::DockSplit
         key_down: Box::new(noop_key_down),
     }
 }
-pub fn split_view_handlers() -> gpui_luma::controls::split_view::SplitViewTemplateHandlers {
-    gpui_luma::controls::split_view::SplitViewTemplateHandlers {
+pub fn split_view_handlers() -> xgpui_luma::controls::split_view::SplitViewTemplateHandlers {
+    xgpui_luma::controls::split_view::SplitViewTemplateHandlers {
         separator_hover: Box::new(noop_hover),
         separator_mouse_down: Box::new(noop_mouse_down),
         separator_click: Box::new(noop_click),
@@ -141,14 +141,14 @@ pub fn split_view_handlers() -> gpui_luma::controls::split_view::SplitViewTempla
     }
 }
 
-pub fn slide_panel_handlers() -> gpui_luma::controls::slide_panel::SlidePanelOverlayHandlers {
-    gpui_luma::controls::slide_panel::SlidePanelOverlayHandlers {
+pub fn slide_panel_handlers() -> xgpui_luma::controls::slide_panel::SlidePanelOverlayHandlers {
+    xgpui_luma::controls::slide_panel::SlidePanelOverlayHandlers {
         key_down: Box::new(noop_key_down),
         backdrop_mouse_down: Box::new(noop_mouse_down),
     }
 }
-pub fn slide_panel_resize_handlers() -> gpui_luma::controls::slide_panel::SlidePanelResizeHandlers {
-    gpui_luma::controls::slide_panel::SlidePanelResizeHandlers {
+pub fn slide_panel_resize_handlers() -> xgpui_luma::controls::slide_panel::SlidePanelResizeHandlers {
+    xgpui_luma::controls::slide_panel::SlidePanelResizeHandlers {
         mouse_down: Box::new(noop_mouse_down),
         drag_move: Box::new(|_, _, _| {}),
         mouse_up: Box::new(noop_mouse_up),

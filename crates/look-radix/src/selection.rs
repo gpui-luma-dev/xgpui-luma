@@ -4,10 +4,10 @@
 use std::sync::Arc;
 
 use gpui::SharedString;
-use gpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
-use gpui_luma::controls::autocomplete::{AutocompleteLook, AutocompleteTheme, SelectionItem};
-use gpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
-use gpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
+use xgpui_luma::controls::autocomplete::{AutocompleteLook, AutocompleteTheme, SelectionItem};
+use xgpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle};
 use crate::{Look, PopupMenuVariant, SemanticRole, TextFieldVariant, Tone};
 
 struct AutocompleteThemeAdapter {
@@ -18,7 +18,7 @@ impl AutocompleteTheme for AutocompleteThemeAdapter {
     fn resolve(&self, size: ControlSize) -> AutocompleteLook {
         let geometry = self.look.common_stylesheet().autocomplete.resolve_geometry(
             size.stylesheet_key(),
-            gpui_luma::theme::stylesheet::AutocompleteGeometry {
+            xgpui_luma::theme::stylesheet::AutocompleteGeometry {
                 status_font_size: 12.0,
                 status_line_height: 16.0,
                 ..Default::default()
@@ -51,8 +51,8 @@ pub fn autocomplete_theme(look: &Look) -> Arc<dyn AutocompleteTheme> {
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma::controls::autocomplete::SelectionItem;
-/// use gpui_luma_look_radix::{Look, autocomplete_builder};
+/// use xgpui_luma::controls::autocomplete::SelectionItem;
+/// use xgpui_luma_look_radix::{Look, autocomplete_builder};
 /// fn example<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     let control = autocomplete_builder(look, "fruit", [SelectionItem::new("apple", "Apple")])
 ///         .placeholder("Find fruit").spawn(cx);
@@ -160,7 +160,7 @@ pub fn selection_panel_builder<T: SelectionPanelItemLike + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     use crate::{Accent, Gray};
 
     #[test]
@@ -208,8 +208,8 @@ mod tests {
 #[test]
 fn panel_factory_keeps_sdk_scroll_policies() {
     use gpui::TestAppContext;
-    use gpui_luma::interaction::{ScrollBoundaryPolicy, WheelFocusScope, WheelScrollPolicy};
-    use gpui_luma::controls::selection_panel::SelectionPanelItem;
+    use xgpui_luma::interaction::{ScrollBoundaryPolicy, WheelFocusScope, WheelScrollPolicy};
+    use xgpui_luma::controls::selection_panel::SelectionPanelItem;
     let mut app = TestAppContext::single();
     let look = Look::built_in();
     let control = selection_panel_builder(&look, "policy", [SelectionPanelItem::new("a").label("A")])

@@ -1,8 +1,8 @@
 //! Radix sidebar row, section, rail-menu, and scrollbar adapters.
 use std::sync::Arc;
 use gpui::SharedString;
-use gpui_luma::controls::sidebar::*;
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::controls::sidebar::*;
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
 use crate::{Look, PopupMenuVariant, ScaleFamily, SemanticRole, Tone};
 struct SidebarThemeAdapter {
     look: Look,
@@ -35,15 +35,15 @@ impl SidebarThemeAdapter {
     }
 }
 impl SidebarTheme for SidebarThemeAdapter {
-    fn typography(&self) -> gpui_luma::theme::LumaTypography {
-        let mut typography = gpui_luma::theme::LumaTypography::default();
+    fn typography(&self) -> xgpui_luma::theme::LumaTypography {
+        let mut typography = xgpui_luma::theme::LumaTypography::default();
         typography.font.sans.family = crate::typography::font_family(&self.look).to_string();
         typography
     }
     fn section_font_features(&self) -> gpui::FontFeatures {
         self.look.common_stylesheet().font_features.resolve("sidebar_section")
     }
-    fn geometry(&self) -> gpui_luma::theme::stylesheet::SidebarGeometry {
+    fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
         self.look.common_stylesheet().sidebar.resolve_geometry("", Default::default())
     }
     fn foreground(&self) -> gpui::Hsla {
@@ -63,15 +63,15 @@ impl SidebarTheme for SidebarThemeAdapter {
     fn metrics(&self) -> MetricTokens {
         self.look.metrics()
     }
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         crate::navigation::drag_look(&self.look, size)
     }
 }
 struct RailMenuTheme {
     look: Look,
 }
-impl gpui_luma::controls::floating_menu::FloatingMenuTheme for RailMenuTheme {
-    fn resolve(&self) -> gpui_luma::controls::floating_menu::FloatingMenuLook {
+impl xgpui_luma::controls::floating_menu::FloatingMenuTheme for RailMenuTheme {
+    fn resolve(&self) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
         crate::floating_menu_look(&self.look, PopupMenuVariant::Solid, Tone::Accent)
     }
 }

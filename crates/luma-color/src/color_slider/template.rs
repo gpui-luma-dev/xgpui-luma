@@ -3,12 +3,12 @@ use std::sync::{Arc, OnceLock, RwLock};
 use gpui::{App, Corners, CornersRefinement, Div, Pixels, Stateful, Window, canvas, div, px, relative, prelude::*};
 
 use crate::style::StyledExt;
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderInteractionHandlers, SliderOrientation, SliderRenderModel, SliderTemplate, SliderTemplateHandlers,
     SliderThumbValue, ThumbId, TrackSegment, TrackSegmentKind, attach_linear_interaction, attach_thumb_drag,
     display_position, render_domain_track_layer, segment_corner_radii, segment_display_span,
 };
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 
 use super::color_thumb::{ColorThumb, ThumbAxis, ThumbShape};
 use super::radius::{inner_track_corner_radius, inset_corner_radii, resolve_track_corner_radii, TRACK_BORDER_WIDTH};

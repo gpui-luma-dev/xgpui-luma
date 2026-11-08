@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::{GridLayout, GridTrack, hstack, vstack};
-use gpui_luma_look_radix::{Look, SCALE_LEN, ScaleFamily};
+use xgpui_luma::{GridLayout, GridTrack, hstack, vstack};
+use xgpui_luma_look_radix::{Look, SCALE_LEN, ScaleFamily};
 
 /// Gutter between shade cells (matches Custom Palette).
 const SCALE_SWATCH_GAP: f32 = 3.0;

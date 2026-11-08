@@ -23,9 +23,9 @@
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><a href="colors.html">Color controls</a></div><h1>Color Swatch</h1><p class="intro">Preview a retained source color, or use a swatch as an SDK button.</p>
 <section id="preview"><h2>Try it</h2><p>Click the small swatch to open Studio’s saturation/value, hue, and opacity picker. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--chart"><iframe data-luma-example src="examples/embed.html?id=color-swatch-basic" title="Live color swatch code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=color-swatch-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Preview and clickable swatch</h2><div class="codebox"><div class="codebar"><span>Static preview and picker trigger</span><button class="copy" aria-label="Copy Static preview and picker trigger">Copy</button></div><pre><code class="language-rust" data-live-example="color-swatch-basic">use std::sync::Arc;
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::color::ColorValue;
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::color::ColorValue;
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_look_shadcn::ShadcnLook;
 // The same app-level picker composition used by Luma Studio.
 use luma_app_common::color_picker::{ColorPickerEvent, ColorPickerPopover};
 
@@ -69,7 +69,7 @@ impl Render for Example {
 </tbody>
 </table>
 </div><p>Update the typed payload with <code>button.update(cx, |button, cx| button.set_data(data, cx))</code> when the selected source color changes. Keep the source color in the owner model too, so previews and picker content share the same value. See <a href="colors.html#compose">picker composition</a> and <a href="button.html#events">Button events</a>.</p></section>
-<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/luma-color/src/swatch.rs">Implementation</a></p></section>
+<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/luma-color/src/swatch.rs">Implementation</a></p></section>
 <footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#preview">Try it</a><a href="#use">Preview and clickable swatch</a><a href="#appearance">Appearance and source colors</a><a href="#events">Button events and updates</a><a href="#source">Source</a></nav>
 </div>

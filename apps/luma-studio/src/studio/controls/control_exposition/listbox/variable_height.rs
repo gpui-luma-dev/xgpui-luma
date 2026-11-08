@@ -1,10 +1,10 @@
 //! The same content-sized template in eager and measured-virtualized lists.
-use gpui_luma::controls::selector::SelectorEventExt;
-use gpui_luma::controls::checkbox::CheckboxEventExt;
+use xgpui_luma::controls::selector::SelectorEventExt;
+use xgpui_luma::controls::checkbox::CheckboxEventExt;
 use std::{cell::Cell, sync::Arc};
 use gpui::{Context, Div, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::{
     checkbox::{Checkbox},
     button::{Button},
     selector::{Selector, SelectorEvent, SelectorItem},
@@ -13,10 +13,10 @@ use gpui_luma::controls::{
         ListBoxVirtualWindow, SelectionMode, SelectionPolicy,
     },
 };
-use gpui_luma::{hstack, vstack};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn::{self as shadcn, LumaTypographyExt, ShadcnLook, ShadcnTextSize};
-use gpui_luma_look_shadcn::prelude::*;
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn::{self as shadcn, LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma_look_shadcn::prelude::*;
 use super::{
     markup::listbox,
     presentation::{ExamplePresentation, SelectionMark},
@@ -71,7 +71,7 @@ struct NotesList {
 }
 
 impl NotesList {
-    pub(super) fn captured_motion(&self) -> (bool, gpui_luma::controls::listbox::ListBoxMotion) {
+    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
         (self.list.is_motion_enabled(), self.list.motion_profile())
     }
 
@@ -185,7 +185,7 @@ pub(super) struct VariableHeightExample {
 }
 
 impl VariableHeightExample {
-    pub(super) fn captured_motions(&self, cx: &gpui::App) -> [(bool, gpui_luma::controls::listbox::ListBoxMotion); 2] {
+    pub(super) fn captured_motions(&self, cx: &gpui::App) -> [(bool, xgpui_luma::controls::listbox::ListBoxMotion); 2] {
         [self.lists[0].read(cx).captured_motion(), self.lists[1].read(cx).captured_motion()]
     }
 
@@ -341,8 +341,8 @@ impl Render for VariableHeightExample {
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
-    use gpui_luma::controls::checkbox::CheckboxEvent;
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::checkbox::CheckboxEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     use gpui::{TestAppContext, VisualTestContext};
     use super::*;
 

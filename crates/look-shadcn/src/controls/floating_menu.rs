@@ -13,11 +13,11 @@ use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::controls::floating_menu::FloatingMenuLook;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::floating_menu::FloatingMenuLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -124,7 +124,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
     super::typography::apply_button_metrics_typography(&mut item_typography, mode, size);
     let item_icon_size = super::button::button_box_scale(&ctx, mode.stylesheet(), size, 1.0).icon_size;
 
-    let base_recipe = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
+    let base_recipe = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .floating_menu
         .authored_geometry(crate::tables::metrics::helpers::control_size_key(size));
     let recipe = mode
@@ -180,7 +180,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
     }
     let geometry = mode.stylesheet().common.floating_menu.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::FloatingMenuGeometry {
+        xgpui_luma::theme::stylesheet::FloatingMenuGeometry {
             border_width: look.border_width,
             padding: look.padding,
             min_width: look.min_width,
@@ -237,9 +237,9 @@ fn floating_menu_elevation_shadow(
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -270,7 +270,7 @@ mod tests {
     #[test]
     fn floating_menu_resolves_stylesheet_shadow() {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let look = floating_menu_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Md);
+        let look = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Md);
 
         assert!(!look.shadow.is_empty());
     }
@@ -279,7 +279,7 @@ mod tests {
     fn floating_menu_uses_popover_surface_and_accent_item_hover() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = floating_menu_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Md);
+        let look = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Md);
 
         assert_eq!(look.background, catalog.color("popover").expect("popover"));
         assert_eq!(look.foreground, catalog.color("popover-foreground").expect("popover-foreground"));
@@ -290,9 +290,9 @@ mod tests {
     #[test]
     fn floating_menu_item_typography_scales_with_size() {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let sm = floating_menu_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Sm);
-        let md = floating_menu_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Md);
-        let lg = floating_menu_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Lg);
+        let sm = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Sm);
+        let md = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Md);
+        let lg = floating_menu_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Lg);
 
         assert!((sm.item_typography.size - 12.0).abs() < f32::EPSILON);
         assert!((md.item_typography.size - 14.0).abs() < f32::EPSILON);
@@ -435,13 +435,13 @@ pub struct FloatingMenuMetricTable {
 
 pub fn resolve_floating_menu_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> FloatingMenuMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, scaffold_control_metric, spacing_control_metric};
     use crate::catalog::SpacingField;
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let look = crate::paint::floating_menu_look(mode, theme_mode, size);
     let catalog = ctx.catalog();
 
@@ -462,7 +462,7 @@ pub fn resolve_floating_menu_metrics(
     };
     let geometry = mode.stylesheet().common.floating_menu.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::FloatingMenuGeometry {
+        xgpui_luma::theme::stylesheet::FloatingMenuGeometry {
             padding: table.padding.value_px,
             min_width: table.min_width.value_px,
             item_height: table.item_height.value_px,

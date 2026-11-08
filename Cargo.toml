@@ -32,18 +32,18 @@ default-members = [
 version = "1.0.1"
 edition = "2024"
 license = "Apache-2.0"
-repository = "https://github.com/gpui-luma-dev/gpui-luma"
+repository = "https://github.com/gpui-luma-dev/xgpui-luma"
 homepage = "https://gpui-luma.dev"
 publish = false
 
 [workspace.dependencies]
 fasteval = { version = "0.2.4", default-features = false }
 anyhow = "1"
-gpui-luma = { version = "1.0.1", path = "crates/sdk" }
-gpui-luma-color = { version = "1.0.1", path = "crates/luma-color" }
-gpui-luma-look-shadcn = { version = "1.0.1", path = "crates/look-shadcn" }
-gpui-luma-look-radix = { version = "1.0.1", path = "crates/look-radix" }
-gpui-luma-plot = { version = "1.0.1", path = "crates/plot" }
+xgpui-luma = { version = "1.0.1", path = "crates/sdk" }
+xgpui-luma-color = { version = "1.0.1", path = "crates/luma-color" }
+xgpui-luma-look-shadcn = { version = "1.0.1", path = "crates/look-shadcn" }
+xgpui-luma-look-radix = { version = "1.0.1", path = "crates/look-radix" }
+xgpui-luma-plot = { version = "1.0.1", path = "crates/plot" }
 luma-app-common = { path = "apps/common" }
 # Published libraries accept compatible xgpui 2.x releases; Cargo.lock pins local validation.
 gpui = { package = "xgpui", version = "2.0.1" }
@@ -72,7 +72,7 @@ codegen-units = 16
 debug = "limited"
 split-debuginfo = "unpacked"
 
-[profile.dev.package.gpui-luma]
+[profile.dev.package.xgpui-luma]
 opt-level = 2
 
 [profile.dev.package.luma-studio]

@@ -1,13 +1,13 @@
 //! Developer tab screen: live tuning tools that are not part of the design docs.
 
-use gpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, App, div, prelude::*, px};
-use gpui_luma::controls::tabs::{Tabs, TabsEvent};
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent};
 use super::tooltip_playground::TooltipPlayground;
-use gpui_luma::vstack;
-use gpui_luma_look_radix::{Look, SemanticRole};
+use xgpui_luma::vstack;
+use xgpui_luma_look_radix::{Look, SemanticRole};
 
 use super::section::section;
 use crate::controls::ClassicShadowEditor;
@@ -19,7 +19,7 @@ impl State {
     pub fn new<M: 'static>(look: &Arc<Look>, shadow_editor: Entity<ClassicShadowEditor>, cx: &mut Context<M>) -> Self {
         let tooltips = cx.new(|cx| TooltipPlayground::new(look, cx));
         let button_look = Arc::clone(look);
-        let tabs = gpui_luma_look_radix::Tabs::new("developer-tabs")
+        let tabs = xgpui_luma_look_radix::Tabs::new("developer-tabs")
             .look(look)
             .line()
             .with_template_modifier(|root, _| root.flex_none().debug_selector(|| "developer-tabs".into()))

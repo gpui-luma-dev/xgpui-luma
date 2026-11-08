@@ -2240,7 +2240,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui-luma"
+name = "xgpui-luma"
 version = "1.0.1"
 dependencies = [
  "anyhow",
@@ -2256,11 +2256,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui-luma-color"
+name = "xgpui-luma-color"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "gpui-luma",
+ "xgpui-luma",
  "image",
  "palette",
  "smallvec",
@@ -2269,23 +2269,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui-luma-look-radix"
+name = "xgpui-luma-look-radix"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "gpui-luma",
+ "xgpui-luma",
  "serde",
  "toml 0.8.23",
  "xgpui",
 ]
 
 [[package]]
-name = "gpui-luma-look-shadcn"
+name = "xgpui-luma-look-shadcn"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
+ "xgpui-luma",
+ "xgpui-luma-color",
  "lucide-static-svg",
  "serde",
  "toml 0.8.23",
@@ -2293,10 +2293,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui-luma-plot"
+name = "xgpui-luma-plot"
 version = "1.0.1"
 dependencies = [
- "gpui-luma",
+ "xgpui-luma",
  "xgpui",
 ]
 
@@ -3054,9 +3054,9 @@ name = "luma-app-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-shadcn",
  "tracing",
  "xgpui",
 ]
@@ -3066,11 +3066,11 @@ name = "luma-docs-embed"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-radix",
- "gpui-luma-look-shadcn",
- "gpui-luma-plot",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
+ "xgpui-luma-look-shadcn",
+ "xgpui-luma-plot",
  "lucide-static-svg",
  "luma-app-common",
  "wasm-bindgen",
@@ -3084,7 +3084,7 @@ name = "luma-neumorphic-demo"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
+ "xgpui-luma",
  "gtk",
  "lucide-static-svg",
  "xgpui",
@@ -3096,8 +3096,8 @@ name = "luma-plot-viz"
 version = "1.0.1"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-plot",
+ "xgpui-luma",
+ "xgpui-luma-plot",
  "lucide-static-svg",
  "xgpui",
  "xgpui-platform",
@@ -3108,9 +3108,9 @@ name = "luma-radix-studio"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-radix",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
  "gtk",
  "image",
  "lucide-static-svg",
@@ -3126,11 +3126,11 @@ name = "luma-sdk-perf"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-radix",
- "gpui-luma-look-shadcn",
- "gpui-luma-plot",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
+ "xgpui-luma-look-shadcn",
+ "xgpui-luma-plot",
  "libc",
  "lucide-static-svg",
  "luma-app-common",
@@ -3144,8 +3144,8 @@ name = "luma-shell-2026"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
@@ -3158,9 +3158,9 @@ name = "luma-shell-common"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-shadcn",
  "lucide-static-svg",
  "luma-app-common",
  "tracing",
@@ -3173,8 +3173,8 @@ name = "luma-shell-detached"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
@@ -3187,8 +3187,8 @@ name = "luma-shell-split-titlebar"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
@@ -3203,8 +3203,8 @@ name = "luma-shell-vscode"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-shell-common",
@@ -3217,9 +3217,9 @@ name = "luma-studio"
 version = "0.1.1"
 dependencies = [
  "anyhow",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-shadcn",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-shadcn",
  "gtk",
  "lucide-static-svg",
  "luma-app-common",
@@ -7326,9 +7326,9 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "clap",
- "gpui-luma",
- "gpui-luma-color",
- "gpui-luma-look-radix",
+ "xgpui-luma",
+ "xgpui-luma-color",
+ "xgpui-luma-look-radix",
  "gtk",
  "image",
  "libc",

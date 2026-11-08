@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{FontWeight, Hsla, SharedString};
-use gpui_luma::controls::tabs::{TabsBaseline, TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle};
+use xgpui_luma::controls::tabs::{TabsBaseline, TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle};
 
 use crate::look::Look;
 use crate::button::{ButtonVariant, Paint, button_family_theme_with};
-use gpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use crate::scale::ScaleFamily;
 use crate::semantic::SemanticRole;
 use crate::typography::font_family;
@@ -90,7 +90,7 @@ impl Default for TabsBaselineStyle {
 /// Look-wide tab tokens. The baseline and selected indicator can be tuned separately.
 ///
 /// ```
-/// let look = gpui_luma_look_radix::Look::built_in();
+/// let look = xgpui_luma_look_radix::Look::built_in();
 /// let mut style = look.tabs_style();
 /// if let Some(baseline) = &mut style.baseline {
 ///     baseline.height = 2.0;
@@ -117,19 +117,19 @@ impl Default for TabsStyle {
 }
 
 impl TabsStyle {
-    pub(crate) fn from_stylesheet(stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet) -> Self {
-        let defaults = gpui_luma::controls::tabs::default_tabs_theme();
+    pub(crate) fn from_stylesheet(stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet) -> Self {
+        let defaults = xgpui_luma::controls::tabs::default_tabs_theme();
         let list = defaults.resolve_list(true, ControlSize::Md);
         let item = defaults.resolve_item(true, InteractionState::default(), ControlSize::Md);
         let geometry = stylesheet.tabs.inspect_geometry(
             "line",
-            gpui_luma::theme::stylesheet::ResolvedTabsGeometry {
-                list_gap: gpui_luma::theme::provenance::ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
-                list_padding: gpui_luma::theme::provenance::ResolvedMetric::constant(
+            xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
+                list_gap: xgpui_luma::theme::provenance::ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
+                list_padding: xgpui_luma::theme::provenance::ResolvedMetric::constant(
                     list.padding,
                     "SDK tabs list padding",
                 ),
-                indicator_height: gpui_luma::theme::provenance::ResolvedMetric::constant(
+                indicator_height: xgpui_luma::theme::provenance::ResolvedMetric::constant(
                     item.indicator_height,
                     "SDK tabs indicator height",
                 ),
@@ -161,11 +161,11 @@ pub fn tabs_geometry(
     look: &Look,
     variant: TabsVariant,
     size: ControlSize,
-) -> gpui_luma::theme::stylesheet::ResolvedTabsGeometry {
-    use gpui_luma::theme::provenance::ResolvedMetric;
-    use gpui_luma::theme::stylesheet::ResolvedTabsGeometry;
+) -> xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
+    use xgpui_luma::theme::provenance::ResolvedMetric;
+    use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
     let surface = variant == TabsVariant::Surface;
-    let defaults = gpui_luma::controls::tabs::default_tabs_theme();
+    let defaults = xgpui_luma::controls::tabs::default_tabs_theme();
     let list = defaults.resolve_list(true, size);
     let item = defaults.resolve_item(true, InteractionState::default(), size);
     let mut geometry = look.common_stylesheet().tabs.inspect_geometry(
@@ -195,9 +195,9 @@ struct TabsThemeAdapter {
 }
 
 impl TabsTheme for TabsThemeAdapter {
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         let mut drag =
-            gpui_luma::infra::drag_drop::DragDropLook::from_tokens(&gpui_luma::theme::ThemeTokens::default(), size);
+            xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&xgpui_luma::theme::ThemeTokens::default(), size);
         drag.background = self.look.resolve_role(SemanticRole::Surface).hsla();
         drag.foreground = self.look.resolve_role(SemanticRole::Foreground).hsla();
         drag.valid_marker = self.look.resolve_role(SemanticRole::Focus).hsla();
@@ -334,12 +334,12 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn embedded_geometry_preserves_all_modes_sizes_and_variants() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
                 for variant in [TabsVariant::Line, TabsVariant::Surface] {
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn shared_geometry_updates_live_themes_and_keeps_tuning_and_forks() {
-        use gpui_luma::theme::provenance::MetricSource;
+        use xgpui_luma::theme::provenance::MetricSource;
         let look = Look::built_in();
         let line = tabs_theme(&look);
         let surface = tabs_theme_for(&look, TabsVariant::Surface);
@@ -408,7 +408,7 @@ mod tests {
         let look = Look::built_in();
         let tabs = tabs_theme(&look);
         let ghost = button_family_theme_with(&look, ButtonVariant::Ghost, Paint::gray());
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for state in [
                 InteractionState { hovered: true, ..Default::default() },
@@ -445,7 +445,7 @@ mod tests {
         let mut style = look.tabs_style();
         style.baseline = Some(TabsBaselineStyle { height: 3.0, inset_x: 12.0, bottom: 4.0, gray_step: 8, color: None });
         look.set_tabs_style(style);
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             let baseline = theme.baseline(true, ControlSize::Md).unwrap();
             assert_eq!((baseline.height, baseline.inset_x, baseline.bottom), (3.0, 12.0, 4.0));
@@ -524,7 +524,7 @@ mod drag_tests {
     #[test]
     fn drag_surfaces_follow_semantic_roles_in_both_modes() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             let drag = tabs_theme(&look).resolve_drag(ControlSize::Md);
             assert_eq!(drag.background, look.resolve_role(SemanticRole::Surface).hsla());
@@ -536,8 +536,8 @@ mod drag_tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_tabs_stylesheet() -> gpui_luma::theme::stylesheet::TabsStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_tabs_stylesheet() -> xgpui_luma::theme::stylesheet::TabsStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     use HashMap;
     TabsStylesheet {
         variants: HashMap::from([

@@ -1,11 +1,11 @@
-use gpui_luma::controls::accordion::AccordionEventExt;
+use xgpui_luma::controls::accordion::AccordionEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, IntoElement, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionEvent, AccordionItem, AccordionTrigger};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma::{vstack};
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionEvent, AccordionItem, AccordionTrigger};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma::{vstack};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::common::titled_card;

@@ -2,7 +2,7 @@ use crate::{
     BarLayer, BarOrientation, CartesianChartBuilder, CategoryScale, Dataset, NumericScale, PlotPoint, Series, Sample,
 };
 use gpui::{Context, IntoElement, Render, TestAppContext, Window, div, prelude::*, px, point};
-use gpui_luma::controls::tooltip::{Tooltip, TooltipEvent};
+use xgpui_luma::controls::tooltip::{Tooltip, TooltipEvent};
 use std::{
     cell::RefCell,
     rc::Rc,

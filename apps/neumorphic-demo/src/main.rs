@@ -25,7 +25,7 @@ fn main() {
         cx.on_action(quit);
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("Neumorphic Demo").items([MenuItem::action("Quit", Quit)])]);
-        if let Err(error) = gpui_luma::init(cx).and_then(|_| app_shell::open(cx)) {
+        if let Err(error) = xgpui_luma::init(cx).and_then(|_| app_shell::open(cx)) {
             eprintln!("failed to open neumorphic demo: {error:?}");
         }
     });

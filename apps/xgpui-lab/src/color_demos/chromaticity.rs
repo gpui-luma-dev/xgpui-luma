@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use gpui::{prelude::*, *};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use xgpui_color::GamutMapping;
 use xgpui_shader::WindowShaderExt;
 use super::chromaticity_shader::{self, Parameters};
@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn native_selectors_update_simulation_and_source_independently() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| ChromaticityLab::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let (choices, outside) = cx.update(|_, cx| {

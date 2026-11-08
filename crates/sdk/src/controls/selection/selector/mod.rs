@@ -7,7 +7,7 @@
 //!
 //! Default built-in items:
 //! ```ignore
-//! use gpui_luma::controls::selector::{Selector, SelectorItem};
+//! use xgpui_luma::controls::selector::{Selector, SelectorItem};
 //!
 //! let selector = Selector::new("status")
 //!     .items([
@@ -21,7 +21,7 @@
 //! Typed custom items:
 //! ```ignore
 //! use gpui::SharedString;
-//! use gpui_luma::controls::selector::{Selector, SelectorItemLike};
+//! use xgpui_luma::controls::selector::{Selector, SelectorItemLike};
 //!
 //! #[derive(Clone)]
 //! struct SwatchItem {

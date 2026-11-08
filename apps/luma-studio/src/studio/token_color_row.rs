@@ -1,5 +1,5 @@
 use gpui::{IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::theme::{LumaChrome, LumaTextStyle};
+use xgpui_luma::theme::{LumaChrome, LumaTextStyle};
 
 pub(crate) const TOKEN_SWATCH_SIZE: f32 = 30.0;
 const TOKEN_SWATCH_RADIUS: f32 = 4.0;

@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock, RwLock};
 use gpui::{App, Div, Stateful, Window, div, img, px, prelude::*};
 
 use crate::color_slider::color_thumb::{ColorThumb, ThumbShape};
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderRenderModel, SliderTemplate, SliderTemplateHandlers, SliderThumbValue, ThumbId, attach_radial_interaction,
     display_position, render_domain_track_layer, track_bounds_canvas,
 };

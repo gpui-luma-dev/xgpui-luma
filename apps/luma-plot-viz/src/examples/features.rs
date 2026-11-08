@@ -1,14 +1,14 @@
 //! Focused host examples for viewport actions, annotations, log scales and legends.
-use gpui_luma::controls::button;
-use gpui_luma::prelude::HasPresenter;
+use xgpui_luma::controls::button;
+use xgpui_luma::prelude::HasPresenter;
 use gpui::{App, Context, Entity, Render, Window, IntoElement, div, px, prelude::*};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{
     vstack, hstack,
     controls::button::{Button},
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::*;
+use xgpui_luma_plot::*;
 use crate::theme::{self, TypographyExt};
 pub(crate) struct Features {
     data: Dataset,
@@ -169,7 +169,7 @@ crate::examples::motion::entrance!(Features);
 
 #[cfg(test)]
 mod tests {
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     use super::*;
     #[gpui::test]
     fn sdk_zoom_and_reset_preserve_dataset_and_annotations_draw(cx: &mut gpui::TestAppContext) {

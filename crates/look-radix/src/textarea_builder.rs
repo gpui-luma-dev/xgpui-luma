@@ -1,10 +1,10 @@
-//! Look-owned text-area builder. Spawn synthesizes the SDK [`gpui_luma::controls::textarea::TextArea`].
+//! Look-owned text-area builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textarea::TextArea`].
 
 use std::sync::Arc;
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::textarea::{TextAreaBuilder, TextAreaLook, TextAreaRenderModel, Validator};
-use gpui_luma::infra::icon::IconSource;
+use xgpui_luma::controls::textarea::{TextAreaBuilder, TextAreaLook, TextAreaRenderModel, Validator};
+use xgpui_luma::infra::icon::IconSource;
 
 use crate::look::{Look, resolve_look};
 use crate::textarea::{TextAreaSize, textarea_template};
@@ -14,7 +14,7 @@ type TextAreaModifier = Box<dyn Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> S
 
 /// Builder in the guise of a text area: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct TextArea {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::textarea::TextAreaEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::textarea::TextAreaEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -40,7 +40,7 @@ impl TextArea {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::textarea::TextAreaEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::textarea::TextAreaEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -53,7 +53,7 @@ impl TextArea {
         callback: impl Fn(&mut M, &String, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::Change { value } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::Change { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -66,7 +66,7 @@ impl TextArea {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -79,7 +79,7 @@ impl TextArea {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -100,7 +100,7 @@ impl TextArea {
             rows: 4,
             clean_on_escape: false,
             select_all_on_tab_focus: false,
-            max_clipboard_paste_bytes: Some(gpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+            max_clipboard_paste_bytes: Some(xgpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
             resize_handle_icon: None,
             validator: None,
             look_override: None,
@@ -203,7 +203,7 @@ impl TextArea {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::textarea::TextArea> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::textarea::TextArea> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -219,7 +219,7 @@ impl TextArea {
 
     fn into_sdk_builder(self, look: Look) -> TextAreaBuilder {
         let template = textarea_template(&look, self.variant);
-        let mut builder = gpui_luma::controls::textarea::TextArea::new(self.id)
+        let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
             .stylesheet(&look.common_stylesheet())
             .template(template)
             .placeholder(self.placeholder)
@@ -250,7 +250,7 @@ impl TextArea {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {

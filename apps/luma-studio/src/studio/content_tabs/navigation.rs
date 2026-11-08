@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use gpui::{App, Div, Hsla, Stateful, Window, div, prelude::*, px};
-use gpui_luma::infra::ElementExt;
-use gpui_luma::controls::control_group::ControlGroupItemHandlerExt;
-use gpui_luma::controls::tabs::{
+use xgpui_luma::infra::ElementExt;
+use xgpui_luma::controls::control_group::ControlGroupItemHandlerExt;
+use xgpui_luma::controls::tabs::{
     TabsIndicatorMotion, TabsRenderModel, TabsTemplate, TabsTemplateHandlers, TabsTheme, render_tab_button,
     resolve_tabs_uniform_item_width,
 };
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 pub fn luma_studio_tabs_template(look: Arc<ShadcnLook>, tab_size: ControlSize) -> Arc<dyn TabsTemplate> {
     let full_bar_color = look.token_color("border").unwrap_or(look.chrome().border);
@@ -109,14 +109,14 @@ impl TabsTemplate for LumaStudioTabsTemplate {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
-    use gpui_luma::controls::tabs::TabsItem;
+    use xgpui_luma::controls::tabs::TabsItem;
 
     #[test]
     fn content_tab_targets_preserve_navigation() {
         let mut app = gpui::TestAppContext::single();
         let look = Arc::new(ShadcnLook::built_in());
         struct Page {
-            tabs: gpui::Entity<gpui_luma::controls::tabs::Tabs>,
+            tabs: gpui::Entity<xgpui_luma::controls::tabs::Tabs>,
         }
         impl gpui::Render for Page {
             fn render(&mut self, _: &mut Window, _: &mut gpui::Context<Self>) -> impl gpui::IntoElement {
@@ -125,7 +125,7 @@ mod tests {
         }
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            let builder = gpui_luma::controls::tabs::Tabs::new("luma-studio-content-tabs")
+            let builder = xgpui_luma::controls::tabs::Tabs::new("luma-studio-content-tabs")
                 .template(luma_studio_tabs_template(look.clone(), ControlSize::Lg))
                 .items([TabsItem::new("cards").label("Cards"), TabsItem::new("dashboard").label("Dashboard")])
                 .active("cards");

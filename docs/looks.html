@@ -32,10 +32,10 @@
 <p>Implement the control’s template trait and install it with <code>.template(...)</code>. The template receives a render model containing the current state. This small button template reuses the built-in renderer for state and focus feedback, then adjusts its geometry:</p>
 <div class="codebox"><div class="codebar"><span>Rust · Custom button template</span><button class="copy" aria-label="Copy custom button template">Copy</button></div><pre><code class="language-rust">use std::sync::Arc;
 use gpui::{App, Div, Stateful, Window, prelude::*, px};
-use gpui_luma::controls::button::{
+use xgpui_luma::controls::button::{
     Button, ButtonRenderModel, ButtonTemplate, default_button_template,
 };
-use gpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::infra::presenter::HasPresenter;
 
 struct CompactButtonTemplate;
 
@@ -63,7 +63,7 @@ let save = Button::new(&quot;save&quot;)
 </section>
 <section id="choose"><h2>Use a shared Look</h2>
 <p>For a complete visual system, start with <a href="look-shadcn.html">Look-shadcn</a> or <a href="look-radix.html">Look-radix</a>, or <a href="create-look.html">create your own Look</a>. Look builders resolve the application’s global Look; <code>.look(&amp;custom_look)</code> provides an explicit override.</p>
-<p><strong>A Look is optional.</strong> The SDK renders controls on its own using a monochrome light/dark baseline authored in Rust. This includes tokens, geometry, icons, state recipes, and motion. Looks inherit that baseline and supply their own differences. Use SDK controls directly, customize the shared stylesheet or a template, or adopt a Look. See <a href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/docs/shared-stylesheet.md">shared stylesheet contract</a> and the <a href="plots.html">SDK-only Plot Viz application</a>.</p>
+<p><strong>A Look is optional.</strong> The SDK renders controls on its own using a monochrome light/dark baseline authored in Rust. This includes tokens, geometry, icons, state recipes, and motion. Looks inherit that baseline and supply their own differences. Use SDK controls directly, customize the shared stylesheet or a template, or adopt a Look. See <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/docs/shared-stylesheet.md">shared stylesheet contract</a> and the <a href="plots.html">SDK-only Plot Viz application</a>.</p>
 </section>
 <footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#why">Similar controls, distinct visual systems</a><a href="#how">Customize a template</a><a href="#choose">Use a shared Look</a></nav>

@@ -1,7 +1,7 @@
-//! Look-owned selector builder. Spawn synthesizes the SDK [`gpui_luma::controls::selector::Selector`].
+//! Look-owned selector builder. Spawn synthesizes the SDK [`xgpui_luma::controls::selector::Selector`].
 
 use gpui::{App, Context, Div, Entity, IntoElement, SharedString, Stateful};
-use gpui_luma::controls::selector::{
+use xgpui_luma::controls::selector::{
     SelectorBuilder, SelectorIcons, SelectorItem, SelectorItemLike, SelectorItemRenderModel, SelectorPlacement,
     SelectorRenderModel, SelectorTriggerStyle, SelectorOpeningMode,
 };
@@ -19,8 +19,8 @@ where
     T: SelectorItemLike + 'static,
 {
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::selector::SelectorMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::selector::SelectorEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::selector::SelectorMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::selector::SelectorEvent>,
 
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -29,7 +29,7 @@ where
     selected_id: Option<SharedString>,
     size: ShadcnSize,
     enabled: bool,
-    scroll_interaction: gpui_luma::interaction::ScrollInteraction,
+    scroll_interaction: xgpui_luma::interaction::ScrollInteraction,
     invalid: bool,
     tab_stop: bool,
     placement: SelectorPlacement,
@@ -56,7 +56,7 @@ where
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::selector::SelectorEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::selector::SelectorEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -69,7 +69,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::Change { item_id, label } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::Change { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -82,7 +82,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -95,7 +95,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -108,7 +108,7 @@ where
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::Dismiss = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -127,7 +127,7 @@ where
             selected_id: None,
             size: ShadcnSize::Md,
             enabled: true,
-            scroll_interaction: gpui_luma::interaction::ScrollInteraction::VIEWPORT,
+            scroll_interaction: xgpui_luma::interaction::ScrollInteraction::VIEWPORT,
             invalid: false,
             tab_stop: true,
             placement: SelectorPlacement::Smart,
@@ -140,7 +140,7 @@ where
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::selector::SelectorMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::selector::SelectorMotion, edits motion);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = enabled;
         self
@@ -196,19 +196,19 @@ where
     }
 
     /// Choose popup wheel eligibility without changing focus or boundary behavior.
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.scroll_interaction.wheel = policy;
         self
     }
 
     /// Choose containment or whole-event chaining independently of wheel eligibility.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.scroll_interaction.boundary = policy;
         self
     }
 
     /// Choose which actual focus owners qualify for focus-required wheel input.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.scroll_interaction.focus_scope = policy;
         self
     }
@@ -261,11 +261,11 @@ where
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::selector::Selector<T>> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::selector::Selector<T>> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
-            use gpui_luma::infra::attachments::TooltipEntityExt;
+            use xgpui_luma::infra::attachments::TooltipEntityExt;
             let theme = crate::tooltip_theme(&look);
             self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
         };
@@ -278,7 +278,7 @@ where
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SelectorBuilder<T> {
-        let mut builder = gpui_luma::controls::selector::Selector::new_typed(self.id)
+        let mut builder = xgpui_luma::controls::selector::Selector::new_typed(self.id)
             .stylesheet(&look.stylesheet().common)
             .motion_defaults(look.motion_defaults().selector)
             .with_motion_overrides(self.motion)
@@ -366,7 +366,7 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn forwards_popup_wheel_overrides_after_look_synthesis() {
-    use gpui_luma::interaction::{ScrollBoundaryPolicy, WheelFocusScope, WheelScrollPolicy};
+    use xgpui_luma::interaction::{ScrollBoundaryPolicy, WheelFocusScope, WheelScrollPolicy};
     let mut app = gpui::TestAppContext::single();
     let control = Selector::new("policy")
         .wheel_scroll_policy(WheelScrollPolicy::PassThrough)

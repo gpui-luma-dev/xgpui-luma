@@ -2,8 +2,8 @@
 use crate::theme::ColorVizLookExt;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma_look_radix::Look;
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma_look_radix::Look;
 use image::ImageDecoder;
 use std::{path::PathBuf, sync::Arc};
 use xgpui_media::pipeline::*;
@@ -13,7 +13,7 @@ const SOURCE_BYTES: usize = 128 * MIB;
 
 pub struct PhotoViewport {
     look: Arc<Look>,
-    buttons: Vec<Entity<gpui_luma::controls::button::Button>>,
+    buttons: Vec<Entity<xgpui_luma::controls::button::Button>>,
     source: Option<Arc<RasterSource>>,
     canvas: Option<TileCanvas>,
     loading: Option<Task<()>>,
@@ -94,7 +94,7 @@ impl PhotoViewport {
             .into_iter()
             .enumerate()
             .map(|(index, label)| {
-                gpui_luma_look_radix::Button::new(format!("photo-{index}"))
+                xgpui_luma_look_radix::Button::new(format!("photo-{index}"))
                     .look(look.as_ref())
                     .outline()
                     .label(label)

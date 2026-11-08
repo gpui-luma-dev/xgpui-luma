@@ -7,9 +7,9 @@ use std::sync::{
 };
 
 use gpui::{Background, Global, Hsla, linear_color_stop, linear_gradient};
-use gpui_luma::theme::{MetricTokens, ThemeMode};
-use gpui_luma::theme::provenance::{ResolvedColor, ResolvedSourceColor};
-use gpui_luma::color::{ColorValue};
+use xgpui_luma::theme::{MetricTokens, ThemeMode};
+use xgpui_luma::theme::provenance::{ResolvedColor, ResolvedSourceColor};
+use xgpui_luma::color::{ColorValue};
 
 use crate::button::ClassicButtonParams;
 use crate::palette::{PaletteSlot, Accent, Gray, ThemePalettes, scale_pair};
@@ -59,9 +59,9 @@ impl PageBackground {
 ///
 /// ```no_run
 /// use gpui::{Context, Entity};
-/// use gpui_luma::controls::button::Button;
-/// use gpui_luma::theme::ThemeMode;
-/// use gpui_luma_look_radix::Look;
+/// use xgpui_luma::controls::button::Button;
+/// use xgpui_luma::theme::ThemeMode;
+/// use xgpui_luma_look_radix::Look;
 ///
 /// fn change_mode<M: 'static>(look: &Look, button: &Entity<Button>, cx: &mut Context<M>) {
 ///     look.set_mode(ThemeMode::Dark);
@@ -87,8 +87,9 @@ pub(crate) fn resolve_look(explicit: Option<&Look>, ambient: Option<&Look>) -> L
     Look::built_in()
 }
 
-pub(crate) fn embedded_common_stylesheet() -> &'static gpui_luma::theme::stylesheet::CommonStylesheet {
-    static STYLESHEET: std::sync::OnceLock<gpui_luma::theme::stylesheet::CommonStylesheet> = std::sync::OnceLock::new();
+pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::stylesheet::CommonStylesheet {
+    static STYLESHEET: std::sync::OnceLock<xgpui_luma::theme::stylesheet::CommonStylesheet> =
+        std::sync::OnceLock::new();
     STYLESHEET.get_or_init(|| {
         let mut sheet = native_radix_stylesheet();
         apply_radix_slider_stylesheet(&mut sheet);
@@ -99,10 +100,11 @@ pub(crate) fn embedded_common_stylesheet() -> &'static gpui_luma::theme::stylesh
 }
 
 /// Construct the remaining Radix common overrides without bundled TOML parsing.
-pub fn native_radix_stylesheet() -> gpui_luma::theme::stylesheet::CommonStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
-    motion.tabs.content = Some(TransitionSpec::Timed { duration_ms: 300, easing: gpui_luma::motion::Easing::OutCubic });
+    motion.tabs.content =
+        Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
     CommonStylesheet {
         motion,
         tabs: crate::tabs::native_tabs_stylesheet(),
@@ -138,16 +140,16 @@ pub(crate) use crate::switch::{apply_radix_switch_stylesheet};
 pub use crate::checkbox::{native_radix_checkbox};
 pub(crate) use crate::checkbox::{apply_radix_checkbox_stylesheet};
 
-pub(crate) fn sdk_size_key(size: gpui_luma::theme::ControlSize) -> &'static str {
+pub(crate) fn sdk_size_key(size: xgpui_luma::theme::ControlSize) -> &'static str {
     match size {
-        gpui_luma::theme::ControlSize::Sm => "1",
-        gpui_luma::theme::ControlSize::Md => "2",
-        gpui_luma::theme::ControlSize::Lg => "3",
+        xgpui_luma::theme::ControlSize::Sm => "1",
+        xgpui_luma::theme::ControlSize::Md => "2",
+        xgpui_luma::theme::ControlSize::Lg => "3",
     }
 }
 
 struct LookState {
-    motion: RwLock<gpui_luma::motion::MotionOverrides<gpui_luma::theme::MotionDefaults>>,
+    motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     scales: RwLock<ScalePair>,
     palettes: RwLock<[ThemePalettes; 2]>,
     custom_contrast: RwLock<[Option<(ColorValue, Hsla)>; 2]>,
@@ -157,7 +159,7 @@ struct LookState {
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
     button_recipes: RwLock<Arc<crate::button_recipes::Recipes>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
-    common_stylesheet: RwLock<Arc<gpui_luma::theme::stylesheet::CommonStylesheet>>,
+    common_stylesheet: RwLock<Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>>,
     /// Bumped by look setters; polling does not schedule GPUI redraws.
     revision: RwLock<u64>,
 }
@@ -227,53 +229,53 @@ impl Look {
 
     /// Edit SDK-defined motion defaults for future controls. Clones share edits;
     /// forks copy independently. Existing controls keep their spawn-time snapshot.
-    pub fn motion(&self, configure: impl Fn(&mut gpui_luma::theme::MotionDefaults) + Send + Sync + 'static) {
+    pub fn motion(&self, configure: impl Fn(&mut xgpui_luma::theme::MotionDefaults) + Send + Sync + 'static) {
         self.state.motion.write().unwrap_or_else(|p| p.into_inner()).push(configure);
         self.bump_revision();
     }
 
-    pub fn motion_defaults(&self) -> gpui_luma::theme::MotionDefaults {
+    pub fn motion_defaults(&self) -> xgpui_luma::theme::MotionDefaults {
         let mut defaults = self.stylesheet_snapshot().motion_defaults();
         let edits = self.state.motion.read().unwrap_or_else(|p| p.into_inner()).clone();
         edits.apply(&mut defaults);
         defaults
     }
 
-    pub fn tabs_overlay_state(&self) -> gpui_luma::controls::tabs::TabsOverlayState {
-        gpui_luma::controls::tabs::TabsOverlayState::new().motion_defaults(self.motion_defaults().tabs_overlay)
+    pub fn tabs_overlay_state(&self) -> xgpui_luma::controls::tabs::TabsOverlayState {
+        xgpui_luma::controls::tabs::TabsOverlayState::new().motion_defaults(self.motion_defaults().tabs_overlay)
     }
 
     pub fn slide_panel_state(
         &self,
-        anchor: gpui_luma::controls::slide_panel::SlidePanelTopAnchor,
-        size: gpui_luma::controls::slide_panel::SlidePanelSizeConfig,
-    ) -> gpui_luma::controls::slide_panel::SlidePanelState {
-        gpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
+        anchor: xgpui_luma::controls::slide_panel::SlidePanelTopAnchor,
+        size: xgpui_luma::controls::slide_panel::SlidePanelSizeConfig,
+    ) -> xgpui_luma::controls::slide_panel::SlidePanelState {
+        xgpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
             .stylesheet(&self.common_stylesheet())
             .motion_defaults(self.motion_defaults().slide_panel)
     }
 
     /// Common SDK configuration. Clones share edits; forks copy independently.
-    pub fn common_stylesheet(&self) -> gpui_luma::theme::stylesheet::CommonStylesheet {
+    pub fn common_stylesheet(&self) -> xgpui_luma::theme::stylesheet::CommonStylesheet {
         self.stylesheet_snapshot().as_ref().clone()
     }
 
     // Immutable snapshots keep render-time reads cheap without holding a lock while
     // resolving controls. Setters replace the Arc; existing readers stay valid.
-    pub(crate) fn stylesheet_snapshot(&self) -> Arc<gpui_luma::theme::stylesheet::CommonStylesheet> {
+    pub(crate) fn stylesheet_snapshot(&self) -> Arc<xgpui_luma::theme::stylesheet::CommonStylesheet> {
         self.state.common_stylesheet.read().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
     }
 
     /// Update shared geometry for subsequent renders and motion for future controls.
     /// Existing motion retains its snapshot. Notify affected views after geometry edits.
-    pub fn set_common_stylesheet(&self, stylesheet: gpui_luma::theme::stylesheet::CommonStylesheet) {
+    pub fn set_common_stylesheet(&self, stylesheet: xgpui_luma::theme::stylesheet::CommonStylesheet) {
         // Numeric slider identities belong to Radix; the SDK stores standard sizes directly.
         let mut stylesheet = stylesheet;
-        let mut numeric = gpui_luma::theme::stylesheet::SliderStylesheet::default();
+        let mut numeric = xgpui_luma::theme::stylesheet::SliderStylesheet::default();
         for (key, size) in [
-            ("1", gpui_luma::theme::ControlSize::Sm),
-            ("2", gpui_luma::theme::ControlSize::Md),
-            ("3", gpui_luma::theme::ControlSize::Lg),
+            ("1", xgpui_luma::theme::ControlSize::Sm),
+            ("2", xgpui_luma::theme::ControlSize::Md),
+            ("3", xgpui_luma::theme::ControlSize::Lg),
         ] {
             if let Some(authored) = stylesheet.slider.sizes.custom.get(key) {
                 *numeric.sizes.get_or_default(size) = authored.clone();
@@ -502,7 +504,7 @@ impl Look {
             {
                 return ResolvedSourceColor {
                     value: source,
-                    source: gpui_luma::theme::provenance::ColorSource::Authored {
+                    source: xgpui_luma::theme::provenance::ColorSource::Authored {
                         key: "custom-accent-contrast".into(),
                     },
                 };
@@ -589,7 +591,7 @@ fn mode_from_u8(value: u8) -> ThemeMode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::color::gpui_bridge;
+    use xgpui_luma::color::gpui_bridge;
 
     #[test]
     fn shared_stylesheet_readers_survive_replacement_and_fork_edits() {
@@ -636,20 +638,20 @@ mod tests {
 
     #[test]
     fn common_stylesheet_snapshot_and_fork_are_isolated() {
-        use gpui_luma::theme::stylesheet::CommonStylesheet;
+        use xgpui_luma::theme::stylesheet::CommonStylesheet;
         let look = Look::built_in();
         let snapshot = look.common_stylesheet();
         let fork = look.fork();
         fork.set_common_stylesheet(CommonStylesheet::default());
         assert_eq!(look.common_stylesheet(), snapshot);
         assert_ne!(fork.common_stylesheet(), snapshot);
-        let sdk = gpui_luma::controls::tabs::Tabs::new("snapshot").motion_defaults(snapshot.motion_defaults().tabs);
+        let sdk = xgpui_luma::controls::tabs::Tabs::new("snapshot").motion_defaults(snapshot.motion_defaults().tabs);
         look.set_common_stylesheet(CommonStylesheet::default());
         assert_eq!(
             sdk.motion_profile().content.description(),
-            gpui_luma::motion::Transition::timed(
+            xgpui_luma::motion::Transition::timed(
                 std::time::Duration::from_millis(300),
-                gpui_luma::motion::Easing::OutCubic
+                xgpui_luma::motion::Easing::OutCubic
             )
             .description()
         );
@@ -744,7 +746,7 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use gpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
         let original = native_radix_stylesheet();
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
@@ -775,19 +777,19 @@ mod tests {
                 let old_theme = crate::slider::slider_theme_with(&old_look, variant);
                 let new_theme = crate::slider::slider_theme_with(&new_look, variant);
                 for size in [
-                    gpui_luma::theme::ControlSize::Sm,
-                    gpui_luma::theme::ControlSize::Md,
-                    gpui_luma::theme::ControlSize::Lg,
+                    xgpui_luma::theme::ControlSize::Sm,
+                    xgpui_luma::theme::ControlSize::Md,
+                    xgpui_luma::theme::ControlSize::Lg,
                 ] {
                     for bits in 0..32 {
-                        let state = gpui_luma::theme::InteractionState {
+                        let state = xgpui_luma::theme::InteractionState {
                             hovered: bits & 1 != 0,
                             pressed: bits & 2 != 0,
                             focused: bits & 4 != 0,
                             disabled: bits & 8 != 0,
                             invalid: bits & 16 != 0,
                         };
-                        use gpui_luma::controls::slider::SliderThumbSize;
+                        use xgpui_luma::controls::slider::SliderThumbSize;
                         for thumb in
                             [None, Some(SliderThumbSize::Sm), Some(SliderThumbSize::Md), Some(SliderThumbSize::Lg)]
                         {

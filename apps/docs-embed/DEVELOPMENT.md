@@ -72,7 +72,7 @@ For focused runtime validation and deployment packaging:
 ```sh
 cargo fmt --all --check
 cargo clippy --locked -p luma-docs-embed --target wasm32-unknown-unknown -- -D warnings
-cargo test --locked -p gpui-luma --lib --features test-support
+cargo test --locked -p xgpui-luma --lib --features test-support
 python3 -B scripts/check_control_docs.py
 python3 -B -m unittest discover -s apps/docs-embed -p 'test_*.py'
 sh apps/docs-embed/build.sh

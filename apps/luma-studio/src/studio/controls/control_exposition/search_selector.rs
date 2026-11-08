@@ -1,15 +1,15 @@
-use gpui_luma::controls::search_selector::SearchSelectorEventExt;
-use gpui_luma::controls::toggle::ToggleEventExt;
-use gpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::controls::search_selector::SearchSelectorEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::infra::attachments::TooltipEntityExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::search_selector::{SearchSelector, SearchSelectorEvent, SelectionItem};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::toggle::{Toggle};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::search_selector::{SearchSelector, SearchSelectorEvent, SelectionItem};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::toggle::{Toggle};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;

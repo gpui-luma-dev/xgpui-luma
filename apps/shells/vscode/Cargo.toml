@@ -8,9 +8,9 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 gpui = { workspace = true }
-gpui-luma.workspace = true
+xgpui-luma.workspace = true
 gpui_platform = { workspace = true }
-gpui-luma-look-shadcn.workspace = true
+xgpui-luma-look-shadcn.workspace = true
 luma-shell-common = { path = "../common" }
 lucide-svg-static.workspace = true
 

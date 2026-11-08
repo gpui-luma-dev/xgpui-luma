@@ -5,11 +5,11 @@ use gpui::{
     Bounds, ClipboardItem, Context, Entity, Hsla, IntoElement, PathBuilder, Pixels, Point, Render, Subscription,
     WeakEntity, Window, canvas, div, point, prelude::*, px,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{vstack, hstack};
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_radix::{self as radix, Look, SemanticRole};
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{vstack, hstack};
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_radix::{self as radix, Look, SemanticRole};
 use crate::assets::{ICON_GROUPS, icon_named, react_icon};
 use crate::assets::Icon;
 

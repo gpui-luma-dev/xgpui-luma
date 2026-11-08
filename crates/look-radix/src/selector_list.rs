@@ -1,6 +1,6 @@
 //! Shared selector row and panel styling for SDK selection controls.
 
-use gpui_luma::controls::selector_list::SelectorItemsPanelLook;
+use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
 
 use crate::{Look, PopupMenuVariant, Tone, floating_menu_look_for};
 
@@ -13,13 +13,13 @@ use crate::{Look, PopupMenuVariant, Tone, floating_menu_look_for};
 /// owner. Explicit and forked Looks are used directly, without ambient lookup.
 ///
 /// ```
-/// use gpui_luma_look_radix::{Look, PopupMenuVariant, Tone, selector_items_panel_look};
+/// use xgpui_luma_look_radix::{Look, PopupMenuVariant, Tone, selector_items_panel_look};
 /// let look = Look::built_in();
 /// let panel = selector_items_panel_look(&look, PopupMenuVariant::Soft, Tone::Accent);
 /// assert!(panel.item_height > 0.0);
 /// ```
 pub fn selector_items_panel_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> SelectorItemsPanelLook {
-    selector_items_panel_look_for(look, variant, tone, gpui_luma::theme::ControlSize::Md)
+    selector_items_panel_look_for(look, variant, tone, xgpui_luma::theme::ControlSize::Md)
 }
 
 /// Size-aware selector row/panel chrome using Radix stylesheet keys `1`–`3`.
@@ -28,7 +28,7 @@ pub fn selector_items_panel_look_for(
     look: &Look,
     variant: PopupMenuVariant,
     tone: Tone,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> SelectorItemsPanelLook {
     SelectorItemsPanelLook::from_menu(
         floating_menu_look_for(look, variant, tone, size),
@@ -42,7 +42,7 @@ pub fn selector_items_panel_look_for(
 mod tests {
     use super::*;
     use crate::{Accent, Gray, floating_menu_look};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn shared_chrome_tracks_mode_palette_variant_and_tone() {

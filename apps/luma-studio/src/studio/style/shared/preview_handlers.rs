@@ -4,19 +4,19 @@ use gpui::{
     App, Bounds, ClickEvent, DragMoveEvent, KeyDownEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels,
     ScrollEvent, Window,
 };
-use gpui_luma::controls::scrollbar::{
+use xgpui_luma::controls::scrollbar::{
     ScrollbarBoundsHandler, ScrollbarDrag, ScrollbarDragMoveHandler, ScrollbarHoverHandler, ScrollbarMouseDownHandler,
     ScrollbarMouseUpHandler, ScrollbarScrollWheelHandler, ScrollbarTemplateHandlers,
 };
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderBoundsHandler, SliderDrag, SliderHoverHandler, SliderMouseDownHandler, SliderMouseMoveHandler,
     SliderMouseUpHandler, SliderTemplateHandlers, ThumbId,
 };
-use gpui_luma::controls::textarea::{
+use xgpui_luma::controls::textarea::{
     TextAreaClickHandler, TextAreaDrag, TextAreaHoverHandler, TextAreaKeyDownHandler, TextAreaMouseDownHandler,
     TextAreaMouseMoveHandler, TextAreaMouseUpHandler, TextAreaTemplateHandlers,
 };
-use gpui_luma::controls::textfield::{
+use xgpui_luma::controls::textfield::{
     TextFieldClickHandler, TextFieldDrag, TextFieldDragMoveHandler, TextFieldHoverHandler, TextFieldKeyDownHandler,
     TextFieldMouseDownHandler, TextFieldMouseMoveHandler, TextFieldMouseUpHandler, TextFieldTemplateHandlers,
 };

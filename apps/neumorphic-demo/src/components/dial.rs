@@ -5,7 +5,9 @@ use gpui::{
     App, Bounds, BoxShadow, Corners, Div, FontFeatures, PathBuilder, Pixels, Point, SharedString, Stateful, Window,
     canvas, div, fill, hsla, point, prelude::*, px, rgb, size,
 };
-use gpui_luma::controls::slider::{self, SliderBuilder, SliderRenderModel, SliderTemplate, SliderTemplateHandlers, ThumbId};
+use xgpui_luma::controls::slider::{
+    self, SliderBuilder, SliderRenderModel, SliderTemplate, SliderTemplateHandlers, ThumbId,
+};
 
 const MIN_ANGLE: f32 = -1.25 * PI;
 const MAX_ANGLE: f32 = 0.25 * PI;
@@ -177,7 +179,7 @@ impl SliderTemplate for NeumorphicDialTemplate {
             .on_mouse_up(gpui::MouseButton::Left, mouse_up)
             .on_mouse_up_out(gpui::MouseButton::Left, mouse_up_out)
             .on_drag(
-                gpui_luma::controls::slider::SliderDrag::new(model.id.clone(), primary_thumb_id),
+                xgpui_luma::controls::slider::SliderDrag::new(model.id.clone(), primary_thumb_id),
                 |drag, _, _, cx| {
                     cx.stop_propagation();
                     cx.new(|_| drag.clone())

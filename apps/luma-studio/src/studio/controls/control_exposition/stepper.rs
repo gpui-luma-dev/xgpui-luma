@@ -3,16 +3,16 @@
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::icon::SelectionStatusIcons;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::progress::ProgressDirection;
-use gpui_luma::controls::stepper::{StepState, Stepper, StepperLabelPlacement, StepperRenderModel, StepperTemplate};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::icon::SelectionStatusIcons;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::progress::ProgressDirection;
+use xgpui_luma::controls::stepper::{StepState, Stepper, StepperLabelPlacement, StepperRenderModel, StepperTemplate};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};

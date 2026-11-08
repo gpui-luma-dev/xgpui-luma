@@ -3,7 +3,7 @@ use gpui::{
     Context, Entity, Focusable, IntoElement, Render, TestAppContext, VisualTestContext, Window, div, point, px,
     prelude::*,
 };
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderControl, SliderEvent, SliderTemplate, SliderRenderModel, SliderTemplateHandlers, ThumbId,
 };
 use std::{
@@ -43,7 +43,7 @@ fn builder(kind: usize) -> ColorRingBuilder {
 fn setup(app: &mut TestAppContext, builder: ColorRingBuilder) -> (Entity<SliderControl>, &mut VisualTestContext) {
     let (page, cx) = app.add_window_view(|window, cx| {
         window.activate_window();
-        gpui_luma::key_handling::bind_default_control_keys(cx);
+        xgpui_luma::key_handling::bind_default_control_keys(cx);
         Page(builder.spawn(cx))
     });
     cx.run_until_parked();

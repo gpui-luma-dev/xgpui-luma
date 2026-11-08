@@ -5,10 +5,10 @@
 //! | Target | ghost (accent-foreground on hover) |
 //! | Menu   | floating menu surface              |
 
-use gpui_luma::controls::context_menu::ContextMenuLook;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::context_menu::ContextMenuLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use super::floating_menu::floating_menu_look;
@@ -55,7 +55,7 @@ pub fn context_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, state: 
     let size = ControlSize::Md;
     let colors = resolve_context_menu_colors(mode, theme_mode, state);
 
-    let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .context_menu
         .authored_geometry(size.stylesheet_key());
     let recipe = mode
@@ -80,7 +80,7 @@ pub fn context_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, state: 
     };
     let geometry = mode.stylesheet().common.context_menu.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::ContextMenuGeometry {
+        xgpui_luma::theme::stylesheet::ContextMenuGeometry {
             min_width: look.target_min_width,
             padding_x: look.target_padding_x,
             padding_y: look.target_padding_y,
@@ -105,7 +105,7 @@ pub fn context_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, state: 
 mod tests {
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use super::context_menu_look;
     use crate::catalog::CssTokenMap;
@@ -153,8 +153,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_context_menu_stylesheet() -> gpui_luma::theme::stylesheet::ContextMenuStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_context_menu_stylesheet() -> xgpui_luma::theme::stylesheet::ContextMenuStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ContextMenuStylesheet {
         geometry: ContextMenuGeometryStylesheet { min_width: Some(200.0), ..Default::default() },
         ..Default::default()
@@ -172,14 +172,14 @@ pub struct ContextMenuMetricTable {
 
 pub fn resolve_context_menu_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> ContextMenuMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
     use crate::catalog::SpacingField;
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
-    let look = crate::paint::context_menu_look(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
+    let look = crate::paint::context_menu_look(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
 
     let mut table = ContextMenuMetricTable {
@@ -191,7 +191,7 @@ pub fn resolve_context_menu_metrics(
     };
     let geometry = mode.stylesheet().common.context_menu.inspect_geometry(
         "md",
-        gpui_luma::theme::stylesheet::ContextMenuGeometry {
+        xgpui_luma::theme::stylesheet::ContextMenuGeometry {
             min_width: table.target_min_width.value_px,
             padding_x: table.target_padding_x.value_px,
             padding_y: table.target_padding_y.value_px,

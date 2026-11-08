@@ -1,16 +1,16 @@
 //! Shared Radix navigation geometry and stepper styling.
 use std::sync::Arc;
 use gpui::SharedString;
-use gpui_luma::controls::stepper::*;
-use gpui_luma::theme::{ControlSize, ThemeTokens};
+use xgpui_luma::controls::stepper::*;
+use xgpui_luma::theme::{ControlSize, ThemeTokens};
 use crate::{Look, ScaleFamily, SemanticRole, Tone};
 
 // Default SDK resolvers are used only for layout; adapters replace every color.
 pub(crate) fn geometry_tokens(look: &Look) -> ThemeTokens {
     ThemeTokens { metrics: look.metrics(), stylesheet: look.common_stylesheet().into(), ..Default::default() }
 }
-pub(crate) fn drag_look(look: &Look, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
-    let mut drag = gpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(look), size);
+pub(crate) fn drag_look(look: &Look, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    let mut drag = xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(look), size);
     drag.background = look.resolve_role(SemanticRole::Surface).hsla();
     drag.foreground = look.resolve_role(SemanticRole::Foreground).hsla();
     drag.valid_marker = look.resolve_role(SemanticRole::Focus).hsla();
@@ -57,9 +57,9 @@ pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma::controls::{control_group::ControlGroupItem, accordion::{AccordionItem, AccordionTrigger, AccordionContent}};
-/// use gpui_luma::theme::ControlSize;
-/// use gpui_luma_look_radix::*;
+/// use xgpui_luma::controls::{control_group::ControlGroupItem, accordion::{AccordionItem, AccordionTrigger, AccordionContent}};
+/// use xgpui_luma::theme::ControlSize;
+/// use xgpui_luma_look_radix::*;
 /// fn navigation<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     let group = control_group_builder(look, "group", ControlSize::Md)
 ///         .items([ControlGroupItem::new("day").label("Day")]).horizontal().spawn(cx);

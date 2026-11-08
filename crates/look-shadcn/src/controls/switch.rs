@@ -15,13 +15,13 @@ use crate::stylesheet::config::matches_optional_bool;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use gpui_luma::controls::switch::SwitchPalette;
-use gpui_luma::controls::switch::SwitchScale;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::MetricTokens;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::switch::SwitchPalette;
+use xgpui_luma::controls::switch::SwitchScale;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::MetricTokens;
+use xgpui_luma::theme::ThemeMode;
 
 use super::apply_button_metrics_typography;
 
@@ -116,7 +116,7 @@ pub(crate) fn switch_geometry_with_stylesheet(
     stylesheet: &StylesheetConfig,
     size: ControlSize,
     scale_factor: f32,
-) -> gpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
+) -> xgpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
     let fallback = SwitchScale::compute_with_stylesheet(size, &mode.metrics, scale_factor, &stylesheet.common);
     stylesheet.common.switch.inspect_geometry(
         match size {
@@ -269,7 +269,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
     use crate::controls::button::ShadcnButtonStyle;
     use crate::catalog::CssTokenMap;
@@ -321,7 +321,7 @@ mod tests {
             None,
             1.0,
         );
-        assert_eq!(missing, gpui_luma::controls::switch::SwitchScale::compute(ControlSize::Md, &mode.metrics, 1.0));
+        assert_eq!(missing, xgpui_luma::controls::switch::SwitchScale::compute(ControlSize::Md, &mode.metrics, 1.0));
     }
 
     #[test]
@@ -505,7 +505,7 @@ mod tests {
 
     #[test]
     fn switch_variants_share_geometry() {
-        use gpui_luma::theme::ControlSize;
+        use xgpui_luma::theme::ControlSize;
         use super::switch_scale;
 
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
@@ -551,7 +551,7 @@ mod tests {
 
     #[test]
     fn switch_radius_presets_match_button_scale() {
-        use gpui_luma::theme::ControlSize;
+        use xgpui_luma::theme::ControlSize;
         use super::{resolve_switch_radius_preset, switch_scale};
 
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
@@ -698,8 +698,8 @@ pub struct SwitchColorRule {
 }
 
 /// Construct Shadcn switch size overrides without parsing bundled data.
-pub fn native_shadcn_common_switch() -> gpui_luma::theme::stylesheet::SwitchStylesheet {
-    let mut switch = gpui_luma::theme::stylesheet::SwitchStylesheet::default();
+pub fn native_shadcn_common_switch() -> xgpui_luma::theme::stylesheet::SwitchStylesheet {
+    let mut switch = xgpui_luma::theme::stylesheet::SwitchStylesheet::default();
     switch
         .track_padding(2.0)
         .size("sm", |m| {
@@ -772,9 +772,9 @@ pub struct SwitchMetricTable {
 
 pub fn resolve_switch_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
+    theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> SwitchMetricTable {
     resolve_switch_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, size)
 }
@@ -782,9 +782,9 @@ pub fn resolve_switch_metrics(
 pub fn resolve_switch_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    theme_mode: gpui_luma::theme::ThemeMode,
+    theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> SwitchMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
@@ -792,7 +792,7 @@ pub fn resolve_switch_metrics_with_stylesheet(
         pill_radius_metric, spacing_control_metric,
     };
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let scale =
@@ -819,8 +819,8 @@ pub fn resolve_switch_metrics_with_stylesheet(
         focus_ring_width: focus_ring_width_metric(metrics),
         focus_ring_offset: focus_ring_offset_metric(metrics),
     };
-    let authored = |common: gpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
-        if matches!(common.source, gpui_luma::theme::provenance::MetricSource::Authored { .. }) {
+    let authored = |common: xgpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
+        if matches!(common.source, xgpui_luma::theme::provenance::MetricSource::Authored { .. }) {
             crate::tables::metrics::helpers::inspect_shared_metric(common)
         } else {
             fallback

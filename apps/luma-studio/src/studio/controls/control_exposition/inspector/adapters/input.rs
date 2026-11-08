@@ -3,9 +3,9 @@
 mod textfield_menu {
     use std::sync::Arc;
 
-    use gpui_luma::controls::textfield::TextFieldState;
-    use gpui_luma_look_shadcn::{ShadcnLook, ShadcnTextFieldStyle};
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma::controls::textfield::TextFieldState;
+    use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextFieldStyle};
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::input::{floating_menu_color_rows, textfield_color_rows_prefixed};
     use super::super::super::metrics::textfield_menu_layout_section;
@@ -58,8 +58,8 @@ mod textfield_menu {
 mod textfield {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{
         textfield_elevation_applies, textfield_enabled, textfield_state, textfield_variant_style,
@@ -139,8 +139,8 @@ pub use textfield::{TEXTFIELD_INSPECTOR_SPEC, TextFieldInspectorAdapter};
 mod textarea {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::{
         textfield_elevation_applies, textfield_enabled, textfield_variant_style, textarea_state,
@@ -220,8 +220,8 @@ pub use textarea::{TEXTAREA_INSPECTOR_SPEC, TextAreaInspectorAdapter};
 mod autocomplete {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::input::{autocomplete_chrome_color_rows, floating_menu_color_rows};
     use super::super::super::metrics::autocomplete_layout_section;
@@ -336,10 +336,10 @@ pub use search_selector::{SEARCH_SELECTOR_INSPECTOR_SPEC, search_selector_inspec
 mod selector {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
     use lucide_svg_static::Icon as LucideIcon;
-    use gpui_luma::theme::InteractionState;
+    use xgpui_luma::theme::InteractionState;
 
     use super::super::super::common::{control_size, interaction_state};
     use super::super::super::input::floating_menu_palette_rows;

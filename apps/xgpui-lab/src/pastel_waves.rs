@@ -1,11 +1,11 @@
 //! Upstream silk-ribbon composition, with retained Luma controls.
 use gpui::{prelude::*, *};
 use std::{sync::Arc, time::Instant, rc::Rc, cell::RefCell};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, Noise, painted};
 
@@ -508,11 +508,11 @@ fn ribbon_paths(
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     #[::core::prelude::v1::test]
     fn luma_controls_scrub_reset_and_stop_hidden_animation() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| PastelWaves::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| page.activate(cx));
         cx.run_until_parked();

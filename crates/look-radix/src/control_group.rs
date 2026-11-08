@@ -1,9 +1,9 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
 use std::sync::Arc;
 use gpui::{SharedString, div, prelude::*, px};
-use gpui_luma::controls::control_group::*;
-use gpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, compose_button_family_look};
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::control_group::*;
+use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, compose_button_family_look};
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
 use crate::{ButtonVariant, Look, SemanticRole};
 
 fn item_look(
@@ -61,7 +61,7 @@ pub fn control_group_template<T: ControlGroupItemLike + 'static>(look: &Look) ->
 }
 /// SDK icon-toolbar shell, including independent `icon_group` geometry overrides.
 pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
-    gpui_luma::controls::icon_group::icon_toolbar_template(control_group_theme(look))
+    xgpui_luma::controls::icon_group::icon_toolbar_template(control_group_theme(look))
 }
 fn item_template<T: ControlGroupItemLike + 'static>(
     look: &Look,
@@ -153,7 +153,7 @@ pub fn icon_group_builder<T: ControlGroupItemLike + 'static>(
     id: impl Into<SharedString>,
     size: ControlSize,
 ) -> ControlGroupBuilder<T> {
-    gpui_luma::controls::icon_group::icon_toolbar(id, control_group_theme(look))
+    xgpui_luma::controls::icon_group::icon_toolbar(id, control_group_theme(look))
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().control_group)
         .item_element_template(icon_group_item_template(look, size))

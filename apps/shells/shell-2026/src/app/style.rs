@@ -1,6 +1,6 @@
 use gpui::{Hsla, Pixels, px, rgb};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 pub(super) const RAIL_WIDTH: Pixels = px(52.0);
 pub(crate) const SHELL_TITLEBAR_HEIGHT: Pixels = px(40.0);

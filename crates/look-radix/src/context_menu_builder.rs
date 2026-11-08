@@ -1,8 +1,8 @@
-//! Look-owned context-menu builder. Spawn synthesizes the SDK [`gpui_luma::controls::context_menu::ContextMenu`].
+//! Look-owned context-menu builder. Spawn synthesizes the SDK [`xgpui_luma::controls::context_menu::ContextMenu`].
 
 use gpui::{App, Context, Div, Entity, IntoElement, SharedString, Stateful};
-use gpui_luma::controls::context_menu::{ContextMenuBuilder, ContextMenuRenderModel};
-use gpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::controls::context_menu::{ContextMenuBuilder, ContextMenuRenderModel};
+use xgpui_luma::infra::menu_item::MenuItem;
 
 use crate::look::{Look, resolve_look};
 use crate::{ContextMenuVariant, Tone, context_menu_template};
@@ -13,17 +13,17 @@ type ContextMenuModifier = Box<dyn Fn(Stateful<Div>, &ContextMenuRenderModel<'_>
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma::controls::context_menu::MenuItem;
-/// use gpui_luma_look_radix::{ContextMenu, Look};
-/// fn menu<M: 'static>(look: &Look, cx: &mut Context<M>) -> gpui::Entity<gpui_luma::controls::context_menu::ContextMenu> {
+/// use xgpui_luma::controls::context_menu::MenuItem;
+/// use xgpui_luma_look_radix::{ContextMenu, Look};
+/// fn menu<M: 'static>(look: &Look, cx: &mut Context<M>) -> gpui::Entity<xgpui_luma::controls::context_menu::ContextMenu> {
 ///     ContextMenu::new("actions").look(look).soft().label("Right-click here")
 ///         .items([MenuItem::new("copy").label("Copy")]).spawn(cx)
 /// }
 /// ```
 pub struct ContextMenu {
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::context_menu::ContextMenuMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::context_menu::ContextMenuEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::context_menu::ContextMenuMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::context_menu::ContextMenuEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -32,7 +32,7 @@ pub struct ContextMenu {
     label: Option<SharedString>,
     items: Vec<MenuItem>,
     enabled: bool,
-    target: Option<gpui_luma::controls::context_menu::ContextMenuTargetContent>,
+    target: Option<xgpui_luma::controls::context_menu::ContextMenuTargetContent>,
     modifiers: Vec<ContextMenuModifier>,
 }
 
@@ -42,7 +42,7 @@ impl ContextMenu {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::context_menu::ContextMenuEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::context_menu::ContextMenuEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -55,7 +55,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -68,7 +68,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -81,7 +81,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::Dismiss = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -94,7 +94,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -107,7 +107,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -120,7 +120,7 @@ impl ContextMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::context_menu::ContextMenuEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::context_menu::ContextMenuEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -144,7 +144,7 @@ impl ContextMenu {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::context_menu::ContextMenuMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::context_menu::ContextMenuMotion, edits motion);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = enabled;
         self
@@ -214,7 +214,7 @@ impl ContextMenu {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::context_menu::ContextMenu> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::context_menu::ContextMenu> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -229,7 +229,7 @@ impl ContextMenu {
     }
 
     fn into_sdk_builder(self, look: Look) -> ContextMenuBuilder {
-        let mut builder = gpui_luma::controls::context_menu::ContextMenu::new(self.id)
+        let mut builder = xgpui_luma::controls::context_menu::ContextMenu::new(self.id)
             .motion_defaults(look.motion_defaults().context_menu)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)

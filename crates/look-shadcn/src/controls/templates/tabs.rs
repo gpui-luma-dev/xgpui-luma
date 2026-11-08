@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::controls::tabs::{tabs_item_look_with_stylesheet, tabs_list_look_with_stylesheet};
 use crate::look::ShadcnLook;
@@ -11,10 +11,10 @@ struct ShadcnTabsTheme {
 }
 
 impl TabsTheme for ShadcnTabsTheme {
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
-        gpui_luma::infra::drag_drop::DragDropLook {
+        xgpui_luma::infra::drag_drop::DragDropLook {
             geometry: self.theme.stylesheet().common.shared_geometry(),
             background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
@@ -26,7 +26,7 @@ impl TabsTheme for ShadcnTabsTheme {
         }
     }
 
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> gpui_luma::controls::tabs::TabsListLook {
+    fn resolve_list(&self, enabled: bool, size: ControlSize) -> xgpui_luma::controls::tabs::TabsListLook {
         let tokens = self.theme.mode_tokens();
         tabs_list_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), enabled, size)
     }
@@ -36,7 +36,7 @@ impl TabsTheme for ShadcnTabsTheme {
         active: bool,
         state: InteractionState,
         size: ControlSize,
-    ) -> gpui_luma::controls::tabs::TabsItemLook {
+    ) -> xgpui_luma::controls::tabs::TabsItemLook {
         let tokens = self.theme.mode_tokens();
         tabs_item_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), active, state, size)
     }
@@ -57,7 +57,7 @@ pub fn tabs_theme(theme: ShadcnLook) -> Arc<dyn TabsTheme> {
 #[cfg(test)]
 mod drag_tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn navigation_drag_surfaces_follow_table_tokens_in_both_modes() {
         let look = crate::test_support::fallback_look();

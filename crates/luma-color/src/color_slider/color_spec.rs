@@ -1,4 +1,4 @@
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use anyhow::Result;
 use palette::convert::FromColorUnclamped;
 use gpui::{Hsla, Rgba};
@@ -773,7 +773,7 @@ fn lab_to_rgb(l: f32, a: f32, b: f32, alpha: f32) -> Rgba {
 fn lab_to_rgb_checked(l: f32, a: f32, b: f32, alpha: f32) -> (Rgba, bool) {
     let spec = Lab { l, a, b, alpha, auto_clamp: false, dynamic_range: false };
     let source = spec.to_color_value();
-    let in_gamut = source.is_in_gamut(gpui_luma::color::Gamut::Srgb).unwrap_or(false);
+    let in_gamut = source.is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap_or(false);
     (
         gpui_bridge::to_rgba(source, GamutMapping::CssLocalMinde)
             .unwrap_or_else(|_| gpui::transparent_black().to_rgb()),

@@ -1,4 +1,4 @@
-use gpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -7,13 +7,13 @@ use gpui::{
     AnyElement, App, Context, Entity, FontWeight, IntoElement, KeyDownEvent, MouseButton, Pixels, Render, ScrollHandle,
     ScrollEvent, Window, div, point, prelude::*, px,
 };
-use gpui_luma::controls::sidebar::SidebarControl;
-use gpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode};
-use gpui_luma::infra::ElementExt;
-use gpui_luma::{declare_form};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{ShadcnLook};
+use xgpui_luma::controls::sidebar::SidebarControl;
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode};
+use xgpui_luma::infra::ElementExt;
+use xgpui_luma::{declare_form};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnLook};
 use crate::studio::panels::sidebar::{INITIAL_PROPERTY_SELECTION_ID, property_sidebar};
 use crate::studio::style::sections;
 use crate::studio::style::shared::callout::render_sparse_catalog_callout;

@@ -8,17 +8,17 @@ use gpui::{
     AnyElement, Context, Entity, FontWeight, Hsla, Render, Subscription, Window, div, hsla, prelude::*, px, rgb,
     transparent_black,
 };
-use gpui_luma_color::color_field::{CircleDomain, ColorFieldEvent, ColorFieldState, HslWheelModel};
-use gpui_luma_color::color_ring::{
+use xgpui_luma_color::color_field::{CircleDomain, ColorFieldEvent, ColorFieldState, HslWheelModel};
+use xgpui_luma_color::color_ring::{
     ColorRingBuilder, ColorRingDomainRenderer, ColorRingTrackContext, LightnessRingDelegate, primary_slider_value,
 };
-use gpui_luma_color::color_slider::color_spec::Hsv;
-use gpui_luma_color::composition::ColorCompositionSync;
-use gpui_luma::controls::selector::{Selector, SelectorEvent, SelectorItem};
-use gpui_luma::controls::slider::SliderControl;
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent};
-use gpui_luma::vstack;
-use gpui_luma_look_radix as radix;
+use xgpui_luma_color::color_slider::color_spec::Hsv;
+use xgpui_luma_color::composition::ColorCompositionSync;
+use xgpui_luma::controls::selector::{Selector, SelectorEvent, SelectorItem};
+use xgpui_luma::controls::slider::SliderControl;
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
+use xgpui_luma::vstack;
+use xgpui_luma_look_radix as radix;
 use crate::theme::{Look, ColorVizLookExt, TypographyExt, TextSize};
 
 use super::super::color_exposition_common::{composition_demo_card_width, format_hsl_label};

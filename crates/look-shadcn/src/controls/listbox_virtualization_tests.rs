@@ -1,7 +1,7 @@
 //! Headless integration coverage for windowed rendering on both axes.
 use std::{cell::RefCell, rc::Rc};
 use gpui::{Bounds, Pixels, ScrollDelta, ScrollEvent, TestAppContext, TouchPhase, VisualTestContext, point};
-use gpui_luma::controls::listbox::{ListBoxSnapshot, SelectionMode};
+use xgpui_luma::controls::listbox::{ListBoxSnapshot, SelectionMode};
 use super::*;
 
 struct Harness {

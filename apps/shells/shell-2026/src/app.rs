@@ -1,16 +1,16 @@
-use gpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FocusHandle, IntoElement, Pixels, Render, Window, div, prelude::*, px, transparent_black};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::controls::resizable_panels::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::controls::resizable_panels::{
     PanelHideMode, ResizablePanelSpec, ResizablePanels, ResizablePanelsEvent, ResizeCollapseBehavior,
     ResizeCollapseDirection, ResizeCollapseMode, ResizeHandleVisibility,
 };
-use gpui_luma::controls::sidebar::{SidebarPresentation};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
+use xgpui_luma::controls::sidebar::{SidebarPresentation};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook};
 use luma_shell_common::{
     chrome::{HasShellTheme, handle_theme_toggle, render_app_root},
     theme::{ShellThemeChoice, sync_color_control_theme},
@@ -30,7 +30,7 @@ pub struct Shell2026App {
     focus_scope: FocusHandle,
     look: Arc<ShadcnLook>,
     panels: Entity<ResizablePanels>,
-    rail: Entity<gpui_luma::controls::frame::FrameControl>,
+    rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: Pixels,
     titlebar: TitlebarControls,
 }
@@ -130,7 +130,7 @@ impl Render for Shell2026App {
 fn spawn_rail(
     look: &Arc<ShadcnLook>,
     cx: &mut Context<Shell2026App>,
-) -> Entity<gpui_luma::controls::frame::FrameControl> {
+) -> Entity<xgpui_luma::controls::frame::FrameControl> {
     let mut menu = shadcn::Sidebar::menu("shell-2026-destinations");
     for (id, label, icon) in [
         ("home", "Home", Icon::House),

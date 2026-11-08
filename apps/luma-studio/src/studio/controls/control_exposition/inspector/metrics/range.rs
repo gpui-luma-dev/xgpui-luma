@@ -1,6 +1,6 @@
-use gpui_luma::controls::scrollbar::ScrollbarOrientation;
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma::controls::scrollbar::ScrollbarOrientation;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::inspect::{
     ProgressInspectMetrics, ScrollbarInspectMetrics, ShadcnInspect, SliderInspectMetrics, StepperInspectMetrics,
 };
 

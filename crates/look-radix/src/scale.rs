@@ -8,9 +8,9 @@
 //! Page chrome often mixes families (e.g. color step 3 → gray step 1).
 
 use gpui::Hsla;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge::SrgbRenderCache};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma::theme::provenance::ResolvedColor;
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge::SrgbRenderCache};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::provenance::ResolvedColor;
 
 /// 1-based Radix-style scale step (`1`…`12`).
 pub type ScaleStep = u8;
@@ -100,10 +100,10 @@ impl ColorScale {
         self.steps[idx]
     }
 
-    pub fn resolved_source(self, step: ScaleStep) -> gpui_luma::theme::provenance::ResolvedSourceColor {
-        gpui_luma::theme::provenance::ResolvedSourceColor {
+    pub fn resolved_source(self, step: ScaleStep) -> xgpui_luma::theme::provenance::ResolvedSourceColor {
+        xgpui_luma::theme::provenance::ResolvedSourceColor {
             value: self.source_step(step),
-            source: gpui_luma::theme::provenance::ColorSource::ScaleStep {
+            source: xgpui_luma::theme::provenance::ColorSource::ScaleStep {
                 family: self.palette.into(),
                 step: step.clamp(1, SCALE_LEN as u8),
             },
@@ -161,7 +161,7 @@ mod tests {
     fn color_scale_from_seed(seed: Hsla, mode: ThemeMode) -> ColorScale {
         crate::generate_colors(
             crate::CustomColors {
-                accent: gpui_luma::color::gpui_bridge::from_hsla(seed),
+                accent: xgpui_luma::color::gpui_bridge::from_hsla(seed),
                 gray: ColorValue::srgb(139.0 / 255.0, 141.0 / 255.0, 152.0 / 255.0, 1.0),
                 background: if mode == ThemeMode::Light {
                     ColorValue::srgb(1.0, 1.0, 1.0, 1.0)
@@ -200,7 +200,7 @@ mod tests {
     fn seeded_scales_report_custom_provenance() {
         let seeded = color_scale_from_seed(hsla(0.58, 0.72, 0.58, 1.0), ThemeMode::Light);
         match seeded.resolved(9).source {
-            gpui_luma::theme::provenance::ColorSource::ScaleStep { family, step } => {
+            xgpui_luma::theme::provenance::ColorSource::ScaleStep { family, step } => {
                 assert_eq!(family, CUSTOM_PALETTE);
                 assert_eq!(step, 9);
             }

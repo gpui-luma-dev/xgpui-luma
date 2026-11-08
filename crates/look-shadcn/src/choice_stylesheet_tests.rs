@@ -1,6 +1,6 @@
-use gpui_luma::controls::checkbox::CheckboxScale;
-use gpui_luma::controls::radio_button::RadioScale;
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::controls::checkbox::CheckboxScale;
+use xgpui_luma::controls::radio_button::RadioScale;
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
 use crate::stylesheet::{StylesheetConfig, embedded_stylesheet};
 use crate::{ShadcnButtonStyle, ShadcnLook};

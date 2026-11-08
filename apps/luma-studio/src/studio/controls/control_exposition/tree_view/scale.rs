@@ -1,5 +1,5 @@
 //! Manual scale diagnostics; all interactive chrome uses SDK controls.
-use gpui_luma::controls::tree_view::TreeViewEventExt;
+use xgpui_luma::controls::tree_view::TreeViewEventExt;
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
@@ -7,16 +7,16 @@ use std::{
 use gpui::{
     AnyElement, App, Context, Div, Entity, Render, SharedString, Stateful, Subscription, Window, div, prelude::*, px,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::{
     button::{Button},
     tree_view::{
         FlatTreeNode, TreeNode, TreeView, TreeViewEvent, TreeViewRenderModel, TreeViewTemplate,
         TreeViewTemplateHandlers,
     },
 };
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook, prelude::*};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook, prelude::*};
 use super::ControlEventStream;
 
 #[derive(Default)]

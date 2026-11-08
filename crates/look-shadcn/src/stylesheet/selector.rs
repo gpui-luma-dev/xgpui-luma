@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use gpui_luma::theme::{InteractionLayer, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
 use crate::controls::ShadcnButtonStyle;
 use crate::elements::BadgeVariant;

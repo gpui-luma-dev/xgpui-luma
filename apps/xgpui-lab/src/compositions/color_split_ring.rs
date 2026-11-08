@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::slider::SliderEvent;
-use gpui_luma_look_radix::Look;
+use xgpui_luma::controls::slider::SliderEvent;
+use xgpui_luma_look_radix::Look;
 
 use super::color_compositions::split_ring::SplitRingDemo;
 use super::color_exposition_common::{format_slider_event, render_demo_section, render_demo_card};
@@ -20,7 +20,7 @@ pub struct ColorSplitRingControlExposition {
 
 impl ColorSplitRingControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        gpui_luma::theme::observe_theme_revision(cx, |this, cx| this.sync_look(this.look.clone(), cx)).detach();
+        xgpui_luma::theme::observe_theme_revision(cx, |this, cx| this.sync_look(this.look.clone(), cx)).detach();
 
         let state = cx.new(|cx| SplitRingDemo::new(look.clone(), cx));
 

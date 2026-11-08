@@ -1,15 +1,15 @@
 //! Color slider revealed exposition — styling survey for the color-slider primitive.
 
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
-use gpui_luma_color::color_slider::{ColorInterpolation, ColorSliderBuilder, SliderThumbSize};
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
+use xgpui_luma_color::color_slider::{ColorInterpolation, ColorSliderBuilder, SliderThumbSize};
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::color_exposition_common::{format_slider_event, render_demo_section, render_field_card, slider_grid_stack};
@@ -190,7 +190,7 @@ impl ColorSliderRevealedPane {
         let interp_rgb = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-revealed-interp-rgb",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Rgb)
@@ -198,7 +198,7 @@ impl ColorSliderRevealedPane {
         let interp_hsl = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-revealed-interp-hsl",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Hsl)
@@ -206,7 +206,7 @@ impl ColorSliderRevealedPane {
         let interp_lab = ColorSliderBuilder::gradient(
             "controls-doc-color-slider-revealed-interp-lab",
             0.5,
-            vec![red, blue].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+            vec![red, blue].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
         )
         .expect("valid demo gradient colors")
         .interpolation(ColorInterpolation::Lab)

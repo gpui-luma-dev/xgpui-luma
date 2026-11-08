@@ -1,12 +1,12 @@
 //! Multi mixer composition exposition — per-color-space channel mixers.
 
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::slider::SliderEvent;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::slider::SliderEvent;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 mod demo;

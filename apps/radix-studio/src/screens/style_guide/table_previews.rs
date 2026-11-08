@@ -1,11 +1,11 @@
 //! Static SDK table templates with shared column layout and native row sizing.
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, SharedString, Window, div, prelude::*, px};
-use gpui_luma::{GridLayout, GridTrack};
-use gpui_luma::controls::{table::*, tabs::Tabs};
-use gpui_luma::infra::state::ControlFocusState;
-use gpui_luma::theme::{ControlSize, InteractionState, ListRowScale};
-use gpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
+use xgpui_luma::{GridLayout, GridTrack};
+use xgpui_luma::controls::{table::*, tabs::Tabs};
+use xgpui_luma::infra::state::ControlFocusState;
+use xgpui_luma::theme::{ControlSize, InteractionState, ListRowScale};
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
 use super::{
     matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label},
     states,
@@ -178,7 +178,7 @@ fn sample(
 mod tests {
     use super::*;
     use gpui::{Render, TestAppContext};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     struct Harness {
         look: Arc<Look>,
         tabs: Entity<Tabs>,

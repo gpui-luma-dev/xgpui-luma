@@ -2,9 +2,9 @@ use std::sync::{Arc, RwLock};
 
 use gpui::{AbsoluteLength, AppContext, CornersRefinement, Entity, SharedString};
 
-use gpui_luma::controls::slider::{SliderBuilder, SliderControl, SliderThumbSize, new as new_slider};
-use gpui_luma::infra::value::{ControlRange, value_from_input};
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::controls::slider::{SliderBuilder, SliderControl, SliderThumbSize, new as new_slider};
+use xgpui_luma::infra::value::{ControlRange, value_from_input};
+use xgpui_luma::theme::ControlSize;
 
 use super::color_spec::{ColorSpecification, slider_step_for_channel};
 use super::color_thumb::ThumbShape;
@@ -13,7 +13,7 @@ use super::domain_renderer::ColorSliderDomainRenderer;
 use super::types::{Axis, ColorInterpolation, ColorSliderDelegate, ThumbPosition, ThumbSize};
 use super::template::{ColorSliderTemplateConfig, color_slider_template};
 use super::track_context::ColorSliderTrackContext;
-use gpui_luma::controls::slider::SliderThumbPolicy;
+use xgpui_luma::controls::slider::SliderThumbPolicy;
 
 /// Builder for a unified [`Slider`] entity configured as a color spectrum slider.
 pub struct ColorSliderBuilder {
@@ -60,7 +60,7 @@ impl ColorSliderBuilder {
     pub fn gradient(
         id: impl Into<SharedString>,
         value: f32,
-        colors: Vec<gpui_luma::color::ColorValue>,
+        colors: Vec<xgpui_luma::color::ColorValue>,
     ) -> anyhow::Result<Self> {
         Ok(Self::new(id, value, Arc::new(GradientDelegate::from_colors(colors)?)).range(0.0..1.0).step(0.01))
     }

@@ -30,7 +30,7 @@ macro_rules! listbox {
     ) => {{
         let surface = ($look).render_listbox(
             $control, $id,
-            gpui_luma::controls::listbox::ListBoxFlow::VerticalContent { viewport_height: $viewport, gap: $gap },
+            xgpui_luma::controls::listbox::ListBoxFlow::VerticalContent { viewport_height: $viewport, gap: $gap },
             ($padding_x, $padding_y), $template, $window, $cx,
         );
         $(let surface = gpui::StatefulInteractiveElement::aria_label(surface, $label);)?
@@ -57,7 +57,7 @@ macro_rules! listbox {
     ) => {{
         let surface = ($look).render_listbox(
             $control, $id,
-            gpui_luma::controls::listbox::ListBoxFlow::Vertical {
+            xgpui_luma::controls::listbox::ListBoxFlow::Vertical {
                 visible_items: $count, item_height: $height, gap: $gap,
             },
             ($padding_x, $padding_y), $template, $window, $cx,
@@ -86,7 +86,7 @@ macro_rules! listbox {
     ) => {{
         let surface = ($look).render_listbox(
             $control, $id,
-            gpui_luma::controls::listbox::ListBoxFlow::Horizontal {
+            xgpui_luma::controls::listbox::ListBoxFlow::Horizontal {
                 item_width: $width_per_item, item_height: $height, gap: $gap,
             },
             ($padding_x, $padding_y), $template, $window, $cx,

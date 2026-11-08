@@ -1,14 +1,14 @@
 //! Forced SDK split-face templates at intrinsic control widths.
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     popup_menu::{PopupMenuPlacement, PopupMenuTriggerMetrics, PopupMenuTriggerStyle},
     split_button::*,
     tabs::Tabs,
 };
-use gpui_luma::infra::{icon::DisclosureIcons, menu_item::MenuItem, state::ControlFocusState};
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, SemanticRole, Tone};
+use xgpui_luma::infra::{icon::DisclosureIcons, menu_item::MenuItem, state::ControlFocusState};
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, SemanticRole, Tone};
 use super::{matrix_grid::*, states};
 
 #[derive(Clone, Copy)]
@@ -174,7 +174,7 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
                     let selector = selector.clone();
                     move || selector.clone()
                 })
-                .child(gpui_luma::infra::icon::lucide_icon(
+                .child(xgpui_luma::infra::icon::lucide_icon(
                     lucide_svg_static::Icon::Save,
                     resolved.trigger_foreground,
                     resolved.trigger_icon_size,
@@ -192,7 +192,7 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
         items: &items,
         open: false,
         disclosure_progress: 0.0,
-        presence: gpui_luma::OverlayPresence::new(false, false),
+        presence: xgpui_luma::OverlayPresence::new(false, false),
         submenu_transition: None,
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
@@ -229,7 +229,7 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
 mod tests {
     use super::*;
     use gpui::{Render, TestAppContext, px};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     struct Harness {
         look: Arc<Look>,
         tabs: Entity<Tabs>,

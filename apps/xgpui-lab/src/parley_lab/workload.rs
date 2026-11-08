@@ -70,8 +70,8 @@ pub fn measure(text: Arc<TextSystem>, lines: &[SharedString], base: &Font) -> an
 }
 
 pub struct ScrollLab {
-    look: Arc<gpui_luma_look_radix::Look>,
-    controls: Vec<gpui::Entity<gpui_luma::controls::button::Button>>,
+    look: Arc<xgpui_luma_look_radix::Look>,
+    controls: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
     pending_start: bool,
     name: String,
     lines: Vec<SharedString>,
@@ -93,14 +93,14 @@ pub struct ScrollLab {
 }
 
 impl ScrollLab {
-    pub fn init_controls(&mut self, look: std::sync::Arc<gpui_luma_look_radix::Look>, cx: &mut Context<Self>) {
-        use gpui_luma::prelude::HasPresenter;
+    pub fn init_controls(&mut self, look: std::sync::Arc<xgpui_luma_look_radix::Look>, cx: &mut Context<Self>) {
+        use xgpui_luma::prelude::HasPresenter;
         self.look = look.clone();
         self.controls = ["Run 600 frames", "Pause", "Size 18 / 24", "Weight 400 / 900"]
             .into_iter()
             .enumerate()
             .map(|(id, label)| {
-                gpui_luma_look_radix::Button::new(format!("scroll-{id}"))
+                xgpui_luma_look_radix::Button::new(format!("scroll-{id}"))
                     .look(look.as_ref())
                     .outline()
                     .label(label)

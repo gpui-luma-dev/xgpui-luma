@@ -1,8 +1,8 @@
 //! Radix panel and drawer chrome over the SDK layout and overlay engines.
 use std::sync::Arc;
 use gpui::{AnyElement, Pixels, SharedString, Size};
-use gpui_luma::controls::{resizable_panels::*, slide_panel::*};
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::{resizable_panels::*, slide_panel::*};
+use xgpui_luma::theme::InteractionState;
 use crate::{Look, ScaleFamily, SemanticRole};
 
 struct PanelsTheme {
@@ -48,8 +48,8 @@ pub fn resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
 ///
 /// ```no_run
 /// use gpui::{Context, div, px};
-/// use gpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizeHandleSize};
-/// use gpui_luma_look_radix::{Look, resizable_panels_builder};
+/// use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizeHandleSize};
+/// use xgpui_luma_look_radix::{Look, resizable_panels_builder};
 /// fn panels<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     resizable_panels_builder(look, "panels")
 ///         .panel(ResizablePanelSpec::new_render(|| div()).weight(1.0))
@@ -83,7 +83,7 @@ pub fn render_slide_panel_overlay(
     handlers: SlidePanelOverlayHandlers,
     resize: SlidePanelResizeHandlers,
 ) -> AnyElement {
-    gpui_luma::controls::slide_panel::render_slide_panel_overlay(
+    xgpui_luma::controls::slide_panel::render_slide_panel_overlay(
         look.resolve_role(SemanticRole::Surface).hsla(),
         &slide_panel_look(look),
         state,
@@ -102,7 +102,7 @@ pub fn render_slide_panel_surface(
     handlers: SlidePanelOverlayHandlers,
     resize: SlidePanelResizeHandlers,
 ) -> AnyElement {
-    gpui_luma::controls::slide_panel::render_slide_panel_surface(
+    xgpui_luma::controls::slide_panel::render_slide_panel_surface(
         look.resolve_role(SemanticRole::Surface).hsla(),
         &slide_panel_look(look),
         state,
@@ -120,7 +120,7 @@ pub fn render_slide_panel_inset(
     handlers: SlidePanelOverlayHandlers,
     resize: SlidePanelResizeHandlers,
 ) -> AnyElement {
-    gpui_luma::controls::slide_panel::render_slide_panel_inset(
+    xgpui_luma::controls::slide_panel::render_slide_panel_inset(
         &slide_panel_look(look),
         state,
         content,
@@ -134,7 +134,7 @@ pub fn render_slide_panel_inset(
 mod tests {
     use super::*;
     use crate::{Accent, Gray};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn panel_colors_and_metrics_follow_live_look() {
         let look = Look::built_in();

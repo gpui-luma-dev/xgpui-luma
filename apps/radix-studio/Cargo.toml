@@ -6,7 +6,7 @@ license = "Apache-2.0"
 publish = false
 
 [features]
-test-support = ["gpui-luma/test-support"]
+test-support = ["xgpui-luma/test-support"]
 
 [dependencies]
 palette.workspace = true
@@ -16,9 +16,9 @@ tiny-skia.workspace = true
 anyhow = { workspace = true }
 gpui = { workspace = true }
 gpui_platform = { workspace = true }
-gpui-luma.workspace = true
-gpui-luma-color.workspace = true
-gpui-luma-look-radix.workspace = true
+xgpui-luma.workspace = true
+xgpui-luma-color.workspace = true
+xgpui-luma-look-radix.workspace = true
 lucide-svg-static.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]

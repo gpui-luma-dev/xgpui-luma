@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn mesh_renderer_switch_preserves_editing_state_and_freeform_cpu_path() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |view, cx| {

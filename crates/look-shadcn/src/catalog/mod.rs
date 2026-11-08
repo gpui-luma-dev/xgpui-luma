@@ -8,7 +8,7 @@ use gpui::Hsla;
 
 pub use parse::{CssTokenCatalog, parse_css_catalog};
 
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CssTokenMap {

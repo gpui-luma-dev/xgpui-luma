@@ -1,8 +1,8 @@
 //! Headless input regression coverage for Radix collection adapters.
 use gpui::{Context, IntoElement, Render, TestAppContext, Window, div, prelude::*, px};
-use gpui_luma::controls::control_group::{ControlGroup, ControlGroupItem};
-use gpui_luma::controls::radio_group::RadioGroup as SdkRadioGroup;
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupItem};
+use xgpui_luma::controls::radio_group::RadioGroup as SdkRadioGroup;
+use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxInput, ListBoxSnapshot, ListBoxState, SelectionMode, make_listbox_item_template,
 };
 use super::*;
@@ -15,8 +15,8 @@ struct Harness {
 }
 impl Harness {
     fn new(cx: &mut Context<Self>) -> Self {
-        gpui_luma::focus::bind_default_focus_keys(cx);
-        gpui_luma::key_handling::bind_default_control_keys(cx);
+        xgpui_luma::focus::bind_default_focus_keys(cx);
+        xgpui_luma::key_handling::bind_default_control_keys(cx);
         let look = Look::built_in();
         let items = || {
             [

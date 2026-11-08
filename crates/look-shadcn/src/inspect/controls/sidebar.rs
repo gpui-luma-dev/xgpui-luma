@@ -1,6 +1,6 @@
 //! Inspect metadata for sidebar flush theme tokens.
 
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
 
 pub struct SidebarContainerInspectPalette {

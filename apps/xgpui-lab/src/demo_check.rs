@@ -68,9 +68,9 @@ impl Render for Probe {
 }
 pub fn run(cx: &mut App, output: PathBuf) -> Result<()> {
     std::fs::create_dir_all(&output)?;
-    gpui_luma::init(cx)?;
-    gpui_luma::focus::bind_default_focus_keys(cx);
-    gpui_luma::key_handling::bind_default_control_keys(cx);
+    xgpui_luma::init(cx)?;
+    xgpui_luma::focus::bind_default_focus_keys(cx);
+    xgpui_luma::key_handling::bind_default_control_keys(cx);
     cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(None, size(px(1100.), px(800.)), cx))),

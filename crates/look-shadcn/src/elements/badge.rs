@@ -7,9 +7,9 @@ use gpui::SharedString;
 use gpui::div;
 use gpui::px;
 use gpui::prelude::*;
-use gpui_luma::infra::icon::IconSource;
-use gpui_luma::infra::icon::lucide_icon;
-use gpui_luma::theme::LumaTextStyle;
+use xgpui_luma::infra::icon::IconSource;
+use xgpui_luma::infra::icon::lucide_icon;
+use xgpui_luma::theme::LumaTextStyle;
 
 use crate::look::ShadcnLook;
 use crate::size::ShadcnSize;
@@ -213,7 +213,7 @@ pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -
     };
     let geometry = tokens.stylesheet().common.badge.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(control_size),
-        gpui_luma::theme::stylesheet::BadgeGeometry {
+        xgpui_luma::theme::stylesheet::BadgeGeometry {
             padding_x: look.padding_x,
             padding_y: look.padding_y,
             min_height: look.min_height,
@@ -328,7 +328,7 @@ mod tests {
     #[test]
     fn outline_badge_uses_border_in_dark_mode() {
         let shadcn = sample_look();
-        shadcn.set_mode(gpui_luma::theme::ThemeMode::Dark);
+        shadcn.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         let look = badge_look(&shadcn, BadgeVariant::Outline, ShadcnSize::Md);
 
         assert_eq!(look.foreground, shadcn.color(ShadcnToken::Foreground));
@@ -422,16 +422,16 @@ pub fn resolve_badge_metrics(
     mode: &crate::ShadcnModeTokens,
     look: &crate::ShadcnLook,
     variant: crate::BadgeVariant,
-    size: gpui_luma::theme::ControlSize,
-    _theme_mode: gpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
+    _theme_mode: xgpui_luma::theme::ThemeMode,
 ) -> BadgeMetricTable {
     let look = crate::badge_look(
         look,
         variant,
         match size {
-            gpui_luma::theme::ControlSize::Sm => crate::ShadcnSize::Sm,
-            gpui_luma::theme::ControlSize::Md => crate::ShadcnSize::Md,
-            gpui_luma::theme::ControlSize::Lg => crate::ShadcnSize::Lg,
+            xgpui_luma::theme::ControlSize::Sm => crate::ShadcnSize::Sm,
+            xgpui_luma::theme::ControlSize::Md => crate::ShadcnSize::Md,
+            xgpui_luma::theme::ControlSize::Lg => crate::ShadcnSize::Lg,
         },
     );
 
@@ -461,7 +461,7 @@ pub fn resolve_badge_metrics(
     };
     let geometry = mode.stylesheet().common.badge.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::BadgeGeometry {
+        xgpui_luma::theme::stylesheet::BadgeGeometry {
             min_height: table.min_height.value_px,
             padding_x: table.padding_x.value_px,
             padding_y: table.padding_y.value_px,

@@ -87,7 +87,7 @@ impl TabsContentTransition {
     /// Simple stateless effect. Use `with_factory` for interruption-aware effects.
     /// ```no_run
     /// use gpui::{div, prelude::*};
-    /// use gpui_luma::controls::tabs::{Tabs, TabsContentTransition};
+    /// use xgpui_luma::controls::tabs::{Tabs, TabsContentTransition};
     /// let effect = TabsContentTransition::new(|frame, _, _| {
     ///     div().opacity(frame.progress).children(frame.incoming.map(|panel| panel.element))
     /// });

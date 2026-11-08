@@ -1,6 +1,6 @@
 //! Inspect metadata for `floating_menu`.
 
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
 pub struct FloatingMenuInspectPalette {

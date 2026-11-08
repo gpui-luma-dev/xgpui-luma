@@ -1,8 +1,8 @@
 //! Radix accordion trigger, content, and drag styling over the SDK template.
 use std::sync::Arc;
 use gpui::SharedString;
-use gpui_luma::controls::accordion::*;
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::controls::accordion::*;
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
 use crate::{Look, ScaleFamily, SemanticRole};
 struct AccordionThemeAdapter {
     look: Look,
@@ -54,13 +54,13 @@ impl AccordionTheme for AccordionThemeAdapter {
             &self.look.common_stylesheet(),
         )
     }
-    fn drag_handle_icon(&self) -> gpui_luma::infra::icon::IconSource {
-        self.look.common_stylesheet().icons.resolve(gpui_luma::theme::stylesheet::IconRole::DragHandle)
+    fn drag_handle_icon(&self) -> xgpui_luma::infra::icon::IconSource {
+        self.look.common_stylesheet().icons.resolve(xgpui_luma::theme::stylesheet::IconRole::DragHandle)
     }
-    fn drag_tooltip_theme(&self) -> Arc<dyn gpui_luma::controls::tooltip::TooltipTheme> {
+    fn drag_tooltip_theme(&self) -> Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme> {
         crate::tooltip_theme(&self.look)
     }
-    fn resolve_drag(&self, size: ControlSize) -> gpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
         crate::navigation::drag_look(&self.look, size)
     }
 }

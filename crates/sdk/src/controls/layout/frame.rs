@@ -7,7 +7,7 @@
 //!
 //! ```no_run
 //! use gpui::{AppContext, Entity, div, prelude::*, px};
-//! use gpui_luma::controls::frame::{FrameBuilder, FrameControl};
+//! use xgpui_luma::controls::frame::{FrameBuilder, FrameControl};
 //!
 //! fn inspector(cx: &mut impl AppContext) -> Entity<FrameControl> {
 //!     FrameBuilder::new("inspector")

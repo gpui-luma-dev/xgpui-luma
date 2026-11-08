@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, FontWeight, SharedString, black, point, px};
-use gpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode, OverlayWindowTheme};
-use gpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode, OverlayWindowTheme};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle};
 
 use crate::look::Look;
 use crate::semantic::SemanticRole;
@@ -16,7 +16,7 @@ struct OverlayWindowThemeAdapter {
 impl OverlayWindowTheme for OverlayWindowThemeAdapter {
     fn resolve(&self, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook {
         let metrics = self.look.metrics();
-        let fallback = gpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(size, mode);
+        let fallback = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(size, mode);
         let mut resolved = OverlayWindowLook {
             viewport_padding: fallback.viewport_padding,
             window_margin: fallback.window_margin,
@@ -53,7 +53,7 @@ impl OverlayWindowTheme for OverlayWindowThemeAdapter {
         };
         let geometry = self.look.common_stylesheet().overlay_window.resolve_geometry(
             key,
-            gpui_luma::theme::stylesheet::OverlayWindowGeometry {
+            xgpui_luma::theme::stylesheet::OverlayWindowGeometry {
                 padding: resolved.padding,
                 min_width: resolved.min_width,
                 max_width: resolved.max_width,
@@ -98,7 +98,7 @@ mod tests {
     fn overlay_chrome_uses_selected_common_stylesheet() {
         let look = Look::built_in();
         look.set_common_stylesheet(
-            gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
+            xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
                 "[common.overlay_window.geometry]\nborder_width=0\nradius=19",
             ])
             .unwrap(),
@@ -111,8 +111,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_overlay_window_stylesheet() -> gpui_luma::theme::stylesheet::OverlayWindowStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_overlay_window_stylesheet() -> xgpui_luma::theme::stylesheet::OverlayWindowStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     OverlayWindowStylesheet {
         geometry: OverlayWindowGeometryStylesheet { backdrop_opacity: Some(0.42), ..Default::default() },
         sizes: [("sm", 280.0, 360.0, 180.0), ("md", 360.0, 440.0, 220.0), ("lg", 440.0, 520.0, 260.0)]

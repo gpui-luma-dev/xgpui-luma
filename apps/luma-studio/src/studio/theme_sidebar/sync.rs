@@ -1,12 +1,12 @@
 use gpui::Context;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::controls::tabs::TabsWidthMode;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::controls::tabs::TabsWidthMode;
 
 use super::ThemeSidebar;
 use super::theme_selector::theme_selector_state;
 use crate::studio::content_tabs::luma_studio_tabs_template;
 use crate::studio::overrides::StudioOverrides;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 impl ThemeSidebar {
     /// Full sidebar refresh for theme/template changes.

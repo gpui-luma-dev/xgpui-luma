@@ -4,7 +4,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
 };
 use gpui::{Hsla, Rgba};
-use gpui_luma_color::{
+use xgpui_luma_color::{
     color_field::{ColorFieldModel2D},
     color_slider::color_spec::Hsv,
 };

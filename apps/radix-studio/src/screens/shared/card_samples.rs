@@ -1,6 +1,6 @@
 //! Local profile content shared by the home and style-guide Card samples.
 use gpui::{Div, FontWeight, IntoElement, div, prelude::*, px};
-use gpui_luma_look_radix::{Avatar, AvatarSize, Card, CardSize, CardVariant, Look, Tone};
+use xgpui_luma_look_radix::{Avatar, AvatarSize, Card, CardSize, CardVariant, Look, Tone};
 
 pub fn profile(look: &Look, variant: CardVariant, size: CardSize) -> Div {
     let (avatar_size, gap) = match size {

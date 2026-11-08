@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{AppContext, Context, Entity, Subscription};
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn as shadcn;
 
 use super::app::LumaStudioApp;
 use super::content_tabs::cards::{

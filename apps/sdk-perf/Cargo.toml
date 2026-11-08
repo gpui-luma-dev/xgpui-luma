@@ -11,17 +11,17 @@ native = ["dep:gpui_platform"]
 anyhow.workspace = true
 gpui.workspace = true
 gpui_platform = { workspace = true, optional = true }
-gpui-luma.workspace = true
-gpui-luma-look-shadcn.workspace = true
-gpui-luma-look-radix.workspace = true
-gpui-luma-color.workspace = true
-gpui-luma-plot.workspace = true
+xgpui-luma.workspace = true
+xgpui-luma-look-shadcn.workspace = true
+xgpui-luma-look-radix.workspace = true
+xgpui-luma-color.workspace = true
+xgpui-luma-plot.workspace = true
 luma-app-common.workspace = true
 lucide-svg-static.workspace = true
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
-gpui-luma = { workspace = true, features = ["test-support"] }
+xgpui-luma = { workspace = true, features = ["test-support"] }
 serde_json = "1"
 libc = "0.2"
 

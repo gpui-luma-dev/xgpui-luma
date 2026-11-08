@@ -1,5 +1,5 @@
 use gpui::{App, Context, Entity, IntoElement, Render, Window, div, prelude::*};
-use gpui_luma_plot::{CartesianChartBuilder, ChartRenderStats};
+use xgpui_luma_plot::{CartesianChartBuilder, ChartRenderStats};
 
 /// Keep one sample per plot size/count configuration; timing jitter must not drive redraws.
 #[derive(Default)]

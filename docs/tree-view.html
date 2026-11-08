@@ -21,11 +21,11 @@
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Controls</span></div><h1>Tree View</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></div><p class="intro">A hierarchical collection.</p><p class="small">Supports drag and drop. See the <a href="drag-drop.html">shared DnD guide</a> for lifecycle, callbacks, and transaction rules.</p><section id="preview"><h2>Try it</h2><p>Expand folders, collapse branches, and select files in this workspace tree. This preview runs the exact code sample shown on this page.</p><div class="live-example live-example--chart"><iframe data-luma-example src="examples/embed.html?id=tree-view-basic" title="Live tree view code sample" loading="lazy"></iframe></div><p class="small"><a href="examples/embed.html?id=tree-view-basic" target="_blank" rel="noopener">Open example separately ↗</a></p></section><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Radix · integration snippet</span><button class="copy" aria-label="Copy Radix · integration snippet">Copy</button></div><pre><code class="language-rust" data-live-example="tree-view-basic">use gpui::{Context};
-use gpui_luma_look_radix as radix;
-use gpui_luma::controls::tree_view::TreeNode;
+use xgpui_luma_look_radix as radix;
+use xgpui_luma::controls::tree_view::TreeNode;
 
 struct Example {
-    control: gpui_luma::controls::tree_view::TreeView&lt;()&gt;,
+    control: xgpui_luma::controls::tree_view::TreeView&lt;()&gt;,
     selected_nodes: std::collections::HashSet&lt;gpui::SharedString&gt;,
 }
 
@@ -64,8 +64,8 @@ impl Example {
 <p>SDK TreeViewBuilder, TreeViewEventExt and both Look builders expose all seven named helpers through <code>TreeViewEvent::DragDrop(TreeViewDragEvent)</code>. The domain payloads below replace the shared key/gap fields: <code>node_ids</code> is the normalized moving roots in displayed order, with selected descendants covered by their ancestor; <code>node_id</code> is the first root. Add/reorder/drop retain <code>TreeDropLocation { parent_id, anchor_id, position }</code>, including Into and After. Moves within a tree include reparenting.</p>
 <p><strong>Compatibility:</strong> <code>Started</code>, <code>Dropped</code>, <code>Rejected</code>, <code>Ended</code> and their callback signatures remain. Exhaustive enum matches must add <code>ItemsRemoved</code>, <code>ItemsAdded</code>, <code>ItemsReordered</code> arms or a wildcard. The historical <code>TreeDragEndReason</code> names map <code>Reordered → MovedWithinTree</code> and <code>Transferred → MovedAcrossTrees</code>.</p><div class="event-table"><table><thead><tr><th>Callback / phase</th><th>Payload (between owner and context)</th></tr></thead><tbody><tr><td><code>on_drag_started</code> / <code>Started</code></td><td><code>source: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;</code></td></tr><tr><td><code>on_items_removed</code> / <code>ItemsRemoved</code></td><td><code>source: EntityId, target: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;</code></td></tr><tr><td><code>on_items_added</code> / <code>ItemsAdded</code></td><td><code>source: EntityId, target: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;, location: &amp;TreeDropLocation</code></td></tr><tr><td><code>on_items_reordered</code> / <code>ItemsReordered</code></td><td><code>target: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;, location: &amp;TreeDropLocation</code></td></tr><tr><td><code>on_dropped</code> / <code>Dropped</code></td><td><code>source: EntityId, target: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;, location: &amp;TreeDropLocation, changed: bool</code></td></tr><tr><td><code>on_drop_rejected</code> / <code>Rejected</code></td><td><code>source: EntityId, target: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;, error: &amp;SharedString</code></td></tr><tr><td><code>on_drag_ended</code> / <code>Ended</code></td><td><code>source: EntityId, node_id: &amp;SharedString, node_ids: &amp;Vec&lt;SharedString&gt;, reason: TreeDragEndReason</code></td></tr></tbody></table></div><h3>Validate proposals and observe completion</h3><p>Compiled by <code>scripts/check_control_docs.py</code>.</p><pre><code class="language-rust">mod drag_drop_example {
     use gpui::{App, Context, SharedString};
-    use gpui_luma::controls::tree_view::{TreeDropProposal, TreeNode, TreeView, TreeViewDragDrop};
-    use gpui_luma_look_radix as radix;
+    use xgpui_luma::controls::tree_view::{TreeDropProposal, TreeNode, TreeView, TreeViewDragDrop};
+    use xgpui_luma_look_radix as radix;
 
     #[derive(Default)]
     struct Workspace { dirty: bool, error: Option&lt;String&gt; }
@@ -102,7 +102,7 @@ impl Example {
             .spawn(cx)
     }
 }
-</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/collection/tree_view/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-radix/src/tree_view.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
+</code></pre><p>Committed changes also support <a href="drag-drop.html#drop-motion">shared drop-layout motion</a>, including duration settings, reduced motion and documented virtualization/transfer limits.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/collection/tree_view/mod.rs">SDK module</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-radix/src/tree_view.rs">Radix adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#events">Events</a><a href="#preview">Try it</a><a href="#use">Basic use</a><a href="#sdk">SDK behavior</a><a href="#drag-drop">Drag/drop</a><a href="#source">Source</a></nav>
 </div>
 </body>

@@ -1,24 +1,24 @@
-use gpui_luma::controls::overlay_window::OverlayWindowEventExt;
+use xgpui_luma::controls::overlay_window::OverlayWindowEventExt;
 use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, Context, EventEmitter, FocusHandle, Hsla, IntoElement, Render, SharedString, Window, div,
     prelude::*, px,
 };
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter};
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::overlay_window::{
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::overlay_window::{
     OverlayWindow, OverlayWindowDismissPolicy, OverlayWindowEvent, OverlayWindowMode, OverlayWindowPosition,
     OverlayWindowRenderModel,
 };
-use gpui_luma::controls::control_group::{
+use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel, ControlGroupItemVisualContext,
 };
-use gpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, observe_theme_revision};
-use gpui_luma::{GridTrack, grid_layout, hstack, vstack};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, observe_theme_revision};
+use xgpui_luma::{GridTrack, grid_layout, hstack, vstack};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
+use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::layout_config::{LayoutConfig, LayoutRegion, PanelAlignment, PrimarySideBarPosition};
@@ -313,7 +313,7 @@ fn sync_header_icon_presenters(close_button: &IconButton, reset_button: &IconBut
 
 fn header_icon_presenter(icon: ControlIcon, color: Hsla) -> ControlPresenter<ButtonContentContext<()>> {
     Arc::new(move |_, _| match &icon {
-        ControlIcon::Lucide(icon) => gpui_luma::infra::icon::lucide_icon(*icon, color, 14.0),
+        ControlIcon::Lucide(icon) => xgpui_luma::infra::icon::lucide_icon(*icon, color, 14.0),
         ControlIcon::SvgPath(path) => {
             gpui::svg().size(px(14.0)).text_color(color).path(path.clone()).into_any_element()
         }
@@ -493,7 +493,7 @@ fn selected_check(selected: bool, color: Hsla) -> impl IntoElement {
         .text_size(px(15.0))
         .text_color(color)
         .child(if selected {
-            gpui_luma::infra::icon::lucide_icon(LucideIcon::Check, color, 15.0)
+            xgpui_luma::infra::icon::lucide_icon(LucideIcon::Check, color, 15.0)
         } else {
             div().into_any_element()
         })
@@ -510,7 +510,7 @@ fn visibility_eye(visible: bool, muted_text: Hsla) -> impl IntoElement {
         .justify_center()
         .text_size(px(13.0))
         .text_color(muted_text)
-        .child(gpui_luma::infra::icon::lucide_icon(eye_icon, muted_text, 13.0))
+        .child(xgpui_luma::infra::icon::lucide_icon(eye_icon, muted_text, 13.0))
 }
 
 fn shortcut_column(

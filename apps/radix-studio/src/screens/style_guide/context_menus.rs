@@ -1,10 +1,10 @@
 //! Always-visible context menu panels rendered from the shared SDK menu template.
 use gpui::{AnyElement, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::controls::context_menu::MenuPath;
-use gpui_luma::controls::floating_menu::render_floating_menu;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::theme::InteractionState;
-use gpui_luma_look_radix::{ContextMenuVariant, Look, Tone, context_menu_theme};
+use xgpui_luma::controls::context_menu::MenuPath;
+use xgpui_luma::controls::floating_menu::render_floating_menu;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma_look_radix::{ContextMenuVariant, Look, Tone, context_menu_theme};
 use lucide_svg_static::Icon;
 
 pub fn preview(look: &Look, fg: Hsla) -> AnyElement {

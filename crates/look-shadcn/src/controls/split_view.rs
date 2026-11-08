@@ -10,9 +10,9 @@ use crate::stylesheet::config::EnabledColorRule;
 use crate::stylesheet::config::find_enabled_color_rule;
 use serde::Deserialize;
 
-use gpui_luma::controls::split_view::SplitViewLook;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::split_view::SplitViewLook;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -71,7 +71,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -153,12 +153,12 @@ pub struct SplitViewMetricTable {
 }
 
 pub fn resolve_split_view_metrics() -> SplitViewMetricTable {
-    resolve_split_view_metrics_with_stylesheet(gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default())
+    resolve_split_view_metrics_with_stylesheet(xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default())
 }
 
 /// Resolve separator inspection from the same selected stylesheet used for paint.
 pub fn resolve_split_view_metrics_with_stylesheet(
-    stylesheet: &gpui_luma::theme::stylesheet::CommonStylesheet,
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
 ) -> SplitViewMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
     let geometry = stylesheet.split_view.resolve_geometry("", Default::default());

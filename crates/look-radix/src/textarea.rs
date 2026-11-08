@@ -2,11 +2,11 @@
 
 use std::sync::Arc;
 
-use gpui_luma::controls::textarea::{
+use xgpui_luma::controls::textarea::{
     TextAreaLook, TextAreaPalette, TextAreaState, TextAreaTemplate, TextAreaTheme, ThemedTextAreaTemplate,
     compose_textarea_look,
 };
-use gpui_luma::theme::{ControlSize, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{ControlSize, MetricTokens, StandardBoxScale};
 
 use crate::look::Look;
 use crate::textfield::{TextFieldVariant, resolve_text_chrome_palette};
@@ -87,7 +87,7 @@ impl TextAreaTheme for TextAreaThemeAdapter {
         look.helper_geometry = stylesheet.shared_geometry();
         let geometry = stylesheet.textarea.resolve_geometry(
             crate::look::sdk_size_key(size),
-            gpui_luma::theme::stylesheet::TextAreaGeometry {
+            xgpui_luma::theme::stylesheet::TextAreaGeometry {
                 min_height: look.min_height,
                 padding_x: look.padding_x,
                 padding_y: look.padding_y,
@@ -124,8 +124,8 @@ pub fn textarea_template(look: &Look, variant: TextFieldVariant) -> Arc<dyn Text
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_textarea_stylesheet() -> gpui_luma::theme::stylesheet::TextAreaStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_textarea_stylesheet() -> xgpui_luma::theme::stylesheet::TextAreaStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     TextAreaStylesheet {
         geometry: TextAreaGeometryStylesheet { font_size: Some(14.0), line_height: Some(20.0), ..Default::default() },
         ..Default::default()

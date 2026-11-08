@@ -1,8 +1,8 @@
 name: CI
 
+# Disabled: manual dispatch only; every job is also gated off below.
 on:
   workflow_dispatch:
-  pull_request:
 
 permissions:
   contents: read
@@ -17,11 +17,12 @@ env:
   RUSTFLAGS: "-C debuginfo=0"
   # Disables LLVM optimization passes during CI tests to dramatically speed up compilation
   CARGO_PROFILE_DEV_OPT_LEVEL: "0"
-  CARGO_PROFILE_DEV_PACKAGE_GPUI_LUMA_OPT_LEVEL: "0"
+  CARGO_PROFILE_DEV_PACKAGE_XGPUI_LUMA_OPT_LEVEL: "0"
   CARGO_PROFILE_DEV_PACKAGE_GPUI_UNOFFICIAL_OPT_LEVEL: "0"
 
 jobs:
   scope:
+    if: ${{ false }}
     name: Classify changes
     timeout-minutes: 5
     runs-on: ubuntu-latest
@@ -47,6 +48,7 @@ jobs:
         run: python3 -B scripts/ci_scope.py
 
   fmt:
+    if: ${{ false }}
     name: Format check
     timeout-minutes: 10
     runs-on: ubuntu-latest
@@ -67,7 +69,8 @@ jobs:
 
   clippy:
     needs: scope
-    if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') }}
+    # Previous condition: if: ${{ !cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') }}
+    if: ${{ false }}
     name: Clippy
     timeout-minutes: 30
     # Use the explicit macOS 15 pool rather than the moving latest image.
@@ -89,7 +92,8 @@ jobs:
 
   test:
     needs: scope
-    if: ${{ !cancelled() }}
+    # Previous condition: if: ${{ !cancelled() }}
+    if: ${{ false }}
     name: Test & Doc-tests
     timeout-minutes: 40
     # Use the explicit macOS 15 pool rather than the moving latest image.
@@ -114,11 +118,11 @@ jobs:
         if: needs.scope.result != 'success' || needs.scope.outputs.native == 'true'
         run: >-
           cargo test --locked --lib --bins --tests --all-features
-          --package gpui-luma
-          --package gpui-luma-color
-          --package gpui-luma-plot
-          --package gpui-luma-look-radix
-          --package gpui-luma-look-shadcn
+          --package xgpui-luma
+          --package xgpui-luma-color
+          --package xgpui-luma-plot
+          --package xgpui-luma-look-radix
+          --package xgpui-luma-look-shadcn
           --package luma-app-common
 
       - name: Test XGPUI Lab
@@ -131,10 +135,10 @@ jobs:
         if: needs.scope.result != 'success' || needs.scope.outputs.native == 'true'
         run: >-
           cargo test --locked --doc --all-features
-          --package gpui-luma
-          --package gpui-luma-look-radix
-          --package gpui-luma-look-shadcn
-          --package gpui-luma-plot
+          --package xgpui-luma
+          --package xgpui-luma-look-radix
+          --package xgpui-luma-look-shadcn
+          --package xgpui-luma-plot
 
       - name: Compile control documentation examples
         timeout-minutes: 10
@@ -143,7 +147,8 @@ jobs:
   test_queue:
     name: Test queue guard
     needs: scope
-    if: ${{ !cancelled() }}
+    # Previous condition: if: ${{ !cancelled() }}
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
     permissions:

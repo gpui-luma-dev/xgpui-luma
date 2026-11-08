@@ -1,5 +1,5 @@
 //! Isolated headless costs, not application frame times. Run with:
-//! `cargo bench -p gpui-luma --bench render_hot_paths -- --measure`
+//! `cargo bench -p xgpui-luma --bench render_hot_paths -- --measure`
 use std::{collections::HashMap, hint::black_box, rc::Rc, sync::Arc};
 
 #[path = "../src/perf_measure.rs"]
@@ -7,7 +7,7 @@ mod perf_measure;
 use perf_measure::measure;
 
 use gpui::{BoxShadow, ElementId, SharedString};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{
         button_family::{ButtonFamilyRole, compose_button_family_look, default_button_family_theme},
         sidebar::SidebarPanelTemplateHandlers,

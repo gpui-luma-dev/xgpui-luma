@@ -12,13 +12,13 @@ pub(crate) struct CopyFeedback {
 }
 
 use gpui::{AnyElement, Context, Entity, FocusHandle, Hsla, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::prelude::{HasPresenter, TooltipEntityExt};
-use gpui_luma::controls::overlay_window::{OverlayWindow, OverlayWindowMode, OverlayWindowPosition};
-use gpui_luma_look_radix as radix;
-use gpui_luma::color::{ColorValue, DisplayP3Color, GamutMapping};
-use gpui_luma::controls::button::Button;
-use gpui_luma_look_radix::{Look, LookControlExt, ScaleFamily, SemanticRole};
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::prelude::{HasPresenter, TooltipEntityExt};
+use xgpui_luma::controls::overlay_window::{OverlayWindow, OverlayWindowMode, OverlayWindowPosition};
+use xgpui_luma_look_radix as radix;
+use xgpui_luma::color::{ColorValue, DisplayP3Color, GamutMapping};
+use xgpui_luma::controls::button::Button;
+use xgpui_luma_look_radix::{Look, LookControlExt, ScaleFamily, SemanticRole};
 use palette::convert::FromColorUnclamped;
 
 use crate::color_hex::format_hex;
@@ -60,7 +60,7 @@ impl SwatchSelection {
         let mut selection = Self::from_source(name, step, solid, background)?;
         // Keep the original translucent color for the preview. The solid value
         // above is only the equivalent color shown in the details text.
-        selection.color = gpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde)?;
+        selection.color = xgpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde)?;
         selection.hsla = format_hsl(selection.color, true);
         selection.alpha =
             format!("#{:02X}{:02X}{:02X}{:02X}", byte(rgb.red), byte(rgb.green), byte(rgb.blue), byte(rgb.alpha));
@@ -71,7 +71,7 @@ impl SwatchSelection {
     }
 
     pub fn from_source(name: &str, step: u8, source: ColorValue, background: ColorValue) -> anyhow::Result<Self> {
-        let color = gpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde)?;
+        let color = xgpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde)?;
         let rgb = source.to_srgba_fallback(GamutMapping::CssLocalMinde)?;
         let bg = background.to_srgba_fallback(GamutMapping::CssLocalMinde)?;
         let (alpha_rgb, alpha) = equivalent_alpha([rgb.red, rgb.green, rgb.blue], [bg.red, bg.green, bg.blue]);
@@ -79,7 +79,7 @@ impl SwatchSelection {
         let p3_bg = DisplayP3Color::from_color_unclamped(background.to_srgba_unclamped()?);
         let (p3_rgb, p3_alpha) = equivalent_alpha([p3.red, p3.green, p3.blue], [p3_bg.red, p3_bg.green, p3_bg.blue]);
         let oklch = source.to_oklcha_unclamped()?;
-        let alpha_color = gpui_luma::color::gpui_bridge::to_hsla(
+        let alpha_color = xgpui_luma::color::gpui_bridge::to_hsla(
             ColorValue::srgb(alpha_rgb[0], alpha_rgb[1], alpha_rgb[2], alpha),
             GamutMapping::CssLocalMinde,
         )?;
@@ -319,7 +319,7 @@ pub(crate) fn swatch<M: 'static>(
                     // Button presenters are measured intrinsically. Give the
                     // percentage-width canvas a concrete catalog-cell width.
                     root.when_some(width, |root, width| root.w(px((width - 2.0).max(0.0)))).child(
-                        gpui_luma_color::ColorSwatch::new(gpui_luma::color::gpui_bridge::from_hsla(color))
+                        xgpui_luma_color::ColorSwatch::new(xgpui_luma::color::gpui_bridge::from_hsla(color))
                             .height(px(height - 2.0))
                             .rounded(px(0.0))
                             .bordered(false)
@@ -448,7 +448,7 @@ pub(crate) fn render(
                 .h(px(240.0))
                 .debug_selector(|| "swatch-info-preview".into())
                 .child(
-                    gpui_luma_color::ColorSwatch::new(gpui_luma::color::gpui_bridge::from_hsla(selection.color))
+                    xgpui_luma_color::ColorSwatch::new(xgpui_luma::color::gpui_bridge::from_hsla(selection.color))
                         .height(px(240.0))
                         .rounded(px(0.0))
                         .bordered(false)
@@ -503,7 +503,7 @@ mod tests {
         assert_eq!(selection.hsla, "hsla(0.0, 0.0%, 100.0%, 0.5020)");
         assert_eq!(
             selection.color,
-            gpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde).unwrap()
+            xgpui_luma::color::gpui_bridge::to_hsla(source, GamutMapping::CssLocalMinde).unwrap()
         );
         assert!(selection.p3_alpha.ends_with("/ 0.5020)"));
     }

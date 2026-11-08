@@ -8,11 +8,11 @@ pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{AppContext, Context, Entity, SharedString, Point, Pixels, Bounds};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_media::{ImageJob, MediaImage, MediaLoader, MediaLimits, UploadLimits, UploadStatus, LoadStatus, ImageFilter};
 use fixtures::Fixtures;
 
@@ -624,7 +624,7 @@ mod tests {
     fn selectors_pick_nonadjacent_values_and_follow_filter_reset() {
         use super::Action;
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             page.fixtures = Some(Fixtures::new(None).unwrap());
@@ -679,10 +679,10 @@ mod tests {
     #[test]
     fn luma_media_controls_update_filters_and_release_native_video() {
         use gpui::TestAppContext;
-        use gpui_luma::controls::button::ButtonEvent;
+        use xgpui_luma::controls::button::ButtonEvent;
         use super::{Action, Parameter};
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| page.activate("Video Frames".into(), cx));
         cx.run_until_parked();
@@ -709,7 +709,7 @@ mod tests {
     #[test]
     fn media_camera_keeps_pointer_anchor_and_suspension_clears_motion() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             page.values[1] = 20.;
@@ -731,7 +731,7 @@ mod tests {
     #[test]
     fn specialized_tabs_restore_independent_camera_and_filter_values() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             page.values[0] = 2.;

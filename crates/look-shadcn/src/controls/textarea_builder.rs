@@ -1,10 +1,12 @@
-//! Look-owned text-area builder. Spawn synthesizes the SDK [`gpui_luma::controls::textarea::TextArea`].
+//! Look-owned text-area builder. Spawn synthesizes the SDK [`xgpui_luma::controls::textarea::TextArea`].
 
 use std::sync::Arc;
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::textarea::{TextAreaBuilder, TextAreaLook, TextAreaRenderModel, ThemedTextAreaTemplate, Validator};
-use gpui_luma::infra::icon::IconSource;
+use xgpui_luma::controls::textarea::{
+    TextAreaBuilder, TextAreaLook, TextAreaRenderModel, ThemedTextAreaTemplate, Validator,
+};
+use xgpui_luma::infra::icon::IconSource;
 use super::textfield::ShadcnTextFieldStyle;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
@@ -13,7 +15,7 @@ type TextAreaModifier = Box<dyn Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> S
 
 /// Builder in the guise of a text area: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct TextArea {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::textarea::TextAreaEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::textarea::TextAreaEvent>,
 
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -22,8 +24,8 @@ pub struct TextArea {
     placeholder: SharedString,
     value: SharedString,
     enabled: bool,
-    pointer_focus: gpui_luma::interaction::PointerFocusPolicy,
-    scroll_interaction: gpui_luma::interaction::ScrollInteraction,
+    pointer_focus: xgpui_luma::interaction::PointerFocusPolicy,
+    scroll_interaction: xgpui_luma::interaction::ScrollInteraction,
     full_width: bool,
     rows: usize,
     clean_on_escape: bool,
@@ -41,7 +43,7 @@ impl TextArea {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::textarea::TextAreaEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::textarea::TextAreaEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -54,7 +56,7 @@ impl TextArea {
         callback: impl Fn(&mut M, &String, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::Change { value } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::Change { value } = event {
                 callback(owner, value, cx);
             }
         })
@@ -67,7 +69,7 @@ impl TextArea {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -80,7 +82,7 @@ impl TextArea {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::textarea::TextAreaEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::textarea::TextAreaEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -98,12 +100,12 @@ impl TextArea {
             value: SharedString::default(),
             enabled: true,
             pointer_focus: Default::default(),
-            scroll_interaction: gpui_luma::interaction::ScrollInteraction::DOCUMENT,
+            scroll_interaction: xgpui_luma::interaction::ScrollInteraction::DOCUMENT,
             full_width: false,
             rows: 4,
             clean_on_escape: false,
             select_all_on_tab_focus: false,
-            max_clipboard_paste_bytes: Some(gpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+            max_clipboard_paste_bytes: Some(xgpui_luma::controls::text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
             resize_handle_icon: None,
             validator: None,
             look_override: None,
@@ -155,24 +157,24 @@ impl TextArea {
 
     /// Override the SDK interaction policy.
     /// Override pointer_focus independently of wheel routing.
-    pub fn pointer_focus_policy(mut self, policy: gpui_luma::interaction::PointerFocusPolicy) -> Self {
+    pub fn pointer_focus_policy(mut self, policy: xgpui_luma::interaction::PointerFocusPolicy) -> Self {
         self.pointer_focus = policy;
         self
     }
 
-    pub fn wheel_scroll_policy(mut self, policy: gpui_luma::interaction::WheelScrollPolicy) -> Self {
+    pub fn wheel_scroll_policy(mut self, policy: xgpui_luma::interaction::WheelScrollPolicy) -> Self {
         self.scroll_interaction.wheel = policy;
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn scroll_boundary_policy(mut self, policy: gpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
+    pub fn scroll_boundary_policy(mut self, policy: xgpui_luma::interaction::ScrollBoundaryPolicy) -> Self {
         self.scroll_interaction.boundary = policy;
         self
     }
 
     /// Override the SDK interaction policy.
-    pub fn wheel_focus_scope(mut self, policy: gpui_luma::interaction::WheelFocusScope) -> Self {
+    pub fn wheel_focus_scope(mut self, policy: xgpui_luma::interaction::WheelFocusScope) -> Self {
         self.scroll_interaction.focus_scope = policy;
         self
     }
@@ -234,7 +236,7 @@ impl TextArea {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::textarea::TextArea> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::textarea::TextArea> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -255,12 +257,12 @@ impl TextArea {
             ShadcnTextFieldStyle::Primary => (look.primary_textarea_template(), look.primary_textarea_theme()),
             ShadcnTextFieldStyle::Surface => {
                 let theme = look.surface_textarea_theme();
-                let template: Arc<dyn gpui_luma::controls::textarea::TextAreaTemplate> =
+                let template: Arc<dyn xgpui_luma::controls::textarea::TextAreaTemplate> =
                     Arc::new(ThemedTextAreaTemplate::new(theme.clone()));
                 (template, theme)
             }
         };
-        let mut builder = gpui_luma::controls::textarea::TextArea::new(self.id)
+        let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
             .stylesheet(&look.stylesheet().common)
             .template(template)
             .theme(theme)
@@ -322,7 +324,7 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn forwards_independent_wheel_policies_after_look_synthesis() {
-    use gpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
+    use xgpui_luma::interaction::{WheelScrollPolicy, ScrollBoundaryPolicy, WheelFocusScope};
     let mut app = gpui::TestAppContext::single();
     let control = TextArea::new("policy")
         .wheel_scroll_policy(WheelScrollPolicy::PassThrough)

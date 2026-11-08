@@ -1,6 +1,6 @@
 use super::*;
 
-use gpui_luma_color::color_slider::{GradientDelegate, GradientStop, refresh_color_slider, update_domain_delegate};
+use xgpui_luma_color::color_slider::{GradientDelegate, GradientStop, refresh_color_slider, update_domain_delegate};
 
 use super::super::color::format_css_gradient;
 use super::super::paint::{
@@ -429,11 +429,11 @@ impl GradientBuilder {
         );
         let stops = stops
             .into_iter()
-            .map(|(position, color)| GradientStop { position, color: gpui_luma::color::gpui_bridge::from_hsla(color) })
+            .map(|(position, color)| GradientStop { position, color: xgpui_luma::color::gpui_bridge::from_hsla(color) })
             .collect();
         let mut track_context = self.track_context.clone();
         track_context.theme_is_dark = matches!(self.look.mode(), ThemeMode::Dark);
-        let Ok(delegate) = GradientDelegate::new(stops, gpui_luma::color::GamutMapping::CssLocalMinde) else {
+        let Ok(delegate) = GradientDelegate::new(stops, xgpui_luma::color::GamutMapping::CssLocalMinde) else {
             return;
         };
         update_domain_delegate(&self.domain_renderer, Arc::new(delegate), track_context);

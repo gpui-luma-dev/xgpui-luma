@@ -1,6 +1,6 @@
 //! Inspect metadata for `card`.
 
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 use crate::{ResolvedMetric, ShadcnLook};
 
 #[derive(Clone, Debug)]

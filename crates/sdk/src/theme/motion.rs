@@ -68,7 +68,7 @@ impl CommonStylesheet {
     /// Resolve motion without depending on a look crate.
     ///
     /// ```
-    /// use gpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
+    /// use xgpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
     /// let sheet = CommonStylesheet::parse(r#"
     /// [common.motion.switch.state]
     /// kind = "spring"

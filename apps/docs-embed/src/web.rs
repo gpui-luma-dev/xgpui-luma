@@ -8,9 +8,9 @@ use gpui::{
     div, App, AppContext, Application, AnyView, Context, Entity, IntoElement, ParentElement, Render, Styled, Window,
     WindowOptions,
 };
-use gpui_luma_look_radix as radix;
+use xgpui_luma_look_radix as radix;
 use wasm_bindgen::prelude::*;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 type Refresh = Rc<dyn Fn(&mut App)>;
 
@@ -313,7 +313,7 @@ pub fn set_theme(dark: bool) {
         if let Some((view, app)) = state {
             let _ = view.update(app, |view, cx| {
                 view.look.set_mode(if dark { ThemeMode::Dark } else { ThemeMode::Light });
-                if let Some(look) = cx.try_global::<gpui_luma_look_shadcn::ShadcnLook>() {
+                if let Some(look) = cx.try_global::<xgpui_luma_look_shadcn::ShadcnLook>() {
                     look.set_mode(if dark { ThemeMode::Dark } else { ThemeMode::Light });
                 }
                 (view.sample.refresh)(cx);
@@ -392,8 +392,8 @@ pub fn start(example_id: &str) -> Result<(), JsValue> {
     gpui_web::init_logging();
     Application::with_platform(Rc::new(gpui_web::WebPlatform::new(false))).with_assets(Assets).run(
         move |cx: &mut App| {
-            let result = gpui_luma::init(cx).and_then(|_| {
-                gpui_luma::key_handling::bind_default_control_keys(cx);
+            let result = xgpui_luma::init(cx).and_then(|_| {
+                xgpui_luma::key_handling::bind_default_control_keys(cx);
                 cx.text_system().add_fonts(vec![
                     Cow::Borrowed(include_bytes!("../../common/assets/google/inter/Inter-Variable.ttf")),
                     Cow::Borrowed(include_bytes!("../assets/ibm-plex-sans/IBMPlexSans-Regular.ttf")),
@@ -405,7 +405,7 @@ pub fn start(example_id: &str) -> Result<(), JsValue> {
                 look.set_common_stylesheet(stylesheet);
                 look.set_mode(if DARK.get() { ThemeMode::Dark } else { ThemeMode::Light });
                 cx.set_global(look.clone());
-                let picker_look = gpui_luma_look_shadcn::ShadcnLook::built_in();
+                let picker_look = xgpui_luma_look_shadcn::ShadcnLook::built_in();
                 picker_look.set_mode(if DARK.get() { ThemeMode::Dark } else { ThemeMode::Light });
                 cx.set_global(picker_look);
                 cx.open_window(WindowOptions::default(), |_, cx| {

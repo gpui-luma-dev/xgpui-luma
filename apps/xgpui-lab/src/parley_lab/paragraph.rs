@@ -100,9 +100,9 @@ pub fn measure(system: Arc<TextSystem>, iterations: usize) -> Result<Vec<Timing>
 
 pub struct ParagraphLab {
     engine: Arc<super::Engine>,
-    buttons: Vec<gpui::Entity<gpui_luma::controls::button::Button>>,
+    buttons: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
     sample_choice: crate::lab_controls::Choice,
-    look: Arc<gpui_luma_look_radix::Look>,
+    look: Arc<xgpui_luma_look_radix::Look>,
     raster: Option<(String, Pixels, f32, Arc<gpui::RenderImage>)>,
     raster_error: Option<String>,
     line_mode: bool,
@@ -124,10 +124,10 @@ impl ParagraphLab {
     pub fn new(
         engine: Arc<super::Engine>,
         timings: Vec<Timing>,
-        look: Arc<gpui_luma_look_radix::Look>,
+        look: Arc<xgpui_luma_look_radix::Look>,
         cx: &mut Context<Self>,
     ) -> Self {
-        use gpui_luma::prelude::HasPresenter;
+        use xgpui_luma::prelude::HasPresenter;
         let sample_choice = crate::lab_controls::Choice::new(
             "text-paragraph-sample",
             "Sample",
@@ -149,7 +149,7 @@ impl ParagraphLab {
             },
         );
         let buttons = vec![
-            gpui_luma_look_radix::Button::new("paragraph-control-width")
+            xgpui_luma_look_radix::Button::new("paragraph-control-width")
                 .look(look.as_ref())
                 .outline()
                 .label("Narrow / Wide")
@@ -497,7 +497,7 @@ mod tests {
     #[test]
     fn paragraph_lab_click_drag_visual_keys_and_width_controls() -> Result<()> {
         let mut cx = TestAppContext::single();
-        cx.update(|cx| gpui_luma::init(cx).unwrap());
+        cx.update(|cx| xgpui_luma::init(cx).unwrap());
         let window = cx.open_window(size(px(580.0), px(1000.0)), |_, cx| {
             ParagraphLab::new(
                 crate::parley_lab::Engine::new().unwrap(),
@@ -544,7 +544,7 @@ mod tests {
         });
         visual.update(|_, cx| {
             let button = lab.read(cx).buttons[0].clone();
-            button.update(cx, |_, cx| cx.emit(gpui_luma::controls::button::ButtonEvent::Click));
+            button.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
         });
         visual.run_until_parked();
         draw(&mut visual);

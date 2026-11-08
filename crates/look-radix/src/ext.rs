@@ -3,16 +3,16 @@
 use std::sync::Arc;
 
 use gpui::SharedString;
-use gpui_luma::controls::button::ButtonTemplate;
-use gpui_luma::controls::checkbox::CheckboxData;
-use gpui_luma::controls::overlay_window::{self, OverlayWindowBuilder, ThemedOverlayWindowTemplate};
-use gpui_luma::controls::popup_menu::PopupMenuTemplate;
-use gpui_luma::controls::radio_button::RadioButtonData;
-use gpui_luma::controls::slider::SliderTemplate;
-use gpui_luma::controls::switch::SwitchData;
-use gpui_luma::controls::tabs::TabsTemplate;
-use gpui_luma::controls::textarea::TextAreaTemplate;
-use gpui_luma::controls::textfield::TextFieldTemplate;
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::checkbox::CheckboxData;
+use xgpui_luma::controls::overlay_window::{self, OverlayWindowBuilder, ThemedOverlayWindowTemplate};
+use xgpui_luma::controls::popup_menu::PopupMenuTemplate;
+use xgpui_luma::controls::radio_button::RadioButtonData;
+use xgpui_luma::controls::slider::SliderTemplate;
+use xgpui_luma::controls::switch::SwitchData;
+use xgpui_luma::controls::tabs::TabsTemplate;
+use xgpui_luma::controls::textarea::TextAreaTemplate;
+use xgpui_luma::controls::textfield::TextFieldTemplate;
 
 use crate::button::{Paint, ButtonVariant};
 use crate::button_layout::Radius;
@@ -46,7 +46,7 @@ pub trait LookControlExt {
         variant: crate::ProgressVariant,
         paint: Paint,
         radius: Radius,
-    ) -> Arc<dyn gpui_luma::controls::progress::ProgressTemplate>;
+    ) -> Arc<dyn xgpui_luma::controls::progress::ProgressTemplate>;
     /// Bare template for previews that render forced states instead of live controls.
     fn checkbox_template(&self, variant: CheckboxVariant) -> Arc<dyn ButtonTemplate<CheckboxData>>;
     fn checkbox_template_with(&self, variant: CheckboxVariant, paint: Paint) -> Arc<dyn ButtonTemplate<CheckboxData>>;
@@ -82,7 +82,7 @@ pub trait LookControlExt {
         &self,
         variant: crate::ContextMenuVariant,
         tone: Tone,
-    ) -> Arc<dyn gpui_luma::controls::context_menu::ContextMenuTemplate>;
+    ) -> Arc<dyn xgpui_luma::controls::context_menu::ContextMenuTemplate>;
     fn overlay_window(&self, id: impl Into<SharedString>) -> OverlayWindowBuilder;
 }
 
@@ -108,7 +108,7 @@ impl LookControlExt for Look {
         variant: crate::ProgressVariant,
         paint: Paint,
         radius: Radius,
-    ) -> Arc<dyn gpui_luma::controls::progress::ProgressTemplate> {
+    ) -> Arc<dyn xgpui_luma::controls::progress::ProgressTemplate> {
         crate::progress_template(self, variant, paint, radius)
     }
 
@@ -181,7 +181,7 @@ impl LookControlExt for Look {
         &self,
         variant: crate::ContextMenuVariant,
         tone: Tone,
-    ) -> Arc<dyn gpui_luma::controls::context_menu::ContextMenuTemplate> {
+    ) -> Arc<dyn xgpui_luma::controls::context_menu::ContextMenuTemplate> {
         crate::context_menu_template(self, variant, tone)
     }
 

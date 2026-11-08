@@ -2,20 +2,20 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity};
-//! use gpui_luma::controls::sidebar::SidebarBuilder;
-//! use gpui_luma_look_shadcn::{Frame, ShadcnLook, Sidebar};
+//! use xgpui_luma::controls::sidebar::SidebarBuilder;
+//! use xgpui_luma_look_shadcn::{Frame, ShadcnLook, Sidebar};
 //!
 //! fn standalone<M: 'static>(
 //!     look: &ShadcnLook, content: SidebarBuilder, cx: &mut Context<M>,
-//! ) -> Entity<gpui_luma::controls::frame::FrameControl> {
+//! ) -> Entity<xgpui_luma::controls::frame::FrameControl> {
 //!     let navigation = Sidebar::new("nav").look(look).sidebar(content).spawn(cx);
 //!     Frame::sidebar("nav-frame").look(look).child(navigation).spawn(cx)
 //! }
 //! ```
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarPlacement, ScrollbarVisibility};
-use gpui_luma::controls::sidebar::{
+use xgpui_luma::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarPlacement, ScrollbarVisibility};
+use xgpui_luma::controls::sidebar::{
     SidebarBuilder, SidebarContentBuilder, SidebarControlBuilder, SidebarFooterBuilder, SidebarGroupBuilder,
     SidebarHeaderBuilder, SidebarMenuBuilder, SidebarMenuItemBuilder, SidebarMenuSubBuilder, SidebarPresentation,
 };
@@ -24,14 +24,14 @@ use crate::look::{ShadcnLook, resolve_look_from};
 
 /// Builder in the guise of a sidebar control: Shadcn templates plus SDK options, until `.spawn(cx)`.
 pub struct Sidebar {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::sidebar::SidebarEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::sidebar::SidebarEvent>,
 
     look: Option<ShadcnLook>,
     builder: SidebarControlBuilder,
 }
 
 impl Sidebar {
-    gpui_luma::forward_motion!(gpui_luma::controls::sidebar::SidebarMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::sidebar::SidebarMotion, builder builder);
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
@@ -39,10 +39,10 @@ impl Sidebar {
     pub fn on_drag_drop<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::sidebar::SidebarDragEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::sidebar::SidebarDragEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::DragDrop(event) = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::DragDrop(event) = event {
                 callback(owner, event, cx);
             }
         })
@@ -54,7 +54,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::DragStarted { source, keys } = event {
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::DragStarted { source, keys } = event {
                 callback(owner, *source, keys, cx);
             }
         })
@@ -67,7 +67,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, gpui::EntityId, gpui::EntityId, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::ItemsRemoved { source, target, keys } = event {
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::ItemsRemoved { source, target, keys } = event {
                 callback(owner, *source, *target, keys, cx);
             }
         })
@@ -82,12 +82,13 @@ impl Sidebar {
             gpui::EntityId,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::sidebar::SidebarDropLocation,
+            &xgpui_luma::controls::sidebar::SidebarDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::ItemsAdded { source, target, keys, location } = event
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::ItemsAdded { source, target, keys, location } =
+                event
             {
                 callback(owner, *source, *target, keys, location, cx);
             }
@@ -102,12 +103,12 @@ impl Sidebar {
             &mut M,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::sidebar::SidebarDropLocation,
+            &xgpui_luma::controls::sidebar::SidebarDropLocation,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::ItemsReordered { target, keys, location } = event {
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::ItemsReordered { target, keys, location } = event {
                 callback(owner, *target, keys, location, cx);
             }
         })
@@ -122,14 +123,19 @@ impl Sidebar {
             gpui::EntityId,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::sidebar::SidebarDropLocation,
+            &xgpui_luma::controls::sidebar::SidebarDropLocation,
             bool,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::Dropped { source, target, keys, location, changed } =
-                event
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::Dropped {
+                source,
+                target,
+                keys,
+                location,
+                changed,
+            } = event
             {
                 callback(owner, *source, *target, keys, location, *changed, cx);
             }
@@ -145,13 +151,13 @@ impl Sidebar {
             gpui::EntityId,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            &gpui_luma::controls::sidebar::SidebarDropLocation,
+            &xgpui_luma::controls::sidebar::SidebarDropLocation,
             &gpui::SharedString,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::DropRejected {
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::DropRejected {
                 source,
                 target,
                 keys,
@@ -172,12 +178,12 @@ impl Sidebar {
             &mut M,
             gpui::EntityId,
             &Vec<gpui::SharedString>,
-            gpui_luma::infra::drag_drop::DragEndReason,
+            xgpui_luma::infra::drag_drop::DragEndReason,
             &mut gpui::Context<M>,
         ) + 'static,
     ) -> Self {
         self.on_drag_drop(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarDragEvent::DragEnded { source, keys, reason } = event {
+            if let xgpui_luma::controls::sidebar::SidebarDragEvent::DragEnded { source, keys, reason } = event {
                 callback(owner, *source, keys, *reason, cx);
             }
         })
@@ -186,7 +192,7 @@ impl Sidebar {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::sidebar::SidebarEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::sidebar::SidebarEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -196,10 +202,10 @@ impl Sidebar {
     pub fn on_presentation_changed<M: 'static>(
         self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::sidebar::SidebarPresentation, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::sidebar::SidebarPresentation, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::PresentationChanged { presentation } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::PresentationChanged { presentation } = event {
                 callback(owner, presentation, cx);
             }
         })
@@ -212,7 +218,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::Select { id } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::Select { id } = event {
                 callback(owner, id, cx);
             }
         })
@@ -225,7 +231,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::ItemFocused { id } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::ItemFocused { id } = event {
                 callback(owner, id, cx);
             }
         })
@@ -238,7 +244,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, &Option<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::HoverChanged { id } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::HoverChanged { id } = event {
                 callback(owner, id, cx);
             }
         })
@@ -251,7 +257,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, &gpui::SharedString, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::SubMenuToggle { id, open } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::SubMenuToggle { id, open } = event {
                 callback(owner, id, *open, cx);
             }
         })
@@ -264,7 +270,7 @@ impl Sidebar {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::sidebar::SidebarEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::sidebar::SidebarEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -274,7 +280,7 @@ impl Sidebar {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: gpui_luma::controls::sidebar::SidebarControl::new(id),
+            builder: xgpui_luma::controls::sidebar::SidebarControl::new(id),
         }
     }
 
@@ -290,7 +296,7 @@ impl Sidebar {
     }
 
     /// Enable SDK-owned same-sidebar subtree moves.
-    pub fn drag_drop(mut self, config: gpui_luma::controls::sidebar::SidebarDragDrop) -> Self {
+    pub fn drag_drop(mut self, config: xgpui_luma::controls::sidebar::SidebarDragDrop) -> Self {
         self.builder = self.builder.drag_drop(config);
         self
     }
@@ -339,7 +345,7 @@ impl Sidebar {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::sidebar::SidebarControl> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::sidebar::SidebarControl> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look_from(self.look.as_ref(), cx);
@@ -359,35 +365,35 @@ impl Sidebar {
     }
 
     pub fn panel(id: impl Into<SharedString>) -> SidebarBuilder {
-        gpui_luma::controls::sidebar::sidebar(id)
+        xgpui_luma::controls::sidebar::sidebar(id)
     }
 
     pub fn header() -> SidebarHeaderBuilder {
-        gpui_luma::controls::sidebar::sidebar_header()
+        xgpui_luma::controls::sidebar::sidebar_header()
     }
 
     pub fn content() -> SidebarContentBuilder {
-        gpui_luma::controls::sidebar::sidebar_content()
+        xgpui_luma::controls::sidebar::sidebar_content()
     }
 
     pub fn group() -> SidebarGroupBuilder {
-        gpui_luma::controls::sidebar::sidebar_group()
+        xgpui_luma::controls::sidebar::sidebar_group()
     }
 
     pub fn menu(id: impl Into<SharedString>) -> SidebarMenuBuilder {
-        gpui_luma::controls::sidebar::sidebar_menu(id)
+        xgpui_luma::controls::sidebar::sidebar_menu(id)
     }
 
     pub fn menu_item(id: impl Into<SharedString>, label: impl Into<SharedString>) -> SidebarMenuItemBuilder {
-        gpui_luma::controls::sidebar::sidebar_menu_item(id, label)
+        xgpui_luma::controls::sidebar::sidebar_menu_item(id, label)
     }
 
     pub fn menu_sub() -> SidebarMenuSubBuilder {
-        gpui_luma::controls::sidebar::sidebar_menu_sub()
+        xgpui_luma::controls::sidebar::sidebar_menu_sub()
     }
 
     pub fn footer() -> SidebarFooterBuilder {
-        gpui_luma::controls::sidebar::sidebar_footer()
+        xgpui_luma::controls::sidebar::sidebar_footer()
     }
 }
 

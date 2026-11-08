@@ -1,7 +1,7 @@
-use gpui_luma::controls::scrollbar;
-use gpui_luma::controls::scrollbar::ScrollbarEventExt;
+use xgpui_luma::controls::scrollbar;
+use xgpui_luma::controls::scrollbar::ScrollbarEventExt;
 use gpui::{App, Context, Entity, FocusHandle, Render, Window, ScrollEvent, MouseButton, div, prelude::*, px};
-use gpui_luma::{
+use xgpui_luma::{
     vstack,
     controls::scrollbar::{Scrollbar, ScrollbarEvent},
     key_handling::{
@@ -9,7 +9,7 @@ use gpui_luma::{
     },
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{BarLayer, BarLayout, CartesianChartBuilder, Dataset, DatasetError, NumericScale, Sample, Series};
+use xgpui_luma_plot::{BarLayer, BarLayout, CartesianChartBuilder, Dataset, DatasetError, NumericScale, Sample, Series};
 use crate::theme::{self, TypographyExt};
 
 const COUNT: usize = 100_000;
@@ -145,13 +145,13 @@ impl Render for ScrollingBars {
                 // Reserve fixed label slots without changing the theme typography.
                 style.metrics.plot_padding = px(34.0);
                 for axis in &mut style.axes {
-                    axis.presentation.label_width = Some(px(if axis.side == gpui_luma_plot::AxisSide::Bottom {
+                    axis.presentation.label_width = Some(px(if axis.side == xgpui_luma_plot::AxisSide::Bottom {
                         68.0
                     } else {
                         40.0
                     }));
                     axis.presentation.label_align = gpui::TextAlign::Right;
-                    if axis.side == gpui_luma_plot::AxisSide::Bottom {
+                    if axis.side == xgpui_luma_plot::AxisSide::Bottom {
                         axis.presentation.inset_end_labels = true;
                         axis.presentation.gutter = px(32.0);
                         axis.presentation.label_gap = px(6.0);

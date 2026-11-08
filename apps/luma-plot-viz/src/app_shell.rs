@@ -1,5 +1,5 @@
 use gpui::{App, AppContext, Bounds, WindowBounds, WindowOptions, px, size};
-use gpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
+use xgpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
 
 use crate::app::PlotVizApp;
 

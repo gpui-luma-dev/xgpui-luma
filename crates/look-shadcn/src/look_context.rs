@@ -1,4 +1,4 @@
-use gpui_luma::theme::{InteractionLayer, InteractionState, LumaTypography, MetricTokens, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTypography, MetricTokens, ThemeMode};
 
 use super::catalog::CssTokenMap;
 use super::mode::ShadcnModeTokens;

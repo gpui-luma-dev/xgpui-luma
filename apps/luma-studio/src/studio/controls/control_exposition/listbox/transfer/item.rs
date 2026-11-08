@@ -4,8 +4,8 @@ use std::sync::Arc;
 use gpui::{
     App, Context, Div, Entity, IntoElement, Render, RenderOnce, SharedString, Stateful, Window, div, prelude::*, px,
 };
-use gpui_luma::controls::listbox::{ListBoxItemState, ListBoxVisibleItem};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::listbox::{ListBoxItemState, ListBoxVisibleItem};
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::{LAYOUT, model::TransferItem};
 use super::super::{ITEM_CONTENT_GAP, presentation::SelectionMark};

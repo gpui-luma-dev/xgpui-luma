@@ -1,5 +1,5 @@
 use gpui::Hsla;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
 /// Project only the Studio readout; the model retains its original source.
 pub(crate) fn preview_color(color: ColorValue) -> Hsla {
@@ -86,7 +86,7 @@ mod tests {
     use gpui::{Hsla, hsla};
 
     use super::{format_compact_hsla, parse_compact_hsla, format_color_readout, parse_color_input};
-    use gpui_luma::color::{ColorValue, gpui_bridge};
+    use xgpui_luma::color::{ColorValue, gpui_bridge};
 
     #[test]
     fn source_storage_syntax_does_not_appear_in_readouts() {

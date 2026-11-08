@@ -1,11 +1,11 @@
 //! Look-owned icon-group builder. Spawn synthesizes the SDK icon-group control-group.
 
 use gpui::{App, Context, Entity, IntoElement, SharedString};
-use gpui_luma::controls::control_group::{
+use xgpui_luma::controls::control_group::{
     ControlGroupBuilder, ControlGroupControl, ControlGroupItemLike, ControlGroupItemTemplate, ControlGroupRenderModel,
     ControlGroupTemplate,
 };
-use gpui_luma::controls::icon_group::{self, IconGroupItem};
+use xgpui_luma::controls::icon_group::{self, IconGroupItem};
 
 use crate::look::{ShadcnLook, resolve_look_from};
 
@@ -19,7 +19,7 @@ pub struct IconGroup<T = IconGroupItem>
 where
     T: ControlGroupItemLike + Clone + Send + Sync + 'static,
 {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::control_group::ControlGroupEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::control_group::ControlGroupEvent>,
 
     look: Option<ShadcnLook>,
     kind: IconGroupKind,
@@ -31,14 +31,14 @@ impl<T> IconGroup<T>
 where
     T: ControlGroupItemLike + Clone + Send + Sync + 'static,
 {
-    gpui_luma::forward_motion!(gpui_luma::controls::control_group::ControlGroupMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::control_group::ControlGroupMotion, builder builder);
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::control_group::ControlGroupEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::control_group::ControlGroupEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -51,7 +51,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::Activate { activated_id } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::Activate { activated_id } = event {
                 callback(owner, activated_id, cx);
             }
         })
@@ -64,7 +64,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, bool, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::Change {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::Change {
                 changed_id,
                 selected,
                 selected_ids,
@@ -82,7 +82,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::Bounds<gpui::Pixels>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::ItemBoundsChanged { item_id, bounds } = event
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::ItemBoundsChanged { item_id, bounds } = event
             {
                 callback(owner, item_id, bounds, cx);
             }
@@ -96,7 +96,7 @@ where
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -109,7 +109,7 @@ where
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::ItemFocused { item_id } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::ItemFocused { item_id } = event {
                 callback(owner, item_id, cx);
             }
         })
@@ -231,7 +231,7 @@ where
     pub fn with_item_layout<F, E>(mut self, layout: F) -> Self
     where
         F: for<'a> Fn(
-                gpui_luma::controls::control_group::ControlGroupItemElements,
+                xgpui_luma::controls::control_group::ControlGroupItemElements,
                 &ControlGroupRenderModel<'a, T>,
                 &mut gpui::Window,
                 &mut App,

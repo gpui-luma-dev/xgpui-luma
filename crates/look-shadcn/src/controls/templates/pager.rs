@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
-use gpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
-use gpui_luma::controls::pager::{PagerLook, PagerTemplate, PagerTheme, ThemedPagerTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
+use xgpui_luma::controls::pager::{PagerLook, PagerTemplate, PagerTheme, ThemedPagerTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState};
 
 use crate::controls::button::{ShadcnButtonStyle, button_palette};
 use crate::controls::pager::{pager_button_look, pager_look};
@@ -32,13 +32,13 @@ impl ButtonFamilyTheme for ShadcnPagerButtonTheme {
         role: ButtonFamilyRole,
         _size: ControlSize,
         state: InteractionState,
-        _scale: &gpui_luma::theme::StandardBoxScale,
+        _scale: &xgpui_luma::theme::StandardBoxScale,
         _pill_radius: f32,
     ) -> Option<ButtonFamilyLook> {
         Some(pager_button_look(&self.theme, &self.pager_look, role, state))
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 }
@@ -47,8 +47,8 @@ impl PagerTheme for ShadcnPagerTheme {
     fn resolve(
         &self,
         enabled: bool,
-        style: gpui_luma::controls::pager::PagerStyle,
-    ) -> gpui_luma::controls::pager::PagerLook {
+        style: xgpui_luma::controls::pager::PagerStyle,
+    ) -> xgpui_luma::controls::pager::PagerLook {
         pager_look(&self.theme, enabled, style)
     }
 

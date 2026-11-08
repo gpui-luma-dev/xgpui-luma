@@ -1,4 +1,4 @@
-use gpui_luma::theme::{ControlSize, LumaTypography, MetricTokens};
+use xgpui_luma::theme::{ControlSize, LumaTypography, MetricTokens};
 
 use super::CssTokenMap;
 
@@ -17,7 +17,7 @@ fn control_spacing_scale(size: ControlSize) -> ControlSpacingScale {
 }
 
 fn apply_spacing_to_control(
-    metrics: &mut gpui_luma::theme::ControlMetricTokens,
+    metrics: &mut xgpui_luma::theme::ControlMetricTokens,
     spacing_px: f32,
     scale: ControlSpacingScale,
 ) {
@@ -90,7 +90,7 @@ pub(crate) fn metrics_from_catalog(catalog: &CssTokenMap, mut scaffold: MetricTo
     scaffold
 }
 
-fn scale_control_metrics(metrics: &mut gpui_luma::theme::ControlMetricTokens, scale: f32, md_radius: f32) {
+fn scale_control_metrics(metrics: &mut xgpui_luma::theme::ControlMetricTokens, scale: f32, md_radius: f32) {
     metrics.radius = md_radius;
     let _ = scale;
 }
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn spacing_token_scales_control_padding_and_gap() {
-        use gpui_luma::theme::ControlSize;
+        use xgpui_luma::theme::ControlSize;
 
         let catalog = CssTokenMap::from_map(std::collections::BTreeMap::from([
             ("spacing".into(), "0.25rem".into()),

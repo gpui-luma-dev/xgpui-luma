@@ -1,19 +1,19 @@
-use gpui_luma::controls::search_selector::SearchSelectorEventExt;
+use xgpui_luma::controls::search_selector::SearchSelectorEventExt;
 use std::collections::HashSet;
 use std::sync::{Arc, RwLock};
 
 use gpui::{AnyElement, App, Context, Entity, IntoElement, Render, SharedString, Stateful, Window, div, prelude::*, px};
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
-use gpui_luma::controls::search_selector::{
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
+use xgpui_luma::controls::search_selector::{
     SearchSelector, SearchSelectorEvent, SearchSelectorItemRenderModel, SearchSelectorItemTemplate,
     SearchSelectorRenderModel, SearchSelectorTemplate, SearchSelectorTemplateHandlers, SelectionItem,
     default_search_selector_template, make_search_selector_item_template,
 };
-use gpui_luma::vstack;
+use xgpui_luma::vstack;
 use crate::studio::font_catalog::{FontCatalog, FontSlot};
 use crate::studio::font_family_match::{clean_css_family_name, match_css_named_family};
-use gpui_luma_look_shadcn::{ShadcnFont, ShadcnLook};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnFont, ShadcnLook};
+use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::super::model::TYPOGRAPHY_CATEGORIES;
@@ -261,7 +261,7 @@ impl TypographyPanel {
         &self,
         role: &FontFamilyRole,
         search_selector: &SearchSelector,
-        label_typography: gpui_luma::theme::LumaTextStyle,
+        label_typography: xgpui_luma::theme::LumaTextStyle,
         label_color: gpui::Hsla,
     ) -> AnyElement {
         vstack! {
@@ -450,7 +450,7 @@ fn font_item_template_element_with_loaded(
         .child(item.item.label.clone());
     let mut content = div().flex().items_center().justify_between().flex_1().child(label);
     if is_loaded {
-        content = content.child(div().ml_2().child(gpui_luma::infra::icon::lucide_icon(
+        content = content.child(div().ml_2().child(xgpui_luma::infra::icon::lucide_icon(
             LucideIcon::Check,
             gpui::hsla(0.38, 0.65, 0.48, 1.0),
             14.0,

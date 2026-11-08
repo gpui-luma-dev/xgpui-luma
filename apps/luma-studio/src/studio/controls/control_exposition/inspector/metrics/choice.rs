@@ -1,7 +1,7 @@
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::theme::InteractionState;
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::inspect::{
     CheckboxInspectMetrics, RadioButtonInspectMetrics, ShadcnInspect, SwitchInspectMetrics,
 };
 

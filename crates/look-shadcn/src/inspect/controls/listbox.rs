@@ -1,6 +1,6 @@
 //! Inspect metadata for `listbox`.
 
-use gpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
 pub struct ListBoxListInspectPalette {
@@ -59,7 +59,7 @@ mod tests {
         let palette = inspect_listbox_row_color_palette(
             &mode,
             ThemeMode::Light,
-            gpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
+            xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
         );
         assert!(palette.background.value.a > 0.0);
     }

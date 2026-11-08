@@ -29,7 +29,7 @@
 //!
 //! ```no_run
 //! use std::time::Duration;
-//! use gpui_luma::prelude::*;
+//! use xgpui_luma::prelude::*;
 //! let help = Tooltip::new("Save changes")
 //!     .shortcut("⌘S")
 //!     .delay(Duration::from_millis(300))
@@ -41,7 +41,7 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity};
-//! use gpui_luma::prelude::*;
+//! use xgpui_luma::prelude::*;
 //!
 //! fn save<M: 'static>(cx: &mut Context<M>) -> Entity<Button> {
 //!     let button = Button::new("save").spawn(cx).help("Save changes", cx);

@@ -1,15 +1,15 @@
 //! Colors tab screen — Radix Colors catalog matrix.
 
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::color::{ColorValue, gpui_bridge::from_hsla};
-use gpui_luma::controls::button::Button;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::color::{ColorValue, gpui_bridge::from_hsla};
+use xgpui_luma::controls::button::Button;
 use std::sync::Arc;
 use crate::controls::swatch_info::{self, ColorDetails, SwatchSelection};
 use gpui::{Context, Entity, Hsla, div, hsla, linear_color_stop, linear_gradient, prelude::*, px};
-use gpui_luma::hstack;
-use gpui_luma::vstack;
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_radix::{BLACK_ALPHA_STEPS, Look, WHITE_ALPHA_STEPS, color_families, parse_color};
+use xgpui_luma::hstack;
+use xgpui_luma::vstack;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_radix::{BLACK_ALPHA_STEPS, Look, WHITE_ALPHA_STEPS, color_families, parse_color};
 
 const COLOR_MATRIX_LABEL_W: f32 = 112.0;
 const COLOR_MATRIX_CELL_W: f32 = 95.0;
@@ -198,7 +198,7 @@ fn page_gradient(start: Hsla, end: Hsla) -> gpui::Background {
 }
 
 fn color_catalog_row(
-    family: &gpui_luma_look_radix::RawColorScale,
+    family: &xgpui_luma_look_radix::RawColorScale,
     swatches: &[Entity<Button>],
     muted: Hsla,
 ) -> gpui::Div {

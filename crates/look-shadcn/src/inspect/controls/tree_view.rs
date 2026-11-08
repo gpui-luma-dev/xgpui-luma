@@ -1,6 +1,6 @@
 //! Inspect metadata for `tree_view`.
 
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
 
 pub struct TreeViewRowInspectPalette {
@@ -64,7 +64,7 @@ mod tests {
         let palette = inspect_tree_view_row_color_palette(
             &mode,
             ThemeMode::Light,
-            gpui_luma::theme::InteractionState { disabled: true, ..Default::default() },
+            xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() },
         );
         assert!(palette.background.is_none());
         assert!(matches!(

@@ -1,4 +1,4 @@
-use gpui_luma_plot::{Dataset, DatasetError, Sample, Series};
+use xgpui_luma_plot::{Dataset, DatasetError, Sample, Series};
 
 pub(super) const LAST_DAY: usize = 90;
 

@@ -1,7 +1,7 @@
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook};
-use gpui_luma_look_shadcn::inspect::{ButtonInspectMetrics, ShadcnInspect};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook};
+use xgpui_luma_look_shadcn::inspect::{ButtonInspectMetrics, ShadcnInspect};
 
 use super::super::box_model::InspectBoxModelSnapshot;
 use super::super::occupation::{button_family_occupation, occupation_metric_properties};

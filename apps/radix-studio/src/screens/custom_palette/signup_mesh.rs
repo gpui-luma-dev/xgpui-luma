@@ -13,7 +13,7 @@ use tiny_skia::{
     Color, FillRule, GradientStop, Paint, Path, PathBuilder, Pixmap, Point, RadialGradient, SpreadMode, Transform,
 };
 
-use gpui_luma_look_radix::{Look, ScaleFamily, ScaleStep, SemanticRole};
+use xgpui_luma_look_radix::{Look, ScaleFamily, ScaleStep, SemanticRole};
 
 /// Signup / panel stage behind elevated cards (Radix Colors custom palette).
 ///
@@ -549,7 +549,7 @@ mod tests {
         let first = MeshRequest::for_look(&look, 32, 24);
         look.set_classic_params(Default::default());
         assert_eq!(first.key, MeshRequest::for_look(&look, 32, 24).key);
-        look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+        look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         assert_ne!(first.key, MeshRequest::for_look(&look, 32, 24).key);
         let mut cache = MeshCache::default();
         assert!(cache.request(first).is_some());

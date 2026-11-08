@@ -1,12 +1,12 @@
 //! Persistent guide controls and subscriptions, created on the first visit.
-use gpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Context, Entity, Window, prelude::*};
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     tabs::{Tabs, TabsEvent, TabsItem, TabsWidthMode},
     tree_view::TreeView,
 };
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use super::{PreviewTabs, TabsExamples};
 
 pub struct State {
@@ -46,7 +46,7 @@ impl State {
         let disabled_tree = super::super::shared::tree_view::spawn("guide-tree-disabled", look, false, cx);
         for tree in [&tree, &disabled_tree] {
             tree.update(cx, |tree, cx| {
-                tree.set_wheel_scroll_policy(gpui_luma::interaction::WheelScrollPolicy::PassThrough, cx);
+                tree.set_wheel_scroll_policy(xgpui_luma::interaction::WheelScrollPolicy::PassThrough, cx);
             });
         }
         Self { tabs, tree, disabled_tree }
@@ -58,7 +58,7 @@ impl State {
 }
 
 pub(super) fn preview_navigation<M: 'static>(name: &str, look: &Look, cx: &mut Context<M>) -> Entity<Tabs> {
-    let tabs = gpui_luma_look_radix::Tabs::new(format!("radix-studio-{name}-preview-tabs"))
+    let tabs = xgpui_luma_look_radix::Tabs::new(format!("radix-studio-{name}-preview-tabs"))
         .look(look)
         .items([
             TabsItem::new("template-preview").label("Template Preview"),

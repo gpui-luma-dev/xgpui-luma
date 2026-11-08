@@ -5,12 +5,12 @@ use gpui::{
     ClickEvent, Context, Anchor, Corners, HitboxBehavior, ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Render, Window, anchored, canvas, deferred, div, img, point, prelude::*, px, relative, size,
 };
-use gpui_luma::infra::{ElementExt, StyledExt};
+use xgpui_luma::infra::{ElementExt, StyledExt};
 
-use gpui_luma::theme::LumaTextStyle;
-use gpui_luma::hstack;
+use xgpui_luma::theme::LumaTextStyle;
+use xgpui_luma::hstack;
 use crate::theme::TypographyExt;
-use gpui_luma_look_radix as radix;
+use xgpui_luma_look_radix as radix;
 
 use super::super::color::{format_percent};
 use super::super::paint::paint_gradient_preview;
@@ -23,7 +23,7 @@ pub(super) fn compact_slider_row(
     slider: Entity<SliderControl>,
     value: String,
     style: LumaTextStyle,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
 ) -> impl IntoElement {
     div()
         .w_full()
@@ -627,7 +627,7 @@ pub(super) fn render_stop_row(
     delete_button: Option<Entity<Button>>,
     _label_style: LumaTextStyle,
     value_style: LumaTextStyle,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
     interaction: crate::theme::InteractionColors,
     builder: Entity<GradientBuilder>,
 ) -> impl IntoElement {
@@ -698,7 +698,7 @@ pub(super) fn render_stop_row(
 pub(super) fn render_mesh_background_row(
     background: gpui::Hsla,
     label_style: LumaTextStyle,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
     builder: Entity<GradientBuilder>,
 ) -> impl IntoElement {
     let bounds_builder = builder.clone();

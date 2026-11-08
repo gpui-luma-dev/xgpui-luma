@@ -1,8 +1,8 @@
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     tooltip::{Tooltip, TooltipPlacement},
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{MarkerVisibility, PlotPoint, PlotSlice};
+use xgpui_luma_plot::{MarkerVisibility, PlotPoint, PlotSlice};
 
 pub(crate) fn visibility(id: &str) -> MarkerVisibility {
     match id {

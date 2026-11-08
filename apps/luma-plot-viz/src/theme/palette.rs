@@ -1,6 +1,6 @@
 //! Chart-owned colors. SDK UI tokens supply chrome, never series colors.
 use gpui::Hsla;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 // Accept degrees and percentages so authored values match stylesheet HSLA.
 const fn color(hue: f32, saturation: f32, lightness: f32) -> Hsla {

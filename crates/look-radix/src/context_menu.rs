@@ -1,8 +1,10 @@
 //! Radix context menus use the same panel and item treatments as popup menus.
 use std::sync::Arc;
 use gpui::FontWeight;
-use gpui_luma::controls::context_menu::{ContextMenuLook, ContextMenuTemplate, ContextMenuTheme, ThemedContextMenuTemplate};
-use gpui_luma::theme::{InteractionState, LumaTextStyle, MetricTokens};
+use xgpui_luma::controls::context_menu::{
+    ContextMenuLook, ContextMenuTemplate, ContextMenuTheme, ThemedContextMenuTemplate,
+};
+use xgpui_luma::theme::{InteractionState, LumaTextStyle, MetricTokens};
 use crate::{Look, SemanticRole, Tone};
 
 /// Solid or Soft highlighted items, shared with Radix popup menus.
@@ -15,18 +17,19 @@ struct ContextMenuThemeAdapter {
 impl ContextMenuTheme for ContextMenuThemeAdapter {
     fn resolve(&self, state: InteractionState) -> ContextMenuLook {
         let metrics = self.look.metrics();
-        let baseline = gpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().context_menu.authored_geometry("");
+        let baseline =
+            xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().context_menu.authored_geometry("");
         let recipe = self.look.common_stylesheet().context_menu.authored_geometry("").with_fallback(&baseline);
         let geometry = self.look.common_stylesheet().context_menu.resolve_geometry(
             "",
-            gpui_luma::theme::stylesheet::ContextMenuGeometry {
-                min_width: gpui_luma::controls::context_menu::default_context_menu_theme()
+            xgpui_luma::theme::stylesheet::ContextMenuGeometry {
+                min_width: xgpui_luma::controls::context_menu::default_context_menu_theme()
                     .resolve(state)
                     .target_min_width,
                 padding_x: metrics.control.md.padding_x,
                 padding_y: metrics.control.md.padding_y,
-                font_size: gpui_luma::theme::ThemeTokens::default().typography.text.label.size,
-                line_height: gpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
+                font_size: xgpui_luma::theme::ThemeTokens::default().typography.text.label.size,
+                line_height: xgpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
                 ..Default::default()
             },
         );
@@ -76,7 +79,7 @@ pub fn context_menu_template(look: &Look, variant: ContextMenuVariant, tone: Ton
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn menu_matches_popup_styling_in_both_modes_and_tones() {
         let look = Look::built_in();
@@ -98,7 +101,7 @@ mod tests {
     #[test]
     fn context_chrome_uses_selected_shared_stylesheet() {
         let look = Look::built_in();
-        let sheet = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
+        let sheet = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
             "[common.context_menu.geometry]\nborder_width=0\ndisabled_opacity=0.2\nwindow_margin=17",
         ])
         .unwrap();
@@ -120,8 +123,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_floating_menu_stylesheet() -> gpui_luma::theme::stylesheet::FloatingMenuStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_floating_menu_stylesheet() -> xgpui_luma::theme::stylesheet::FloatingMenuStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     FloatingMenuStylesheet {
         geometry: FloatingMenuGeometryStylesheet {
             separator_inset: Some(8.0),
@@ -134,8 +137,8 @@ pub(crate) fn native_floating_menu_stylesheet() -> gpui_luma::theme::stylesheet:
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_context_menu_stylesheet() -> gpui_luma::theme::stylesheet::ContextMenuStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_context_menu_stylesheet() -> xgpui_luma::theme::stylesheet::ContextMenuStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ContextMenuStylesheet {
         geometry: ContextMenuGeometryStylesheet {
             min_width: Some(200.0),

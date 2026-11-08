@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::SharedString;
-use gpui_luma::controls::textarea::TextAreaState;
-use gpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::controls::textarea::TextAreaState;
+use xgpui_luma::theme::{ControlSize, StandardBoxScale};
 use crate::theme::{Look, ColorVizLookExt, TextSize};
 
 use super::model::EventLogViewBuilder;
@@ -13,12 +13,12 @@ struct RadixEventLogTheme {
 }
 
 impl EventLogTheme for RadixEventLogTheme {
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.look.metrics()
     }
 
     fn resolve_look(&self, rows: usize, scale: &StandardBoxScale, focused: bool) -> super::theme::EventLogLook {
-        let textarea = gpui_luma_look_radix::textarea_theme(&self.look).resolve_look(
+        let textarea = xgpui_luma_look_radix::textarea_theme(&self.look).resolve_look(
             TextAreaState { focused, focus_visible: focused, ..Default::default() },
             true,
             ControlSize::Md,

@@ -1,5 +1,5 @@
 use gpui::{AnyElement, App, IntoElement, Window, div, prelude::*, px};
-use gpui_luma_plot::BarRenderModel;
+use xgpui_luma_plot::BarRenderModel;
 
 pub(super) fn rounded(bar: &BarRenderModel, _: &mut Window, _: &mut App) -> AnyElement {
     div()

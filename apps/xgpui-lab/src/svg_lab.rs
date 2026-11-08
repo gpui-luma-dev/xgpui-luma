@@ -9,11 +9,11 @@ pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{AppContext, Context, Entity, RenderImage, SharedString, size};
-use gpui_luma::{
+use xgpui_luma::{
     controls::{button::Button, slider::Slider},
     prelude::HasPresenter,
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_svg::{SvgDocument, SvgStatus, SvgScheduler, SchedulerLimits, RasterPolicy, MIB, path_effects::MeasuredPath};
 
 struct Asset {
@@ -475,12 +475,12 @@ impl SvgPage {
 mod tests {
     use super::{Action, SvgPage, MIB};
     use gpui::{TestAppContext, px};
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
 
     #[test]
     fn svg_tabs_render_and_luma_budget_controls_update_scheduler() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app.add_window_view(|_, cx| SvgPage::new(crate::theme::default_look(), cx));
         for tab in ["Rendering", "Scaling", "Path Effects", "Scheduling & Cache", "Benchmarks"] {
             page.update(cx, |page, cx| page.activate(tab.into(), cx));
@@ -516,7 +516,7 @@ mod tests {
     fn rendering_and_scaling_have_distinct_controls_and_preserve_scaling_camera() {
         use gpui::{VisualTestContext, div, point, prelude::*, size};
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let window =
             app.open_window(size(px(1600.), px(1800.)), |_, cx| SvgPage::new(crate::theme::default_look(), cx));
         let page = window.root(&mut app).unwrap();
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn scaling_budget_caps_detail_and_reset_preserves_path_parameters() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| SvgPage::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             page.activate("Scaling".into(), cx);

@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 anyhow = { workspace = true }
 gpui = { workspace = true }
-gpui-luma.workspace = true
+xgpui-luma.workspace = true
 lucide-svg-static.workspace = true
 gpui_platform = { workspace = true }
 

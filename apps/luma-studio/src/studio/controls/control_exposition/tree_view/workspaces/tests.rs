@@ -1,19 +1,19 @@
-use gpui_luma::controls::button::ButtonEvent;
+use xgpui_luma::controls::button::ButtonEvent;
 use super::*;
 use std::{
     cell::{Cell, RefCell},
     rc::Rc,
 };
 use gpui::{TestAppContext, VisualTestContext, point, MouseButton};
-use gpui_luma::controls::tree_view::{TreeViewDragEvent, TreeDragEndReason};
+use xgpui_luma::controls::tree_view::{TreeViewDragEvent, TreeDragEndReason};
 
 fn setup(
     app: &mut TestAppContext,
 ) -> (Entity<Workspaces>, &mut VisualTestContext, Rc<RefCell<Vec<TreeViewDragEvent>>>) {
     let (view, cx) = app.add_window_view(|window, cx| {
         window.activate_window();
-        gpui_luma::key_handling::bind_default_control_keys(cx);
-        gpui_luma::focus::bind_default_focus_keys(cx);
+        xgpui_luma::key_handling::bind_default_control_keys(cx);
+        xgpui_luma::focus::bind_default_focus_keys(cx);
         Workspaces::new(Arc::new(ShadcnLook::built_in()), cx)
     });
     cx.run_until_parked();
@@ -369,7 +369,7 @@ fn tree_view_workspace_drop_into_filtered_empty_view_preserves_hidden_subtree_st
 
 #[test]
 fn tree_view_workspace_extended_keys_do_not_intercept_embedded_button() {
-    use gpui_luma::controls::tree_view::{TreeViewSelectionMode, TreeViewSelectionPolicy};
+    use xgpui_luma::controls::tree_view::{TreeViewSelectionMode, TreeViewSelectionPolicy};
     let mut app = TestAppContext::single();
     let (view, cx, _) = setup(&mut app);
     let tree = cx.update(|_, app| view.read(app).trees[0].clone());

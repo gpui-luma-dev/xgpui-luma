@@ -1,17 +1,19 @@
-use gpui_luma::controls::button;
-use gpui_luma::prelude::HasPresenter;
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::controls::button;
+use xgpui_luma::prelude::HasPresenter;
+use xgpui_luma::motion::{Transition, Easing};
 use std::time::Duration;
 
 use gpui::{App, Context, Entity, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::{
     controls::button::{Button},
     motion::VisualTransition,
     hstack, vstack,
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{AreaLayer, CartesianChartBuilder, Dataset, DatasetError, Interpolation, NumericScale, Sample, Series};
+use xgpui_luma_plot::{
+    AreaLayer, CartesianChartBuilder, Dataset, DatasetError, Interpolation, NumericScale, Sample, Series,
+};
 use crate::theme::{self, TypographyExt};
 
 pub(crate) struct AreaExample {

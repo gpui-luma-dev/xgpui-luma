@@ -1,6 +1,6 @@
 //! Inspect metadata for `split_view`.
 
-use gpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
 
 pub struct SplitViewInspectPalette {

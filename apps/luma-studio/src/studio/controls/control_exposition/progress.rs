@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{Button, HasPresenter};
-use gpui_luma::controls::progress::{Progress, ProgressDirection, ProgressRenderModel, ProgressTemplate};
-use gpui_luma::infra::value::ControlRange;
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{Button, HasPresenter};
+use xgpui_luma::controls::progress::{Progress, ProgressDirection, ProgressRenderModel, ProgressTemplate};
+use xgpui_luma::infra::value::ControlRange;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
@@ -401,7 +401,7 @@ fn render_linear_direction_sample_with_label(
         phase: 0.0,
     };
 
-    let track = if direction.orientation() == gpui_luma::controls::progress::ProgressOrientation::Vertical {
+    let track = if direction.orientation() == xgpui_luma::controls::progress::ProgressOrientation::Vertical {
         div()
             .w(px(LINEAR_VERTICAL_WIDTH))
             .h(px(LINEAR_VERTICAL_HEIGHT))

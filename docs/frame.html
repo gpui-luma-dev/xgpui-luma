@@ -21,12 +21,12 @@
 <div class="layout">
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Layout</span></div><h1>Frame</h1><div class="look-badges" role="group" aria-label="Available Looks"><a class="look-badge look-badge--shadcn" href="look-shadcn.html#support" aria-label="look-shadcn styling support">look-shadcn</a></div><p class="intro">Decorate and arrange a container.</p><section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>SDK · integration snippet</span><button class="copy" aria-label="Copy SDK · integration snippet">Copy</button></div><pre><code class="language-rust">use gpui::{div, prelude::*, px};
-use gpui_luma::controls::frame::FrameBuilder;
+use xgpui_luma::controls::frame::FrameBuilder;
 
 let control = FrameBuilder::new(&quot;inspector&quot;)
     .flex().flex_col().gap(px(8.0))
     .child_render(|| div().child(&quot;Inspector&quot;))
-    .spawn(cx);</code></pre></div><p class="small">Integration snippet, checked against the current SDK and Radix crates. <code>cx</code> is the initialized owner context. Keep spawned entities and subscriptions in the owning view.</p></section><section id="sdk"><h2>SDK behavior & customization</h2><p>Frame has no focus, selection, scrolling, or pane visibility state. Explicit GPUI styling overrides look defaults.</p></section><section id="interaction"><h2>Application interaction</h2><p>Frame exposes no FrameEvent. Subscribe to its child controls for user actions; the frame supplies decoration and layout.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/layout/frame.rs">SDK module</a></p></section><footer data-site-footer></footer></main>
+    .spawn(cx);</code></pre></div><p class="small">Integration snippet, checked against the current SDK and Radix crates. <code>cx</code> is the initialized owner context. Keep spawned entities and subscriptions in the owning view.</p></section><section id="sdk"><h2>SDK behavior & customization</h2><p>Frame has no focus, selection, scrolling, or pane visibility state. Explicit GPUI styling overrides look defaults.</p></section><section id="interaction"><h2>Application interaction</h2><p>Frame exposes no FrameEvent. Subscribe to its child controls for user actions; the frame supplies decoration and layout.</p></section><section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/layout/frame.rs">SDK module</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#use">Basic use</a><a href="#sdk">SDK behavior</a><a href="#source">Source</a></nav>
 </div>
 </body>

@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, FontWeight, IntoElement, Render, Window, div, prelude::*, px};
-use gpui_luma::declare_form;
-use gpui_luma::theme::{ThemePartUsage, ThemeUsage};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnTextRole, ShadcnTextSize, all_shadcn_theme_usages};
+use xgpui_luma::declare_form;
+use xgpui_luma::theme::{ThemePartUsage, ThemeUsage};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextRole, ShadcnTextSize, all_shadcn_theme_usages};
 
 use crate::studio::color_format::format_compact_hsla;
 
@@ -164,7 +164,7 @@ fn render_by_token(
     catalog_tokens: &[CatalogToken],
     by_token: &BTreeMap<&'static str, Vec<UsageRef>>,
     look: &ShadcnLook,
-    detail_style: gpui_luma::theme::LumaTextStyle,
+    detail_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
 
@@ -212,8 +212,8 @@ fn render_by_token(
 fn render_by_component(
     usages: &'static [&'static ThemeUsage],
     look: &ShadcnLook,
-    detail_style: gpui_luma::theme::LumaTextStyle,
-    caption_style: gpui_luma::theme::LumaTextStyle,
+    detail_style: xgpui_luma::theme::LumaTextStyle,
+    caption_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
 
@@ -248,8 +248,8 @@ fn render_by_component(
 fn render_shadow_usage(
     usages: &'static [&'static ThemeUsage],
     look: &ShadcnLook,
-    detail_style: gpui_luma::theme::LumaTextStyle,
-    caption_style: gpui_luma::theme::LumaTextStyle,
+    detail_style: xgpui_luma::theme::LumaTextStyle,
+    caption_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
     let by_token = usage_by_token(usages);
@@ -326,9 +326,9 @@ fn render_shared_values(
     catalog_tokens: &[CatalogToken],
     by_token: &BTreeMap<&'static str, Vec<UsageRef>>,
     look: &ShadcnLook,
-    caption_style: gpui_luma::theme::LumaTextStyle,
-    detail_style: gpui_luma::theme::LumaTextStyle,
-    section_style: gpui_luma::theme::LumaTextStyle,
+    caption_style: xgpui_luma::theme::LumaTextStyle,
+    detail_style: xgpui_luma::theme::LumaTextStyle,
+    section_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
     let groups = shared_value_groups(catalog_tokens);
@@ -387,7 +387,7 @@ fn shared_value_groups(catalog_tokens: &[CatalogToken]) -> Vec<(String, Vec<&Cat
     by_value.into_iter().filter(|(_, tokens)| tokens.len() > 1).collect()
 }
 
-fn section_title(title: &'static str, look: &ShadcnLook, style: gpui_luma::theme::LumaTextStyle) -> AnyElement {
+fn section_title(title: &'static str, look: &ShadcnLook, style: xgpui_luma::theme::LumaTextStyle) -> AnyElement {
     let chrome = look.chrome();
 
     div()
@@ -402,7 +402,7 @@ fn render_count_badge(
     label: &'static str,
     value: String,
     look: &ShadcnLook,
-    style: gpui_luma::theme::LumaTextStyle,
+    style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
 
@@ -462,8 +462,8 @@ fn render_token_header(token: &CatalogToken, used_by_sdk: bool, look: &ShadcnLoo
 fn render_component_part(
     part: &ThemePartUsage,
     look: &ShadcnLook,
-    detail_style: gpui_luma::theme::LumaTextStyle,
-    caption_style: gpui_luma::theme::LumaTextStyle,
+    detail_style: xgpui_luma::theme::LumaTextStyle,
+    caption_style: xgpui_luma::theme::LumaTextStyle,
 ) -> AnyElement {
     let chrome = look.chrome();
 

@@ -1,7 +1,7 @@
-use gpui_luma::controls::search_selector::SearchSelectorEventExt;
-use gpui_luma::controls::context_menu::ContextMenuEventExt;
+use xgpui_luma::controls::search_selector::SearchSelectorEventExt;
+use xgpui_luma::controls::context_menu::ContextMenuEventExt;
 use gpui::{Context, Entity, Subscription};
-use gpui_luma::controls::{context_menu::ContextMenuEvent, search_selector::SearchSelectorEvent};
+use xgpui_luma::controls::{context_menu::ContextMenuEvent, search_selector::SearchSelectorEvent};
 
 use super::panels::{ColorsPanel, OtherPanel, TypographyPanel};
 use super::ThemeSidebar;

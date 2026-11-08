@@ -1,8 +1,8 @@
 //! Radix table shell, header, row, and drag styling over the SDK table engine.
 use std::sync::Arc;
 use gpui::{App, AnyElement, SharedString, Stateful, Div, Window, Styled};
-use gpui_luma::controls::table::*;
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, ListRowScale, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::table::*;
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, ListRowScale, MetricTokens, StandardBoxScale};
 use crate::{Look, ScaleFamily, SemanticRole, Tone};
 
 struct TableThemeAdapter {
@@ -140,8 +140,8 @@ pub fn table_template(look: &Look) -> Arc<dyn TableTemplate> {
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma::controls::table::TableLabel;
-/// use gpui_luma_look_radix::{Look, table_builder, paging_table_builder};
+/// use xgpui_luma::controls::table::TableLabel;
+/// use xgpui_luma_look_radix::{Look, table_builder, paging_table_builder};
 /// fn tables<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     let table = table_builder(look, "records").items([TableLabel::new("First")])
 ///         .extended().visible_rows(4).spawn(cx);
@@ -169,7 +169,7 @@ pub fn paging_table_builder<T: 'static>(
 mod tests {
     use super::*;
     use crate::{Accent, Gray};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn table_states_follow_live_look_and_disabled_precedence() {
         let look = Look::built_in();

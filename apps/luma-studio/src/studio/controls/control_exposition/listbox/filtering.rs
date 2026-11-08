@@ -1,9 +1,9 @@
 //! Host-owned query/sort, SDK-owned projection and selection.
-use gpui_luma::controls::textfield::TextFieldEventExt;
-use gpui_luma::controls::selector::SelectorEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::selector::SelectorEventExt;
 use std::sync::Arc;
 use gpui::{Context, Div, Entity, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     listbox::{
         ListBoxControl, ListBoxInput, ListBoxItemRenderModel, ListBoxState, ListBoxVirtualization, SelectionMode,
         SelectionPolicy,
@@ -11,8 +11,8 @@ use gpui_luma::controls::{
     selector::{Selector, SelectorEvent, SelectorItem},
     textfield::{TextField, TextFieldEvent},
 };
-use gpui_luma::{hstack, vstack};
-use gpui_luma_look_shadcn::{self as shadcn, LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma::{hstack, vstack};
+use xgpui_luma_look_shadcn::{self as shadcn, LumaTypographyExt, ShadcnLook, ShadcnTextSize};
 use super::{
     VERTICAL_LIST_WIDTH,
     markup::listbox,
@@ -78,7 +78,7 @@ pub(super) struct FilteringExample {
 }
 
 impl FilteringExample {
-    pub(super) fn captured_motion(&self) -> (bool, gpui_luma::controls::listbox::ListBoxMotion) {
+    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
         (self.list.is_motion_enabled(), self.list.motion_profile())
     }
 

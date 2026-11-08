@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 
 use gpui::SharedString;
-use gpui_luma::controls::listbox::{ListBoxError, ListBoxSnapshot, ListBoxState, ListBoxUpdate, SelectionMode};
+use xgpui_luma::controls::listbox::{ListBoxError, ListBoxSnapshot, ListBoxState, ListBoxUpdate, SelectionMode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Side {
@@ -108,7 +108,7 @@ impl TransferModel {
 
 #[cfg(test)]
 mod tests {
-    use gpui_luma::controls::listbox::{ListBoxEvent, ListBoxInput};
+    use xgpui_luma::controls::listbox::{ListBoxEvent, ListBoxInput};
     use super::*;
 
     fn keys(model: &TransferModel, side: Side) -> Vec<u32> {

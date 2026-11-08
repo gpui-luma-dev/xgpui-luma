@@ -1,23 +1,23 @@
 //! Slide panel exposition — gallery-aligned drawer prototype with edge triggers.
 
-use gpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
 use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, Context, Entity, FocusHandle, Focusable, FontWeight, Hsla, IntoElement, MouseDownEvent,
     MouseUpEvent, Overflow, Render, Window, div, prelude::*, px,
 };
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{Button, HasPresenter};
-use gpui_luma::controls::slide_panel::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{Button, HasPresenter};
+use xgpui_luma::controls::slide_panel::{
     SlidePanelEdge, SlidePanelMotion, SlidePanelOverlayHandlers, SlidePanelResizeDrag, SlidePanelResizeHandlers,
     SlidePanelSizeConfig, SlidePanelState, SlidePanelTopAnchor, render_slide_panel_overlay,
 };
-use gpui_luma::controls::toggle::{Toggle, ToggleEvent};
-use gpui_luma::{flow, hstack, vstack};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{ShadcnLook, slide_panel_background, slide_panel_panels_look};
+use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
+use xgpui_luma::{flow, hstack, vstack};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnLook, slide_panel_background, slide_panel_panels_look};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

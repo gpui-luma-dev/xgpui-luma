@@ -1,7 +1,7 @@
 //! Radix resize chrome over the SDK splitter and split-view engines.
 use std::sync::Arc;
 use gpui::{SharedString, px};
-use gpui_luma::controls::{dock_splitter::*, split_view::*};
+use xgpui_luma::controls::{dock_splitter::*, split_view::*};
 use crate::{Look, ScaleFamily, SemanticRole};
 
 struct DockTheme {
@@ -90,8 +90,8 @@ pub fn split_view_template() -> Arc<dyn SplitViewTemplate> {
 ///
 /// ```no_run
 /// use gpui::{Context, div, px};
-/// use gpui_luma::controls::dock_splitter::SplitterOrientation;
-/// use gpui_luma_look_radix::{Look, dock_splitter_builder, split_view_builder};
+/// use xgpui_luma::controls::dock_splitter::SplitterOrientation;
+/// use xgpui_luma_look_radix::{Look, dock_splitter_builder, split_view_builder};
 /// fn panes<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     dock_splitter_builder(look, "divider", SplitterOrientation::Vertical).spawn(cx);
 ///     split_view_builder(look, "panes").sidebar(|| div()).content(|| div())
@@ -113,7 +113,7 @@ pub fn split_view_builder(look: &Look, id: impl Into<SharedString>) -> SplitView
 mod tests {
     use super::*;
     use crate::{Accent, Gray};
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn splitter_colors_follow_live_palettes_and_disabled_state() {
         let look = Look::built_in();

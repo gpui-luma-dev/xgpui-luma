@@ -1,6 +1,6 @@
 //! Inspect metadata for `tabs`.
 
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
 pub struct TabsItemInspectPalette {

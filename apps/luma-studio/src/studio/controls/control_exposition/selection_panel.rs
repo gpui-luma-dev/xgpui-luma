@@ -1,13 +1,13 @@
-use gpui_luma::controls::selection_panel::SelectionPanelEventExt;
+use xgpui_luma::controls::selection_panel::SelectionPanelEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::selection_panel::{SelectionPanelControl, SelectionPanelEvent, SelectionPanelItem};
-use gpui_luma::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarVisibility};
-use gpui_luma::theme::ControlSize;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::selection_panel::{SelectionPanelControl, SelectionPanelEvent, SelectionPanelItem};
+use xgpui_luma::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarVisibility};
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

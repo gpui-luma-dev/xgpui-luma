@@ -1,6 +1,6 @@
 use gpui::{AnyElement, FontWeight, IntoElement, div, prelude::*, px};
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::prelude::*;
 
 pub(crate) fn render_sparse_catalog_callout(look: &ShadcnLook) -> Option<AnyElement> {
     if look.has_css_catalog() {

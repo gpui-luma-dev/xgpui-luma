@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use gpui_luma_color::style::{ColorControlTheme, active_color_control_theme, set_active_color_control_theme};
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma_color::style::{ColorControlTheme, active_color_control_theme, set_active_color_control_theme};
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look::ShadcnLook;
 

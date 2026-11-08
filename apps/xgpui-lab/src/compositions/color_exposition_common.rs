@@ -1,10 +1,10 @@
 //! Shared layout and readout helpers for color control expositions.
 
-use gpui_luma::color::gpui_bridge::from_hsla;
+use xgpui_luma::color::gpui_bridge::from_hsla;
 use gpui::{FontWeight, Hsla, div, prelude::*, px};
-use gpui_luma_color::ColorSwatch;
-use gpui_luma_color::color_field::ColorFieldEvent;
-use gpui_luma::controls::slider::SliderEvent;
+use xgpui_luma_color::ColorSwatch;
+use xgpui_luma_color::color_field::ColorFieldEvent;
+use xgpui_luma::controls::slider::SliderEvent;
 use crate::theme::{Look, ColorVizLookExt, TypographyExt, TextSize};
 
 /// Inner demo-card horizontal padding (`render_demo_card` default).
@@ -184,7 +184,7 @@ pub(super) fn format_hsl_label(color: Hsla) -> String {
 pub(super) fn slider_labeled_row_compact_sized(
     look: &Look,
     label: &'static str,
-    slider: gpui::Entity<gpui_luma::controls::slider::SliderControl>,
+    slider: gpui::Entity<xgpui_luma::controls::slider::SliderControl>,
     label_text_size: TextSize,
 ) -> gpui::AnyElement {
     div()

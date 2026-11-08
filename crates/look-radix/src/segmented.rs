@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 use gpui::{IntoElement, div, prelude::*, px};
-use gpui_luma::controls::control_group::{ControlGroupItemHandlerExt, ControlGroupItemLike};
-use gpui_luma::controls::radio_group::RadioGroupTemplate;
+use xgpui_luma::controls::control_group::{ControlGroupItemHandlerExt, ControlGroupItemLike};
+use xgpui_luma::controls::radio_group::RadioGroupTemplate;
 use crate::{Look, ScaleFamily};
 
 /// Horizontal radio-group template with a shared track and selected segment.
@@ -60,12 +60,12 @@ pub fn segmented_radio_template<T: ControlGroupItemLike + 'static>(look: &Look) 
     })
 }
 
-pub(crate) fn resolve_geometry(look: &Look) -> gpui_luma::theme::stylesheet::SegmentedGeometry {
+pub(crate) fn resolve_geometry(look: &Look) -> xgpui_luma::theme::stylesheet::SegmentedGeometry {
     let control = look.metrics().control.md;
-    let typography = gpui_luma::theme::ThemeTokens::default().typography.text.label;
+    let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
     look.common_stylesheet().segmented.resolve_geometry(
         "2",
-        gpui_luma::theme::stylesheet::SegmentedGeometry {
+        xgpui_luma::theme::stylesheet::SegmentedGeometry {
             height: control.height,
             padding_x: control.padding_x,
             font_size: typography.size,
@@ -75,10 +75,10 @@ pub(crate) fn resolve_geometry(look: &Look) -> gpui_luma::theme::stylesheet::Seg
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_segmented_stylesheet() -> gpui_luma::theme::stylesheet::SegmentedStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_segmented_stylesheet() -> xgpui_luma::theme::stylesheet::SegmentedStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     SegmentedStylesheet {
-        sizes: gpui_luma::theme::ControlSizes::from([(
+        sizes: xgpui_luma::theme::ControlSizes::from([(
             "2".into(),
             SegmentedGeometryStylesheet {
                 height: Some(32.0),

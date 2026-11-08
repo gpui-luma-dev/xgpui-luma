@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px};
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::controls::textfield::{
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::controls::textfield::{
     TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
 };
-use gpui_luma::theme::{ControlSize, StandardBoxScale};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::style::shared::button_matrix::button_size_id;
@@ -294,7 +294,7 @@ fn input_textfield_look(
     enabled: bool,
     size: ControlSize,
     window: &Window,
-) -> gpui_luma::controls::textfield::TextFieldLook {
+) -> xgpui_luma::controls::textfield::TextFieldLook {
     let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
     theme.resolve_look(state, enabled, size, &scale)
 }

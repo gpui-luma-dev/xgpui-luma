@@ -1,19 +1,19 @@
-use gpui_luma::controls::table::TableEventExt;
+use xgpui_luma::controls::table::TableEventExt;
 use std::sync::Arc;
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::motion::VisualTransition;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::motion::VisualTransition;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::{ButtonContentContext, ControlIcon};
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::controls::table::{TableSelectionMode, TableEvent, PagingTable};
-use gpui_luma::controls::pager::PagerStyle;
-use gpui_luma::infra::presenter::ControlPresenter;
-use gpui_luma::controls::sidebar::{SidebarPresentation, SidebarControl};
-use gpui_luma::{column, column_emphasis, paging_table};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize, with_look};
+use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon};
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::controls::table::{TableSelectionMode, TableEvent, PagingTable};
+use xgpui_luma::controls::pager::PagerStyle;
+use xgpui_luma::infra::presenter::ControlPresenter;
+use xgpui_luma::controls::sidebar::{SidebarPresentation, SidebarControl};
+use xgpui_luma::{column, column_emphasis, paging_table};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize, with_look};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::sidebar::{INITIAL_PROPERTY_SELECTION_ID, property_sidebar};
@@ -39,7 +39,7 @@ impl DashboardPanel {
         let sidebar = shadcn::Sidebar::new("studio-dashboard-nav")
             .look(look.as_ref())
             .selected_id(INITIAL_PROPERTY_SELECTION_ID)
-            .drag_drop(gpui_luma::controls::sidebar::SidebarDragDrop::new().allowed_groups(["properties"]))
+            .drag_drop(xgpui_luma::controls::sidebar::SidebarDragDrop::new().allowed_groups(["properties"]))
             .sidebar(property_sidebar(&look, "studio-dashboard-nav-panel", "Properties", "Task workspace"))
             .spawn(cx);
 
@@ -97,7 +97,7 @@ impl DashboardPanel {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(gpui_luma::infra::icon::lucide_icon(
+                        .child(xgpui_luma::infra::icon::lucide_icon(
                             LucideIcon::EllipsisVertical,
                             dashboard_muted_text,
                             16.0,
@@ -275,7 +275,7 @@ impl Render for DashboardPanel {
 fn sidebar_toggle_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPresenter<ButtonContentContext<()>> {
     Arc::new(move |_, _| match &icon {
         ControlIcon::Lucide(lucide) => {
-            div().child(gpui_luma::infra::icon::lucide_icon(*lucide, color, 16.0)).into_any_element()
+            div().child(xgpui_luma::infra::icon::lucide_icon(*lucide, color, 16.0)).into_any_element()
         }
         ControlIcon::SvgPath(path) => {
             gpui::svg().size(px(16.0)).text_color(color).path(path.clone()).into_any_element()
@@ -290,7 +290,7 @@ mod tests {
 
     #[test]
     fn dashboard_properties_move_without_navigation_and_pinned_items_stay_fixed() {
-        use gpui_luma::controls::sidebar::SidebarEvent;
+        use xgpui_luma::controls::sidebar::SidebarEvent;
         let mut app = TestAppContext::single();
         let (panel, cx) = app.add_window_view(|window, cx| {
             window.activate_window();

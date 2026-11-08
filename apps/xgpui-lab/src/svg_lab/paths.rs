@@ -51,7 +51,7 @@ fn place(mut path: Path<Pixels>, offset: Point<Pixels>, scale: f32) -> Path<Pixe
     path
 }
 pub(super) fn panel(
-    look: &gpui_luma_look_radix::Look,
+    look: &xgpui_luma_look_radix::Look,
     path: &MeasuredPath,
     effect: PathEffect,
     width: f32,
@@ -90,7 +90,7 @@ pub(super) fn panel(
         .children(error.map(|e| {
             div()
                 .text_sm()
-                .text_color(look.resolve_role(gpui_luma_look_radix::SemanticRole::Destructive).hsla())
+                .text_color(look.resolve_role(xgpui_luma_look_radix::SemanticRole::Destructive).hsla())
                 .child(e)
         }))
 }

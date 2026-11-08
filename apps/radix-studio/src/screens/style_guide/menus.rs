@@ -9,14 +9,14 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Bounds, ClickEvent, IntoElement, MouseDownEvent, MouseUpEvent, Pixels};
 use gpui::{Hsla, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::button_family::ButtonSize;
-use gpui_luma::controls::popup_menu::{
+use xgpui_luma::controls::button_family::ButtonSize;
+use xgpui_luma::controls::popup_menu::{
     ControlFocusState, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplate, PopupMenuTemplateHandlers,
     PopupMenuTriggerStyle,
 };
-use gpui_luma::infra::icon::DisclosureIcons;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma_look_radix::{Look, LookControlExt, PopupMenuVariant, Tone, ScaleFamily};
+use xgpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma_look_radix::{Look, LookControlExt, PopupMenuVariant, Tone, ScaleFamily};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::states::{self, StateSample};
@@ -137,7 +137,7 @@ fn state_cell(
         items: &items,
         open: false,
         disclosure_progress: 0.0,
-        presence: gpui_luma::OverlayPresence::new(false, false),
+        presence: xgpui_luma::OverlayPresence::new(false, false),
         submenu_transition: None,
         highlight: None,
         trigger_bounds: None,
@@ -211,9 +211,9 @@ fn noop_mouse_up(_: &MouseUpEvent, _: &mut Window, _: &mut App) {}
 
 /// Always-visible popup panes use the same controlled highlight path as live popups.
 pub fn pane_preview(look: &Look, fg: Hsla) -> AnyElement {
-    use gpui_luma::controls::floating_menu::{FloatingMenuHighlight, render_floating_menu_with_submenu_hovers_and_icons};
-    use gpui_luma::infra::state::MenuPath;
-    use gpui_luma_look_radix::floating_menu_look;
+    use xgpui_luma::controls::floating_menu::{FloatingMenuHighlight, render_floating_menu_with_submenu_hovers_and_icons};
+    use xgpui_luma::infra::state::MenuPath;
+    use xgpui_luma_look_radix::floating_menu_look;
 
     let items = [
         MenuItem::new("copy-url").label("Copy palette URL").icon(LucideIcon::Share2),

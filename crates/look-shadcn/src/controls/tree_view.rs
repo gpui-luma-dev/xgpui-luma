@@ -12,10 +12,10 @@
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use gpui_luma::controls::tree_view::TreeViewPalette;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::controls::tree_view::TreeViewPalette;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
 
 use super::apply_button_metrics_typography;
 
@@ -118,7 +118,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -152,7 +152,7 @@ mod tests {
         let palette = tree_view_row_palette(
             &mode,
             false,
-            gpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
+            xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
             ControlSize::Md,
         );
         let resolver = LookResolver::new(&catalog, ThemeMode::Light, "test");
@@ -168,9 +168,9 @@ mod tests {
         for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
             let mode = ShadcnModeTokens::from_catalog(sample_catalog(), theme_mode).expect("catalog");
             for state in [
-                gpui_luma::theme::InteractionState::default(),
-                gpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-                gpui_luma::theme::InteractionState { pressed: true, ..Default::default() },
+                xgpui_luma::theme::InteractionState::default(),
+                xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
+                xgpui_luma::theme::InteractionState { pressed: true, ..Default::default() },
             ] {
                 let selected = tree_view_row_palette(&mode, true, state, ControlSize::Md);
                 assert_eq!(selected.background, Some(mode.palette.selected_background));
@@ -180,7 +180,7 @@ mod tests {
             }
             let idle = tree_view_row_palette(&mode, false, Default::default(), ControlSize::Md);
             assert_eq!(idle.background, None);
-            let disabled = gpui_luma::theme::InteractionState { disabled: true, ..Default::default() };
+            let disabled = xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() };
             let selected = tree_view_row_palette(&mode, true, disabled, ControlSize::Md);
             let unselected = tree_view_row_palette(&mode, false, disabled, ControlSize::Md);
             assert_eq!(selected.background, unselected.background);
@@ -270,15 +270,15 @@ pub struct TreeViewMetricTable {
 
 pub fn resolve_tree_view_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TreeViewMetricTable {
-    use gpui_luma::controls::tree_view::TreeViewScale;
+    use xgpui_luma::controls::tree_view::TreeViewScale;
 
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{control_size_key, derived_metric, radius_metric, spacing_control_metric};
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let scale = TreeViewScale::compute_with_stylesheet(size, metrics, 1.0, &mode.stylesheet().common);
@@ -295,7 +295,7 @@ pub fn resolve_tree_view_metrics(
     };
     let geometry = mode.stylesheet().common.tree_view.inspect_geometry(
         size_key,
-        gpui_luma::theme::stylesheet::TreeViewGeometry {
+        xgpui_luma::theme::stylesheet::TreeViewGeometry {
             row_height: scale.row_height,
             base_padding_x: scale.base_padding_x,
             indentation_width: scale.indentation_width,

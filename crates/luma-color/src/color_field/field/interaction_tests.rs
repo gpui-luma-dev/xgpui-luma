@@ -5,8 +5,8 @@ use gpui::{
     prelude::*, Context, Entity, FocusHandle, Focusable, ScrollHandle, Render, Window, div, px, point, TestAppContext,
     VisualTestContext, Keystroke, KeyDownEvent, KeyUpEvent, Subscription, MouseMoveEvent, ScrollEvent, ScrollDelta,
 };
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma::interaction::PointerFocusPolicy;
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma::interaction::PointerFocusPolicy;
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 struct Page {
@@ -17,7 +17,7 @@ struct Page {
     scroll: ScrollHandle,
     ancestor_keys: usize,
     block_bubble_pointer: bool,
-    hue: Option<Entity<gpui_luma::controls::slider::SliderControl>>,
+    hue: Option<Entity<xgpui_luma::controls::slider::SliderControl>>,
     bubbled_moves: usize,
 }
 impl Render for Page {
@@ -63,7 +63,7 @@ fn setup(
 ) -> (Entity<Page>, &mut VisualTestContext, Entity<ColorFieldState>) {
     let (page, cx) = app.add_window_view(|window, cx| {
         window.activate_window();
-        gpui_luma::focus::bind_default_focus_keys(cx);
+        xgpui_luma::focus::bind_default_focus_keys(cx);
         let before = cx.focus_handle().tab_stop(true);
         before.focus(window, cx);
         Page {

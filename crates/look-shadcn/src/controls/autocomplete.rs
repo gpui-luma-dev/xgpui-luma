@@ -2,8 +2,8 @@
 
 use serde::Deserialize;
 
-use gpui_luma::controls::autocomplete::AutocompleteLook;
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::controls::autocomplete::AutocompleteLook;
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -66,7 +66,7 @@ pub fn autocomplete_textbox_look(
 
     let geometry = mode.stylesheet().common.autocomplete.resolve_geometry(
         size.stylesheet_key(),
-        gpui_luma::theme::stylesheet::AutocompleteGeometry {
+        xgpui_luma::theme::stylesheet::AutocompleteGeometry {
             status_font_size: mode.typography.text.scale.sm.size,
             status_line_height: mode.typography.text.scale.sm.line_height,
             ..Default::default()
@@ -90,9 +90,9 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;

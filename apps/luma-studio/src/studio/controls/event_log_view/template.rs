@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, ScrollEvent, Stateful, Window, div, prelude::*, px};
 
-use gpui_luma::controls::scroll_container::ScrollContainer;
-use gpui_luma_look_shadcn::LumaTypographyExt;
+use xgpui_luma::controls::scroll_container::ScrollContainer;
+use xgpui_luma_look_shadcn::LumaTypographyExt;
 
 use super::model::EventLogViewRenderModel;
 use super::theme::EventLogTheme;

@@ -1,5 +1,5 @@
-use gpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
 
 use crate::controls::button::{ButtonRadiusPreset, button_look_with_stylesheet};
 use crate::stylesheet::{StylesheetConfig, embedded_stylesheet};

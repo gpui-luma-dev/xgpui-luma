@@ -7,7 +7,7 @@ set positional-arguments
 profile := "release"
 python := if os() == "windows" { "python" } else { "python3" }
 run-options := "--locked --profile " + profile
-lib-packages := "-p gpui-luma -p gpui-luma-color -p gpui-luma-look-radix -p gpui-luma-look-shadcn -p gpui-luma-plot"
+lib-packages := "-p xgpui-luma -p xgpui-luma-color -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-luma-plot"
 
 # List development commands without launching an app.
 default:
@@ -75,7 +75,7 @@ sdk-build *args:
 
 # Run the library suites selected by CI, excluding benchmarks and demo binaries.
 sdk-test *args:
-    @{{ python }} -B scripts/quiet_check.py cargo test --locked --lib --bins --tests --all-features -p gpui-luma -p gpui-luma-color -p gpui-luma-plot -p gpui-luma-look-radix -p gpui-luma-look-shadcn -p luma-app-common "$@"
+    @{{ python }} -B scripts/quiet_check.py cargo test --locked --lib --bins --tests --all-features -p xgpui-luma -p xgpui-luma-color -p xgpui-luma-plot -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p luma-app-common "$@"
 
 # Lint default SDK/library members with every target and feature.
 sdk-clippy *args:
@@ -83,7 +83,7 @@ sdk-clippy *args:
 
 # Run documentation tests for the library packages selected by CI.
 sdk-doc-test *args:
-    @{{ python }} -B scripts/quiet_check.py cargo test --locked --doc --all-features -p gpui-luma -p gpui-luma-look-radix -p gpui-luma-look-shadcn -p gpui-luma-plot "$@"
+    @{{ python }} -B scripts/quiet_check.py cargo test --locked --doc --all-features -p xgpui-luma -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-luma-plot "$@"
 
 # --- Workspace ---
 
@@ -156,11 +156,11 @@ pre-pr: ci workflows-check docs-check wasm-check
 preflight-release: _preflight-source-check _release-registry-check ci
     #!/usr/bin/env bash
     set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package gpui-luma)
+    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
     VERSION=${release_package_id##*@}
     GITHUB_SHA=$(git rev-parse HEAD)
     export VERSION GITHUB_SHA
-    export LIB_PACKAGES="gpui-luma gpui-luma-color gpui-luma-look-radix gpui-luma-look-shadcn gpui-luma-plot"
+    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
     export PUBLISH_RELEASE=false
     if [[ -n "$(git status --porcelain)" ]]; then
         cargo package --locked --allow-dirty --registry crates-io {{ lib-packages }}
@@ -193,11 +193,11 @@ loc:
 _release-registry-check:
     #!/usr/bin/env bash
     set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package gpui-luma)
+    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
     VERSION=${release_package_id##*@}
     GITHUB_SHA=$(git rev-parse HEAD)
     export VERSION GITHUB_SHA
-    export LIB_PACKAGES="gpui-luma gpui-luma-color gpui-luma-look-radix gpui-luma-look-shadcn gpui-luma-plot"
+    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
     PUBLISH_RELEASE=false {{ python }} -B scripts/release.py preflight --require-unpublished
 
 _preflight-source-check:

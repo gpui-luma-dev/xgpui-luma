@@ -3,15 +3,15 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, hsla, prelude::*, px};
-use gpui_luma_color::color_arc::{
+use xgpui_luma_color::color_arc::{
     ColorArcBuilder, ColorArcDomainRenderer, ColorArcRenderer, ColorArcTrackContext, RasterArcDelegate,
 };
-use gpui_luma_color::color_ring::{
+use xgpui_luma_color::color_ring::{
     ColorRingBuilder, ColorRingDomainRenderer, ColorRingTrackContext, HueRingDelegate, primary_slider_value,
 };
-use gpui_luma_color::color_slider::color_spec::Hsv;
-use gpui_luma_color::composition::ColorCompositionSync;
-use gpui_luma::controls::slider::SliderControl;
+use xgpui_luma_color::color_slider::color_spec::Hsv;
+use xgpui_luma_color::composition::ColorCompositionSync;
+use xgpui_luma::controls::slider::SliderControl;
 use crate::theme::{Look, ColorVizLookExt, TextSize};
 
 use super::super::color_exposition_common::{

@@ -1,16 +1,16 @@
-//! Look-owned toggle builder. Spawn synthesizes the SDK [`gpui_luma::controls::toggle::Toggle`].
+//! Look-owned toggle builder. Spawn synthesizes the SDK [`xgpui_luma::controls::toggle::Toggle`].
 
-use gpui_luma::controls::toggle::{ToggleCallbacks, ToggleEvent};
+use xgpui_luma::controls::toggle::{ToggleCallbacks, ToggleEvent};
 use gpui::{App, Context, SharedString};
-use gpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter, HasPresenter};
-use gpui_luma::controls::toggle::{ToggleBuilder, ToggleData};
+use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter, HasPresenter};
+use xgpui_luma::controls::toggle::{ToggleBuilder, ToggleData};
 use super::button::ShadcnButtonStyle;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of a toggle: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct Toggle {
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::toggle::ToggleMotion>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::toggle::ToggleMotion>,
     callbacks: ToggleCallbacks,
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -98,7 +98,7 @@ impl Toggle {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::toggle::ToggleMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::toggle::ToggleMotion, edits motion);
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &ShadcnLook) -> Self {
@@ -182,9 +182,9 @@ impl Toggle {
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::toggle::Toggle {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::toggle::Toggle {
         let look = self.resolve_look(cx);
-        use gpui_luma::infra::attachments::TooltipEntityExt;
+        use xgpui_luma::infra::attachments::TooltipEntityExt;
         let theme = crate::tooltip_theme(&look);
         self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
     }
@@ -195,7 +195,7 @@ impl Toggle {
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ToggleBuilder {
         let template = look.toggle_template(self.style);
-        let mut builder = gpui_luma::controls::toggle::new(self.id)
+        let mut builder = xgpui_luma::controls::toggle::new(self.id)
             .motion_defaults(look.motion_defaults().toggle)
             .with_motion_overrides(self.motion)
             .template(template)
@@ -233,7 +233,7 @@ impl HasPresenter<ButtonContentContext<ToggleData>> for Toggle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::controls::button::HasPresenter;
 
     #[test]
     fn with_data_keeps_shadcn_axes() {
@@ -261,7 +261,7 @@ mod callback_tests {
     use super::*;
     use gpui::{AppContext, TestAppContext};
     struct Owner {
-        control: gpui_luma::controls::toggle::Toggle,
+        control: xgpui_luma::controls::toggle::Toggle,
         log: Vec<bool>,
     }
     #[test]

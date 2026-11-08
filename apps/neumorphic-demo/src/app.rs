@@ -1,11 +1,11 @@
-use gpui_luma::controls::toggle::ToggleEventExt;
-use gpui_luma::controls::switch::SwitchEventExt;
+use xgpui_luma::controls::toggle::ToggleEventExt;
+use xgpui_luma::controls::switch::SwitchEventExt;
 use gpui::{Context, Render, Window, div, hsla, prelude::*, px};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma::controls::radio_group::{self, RadioGroup, RadioGroupItem};
-use gpui_luma::controls::slider::{self, Slider, SliderOrientation};
-use gpui_luma::controls::switch::{self, Switch, SwitchEvent};
-use gpui_luma::controls::toggle::{self, Toggle, ToggleEvent};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::radio_group::{self, RadioGroup, RadioGroupItem};
+use xgpui_luma::controls::slider::{self, Slider, SliderOrientation};
+use xgpui_luma::controls::switch::{self, Switch, SwitchEvent};
+use xgpui_luma::controls::toggle::{self, Toggle, ToggleEvent};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::background::deck_background;
@@ -45,21 +45,21 @@ impl NeumorphicDemoApp {
             .with_data(false)
             .template(power_template.clone())
             .content(|_, _| {
-                gpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
+                xgpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
             })
             .spawn(cx);
         let middle_power = toggle::new("panel-middle-power")
             .with_data(false)
             .template(power_template.clone())
             .content(|_, _| {
-                gpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
+                xgpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
             })
             .spawn(cx);
         let right_power = toggle::new("panel-right-power")
             .with_data(false)
             .template(power_template)
             .content(|_, _| {
-                gpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
+                xgpui_luma::infra::icon::lucide_icon(LucideIcon::Power, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0)
             })
             .spawn(cx);
         let left_switch = switch::new("panel-left-adv")

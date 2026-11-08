@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 
 REPORT = Path('target/release-report/status.json')
-USER_AGENT = 'gpui-luma-release (https://gpui-luma.dev)'
+USER_AGENT = 'xgpui-luma-release (https://gpui-luma.dev)'
 
 
 class ReleaseError(Exception):

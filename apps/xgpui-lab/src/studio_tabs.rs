@@ -1,8 +1,8 @@
 //! Studio navigation uses SDK tabs with a look-backed selected chip.
 use std::sync::Arc;
-use gpui_luma::controls::tabs::{TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_radix::Look;
+use xgpui_luma::controls::tabs::{TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_radix::Look;
 use crate::theme::ColorVizLookExt;
 
 struct StudioTabsTheme {
@@ -12,7 +12,7 @@ struct StudioTabsTheme {
 
 impl TabsTheme for StudioTabsTheme {
     fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook {
-        let mut list = gpui_luma_look_radix::tabs_theme(&self.look).resolve_list(enabled, size);
+        let mut list = xgpui_luma_look_radix::tabs_theme(&self.look).resolve_list(enabled, size);
         list.background = None;
         list.border = None;
         list.padding = if self.segmented { 3.0 } else { 0.0 };
@@ -22,7 +22,7 @@ impl TabsTheme for StudioTabsTheme {
     }
 
     fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook {
-        let mut item = gpui_luma_look_radix::tabs_theme(&self.look).resolve_item(active, state, size);
+        let mut item = xgpui_luma_look_radix::tabs_theme(&self.look).resolve_item(active, state, size);
         let chrome = self.look.chrome();
         if !self.segmented {
             item.label_typography.size = 14.0;

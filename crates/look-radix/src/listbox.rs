@@ -2,7 +2,7 @@
 
 use std::hash::Hash;
 use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, prelude::*, px};
-use gpui_luma::controls::listbox::{
+use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxFlow, ListBoxItemRenderModel, ListBoxItemState, ListBoxItemTemplate, ListBoxVirtualization,
     make_listbox_item_template,
 };
@@ -58,7 +58,7 @@ pub fn listbox_template<T: 'static>(label: impl Fn(&T) -> SharedString + 'static
 /// Borrowed list builder. Keep the SDK control on the host between renders;
 /// building does not reset focus, selection, or scroll position.
 pub struct ListBoxBuilder<'a, M: 'static, T, K: 'static> {
-    motion_edits: gpui_luma::motion::MotionOverrides<gpui_luma::controls::listbox::ListBoxMotion>,
+    motion_edits: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::listbox::ListBoxMotion>,
     motion_enabled: Option<bool>,
     id: &'static str,
     control: &'a mut ListBoxControl<M, T, K>,
@@ -67,7 +67,7 @@ pub struct ListBoxBuilder<'a, M: 'static, T, K: 'static> {
     template: ListBoxItemTemplate<'a, T>,
 }
 impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<'a, M, T, K> {
-    gpui_luma::forward_motion!(gpui_luma::controls::listbox::ListBoxMotion, edits motion_edits);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::listbox::ListBoxMotion, edits motion_edits);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = Some(enabled);
         self
@@ -111,9 +111,9 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
         let layout = self.flow.layout((0.0, 0.0));
         let (axis, extent) = match self.flow {
             ListBoxFlow::Horizontal { item_width, .. } => {
-                (gpui_luma::controls::listbox::ListBoxAxis::Horizontal, item_width)
+                (xgpui_luma::controls::listbox::ListBoxAxis::Horizontal, item_width)
             }
-            _ => (gpui_luma::controls::listbox::ListBoxAxis::Vertical, layout.item_height),
+            _ => (xgpui_luma::controls::listbox::ListBoxAxis::Vertical, layout.item_height),
         };
         let content_sized = matches!(self.flow, ListBoxFlow::VerticalContent { .. });
         let virtual_window = if content_sized {
@@ -131,7 +131,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             }
         };
         let range = virtual_window.as_ref().map_or(0..parts.state.visible_items().len(), |window| window.range.clone());
-        let horizontal = axis == gpui_luma::controls::listbox::ListBoxAxis::Horizontal;
+        let horizontal = axis == xgpui_luma::controls::listbox::ListBoxAxis::Horizontal;
         let spacer = |extent| {
             div()
                 .flex_shrink_0()
@@ -170,13 +170,13 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
                 rendered = rendered.relative();
                 if cx.has_active_drag() {
                     for (edge, before) in [
-                        (gpui_luma::infra::drag_drop::DropEdge::Before, Some(key.clone())),
+                        (xgpui_luma::infra::drag_drop::DropEdge::Before, Some(key.clone())),
                         (
-                            gpui_luma::infra::drag_drop::DropEdge::After,
+                            xgpui_luma::infra::drag_drop::DropEdge::After,
                             parts.state.visible_items().nth(item.visible_index + 1).map(|item| item.key),
                         ),
                     ] {
-                        let zone = gpui_luma::infra::drag_drop::DropZone {
+                        let zone = xgpui_luma::infra::drag_drop::DropZone {
                             axis: if horizontal {
                                 gpui::Axis::Horizontal
                             } else {
@@ -187,7 +187,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
                             following_gap: px(if before.is_some() { layout.spacing } else { 0.0 }),
                             marker_width: px(2.0),
                         };
-                        let target = div().id(if edge == gpui_luma::infra::drag_drop::DropEdge::Before {
+                        let target = div().id(if edge == xgpui_luma::infra::drag_drop::DropEdge::Before {
                             "insert-before"
                         } else {
                             "insert-after"
@@ -231,7 +231,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             .min_w_0()
             .aria_label(self.id);
         if let Some(drag_drop) = &parts.drag_drop {
-            use gpui_luma::infra::drag_drop::DragDropElementExt;
+            use xgpui_luma::infra::drag_drop::DragDropElementExt;
             surface = drag_drop.bind_target(surface, None, cx).cancel_drag_on_escape();
         }
         let surface = match virtual_window {
@@ -251,7 +251,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
 mod persistent_drag_tests {
     fn render_drag_list(
         side: usize,
-        list: &mut gpui_luma::controls::listbox::ListBoxControl<DragHarness, u32, u32>,
+        list: &mut xgpui_luma::controls::listbox::ListBoxControl<DragHarness, u32, u32>,
         window: &mut gpui::Window,
         cx: &mut gpui::Context<DragHarness>,
     ) -> gpui::Stateful<gpui::Div> {
@@ -265,13 +265,13 @@ mod persistent_drag_tests {
 
     #[test]
     fn retained_list_captures_typed_look_roles_once() {
-        use gpui_luma::motion::{Transition, Easing};
+        use xgpui_luma::motion::{Transition, Easing};
         use std::time::Duration;
         let make_look = |ms| {
             let source =
                 format!("[common.motion.listbox.drop_layout]\nkind = 'timed'\nduration_ms = {ms}\neasing = 'linear'");
             let look = crate::Look::built_in();
-            look.set_common_stylesheet(gpui_luma::theme::stylesheet::CommonStylesheet::parse(&source).unwrap());
+            look.set_common_stylesheet(xgpui_luma::theme::stylesheet::CommonStylesheet::parse(&source).unwrap());
             look
         };
         let expected = Transition::timed(Duration::from_millis(350), Easing::Linear).description();

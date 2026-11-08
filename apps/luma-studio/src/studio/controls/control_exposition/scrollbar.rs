@@ -1,11 +1,11 @@
-use gpui_luma::controls::scrollbar::ScrollbarEventExt;
+use xgpui_luma::controls::scrollbar::ScrollbarEventExt;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px, rgb};
-use gpui_luma::controls::scrollbar::{Scrollbar, ScrollbarEvent};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::scrollbar::{Scrollbar, ScrollbarEvent};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;

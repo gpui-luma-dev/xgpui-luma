@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use gpui_luma_color::color_slider::color_spec::{ColorSpecification, Hsl};
-use gpui_luma::color::ColorValue;
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_shadcn::{ShadcnLook, ShadowTokenParts, shadow_ladder_overrides};
+use xgpui_luma_color::color_slider::color_spec::{ColorSpecification, Hsl};
+use xgpui_luma::color::ColorValue;
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_shadcn::{ShadcnLook, ShadowTokenParts, shadow_ladder_overrides};
 
 use super::hs_mixer::{ThemePaletteHsOverride, clamp_palette_temperature_amount, clamp_palette_vividness_amount};
 
@@ -366,7 +366,7 @@ mod tests {
             ThemePaletteHslOverride { hue_deg: 10.0, saturation_multiplier: 1.2, lightness_multiplier: 1.0 };
         let adjusted = adjustment.apply(source).unwrap();
         assert_eq!(adjusted.alpha(), source.alpha());
-        assert!(!adjusted.is_in_gamut(gpui_luma::color::Gamut::Srgb).unwrap());
+        assert!(!adjusted.is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap());
     }
 
     #[test]
@@ -399,7 +399,7 @@ mod tests {
 
         let tokens = overrides.token_overrides().unwrap();
         let shadow = tokens.get("shadow").expect("base shadow override");
-        for token in gpui_luma_look_shadcn::SHADOW_LADDER_TOKENS {
+        for token in xgpui_luma_look_shadcn::SHADOW_LADDER_TOKENS {
             assert!(tokens.contains_key(token));
         }
         assert!(tokens.get("shadow-md").expect("medium shadow override") != shadow);

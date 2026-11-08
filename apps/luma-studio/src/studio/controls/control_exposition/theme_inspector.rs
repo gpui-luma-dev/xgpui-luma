@@ -1,18 +1,18 @@
 #![allow(clippy::too_many_arguments)]
 
-use gpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::tabs::TabsEventExt;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, IntoElement, Render, SharedString, Subscription, Window, div, px};
 use gpui::prelude::*;
-use gpui_luma::controls::accordion::{
+use xgpui_luma::controls::accordion::{
     AccordionContent, AccordionControl, AccordionItem, AccordionSelectionMode, AccordionTrigger,
 };
-use gpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem};
-use gpui_luma::theme::ThemeMode;
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem};
+use xgpui_luma::theme::ThemeMode;
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook};
+use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::inspector::{
@@ -1145,9 +1145,9 @@ mod tests {
     use std::time::Duration;
 
     use gpui::TestAppContext;
-    use gpui_luma::controls::tabs::TabsItem;
-    use gpui_luma::motion::{Easing, Transition};
-    use gpui_luma_look_shadcn as shadcn;
+    use xgpui_luma::controls::tabs::TabsItem;
+    use xgpui_luma::motion::{Easing, Transition};
+    use xgpui_luma_look_shadcn as shadcn;
 
     use super::super::inspector::motion::MotionReport;
     use super::super::inspector::{TABS_INSPECTOR_SPEC, TabsInspectorAdapter, TabsMotionReport};

@@ -132,7 +132,7 @@ impl IntoElement for Badge {
         let (font_size, line_height, padding_x, padding_y, radius) = self.size.metrics();
         let geometry = self.look.common_stylesheet().badge.resolve_geometry(
             self.size.as_str(),
-            gpui_luma::theme::stylesheet::BadgeGeometry {
+            xgpui_luma::theme::stylesheet::BadgeGeometry {
                 font_size,
                 line_height,
                 padding_x,
@@ -168,7 +168,7 @@ impl IntoElement for Badge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn variants_follow_both_tones_and_modes() {
         let look = Look::built_in();
@@ -198,8 +198,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_badge_stylesheet() -> gpui_luma::theme::stylesheet::BadgeStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_badge_stylesheet() -> xgpui_luma::theme::stylesheet::BadgeStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     BadgeStylesheet {
         sizes: [("1", 12.0, 16.0, 6.0, 2.0), ("2", 12.0, 16.0, 8.0, 4.0), ("3", 14.0, 20.0, 10.0, 4.0)]
             .into_iter()

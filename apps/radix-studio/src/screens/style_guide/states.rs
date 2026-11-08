@@ -1,7 +1,7 @@
 //! Interaction-state columns shared by the style guide matrices.
 
 use gpui::{AnyElement, FontWeight, Hsla, IntoElement, div, prelude::*, px};
-use gpui_luma::theme::InteractionState;
+use xgpui_luma::theme::InteractionState;
 
 use crate::assets::{icon_named, react_icon};
 

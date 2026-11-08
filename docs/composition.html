@@ -22,10 +22,10 @@
 <aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
 <main id="main"><div class="breadcrumb"><span>SDK</span><span aria-hidden="true">/</span><span>Composition &amp; helpers</span></div><h1>Composition &amp; helpers</h1><p class="intro">Shared renderers, popup hosting, and form composition helpers.</p><section id="shared"><h2>Shared rendering &amp; hosting</h2><p>These APIs help compose controls rather than supplying standalone interactive widgets.</p><ul><li><a href="drag-drop.html">Drag and drop</a>: shared collection lifecycle, proposal handling, named callbacks and control coverage.</li><li><a href="selector-list.html">Selector List</a><span class="look-badges look-badges--inline" role="group" aria-label="Available Looks"><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></span>: shared option-row and panel templates used by selection controls.</li><li><a href="floating-menu.html">Floating Menu</a><span class="look-badges look-badges--inline" role="group" aria-label="Available Looks"><a class="look-badge look-badge--radix" href="look-radix.html#support" aria-label="look-radix styling support">look-radix</a></span>: menu state and rendering infrastructure used by popup and context menus; there is no standalone FloatingMenu entity.</li><li><a href="popup-scroll-surface.html">Popup Scroll Surface</a>: scroll hosting for popup rows, with a supplied scrollbar template.</li></ul></section>
 <section id="forms"><h2>Form helpers</h2><p><code>declare_form!</code> generates an owning struct and constructor that spawns its declared builders, stores arguments and fields, and retains optional event subscriptions. It does not generate the form’s rendered layout. Use Look builders for interactive controls.</p><p><code>form_field!</code> places a label above a supplied control with a 4px gap; it uses the supplied chrome’s body text color. It is a layout helper, not a form-validation framework.</p><div class="codebox"><div class="codebar"><span>Rust</span><button class="copy" aria-label="Copy Rust example">Copy</button></div><pre><code class="language-rust">use gpui::{Context, Entity, prelude::*};
-use gpui_luma::controls::button::Button;
-use gpui_luma::{declare_form, form_field};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::{declare_form, form_field};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn as shadcn;
 
 declare_form! {
     struct ExampleForm {
@@ -42,7 +42,7 @@ fn labeled_control(control: Entity&lt;Button&gt;) -&gt; impl IntoElement {
     form_field!("Action", look.chrome(); control)
 }</code></pre></div><p class="small">Create the owner with <code>ExampleForm::new(cx)</code> in its entity constructor; render the stored controls in the owner’s view. Optional event mappings in <code>declare_form!</code> use SDK event types and retained subscriptions.</p></section>
 <section id="related"><h2>Related helpers</h2><p>Table macros belong with <a href="table.html">Table</a>; <code>resizable_panels!</code> belongs with <a href="resizable-panels.html">Resizable Panels</a>. For stack, wrapping, dock, grid, and layer composition, see <a href="layout.html">Layout</a>.</p></section>
-<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/macros.rs">Form macros</a></p></section><footer data-site-footer></footer></main>
+<section id="source"><h2>Source</h2><p><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/macros.rs">Form macros</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#shared">Shared rendering & hosting</a><a href="#forms">Form helpers</a><a href="#related">Related helpers</a><a href="#source">Source</a></nav>
 </div>
 </body>

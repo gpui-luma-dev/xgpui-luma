@@ -1,4 +1,4 @@
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 use super::super::domain::FieldDomain2D;
 use super::super::model::{ColorFieldModel2D, ColorFieldModelKind};
 use crate::color_slider::color_spec::Hsv;

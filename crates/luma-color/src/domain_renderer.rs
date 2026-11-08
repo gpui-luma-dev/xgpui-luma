@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, RwLock};
 
-use gpui_luma::infra::lock;
+use xgpui_luma::infra::lock;
 
 pub(crate) struct LockedDomain<D, C>
 where

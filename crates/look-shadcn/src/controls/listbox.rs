@@ -14,8 +14,8 @@ use crate::stylesheet::config::{EnabledColorRule, find_enabled_color_rule, match
 use serde::Deserialize;
 
 use gpui::{Div, ElementId, Hsla, Stateful, div, px, prelude::*};
-use gpui_luma::controls::listbox::ListBoxItemState;
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle};
+use xgpui_luma::controls::listbox::ListBoxItemState;
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -185,7 +185,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -218,7 +218,7 @@ mod tests {
         let row = listbox_row_palette(
             &mode,
             false,
-            gpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
+            xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
             ControlSize::Md,
         );
 

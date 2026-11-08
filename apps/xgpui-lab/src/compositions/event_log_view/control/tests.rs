@@ -1,7 +1,7 @@
 //! Exercise the real log inside a scrolling page; no GUI launch.
 use super::*;
 use gpui::{Entity, IntoElement, ScrollDelta, ScrollHandle, TestAppContext, VisualTestContext, div, point, prelude::*};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use crate::compositions::event_log_view::EventLogViewLookExt;
 
 struct Page {

@@ -1,38 +1,38 @@
-use gpui_luma::controls::radio_group;
-use gpui_luma::controls::radio_button;
-use gpui_luma::controls::tabs;
-use gpui_luma::motion::{Transition, Easing};
-use gpui_luma::controls::tabs::TabsEventExt;
-use gpui_luma::controls::scrollbar::ScrollbarEventExt;
-use gpui_luma::controls::radio_group::RadioGroupEventExt;
+use xgpui_luma::controls::radio_group;
+use xgpui_luma::controls::radio_button;
+use xgpui_luma::controls::tabs;
+use xgpui_luma::motion::{Transition, Easing};
+use xgpui_luma::controls::tabs::TabsEventExt;
+use xgpui_luma::controls::scrollbar::ScrollbarEventExt;
+use xgpui_luma::controls::radio_group::RadioGroupEventExt;
 use std::sync::Arc;
 
 use gpui::{Entity, Context, FocusHandle, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::radio_group::{RadioGroup, RadioGroupEvent, RadioGroupItem};
-use gpui_luma::controls::scroll_container::{ScrollContainer, ScrollbarAutoHideActivate, ScrollbarVisibility};
-use gpui_luma::controls::scrollbar::{ScrollbarEvent, ThemedScrollbarTemplate};
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma::shell::TitleBar;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::radio_group::{RadioGroup, RadioGroupEvent, RadioGroupItem};
+use xgpui_luma::controls::scroll_container::{ScrollContainer, ScrollbarAutoHideActivate, ScrollbarVisibility};
+use xgpui_luma::controls::scrollbar::{ScrollbarEvent, ThemedScrollbarTemplate};
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma::shell::TitleBar;
+use xgpui_luma::theme::ThemeMode;
 use crate::theme::AppTheme;
 
 use crate::theme::{self, TypographyExt};
-use gpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem};
+use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsItem};
 
 pub(crate) struct PlotVizApp {
     tabs: Entity<Tabs>,
     active_tab: gpui::SharedString,
-    entrance: gpui_luma::motion::VisualTransition,
-    radial: Result<Entity<crate::examples::radial::RadialGallery>, gpui_luma_plot::DatasetError>,
-    radar: Result<Entity<crate::examples::radar::RadarGallery>, gpui_luma_plot::DatasetError>,
-    pies: Result<crate::examples::pie::PieGallery, gpui_luma_plot::DatasetError>,
-    area: Result<crate::examples::area::AreaGallery, gpui_luma_plot::DatasetError>,
-    bars: Result<Entity<crate::examples::bar::BarExample>, gpui_luma_plot::DatasetError>,
+    entrance: xgpui_luma::motion::VisualTransition,
+    radial: Result<Entity<crate::examples::radial::RadialGallery>, xgpui_luma_plot::DatasetError>,
+    radar: Result<Entity<crate::examples::radar::RadarGallery>, xgpui_luma_plot::DatasetError>,
+    pies: Result<crate::examples::pie::PieGallery, xgpui_luma_plot::DatasetError>,
+    area: Result<crate::examples::area::AreaGallery, xgpui_luma_plot::DatasetError>,
+    bars: Result<Entity<crate::examples::bar::BarExample>, xgpui_luma_plot::DatasetError>,
     focus_scope: FocusHandle,
     look: Arc<AppTheme>,
     mode_selector: RadioGroup<RadioGroupItem>,
     scroll: ScrollContainer,
-    examples: Result<crate::examples::line::LineGallery, gpui_luma_plot::DatasetError>,
+    examples: Result<crate::examples::line::LineGallery, xgpui_luma_plot::DatasetError>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -103,7 +103,7 @@ impl PlotVizApp {
             tabs,
             active_tab: "Line".into(),
             entrance: {
-                let mut motion = gpui_luma::motion::VisualTransition::with_transition(
+                let mut motion = xgpui_luma::motion::VisualTransition::with_transition(
                     0.0,
                     Transition::timed(std::time::Duration::from_millis(900), Easing::OutCubic),
                 );

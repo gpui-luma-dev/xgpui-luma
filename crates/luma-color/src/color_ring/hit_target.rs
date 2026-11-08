@@ -1,6 +1,6 @@
 use gpui::{Bounds, Pixels, Point};
 
-use gpui_luma::controls::slider::RadialHitTarget;
+use xgpui_luma::controls::slider::RadialHitTarget;
 
 use super::common::{pointer_hits_active_target, position_to_theta, ring_geometry};
 use super::track_context::ColorRingTrackContext;

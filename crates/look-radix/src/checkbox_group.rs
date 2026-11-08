@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 use gpui::{Context, SharedString, div, prelude::*};
-use gpui_luma::controls::button::ButtonRenderModel;
-use gpui_luma::controls::checkbox::CheckboxData;
-use gpui_luma::controls::control_group::{
+use xgpui_luma::controls::button::ButtonRenderModel;
+use xgpui_luma::controls::checkbox::CheckboxData;
+use xgpui_luma::controls::control_group::{
     self, ControlGroupBuilder, ControlGroupItem, ControlGroupItemLike, ControlGroupItemHandlerExt, ControlGroupLayout,
     ControlGroupTemplate,
 };
@@ -55,7 +55,7 @@ pub fn checkbox_group_template<T: ControlGroupItemLike + 'static>(
 
 /// Look-owned checkbox group. Subscribe to SDK `ControlGroupEvent` for changes.
 pub struct CheckboxGroup<T: ControlGroupItemLike + 'static = ControlGroupItem> {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::control_group::ControlGroupEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::control_group::ControlGroupEvent>,
 
     look: Option<Look>,
     variant: CheckboxVariant,
@@ -65,7 +65,7 @@ pub struct CheckboxGroup<T: ControlGroupItemLike + 'static = ControlGroupItem> {
     builder: ControlGroupBuilder<T>,
 }
 impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
-    gpui_luma::forward_motion!(gpui_luma::controls::control_group::ControlGroupMotion, builder builder);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::control_group::ControlGroupMotion, builder builder);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.builder = self.builder.motion_enabled(enabled);
         self
@@ -76,7 +76,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::control_group::ControlGroupEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::control_group::ControlGroupEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -89,7 +89,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::Activate { activated_id } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::Activate { activated_id } = event {
                 callback(owner, activated_id, cx);
             }
         })
@@ -102,7 +102,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, bool, &Vec<gpui::SharedString>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::Change {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::Change {
                 changed_id,
                 selected,
                 selected_ids,
@@ -120,7 +120,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::Bounds<gpui::Pixels>, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::ItemBoundsChanged { item_id, bounds } = event
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::ItemBoundsChanged { item_id, bounds } = event
             {
                 callback(owner, item_id, bounds, cx);
             }
@@ -134,7 +134,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -147,7 +147,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::control_group::ControlGroupEvent::ItemFocused { item_id } = event {
+            if let xgpui_luma::controls::control_group::ControlGroupEvent::ItemFocused { item_id } = event {
                 callback(owner, item_id, cx);
             }
         })

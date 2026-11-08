@@ -1,7 +1,7 @@
 //! Selector / combobox dropdown panel — same surface as floating menu (`popover` + accent item hover).
 
-use gpui_luma::controls::selector_list::SelectorItemsPanelLook;
-use gpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
+use xgpui_luma::theme::{ControlSize, ThemeMode};
 
 use super::floating_menu::floating_menu_look;
 use crate::mode::ShadcnModeTokens;
@@ -23,9 +23,9 @@ pub fn selector_items_panel_look(
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -56,7 +56,7 @@ mod tests {
     fn selector_items_panel_uses_popover_surface_and_accent_item_hover() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = selector_items_panel_look(&mode, gpui_luma::theme::ThemeMode::Light, ControlSize::Md);
+        let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Md);
 
         assert_eq!(look.background, catalog.color("popover").expect("popover"));
         assert_eq!(look.item_hover_background, catalog.color("accent").expect("accent"));

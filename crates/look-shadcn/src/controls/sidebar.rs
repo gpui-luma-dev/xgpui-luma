@@ -17,12 +17,12 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use gpui_luma::controls::sidebar::SidebarItemLook;
-use gpui_luma::controls::sidebar::SidebarSectionLook;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::sidebar::SidebarItemLook;
+use xgpui_luma::controls::sidebar::SidebarSectionLook;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -285,7 +285,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::look::ShadcnLook;
@@ -475,7 +475,7 @@ impl SidebarStylesheet {
     }
 }
 
-/// Layout metrics for [`gpui_luma::controls::sidebar::SidebarMetricScale`].
+/// Layout metrics for [`xgpui_luma::controls::sidebar::SidebarMetricScale`].
 ///
 /// Values accept bare numbers, `px`, or `rem` (1rem = 16px).
 #[derive(Debug, Deserialize, Clone, PartialEq)]
@@ -633,8 +633,8 @@ pub struct SidebarItemColorRule {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_sidebar_stylesheet() -> gpui_luma::theme::stylesheet::SidebarStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_sidebar_stylesheet() -> xgpui_luma::theme::stylesheet::SidebarStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     SidebarStylesheet {
         geometry: SidebarGeometryStylesheet {
             section_height: Some(20.0),
@@ -658,12 +658,12 @@ pub struct SidebarMetricTable {
 
 pub fn resolve_sidebar_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> SidebarMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let size_metrics = metrics.for_size(size);
@@ -678,7 +678,7 @@ pub fn resolve_sidebar_metrics(
     };
     let geometry = mode.stylesheet().common.sidebar.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::SidebarGeometry {
+        xgpui_luma::theme::stylesheet::SidebarGeometry {
             section_height: table.section_height.value_px,
             item_height: table.item_height.value_px,
             item_padding_x: table.item_padding_x.value_px,

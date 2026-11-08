@@ -29,9 +29,9 @@
 <p>SDK controls handle state, focus, input, and events. Templates render them. Look crates configure templates and styling, so different designs share the same control behavior. A Look is optional: the SDK’s native Rust baseline supplies complete vanilla styling, and Look stylesheets inherit it. See <a href="create-look.html#baseline">the shared baseline</a>.</p>
 <p class="small">The following are integration snippets for an initialized application. <code>cx</code> is the owning view’s context. The first snippet assumes an owner with a <code>save_requests: usize</code> field.</p></section>
 <section id="look"><h2><span class="number">01</span>Start with a look</h2><p>A styled builder still creates an SDK button. Your application subscribes to the same SDK events.</p><div class="codebox"><div class="codebar"><span>Rust · Look → SDK entity</span><button class="copy" aria-label="Copy Look → SDK entity example">Copy</button></div><pre><code class="language-rust">use gpui::Entity;
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn as shadcn;
 
 let save: Entity&lt;Button&gt; = shadcn::Button::new(&quot;save&quot;)
     .primary()
@@ -41,8 +41,8 @@ let save: Entity&lt;Button&gt; = shadcn::Button::new(&quot;save&quot;)
         cx.notify();
     })
     .spawn(cx);</code></pre></div></section><section id="content"><h2><span class="number">02</span>Customize the content</h2><p>Keep the look’s template. Replace the label with your own composition using <code>.content(...)</code>.</p><div class="codebox"><div class="codebar"><span>Rust · Content presenter</span><button class="copy" aria-label="Copy Content presenter example">Copy</button></div><pre><code class="language-rust">use gpui::{div, prelude::*};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn as shadcn;
 
 let save = shadcn::Button::new(&quot;save&quot;)
     .primary()
@@ -53,8 +53,8 @@ let save = shadcn::Button::new(&quot;save&quot;)
             .child(&quot;↗&quot;)
     })
     .spawn(cx);</code></pre></div><p class="small">The presenter receives resolved styling. The template keeps responsibility for the surrounding button.</p></section><section id="modifier"><h2><span class="number">03</span>Override part of a template</h2><p>Use <code>.with_template_modifier(...)</code> for a local adjustment. Both SDK and Look button builders support it.</p><div class="codebox"><div class="codebar"><span>Rust · Template modifier</span><button class="copy" aria-label="Copy Template modifier example">Copy</button></div><pre><code class="language-rust">use gpui::{px, prelude::*};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn as shadcn;
 
 let save = shadcn::Button::new(&quot;save&quot;)
     .primary()
@@ -63,7 +63,7 @@ let save = shadcn::Button::new(&quot;save&quot;)
         root.min_w(px(160.0))
     })
     .spawn(cx);</code></pre></div><p class="small">This modifies the existing template’s output. The control still handles focus, activation, and events.</p></section><section id="template"><h2><span class="number">04</span>Supply your own template</h2><p>Implement <code>ButtonTemplate</code> when the structure needs to change. This example wraps the SDK’s default rendering to retain its state and focus visuals.</p><div class="codebox"><div class="codebar"><span>Rust · Template implementation</span><button class="copy" aria-label="Copy Template implementation example">Copy</button></div><pre><code class="language-rust">use gpui::{App, Div, Stateful, Window, div, prelude::*};
-use gpui_luma::controls::button::{
+use xgpui_luma::controls::button::{
     ButtonRenderModel, ButtonTemplate, default_button_template,
 };
 
@@ -84,14 +84,14 @@ impl ButtonTemplate for WorkspaceButtonTemplate {
             .child(div().text_xs().child(&quot;Workspace action&quot;))
     }
 }</code></pre></div><div class="codebox"><div class="codebar"><span>Rust · Install the template</span><button class="copy" aria-label="Copy Install the template example">Copy</button></div><pre><code class="language-rust">use std::sync::Arc;
-use gpui_luma::controls::button::Button;
-use gpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::infra::presenter::HasPresenter;
 
 let save = Button::new(&quot;save&quot;)
     .label(&quot;Save changes&quot;)
     .template(Arc::new(WorkspaceButtonTemplate))
     .spawn(cx);</code></pre></div><p class="small">This uses the SDK’s stylesheet-backed baseline appearance. A completely custom template can render its own face instead; it must provide appropriate disabled and focus visuals. The SDK control retains its input and event wiring.</p></section>
-<section id="source"><h2>Where to look next</h2><p class="small"><a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/template.rs">Template contract</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/sdk/src/controls/button/model.rs">SDK builder</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/gpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">Look adapter</a> · <a class="source-link" href="button.html">Button guide</a></p></section>
+<section id="source"><h2>Where to look next</h2><p class="small"><a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/template.rs">Template contract</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/sdk/src/controls/button/model.rs">SDK builder</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">Look adapter</a> · <a class="source-link" href="button.html">Button guide</a></p></section>
 <footer data-site-footer></footer>
 </main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#layers">The design</a><a href="#look">Use a look</a><a href="#content">Custom content</a><a href="#modifier">Template modifier</a><a href="#template">Template override</a><a href="#source">Source</a></nav>

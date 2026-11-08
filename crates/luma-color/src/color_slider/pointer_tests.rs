@@ -3,7 +3,7 @@ use gpui::{
     Bounds, Context, Entity, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
     Render, TestAppContext, VisualTestContext, Window, div, point, prelude::*, px,
 };
-use gpui_luma::controls::slider::{
+use xgpui_luma::controls::slider::{
     SliderControl, SliderEvent, SliderRenderModel, SliderTemplate, SliderTemplateHandlers, ThumbId,
 };
 use std::{
@@ -122,7 +122,7 @@ fn track_press_inserts_one_stop_and_drags_that_same_stop() {
     let builder = ColorSliderBuilder::gradient(
         "slider",
         0.0,
-        vec![gpui::red(), gpui::blue()].into_iter().map(gpui_luma::color::gpui_bridge::from_hsla).collect(),
+        vec![gpui::red(), gpui::blue()].into_iter().map(xgpui_luma::color::gpui_bridge::from_hsla).collect(),
     )
     .expect("valid demo gradient colors")
     .multi_stop()

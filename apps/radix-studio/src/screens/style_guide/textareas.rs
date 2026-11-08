@@ -10,12 +10,12 @@ use std::sync::Arc;
 use gpui::{
     AnyElement, App, Entity, FontWeight, Hsla, IntoElement, SharedString, TextRun, Window, div, font, prelude::*, px,
 };
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::controls::textarea::{
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::controls::textarea::{
     TextAreaLineMetric, TextAreaLook, TextAreaRenderModel, TextAreaState, TextAreaTemplate, TextAreaTheme,
 };
-use gpui_luma::theme::{ControlSize, StandardBoxScale};
-use gpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textarea_theme_with};
+use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textarea_theme_with};
 
 use super::matrix_grid::{
     COL_GAP, centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label,

@@ -1,6 +1,6 @@
 //! Theme-aware tooltip defaults, bound to the same shared/forked look as the control.
 use std::sync::Arc;
-use gpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
+use xgpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
 use crate::{Look, SemanticRole};
 
 struct RadixTooltipTheme(Look);
@@ -15,7 +15,7 @@ impl TooltipTheme for RadixTooltipTheme {
         );
         let geometry = self.0.common_stylesheet().tooltip.resolve_geometry(
             "",
-            gpui_luma::theme::stylesheet::TooltipGeometry {
+            xgpui_luma::theme::stylesheet::TooltipGeometry {
                 padding: resolved.padding,
                 padding_y: resolved.padding_y,
                 max_width: resolved.max_width,
@@ -45,7 +45,7 @@ pub fn tooltip_theme(look: &Look) -> Arc<dyn TooltipTheme> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn tooltip_tracks_bound_fork_and_mode_changes() {
@@ -63,8 +63,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_tooltip_stylesheet() -> gpui_luma::theme::stylesheet::TooltipStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_tooltip_stylesheet() -> xgpui_luma::theme::stylesheet::TooltipStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     TooltipStylesheet {
         geometry: TooltipGeometryStylesheet {
             padding: Some(8.0),

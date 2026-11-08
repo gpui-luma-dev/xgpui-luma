@@ -2,12 +2,12 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, SharedString};
-use gpui_luma::controls::selector::{
+use xgpui_luma::controls::selector::{
     SelectorBuilder, SelectorItem, SelectorItemLike, SelectorOpeningMode, SelectorPalette, SelectorPlacement,
     SelectorTemplate, SelectorTheme, SelectorTriggerStyle, ThemedSelectorTemplate,
 };
-use gpui_luma::controls::selector_list::default_selector_items_template;
-use gpui_luma::theme::{InteractionState, MetricTokens};
+use xgpui_luma::controls::selector_list::default_selector_items_template;
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 
 use crate::{ButtonSize, Look, PopupMenuVariant, Tone};
 use crate::look::resolve_look;
@@ -23,7 +23,7 @@ impl SelectorTheme for SelectorThemeAdapter {
         state: InteractionState,
         without_elevation: bool,
     ) -> SelectorPalette {
-        use gpui_luma::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+        use xgpui_luma::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
         let trigger_style = match style {
             SelectorTriggerStyle::Outline => PopupMenuTriggerStyle::Outline,
             SelectorTriggerStyle::Ghost => PopupMenuTriggerStyle::Ghost,
@@ -66,7 +66,7 @@ pub fn selector_template<T: SelectorItemLike + 'static>(look: &Look) -> Arc<dyn 
 
 /// Radix selector builder. Opening and placement behavior are shared with the SDK.
 pub struct Selector<T: SelectorItemLike + 'static = SelectorItem> {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::selector::SelectorEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::selector::SelectorEvent>,
 
     look: Option<Look>,
     builder: SelectorBuilder<T>,
@@ -84,7 +84,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::selector::SelectorEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::selector::SelectorEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -97,7 +97,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::Change { item_id, label } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::Change { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -110,7 +110,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -123,7 +123,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -136,7 +136,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::selector::SelectorEvent::Dismiss = event {
+            if let xgpui_luma::controls::selector::SelectorEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -186,7 +186,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::selector::Selector<T>> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::selector::Selector<T>> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
@@ -204,7 +204,7 @@ mod stylesheet_tests {
     #[test]
     fn default_panel_applies_common_selector_list_overrides() {
         let look = Look::built_in().fork();
-        let sheet = gpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
+        let sheet = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
             "[common.selector_list.geometry]\nmin_width=0\nradius=7\nborder_width=0\ndisabled_opacity=0\npopup_offset_y=0\nwindow_margin=0\n[common.selector_list.sizes.\"2\"]\nitem_height=41",
         ]).unwrap();
         look.set_common_stylesheet(sheet);

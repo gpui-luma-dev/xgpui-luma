@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};
-use gpui_luma::controls::popup_menu::{
+use xgpui_luma::controls::popup_menu::{
     ControlFocusState, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplateHandlers, PopupMenuTriggerStyle,
 };
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::motion::overlay_presence::OverlayPresence;
-use gpui_luma::theme::{ControlSize, InteractionState};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::motion::overlay_presence::OverlayPresence;
+use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::style::shared::button_matrix::render_icon_button_state_header_cell;
@@ -86,7 +86,7 @@ fn render_split_button_template_preview(look: &Arc<ShadcnLook>, window: &mut Win
 }
 
 fn render_split_button_template_cell(
-    template: &Arc<dyn gpui_luma::controls::split_button::SplitButtonTemplate>,
+    template: &Arc<dyn xgpui_luma::controls::split_button::SplitButtonTemplate>,
     style: PopupMenuTriggerStyle,
     label: &'static str,
     sample: &ButtonStateSample,
@@ -115,11 +115,14 @@ fn render_split_button_template_cell(
         icon_only: false,
         icon: None,
         end_icon: None,
-        disclosure_icons: &gpui_luma::infra::icon::DisclosureIcons::new(LucideIcon::ChevronUp, LucideIcon::ChevronDown),
+        disclosure_icons: &xgpui_luma::infra::icon::DisclosureIcons::new(
+            LucideIcon::ChevronUp,
+            LucideIcon::ChevronDown,
+        ),
         full_width: false,
         without_elevation: false,
         split: true,
-        split_state: gpui_luma::controls::split_button::SplitButtonState {
+        split_state: xgpui_luma::controls::split_button::SplitButtonState {
             primary: sample.state,
             disclosure: InteractionState {
                 focused: sample.state.focused,

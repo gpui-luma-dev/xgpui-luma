@@ -4,8 +4,8 @@
 mod colors_data;
 
 use gpui::Hsla;
-use gpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::theme::ThemeMode;
 
 pub use colors_data::{BLACK_ALPHA_STEPS, DARK_FAMILIES, LIGHT_FAMILIES, COLORS_VERSION, WHITE_ALPHA_STEPS};
 pub use colors_data::{RawColorScale, ColorValueKind};

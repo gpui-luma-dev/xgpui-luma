@@ -1,4 +1,4 @@
-//! Look-bound fluent factories for [`ToolbarItem`](gpui_luma::controls::toolbar::ToolbarItem).
+//! Look-bound fluent factories for [`ToolbarItem`](xgpui_luma::controls::toolbar::ToolbarItem).
 //!
 //! SDK toolbar items are lookless hosted wrappers. These helpers spawn Shadcn-styled child
 //! controls and return ready-to-use [`ToolbarItem`] values for declarative toolbar composition.
@@ -12,13 +12,13 @@ use gpui::SharedString;
 use gpui::div;
 use gpui::px;
 use gpui::prelude::*;
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::controls::selector::SelectorItem;
-use gpui_luma::controls::toolbar::ToolbarItem;
-use gpui_luma::controls::toolbar::ToolbarItemSource;
-use gpui_luma::controls::toolbar::horizontal_arrow_policy;
-use gpui_luma::focus::EscapeFocus;
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::controls::selector::SelectorItem;
+use xgpui_luma::controls::toolbar::ToolbarItem;
+use xgpui_luma::controls::toolbar::ToolbarItemSource;
+use xgpui_luma::controls::toolbar::horizontal_arrow_policy;
+use xgpui_luma::focus::EscapeFocus;
 
 use crate::look::ShadcnLook;
 use crate::Button;
@@ -277,8 +277,8 @@ impl ShadcnToolbarItemExt for Arc<ShadcnLook> {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_toolbar_stylesheet() -> gpui_luma::theme::stylesheet::ToolbarStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_toolbar_stylesheet() -> xgpui_luma::theme::stylesheet::ToolbarStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ToolbarStylesheet {
         geometry: ToolbarGeometryStylesheet { padding_x: Some(6.0), padding_y: Some(4.0), ..Default::default() },
         ..Default::default()
@@ -296,8 +296,8 @@ pub struct ToolbarMetricTable {
 
 pub fn resolve_toolbar_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> ToolbarMetricTable {
     use crate::tables::metrics::helpers::{control_size_key, derived_metric, scaffold_control_metric};
 
@@ -315,7 +315,7 @@ pub fn resolve_toolbar_metrics(
     };
     let geometry = mode.stylesheet().common.toolbar.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::ToolbarGeometry {
+        xgpui_luma::theme::stylesheet::ToolbarGeometry {
             padding_x: table.padding_x.value_px,
             padding_y: table.padding_y.value_px,
             gap: table.gap.value_px,

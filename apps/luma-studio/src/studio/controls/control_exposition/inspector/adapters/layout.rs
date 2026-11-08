@@ -3,8 +3,8 @@
 mod split_view {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::split_view_color_rows;
     use super::super::super::common::progress_enabled;
@@ -68,8 +68,8 @@ pub use split_view::{SPLIT_VIEW_INSPECTOR_SPEC, SplitViewInspectorAdapter};
 mod resizable_panels {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::resizable_panels_color_rows;
     use super::super::super::common::interaction_state;
@@ -135,8 +135,8 @@ pub use resizable_panels::{RESIZABLE_PANELS_INSPECTOR_SPEC, ResizablePanelsInspe
 mod toolbar {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::toolbar_shell_color_rows;
     use super::super::super::common::{progress_enabled, toolbar_variant};
@@ -202,9 +202,9 @@ pub use toolbar::{TOOLBAR_INSPECTOR_SPEC, ToolbarInspectorAdapter};
 mod pager {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnButtonStyle;
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnButtonStyle;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::collection::pager_shell_color_rows;
     use super::super::super::common::{interaction_state, pager_button_role, pager_shell_enabled, pager_style};
@@ -311,8 +311,8 @@ pub use pager::{PAGER_INSPECTOR_SPEC, PagerInspectorAdapter};
 mod badge {
     use std::sync::Arc;
 
-    use gpui_luma_look_shadcn::ShadcnLook;
-    use gpui_luma_look_shadcn::inspect::ShadcnInspect;
+    use xgpui_luma_look_shadcn::ShadcnLook;
+    use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
     use super::super::super::common::badge_variant;
     use super::super::super::metrics::badge_layout_section;

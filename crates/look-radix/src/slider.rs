@@ -8,8 +8,8 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
-use gpui_luma::controls::slider::{SliderLook, SliderTemplate, SliderTheme, SliderThumbSize, ThemedSliderTemplate};
-use gpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState};
+use xgpui_luma::controls::slider::{SliderLook, SliderTemplate, SliderTheme, SliderThumbSize, ThemedSliderTemplate};
+use xgpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState};
 
 use crate::look::Look;
 use crate::scale::ScaleFamily;
@@ -178,8 +178,8 @@ pub fn slider_geometry(
     look: &Look,
     size: SliderSize,
     thumb_size: Option<SliderThumbSize>,
-) -> (gpui_luma::theme::stylesheet::SliderGeometry, gpui_luma::theme::stylesheet::SliderGeometrySources) {
-    use gpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
+) -> (xgpui_luma::theme::stylesheet::SliderGeometry, xgpui_luma::theme::stylesheet::SliderGeometrySources) {
+    use xgpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
     let fallback =
         SliderGeometry::sdk_default(&look.metrics(), size.control_size(), thumb_size, CommonStylesheet::sdk_default());
     let thumb_key = thumb_size.map(|size| match size {
@@ -191,7 +191,7 @@ pub fn slider_geometry(
         look.stylesheet_snapshot().slider.inspect_geometry(size.control_size(), thumb_key, &fallback);
     // Numeric identities belong to Radix, including inspector descriptions.
     for source in [&mut sources.width, &mut sources.height, &mut sources.track_height, &mut sources.thumb_size] {
-        use gpui_luma::theme::provenance::MetricSource;
+        use xgpui_luma::theme::provenance::MetricSource;
         let text = match source {
             MetricSource::Authored { key } => key,
             MetricSource::Derived { note } => note,
@@ -290,7 +290,7 @@ mod tests {
     fn numeric_overrides_reach_typed_sizes_and_explicit_thumbs() {
         let look = Look::built_in();
         let mut stylesheet = look.common_stylesheet();
-        let numeric = gpui_luma::theme::stylesheet::CommonStylesheet::parse(
+        let numeric = xgpui_luma::theme::stylesheet::CommonStylesheet::parse(
             "[common.slider.sizes.\"1\"]\nheight = 0\n[common.slider.sizes.\"3\"]\nthumb_size = 31",
         )
         .unwrap();
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn shared_slider_geometry_preserves_modes_states_sizes_and_explicit_thumbs() {
         let look = Look::built_in();
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for variant in SliderVariant::ALL {
                 let theme = slider_theme_with(&look, variant);
@@ -360,10 +360,10 @@ mod tests {
         assert_eq!(theme.resolve(ControlSize::Lg, None, Default::default()).height, 16.0);
         let (_, sources) = slider_geometry(&look, SliderSize::Two, Some(SliderThumbSize::Lg));
         assert!(matches!(sources.height,
-            gpui_luma::theme::provenance::MetricSource::Authored { key }
+            xgpui_luma::theme::provenance::MetricSource::Authored { key }
             if key == "common.slider.sizes.2.height"));
         assert!(matches!(sources.thumb_size,
-            gpui_luma::theme::provenance::MetricSource::Derived { note }
+            xgpui_luma::theme::provenance::MetricSource::Derived { note }
             if note.contains("common.slider.sizes.3.thumb_size")));
     }
 
@@ -399,9 +399,9 @@ mod tests {
                 InteractionState { focused: true, ..Default::default() },
                 InteractionState { disabled: true, ..Default::default() },
             ] {
-                look.set_mode(gpui_luma::theme::ThemeMode::Light);
+                look.set_mode(xgpui_luma::theme::ThemeMode::Light);
                 let light = theme.resolve(ControlSize::Md, None, state);
-                look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+                look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
                 let dark = theme.resolve(ControlSize::Md, None, state);
                 assert_eq!(light.thumb_background, dark.thumb_background);
             }
@@ -447,8 +447,8 @@ mod tests {
 }
 
 /// Constructs the native Radix slider definition in pure Rust without preloading TOML.
-pub fn native_radix_slider() -> gpui_luma::theme::stylesheet::SliderStylesheet {
-    use gpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
+pub fn native_radix_slider() -> xgpui_luma::theme::stylesheet::SliderStylesheet {
+    use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
     SliderStylesheet {
         geometry: SliderGeometryStylesheet { width: Some(120.0), ..Default::default() },
         sizes: ControlSizes {
@@ -476,6 +476,6 @@ pub fn native_radix_slider() -> gpui_luma::theme::stylesheet::SliderStylesheet {
 }
 
 /// Applies Radix slider geometry in Rust.
-pub(crate) fn apply_radix_slider_stylesheet(sheet: &mut gpui_luma::theme::stylesheet::CommonStylesheet) {
+pub(crate) fn apply_radix_slider_stylesheet(sheet: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
     native_radix_slider().apply_to(&mut sheet.slider);
 }

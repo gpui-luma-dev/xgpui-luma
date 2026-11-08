@@ -1,5 +1,5 @@
-//! Adapted from gpui-luma-color's paint_vector.rs and SvAtHueModel,
-//! gpui-luma revision b5a4a23ce6ed98731c1e3aef0abec02da4879274 (Apache-2.0).
+//! Adapted from xgpui-luma-color's paint_vector.rs and SvAtHueModel,
+//! xgpui-luma revision b5a4a23ce6ed98731c1e3aef0abec02da4879274 (Apache-2.0).
 //! Changes: standalone deterministic workload, explicit fast/fallback selection,
 //! direct bounded HSV-to-sRGB conversion, and shared UI/offscreen quad output.
 use clap::ValueEnum;

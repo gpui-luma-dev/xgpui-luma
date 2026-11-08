@@ -1,6 +1,6 @@
 use super::*;
-use gpui_luma::infra::attachments::TooltipEntityExt;
-use gpui_luma::controls::tooltip::Tooltip;
+use xgpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::controls::tooltip::Tooltip;
 
 pub(super) fn default_points() -> Vec<MeshPoint> {
     let [yellow, pink, blue] = super::mesh::default_point_palette();

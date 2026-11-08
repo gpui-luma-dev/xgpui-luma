@@ -1,7 +1,7 @@
 //! Look-owned state recipes use the SDK's semantic/interaction types.
 use std::sync::OnceLock;
 use gpui::Hsla;
-use gpui_luma::theme::{InteractionLayer, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, ThemeMode};
 use serde::{Deserialize, Serialize};
 use crate::{
     button::{ButtonVariant, Paint, ClassicButtonParams},
@@ -9,7 +9,7 @@ use crate::{
     semantic::SemanticRole,
     scale::ScaleFamily,
 };
-use gpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(try_from = "String")]
@@ -508,8 +508,8 @@ pub(crate) fn resolve(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button_family::ButtonFamilyPalette;
-    use gpui_luma::theme::LumaTextStyle;
+    use xgpui_luma::controls::button_family::ButtonFamilyPalette;
+    use xgpui_luma::theme::LumaTextStyle;
     use gpui::{SharedString, FontWeight};
     use crate::button::shift_lightness;
     use crate::tone::Tone;
@@ -539,12 +539,12 @@ mod tests {
         let (mut background, mut foreground, mut border) = if page {
             if selected {
                 match look.mode() {
-                    gpui_luma::theme::ThemeMode::Light => (
+                    xgpui_luma::theme::ThemeMode::Light => (
                         look.resolve_role(SemanticRole::Foreground).hsla(),
                         look.resolve_role(SemanticRole::Background).hsla(),
                         None,
                     ),
-                    gpui_luma::theme::ThemeMode::Dark => (
+                    xgpui_luma::theme::ThemeMode::Dark => (
                         look.resolve_role(SemanticRole::PrimaryForeground).hsla(),
                         look.resolve_role(SemanticRole::Background).hsla(),
                         None,

@@ -1,10 +1,10 @@
-//! Look-owned switch builder. Spawn synthesizes the SDK [`gpui_luma::controls::switch::Switch`].
+//! Look-owned switch builder. Spawn synthesizes the SDK [`xgpui_luma::controls::switch::Switch`].
 
-use gpui_luma::controls::switch::{SwitchCallbacks, SwitchEvent};
-use gpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::controls::switch::{SwitchCallbacks, SwitchEvent};
+use xgpui_luma::infra::attachments::TooltipEntityExt;
 use gpui::{App, Context, SharedString};
-use gpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
-use gpui_luma::controls::switch::{SwitchBuilder, SwitchData, SwitchOrientation};
+use xgpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
+use xgpui_luma::controls::switch::{SwitchBuilder, SwitchData, SwitchOrientation};
 
 use crate::button::Paint;
 use crate::button_layout::Radius;
@@ -27,7 +27,7 @@ pub struct Switch {
     compact: bool,
     without_elevation: bool,
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::switch::SwitchMotion>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::switch::SwitchMotion>,
     orientation: Option<SwitchOrientation>,
     content: Option<ControlPresenter<ButtonContentContext<SwitchData>>>,
 }
@@ -183,7 +183,7 @@ impl Switch {
         self
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::switch::SwitchMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::switch::SwitchMotion, edits motion);
 
     pub fn motion_enabled(mut self, motion_enabled: bool) -> Self {
         self.motion_enabled = motion_enabled;
@@ -203,7 +203,7 @@ impl Switch {
         self.orientation(SwitchOrientation::Vertical)
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::switch::Switch {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::switch::Switch {
         let look = self.resolve_look(cx);
         let theme = crate::tooltip::tooltip_theme(&look);
         self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
@@ -215,7 +215,7 @@ impl Switch {
 
     fn into_sdk_builder(self, look: Look) -> SwitchBuilder {
         let template = switch_template_for(&look, self.variant, self.paint, self.size, self.radius);
-        let mut builder = gpui_luma::controls::switch::new(self.id)
+        let mut builder = xgpui_luma::controls::switch::new(self.id)
             .template(template)
             .size(self.size.control_size())
             .with_data(self.checked)
@@ -252,12 +252,12 @@ impl HasPresenter<ButtonContentContext<SwitchData>> for Switch {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::HasPresenter;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn independent_look_copy_keeps_its_motion_defaults() {
-        use gpui_luma::motion::{Easing, MotionState, Transition};
+        use xgpui_luma::motion::{Easing, MotionState, Transition};
         use std::time::Duration;
         let look = Look::built_in();
         look.motion(|m| m.switch.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn switch_inherits_look_motion_and_forwards_sdk_overrides() {
-        use gpui_luma::motion::{Easing, MotionState, Transition};
+        use xgpui_luma::motion::{Easing, MotionState, Transition};
         use std::time::Duration;
         let look = Look::built_in();
         look.motion(|m| m.switch.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
@@ -341,7 +341,7 @@ mod callback_tests {
     use super::*;
     use gpui::{AppContext, TestAppContext};
     struct Owner {
-        control: gpui_luma::controls::switch::Switch,
+        control: xgpui_luma::controls::switch::Switch,
         log: Vec<bool>,
     }
     #[test]

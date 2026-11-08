@@ -1,5 +1,5 @@
-use gpui_luma::controls::textfield::TextFieldEventExt;
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::textfield::TextFieldEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::collections::HashSet;
 use std::sync::Arc;
 
@@ -7,12 +7,12 @@ use gpui::{
     AnyElement, App, Context, Entity, IntoElement, Render, SharedString, Subscription, TextRun, Window, div, font,
     prelude::*, px,
 };
-use gpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
-use gpui_luma::controls::slider::{Slider, SliderEvent};
-use gpui_luma::controls::textfield::{TextField, TextFieldEvent};
-use gpui_luma::{GridTrack, grid_layout, hstack, vstack};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::accordion::{AccordionContent, AccordionControl, AccordionItem, AccordionTrigger};
+use xgpui_luma::controls::slider::{Slider, SliderEvent};
+use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
+use xgpui_luma::{GridTrack, grid_layout, hstack, vstack};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextSize};
+use xgpui_luma_look_shadcn as shadcn;
 
 use super::colors::sync_token_field_template;
 use super::super::model::{METRIC_FIELD_WIDTH, OTHER_CATEGORIES, SHADOW_COLOR_FIELD_WIDTH, SHADOW_SECTION_GAP};

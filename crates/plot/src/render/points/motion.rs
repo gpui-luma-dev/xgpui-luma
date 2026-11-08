@@ -1,7 +1,7 @@
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::motion::{Transition, Easing};
 use std::time::Duration;
 use gpui::{Bounds, Context, Pixels, Point, Window, point, px};
-use gpui_luma::motion::VisualTransition;
+use xgpui_luma::motion::VisualTransition;
 
 /// Animate only the anchor. Hit regions, observations and events never lag it.
 pub(crate) struct AnchorMotion {

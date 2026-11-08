@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::control_group::{
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::control_group::{
     ControlGroupItemLike, ControlGroupItemPalette, ControlGroupTemplate, ControlGroupTheme,
     control_group_template_with_theme,
 };
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
 
 use crate::controls::control_group::control_group_list_look;
 use crate::look::ShadcnLook;
@@ -15,12 +15,12 @@ struct ShadcnControlGroupTheme {
 }
 
 impl ControlGroupTheme for ShadcnControlGroupTheme {
-    fn resolve_list(&self, enabled: bool) -> gpui_luma::controls::control_group::ControlGroupListLook {
+    fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::control_group::ControlGroupListLook {
         let tokens = self.theme.mode_tokens();
         control_group_list_look(tokens.as_ref(), enabled)
     }
 
-    fn metrics(&self) -> gpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
         self.theme.mode_tokens().metrics
     }
 

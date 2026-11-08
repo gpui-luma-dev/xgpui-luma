@@ -144,8 +144,8 @@ pub(super) struct ShadowPane {
 }
 impl ShadowPane {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let light = gpui_luma_look_radix::Look::built_in();
-        light.set_mode(gpui_luma::theme::ThemeMode::Light);
+        let light = xgpui_luma_look_radix::Look::built_in();
+        light.set_mode(xgpui_luma::theme::ThemeMode::Light);
         let buttons = [
             "Native child",
             "Extension child",

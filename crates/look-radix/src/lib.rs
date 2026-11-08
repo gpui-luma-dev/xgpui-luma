@@ -1,4 +1,4 @@
-//! Radix look for GPUI-Luma: palette scales, control styling, and SDK adapters.
+//! Radix look for XGPUI-Luma: palette scales, control styling, and SDK adapters.
 //!
 //! [`Look`] owns named or custom color scales, light/dark mode, metrics, and shared
 //! styling settings. Interactive builders produce SDK controls, retaining their
@@ -29,11 +29,11 @@
 //!
 //! ```no_run
 //! use gpui::{Context, Entity};
-//! use gpui_luma::infra::presenter::HasPresenter;
-//! use gpui_luma_look_radix::{Button, ButtonSize, Look};
+//! use xgpui_luma::infra::presenter::HasPresenter;
+//! use xgpui_luma_look_radix::{Button, ButtonSize, Look};
 //!
 //! fn save_button<M: 'static>(look: &Look, cx: &mut Context<M>)
-//!     -> Entity<gpui_luma::controls::button::Button>
+//!     -> Entity<xgpui_luma::controls::button::Button>
 //! {
 //!     Button::new("save").look(look).solid().size(ButtonSize::Two)
 //!         .label("Save").spawn(cx)
@@ -48,7 +48,7 @@
 //! | Need | Extension point |
 //! | --- | --- |
 //! | Standard control appearance | Builder options such as `variant`, `size`, `tone`, and `radius`, where supported |
-//! | Application-specific label/icon composition | Presenter via [`gpui_luma::infra::presenter::HasPresenter::content`] |
+//! | Application-specific label/icon composition | Presenter via [`xgpui_luma::infra::presenter::HasPresenter::content`] |
 //! | Local button/tab layout | [`Button::with_template_modifier`] or [`Tabs::with_template_modifier`] |
 //! | Local display styling | [`Avatar::style_override`] and [`Card::style_override`] |
 //! | Local toolbar geometry | [`Toolbar::style`], [`Toolbar::command_size`], [`Toolbar::icon_size`] |
@@ -61,7 +61,7 @@
 //! so the remaining colors still follow mode and palette changes.
 //!
 //! ```
-//! use gpui_luma_look_radix::{Card, CardVariant, Look};
+//! use xgpui_luma_look_radix::{Card, CardVariant, Look};
 //! let look = Look::built_in();
 //! let card = Card::new(&look).variant(CardVariant::Classic)
 //!     .style_override(|style| style.padding = 20.0);
@@ -268,13 +268,13 @@ mod interaction_tests;
 mod event_callback_tests;
 
 #[cfg(all(test, feature = "test-support"))]
-gpui_luma::test_look_motion_contract!(crate::Look::built_in(), crate);
+xgpui_luma::test_look_motion_contract!(crate::Look::built_in(), crate);
 
 #[cfg(all(test, feature = "test-support"))]
-gpui_luma::test_stylesheet_motion_contract!(
+xgpui_luma::test_stylesheet_motion_contract!(
     |source: &str| {
         let look = crate::Look::built_in();
-        look.set_common_stylesheet(gpui_luma::theme::stylesheet::CommonStylesheet::parse(source).unwrap());
+        look.set_common_stylesheet(xgpui_luma::theme::stylesheet::CommonStylesheet::parse(source).unwrap());
         look
     },
     crate

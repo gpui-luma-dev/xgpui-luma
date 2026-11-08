@@ -1,8 +1,8 @@
 //! Shared fixed-column grids and label chrome for style-guide matrices.
 
 use gpui::{AnyElement, Entity, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::{GridLayout, GridTrack};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::{GridLayout, GridTrack};
 
 /// Header band height for corner + column labels.
 pub const HEADER_HEIGHT: f32 = 36.0;

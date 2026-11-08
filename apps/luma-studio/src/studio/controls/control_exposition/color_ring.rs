@@ -1,21 +1,21 @@
 //! Color ring control exposition — linked HSL rings and renderer comparison.
 
-use gpui_luma::controls::slider::SliderEventExt;
+use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Entity, Hsla, Render, Window, div, hsla, prelude::*, px};
-use gpui_luma_color::color_ring::{
+use xgpui_luma_color::color_ring::{
     ColorRingBuilder, ColorRingDomainRenderer, ColorRingRenderer, ColorRingTrackContext, HueRingDelegate,
     LightnessRingDelegate, RasterRingDelegate, SaturationRingDelegate, primary_slider_value, refresh_color_ring,
     update_ring_delegate,
 };
-use gpui_luma_color::color_slider::color_spec::{Hsl, Hsv};
-use gpui_luma_color::color_slider::ColorSpecification;
-use gpui_luma_color::style::Size;
-use gpui_luma::controls::slider::{SliderControl, SliderEvent};
-use gpui_luma::{vstack, wrappanel};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_color::color_slider::color_spec::{Hsl, Hsv};
+use xgpui_luma_color::color_slider::ColorSpecification;
+use xgpui_luma_color::style::Size;
+use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
+use xgpui_luma::{vstack, wrappanel};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::color_chrome_exposition::{
@@ -467,7 +467,7 @@ fn render_ring_variant(
     ring: Entity<SliderControl>,
     frame_px: f32,
 ) -> impl IntoElement {
-    let label_style = look.typography_scale(gpui_luma_look_shadcn::ShadcnTextSize::Xs);
+    let label_style = look.typography_scale(xgpui_luma_look_shadcn::ShadcnTextSize::Xs);
 
     vstack! {
         gap=8 align=center;

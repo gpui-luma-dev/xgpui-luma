@@ -24,7 +24,7 @@ impl NumericScale {
     /// it never changes stored data or the automatic Y domain.
     ///
     /// ```
-    /// use gpui_luma_plot::{CartesianChartBuilder, Dataset, NumericScale};
+    /// use xgpui_luma_plot::{CartesianChartBuilder, Dataset, NumericScale};
     /// let chart = CartesianChartBuilder::new(Dataset::new())
     ///     .x_scale(NumericScale::new().domain(200.0..=320.0).tick_count(6))
     ///     .build();
@@ -87,7 +87,7 @@ impl NumericScale {
     /// Non-finite coordinates are omitted; duplicate coordinates keep their first label.
     /// `tick_count` or `tick_values` replaces these labels.
     /// ```
-    /// use gpui_luma_plot::NumericScale;
+    /// use xgpui_luma_plot::NumericScale;
     /// let dates = NumericScale::new().tick_labels([(0.0, "Apr 1"), (30.0, "May 1")]);
     /// ```
     pub fn tick_labels<S: Into<Arc<str>>>(mut self, labels: impl IntoIterator<Item = (f64, S)>) -> Self {

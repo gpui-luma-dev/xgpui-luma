@@ -12,15 +12,15 @@ pub(crate) use signup_mesh::{MeshCache, MeshRequest};
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, Hsla, ImageSource, IntoElement, RenderImage, div, img, prelude::*, px};
-use gpui_luma::controls::button::Button;
-use gpui_luma::controls::popup_menu::PopupMenu;
-use gpui_luma::controls::textfield::TextField;
-use gpui_luma::controls::radio_group::{RadioGroup, RadioGroupItem};
-use gpui_luma::controls::tree_view::TreeView;
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::infra::ElementExt;
-use gpui_luma::{GridLayout, GridTrack, WideMiddle, WideMiddleLayout, hstack, vstack};
-use gpui_luma_look_radix::{Look, SCALE_LEN, ScaleFamily};
+use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::popup_menu::PopupMenu;
+use xgpui_luma::controls::textfield::TextField;
+use xgpui_luma::controls::radio_group::{RadioGroup, RadioGroupItem};
+use xgpui_luma::controls::tree_view::TreeView;
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::infra::ElementExt;
+use xgpui_luma::{GridLayout, GridTrack, WideMiddle, WideMiddleLayout, hstack, vstack};
+use xgpui_luma_look_radix::{Look, SCALE_LEN, ScaleFamily};
 
 use crate::app::RadixStudioApp;
 use self::signup_mesh::SignupStage;
@@ -280,7 +280,7 @@ fn preview_column_left(
     tree: TreeView<()>,
     search_field: TextField,
     search_submit: Entity<Button>,
-    tooltip_slider: gpui_luma::controls::slider::Slider,
+    tooltip_slider: xgpui_luma::controls::slider::Slider,
     icon_samples: icon_samples::IconSamples,
 ) -> impl IntoElement {
     vstack! {
@@ -297,9 +297,9 @@ fn preview_column_left(
         alert_card(look),
         super::shared::tree_view::panel(tree, look),
         div().flex().flex_wrap().gap(px(12.0)).children([
-            gpui_luma_look_radix::Badge::new(look, "Fully-featured").pill().into_any_element(),
-            gpui_luma_look_radix::Badge::new(look, "Built with Radix").variant(gpui_luma_look_radix::BadgeVariant::Surface).pill().into_any_element(),
-            gpui_luma_look_radix::Badge::new(look, "Open source").variant(gpui_luma_look_radix::BadgeVariant::Outline).pill().into_any_element(),
+            xgpui_luma_look_radix::Badge::new(look, "Fully-featured").pill().into_any_element(),
+            xgpui_luma_look_radix::Badge::new(look, "Built with Radix").variant(xgpui_luma_look_radix::BadgeVariant::Surface).pill().into_any_element(),
+            xgpui_luma_look_radix::Badge::new(look, "Open source").variant(xgpui_luma_look_radix::BadgeVariant::Outline).pill().into_any_element(),
         ]),
         icon_samples.render(),
         super::shared::card_samples::home(look),
@@ -428,8 +428,8 @@ fn preview_column_right(
 
 /// Local sample composition; Avatar owns its geometry and palette treatment.
 fn avatar_samples(look: &Look) -> impl IntoElement {
-    use gpui_luma::controls::button::ControlIcon;
-    use gpui_luma_look_radix::{Avatar, AvatarVariant, Radius};
+    use xgpui_luma::controls::button::ControlIcon;
+    use xgpui_luma_look_radix::{Avatar, AvatarVariant, Radius};
 
     let rows = [AvatarVariant::Solid, AvatarVariant::Soft];
     div()
@@ -467,10 +467,10 @@ fn labeled_field(label: &'static str, field: TextField, muted: Hsla) -> impl Int
 }
 
 fn alert_card(look: &Look) -> impl IntoElement {
-    gpui_luma_look_radix::callout(
+    xgpui_luma_look_radix::callout(
         look,
         "Please upgrade to the new version.",
-        gpui_luma::controls::button::ControlIcon::SvgPath("assets/react-icons/info-circled.svg".into()),
+        xgpui_luma::controls::button::ControlIcon::SvgPath("assets/react-icons/info-circled.svg".into()),
     )
 }
 

@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Div, FontWeight, IntoElement, div, px};
 use gpui::prelude::*;
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma::theme::shadow_projection_insets;
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::theme::shadow_projection_insets;
 
 use super::box_model::{MetricFieldHighlight, render_box_model_diagram};
 use super::components::{InspectorRow, InspectorSection};
@@ -157,7 +157,7 @@ pub fn render_elevation_category(look: &Arc<ShadcnLook>, elevation: InspectEleva
 
 fn render_shadow_preview(
     preview_chip: Div,
-    shadow_insets: Option<gpui_luma::theme::ShadowProjectionInsets>,
+    shadow_insets: Option<xgpui_luma::theme::ShadowProjectionInsets>,
     annotation_color: gpui::Hsla,
 ) -> AnyElement {
     let Some(insets) = shadow_insets else {

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, AppContext, Context, Entity, IntoElement, SharedString};
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::inspector::{ControlInspectorSpec, SharedInspectorResolver};
 use super::inspector_split::InspectorSplitShell;

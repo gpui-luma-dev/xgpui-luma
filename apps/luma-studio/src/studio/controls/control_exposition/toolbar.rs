@@ -1,18 +1,18 @@
 //! Toolbar control exposition — gallery-aligned editing toolbar with focus strategy toggles.
 
-use gpui_luma::controls::toolbar::ToolbarEventExt;
+use xgpui_luma::controls::toolbar::ToolbarEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{Button, HasPresenter};
-use gpui_luma::controls::control_group::ControlGroupFocusStrategy;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::controls::selector::SelectorItem;
-use gpui_luma::controls::toolbar::{Toolbar, ToolbarEvent, ToolbarValue};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{Button, HasPresenter};
+use xgpui_luma::controls::control_group::ControlGroupFocusStrategy;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::controls::selector::SelectorItem;
+use xgpui_luma::controls::toolbar::{Toolbar, ToolbarEvent, ToolbarValue};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

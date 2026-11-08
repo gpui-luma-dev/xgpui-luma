@@ -1,10 +1,10 @@
 //! Inspect metadata for `textfield`.
 
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 use crate::{ResolvedColor, ResolvedMetric, ShadcnModeTokens};
 
 use crate::ShadcnTextFieldStyle;
-use gpui_luma::controls::textfield::TextFieldState;
+use xgpui_luma::controls::textfield::TextFieldState;
 
 pub struct TextFieldInspectPalette {
     pub background: ResolvedColor,
@@ -53,7 +53,7 @@ pub struct TextFieldInspectMetrics {
 pub fn inspect_textfield_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    size: xgpui_luma::theme::ControlSize,
 ) -> TextFieldInspectMetrics {
     let table = crate::tables::metrics::resolve_textfield_metrics(mode, theme_mode, size);
     table.into()
@@ -65,7 +65,7 @@ pub fn inspect_textfield_elevation(
     style: ShadcnTextFieldStyle,
     enabled: bool,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
-    use gpui_luma::theme::InteractionState;
+    use xgpui_luma::theme::InteractionState;
     use crate::paint::textfield_palette;
     use crate::stylesheet::{find_textfield_elevation_rule, resolve_stylesheet_shadow_token};
     use crate::inspect::controls::button::inspect_layered_elevation;

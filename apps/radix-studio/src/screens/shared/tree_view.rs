@@ -1,12 +1,12 @@
 //! Shared live layer-tree sample for Custom Palette and the Style Guide.
 
 use gpui::{Context, IntoElement, prelude::*, px};
-use gpui_luma::controls::tree_view::{TreeNode, TreeView};
-use gpui_luma_look_radix::Look;
+use xgpui_luma::controls::tree_view::{TreeNode, TreeView};
+use xgpui_luma_look_radix::Look;
 use lucide_svg_static::Icon;
 
 pub fn spawn<T: 'static>(id: &'static str, look: &Look, enabled: bool, cx: &mut Context<T>) -> TreeView<()> {
-    let tree = gpui_luma_look_radix::TreeView::new(id)
+    let tree = xgpui_luma_look_radix::TreeView::new(id)
         .look(look)
         .enabled(enabled)
         .items([
@@ -23,5 +23,5 @@ pub fn spawn<T: 'static>(id: &'static str, look: &Look, enabled: bool, cx: &mut 
 }
 
 pub fn panel(tree: TreeView<()>, look: &Look) -> gpui::AnyElement {
-    gpui_luma_look_radix::tree_view_frame(look).w_full().h(px(142.0)).child(tree).into_any_element()
+    xgpui_luma_look_radix::tree_view_frame(look).w_full().h(px(142.0)).child(tree).into_any_element()
 }

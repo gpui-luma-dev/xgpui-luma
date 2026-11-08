@@ -1,13 +1,13 @@
-use gpui_luma::controls::context_menu::ContextMenuEventExt;
+use xgpui_luma::controls::context_menu::ContextMenuEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::context_menu::{ContextMenu, ContextMenuEvent};
-use gpui_luma::controls::textfield::TextField;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::context_menu::{ContextMenu, ContextMenuEvent};
+use xgpui_luma::controls::textfield::TextField;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};

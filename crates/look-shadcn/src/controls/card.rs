@@ -21,9 +21,9 @@ use gpui::Window;
 use gpui::div;
 use gpui::prelude::*;
 use gpui::px;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::LumaTextStyle;
-use gpui_luma::theme::observe_theme_revision;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::LumaTextStyle;
+use xgpui_luma::theme::observe_theme_revision;
 
 use crate::look::ShadcnLook;
 use crate::look_context::LookContext;
@@ -380,7 +380,7 @@ fn renderer_from_element(element: impl IntoElement + Clone + Send + Sync + 'stat
 
 #[cfg(test)]
 mod tests {
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     use crate::look::ShadcnLook;
     use crate::tokens::ShadcnToken;
@@ -495,7 +495,7 @@ pub struct CardMetricTable {
     pub radius: crate::ResolvedMetric,
 }
 
-pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: gpui_luma::theme::ControlSize) -> CardMetricTable {
+pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: xgpui_luma::theme::ControlSize) -> CardMetricTable {
     let theme_mode = look.mode();
     let mode = look.mode_tokens();
     let ctx = crate::LookContext::new(mode.as_ref(), theme_mode, Default::default());
@@ -530,7 +530,7 @@ pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: gpui_luma::theme::Co
     };
     let geometry = mode.stylesheet().common.card.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::CardGeometry {
+        xgpui_luma::theme::stylesheet::CardGeometry {
             padding: table.padding.value_px,
             section_gap: table.section_gap.value_px,
             header_gap: table.header_gap.value_px,

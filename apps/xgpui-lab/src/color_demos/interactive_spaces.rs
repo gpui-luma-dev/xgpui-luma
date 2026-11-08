@@ -8,13 +8,13 @@ use gpui::{
     App, Context, Div, Entity, FontWeight, IntoElement, Render, Rgba, SharedString, Subscription, Window, div,
     prelude::*, px, canvas,
 };
-use gpui_luma::{
+use xgpui_luma::{
     controls::{slider::Slider, switch::Switch, textfield::TextField},
     infra::ElementExt,
     prelude::HasPresenter,
     hstack, vstack,
 };
-use gpui_luma_color::{
+use xgpui_luma_color::{
     color_field::{ColorFieldBackgroundPainter, ColorFieldEvent, ColorFieldState},
     color_slider::color_spec::Hsv,
     color_slider::{
@@ -22,7 +22,7 @@ use gpui_luma_color::{
         refresh_color_slider,
     },
 };
-use gpui_luma_look_radix::{self as radix, Look};
+use xgpui_luma_look_radix::{self as radix, Look};
 
 use crate::theme::{ColorVizLookExt, TextSize, TypographyExt};
 
@@ -61,7 +61,7 @@ fn rgb_slider_delegate(
     rgb: [f64; 3],
     source: usize,
     channel: usize,
-) -> Arc<dyn gpui_luma_color::color_slider::ColorSliderDelegate> {
+) -> Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate> {
     if let Some(colors) = colors {
         return colors.track(source, rgb, channel);
     }
@@ -71,7 +71,7 @@ fn rgb_slider_delegate(
             sample[channel] = step as f64 / CHANNEL_GRADIENT_SEGMENTS as f64;
             let color =
                 source_field::srgb_reference(sample, source_field::SPACES[source]).unwrap_or_else(|_| rgba(sample));
-            gpui_luma::color::ColorValue::srgb(color.r, color.g, color.b, 1.)
+            xgpui_luma::color::ColorValue::srgb(color.r, color.g, color.b, 1.)
         })
         .collect();
     Arc::new(GradientDelegate::from_colors(samples).expect("valid channel gradient"))
@@ -123,7 +123,7 @@ impl RgbChannelControls {
         .horizontal()
         .range(0. ..1.)
         .step(0.001)
-        .size(gpui_luma::theme::ControlSize::Sm)
+        .size(xgpui_luma::theme::ControlSize::Sm)
         .thumb_small();
         let track = builder.domain_renderer();
         let slider = builder.spawn(cx);
@@ -191,7 +191,7 @@ impl InteractiveSpaces {
                 .expect("valid HSV saturation channel")
                 .horizontal()
                 .step(0.001)
-                .size(gpui_luma::theme::ControlSize::Sm)
+                .size(xgpui_luma::theme::ControlSize::Sm)
                 .thumb_small();
         let saturation_track = saturation_builder.domain_renderer();
         if let Some(colors) = &native_colors {
@@ -385,7 +385,7 @@ impl InteractiveSpaces {
             colors.saturation_track(self.field_settings.source_index(), self.hsv)
         } else {
             Arc::new(ChannelDelegate::new(self.hsv, Hsv::SATURATION.into()).expect("valid HSV saturation channel"))
-                as Arc<dyn gpui_luma_color::color_slider::ColorSliderDelegate>
+                as Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate>
         };
         self.saturation_track.set_delegate(delegate);
         refresh_color_slider(&self.saturation, cx);
@@ -423,7 +423,7 @@ impl InteractiveSpaces {
         disabled: bool,
     ) -> Div {
         let title_style = self.look.typography_scale(TextSize::Base);
-        let detail_style = gpui_luma::theme::LumaTextStyle { size: 12., ..self.look.typography_scale(TextSize::Sm) };
+        let detail_style = xgpui_luma::theme::LumaTextStyle { size: 12., ..self.look.typography_scale(TextSize::Sm) };
         lab_ui::comparison_card(&self.look)
             .flex_1()
             .min_w(px(200.))
@@ -437,7 +437,7 @@ impl InteractiveSpaces {
                         }
                         .items_center()
                         .gap_2()
-                        .when(disabled, |row| row.child(gpui_luma::infra::icon::lucide_icon(
+                        .when(disabled, |row| row.child(xgpui_luma::infra::icon::lucide_icon(
                             lucide_svg_static::Icon::TriangleAlert,
                             self.look.chrome().body_text,
                             14.,
@@ -575,7 +575,7 @@ mod tests {
     use super::{Coordinates, INITIAL, InteractiveSpaces};
     use gpui::{TestAppContext, point, px};
     use xgpui_color::{EncodedRgb, RgbSpace};
-    use gpui_luma::controls::textfield::TextFieldEvent;
+    use xgpui_luma::controls::textfield::TextFieldEvent;
 
     #[test]
     fn comparison_coordinates_preserve_the_selected_physical_color() {
@@ -627,7 +627,7 @@ mod tests {
     #[test]
     fn rgb_inputs_sliders_and_field_share_state_and_reject_invalid_edits() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| InteractiveSpaces::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let input = cx.update(|_, cx| page.read(cx).channels[0].input.clone());
@@ -670,9 +670,9 @@ mod tests {
     #[test]
     fn switching_cpu_gpu_retains_color_and_luma_keyboard_and_drag_behavior() {
         use gpui::{KeyDownEvent, KeyUpEvent, Keystroke, MouseButton};
-        use gpui_luma::controls::switch::SwitchEvent;
+        use xgpui_luma::controls::switch::SwitchEvent;
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
             InteractiveSpaces::new(crate::theme::default_look(), cx)
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn saturation_slider_updates_color_and_srgb_gamut_state() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| InteractiveSpaces::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             page.set_source(1, cx);
@@ -765,7 +765,7 @@ mod tests {
     fn source_selector_requests_native_presentation_and_preserves_color() {
         use crate::color_demos::source_field::{self, SPACES};
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| InteractiveSpaces::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         let mode = cx.update(|window, _| window.color_status().effective());
@@ -814,7 +814,7 @@ mod tests {
                         sample[channel] = endpoint;
                         let expected = source_field::srgb_reference(sample, space).unwrap();
                         let actual: gpui::Rgba =
-                            gpui_luma::controls::slider::DomainTrackRenderer::get_color_at_position(
+                            xgpui_luma::controls::slider::DomainTrackRenderer::get_color_at_position(
                                 page.channels[channel].track.as_ref(),
                                 endpoint as f32,
                             )
@@ -857,7 +857,7 @@ mod tests {
     #[test]
     fn srgb_card_is_disabled_only_for_colors_outside_srgb() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| InteractiveSpaces::new(crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
             for (index, value) in [0., 1., 0.].into_iter().enumerate() {

@@ -1,10 +1,10 @@
 //! Radix scrollbar chrome for standalone and composed SDK scrolling controls.
 use std::sync::Arc;
 
-use gpui_luma::controls::scrollbar::{
+use xgpui_luma::controls::scrollbar::{
     ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTemplate, ScrollbarTheme, ThemedScrollbarTemplate,
 };
-use gpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
 use crate::{Look, ScaleFamily};
 
 struct ScrollbarThemeAdapter {
@@ -62,8 +62,8 @@ pub fn scrollbar_theme(look: &Look) -> Arc<dyn ScrollbarTheme> {
 /// Dragging, wheel routing, visibility, and auto-hide behavior remain in the SDK.
 ///
 /// ```
-/// use gpui_luma::controls::scrollbar::ScrollbarBuilder;
-/// use gpui_luma_look_radix::{Look, scrollbar_template};
+/// use xgpui_luma::controls::scrollbar::ScrollbarBuilder;
+/// use xgpui_luma_look_radix::{Look, scrollbar_template};
 /// let look = Look::built_in();
 /// let builder = ScrollbarBuilder::new("scrollbar").template(scrollbar_template(&look));
 /// ```
@@ -74,7 +74,7 @@ pub fn scrollbar_template(look: &Look) -> Arc<dyn ScrollbarTemplate> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     #[test]
     fn states_sizes_orientations_and_modes_use_radix_colors() {

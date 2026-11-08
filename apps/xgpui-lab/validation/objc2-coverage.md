@@ -109,6 +109,6 @@ Paths are relative to this report. Test and log names describe the narrow assert
 
 Run `just consumer-audit`. The audit uses a temporary project, fresh target directory and isolated Cargo configuration; it may reuse the registry download/source cache. All dependencies must have registry sources; no `[patch]`, path, or Git dependencies are allowed. The audit performs `cargo build`, saves the lockfile/metadata/logs, and records selected macOS paths to each legacy dependency.
 
-The verified published baseline is xgpui/platform 1.0.0 plus all six extensions 0.2.0. It does not include this checkout's newer migration/fix, gpui-luma 0.2.4, or the entire lab application. A registry build cannot validate unpublished source changes. Candidate-release consumer verification remains a separate gate.
+The verified published baseline is xgpui/platform 1.0.0 plus all six extensions 0.2.0. It does not include this checkout's newer migration/fix, xgpui-luma 0.2.4, or the entire lab application. A registry build cannot validate unpublished source changes. Candidate-release consumer verification remains a separate gate.
 
 Observed published macOS dependencies: `metal 0.33.0`, `objc 0.2.7`, `block 0.1.6`, `cocoa 0.26.0`, `cocoa-foundation 0.2.1`, and `objc_exception 0.1.2`. Older Core Foundation/Graphics/Text wrappers also remain. These coexist with objc2; a successful build does not prove their removal. See `artifacts/objc2-coverage/consumer-final/report.json` for exact dependency chains and `build.stderr.log` for compiler warnings.

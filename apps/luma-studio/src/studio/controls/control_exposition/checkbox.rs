@@ -1,14 +1,14 @@
 //! Checkbox control exposition — live primary/secondary previews and event stream.
 
-use gpui_luma::controls::checkbox::CheckboxEventExt;
+use xgpui_luma::controls::checkbox::CheckboxEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Render, Window, div, prelude::*, px};
-use gpui_luma::controls::checkbox::{Checkbox, CheckboxEvent};
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::checkbox::{Checkbox, CheckboxEvent};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::checkbox_theme_inspector::CheckboxThemeInspector;

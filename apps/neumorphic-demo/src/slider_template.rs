@@ -1,7 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, MouseButton, Stateful, Window, canvas, div, hsla, px, prelude::*};
-use gpui_luma::controls::slider::{SliderDrag, SliderRenderModel, SliderTemplate, SliderTemplateHandlers, ThumbId};
+use xgpui_luma::controls::slider::{SliderDrag, SliderRenderModel, SliderTemplate, SliderTemplateHandlers, ThumbId};
 
 pub fn neumorphic_slider_template() -> Arc<dyn SliderTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn SliderTemplate>> = OnceLock::new();

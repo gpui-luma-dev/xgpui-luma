@@ -1,7 +1,7 @@
-//! Look-owned pager builder. Spawn synthesizes the SDK [`gpui_luma::controls::pager::Pager`].
+//! Look-owned pager builder. Spawn synthesizes the SDK [`xgpui_luma::controls::pager::Pager`].
 
 use gpui::{App, Context, Entity, SharedString};
-use gpui_luma::controls::pager::{
+use xgpui_luma::controls::pager::{
     PagerBuilder, PagerControl, PagerIcons, PagerInfoSlot, PagerStyle, PagerTemplateParameters,
 };
 
@@ -9,7 +9,7 @@ use crate::look::{ShadcnLook, resolve_look_from};
 
 /// Builder in the guise of a pager: Shadcn theme plus SDK options, until `.spawn(cx)`.
 pub struct Pager {
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::pager::PagerEvent>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::pager::PagerEvent>,
 
     look: Option<ShadcnLook>,
     builder: PagerBuilder,
@@ -21,7 +21,7 @@ impl Pager {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::pager::PagerEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::pager::PagerEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -34,7 +34,7 @@ impl Pager {
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::pager::PagerEvent::PageChanged { page } = event {
+            if let xgpui_luma::controls::pager::PagerEvent::PageChanged { page } = event {
                 callback(owner, *page, cx);
             }
         })
@@ -47,7 +47,7 @@ impl Pager {
         callback: impl Fn(&mut M, usize, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::pager::PagerEvent::PageSizeChanged { page_size } = event {
+            if let xgpui_luma::controls::pager::PagerEvent::PageSizeChanged { page_size } = event {
                 callback(owner, *page_size, cx);
             }
         })
@@ -60,7 +60,7 @@ impl Pager {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::pager::PagerEvent::PageSizeOpenChanged { open } = event {
+            if let xgpui_luma::controls::pager::PagerEvent::PageSizeOpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -73,14 +73,14 @@ impl Pager {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::pager::PagerEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::pager::PagerEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
     }
 
     pub fn new(id: impl Into<SharedString>) -> Self {
-        Self { callbacks: Default::default(), look: None, builder: gpui_luma::controls::pager::new(id) }
+        Self { callbacks: Default::default(), look: None, builder: xgpui_luma::controls::pager::new(id) }
     }
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.

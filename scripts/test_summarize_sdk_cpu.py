@@ -17,7 +17,7 @@ class CpuSummaryTests(unittest.TestCase):
         xml = '''<trace><definitions><thread id="t" fmt="Main Thread (fixture)"/>
         <process id="p" fmt="luma-sdk-perf (123)"/><process id="other" fmt="other (456)"/>
         <thread-state id="s">Running</thread-state><weight id="w">1000000</weight>
-        <tagged-backtrace id="b"><frame id="f" name="allocator"/><frame name="gpui_luma::render"/></tagged-backtrace></definitions>'''
+        <tagged-backtrace id="b"><frame id="f" name="allocator"/><frame name="xgpui_luma::render"/></tagged-backtrace></definitions>'''
         xml += row.format(time=1_000_000_000, process="p")
         xml += row.format(time=3_000_000_000, process="p")
         xml += row.format(time=4_000_000_000, process="other") + "</trace>"

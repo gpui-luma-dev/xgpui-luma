@@ -1,7 +1,7 @@
-use gpui_luma::controls::split_view::SplitViewEventExt;
+use xgpui_luma::controls::split_view::SplitViewEventExt;
 use gpui::{Context, Entity};
-use gpui_luma::controls::sidebar::{SidebarControl, SidebarPresentation};
-use gpui_luma::controls::split_view::{SplitView, SplitViewEvent};
+use xgpui_luma::controls::sidebar::{SidebarControl, SidebarPresentation};
+use xgpui_luma::controls::split_view::{SplitView, SplitViewEvent};
 
 pub fn wire_split_nav_sync<T: 'static>(
     split_view: Entity<SplitView>,

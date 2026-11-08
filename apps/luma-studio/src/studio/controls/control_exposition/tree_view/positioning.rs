@@ -1,15 +1,15 @@
 //! Explicit positioning in Controls → TreeView; all interactive chrome uses SDK controls.
-use gpui_luma::controls::tree_view::TreeViewEventExt;
+use xgpui_luma::controls::tree_view::TreeViewEventExt;
 use std::sync::Arc;
 use gpui::{Context, Entity, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::{
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::{
     button::{Button},
     selector::{Selector, SelectorItem},
     tree_view::{TreeNode, TreeView, TreeViewEvent},
 };
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_shadcn::{self as shadcn, ShadcnLook, prelude::*};
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_shadcn::{self as shadcn, ShadcnLook, prelude::*};
 use super::ControlEventStream;
 
 pub(super) struct Positioning {

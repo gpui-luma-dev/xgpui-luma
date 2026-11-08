@@ -2,7 +2,7 @@
 //! Size metrics follow the Radix Themes Card; application content stays external.
 use std::sync::Arc;
 use gpui::{Hsla, SharedString, AnyElement, BoxShadow, Div, IntoElement, div, point, prelude::*, px};
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 use crate::{Look, Tone};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -104,7 +104,7 @@ impl Card {
     }
     /// Adjust resolved appearance locally; later calls replace the previous override.
     /// ```
-    /// use gpui_luma_look_radix::{Card, Look};
+    /// use xgpui_luma_look_radix::{Card, Look};
     /// let card = Card::new(&Look::built_in()).style_override(|style| {
     ///     style.padding = 20.0;
     ///     style.radius = 10.0;
@@ -128,7 +128,7 @@ impl Card {
         let dark = self.look.mode() == ThemeMode::Dark;
         let geometry = self.look.common_stylesheet().card.resolve_geometry(
             self.size.as_str(),
-            gpui_luma::theme::stylesheet::CardGeometry { padding: self.size.padding(), ..Default::default() },
+            xgpui_luma::theme::stylesheet::CardGeometry { padding: self.size.padding(), ..Default::default() },
         );
         let mut style = CardStyle {
             padding: geometry.padding,
@@ -221,8 +221,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_card_stylesheet() -> gpui_luma::theme::stylesheet::CardStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_card_stylesheet() -> xgpui_luma::theme::stylesheet::CardStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     CardStylesheet {
         sizes: [("1", 12.0), ("2", 16.0), ("3", 24.0)]
             .into_iter()

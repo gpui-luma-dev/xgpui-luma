@@ -17,7 +17,7 @@ pub struct RadarSpoke {
     pub category_index: usize,
     pub points: Vec<RadarPoint>,
 }
-pub(crate) type RadarTooltip = dyn Fn(&RadarSpoke) -> gpui_luma::controls::tooltip::Tooltip;
+pub(crate) type RadarTooltip = dyn Fn(&RadarSpoke) -> xgpui_luma::controls::tooltip::Tooltip;
 
 type CategoryLabels = dyn Fn(usize, &SharedString) -> SharedString;
 
@@ -39,7 +39,7 @@ pub struct RadarChartBuilder {
 impl RadarChartBuilder {
     /// At least three categories are needed for a radar polygon.
     /// ```
-    /// use gpui_luma_plot::*;
+    /// use xgpui_luma_plot::*;
     /// let data = Dataset::new().with_series(Series::new("a", "A", [
     ///     Sample::new(0.0, 20.0), Sample::new(1.0, 40.0), Sample::new(2.0, 30.0),
     /// ]))?;
@@ -105,7 +105,7 @@ impl RadarChartBuilder {
     /// Includes all valid series values on that spoke. Configure delay on the SDK tooltip.
     pub fn spoke_tooltip(
         mut self,
-        tooltip: impl Fn(&RadarSpoke) -> gpui_luma::controls::tooltip::Tooltip + 'static,
+        tooltip: impl Fn(&RadarSpoke) -> xgpui_luma::controls::tooltip::Tooltip + 'static,
     ) -> Self {
         self.tooltip = Some(Arc::new(tooltip));
         self

@@ -1,20 +1,20 @@
-use gpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
-use gpui_luma::controls::control_group::ControlGroupEventExt;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
+use xgpui_luma::controls::control_group::ControlGroupEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FocusHandle, Focusable, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter};
-use gpui_luma::controls::control_group::ControlGroupEvent;
-use gpui_luma::controls::icon_button::IconButton;
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::overlay_window::OverlayWindowEvent;
-use gpui_luma::controls::resizable_panels::ResizablePanelsEvent;
-use gpui_luma::focus::LumaFocusScopeExt;
-use gpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
-use gpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
-use gpui_luma_look_shadcn as shadcn;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button::{ButtonContentContext, ControlIcon, ControlPresenter};
+use xgpui_luma::controls::control_group::ControlGroupEvent;
+use xgpui_luma::controls::icon_button::IconButton;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::overlay_window::OverlayWindowEvent;
+use xgpui_luma::controls::resizable_panels::ResizablePanelsEvent;
+use xgpui_luma::focus::LumaFocusScopeExt;
+use xgpui_luma::shell::{TITLE_BAR_HEIGHT, TitleBar};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
+use xgpui_luma_look_shadcn as shadcn;
 use luma_shell_common::{
     chrome::{HasShellTheme, handle_theme_toggle, spawn_theme_toggle_button},
     theme::{ShellThemeChoice, sync_color_control_theme},
@@ -459,7 +459,7 @@ fn wire_customize_layout_subscriptions(
 fn titlebar_icon_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPresenter<ButtonContentContext<()>> {
     Arc::new(move |_, _| match &icon {
         ControlIcon::Lucide(lucide) => {
-            div().child(gpui_luma::infra::icon::lucide_icon(*lucide, color, 14.0)).into_any_element()
+            div().child(xgpui_luma::infra::icon::lucide_icon(*lucide, color, 14.0)).into_any_element()
         }
         ControlIcon::SvgPath(path) => {
             gpui::svg().size(px(14.0)).text_color(color).path(path.clone()).into_any_element()

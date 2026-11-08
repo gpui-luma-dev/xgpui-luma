@@ -5,9 +5,9 @@
 //! | Trigger | outline or ghost command button  |
 //! | Menu    | floating menu surface            |
 
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::controls::popup_menu::{PopupMenuLook, PopupMenuPalette, PopupMenuTriggerStyle, compose_popup_menu_look};
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::popup_menu::{PopupMenuLook, PopupMenuPalette, PopupMenuTriggerStyle, compose_popup_menu_look};
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 
 use crate::look_context::LookContext;
 use super::button::{ShadcnButtonStyle, button_box_scale, button_elevation_shadow, button_palette};
@@ -27,7 +27,7 @@ pub fn popup_menu_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     trigger_style: PopupMenuTriggerStyle,
-    metrics: gpui_luma::controls::popup_menu::PopupMenuTriggerMetrics,
+    metrics: xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics,
     state: InteractionState,
 ) -> PopupMenuPalette {
     let ctx = LookContext::new(mode, theme_mode, state);
@@ -68,15 +68,15 @@ pub fn popup_menu_trigger_scale(
     size: ControlSize,
     state: InteractionState,
     scale_factor: f32,
-) -> gpui_luma::theme::StandardBoxScale {
+) -> xgpui_luma::theme::StandardBoxScale {
     let ctx = LookContext::new(mode, theme_mode, state);
     let mut scale = button_box_scale(&ctx, mode.stylesheet(), size, scale_factor);
     let geometry = popup_menu_geometry(mode, size, &scale, &mode.typography.text.label);
-    scale.height = gpui_luma::theme::snap_to_pixel(geometry.height.value_px, scale_factor);
-    scale.padding_x = gpui_luma::theme::snap_to_pixel(geometry.padding_x.value_px, scale_factor);
-    scale.padding_y = gpui_luma::theme::snap_to_pixel(geometry.padding_y.value_px, scale_factor);
-    scale.gap = gpui_luma::theme::snap_to_pixel(geometry.gap.value_px, scale_factor);
-    scale.icon_size = gpui_luma::theme::snap_to_pixel(geometry.icon_size.value_px, scale_factor);
+    scale.height = xgpui_luma::theme::snap_to_pixel(geometry.height.value_px, scale_factor);
+    scale.padding_x = xgpui_luma::theme::snap_to_pixel(geometry.padding_x.value_px, scale_factor);
+    scale.padding_y = xgpui_luma::theme::snap_to_pixel(geometry.padding_y.value_px, scale_factor);
+    scale.gap = xgpui_luma::theme::snap_to_pixel(geometry.gap.value_px, scale_factor);
+    scale.icon_size = xgpui_luma::theme::snap_to_pixel(geometry.icon_size.value_px, scale_factor);
     scale
 }
 
@@ -84,7 +84,7 @@ pub fn popup_menu_look(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     trigger_style: PopupMenuTriggerStyle,
-    metrics: gpui_luma::controls::popup_menu::PopupMenuTriggerMetrics,
+    metrics: xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics,
     state: InteractionState,
     scale_factor: f32,
     _cx: &mut gpui::App,
@@ -102,12 +102,12 @@ pub fn popup_menu_look(
 pub(crate) fn popup_menu_geometry(
     mode: &ShadcnModeTokens,
     size: ControlSize,
-    scale: &gpui_luma::theme::StandardBoxScale,
-    typography: &gpui_luma::theme::LumaTextStyle,
-) -> gpui_luma::theme::stylesheet::ResolvedPopupMenuGeometry {
+    scale: &xgpui_luma::theme::StandardBoxScale,
+    typography: &xgpui_luma::theme::LumaTextStyle,
+) -> xgpui_luma::theme::stylesheet::ResolvedPopupMenuGeometry {
     mode.stylesheet().common.popup_menu.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
-        gpui_luma::theme::stylesheet::PopupMenuGeometry {
+        xgpui_luma::theme::stylesheet::PopupMenuGeometry {
             height: scale.height,
             padding_x: scale.padding_x,
             padding_y: scale.padding_y,
@@ -125,18 +125,18 @@ pub(crate) fn popup_menu_geometry(
 mod tests {
 
     use std::collections::BTreeMap;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
-    use gpui_luma::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
-    use gpui_luma::theme::InteractionState;
+    use xgpui_luma::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+    use xgpui_luma::theme::InteractionState;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
     use crate::controls::button::{ShadcnButtonStyle, button_palette};
     use super::{popup_menu_palette, shadcn_button_style};
     use crate::controls::floating_menu::floating_menu_look;
-    use gpui_luma::controls::button_family::ButtonFamilyRole;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
+    use xgpui_luma::theme::ControlSize;
     use crate::look_context::LookContext;
     use crate::stylesheet::embedded_stylesheet;
 

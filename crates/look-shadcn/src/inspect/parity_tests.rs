@@ -1,6 +1,6 @@
 //! Inspection regression tests: compare public inspection output to rendered looks.
-use gpui_luma::controls::button_family::ButtonFamilyRole;
-use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
 use crate::{ColorSource, MetricSource, ShadcnButtonStyle, ShadcnLook, ShadcnModeTokens};
 use crate::paint;
 use crate::inspect::*;
@@ -92,7 +92,7 @@ fn button_and_toggle_tables_match_runtime_including_focus_and_typography() {
                         assert_eq!(actual.foreground.value, painted.foreground);
                         assert_eq!(
                             actual.border.value,
-                            gpui_luma::controls::button_family::button_family_effective_border(painted.border)
+                            xgpui_luma::controls::button_family::button_family_effective_border(painted.border)
                         );
                         let metrics = inspect_button_metrics(&mode, theme_mode, style, role, size, state);
                         assert_eq!(metrics.height.value_px, painted.height);
@@ -110,7 +110,7 @@ fn button_and_toggle_tables_match_runtime_including_focus_and_typography() {
 
 #[test]
 fn accordion_tables_cover_all_scale_fields_and_sources() {
-    use gpui_luma::controls::accordion::AccordionScale;
+    use xgpui_luma::controls::accordion::AccordionScale;
     for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
         for spacing in [None, Some("0.3rem"), Some("invalid")] {
             let mut catalog = crate::inspect::test_support::sample_catalog();
@@ -201,7 +201,7 @@ fn slider_inspection_matches_paint() {
 
 #[test]
 fn textfield_hover_focus_invalid_and_missing_tokens_match_runtime() {
-    use gpui_luma::controls::textfield::TextFieldState;
+    use xgpui_luma::controls::textfield::TextFieldState;
     use crate::ShadcnTextFieldStyle;
     for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
         for missing in [None, Some("ring"), Some("input")] {
@@ -348,7 +348,7 @@ fn shared_switch_geometry_preserves_shadcn_sizes_and_display_snapping() {
                 let theme = crate::controls::templates::switch_theme_with_style(look.clone(), style);
                 for factor in [1.0, 1.25, 2.0] {
                     let scale = theme.scale(size, factor);
-                    let snap = |value| gpui_luma::theme::snap_to_pixel(value, factor);
+                    let snap = |value| xgpui_luma::theme::snap_to_pixel(value, factor);
                     assert_eq!(
                         (scale.track_width, scale.track_height, scale.thumb_size, scale.track_padding),
                         (snap(width), snap(height), snap(thumb), snap(2.0))
@@ -361,7 +361,7 @@ fn shared_switch_geometry_preserves_shadcn_sizes_and_display_snapping() {
 
 #[test]
 fn shared_slider_geometry_preserves_all_sizes_styles_states_and_thumbs() {
-    use gpui_luma::controls::slider::SliderThumbSize;
+    use xgpui_luma::controls::slider::SliderThumbSize;
     let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
@@ -397,7 +397,7 @@ fn shared_slider_geometry_preserves_all_sizes_styles_states_and_thumbs() {
 
 #[test]
 fn selected_slider_geometry_and_legacy_fallback_have_accurate_provenance() {
-    use gpui_luma::controls::slider::SliderThumbSize;
+    use xgpui_luma::controls::slider::SliderThumbSize;
     let mut stylesheet = crate::stylesheet::embedded_stylesheet().clone();
     stylesheet.common.slider.sizes.md.width = Some(300.0);
     stylesheet.common.slider.sizes.md.height = Some(36.0);

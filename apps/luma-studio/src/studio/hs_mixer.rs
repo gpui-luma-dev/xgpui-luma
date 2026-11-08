@@ -3,9 +3,9 @@
 
 use std::collections::HashMap;
 
-use gpui_luma::color::ColorValue;
+use xgpui_luma::color::ColorValue;
 use anyhow::Result;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::theme::ThemeMode;
 
 pub const PALETTE_VIVIDNESS_AMOUNT_MIN: f32 = -1.0;
 pub const PALETTE_VIVIDNESS_AMOUNT_MAX: f32 = 1.0;
@@ -213,13 +213,13 @@ fn shortest_hue_delta(from: f32, to: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     use super::{ThemePaletteHsOverride, derive_palette_hs_color_overrides, shortest_hue_delta};
 
     #[test]
     fn palette_generation_retains_oklch_before_preview_mapping() {
-        let source = gpui_luma::color::ColorValue::oklch(0.65, 0.345678, 412.12345, 1.0);
+        let source = xgpui_luma::color::ColorValue::oklch(0.65, 0.345678, 412.12345, 1.0);
         let overrides = derive_palette_hs_color_overrides(
             ThemeMode::Dark,
             source,
@@ -228,14 +228,14 @@ mod tests {
         .unwrap();
         let generated = overrides["--primary"].to_oklcha_unclamped().unwrap();
         assert_eq!(generated.chroma, 0.345678);
-        assert!(!overrides["--primary"].is_in_gamut(gpui_luma::color::Gamut::Srgb).unwrap());
+        assert!(!overrides["--primary"].is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap());
     }
 
     #[test]
     fn identity_override_returns_no_palette_changes() {
         let overrides = derive_palette_hs_color_overrides(
             ThemeMode::Dark,
-            gpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.6, 0.7, 0.5, 1.0)),
+            xgpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.6, 0.7, 0.5, 1.0)),
             &ThemePaletteHsOverride::default(),
         )
         .unwrap();
@@ -252,7 +252,7 @@ mod tests {
     fn non_identity_override_generates_primary() {
         let overrides = derive_palette_hs_color_overrides(
             ThemeMode::Dark,
-            gpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.6, 0.7, 0.5, 1.0)),
+            xgpui_luma::color::gpui_bridge::from_hsla(gpui::hsla(0.6, 0.7, 0.5, 1.0)),
             &ThemePaletteHsOverride { active: true, vividness_amount: 0.5, temperature_amount: 0.0 },
         )
         .unwrap();

@@ -1,7 +1,7 @@
 //! Avatar content, palette, and size/radius matrices.
 use gpui::{AnyElement, App, Entity, Hsla, div, prelude::*, px};
-use gpui_luma::controls::{button::ControlIcon, tabs::Tabs};
-use gpui_luma_look_radix::{Accent, Avatar, AvatarSize, AvatarVariant, Gray, Look, Radius, Tone};
+use xgpui_luma::controls::{button::ControlIcon, tabs::Tabs};
+use xgpui_luma_look_radix::{Accent, Avatar, AvatarSize, AvatarVariant, Gray, Look, Radius, Tone};
 use super::matrix_grid::{column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
 
 pub fn tabbed(look: &Look, navigation: Entity<Tabs>, muted: Hsla, border: Hsla, cx: &App) -> AnyElement {

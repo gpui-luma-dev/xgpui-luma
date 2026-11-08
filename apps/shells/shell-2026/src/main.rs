@@ -21,9 +21,9 @@ fn main() {
         cx.on_action(quit);
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("shell-2026").items([MenuItem::action("Quit", Quit)])]);
-        if let Err(error) = gpui_luma::init(cx).and_then(|_| {
-            gpui_luma::focus::bind_default_focus_keys(cx);
-            gpui_luma::key_handling::bind_default_control_keys(cx);
+        if let Err(error) = xgpui_luma::init(cx).and_then(|_| {
+            xgpui_luma::focus::bind_default_focus_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
             fonts::register_all(cx)?;
             app_shell::open(cx, theme_choice)
         }) {

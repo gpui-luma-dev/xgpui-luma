@@ -1,9 +1,9 @@
-use gpui_luma::motion::{Transition, Easing};
+use xgpui_luma::motion::{Transition, Easing};
 use std::time::Duration;
 use gpui::{App, Context, Entity, Render, Window, IntoElement, div, prelude::*, px};
-use gpui_luma::{DockPanel, vstack, motion::VisualTransition};
+use xgpui_luma::{DockPanel, vstack, motion::VisualTransition};
 use crate::theme::AppTheme;
-use gpui_luma_plot::{Dataset, DatasetError, Series, Sample, RadarChartBuilder, RadarSeriesPresentation};
+use xgpui_luma_plot::{Dataset, DatasetError, Series, Sample, RadarChartBuilder, RadarSeriesPresentation};
 use crate::theme::{self, TypographyExt};
 const MONTHS: [&str; 6] = ["January", "February", "March", "April", "May", "June"];
 const DESKTOP: [f64; 6] = [186.0, 305.0, 237.0, 273.0, 209.0, 214.0];
@@ -70,14 +70,14 @@ impl Render for RadarGallery {
                 desktop.stroke = None;
                 if index == 1 || index == 5 || index == 6 || index == 7 { desktop.dot_radius = px(4.0); }
                 if index == 2 {
-                    desktop.fill = None; desktop.stroke = Some(gpui_luma_plot::Stroke { color: desktop.dot_color, width: px(2.0) });
+                    desktop.fill = None; desktop.stroke = Some(xgpui_luma_plot::Stroke { color: desktop.dot_color, width: px(2.0) });
                     let mut mobile = RadarSeriesPresentation::new(crate::theme::palette::BLUE_BRIGHT); mobile.fill = None;
                     style.series.insert("mobile".into(),mobile);
                 }
                 if index == 3 { style.series.insert("mobile".into(),RadarSeriesPresentation::new(crate::theme::palette::BLUE_BRIGHT)); }
                 if index == 4 { style.grid_levels = vec![1.0]; style.spokes = false; }
                 if index == 5 { style.grid = None; }
-                if (6..=8).contains(&index) { style.grid_shape = gpui_luma_plot::RadarGridShape::Circle; }
+                if (6..=8).contains(&index) { style.grid_shape = xgpui_luma_plot::RadarGridShape::Circle; }
                 if index == 7 { style.spokes = false; }
                 if index == 8 || index == 9 {
                     style.grid_fill = Some(desktop.dot_color.opacity(0.12).into());
@@ -89,12 +89,12 @@ impl Render for RadarGallery {
                 if index == 11 { style.legend.visible = true; style.legend.text_color = theme::chrome(&look).body_text; }
                 style.series.insert("desktop".into(),desktop); style
             }).spoke_tooltip(move |spoke| {
-                gpui_luma::controls::tooltip::Tooltip::new(spoke.category.clone())
+                xgpui_luma::controls::tooltip::Tooltip::new(spoke.category.clone())
                     .shortcut(spoke.points.iter().map(|point| format!("{}: {}",point.label,point.sample.y)).collect::<Vec<_>>().join(" · "))
                     .theme(std::sync::Arc::new(tooltip_look.clone()))
                     .delay(Duration::from_millis(250))
             }).tooltip_motion(Duration::from_millis(250)).on_spoke_event(move|event,cx|{
-                if let gpui_luma_plot::SelectionEvent::Select{target}=event {
+                if let xgpui_luma_plot::SelectionEvent::Select{target}=event {
                     let text=format!("Selected {}",target.category);let _=host.update(cx,|this,cx|{this.selected=text;cx.notify();});
                 }
             });

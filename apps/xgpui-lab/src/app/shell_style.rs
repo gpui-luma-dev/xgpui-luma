@@ -1,6 +1,6 @@
-// Shell geometry from gpui-luma/apps/shells/shell-2026.
+// Shell geometry from xgpui-luma/apps/shells/shell-2026.
 use gpui::{Hsla, Pixels, px};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use crate::theme::ColorVizLookExt;
 
 pub(super) const RAIL_WIDTH: Pixels = px(52.0);

@@ -1,6 +1,6 @@
 //! Source metadata for canonical runtime metric values.
 
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 
 use crate::catalog::{CssTokenMap, SpacingField};
 use crate::{MetricSource, ResolvedMetric};
@@ -84,20 +84,20 @@ pub fn pill_radius_metric(_catalog: &CssTokenMap, value_px: f32) -> ResolvedMetr
     ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "MetricTokens.radius.pill".into() } }
 }
 
-pub fn focus_ring_width_metric(metrics: &gpui_luma::theme::MetricTokens) -> ResolvedMetric {
+pub fn focus_ring_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     ResolvedMetric {
         value_px: metrics.focus.width,
         source: MetricSource::Scaffold { path: "MetricTokens.focus.width".into() },
     }
 }
 
-pub fn focus_ring_offset_metric(metrics: &gpui_luma::theme::MetricTokens) -> ResolvedMetric {
+pub fn focus_ring_offset_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     let border = metrics.border_width.default;
     let focus = metrics.focus.width;
     derived_metric("border_width.default + focus.width", border + focus)
 }
 
-pub fn border_width_metric(metrics: &gpui_luma::theme::MetricTokens) -> ResolvedMetric {
+pub fn border_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     ResolvedMetric {
         value_px: metrics.border_width.default,
         source: MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
@@ -105,8 +105,8 @@ pub fn border_width_metric(metrics: &gpui_luma::theme::MetricTokens) -> Resolved
 }
 
 // Preserve the existing Shadcn inspector API while reporting shared authored paths.
-pub fn inspect_shared_metric(value: gpui_luma::theme::provenance::ResolvedMetric) -> crate::ResolvedMetric {
-    use gpui_luma::theme::provenance::MetricSource;
+pub fn inspect_shared_metric(value: xgpui_luma::theme::provenance::ResolvedMetric) -> crate::ResolvedMetric {
+    use xgpui_luma::theme::provenance::MetricSource;
     let source = match value.source {
         MetricSource::Authored { key } => crate::MetricSource::Derived { note: format!("stylesheet · {key}") },
         MetricSource::Derived { note } => crate::MetricSource::Derived { note },
@@ -121,10 +121,10 @@ pub fn inspect_shared_metric(value: gpui_luma::theme::provenance::ResolvedMetric
 
 /// Preserve token/recipe provenance when a common field is unset.
 pub(crate) fn prefer_shared_metric(
-    metric: gpui_luma::theme::provenance::ResolvedMetric,
+    metric: xgpui_luma::theme::provenance::ResolvedMetric,
     fallback: ResolvedMetric,
 ) -> ResolvedMetric {
-    if matches!(metric.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    if matches!(metric.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
         fallback
     } else {
         inspect_shared_metric(metric)

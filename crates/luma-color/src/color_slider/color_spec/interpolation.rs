@@ -1,5 +1,5 @@
 use gpui::{Hsla, Rgba};
-use gpui_luma::color::gpui_bridge;
+use xgpui_luma::color::gpui_bridge;
 
 pub fn interpolate_rgb(start: Hsla, end: Hsla, t: f32) -> Hsla {
     let start_rgba = gpui_bridge::preview_rgba(start);
@@ -52,12 +52,12 @@ pub fn interpolate_lab(start: Hsla, end: Hsla, t: f32) -> Hsla {
 /// Interpolate source colors in an explicitly selected space, before preview mapping.
 /// Alpha is straight and interpolated separately; this is a UI gradient operation.
 pub fn interpolate_source(
-    start: gpui_luma::color::ColorValue,
-    end: gpui_luma::color::ColorValue,
+    start: xgpui_luma::color::ColorValue,
+    end: xgpui_luma::color::ColorValue,
     t: f32,
     space: super::super::types::ColorInterpolation,
-) -> anyhow::Result<gpui_luma::color::ColorValue> {
-    use gpui_luma::color::ColorValue;
+) -> anyhow::Result<xgpui_luma::color::ColorValue> {
+    use xgpui_luma::color::ColorValue;
     use super::{ColorSpecification, Hsl, Lab};
     start.validate()?;
     end.validate()?;

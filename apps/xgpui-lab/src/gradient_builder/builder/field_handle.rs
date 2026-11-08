@@ -141,7 +141,7 @@ mod interaction_tests {
     #[test]
     fn dragging_endpoint_rotates_field_without_moving_center() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |view, cx| {

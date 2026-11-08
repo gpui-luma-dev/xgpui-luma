@@ -1,9 +1,9 @@
 //! App-local task-list content; completion styling is not a checkbox theme rule.
 
 use gpui::{Context, Hsla, IntoElement, StyledText, HighlightStyle, StrikethroughStyle, div, prelude::*, px};
-use gpui_luma::controls::checkbox::Checkbox;
-use gpui_luma::infra::presenter::HasPresenter;
-use gpui_luma_look_radix::{self as radix, Look, ScaleFamily};
+use xgpui_luma::controls::checkbox::Checkbox;
+use xgpui_luma::infra::presenter::HasPresenter;
+use xgpui_luma_look_radix::{self as radix, Look, ScaleFamily};
 
 #[derive(Clone)]
 pub struct TaskSamples {

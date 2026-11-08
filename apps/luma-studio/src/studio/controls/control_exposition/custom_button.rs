@@ -3,12 +3,12 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px, rgb};
-use gpui_luma::controls::button::ButtonEventExt;
-use gpui_luma::controls::button_family::default_button_family_theme;
-use gpui_luma::controls::button::{Button, ButtonEvent, ButtonTemplate, DefaultButtonTemplate, HasPresenter};
-use gpui_luma_look_shadcn::prelude::*;
-use gpui_luma_look_shadcn as shadcn;
-use gpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::button::ButtonEventExt;
+use xgpui_luma::controls::button_family::default_button_family_theme;
+use xgpui_luma::controls::button::{Button, ButtonEvent, ButtonTemplate, DefaultButtonTemplate, HasPresenter};
+use xgpui_luma_look_shadcn::prelude::*;
+use xgpui_luma_look_shadcn as shadcn;
+use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
@@ -55,7 +55,11 @@ impl CustomButtonControlExposition {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(gpui_luma::infra::icon::lucide_icon(LucideIcon::Check, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0))
+                    .child(xgpui_luma::infra::icon::lucide_icon(
+                        LucideIcon::Check,
+                        gpui::hsla(0.0, 0.0, 1.0, 1.0),
+                        16.0,
+                    ))
                     .child("Custom Layout")
                     .text_color(color)
             })
@@ -208,7 +212,7 @@ impl CustomButtonControlExposition {
                                 .flex()
                                 .items_center()
                                 .gap(px(8.0))
-                                .child(gpui_luma::infra::icon::lucide_icon(
+                                .child(xgpui_luma::infra::icon::lucide_icon(
                                     LucideIcon::Check,
                                     gpui::hsla(0.0, 0.0, 1.0, 1.0),
                                     16.0,
@@ -365,7 +369,7 @@ fn append_button_event(
 fn render_lucide_icon(icon: LucideIcon) -> AnyElement {
     div()
         .text_size(px(16.0))
-        .child(gpui_luma::infra::icon::lucide_icon(icon, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0))
+        .child(xgpui_luma::infra::icon::lucide_icon(icon, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0))
         .into_any_element()
 }
 
@@ -373,7 +377,7 @@ fn render_example_card(
     title: &'static str,
     description: &'static str,
     control: impl IntoElement,
-    chrome: gpui_luma::theme::LumaChrome,
+    chrome: xgpui_luma::theme::LumaChrome,
 ) -> AnyElement {
     div()
         .flex_1()

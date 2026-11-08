@@ -191,11 +191,11 @@ impl Render for MeshPane {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::{MeshPane, Control};
-    use gpui_luma::controls::button::ButtonEvent;
+    use xgpui_luma::controls::button::ButtonEvent;
     #[test]
     fn mounted_luma_mesh_controls_edit_the_direct_and_legacy_model() {
         let mut app = gpui::TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).unwrap());
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| MeshPane::new(crate::theme::default_look(), cx));
         let (side, point, red) = cx.update(|_, cx| {
             let page = page.read(cx);

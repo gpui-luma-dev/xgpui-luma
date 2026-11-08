@@ -2,9 +2,9 @@
 use std::sync::Arc;
 
 use gpui::{App, Div, Stateful, Window, div, prelude::*, px};
-use gpui_luma::controls::accordion::*;
-use gpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
-use gpui_luma_look_radix::{Look, ScaleFamily};
+use xgpui_luma::controls::accordion::*;
+use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma_look_radix::{Look, ScaleFamily};
 use lucide_svg_static::Icon;
 
 struct NavigationTheme {
@@ -72,7 +72,7 @@ impl AccordionTemplate for NavigationTemplate {
                             div()
                                 .debug_selector(move || selector.clone())
                                 .flex_none()
-                                .child(gpui_luma::infra::icon::lucide_icon(icon, color, 14.0)),
+                                .child(xgpui_luma::infra::icon::lucide_icon(icon, color, 14.0)),
                         )
                         .child(div().debug_selector(move || label_selector.clone()).child(label.clone()))
                         .into_any_element()
@@ -119,6 +119,6 @@ impl AccordionTemplate for NavigationTemplate {
 }
 
 pub(super) fn template(look: &Look) -> Arc<dyn AccordionTemplate> {
-    let theme = Arc::new(NavigationTheme { look: look.clone(), radix: gpui_luma_look_radix::accordion_theme(look) });
+    let theme = Arc::new(NavigationTheme { look: look.clone(), radix: xgpui_luma_look_radix::accordion_theme(look) });
     Arc::new(NavigationTemplate { look: look.clone(), inner: ThemedAccordionTemplate::new(theme) })
 }

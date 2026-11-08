@@ -1,14 +1,14 @@
-//! Look-owned popup-menu builder. Spawn synthesizes the SDK [`gpui_luma::controls::popup_menu::PopupMenu`].
+//! Look-owned popup-menu builder. Spawn synthesizes the SDK [`xgpui_luma::controls::popup_menu::PopupMenu`].
 
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
-use gpui_luma::controls::button::ControlIcon;
-use gpui_luma::controls::popup_menu::{
+use xgpui_luma::controls::button::ControlIcon;
+use xgpui_luma::controls::popup_menu::{
     PopupMenuBuilder, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplateModifier, PopupMenuTriggerModel,
     PopupMenuTriggerStyle,
 };
-use gpui_luma::infra::icon::DisclosureIcons;
-use gpui_luma::infra::menu_item::MenuItem;
-use gpui_luma::infra::presenter::{ControlPresenter, HasPresenter};
+use xgpui_luma::infra::icon::DisclosureIcons;
+use xgpui_luma::infra::menu_item::MenuItem;
+use xgpui_luma::infra::presenter::{ControlPresenter, HasPresenter};
 
 use crate::button_layout::ButtonSize;
 use crate::look::{Look, resolve_look};
@@ -25,8 +25,8 @@ enum TriggerFace {
 /// Builder in the guise of a popup menu: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct PopupMenu {
     motion_enabled: bool,
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::popup_menu::PopupMenuMotion>,
-    callbacks: gpui_luma::infra::callbacks::EventCallbacks<gpui_luma::controls::popup_menu::PopupMenuEvent>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::popup_menu::PopupMenuMotion>,
+    callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::popup_menu::PopupMenuEvent>,
 
     id: SharedString,
     look: Option<Look>,
@@ -54,7 +54,7 @@ impl PopupMenu {
     pub fn on_event<M: 'static>(
         mut self,
         cx: &gpui::Context<M>,
-        callback: impl Fn(&mut M, &gpui_luma::controls::popup_menu::PopupMenuEvent, &mut gpui::Context<M>) + 'static,
+        callback: impl Fn(&mut M, &xgpui_luma::controls::popup_menu::PopupMenuEvent, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.callbacks = self.callbacks.on_event(cx, callback);
         self
@@ -67,7 +67,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::ActionClick = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::ActionClick = event {
                 callback(owner, cx);
             }
         })
@@ -80,7 +80,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &gpui::SharedString, &gpui::SharedString, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::Select { item_id, label } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::Select { item_id, label } = event {
                 callback(owner, item_id, label, cx);
             }
         })
@@ -93,7 +93,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::OpenChanged { open } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::OpenChanged { open } = event {
                 callback(owner, *open, cx);
             }
         })
@@ -106,7 +106,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::Dismiss = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::Dismiss = event {
                 callback(owner, cx);
             }
         })
@@ -119,7 +119,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::FocusChanged { focused } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::FocusChanged { focused } = event {
                 callback(owner, *focused, cx);
             }
         })
@@ -132,7 +132,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::HoverChanged { hovered } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::HoverChanged { hovered } = event {
                 callback(owner, *hovered, cx);
             }
         })
@@ -145,7 +145,7 @@ impl PopupMenu {
         callback: impl Fn(&mut M, bool, &mut gpui::Context<M>) + 'static,
     ) -> Self {
         self.on_event(cx, move |owner, event, cx| {
-            if let gpui_luma::controls::popup_menu::PopupMenuEvent::EnabledChanged { enabled } = event {
+            if let xgpui_luma::controls::popup_menu::PopupMenuEvent::EnabledChanged { enabled } = event {
                 callback(owner, *enabled, cx);
             }
         })
@@ -178,7 +178,7 @@ impl PopupMenu {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::popup_menu::PopupMenuMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::popup_menu::PopupMenuMotion, edits motion);
     pub fn motion_enabled(mut self, enabled: bool) -> Self {
         self.motion_enabled = enabled;
         self
@@ -312,7 +312,7 @@ impl PopupMenu {
         self
     }
 
-    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<gpui_luma::controls::popup_menu::PopupMenu> {
+    pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::popup_menu::PopupMenu> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = self.resolve_look(cx);
@@ -328,7 +328,7 @@ impl PopupMenu {
 
     fn into_sdk_builder(self, look: Look) -> PopupMenuBuilder {
         let template = popup_menu_template(&look, self.variant, self.tone);
-        let mut builder = gpui_luma::controls::popup_menu::PopupMenu::new(self.id)
+        let mut builder = xgpui_luma::controls::popup_menu::PopupMenu::new(self.id)
             .stylesheet(&look.common_stylesheet())
             .motion_defaults(look.motion_defaults().popup_menu)
             .with_motion_overrides(self.motion)
@@ -376,7 +376,7 @@ impl HasPresenter<PopupMenuTriggerModel> for PopupMenu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ControlSize;
+    use xgpui_luma::theme::ControlSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {

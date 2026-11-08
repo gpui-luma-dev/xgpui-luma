@@ -5,11 +5,11 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, FontWeight, SharedString, point, px};
-use gpui_luma::controls::textfield::{
+use xgpui_luma::controls::textfield::{
     TextFieldLook, TextFieldPalette, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
     compose_textfield_look,
 };
-use gpui_luma::theme::{ControlSize, LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{ControlSize, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 use crate::look::Look;
 use crate::scale::ScaleFamily;
@@ -109,7 +109,7 @@ impl TextFieldTheme for TextFieldThemeAdapter {
         look.helper_geometry = stylesheet.shared_geometry();
         let geometry = stylesheet.textfield.resolve_geometry(
             crate::look::sdk_size_key(size),
-            gpui_luma::theme::stylesheet::TextFieldGeometry {
+            xgpui_luma::theme::stylesheet::TextFieldGeometry {
                 min_height: look.min_height,
                 padding_x: look.padding_x,
                 padding_y: look.padding_y,
@@ -280,7 +280,7 @@ mod tests {
         let mut sheet = look.common_stylesheet();
         sheet.textfield.geometry.min_height = Some(73.0);
         look.set_common_stylesheet(sheet);
-        for mode in [gpui_luma::theme::ThemeMode::Light, gpui_luma::theme::ThemeMode::Dark] {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             assert_eq!(theme.resolve_look(TextFieldState::default(), true, ControlSize::Md, &scale).min_height, 73.0);
             assert_eq!(
@@ -321,8 +321,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_textfield_stylesheet() -> gpui_luma::theme::stylesheet::TextFieldStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_textfield_stylesheet() -> xgpui_luma::theme::stylesheet::TextFieldStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     TextFieldStylesheet {
         sizes: [("1", 12.5, 18.0), ("2", 14.0, 20.0), ("3", 16.0, 22.0)]
             .into_iter()

@@ -102,7 +102,7 @@ pub enum ControlExposition {
 }
 
 impl ControlExposition {
-    pub fn spawn_all<T: 'static>(look: Arc<gpui_luma_look_shadcn::ShadcnLook>, cx: &mut Context<T>) -> Vec<Self> {
+    pub fn spawn_all<T: 'static>(look: Arc<xgpui_luma_look_shadcn::ShadcnLook>, cx: &mut Context<T>) -> Vec<Self> {
         vec![
             Self::Accordion(cx.new(|cx| AccordionControlExposition::new(cx, look.clone()))),
             Self::Button(cx.new(|cx| ButtonControlExposition::new(cx, look.clone()))),
@@ -382,7 +382,7 @@ impl ControlExposition {
         }
     }
 
-    pub fn sync_look(&self, look: Arc<gpui_luma_look_shadcn::ShadcnLook>, cx: &mut App) {
+    pub fn sync_look(&self, look: Arc<xgpui_luma_look_shadcn::ShadcnLook>, cx: &mut App) {
         match self {
             Self::Accordion(entity) => entity.update(cx, |exposition, cx| exposition.sync_look(look, cx)),
             Self::Button(entity) => entity.update(cx, |exposition, cx| exposition.sync_look(look, cx)),

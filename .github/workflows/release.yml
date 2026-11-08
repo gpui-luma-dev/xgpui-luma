@@ -2,6 +2,7 @@ name: Release Library Crates to crates.io
 
 # Publishes the five library crates, then tags the verified commit and creates a release.
 
+# Disabled: manual dispatch only; every job is also gated off below.
 on:
   workflow_dispatch:
     inputs:
@@ -26,16 +27,17 @@ env:
   PUBLISH_RELEASE: ${{ inputs.publish }}
   ALLOW_NEW_CRATES: ${{ inputs.allow_new_crates }}
   LIB_PACKAGES: >-
-    gpui-luma
-    gpui-luma-color
-    gpui-luma-look-radix
-    gpui-luma-look-shadcn
-    gpui-luma-plot
+    xgpui-luma
+    xgpui-luma-color
+    xgpui-luma-look-radix
+    xgpui-luma-look-shadcn
+    xgpui-luma-plot
 
 jobs:
   publish:
     name: Verify, publish, tag, and release
-    if: github.ref == 'refs/heads/main'
+    # Previous condition: if: github.ref == 'refs/heads/main'
+    if: ${{ false }}
     runs-on: macos-latest
     timeout-minutes: 60
 
@@ -135,19 +137,19 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          git archive --format=tar.gz --prefix="gpui-luma-${TAG}/" -o "dist/gpui-luma-${TAG}.tar.gz" "${GITHUB_SHA}"
-          shasum -a 256 "dist/gpui-luma-${TAG}.tar.gz" | tee "dist/gpui-luma-${TAG}.tar.gz.sha256"
+          git archive --format=tar.gz --prefix="xgpui-luma-${TAG}/" -o "dist/xgpui-luma-${TAG}.tar.gz" "${GITHUB_SHA}"
+          shasum -a 256 "dist/xgpui-luma-${TAG}.tar.gz" | tee "dist/xgpui-luma-${TAG}.tar.gz.sha256"
           cat > dist/manifest.json <<EOF
           {
             "version": "${{ steps.meta.outputs.workspace_version }}",
             "tag": "${TAG}",
             "commit": "${GITHUB_SHA}",
             "packages": [
-              "gpui-luma",
-              "gpui-luma-color",
-              "gpui-luma-look-radix",
-              "gpui-luma-look-shadcn",
-              "gpui-luma-plot"
+              "xgpui-luma",
+              "xgpui-luma-color",
+              "xgpui-luma-look-radix",
+              "xgpui-luma-look-shadcn",
+              "xgpui-luma-plot"
             ],
             "distribution": "crates.io"
           }
@@ -183,16 +185,16 @@ jobs:
           The five library crates are published on crates.io.
 
           \`\`\`sh
-          cargo add gpui-luma@${VERSION}
-          cargo add gpui-luma-look-shadcn@${VERSION}
-          # Or: cargo add gpui-luma-look-radix@${VERSION}
-          # Optional: cargo add gpui-luma-color@${VERSION}
-          # Optional: cargo add gpui-luma-plot@${VERSION}
+          cargo add xgpui-luma@${VERSION}
+          cargo add xgpui-luma-look-shadcn@${VERSION}
+          # Or: cargo add xgpui-luma-look-radix@${VERSION}
+          # Optional: cargo add xgpui-luma-color@${VERSION}
+          # Optional: cargo add xgpui-luma-plot@${VERSION}
           cargo add gpui-unofficial --rename gpui
           \`\`\`
 
-          Imports use \`gpui_luma\`, \`gpui_luma_look_shadcn\`,
-          \`gpui_luma_look_radix\`, \`gpui_luma_color\`, and \`gpui_luma_plot\`.
+          Imports use \`xgpui_luma\`, \`xgpui_luma_look_shadcn\`,
+          \`xgpui_luma_look_radix\`, \`xgpui_luma_color\`, and \`xgpui_luma_plot\`.
 
           Source: https://github.com/${{ github.repository }}/tree/${TAG}
           EOF
@@ -204,8 +206,8 @@ jobs:
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists; uploading assets"
             gh release upload "${TAG}" \
-              "dist/gpui-luma-${TAG}.tar.gz" \
-              "dist/gpui-luma-${TAG}.tar.gz.sha256" \
+              "dist/xgpui-luma-${TAG}.tar.gz" \
+              "dist/xgpui-luma-${TAG}.tar.gz.sha256" \
               dist/manifest.json \
               --clobber
           else
@@ -214,8 +216,8 @@ jobs:
               --title "${TAG}" \
               --notes-file dist/release-notes.md \
               --generate-notes ${flags[@]+"${flags[@]}"} \
-              "dist/gpui-luma-${TAG}.tar.gz" \
-              "dist/gpui-luma-${TAG}.tar.gz.sha256" \
+              "dist/xgpui-luma-${TAG}.tar.gz" \
+              "dist/xgpui-luma-${TAG}.tar.gz.sha256" \
               dist/manifest.json
           fi
 

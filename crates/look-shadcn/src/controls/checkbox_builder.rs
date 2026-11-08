@@ -1,17 +1,17 @@
-//! Look-owned checkbox builder. Spawn synthesizes the SDK [`gpui_luma::controls::checkbox::Checkbox`].
+//! Look-owned checkbox builder. Spawn synthesizes the SDK [`xgpui_luma::controls::checkbox::Checkbox`].
 
-use gpui_luma::controls::checkbox::{CheckboxCallbacks, CheckboxEvent};
+use xgpui_luma::controls::checkbox::{CheckboxCallbacks, CheckboxEvent};
 use gpui::{App, Context, SharedString};
-use gpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
-use gpui_luma::controls::checkbox::{CheckboxBuilder, CheckboxData};
-use gpui_luma::infra::icon::SelectionStatusIcons;
+use xgpui_luma::controls::button::{ButtonContentContext, ControlPresenter, HasPresenter};
+use xgpui_luma::controls::checkbox::{CheckboxBuilder, CheckboxData};
+use xgpui_luma::infra::icon::SelectionStatusIcons;
 use super::button::ShadcnButtonStyle;
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
 /// Builder in the guise of a checkbox: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct Checkbox {
-    motion: gpui_luma::motion::MotionOverrides<gpui_luma::controls::checkbox::CheckboxMotion>,
+    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::checkbox::CheckboxMotion>,
     callbacks: CheckboxCallbacks,
     id: SharedString,
     look: Option<ShadcnLook>,
@@ -99,7 +99,7 @@ impl Checkbox {
         }
     }
 
-    gpui_luma::forward_motion!(gpui_luma::controls::checkbox::CheckboxMotion, edits motion);
+    xgpui_luma::forward_motion!(xgpui_luma::controls::checkbox::CheckboxMotion, edits motion);
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &ShadcnLook) -> Self {
@@ -183,9 +183,9 @@ impl Checkbox {
         self
     }
 
-    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> gpui_luma::controls::checkbox::Checkbox {
+    pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::checkbox::Checkbox {
         let look = self.resolve_look(cx);
-        use gpui_luma::infra::attachments::TooltipEntityExt;
+        use xgpui_luma::infra::attachments::TooltipEntityExt;
         let theme = crate::tooltip_theme(&look);
         self.into_sdk_builder(look).spawn(cx).with_tooltip_theme(theme, cx)
     }
@@ -196,7 +196,7 @@ impl Checkbox {
 
     fn into_sdk_builder(self, look: ShadcnLook) -> CheckboxBuilder {
         let template = look.checkbox_template(self.style);
-        let mut builder = gpui_luma::controls::checkbox::new(self.id)
+        let mut builder = xgpui_luma::controls::checkbox::new(self.id)
             .motion_defaults(look.motion_defaults().checkbox)
             .with_motion_overrides(self.motion)
             .template(template)
@@ -235,7 +235,7 @@ impl HasPresenter<ButtonContentContext<CheckboxData>> for Checkbox {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::controls::button::HasPresenter;
+    use xgpui_luma::controls::button::HasPresenter;
 
     #[test]
     fn with_data_keeps_shadcn_axes() {
@@ -263,7 +263,7 @@ mod callback_tests {
     use super::*;
     use gpui::{AppContext, TestAppContext};
     struct Owner {
-        control: gpui_luma::controls::checkbox::Checkbox,
+        control: xgpui_luma::controls::checkbox::Checkbox,
         log: Vec<bool>,
     }
     #[test]

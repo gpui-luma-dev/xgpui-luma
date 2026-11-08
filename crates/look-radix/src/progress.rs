@@ -1,10 +1,10 @@
 //! Radix progress bar styling and SDK template adapter.
 use std::sync::Arc;
 use gpui::{App, BoxShadow, Div, Stateful, Window, div, point, prelude::*, px, relative};
-use gpui_luma::controls::progress::{
+use xgpui_luma::controls::progress::{
     ProgressLook, ProgressOrientation, ProgressRenderModel, ProgressTemplate, ProgressTheme,
 };
-use gpui_luma::theme::ControlSize;
+use xgpui_luma::theme::ControlSize;
 use crate::{Look, Paint, Radius, ScaleFamily, Tone};
 
 /// Radix progress bar variants.
@@ -112,7 +112,7 @@ impl ProgressTheme for ProgressThemeAdapter {
             .progress
             .resolve_geometry(
                 crate::look::sdk_size_key(size),
-                gpui_luma::theme::stylesheet::ProgressGeometry { track_height: height(size), ..Default::default() },
+                xgpui_luma::theme::stylesheet::ProgressGeometry { track_height: height(size), ..Default::default() },
             )
             .track_height;
         ProgressLook {
@@ -203,7 +203,7 @@ pub fn progress_template(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
     #[test]
     fn sizes_and_radii_match_radix_geometry() {
         for size in ProgressSize::ALL {
@@ -251,8 +251,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_progress_stylesheet() -> gpui_luma::theme::stylesheet::ProgressStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_progress_stylesheet() -> xgpui_luma::theme::stylesheet::ProgressStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ProgressStylesheet {
         sizes: [("1", 4.0), ("2", 6.0), ("3", 8.0)]
             .into_iter()

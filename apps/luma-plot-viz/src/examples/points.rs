@@ -1,14 +1,14 @@
-use gpui_luma::controls::radio_group;
-use gpui_luma::controls::radio_button;
-use gpui_luma::controls::radio_group::RadioGroupEventExt;
+use xgpui_luma::controls::radio_group;
+use xgpui_luma::controls::radio_button;
+use xgpui_luma::controls::radio_group::RadioGroupEventExt;
 use gpui::{App, Context, Entity, IntoElement, Render, Subscription, Window, div, prelude::*, px};
-use gpui_luma::{
+use xgpui_luma::{
     controls::radio_group::{RadioGroup, RadioGroupEvent, RadioGroupItem},
     controls::tooltip::TooltipPlacement,
     hstack, vstack,
 };
 use crate::theme::AppTheme;
-use gpui_luma_plot::{
+use xgpui_luma_plot::{
     AreaLayer, CartesianChartBuilder, Dataset, DatasetError, Interpolation, LineLayer, MarkerPresentation,
     MarkerVisibility, NumericScale, Sample, Series, PlotPointEvent,
 };

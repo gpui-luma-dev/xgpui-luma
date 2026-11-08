@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use gpui::{AppContext, Entity, Hsla, SharedString};
 
-use gpui_luma::controls::slider::{SliderBuilder, SliderControl, SliderInputStrategy, new as new_slider};
-use gpui_luma::infra::value::{ControlRange, value_from_input};
+use xgpui_luma::controls::slider::{SliderBuilder, SliderControl, SliderInputStrategy, new as new_slider};
+use xgpui_luma::infra::value::{ControlRange, value_from_input};
 use crate::style::Size;
 
 use super::delegates::{HueArcDelegate, LightnessArcDelegate, SaturationArcDelegate};

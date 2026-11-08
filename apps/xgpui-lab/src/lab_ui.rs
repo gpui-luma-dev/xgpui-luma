@@ -1,6 +1,6 @@
 //! Shared presentation chrome for the Color Spaces and Italy labs.
 use gpui::{prelude::*, *};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 use crate::theme::{ColorVizLookExt, TypographyExt};
 
 pub(crate) fn page(id: &'static str, look: &Look) -> Stateful<Div> {
@@ -36,10 +36,10 @@ pub(crate) fn control_row() -> Div {
 
 /// Apply the reference switch label typography to a labeled control.
 pub(crate) fn control(look: &Look, element: Div) -> Div {
-    let label = gpui_luma_look_radix::switch_theme(look).resolve(
+    let label = xgpui_luma_look_radix::switch_theme(look).resolve(
         false,
-        gpui_luma::theme::InteractionState::default(),
-        gpui_luma::theme::ControlSize::Md,
+        xgpui_luma::theme::InteractionState::default(),
+        xgpui_luma::theme::ControlSize::Md,
     );
     element
         .typography_style(label.label_typography)

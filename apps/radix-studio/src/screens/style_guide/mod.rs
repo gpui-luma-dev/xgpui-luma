@@ -34,10 +34,10 @@ mod tooltips;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, Window, div, prelude::*, px};
-use gpui_luma::controls::tabs::Tabs;
-use gpui_luma::controls::tree_view::TreeView;
-use gpui_luma::vstack;
-use gpui_luma_look_radix::{Look, ScaleFamily, SemanticRole};
+use xgpui_luma::controls::tabs::Tabs;
+use xgpui_luma::controls::tree_view::TreeView;
+use xgpui_luma::vstack;
+use xgpui_luma_look_radix::{Look, ScaleFamily, SemanticRole};
 
 use super::section::section;
 

@@ -13,11 +13,11 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_str;
 use serde::Deserialize;
 
-use gpui_luma::controls::radio_button::RadioButtonPalette;
-use gpui_luma::theme::ControlSize;
-use gpui_luma::theme::InteractionLayer;
-use gpui_luma::theme::InteractionState;
-use gpui_luma::theme::ThemeMode;
+use xgpui_luma::controls::radio_button::RadioButtonPalette;
+use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionState;
+use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::provenance::LookResolver;
@@ -199,9 +199,9 @@ pub(crate) fn radio_scale_with_stylesheet(
     stylesheet: &StylesheetConfig,
     size: ControlSize,
     scale_factor: f32,
-) -> (gpui_luma::controls::radio_button::RadioScale, gpui_luma::theme::stylesheet::ResolvedRadioGeometry) {
-    use gpui_luma::controls::radio_button::RadioScale;
-    use gpui_luma::theme::{snap_to_pixel, stylesheet::RadioGeometry};
+) -> (xgpui_luma::controls::radio_button::RadioScale, xgpui_luma::theme::stylesheet::ResolvedRadioGeometry) {
+    use xgpui_luma::controls::radio_button::RadioScale;
+    use xgpui_luma::theme::{snap_to_pixel, stylesheet::RadioGeometry};
     let mut scale = RadioScale::compute_with_stylesheet(size, ctx.metrics(), scale_factor, &stylesheet.common);
     let mut geometry = stylesheet.common.radio.inspect_geometry(
         crate::tables::metrics::helpers::control_size_key(size),
@@ -234,7 +234,7 @@ mod tests {
     use crate::resolve::resolve_color;
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     fn retro_arcade_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -514,8 +514,8 @@ pub struct RadioButtonMetricTable {
 
 pub fn resolve_radio_button_metrics(
     mode: &crate::ShadcnModeTokens,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> RadioButtonMetricTable {
     resolve_radio_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -523,8 +523,8 @@ pub fn resolve_radio_button_metrics(
 pub(crate) fn resolve_radio_button_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    theme_mode: gpui_luma::theme::ThemeMode,
-    size: gpui_luma::theme::ControlSize,
+    theme_mode: xgpui_luma::theme::ThemeMode,
+    size: xgpui_luma::theme::ControlSize,
 ) -> RadioButtonMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{
@@ -532,12 +532,12 @@ pub(crate) fn resolve_radio_button_metrics_with_stylesheet(
         radius_metric, scaffold_control_metric, spacing_control_metric,
     };
 
-    let ctx = crate::LookContext::new(mode, theme_mode, gpui_luma::theme::InteractionState::default());
+    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let (scale, geometry) = crate::controls::radio::radio_scale_with_stylesheet(&ctx, stylesheet, size, 1.0);
-    let authored = |metric: gpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
-        if matches!(metric.source, gpui_luma::theme::provenance::MetricSource::Constant { .. }) {
+    let authored = |metric: xgpui_luma::theme::provenance::ResolvedMetric, fallback: crate::ResolvedMetric| {
+        if matches!(metric.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
             fallback
         } else {
             crate::tables::metrics::helpers::inspect_shared_metric(metric)

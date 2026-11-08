@@ -1,12 +1,12 @@
 use crate::controls::button::{ButtonMetricsRule, ButtonMetricTokensRule};
 use crate::stylesheet::config::LayeredElevationRule;
 use serde::Deserialize;
-use gpui_luma::theme::InteractionLayer;
+use xgpui_luma::theme::InteractionLayer;
 use std::collections::HashMap;
-use gpui_luma::controls::button_family::{
+use xgpui_luma::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, compose_button_family_look,
 };
-use gpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -188,7 +188,7 @@ mod tests {
     use crate::catalog::CssTokenMap;
     use crate::controls::button::ButtonRadiusPreset;
     use crate::mode::ShadcnModeTokens;
-    use gpui_luma::theme::ThemeMode;
+    use xgpui_luma::theme::ThemeMode;
 
     fn retro_arcade_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -372,8 +372,8 @@ mod tests {
 }
 
 /// Native common geometry owned by this control.
-pub(crate) fn native_toggle_stylesheet() -> gpui_luma::theme::stylesheet::ToggleStylesheet {
-    use gpui_luma::theme::stylesheet::*;
+pub(crate) fn native_toggle_stylesheet() -> xgpui_luma::theme::stylesheet::ToggleStylesheet {
+    use xgpui_luma::theme::stylesheet::*;
     ToggleStylesheet {
         sizes: [("sm", 10.0, 12.0, 14.0, 36.0), ("md", 12.0, 14.0, 16.0, 40.0), ("lg", 20.0, 16.0, 18.0, 44.0)]
             .into_iter()

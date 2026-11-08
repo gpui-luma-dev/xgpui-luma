@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Window, div, prelude::*};
-use gpui_luma_look_radix::Look;
+use xgpui_luma_look_radix::Look;
 
 /// An extension's navigation and lab content, independent of the original demos.
 pub struct ExtensionPane {
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn native_color_labs_are_lazy_and_retained_when_returning_to_existing_pages() {
         let mut app = TestAppContext::single();
-        app.update(|cx| gpui_luma::init(cx).expect("initialize SDK"));
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         for (id, lab, existing) in [
             ("xgpui-color-tabs", "Italy Photo Comparison", "Conversions"),
             ("xgpui-color-tabs", "Color Spaces", "Conversions"),

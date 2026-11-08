@@ -1,7 +1,7 @@
 //! Radix split actions using the SDK's shared popup engine and independent face states.
 use std::sync::Arc;
 use gpui::SharedString;
-use gpui_luma::controls::{
+use xgpui_luma::controls::{
     popup_menu::{PopupMenuBuilder, PopupMenuTriggerStyle},
     split_button::*,
 };
@@ -24,8 +24,8 @@ pub fn split_button_template(look: &Look, variant: PopupMenuVariant, tone: Tone)
 ///
 /// ```no_run
 /// use gpui::Context;
-/// use gpui_luma::infra::menu_item::MenuItem;
-/// use gpui_luma_look_radix::{Look, PopupMenuVariant, Tone, split_button_builder};
+/// use xgpui_luma::infra::menu_item::MenuItem;
+/// use xgpui_luma_look_radix::{Look, PopupMenuVariant, Tone, split_button_builder};
 /// fn save<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     split_button_builder(look, "save", PopupMenuVariant::Solid, Tone::Accent)
 ///         .label("Save").primary_enabled(false)
@@ -52,8 +52,8 @@ pub fn split_button_builder(
 mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
-    use gpui_luma::controls::popup_menu::PopupMenuTriggerMetrics;
-    use gpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics;
+    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
     #[test]
     fn split_faces_and_menu_follow_the_bound_look() {
         let base = Look::built_in();
@@ -108,8 +108,8 @@ mod tests {
 mod interaction_tests {
     use super::*;
     use gpui::{Context, Entity, Focusable, Render, TestAppContext, Window, div, prelude::*};
-    use gpui_luma::infra::menu_item::MenuItem;
-    use gpui_luma::focus::LumaFocusScopeExt;
+    use xgpui_luma::infra::menu_item::MenuItem;
+    use xgpui_luma::focus::LumaFocusScopeExt;
     use std::{cell::RefCell, rc::Rc};
     struct Harness {
         split: Entity<SplitButton>,
@@ -127,8 +127,8 @@ mod interaction_tests {
         let capture = events.clone();
         let (view, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
-            gpui_luma::key_handling::bind_default_control_keys(cx);
-            gpui_luma::focus::bind_default_focus_keys(cx);
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
+            xgpui_luma::focus::bind_default_focus_keys(cx);
             let split = split_button_builder(&Look::built_in(), "save", PopupMenuVariant::Solid, Tone::Accent)
                 .label("Save")
                 .primary_enabled(false)

@@ -1,13 +1,13 @@
-use gpui_luma::controls::scrollbar;
-use gpui_luma::controls::control_group::ControlGroupEventExt;
-use gpui_luma::controls::button::ButtonEvent;
-use gpui_luma_plot::CartesianStyleProvider;
+use xgpui_luma::controls::scrollbar;
+use xgpui_luma::controls::control_group::ControlGroupEventExt;
+use xgpui_luma::controls::button::ButtonEvent;
+use xgpui_luma_plot::CartesianStyleProvider;
 use super::*;
 
 struct SelectorHarness {
     gallery: super::super::LineGallery,
     look: std::sync::Arc<AppTheme>,
-    scroll: gpui_luma::controls::scroll_container::ScrollContainer,
+    scroll: xgpui_luma::controls::scroll_container::ScrollContainer,
     plot: Entity<InterpolationExample>,
     bounds: std::rc::Rc<std::cell::RefCell<std::collections::HashMap<String, gpui::Bounds<gpui::Pixels>>>>,
 }
@@ -27,12 +27,12 @@ impl Render for SelectorHarness {
 
 #[gpui::test]
 fn selector_clicks_change_interpolation_on_one_unchanged_series(cx: &mut gpui::TestAppContext) {
-    use gpui_luma::controls::control_group::ControlGroupEvent;
+    use xgpui_luma::controls::control_group::ControlGroupEvent;
     let (host, cx) = cx.add_window_view(|_, cx| {
         let look = theme::default_theme();
         let gallery = super::super::examples(&look, cx).expect("gallery");
         let plot = gallery.interpolation.clone();
-        let scroll = gpui_luma::controls::scroll_container::ScrollContainer::new(
+        let scroll = xgpui_luma::controls::scroll_container::ScrollContainer::new(
             "selector-test-scroll",
             scrollbar::default_scrollbar_template(),
             cx,
@@ -60,7 +60,7 @@ fn selector_clicks_change_interpolation_on_one_unchanged_series(cx: &mut gpui::T
     let dark_axis = host
         .read_with(cx, |host, _| theme::SdkCartesianStyle::new(&host.look).resolve().axes[0].presentation.stroke.color);
     host.update(cx, |host, cx| {
-        host.look.set_mode(gpui_luma::theme::ThemeMode::Light);
+        host.look.set_mode(xgpui_luma::theme::ThemeMode::Light);
         cx.refresh_windows();
     });
     cx.run_until_parked();
@@ -68,7 +68,7 @@ fn selector_clicks_change_interpolation_on_one_unchanged_series(cx: &mut gpui::T
         .read_with(cx, |host, _| theme::SdkCartesianStyle::new(&host.look).resolve().axes[0].presentation.stroke.color);
     assert_ne!(dark_axis, light_axis);
     plot.read_with(cx, |plot, cx| {
-        assert_eq!(plot.look.mode(), gpui_luma::theme::ThemeMode::Light);
+        assert_eq!(plot.look.mode(), xgpui_luma::theme::ThemeMode::Light);
         assert_eq!(plot.interpolation, Interpolation::Monotone);
         assert_eq!(plot.selector.read(cx).selected_id(cx).as_deref(), Some("monotone"));
         assert!(plot.data.series()[0].samples()[6].y.is_nan());
@@ -87,7 +87,7 @@ fn selector_clicks_change_interpolation_on_one_unchanged_series(cx: &mut gpui::T
         });
     }
     host.update(cx, |host, cx| {
-        host.look.set_mode(gpui_luma::theme::ThemeMode::Dark);
+        host.look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         cx.refresh_windows();
     });
     cx.run_until_parked();

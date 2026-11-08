@@ -1,5 +1,5 @@
-use gpui_luma_look_shadcn::ShadcnLook;
-use gpui_luma_look_shadcn::inspect::{
+use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma_look_shadcn::inspect::{
     BadgeInspectMetrics, PagerInspectMetrics, ResizablePanelsInspectMetrics, ShadcnInspect, SplitViewInspectMetrics,
     ToolbarInspectMetrics,
 };
@@ -34,7 +34,7 @@ pub fn pager_shell_layout_section(look: &ShadcnLook, diagram_id: &str, variant_i
 }
 
 pub fn pager_button_layout_section(look: &ShadcnLook, diagram_id: &str) -> InspectLayoutSection {
-    let style = gpui_luma::controls::pager::PagerStyle::Numeric;
+    let style = xgpui_luma::controls::pager::PagerStyle::Numeric;
     pager_button_metrics_layout_section(look, diagram_id, &ShadcnInspect::new(look).inspect_pager_metrics(style))
 }
 pub fn resizable_panels_layout_section(look: &ShadcnLook, diagram_id: &str, size_id: &str) -> InspectLayoutSection {
@@ -125,7 +125,7 @@ fn pager_shell_metrics_layout_section(
     rows.push(InspectPropertyRow::new(
         "requested font family",
         metrics.font_family.value.as_str(),
-        gpui_luma_look_shadcn::inspect::format_inspect_typography_source(&metrics.font_family.source),
+        xgpui_luma_look_shadcn::inspect::format_inspect_typography_source(&metrics.font_family.source),
     ));
     rows.push(super::super::provenance::metric_row("shadow projection extent", &metrics.reserved_shadow_extent));
 
@@ -157,7 +157,7 @@ fn pager_button_metrics_layout_section(
     rows.push(InspectPropertyRow::new(
         "requested font family",
         metrics.font_family.value.as_str(),
-        gpui_luma_look_shadcn::inspect::format_inspect_typography_source(&metrics.font_family.source),
+        xgpui_luma_look_shadcn::inspect::format_inspect_typography_source(&metrics.font_family.source),
     ));
     rows.push(super::super::provenance::metric_row("shadow projection extent", &metrics.reserved_shadow_extent));
     rows.push(InspectPropertyRow::new(

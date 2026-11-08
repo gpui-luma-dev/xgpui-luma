@@ -1,6 +1,6 @@
 use super::state::{ColorFieldEvent, ColorFieldState};
 use gpui::{App, Context, FocusHandle, Focusable, KeyDownEvent, KeyUpEvent, Window};
-use gpui_luma::interaction::PointerFocusPolicy;
+use xgpui_luma::interaction::PointerFocusPolicy;
 
 impl Focusable for ColorFieldState {
     fn focus_handle(&self, cx: &App) -> FocusHandle {

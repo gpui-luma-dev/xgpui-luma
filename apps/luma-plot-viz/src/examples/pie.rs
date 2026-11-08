@@ -1,8 +1,8 @@
 mod interactive;
 use gpui::{App, IntoElement, div, prelude::*, px};
-use gpui_luma::{DockPanel, vstack};
+use xgpui_luma::{DockPanel, vstack};
 use crate::theme::AppTheme;
-use gpui_luma_plot::{Dataset, DatasetError, Sample, Series, PieChartBuilder, PieLabelPlacement};
+use xgpui_luma_plot::{Dataset, DatasetError, Sample, Series, PieChartBuilder, PieLabelPlacement};
 use crate::theme::{self, TypographyExt};
 
 const NAMES: [&str; 5] = ["Chrome", "Safari", "Firefox", "Edge", "Other"];

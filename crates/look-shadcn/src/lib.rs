@@ -34,7 +34,7 @@ pub mod tables;
 pub use catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 pub use context::{sync_color_control_theme, with_look};
 /// Look-agnostic provenance types (shared with other looks via the SDK).
-pub use gpui_luma::theme::provenance::{
+pub use xgpui_luma::theme::provenance::{
     ColorSource as LookColorSource, MetricSource as LookMetricSource, ResolvedColor as LookResolvedColor,
     ResolvedMetric as LookResolvedMetric, ResolvedTypography as LookResolvedTypography,
     TypographySource as LookTypographySource,
@@ -84,10 +84,10 @@ mod remaining_stylesheet_tests;
 mod event_callback_tests;
 
 #[cfg(all(test, feature = "test-support"))]
-gpui_luma::test_look_motion_contract!(crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap(), crate);
+xgpui_luma::test_look_motion_contract!(crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap(), crate);
 
 #[cfg(all(test, feature = "test-support"))]
-gpui_luma::test_stylesheet_motion_contract!(
+xgpui_luma::test_stylesheet_motion_contract!(
     |source: &str| {
         let stylesheet = crate::stylesheet::StylesheetConfig::parse(source).unwrap();
         crate::ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap()
