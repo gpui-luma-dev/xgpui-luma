@@ -27,7 +27,7 @@ use gpui::{
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
-    controls::textfield::{TextFieldLook, TextFieldState, TextFieldTheme},
+    controls::textfield::{TextFieldLook, TextFieldLookOverride, TextFieldState, TextFieldTheme},
     theme::{ControlSize, StandardBoxScale},
 };
 
@@ -38,10 +38,23 @@ const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
 const CARET_PAUSE: Duration = Duration::from_millis(300);
 
+/// Semantic events, named as the SDK's `TextFieldEvent` and `TextAreaEvent`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParleyTextFieldEvent {
-    Change(String),
-    Submit(String),
+    /// The text changed; line breaks are `\n`.
+    Change {
+        value: String,
+    },
+    /// Enter in a one-line field.
+    Submit {
+        value: String,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    EnabledChanged {
+        enabled: bool,
+    },
 }
 
 /// Geometry of the last painted frame, for hit testing and IME bounds.
@@ -61,6 +74,7 @@ pub struct ParleyTextField {
     font: Font,
     /// Visible lines of a text area; `None` for a one-line field.
     rows: Option<usize>,
+    enabled: bool,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
     placeholder: SharedString,
@@ -73,8 +87,7 @@ pub struct ParleyTextField {
     focused: bool,
     hovered: bool,
     dragging: bool,
-    /// Testing aid: swap the look's background and foreground for contrast.
-    inverted: bool,
+    look_override: Option<TextFieldLookOverride>,
     scroll: Pixels,
     reveal_caret: bool,
     caret_visible: bool,
@@ -150,30 +163,36 @@ fn word_at(text: &str, index: usize) -> Range<usize> {
         .map_or(0..0, |(start, segment)| start..start + segment.len())
 }
 
+// Public API mirrors the SDK text field; the lab page uses only part of it.
+#[allow(dead_code)]
 impl ParleyTextField {
-    pub fn new(
-        id: impl Into<SharedString>,
-        theme: Arc<dyn TextFieldTheme>,
-        font: Font,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        Self {
-            id: id.into(),
+    /// Start building a field, as `xgpui_luma::controls::textfield::new(id)`.
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(id: impl Into<SharedString>) -> ParleyTextFieldBuilder {
+        ParleyTextFieldBuilder::new(id)
+    }
+
+    /// The control a builder describes; `spawn` also binds its callbacks.
+    pub(crate) fn from_builder(builder: ParleyTextFieldBuilder, cx: &mut Context<Self>) -> Self {
+        let theme = builder.resolve_theme(cx);
+        let mut this = Self {
+            id: builder.id,
             theme,
-            size: ControlSize::default(),
-            font,
-            rows: None,
+            size: builder.size.control_size(),
+            font: builder.font,
+            rows: builder.rows,
+            enabled: builder.enabled,
             value: String::new(),
-            placeholder: SharedString::default(),
+            placeholder: builder.placeholder,
             preferred_x: None,
             anchor: at(0),
             caret: at(0),
             marked: None,
-            focus: cx.focus_handle().tab_stop(true),
+            focus: cx.focus_handle().tab_stop(builder.enabled),
             focused: false,
             hovered: false,
             dragging: false,
-            inverted: false,
+            look_override: builder.look_override,
             scroll: px(0.0),
             reveal_caret: false,
             caret_visible: false,
@@ -181,32 +200,82 @@ impl ParleyTextField {
             caret_task: Task::ready(()),
             geometry: None,
             layout_error: None,
+        };
+        this.value = this.normalize(&builder.value);
+        this.anchor = at(this.value.len());
+        this.caret = this.anchor;
+        this
+    }
+
+    /// Replace the text, putting the caret at its end; emits no `Change`.
+    pub fn set_value(&mut self, value: impl Into<String>, cx: &mut Context<Self>) {
+        self.value = self.normalize(&value.into());
+        self.marked = None;
+        self.geometry = None;
+        self.anchor = at(self.value.len());
+        self.set_caret(self.anchor, false, cx);
+    }
+
+    pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
+        self.placeholder = placeholder.into();
+        cx.notify();
+    }
+
+    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
+        self.size = size;
+        self.geometry = None;
+        cx.notify();
+    }
+
+    /// A disabled control takes no focus, pointer or keyboard input and draws dimmed.
+    pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        if self.enabled == enabled {
+            return;
+        }
+        self.enabled = enabled;
+        self.focus = self.focus.clone().tab_stop(enabled);
+        if !enabled {
+            self.hovered = false;
+            self.dragging = false;
+        }
+        cx.emit(ParleyTextFieldEvent::EnabledChanged { enabled });
+        cx.notify();
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    pub fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.anchor = at(0);
+        self.set_caret(at(self.value.len()), true, cx);
+    }
+
+    /// Copy the selection to the clipboard, with line breaks as `\n`.
+    pub fn copy_selection(&self, cx: &mut Context<Self>) {
+        let range = self.selected_range();
+        if !range.is_empty() {
+            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].replace(LINE_SEPARATOR, "\n")));
         }
     }
 
-    /// Make this a text area showing `rows` lines. Call before `with_value`.
-    pub fn with_rows(mut self, rows: usize) -> Self {
-        self.rows = Some(rows.max(1));
-        self.value = multi_line(&self.value);
-        self
+    pub fn cut_selection(&mut self, cx: &mut Context<Self>) {
+        let range = self.selected_range();
+        if !range.is_empty() {
+            self.copy_selection(cx);
+            self.replace(range, "", None, false, cx);
+        }
     }
 
-    pub fn with_value(mut self, value: &str) -> Self {
-        self.value = self.normalize(value);
-        self.anchor = at(self.value.len());
-        self.caret = self.anchor;
-        self
-    }
-
-    pub fn with_placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
-        self.placeholder = placeholder.into();
-        self
-    }
-
-    /// Testing aid: draw light text on the look's foreground color.
-    pub fn with_inverted_colors(mut self) -> Self {
-        self.inverted = true;
-        self
+    /// Replace the selection with the clipboard text; a field drops its line breaks.
+    pub fn paste(&mut self, cx: &mut Context<Self>) {
+        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            self.replace(self.selected_range(), &text, None, false, cx);
+        }
     }
 
     /// The text, with a text area's line breaks as `\n`.
@@ -255,15 +324,13 @@ impl ParleyTextField {
     fn look(&self, window: &Window) -> TextFieldLook {
         let scale = StandardBoxScale::compute(self.size, &self.theme.metrics(), window.scale_factor());
         let state = TextFieldState { hovered: self.hovered, ..TextFieldState::default() };
-        let mut look = self.theme.resolve_look(state, true, self.size, &scale);
+        let mut look = self.theme.resolve_look(state, self.enabled, self.size, &scale);
         let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
         look.focus_border = Some(self.theme.resolve_look(focus_state, true, self.size, &scale).border);
-        if self.inverted {
-            std::mem::swap(&mut look.background, &mut look.foreground);
-            look.placeholder = look.foreground.opacity(0.6);
-            look.caret = look.foreground;
+        match &self.look_override {
+            Some(look_override) => look_override(look),
+            None => look,
         }
-        look
     }
 
     fn font(&self, look: &TextFieldLook) -> Font {
@@ -453,7 +520,7 @@ impl ParleyTextField {
         self.geometry = None;
         self.reveal_caret = true;
         if changed {
-            cx.emit(ParleyTextFieldEvent::Change(self.value()));
+            cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         }
         self.pause_caret_blink(cx);
         cx.notify();
@@ -553,6 +620,10 @@ impl ParleyTextField {
     }
 
     fn key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.enabled {
+            cx.stop_propagation();
+            return;
+        }
         if self.marked.is_some() {
             return; // The platform IME owns keys during composition.
         }
@@ -561,25 +632,19 @@ impl ParleyTextField {
         let key = event.keystroke.key.as_str();
         let handled = match key {
             "a" if secondary => {
-                self.anchor = at(0);
-                self.set_caret(at(self.value.len()), true, cx);
+                self.select_all(cx);
                 true
             }
-            "c" | "x" if secondary => {
-                let range = self.selected_range();
-                if !range.is_empty() {
-                    let copied = self.value[range.clone()].replace(LINE_SEPARATOR, "\n");
-                    cx.write_to_clipboard(ClipboardItem::new_string(copied));
-                    if key == "x" {
-                        self.replace(range, "", None, false, cx);
-                    }
-                }
+            "c" if secondary => {
+                self.copy_selection(cx);
+                true
+            }
+            "x" if secondary => {
+                self.cut_selection(cx);
                 true
             }
             "v" if secondary => {
-                if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-                    self.replace(self.selected_range(), &text, None, false, cx);
-                }
+                self.paste(cx);
                 true
             }
             "backspace" => {
@@ -616,7 +681,7 @@ impl ParleyTextField {
                 true
             }
             "enter" => {
-                cx.emit(ParleyTextFieldEvent::Submit(self.value()));
+                cx.emit(ParleyTextFieldEvent::Submit { value: self.value() });
                 true
             }
             _ => false,
@@ -628,6 +693,10 @@ impl ParleyTextField {
     }
 
     fn mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.enabled {
+            cx.stop_propagation();
+            return;
+        }
         window.focus(&self.focus, cx);
         let Some(hit) = self.hit(event.position) else {
             return;
@@ -680,6 +749,7 @@ impl ParleyTextField {
             self.caret_epoch += 1;
             self.caret_visible = false;
         }
+        cx.emit(ParleyTextFieldEvent::FocusChanged { focused });
     }
 
     fn start_caret_blink(&mut self, cx: &mut Context<Self>) {
@@ -745,8 +815,12 @@ impl Focusable for ParleyTextField {
 
 impl Render for ParleyTextField {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.enabled && self.focus.is_focused(window) {
+            window.blur(cx);
+        }
         self.sync_focus(window, cx);
         let look = self.look(window);
+        let enabled = self.enabled;
         let focused = self.focused;
         let focus_gap = self.theme.metrics().focus.gap + look.border_width.max(0.0);
         let show_placeholder = self.value.is_empty() && !focused;
@@ -874,7 +948,8 @@ impl Render for ParleyTextField {
             .font_family(look.font_family.clone())
             .text_size(px(look.typography.size))
             .line_height(line_height)
-            .cursor_text()
+            .when(enabled, |control| control.cursor_text())
+            .when(!enabled, |control| control.cursor_not_allowed().opacity(look.disabled_opacity))
             .when_some(look.shadow.clone().filter(|shadows| !shadows.is_empty()), |control, shadows| {
                 control.shadow(shadows)
             })
@@ -887,7 +962,7 @@ impl Render for ParleyTextField {
             .p(px(focus_gap))
             .track_focus(&self.focus)
             .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                this.hovered = *hovered;
+                this.hovered = *hovered && this.enabled;
                 cx.notify();
             }))
             .on_key_down(cx.listener(Self::key_down))
@@ -1005,6 +1080,10 @@ impl EntityInputHandler for ParleyTextField {
         Some(self.value[..hit.byte_index].encode_utf16().count())
     }
 }
+
+#[path = "text_field/builder.rs"]
+mod builder;
+pub use builder::ParleyTextFieldBuilder;
 
 #[path = "text_field/page.rs"]
 pub(crate) mod page;
