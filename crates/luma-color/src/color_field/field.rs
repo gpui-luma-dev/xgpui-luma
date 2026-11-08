@@ -8,7 +8,7 @@ mod keyboard;
 mod interaction_tests;
 
 pub use state::{
-    ColorFieldEvent, ColorFieldMouseBehavior, ColorFieldMouseContext, ColorFieldMousePreset, ColorFieldRenderer,
-    ColorFieldState, FieldThumbPosition,
+    ColorFieldBackgroundPainter, ColorFieldEvent, ColorFieldMouseBehavior, ColorFieldMouseContext,
+    ColorFieldMousePreset, ColorFieldRenderer, ColorFieldState, FieldThumbPosition,
 };
 pub use view::ColorField;

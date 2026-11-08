@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "apps/xgpui-lab",
   "apps/docs-embed",
   "apps/sdk-perf",
   "crates/sdk",
@@ -45,11 +46,11 @@ gpui-luma-look-radix = { version = "1.0.1", path = "crates/look-radix" }
 gpui-luma-plot = { version = "1.0.1", path = "crates/plot" }
 luma-app-common = { path = "apps/common" }
 # Published libraries accept compatible xgpui 2.x releases; Cargo.lock pins local validation.
-gpui = { package = "xgpui", version = "2.0.0" }
+gpui = { package = "xgpui", version = "2.0.1" }
 lucide-svg-static = { package = "lucide-static-svg", version = "1.45.0" }
 gpui_platform = {
   package = "xgpui-platform",
-  version = "=2.0.0",
+  version = "=2.0.1",
   features = ["font-kit"],
 }
 image = "0.25"
@@ -120,3 +121,24 @@ opt-level = 3
 [profile.release]
 lto = "thin"
 codegen-units = 1
+
+[profile.dev.package.xgpui-lab]
+opt-level = 1
+
+[profile.dev.package.xgpui-shader]
+opt-level = 3
+
+[profile.dev.package.xgpui-apple]
+opt-level = 3
+
+[profile.dev.package.naga]
+opt-level = 3
+
+[profile.dev.package.lyon_tessellation]
+opt-level = 3
+
+[profile.dev.package.lyon_path]
+opt-level = 3
+
+[profile.dev.package.lyon_geom]
+opt-level = 3

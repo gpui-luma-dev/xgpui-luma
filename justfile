@@ -105,7 +105,7 @@ workspace-clippy *args:
 
 # Build all native app binaries without launching them.
 apps-build *args:
-    cargo build {{ run-options }} --bins -p luma-studio -p luma-radix-studio -p luma-plot-viz -p luma-neumorphic-demo -p luma-shell-detached -p luma-shell-split-titlebar -p luma-shell-vscode -p luma-shell-2026 -p luma-sdk-perf --features luma-sdk-perf/native "$@"
+    cargo build {{ run-options }} --bins -p luma-studio -p luma-radix-studio -p luma-plot-viz -p luma-neumorphic-demo -p luma-shell-detached -p luma-shell-split-titlebar -p luma-shell-vscode -p luma-shell-2026 -p luma-sdk-perf -p xgpui-lab --features luma-sdk-perf/native "$@"
 
 # --- Formatting ---
 
@@ -227,3 +227,44 @@ _wasm-bindgen-check:
 
 _control-docs-check:
     {{ python }} -B scripts/check_control_docs.py
+
+# --- XGPUI Lab ---
+
+# Run XGPUI Lab.
+app-lab *args:
+    cargo run {{ run-options }} -p xgpui-lab -- "$@"
+
+# Build the lab without launching it.
+lab-build:
+    cargo build {{ run-options }} -p xgpui-lab
+
+# Run the lab headless tests.
+lab-test:
+    cargo test --locked -p xgpui-lab --all-targets --features test-support
+
+# Lint the lab and its test targets.
+lab-clippy:
+    cargo clippy --locked -p xgpui-lab --all-targets --features test-support -- -D warnings
+
+lab-chromaticity *args:
+    cargo run {{ run-options }} -p xgpui-lab --bin chromaticity-lab -- "$@"
+
+lab-coverage-report:
+    {{ python }} apps/xgpui-lab/scripts/render_objc2_coverage.py
+
+# Explicit native GUI regressions; run only when app launches are intended.
+lab-regression-tests:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p artifacts/regression-tests
+    output=$(mktemp -d "$PWD/artifacts/regression-tests/$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+    printf 'Regression results: %s\n' "$output"
+    cargo build --locked -p xgpui-lab 2>&1 | tee "$output/build.log"
+    status=0
+    ./target/debug/xgpui-lab --media-benchmark atlas --output "$output/atlas" 2>&1 | tee "$output/atlas.log" || status=1
+    ./target/debug/xgpui-lab --gamut-benchmark texture --output "$output/gamut" 2>&1 | tee "$output/gamut.log" || status=1
+    # The video workload includes the independent native PaintSurface assertions.
+    ./target/debug/xgpui-lab --media-benchmark video --output "$output/native-surface" 2>&1 | tee "$output/native-surface.log" || status=1
+    ./target/debug/xgpui-lab --media-benchmark lifecycle --output "$output/lifecycle" 2>&1 | tee "$output/lifecycle.log" || status=1
+    printf 'Regression results: %s\n' "$output"
+    exit "$status"

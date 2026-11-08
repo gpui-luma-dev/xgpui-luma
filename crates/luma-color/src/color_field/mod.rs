@@ -20,8 +20,8 @@ pub mod wheel_models;
 
 #[allow(unused_imports)]
 pub use control::{
-    ColorFieldEvent, ColorFieldMouseBehavior, ColorFieldMouseContext, ColorFieldMousePreset, ColorFieldRenderer,
-    ColorFieldState, FieldThumbPosition,
+    ColorFieldBackgroundPainter, ColorFieldEvent, ColorFieldMouseBehavior, ColorFieldMouseContext,
+    ColorFieldMousePreset, ColorFieldRenderer, ColorFieldState, FieldThumbPosition,
 };
 #[allow(unused_imports)]
 pub use domain::{CircleDomain, FieldDomain2D, PolygonDomain, RectDomain, TriangleDomain};

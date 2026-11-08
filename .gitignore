@@ -22,3 +22,8 @@ target
 
 # Cursor (local skills/rules; not shared with contributors)
 .cursor/
+
+# Lab reports and packaged applications.
+/artifacts/
+/dist/
+__pycache__/
