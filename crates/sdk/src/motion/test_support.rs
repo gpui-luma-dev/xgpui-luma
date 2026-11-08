@@ -1,6 +1,8 @@
 // Shared by both look crates; all construction uses the headless GPUI context.
 #[doc(hidden)]
 #[macro_export]
+// Avoid rustfmt width warnings when formatting nested macro bodies.
+#[rustfmt::skip]
 macro_rules! test_look_motion_contract {
     ($make_look:expr, $api:ident) => {
         #[test]
@@ -68,6 +70,8 @@ macro_rules! test_look_motion_contract {
 /// Verify the same stylesheet/override contract through each look's public API.
 #[doc(hidden)]
 #[macro_export]
+// Avoid rustfmt width warnings when formatting nested macro bodies.
+#[rustfmt::skip]
 macro_rules! test_stylesheet_motion_contract {
     ($make_look:expr, $api:ident) => {
         #[test]

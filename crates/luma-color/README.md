@@ -6,6 +6,18 @@ Color system primitives and interactive controls for **XGPUI-Luma** ([gpui-luma.
 
 Provides domain renderers, checkerboard painting, palette calculations, and interactive color manipulation components built on the lookless Luma SDK.
 
+This crate is part of the **xgui ecosystem**, built on [xgpui](https://xgpui.dev/).
+The XGPUI-Luma crates generally release shortly after xgpui releases to track
+framework updates. Luma and xgpui have separate version numbers; use the
+compatible versions shown in the installation examples.
+
+The framework dependency is the Cargo package **`xgpui`**. In these examples,
+`gpui` is a local dependency alias for `xgpui`, so `gpui::` imports refer to xgpui.
+The `gpui-unofficial` package and packages ending in `-gpui-unofficial` are distinct
+registry packages; retain their full package names when referring to them. The
+original [gpui-luma](https://github.com/gpui-luma-dev/gpui-luma), based on
+`gpui-unofficial`, remains a separate project.
+
 ## Components
 
 * **`ColorField`**: 2D saturation/brightness or hue/saturation selection surface.
@@ -28,7 +40,7 @@ The package is named `xgpui-luma-color`; Rust imports use `xgpui_luma_color`.
 
 ## Usage
 
-Create a swatch to include in a GPUI view:
+Create a swatch to include in an xgpui view:
 
 ```rust,no_run
 use xgpui_luma::color::ColorValue;
