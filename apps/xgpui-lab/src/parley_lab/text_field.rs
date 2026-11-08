@@ -19,11 +19,11 @@ use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::{Result, anyhow};
 use gpui::{
-    AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler, EntityInputHandler,
-    EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontId, FontRun, Hsla, KeyDownEvent, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render,
-    SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div, fill, point,
-    prelude::*, px, size,
+    Div, Role, Stateful, AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler,
+    EntityInputHandler, EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontId, FontRun, Hsla, KeyDownEvent,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout,
+    Point, Render, SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div,
+    fill, point, prelude::*, px, size,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
@@ -133,6 +133,7 @@ pub struct ParleyTextField {
     options: Options,
     invalid: bool,
     validator: Option<Validator>,
+    aria_label: Option<SharedString>,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
     /// Bumped on every text change; keys the one-line width cache.
@@ -254,6 +255,7 @@ impl ParleyTextField {
             options: builder.options.clone(),
             invalid: false,
             validator: builder.validator.clone(),
+            aria_label: builder.aria_label.clone(),
             value: String::new(),
             revision: 0,
             measured: Cell::new(None),
@@ -1307,6 +1309,7 @@ impl Render for ParleyTextField {
 
         div()
             .id(self.id.clone())
+            .map(|root| self.accessible(root))
             .relative()
             .w_full()
             .p(px(focus_gap))
@@ -1334,6 +1337,21 @@ impl Render for ParleyTextField {
 }
 
 impl ParleyTextField {
+    /// Accessibility of the focused element: the SDK text field's `TextInput`
+    /// role (`MultilineTextInput` for a text area), plus the label, the current
+    /// text as the value, and the placeholder.
+    fn accessible(&self, root: Stateful<Div>) -> Stateful<Div> {
+        let role = if self.is_multiline() {
+            Role::MultilineTextInput
+        } else {
+            Role::TextInput
+        };
+        root.role(role)
+            .aria_value(self.value())
+            .when(!self.placeholder.is_empty(), |root| root.aria_placeholder(self.placeholder.clone()))
+            .when_some(self.aria_label.clone(), |root, label| root.aria_label(label))
+    }
+
     /// A one-line field: the SDK template draws the chrome (background, border,
     /// padding, focus ring, placeholder, modifiers) around an empty value, and the
     /// Parley text is laid over its text area.
@@ -1393,7 +1411,7 @@ impl ParleyTextField {
             drag_move: Box::new(|_, _, _| {}),
         };
         // As the SDK text field does, the template's root is the focused element.
-        let chrome = self.template.render(&model, handlers, window, cx).track_focus(&self.focus);
+        let chrome = self.accessible(self.template.render(&model, handlers, window, cx).track_focus(&self.focus));
         let inset = px(focus_gap + look.border_width.max(0.0) + look.padding_x);
         // The template puts a prefix icon before the text, on the left.
         let icon = if self.options.prefix_icon.is_some() {
