@@ -777,3 +777,100 @@ fn disabling_or_invalidating_keeps_the_field_size() {
     f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_invalid(true, cx)));
     assert_eq!(layout(&mut f), enabled, "invalid: same text position and outer height");
 }
+
+/// The old measurement, kept as an oracle: the extent over every character boundary.
+fn width_by_every_caret(layout: &dyn PlatformParagraphLayout, text: &str) -> Pixels {
+    let (mut left, mut right) = (px(f32::MAX), px(f32::MIN));
+    for index in text.char_indices().map(|(index, _)| index).chain([text.len()]) {
+        let caret = layout.caret_bounds(at(index)).unwrap();
+        left = left.min(caret.left());
+        right = right.max(caret.right());
+    }
+    right - left
+}
+
+#[test]
+fn line_width_from_edges_matches_every_caret() {
+    let mut f = Fixture::new("");
+    let window_system = f.visual.update(|window, _| window.text_system().clone());
+    let font_id = window_system.resolve_font(&page::font());
+    for text in ["office café", "שלום עולם", "abc אבג 123 مرحبا", "👍🏽 emoji 🇮🇹 flags", "שלום office עולם"]
+    {
+        let runs = [FontRun { len: text.len(), font_id }];
+        let width = px(2_000.0);
+        let layout = window_system.layout_paragraph(text.into(), px(14.0), &runs, width).unwrap();
+        let edges = line_width(layout.as_ref()).unwrap();
+        let every = width_by_every_caret(layout.as_ref(), text);
+        assert!((edges - every).abs() <= px(1.0), "{text:?}: edges {edges:?}, every caret {every:?}");
+    }
+}
+
+#[test]
+fn a_long_unbreakable_line_scrolls_to_its_end() {
+    // No break opportunities: the line never wraps, it overflows the field. The
+    // old code took "does not wrap" for "fits" and could not scroll to the end.
+    let text = "x".repeat(150_000);
+    let mut f = Fixture::new(&text);
+    let layout = f.geometry().layout;
+    assert!(!wrapped(layout.as_ref(), &text).unwrap(), "one row");
+    assert!(f.read(|field| field.scroll()) > px(500_000.0), "scrolled to the caret at the end");
+}
+
+#[test]
+fn width_is_measured_once_per_text_change() {
+    let mut f = Fixture::new("measure me");
+    let cached =
+        |f: &mut Fixture| f.read(|field| field.measured.get().map(|(revision, ..)| (revision, field.revision)));
+    let first = cached(&mut f).expect("measured while drawing");
+    assert_eq!(first.0, first.1, "for the current text");
+    f.draw();
+    assert_eq!(cached(&mut f), Some(first), "a redraw reuses it");
+    f.visual.simulate_input("!");
+    f.draw();
+    let after = cached(&mut f).unwrap();
+    assert!(after.1 > first.1 && after.0 == after.1, "an edit measures again: {first:?} -> {after:?}");
+}
+
+/// Manual: `cargo test --release -p xgpui-lab --features test-support --bin
+/// xgpui-lab measure_long_one_line_field -- --ignored --nocapture`.
+#[test]
+#[ignore = "manual headless performance measurement"]
+fn measure_long_one_line_field() {
+    use std::time::Instant;
+    let ms = |started: Instant| started.elapsed().as_secs_f64() * 1e3;
+    for len in [10_000usize, 100_000, 1_000_000] {
+        let text = "x".repeat(len);
+        let started = Instant::now();
+        let mut f = Fixture::new(&text);
+        let open = ms(started);
+        let started = Instant::now();
+        f.draw();
+        let warm = ms(started);
+        let started = Instant::now();
+        f.visual.simulate_input("y");
+        f.draw();
+        let typed = ms(started);
+        println!(
+            "ParleyTextField/headless {len} chars: open {open:.0} ms | warm frame {warm:.1} ms | type 1 char {typed:.0} ms"
+        );
+    }
+}
+
+#[test]
+fn an_unbreakable_word_wider_than_the_field_scrolls_both_ways() {
+    // No spaces or hyphens: nothing to break at, in either direction.
+    for text in ["abcdefghij".repeat(8), "אבגדהוזחטי".repeat(8)] {
+        let text = text.as_str();
+        let mut f = Fixture::new(text);
+        let geometry = f.geometry();
+        let extent = width_by_every_caret(geometry.layout.as_ref(), text);
+        assert!(extent > geometry.viewport.size.width, "{text}: wider than the field");
+        assert!(geometry.layout.size().width >= extent, "{text}: laid out wide enough for all of it");
+        // Both ends are reachable by scrolling.
+        f.keys("home");
+        let start = f.read(|field| field.scroll());
+        f.keys("end");
+        let end = f.read(|field| field.scroll());
+        assert_ne!(start, end, "{text}: scrolling moves between the ends");
+    }
+}

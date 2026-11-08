@@ -15,12 +15,12 @@
 //! separator, and reported as `\n`), Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
-use std::{ops::Range, sync::Arc, time::Duration};
+use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::{Result, anyhow};
 use gpui::{
     AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler, EntityInputHandler,
-    EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontRun, Hsla, KeyDownEvent, MouseButton,
+    EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontId, FontRun, Hsla, KeyDownEvent, MouseButton,
     MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render,
     SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div, fill, point,
     prelude::*, px, size,
@@ -38,8 +38,8 @@ use xgpui_luma::{
     theme::{ControlSize, StandardBoxScale},
 };
 
-/// Wrap width used only to measure text wider than the field.
-const MEASURE_WIDTH: f32 = 1_000_000.0;
+/// Bound on width doublings when measuring a one-line text.
+const MAX_MEASURE_DOUBLINGS: usize = 40;
 /// Keep this much room between the caret and the viewport edge when scrolling.
 const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
@@ -130,6 +130,11 @@ pub struct ParleyTextField {
     validator: Option<Validator>,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
+    /// Bumped on every text change; keys the one-line width cache.
+    revision: u64,
+    /// One-line content width for (revision, font, font size), measured once per
+    /// text change rather than on every frame.
+    measured: Cell<Option<(u64, FontId, Pixels, Pixels)>>,
     placeholder: SharedString,
     /// Horizontal caret position kept across Up/Down, in layout coordinates.
     preferred_x: Option<Pixels>,
@@ -241,6 +246,8 @@ impl ParleyTextField {
             invalid: false,
             validator: builder.validator.clone(),
             value: String::new(),
+            revision: 0,
+            measured: Cell::new(None),
             placeholder: builder.placeholder,
             preferred_x: None,
             anchor: at(0),
@@ -310,6 +317,7 @@ impl ParleyTextField {
     /// Replace the text, putting the caret at its end; emits no `Change`.
     pub fn set_value(&mut self, value: impl Into<String>, cx: &mut Context<Self>) {
         self.value = self.normalize(&value.into());
+        self.revision += 1;
         self.marked = None;
         self.geometry = None;
         self.recompute_invalid();
@@ -489,13 +497,46 @@ impl ParleyTextField {
         }
         let runs = runs(&self.value);
         let text: SharedString = self.value.clone().into();
-        let layout = system.layout_paragraph(text.clone(), font_size, &runs, width)?;
-        if !wrapped(layout.as_ref(), &self.value)? {
-            return Ok(layout);
+        let key = (self.revision, font_id, font_size);
+        let content = match self.measured.get() {
+            Some((revision, font, size, content)) if (revision, font, size) == key => content,
+            _ => {
+                let content = self.measure_line(&text, font_size, &runs, width, window)?;
+                self.measured.set(Some((key.0, key.1, key.2, content)));
+                content
+            }
+        };
+        // GPUI's frame cache keeps this layout while the text and width stay the same.
+        let layout_width = if content <= width {
+            width
+        } else {
+            (content + px(1.0)).ceil()
+        };
+        system.layout_paragraph(text, font_size, &runs, layout_width)
+    }
+
+    /// Width of the text on one unbroken line. Lays it out at the field width,
+    /// then at doubling widths until it no longer wraps, and measures the
+    /// line's two visual edges: a few queries, not one per character.
+    fn measure_line(
+        &self,
+        text: &SharedString,
+        font_size: Pixels,
+        runs: &[FontRun],
+        viewport: Pixels,
+        window: &Window,
+    ) -> Result<Pixels> {
+        let system = window.text_system();
+        let mut width = viewport;
+        for _ in 0..MAX_MEASURE_DOUBLINGS {
+            let layout = system.layout_paragraph(text.clone(), font_size, runs, width)?;
+            if !wrapped(layout.as_ref(), text)? {
+                return line_width(layout.as_ref());
+            }
+            // At least the next doubling; a first guess of one em per byte saves steps.
+            width = (width * 2.0).max(font_size * text.len() as f32);
         }
-        let wide = system.layout_paragraph(text.clone(), font_size, &runs, px(MEASURE_WIDTH))?;
-        let content = content_width(wide.as_ref(), &self.value)?;
-        system.layout_paragraph(text, font_size, &runs, (content + px(1.0)).ceil().max(width))
+        Err(anyhow!("text too long to lay out on one line"))
     }
 
     /// Lay out for this frame, keep the caret visible and record geometry.
@@ -646,6 +687,7 @@ impl ParleyTextField {
             .unwrap_or(inserted.len()..inserted.len());
         let changed = self.value[range.clone()] != inserted;
         self.value.replace_range(range.clone(), &inserted);
+        self.revision += 1;
         self.marked = (mark && !inserted.is_empty()).then(|| range.start..range.start + inserted.len());
         self.anchor = at(range.start + selected.start);
         self.caret = at(range.start + selected.end);
@@ -960,19 +1002,43 @@ fn wrapped(layout: &dyn PlatformParagraphLayout, text: &str) -> Result<bool> {
     Ok((start.top() - end.top()).abs() > px(0.5))
 }
 
-/// Horizontal extent of a one-line layout across every character boundary.
-fn content_width(layout: &dyn PlatformParagraphLayout, text: &str) -> Result<Pixels> {
-    let (mut left, mut right) = (px(f32::MAX), px(f32::MIN));
-    for index in text.char_indices().map(|(index, _)| index).chain([text.len()]) {
-        let caret = layout.caret_bounds(at(index))?;
-        left = left.min(caret.left());
-        right = right.max(caret.right());
+/// Horizontal extent of a one-row layout: the carets at its two visual edges,
+/// found by hit testing far outside them. Text with no break opportunity can
+/// overflow the layout's width on either side (left for right-to-left text).
+fn line_width(layout: &dyn PlatformParagraphLayout) -> Result<Pixels> {
+    let (y, far) = (layout.size().height / 2.0, px(f32::MAX / 4.0));
+    let left = layout.caret_bounds(layout.hit_test(point(-far, y))?)?;
+    let right = layout.caret_bounds(layout.hit_test(point(far, y))?)?;
+    Ok((right.right() - left.left()).abs())
+}
+
+/// Paint the glyphs near `visible`, skipping the rest of a long text. As
+/// `gpui::paint_paragraph`, which paints every glyph.
+fn paint_visible(
+    layout: &dyn PlatformParagraphLayout,
+    origin: Point<Pixels>,
+    visible: Bounds<Pixels>,
+    color_for_index: impl Fn(usize) -> Hsla,
+    window: &mut Window,
+) -> Result<()> {
+    let font_size = layout.font_size();
+    let margin = font_size * 2.0;
+    let (left, right) = (visible.left() - margin, visible.right() + margin);
+    let (top, bottom) = (visible.top() - margin, visible.bottom() + margin);
+    for run in layout.runs() {
+        for glyph in &run.glyphs {
+            let position = origin + glyph.position;
+            if position.x < left || position.x > right || position.y < top || position.y > bottom {
+                continue;
+            }
+            if glyph.is_emoji {
+                window.paint_emoji(position, run.font_id, glyph.id, font_size)?;
+            } else {
+                window.paint_glyph(position, run.font_id, glyph.id, font_size, color_for_index(glyph.index))?;
+            }
+        }
     }
-    if left > right {
-        Err(anyhow!("empty paragraph extent"))
-    } else {
-        Ok(right - left)
-    }
+    Ok(())
 }
 
 impl Focusable for ParleyTextField {
@@ -1052,7 +1118,7 @@ impl Render for ParleyTextField {
                             look.foreground
                         }
                     };
-                    if let Err(error) = gpui::paint_paragraph(layout, origin, color, window) {
+                    if let Err(error) = paint_visible(layout, origin, geometry.viewport, color, window) {
                         eprintln!("Parley text field paint: {error:#}");
                     }
                     if let Some(marked) = &marked
