@@ -6,6 +6,7 @@ mod raster;
 pub(crate) mod native;
 mod workload;
 mod line;
+pub(crate) mod text_field;
 
 use std::{rc::Rc, sync::Arc};
 use anyhow::Result;
