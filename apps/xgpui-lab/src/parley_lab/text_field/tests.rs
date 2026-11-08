@@ -624,12 +624,16 @@ fn validator_marks_the_field_invalid_and_drops_its_focus_ring() {
     let digits: Validator = Arc::new(|text: &str| text.chars().all(|ch| ch.is_ascii_digit()));
     let mut f = Fixture::with("123", move |builder| builder.validator(digits));
     assert!(!f.read(|field| field.is_invalid()));
-    let ring = |f: &mut Fixture| f.visual.update(|window, cx| f.field.read(cx).look(window).focus_border.is_some());
+    // A visible ring is any opaque ring color; an invalid field's ring is transparent.
+    let ring = |f: &mut Fixture| {
+        f.visual
+            .update(|window, cx| f.field.read(cx).look(window).focus_border.is_some_and(|ring| ring.a > 0.0))
+    };
     assert!(ring(&mut f), "a valid, enabled field has a focus ring");
     f.visual.simulate_input("x");
     f.draw();
     assert!(f.read(|field| field.is_invalid()), "typing a letter fails the validator");
-    assert!(!ring(&mut f), "as the SDK, an invalid field keeps its resting border");
+    assert!(!ring(&mut f), "an invalid field keeps its resting border and shows no ring");
     f.keys("backspace");
     assert!(!f.read(|field| field.is_invalid()));
     let field = f.field.clone();
@@ -747,4 +751,26 @@ fn tab_stop_follows_the_option_and_the_enabled_state() {
     assert!(f.read(|field| field.focus.tab_stop));
     f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(false, cx)));
     assert!(!f.read(|field| field.focus.tab_stop), "disabled fields are never tab stops");
+}
+
+#[test]
+fn disabling_or_invalidating_keeps_the_field_size() {
+    let mut f = Fixture::new("steady");
+    let field = f.field.clone();
+    let layout = |f: &mut Fixture| {
+        f.draw();
+        let viewport = f.geometry().viewport;
+        let height = f.visual.update(|window, cx| {
+            let field = f.field.read(cx);
+            let look = field.look(window);
+            look.min_height + 2.0 * (field.theme.metrics().focus.gap + look.border_width.max(0.0))
+        });
+        (viewport, height)
+    };
+    let enabled = layout(&mut f);
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(false, cx)));
+    assert_eq!(layout(&mut f), enabled, "disabled: same text position and outer height");
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_enabled(true, cx)));
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_invalid(true, cx)));
+    assert_eq!(layout(&mut f), enabled, "invalid: same text position and outer height");
 }
