@@ -73,19 +73,22 @@ pub struct TextFieldPage {
 }
 
 impl TextFieldPage {
-    pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
+    /// Fields draw with `look`, the application's active look. `invert_colors`
+    /// swaps their text and background for contrast (the standalone window).
+    pub fn new(look: Arc<Look>, invert_colors: bool, cx: &mut Context<Self>) -> Self {
         let fields: Vec<_> = FIELDS
             .iter()
             .enumerate()
             .map(|(index, (label, value, placeholder, rows))| {
                 let label = *label;
                 let builder = ParleyTextField::new(format!("parley-text-field-{index}"))
+                    .look(&look)
                     .surface()
                     .font(font())
                     .value(*value)
                     .placeholder(*placeholder)
                     .enabled(index != DISABLED)
-                    .look_override(inverted)
+                    .look_override(move |look| if invert_colors { inverted(look) } else { look })
                     .on_event(cx, move |this: &mut Self, event, cx| {
                         this.last_event = match event {
                             ParleyTextFieldEvent::Change { value } => format!("{label}: changed to {value:?}"),
@@ -123,6 +126,22 @@ impl TextFieldPage {
 impl Render for TextFieldPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
+        if !cx.has_global::<crate::parley_lab::ParleyTextSystemActive>() {
+            return div()
+                .p_4()
+                .flex()
+                .flex_col()
+                .gap_2()
+                .text_color(chrome.body_text)
+                .child(div().text_size(px(22.0)).child("Parley text field and text area"))
+                .child(
+                    "These controls edit through GPUI's paragraph API, which needs the whole \
+                     application on the Parley text system. XGPUI Lab is running on the native one.",
+                )
+                .child("Relaunch it with --text-system=parley, for example:")
+                .child(div().font_family("JetBrains Mono").child("cargo run -p xgpui-lab -- --text-system=parley"))
+                .into_any_element();
+        }
         let rows = self.fields.iter().zip(FIELDS).map(|(field, (label, _, _, _))| {
             let state = field.read(cx);
             let (anchor, caret) = state.selection();
@@ -167,5 +186,6 @@ impl Render for TextFieldPage {
             .child(self.toggle.clone())
             .children(rows)
             .child(div().text_size(px(12.0)).text_color(chrome.muted_text).child(self.last_event.clone()))
+            .into_any_element()
     }
 }

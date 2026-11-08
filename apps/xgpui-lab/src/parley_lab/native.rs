@@ -21,6 +21,7 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         Cow::Borrowed(paragraph::FONTS[1]),
     ])?;
     let name = backend.to_owned();
+    let parley_active = backend == "parley";
     let benchmark_output = output.clone();
     let report_backend = name.clone();
     application.run(move |cx| {
@@ -31,6 +32,9 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         }
         xgpui_luma::focus::bind_default_focus_keys(cx);
         xgpui_luma::key_handling::bind_default_control_keys(cx);
+        if parley_active {
+            cx.set_global(ParleyTextSystemActive);
+        }
         // Install the lab look as the ambient one, as a shell does; looks resolve from it.
         cx.set_global(crate::theme::default_look().as_ref().clone());
         cx.on_action(crate::quit);
@@ -111,7 +115,7 @@ impl NativeText {
             page.init_controls(look.clone(), cx);
             page
         });
-        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), cx));
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), true, cx));
         let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling", "Parley text field"]
             .into_iter()
             .enumerate()
