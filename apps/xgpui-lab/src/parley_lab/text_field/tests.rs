@@ -1082,3 +1082,127 @@ fn fields_and_areas_expose_text_input_accessibility() {
     assert_eq!(value.as_deref(), Some("one\ntwo"), "line breaks as \\n");
     assert_eq!((placeholder, label), (None, None), "none set");
 }
+
+impl Fixture {
+    fn type_chars(&mut self, text: &str) {
+        for ch in text.chars() {
+            self.visual.simulate_input(&ch.to_string());
+            self.draw();
+        }
+    }
+
+    fn undo(&mut self) {
+        let keys = format!("{}-z", self.secondary);
+        self.keys(&keys);
+    }
+
+    fn redo(&mut self) {
+        let keys = format!("{}-shift-z", self.secondary);
+        self.keys(&keys);
+    }
+}
+
+#[test]
+fn a_run_of_typing_is_one_undo_step_and_redo_reapplies_it() {
+    let mut f = Fixture::new("x");
+    f.type_chars("abc");
+    assert_eq!(f.value(), "xabc");
+    f.undo();
+    assert_eq!((f.value(), f.selection()), ("x".to_owned(), (1, 1)), "the whole run, caret restored");
+    f.redo();
+    assert_eq!((f.value(), f.selection()), ("xabc".to_owned(), (4, 4)));
+    f.undo();
+    f.undo();
+    assert_eq!(f.value(), "x", "nothing older to undo");
+}
+
+#[test]
+fn moving_the_caret_or_switching_between_typing_and_deleting_starts_a_new_step() {
+    let mut f = Fixture::new("");
+    f.type_chars("ab");
+    f.keys("left");
+    f.type_chars("X");
+    assert_eq!(f.value(), "aXb");
+    f.keys("backspace backspace");
+    assert_eq!(f.value(), "b", "a run of deleting");
+    f.undo();
+    assert_eq!(f.value(), "aXb", "deleting run undone in one step");
+    f.undo();
+    assert_eq!(f.value(), "ab", "typing after the caret moved");
+    f.undo();
+    assert_eq!(f.value(), "", "the first run of typing");
+}
+
+#[test]
+fn paste_cut_and_typing_over_a_selection_are_their_own_steps() {
+    let mut f = Fixture::new("hello world");
+    let (select_all, cut, paste) =
+        (format!("{}-a", f.secondary), format!("{}-x", f.secondary), format!("{}-v", f.secondary));
+    f.keys("shift-left shift-left shift-left shift-left shift-left");
+    f.keys(&cut);
+    assert_eq!(f.value(), "hello ");
+    f.keys(&paste);
+    f.keys(&paste);
+    assert_eq!(f.value(), "hello worldworld");
+    f.keys(&select_all);
+    f.type_chars("hi");
+    assert_eq!(f.value(), "hi");
+    f.undo();
+    assert_eq!((f.value(), f.selection()), ("hello worldworld".to_owned(), (0, 16)), "selection restored");
+    f.undo();
+    assert_eq!(f.value(), "hello world", "second paste");
+    f.undo();
+    f.undo();
+    assert_eq!(
+        (f.value(), f.selection()),
+        ("hello world".to_owned(), (11, 6)),
+        "before the cut, with its selection"
+    );
+}
+
+#[test]
+fn a_new_edit_clears_redo_and_set_value_clears_history() {
+    let mut f = Fixture::new("");
+    f.type_chars("one");
+    f.undo();
+    f.type_chars("two");
+    f.redo();
+    assert_eq!(f.value(), "two", "redo was cleared by the new edit");
+    let field = f.field.clone();
+    f.visual.update(|_, cx| field.update(cx, |field, cx| field.set_value("reset", cx)));
+    f.draw();
+    f.undo();
+    assert_eq!(f.value(), "reset", "set_value starts a fresh history");
+    assert!(!f.read(|field| field.can_undo() || field.can_redo()));
+}
+
+#[test]
+fn an_ime_composition_is_one_step_and_undo_waits_for_it() {
+    let mut f = Fixture::new("a");
+    let mut handler = f.handler();
+    f.visual.update(|window, cx| {
+        handler.replace_and_mark_text_in_range(None, "k", None, window, cx);
+        handler.replace_and_mark_text_in_range(None, "ka", None, window, cx);
+    });
+    f.undo();
+    assert_eq!(f.value(), "aka", "no undo during a composition");
+    f.visual.update(|window, cx| handler.replace_text_in_range(None, "か", window, cx));
+    f.draw();
+    assert_eq!(f.value(), "aか");
+    f.undo();
+    assert_eq!(f.value(), "a", "the whole composition in one step");
+}
+
+#[test]
+fn undo_reports_the_change_and_revalidates() {
+    let digits: Validator = Arc::new(|text: &str| text.chars().all(|ch| ch.is_ascii_digit()));
+    let mut f = Fixture::with("12", move |builder| builder.validator(digits).rows(3));
+    f.keys("enter");
+    f.type_chars("x");
+    assert!(f.read(|field| field.is_invalid()));
+    f.events.borrow_mut().clear();
+    f.undo();
+    assert_eq!(f.value(), "12", "Enter and the typing after it are one run");
+    assert!(!f.read(|field| field.is_invalid()), "valid again");
+    assert!(matches!(f.events.borrow().last(), Some(ParleyTextFieldEvent::Change { value }) if value == "12"));
+}
