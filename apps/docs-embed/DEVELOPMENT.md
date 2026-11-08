@@ -24,9 +24,9 @@ just docs-serve
 ```
 
 Open <http://127.0.0.1:8766/button.html>. `just docs-build` builds the runtime;
-`sh apps/docs-embed/build.sh dev` uses a faster development profile. Native-only
-linker flags must be cleared for WASM; for example, use
-`env -u RUSTFLAGS sh apps/docs-embed/build.sh` if the environment adds `-lc++`.
+`sh apps/docs-embed/build.sh dev` uses a faster development profile. The build
+script clears `RUSTFLAGS` and `CARGO_ENCODED_RUSTFLAGS` so native-only linker flags
+such as `-lc++` do not reach the WASM linker.
 
 Generated files in `apps/docs-embed/pkg/` and `docs/examples/pkg/` are ignored.
 The packager publishes only one content-versioned JavaScript/WASM pair and an
