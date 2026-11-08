@@ -532,3 +532,76 @@ fn one_line_chrome_comes_from_the_sdk_template_with_modifiers() {
     assert_eq!(viewport.right(), chrome.right() - inset);
     assert!(viewport.top() > chrome.top() && viewport.bottom() < chrome.bottom());
 }
+
+/// Layout-local caret rectangle at a byte offset, with the given side.
+fn caret_at(f: &mut Fixture, byte_index: usize, affinity: TextAffinity) -> Bounds<Pixels> {
+    f.geometry().layout.caret_bounds(ParagraphPosition { byte_index, affinity }).unwrap()
+}
+
+#[test]
+fn each_text_area_line_has_its_own_direction() {
+    let hebrew = "שלום עולם";
+    let english = "office café 👍🏽";
+    let mut f = Fixture::area(&format!("{hebrew}\n{english}"), 4);
+    let width = f.geometry().layout.size().width;
+    let second = hebrew.len() + LINE_SEPARATOR.len_utf8();
+    // Hebrew first line: right to left, starting at the right edge.
+    let (start, end) = (
+        caret_at(&mut f, 0, TextAffinity::Downstream),
+        caret_at(&mut f, hebrew.len(), TextAffinity::Upstream),
+    );
+    assert!(start.left() > end.left() && start.left() > width / 2.0, "{start:?} {end:?}");
+    // English second line: left to right, starting at the left edge, emoji last.
+    let total = second + english.len();
+    let (start, end) =
+        (caret_at(&mut f, second, TextAffinity::Downstream), caret_at(&mut f, total, TextAffinity::Upstream));
+    assert!(start.left() < end.left() && start.left() < px(2.0), "{start:?} {end:?}");
+    assert!(start.top() > caret_at(&mut f, 0, TextAffinity::Downstream).top(), "stacked below the first line");
+    let emoji = second + english.find('👍').unwrap();
+    assert!(
+        caret_at(&mut f, emoji, TextAffinity::Downstream).left()
+            > caret_at(&mut f, second + 6, TextAffinity::Downstream).left()
+    );
+}
+
+#[test]
+fn left_and_right_continue_onto_neighbouring_lines() {
+    let mut f = Fixture::area("ab\ncd", 3);
+    let top = format!("{}-up", f.secondary);
+    f.keys(&top);
+    f.keys("right right");
+    assert_eq!(f.selection().1, 2, "end of the first line");
+    f.keys("right");
+    assert_eq!(f.selection().1, 2 + LINE_SEPARATOR.len_utf8(), "on to the second line's start");
+    f.keys("left");
+    assert_eq!(f.selection().1, 2, "back to the first line's end");
+
+    // In right-to-left lines Left reads forward, so it continues downwards.
+    let mut f = Fixture::area("אב\nגד", 3);
+    f.keys(&top);
+    f.keys("left left");
+    assert_eq!(f.selection().1, "אב".len());
+    f.keys("left");
+    assert_eq!(f.selection().1, "אב".len() + LINE_SEPARATOR.len_utf8());
+    f.keys("right");
+    assert_eq!(f.selection().1, "אב".len());
+}
+
+#[test]
+fn selecting_across_line_breaks_marks_each_break() {
+    let mut f = Fixture::area("ab\n\ncd", 3);
+    let layout = f.geometry().layout;
+    let rows = |rects: &[Bounds<Pixels>]| {
+        let mut tops: Vec<_> = rects.iter().map(|rect| f32::from(rect.top()).round() as i32).collect();
+        tops.dedup();
+        tops.len()
+    };
+    let all = layout.selection_bounds(at(0), at(layout.source().len())).unwrap();
+    assert_eq!(rows(&all), 3, "text, the empty line's break and the last line: {all:?}");
+    // Within one line there is no break mark.
+    let within = layout.selection_bounds(at(0), at(1)).unwrap();
+    assert_eq!(within.len(), 1);
+    // A selection ending exactly at a line's end does not include its break.
+    let to_end = layout.selection_bounds(at(0), at(2)).unwrap();
+    assert_eq!(rows(&to_end), 1);
+}

@@ -355,16 +355,29 @@ impl ParleyTextField {
     ) -> Result<Arc<dyn PlatformParagraphLayout>> {
         let system = window.text_system();
         let font_size = px(look.typography.size);
-        let runs = if self.value.is_empty() {
-            Vec::new()
-        } else {
-            vec![FontRun { len: self.value.len(), font_id: system.resolve_font(&self.font(look)) }]
+        let font_id = system.resolve_font(&self.font(look));
+        let runs = |text: &str| {
+            if text.is_empty() {
+                Vec::new()
+            } else {
+                vec![FontRun { len: text.len(), font_id }]
+            }
         };
-        let text: SharedString = self.value.clone().into();
         let width = viewport.max(px(1.0));
+        if self.is_multiline() {
+            // Each hard line is its own paragraph, with its own base direction,
+            // wrapped at the control width.
+            let layouts = self
+                .value
+                .split(LINE_SEPARATOR)
+                .map(|line| system.layout_paragraph(line.to_owned().into(), font_size, &runs(line), width))
+                .collect::<Result<Vec<_>>>()?;
+            return Ok(Arc::new(StackedLayout::new(self.value.clone(), LINE_SEPARATOR, font_size, layouts)?));
+        }
+        let runs = runs(&self.value);
+        let text: SharedString = self.value.clone().into();
         let layout = system.layout_paragraph(text.clone(), font_size, &runs, width)?;
-        // A text area wraps at the control width; a field keeps one line.
-        if self.is_multiline() || !wrapped(layout.as_ref(), &self.value)? {
+        if !wrapped(layout.as_ref(), &self.value)? {
             return Ok(layout);
         }
         let wide = system.layout_paragraph(text.clone(), font_size, &runs, px(MEASURE_WIDTH))?;
@@ -612,14 +625,15 @@ impl ParleyTextField {
         self.set_caret(target, extend, cx);
     }
 
-    /// Base direction of the current layout: right-to-left if the logical start
-    /// is right of the logical end.
+    /// Base direction where the caret is: right-to-left if its visual line's
+    /// logical start is right of its logical end. A text area's lines each have
+    /// their own direction.
     fn is_rtl(&self) -> bool {
-        let Some(geometry) = &self.geometry else {
+        let (Some(geometry), Some(ends)) = (&self.geometry, self.line_bounds()) else {
             return false;
         };
-        let (Ok(start), Ok(end)) =
-            (geometry.layout.caret_bounds(at(0)), geometry.layout.caret_bounds(at(self.value.len())))
+        let end = ParagraphPosition { byte_index: ends.end, affinity: TextAffinity::Upstream };
+        let (Ok(start), Ok(end)) = (geometry.layout.caret_bounds(at(ends.start)), geometry.layout.caret_bounds(end))
         else {
             return false;
         };
@@ -1183,6 +1197,9 @@ impl EntityInputHandler for ParleyTextField {
 
 #[path = "text_field/builder.rs"]
 mod builder;
+#[path = "text_field/stacked.rs"]
+mod stacked;
+use stacked::StackedLayout;
 pub use builder::ParleyTextFieldBuilder;
 
 #[path = "text_field/page.rs"]
