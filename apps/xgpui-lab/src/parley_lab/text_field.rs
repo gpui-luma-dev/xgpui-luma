@@ -75,6 +75,7 @@ pub(super) struct Options {
     pub select_all_on_tab_focus: bool,
     pub propagate_home_end_to_parent: bool,
     pub max_clipboard_paste_bytes: Option<usize>,
+    pub allow_tab_character: bool,
 }
 
 impl Default for Options {
@@ -88,6 +89,7 @@ impl Default for Options {
             select_all_on_tab_focus: false,
             propagate_home_end_to_parent: false,
             max_clipboard_paste_bytes: Some(DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+            allow_tab_character: false,
         }
     }
 }
@@ -389,14 +391,16 @@ impl ParleyTextField {
     }
 
     /// Stored form of inserted text: line breaks per the control, and no other
-    /// control characters (tabs included), as the SDK's typed-text filter.
+    /// control characters, as the SDK's typed-text filter; tabs only with
+    /// `allow_tab_character`.
     fn normalize(&self, text: &str) -> String {
         let lines = if self.is_multiline() {
             multi_line(text)
         } else {
             single_line(text)
         };
-        lines.chars().filter(|ch| !ch.is_control()).collect()
+        let tabs = self.options.allow_tab_character;
+        lines.chars().filter(|ch| !ch.is_control() || (tabs && *ch == '\t')).collect()
     }
 
     /// Logical selection as (anchor, caret) positions.
@@ -807,7 +811,12 @@ impl ParleyTextField {
                 self.move_to_line_end(key == "end", modifiers.shift, cx);
                 true
             }
-            // As the SDK: Tab and Shift-Tab move focus and never insert a tab.
+            // Tab types a tab when allowed (Shift-Tab still moves focus back).
+            "tab" if self.options.allow_tab_character && !modifiers.shift => {
+                self.replace(self.selected_range(), "\t", None, false, cx);
+                true
+            }
+            // As the SDK's default: Tab and Shift-Tab move focus.
             "tab" => {
                 if modifiers.shift {
                     window.focus_prev(cx);

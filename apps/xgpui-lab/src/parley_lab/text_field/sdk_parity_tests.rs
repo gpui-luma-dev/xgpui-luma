@@ -267,3 +267,17 @@ fn tab_and_shift_tab_move_focus_between_fields() {
     let values = visual.update(|_, cx| (first.read(cx).value(), second.read(cx).value()));
     assert_eq!(values, ("first".to_owned(), "second".to_owned()), "no tab characters inserted");
 }
+
+/// SDK `editing::multiline_policy_inserts_newline`'s `allow_tab_character`
+/// policy, exposed here as a builder option.
+#[test]
+fn allow_tab_character_types_tabs_instead_of_moving_focus() {
+    let mut f = Fixture::with("ab", |builder| builder.rows(3).allow_tab_character(true));
+    f.keys("tab");
+    assert_eq!(f.value(), "ab\t");
+    assert!(f.read(|field| field.is_focused()), "focus stays in the field");
+    let paste = format!("{}-v", f.secondary);
+    f.visual.update(|_, cx| cx.write_to_clipboard(ClipboardItem::new_string("1\t2".into())));
+    f.keys(&paste);
+    assert_eq!(f.value(), "ab\t1\t2", "pasted tabs are kept too");
+}
