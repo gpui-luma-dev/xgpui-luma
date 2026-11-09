@@ -21,6 +21,7 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         Cow::Borrowed(paragraph::FONTS[1]),
     ])?;
     let name = backend.to_owned();
+    let parley_active = backend == "parley";
     let benchmark_output = output.clone();
     let report_backend = name.clone();
     application.run(move |cx| {
@@ -31,6 +32,11 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         }
         xgpui_luma::focus::bind_default_focus_keys(cx);
         xgpui_luma::key_handling::bind_default_control_keys(cx);
+        if parley_active {
+            cx.set_global(ParleyTextSystemActive);
+        }
+        // Install the lab look as the ambient one, as a shell does; looks resolve from it.
+        cx.set_global(crate::theme::default_look().as_ref().clone());
         cx.on_action(crate::quit);
         cx.bind_keys([KeyBinding::new("cmd-q", crate::Quit, None)]);
         let result = cx.open_window(
@@ -90,7 +96,8 @@ struct NativeText {
 }
 impl NativeText {
     fn new(backend: String, frames: usize, cx: &mut Context<Self>) -> Self {
-        let look = crate::theme::default_look();
+        let look =
+            Arc::new(cx.try_global::<Look>().cloned().unwrap_or_else(|| crate::theme::default_look().as_ref().clone()));
         let engine = Engine::new().expect("registered source fonts");
         let paragraph = cx.new(|cx| {
             let mut page = paragraph::ParagraphLab::new(engine, vec![], look.clone(), cx);
@@ -108,19 +115,19 @@ impl NativeText {
             page.init_controls(look.clone(), cx);
             page
         });
-        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), cx));
-        let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling", "Parley text field"]
+        // One top-level tab per text field screen; this window has no other navigation.
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), true, false, cx));
+        let screens = text_field::page::Screen::ALL.iter().map(|(_, _, label)| *label);
+        let buttons = ["Glyph atlas samples", "Editable atlas paragraph", "Virtualized scrolling"]
             .into_iter()
+            .chain(screens)
             .enumerate()
             .map(|(id, label)| {
                 radix::Button::new(format!("native-text-{id}"))
                     .look(look.as_ref())
                     .outline()
                     .label(label)
-                    .on_click(cx, move |this: &mut Self, cx| {
-                        this.active = id;
-                        cx.notify();
-                    })
+                    .on_click(cx, move |this: &mut Self, cx| this.show(id, cx))
                     .spawn(cx)
             })
             .collect();
@@ -130,11 +137,11 @@ impl NativeText {
             scroll,
             text_field,
             buttons,
-            // `--text-field` opens the Parley text field tab directly.
+            // `--text-field` opens the first text field tab directly.
             active: if frames > 0 {
                 2
             } else if std::env::args().any(|arg| arg == "--text-field") {
-                3
+                FIRST_TEXT_TAB
             } else {
                 0
             },
@@ -143,6 +150,23 @@ impl NativeText {
         }
     }
 }
+/// Index of the first text field screen tab, after the three diagnostic tabs.
+const FIRST_TEXT_TAB: usize = 3;
+
+impl NativeText {
+    /// Show tab `id`; a text field tab chooses its screen on the shared page.
+    fn show(&mut self, id: usize, cx: &mut Context<Self>) {
+        self.active = id;
+        if let Some((screen, ..)) =
+            id.checked_sub(FIRST_TEXT_TAB).and_then(|index| text_field::page::Screen::ALL.get(index))
+        {
+            let screen = *screen;
+            self.text_field.update(cx, |page, cx| page.set_screen(screen, cx));
+        }
+        cx.notify();
+    }
+}
+
 impl Render for NativeText {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let mut root = div()
@@ -159,7 +183,7 @@ impl Render for NativeText {
         match self.active {
             1 => root = root.child(div().flex_1().min_h_0().child(self.paragraph.clone())),
             2 => root = root.child(div().flex_1().min_h_0().child(self.scroll.clone())),
-            3 => root = root.child(div().flex_1().min_h_0().child(self.text_field.clone())),
+            id if id >= FIRST_TEXT_TAB => root = root.child(div().flex_1().min_h_0().child(self.text_field.clone())),
             _ => {
                 let rows = div()
                     .id("native-atlas-samples")
@@ -227,5 +251,34 @@ pub fn benchmark(backend: &str, mode: &str, output: &std::path::Path) -> Result<
             Ok(())
         }
         _ => anyhow::bail!("unknown text benchmark mode"),
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::{Engine, FIRST_TEXT_TAB, NativeText, ParleyTextSystemActive, text_field};
+    use gpui::{TestAppContext, TestDispatcher, px, size};
+
+    #[test]
+    fn each_text_field_screen_is_a_tab_of_the_window() {
+        let backend = Engine::new().unwrap().backend.clone();
+        let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+        cx.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            cx.set_global(ParleyTextSystemActive);
+        });
+        let window = cx.open_window(size(px(1100.0), px(850.0)), |_, cx| NativeText::new("parley".into(), 0, cx));
+        let screens = text_field::page::Screen::ALL;
+        let count = window.update(&mut cx, |text, _, _| text.buttons.len()).unwrap();
+        assert_eq!(count, FIRST_TEXT_TAB + screens.len(), "three diagnostic tabs, then one per screen");
+        for (index, (screen, ..)) in screens.iter().enumerate() {
+            let (active, shown) = window
+                .update(&mut cx, |text, _, cx| {
+                    text.show(FIRST_TEXT_TAB + index, cx);
+                    (text.active, text.text_field.read(cx).screen)
+                })
+                .unwrap();
+            assert_eq!((active, shown), (FIRST_TEXT_TAB + index, *screen));
+        }
     }
 }

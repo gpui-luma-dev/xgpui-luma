@@ -155,9 +155,29 @@ fn main() {
         });
         return;
     }
-    let app = gpui_platform::application().with_assets(Assets);
+    // `--text-system=parley` runs the whole lab on the Parley text system, so
+    // pages that edit through GPUI's paragraph API (the Parley Text Field) work.
+    let parley_text_system = std::env::args()
+        .any(|arg| arg == "--text-system=parley")
+        .then(|| {
+            parley_lab::application_text_system()
+                .inspect_err(|error| eprintln!("Parley text system unavailable, using the native one: {error:#}"))
+                .ok()
+        })
+        .flatten();
+    let parley = parley_text_system.is_some();
+    let app = match parley_text_system {
+        Some(text_system) => {
+            gpui::Application::with_platform_and_text_system(gpui_platform::current_platform(false), text_system)
+        }
+        None => gpui_platform::application(),
+    }
+    .with_assets(Assets);
 
     app.run(move |cx| {
+        if parley {
+            cx.set_global(parley_lab::ParleyTextSystemActive);
+        }
         cx.on_action(quit);
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("XGPUI Lab").items([MenuItem::action("Quit", Quit)])]);

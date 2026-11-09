@@ -15,34 +15,118 @@
 //! separator, and reported as `\n`), Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
-use std::{ops::Range, sync::Arc, time::Duration};
+use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
 use anyhow::{Result, anyhow};
 use gpui::{
-    App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler, EntityInputHandler, EventEmitter,
-    DispatchPhase, FocusHandle, Focusable, Font, FontRun, Hsla, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render, SharedString,
-    ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div, fill, point, prelude::*, px,
-    size,
+    Div, Role, Stateful, AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler,
+    EntityInputHandler, EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontId, FontRun, Hsla, KeyDownEvent,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout,
+    Point, Render, SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div,
+    fill, point, prelude::*, px, size,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
-    controls::textfield::{TextFieldLook, TextFieldState, TextFieldTheme},
+    controls::{
+        button::ControlIcon,
+        text::DEFAULT_MAX_CLIPBOARD_PASTE_BYTES,
+        textfield::{
+            TextFieldLook, TextFieldLookOverride, TextFieldRenderModel, TextFieldState, TextFieldTemplate,
+            TextFieldTemplateHandlers, TextFieldTheme, Validator,
+        },
+    },
     theme::{ControlSize, StandardBoxScale},
 };
 
-/// Wrap width used only to measure text wider than the field.
-const MEASURE_WIDTH: f32 = 1_000_000.0;
+/// Bound on width doublings when measuring a one-line text.
+const MAX_MEASURE_DOUBLINGS: usize = 40;
 /// Keep this much room between the caret and the viewport edge when scrolling.
 const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
 const CARET_PAUSE: Duration = Duration::from_millis(300);
+/// Drag autoscroll interval and fastest speed in lines per tick, as the SDK text area.
+const AUTOSCROLL_TICK: Duration = Duration::from_millis(33);
+const AUTOSCROLL_MAX_LINES: f32 = 6.0;
 
+/// Semantic events, named as the SDK's `TextFieldEvent` and `TextAreaEvent`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParleyTextFieldEvent {
-    Change(String),
-    Submit(String),
+    /// The text changed; line breaks are `\n`.
+    Change {
+        value: String,
+    },
+    /// Enter in a one-line field.
+    Submit {
+        value: String,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    EnabledChanged {
+        enabled: bool,
+    },
 }
+
+/// Builder options with the SDK `TextFieldBuilder`'s meanings.
+#[derive(Clone)]
+pub(super) struct Options {
+    pub prefix_icon: Option<ControlIcon>,
+    pub tab_stop: bool,
+    pub compact: bool,
+    pub full_width: bool,
+    pub clean_on_escape: bool,
+    pub select_all_on_tab_focus: bool,
+    pub propagate_home_end_to_parent: bool,
+    pub max_clipboard_paste_bytes: Option<usize>,
+    pub allow_tab_character: bool,
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Self {
+            prefix_icon: None,
+            tab_stop: true,
+            compact: false,
+            full_width: true,
+            clean_on_escape: false,
+            select_all_on_tab_focus: false,
+            propagate_home_end_to_parent: false,
+            max_clipboard_paste_bytes: Some(DEFAULT_MAX_CLIPBOARD_PASTE_BYTES),
+            allow_tab_character: false,
+        }
+    }
+}
+
+/// Truncate pasted text to `max_bytes` UTF-8 bytes on a character boundary, as the SDK does.
+fn cap_paste(text: &str, max_bytes: Option<usize>) -> &str {
+    let Some(mut end) = max_bytes.filter(|max| *max < text.len()) else {
+        return text;
+    };
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
+}
+
+/// Text and selection before an edit, for undo and redo.
+#[derive(Clone)]
+struct Snapshot {
+    value: String,
+    anchor: ParagraphPosition,
+    caret: ParagraphPosition,
+}
+
+/// Kinds of edit that join one undo step while they continue without the
+/// caret moving: a run of typing, a run of deleting, or one IME composition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum EditGroup {
+    Typing,
+    Deleting,
+    Composing,
+}
+
+/// Undo steps kept; older steps are dropped.
+const MAX_UNDO_STEPS: usize = 100;
 
 /// Geometry of the last painted frame, for hit testing and IME bounds.
 #[derive(Clone)]
@@ -52,17 +136,35 @@ struct Geometry {
     /// Window position of the layout's local origin (scroll applied).
     origin: Point<Pixels>,
     layout: Arc<dyn PlatformParagraphLayout>,
+    /// Unit of drag autoscroll.
+    line_height: Pixels,
 }
 
 pub struct ParleyTextField {
     id: SharedString,
     theme: Arc<dyn TextFieldTheme>,
+    /// Draws a one-line field's chrome; a text area still draws its own.
+    template: Arc<dyn TextFieldTemplate>,
     size: ControlSize,
     font: Font,
     /// Visible lines of a text area; `None` for a one-line field.
     rows: Option<usize>,
+    enabled: bool,
+    options: Options,
+    invalid: bool,
+    validator: Option<Validator>,
+    aria_label: Option<SharedString>,
+    undo_stack: Vec<Snapshot>,
+    redo_stack: Vec<Snapshot>,
+    /// The edit group the last edit belongs to, while it can still grow.
+    group: Option<EditGroup>,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
+    /// Bumped on every text change; keys the one-line width cache.
+    revision: u64,
+    /// One-line content width for (revision, font, font size), measured once per
+    /// text change rather than on every frame.
+    measured: Cell<Option<(u64, FontId, Pixels, Pixels)>>,
     placeholder: SharedString,
     /// Horizontal caret position kept across Up/Down, in layout coordinates.
     preferred_x: Option<Pixels>,
@@ -73,8 +175,11 @@ pub struct ParleyTextField {
     focused: bool,
     hovered: bool,
     dragging: bool,
-    /// Testing aid: swap the look's background and foreground for contrast.
-    inverted: bool,
+    /// Last pointer position of a drag, for autoscroll while it is held past an edge.
+    drag_position: Option<Point<Pixels>>,
+    autoscroll_epoch: usize,
+    autoscroll_task: Task<()>,
+    look_override: Option<TextFieldLookOverride>,
     scroll: Pixels,
     reveal_caret: bool,
     caret_visible: bool,
@@ -150,30 +255,50 @@ fn word_at(text: &str, index: usize) -> Range<usize> {
         .map_or(0..0, |(start, segment)| start..start + segment.len())
 }
 
+// Public API mirrors the SDK text field; the lab page uses only part of it.
+#[allow(dead_code)]
 impl ParleyTextField {
-    pub fn new(
-        id: impl Into<SharedString>,
-        theme: Arc<dyn TextFieldTheme>,
-        font: Font,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        Self {
-            id: id.into(),
+    /// Start building a field, as `xgpui_luma::controls::textfield::new(id)`.
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new(id: impl Into<SharedString>) -> ParleyTextFieldBuilder {
+        ParleyTextFieldBuilder::new(id)
+    }
+
+    /// The control a builder describes; `spawn` also binds its callbacks.
+    pub(crate) fn from_builder(mut builder: ParleyTextFieldBuilder, cx: &mut Context<Self>) -> Self {
+        let theme = builder.resolve_theme(cx);
+        let template = builder.take_template(cx);
+        let mut this = Self {
+            id: builder.id,
             theme,
-            size: ControlSize::default(),
-            font,
-            rows: None,
+            template,
+            size: builder.size.control_size(),
+            font: builder.font,
+            rows: builder.rows,
+            enabled: builder.enabled,
+            options: builder.options.clone(),
+            invalid: false,
+            validator: builder.validator.clone(),
+            aria_label: builder.aria_label.clone(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            group: None,
             value: String::new(),
-            placeholder: SharedString::default(),
+            revision: 0,
+            measured: Cell::new(None),
+            placeholder: builder.placeholder,
             preferred_x: None,
             anchor: at(0),
             caret: at(0),
             marked: None,
-            focus: cx.focus_handle().tab_stop(true),
+            focus: cx.focus_handle().tab_stop(builder.enabled && builder.options.tab_stop),
             focused: false,
             hovered: false,
             dragging: false,
-            inverted: false,
+            drag_position: None,
+            autoscroll_epoch: 0,
+            autoscroll_task: Task::ready(()),
+            look_override: builder.look_override,
             scroll: px(0.0),
             reveal_caret: false,
             caret_visible: false,
@@ -181,32 +306,132 @@ impl ParleyTextField {
             caret_task: Task::ready(()),
             geometry: None,
             layout_error: None,
+        };
+        this.value = this.normalize(&builder.value);
+        this.anchor = at(this.value.len());
+        this.caret = this.anchor;
+        this.recompute_invalid();
+        this
+    }
+
+    /// The validator's verdict on the current text, if there is a validator.
+    fn recompute_invalid(&mut self) {
+        if let Some(validator) = &self.validator {
+            self.invalid = !validator(&self.value());
         }
     }
 
-    /// Make this a text area showing `rows` lines. Call before `with_value`.
-    pub fn with_rows(mut self, rows: usize) -> Self {
-        self.rows = Some(rows.max(1));
-        self.value = multi_line(&self.value);
-        self
+    /// Mark the text invalid (or valid) until the validator next runs.
+    pub fn set_invalid(&mut self, invalid: bool, cx: &mut Context<Self>) {
+        if self.invalid != invalid {
+            self.invalid = invalid;
+            cx.notify();
+        }
     }
 
-    pub fn with_value(mut self, value: &str) -> Self {
-        self.value = self.normalize(value);
+    pub fn is_invalid(&self) -> bool {
+        self.invalid
+    }
+
+    pub fn set_validator(&mut self, validator: Option<Validator>, cx: &mut Context<Self>) {
+        self.validator = validator;
+        self.recompute_invalid();
+        cx.notify();
+    }
+
+    pub fn set_tab_stop(&mut self, tab_stop: bool, cx: &mut Context<Self>) {
+        self.options.tab_stop = tab_stop;
+        self.focus = self.focus.clone().tab_stop(self.enabled && tab_stop);
+        cx.notify();
+    }
+
+    pub fn set_clean_on_escape(&mut self, clean_on_escape: bool, cx: &mut Context<Self>) {
+        self.options.clean_on_escape = clean_on_escape;
+        cx.notify();
+    }
+
+    pub fn set_max_clipboard_paste_bytes(&mut self, max_bytes: Option<usize>, cx: &mut Context<Self>) {
+        self.options.max_clipboard_paste_bytes = max_bytes;
+        cx.notify();
+    }
+
+    /// Replace the text, putting the caret at its end; emits no `Change`.
+    /// Replaces the text and clears the undo history.
+    pub fn set_value(&mut self, value: impl Into<String>, cx: &mut Context<Self>) {
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+        self.group = None;
+        self.value = self.normalize(&value.into());
+        self.revision += 1;
+        self.marked = None;
+        self.geometry = None;
+        self.recompute_invalid();
         self.anchor = at(self.value.len());
-        self.caret = self.anchor;
-        self
+        self.set_caret(self.anchor, false, cx);
     }
 
-    pub fn with_placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
+    pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.placeholder = placeholder.into();
-        self
+        cx.notify();
     }
 
-    /// Testing aid: draw light text on the look's foreground color.
-    pub fn with_inverted_colors(mut self) -> Self {
-        self.inverted = true;
-        self
+    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
+        self.size = size;
+        self.geometry = None;
+        cx.notify();
+    }
+
+    /// A disabled control takes no focus, pointer or keyboard input and draws dimmed.
+    pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        if self.enabled == enabled {
+            return;
+        }
+        self.enabled = enabled;
+        self.focus = self.focus.clone().tab_stop(enabled && self.options.tab_stop);
+        if !enabled {
+            self.hovered = false;
+            self.dragging = false;
+        }
+        cx.emit(ParleyTextFieldEvent::EnabledChanged { enabled });
+        cx.notify();
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    pub fn select_all(&mut self, cx: &mut Context<Self>) {
+        self.anchor = at(0);
+        self.set_caret(at(self.value.len()), true, cx);
+    }
+
+    /// Copy the selection to the clipboard, with line breaks as `\n`.
+    pub fn copy_selection(&self, cx: &mut Context<Self>) {
+        let range = self.selected_range();
+        if !range.is_empty() {
+            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].replace(LINE_SEPARATOR, "\n")));
+        }
+    }
+
+    pub fn cut_selection(&mut self, cx: &mut Context<Self>) {
+        let range = self.selected_range();
+        if !range.is_empty() {
+            self.copy_selection(cx);
+            self.replace(range, "", None, false, cx);
+        }
+    }
+
+    /// Replace the selection with the clipboard text, capped at
+    /// `max_clipboard_paste_bytes`; a field drops its line breaks.
+    pub fn paste(&mut self, cx: &mut Context<Self>) {
+        if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
+            let text = cap_paste(&text, self.options.max_clipboard_paste_bytes).to_owned();
+            self.replace(self.selected_range(), &text, None, false, cx);
+        }
     }
 
     /// The text, with a text area's line breaks as `\n`.
@@ -218,12 +443,17 @@ impl ParleyTextField {
         self.rows.is_some()
     }
 
+    /// Stored form of inserted text: line breaks per the control, and no other
+    /// control characters, as the SDK's typed-text filter; tabs only with
+    /// `allow_tab_character`.
     fn normalize(&self, text: &str) -> String {
-        if self.is_multiline() {
+        let lines = if self.is_multiline() {
             multi_line(text)
         } else {
             single_line(text)
-        }
+        };
+        let tabs = self.options.allow_tab_character;
+        lines.chars().filter(|ch| !ch.is_control() || (tabs && *ch == '\t')).collect()
     }
 
     /// Logical selection as (anchor, caret) positions.
@@ -254,16 +484,26 @@ impl ParleyTextField {
 
     fn look(&self, window: &Window) -> TextFieldLook {
         let scale = StandardBoxScale::compute(self.size, &self.theme.metrics(), window.scale_factor());
-        let state = TextFieldState { hovered: self.hovered, ..TextFieldState::default() };
-        let mut look = self.theme.resolve_look(state, true, self.size, &scale);
-        let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
-        look.focus_border = Some(self.theme.resolve_look(focus_state, true, self.size, &scale).border);
-        if self.inverted {
-            std::mem::swap(&mut look.background, &mut look.foreground);
-            look.placeholder = look.foreground.opacity(0.6);
-            look.caret = look.foreground;
+        let state = TextFieldState { hovered: self.hovered, invalid: self.invalid, ..TextFieldState::default() };
+        let mut look = self.theme.resolve_look(state, self.enabled, self.size, &scale);
+        if self.options.compact {
+            look.padding_y = look.helper_geometry.compact_textfield_padding_y;
+            look.min_height = look.helper_geometry.compact_textfield_height;
         }
-        look
+        // An invalid or disabled field keeps its resting border and shows no focus
+        // ring, but the ring's room stays reserved (a transparent ring), so the
+        // field does not change size with its state. The SDK text field leaves the
+        // ring out instead, which shrinks the field when disabled or invalid.
+        look.focus_border = Some(if self.enabled && !self.invalid {
+            let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
+            self.theme.resolve_look(focus_state, true, self.size, &scale).border
+        } else {
+            gpui::transparent_black()
+        });
+        match &self.look_override {
+            Some(look_override) => look_override(look),
+            None => look,
+        }
     }
 
     fn font(&self, look: &TextFieldLook) -> Font {
@@ -281,21 +521,67 @@ impl ParleyTextField {
     ) -> Result<Arc<dyn PlatformParagraphLayout>> {
         let system = window.text_system();
         let font_size = px(look.typography.size);
-        let runs = if self.value.is_empty() {
-            Vec::new()
-        } else {
-            vec![FontRun { len: self.value.len(), font_id: system.resolve_font(&self.font(look)) }]
+        let font_id = system.resolve_font(&self.font(look));
+        let runs = |text: &str| {
+            if text.is_empty() {
+                Vec::new()
+            } else {
+                vec![FontRun { len: text.len(), font_id }]
+            }
         };
-        let text: SharedString = self.value.clone().into();
         let width = viewport.max(px(1.0));
-        let layout = system.layout_paragraph(text.clone(), font_size, &runs, width)?;
-        // A text area wraps at the control width; a field keeps one line.
-        if self.is_multiline() || !wrapped(layout.as_ref(), &self.value)? {
-            return Ok(layout);
+        if self.is_multiline() {
+            // Each hard line is its own paragraph, with its own base direction,
+            // wrapped at the control width.
+            let layouts = self
+                .value
+                .split(LINE_SEPARATOR)
+                .map(|line| system.layout_paragraph(line.to_owned().into(), font_size, &runs(line), width))
+                .collect::<Result<Vec<_>>>()?;
+            return Ok(Arc::new(StackedLayout::new(self.value.clone(), LINE_SEPARATOR, font_size, layouts)?));
         }
-        let wide = system.layout_paragraph(text.clone(), font_size, &runs, px(MEASURE_WIDTH))?;
-        let content = content_width(wide.as_ref(), &self.value)?;
-        system.layout_paragraph(text, font_size, &runs, (content + px(1.0)).ceil().max(width))
+        let runs = runs(&self.value);
+        let text: SharedString = self.value.clone().into();
+        let key = (self.revision, font_id, font_size);
+        let content = match self.measured.get() {
+            Some((revision, font, size, content)) if (revision, font, size) == key => content,
+            _ => {
+                let content = self.measure_line(&text, font_size, &runs, width, window)?;
+                self.measured.set(Some((key.0, key.1, key.2, content)));
+                content
+            }
+        };
+        // GPUI's frame cache keeps this layout while the text and width stay the same.
+        let layout_width = if content <= width {
+            width
+        } else {
+            (content + px(1.0)).ceil()
+        };
+        system.layout_paragraph(text, font_size, &runs, layout_width)
+    }
+
+    /// Width of the text on one unbroken line. Lays it out at the field width,
+    /// then at doubling widths until it no longer wraps, and measures the
+    /// line's two visual edges: a few queries, not one per character.
+    fn measure_line(
+        &self,
+        text: &SharedString,
+        font_size: Pixels,
+        runs: &[FontRun],
+        viewport: Pixels,
+        window: &Window,
+    ) -> Result<Pixels> {
+        let system = window.text_system();
+        let mut width = viewport;
+        for _ in 0..MAX_MEASURE_DOUBLINGS {
+            let layout = system.layout_paragraph(text.clone(), font_size, runs, width)?;
+            if !wrapped(layout.as_ref(), text)? {
+                return line_width(layout.as_ref());
+            }
+            // At least the next doubling; a first guess of one em per byte saves steps.
+            width = (width * 2.0).max(font_size * text.len() as f32);
+        }
+        Err(anyhow!("text too long to lay out on one line"))
     }
 
     /// Lay out for this frame, keep the caret visible and record geometry.
@@ -347,36 +633,137 @@ impl ParleyTextField {
         } else {
             point(viewport.left() - self.scroll, viewport.top() + (viewport.size.height - layout.size().height) / 2.0)
         };
-        let geometry = Geometry { viewport, origin, layout };
+        let geometry = Geometry { viewport, origin, layout, line_height: px(look.typography.line_height) };
         self.geometry = Some(geometry.clone());
         Some(geometry)
     }
 
     fn hit(&self, position: Point<Pixels>) -> Option<ParagraphPosition> {
+        self.hit_scrolled(position, px(0.0))
+    }
+
+    /// Hit test as if the content had scrolled `delta` further than when it was
+    /// last painted (along the scroll axis), for autoscroll between frames.
+    fn hit_scrolled(&self, position: Point<Pixels>, delta: Pixels) -> Option<ParagraphPosition> {
         let geometry = self.geometry.as_ref()?;
         if geometry.layout.source() != self.value {
             return None;
         }
+        let mut origin = geometry.origin;
+        if self.is_multiline() {
+            origin.y -= delta;
+        } else {
+            origin.x -= delta;
+        }
         let height = geometry.layout.size().height;
         let y = if self.is_multiline() {
             // Above the text is its first line, below it its last.
-            (position.y - geometry.origin.y).clamp(px(0.0), (height - px(1.0)).max(px(0.0)))
+            (position.y - origin.y).clamp(px(0.0), (height - px(1.0)).max(px(0.0)))
         } else {
             // One line: hit test on its vertical center wherever the pointer is.
             height / 2.0
         };
-        geometry.layout.hit_test(point(position.x - geometry.origin.x, y)).ok()
+        geometry.layout.hit_test(point(position.x - origin.x, y)).ok()
+    }
+
+    /// A drag position held inside the visible text, as the SDK's selection hit
+    /// position: past an edge, the selection reaches the text at that edge and
+    /// autoscroll brings more into view.
+    fn clamp_to_viewport(&self, position: Point<Pixels>) -> Point<Pixels> {
+        let Some(geometry) = &self.geometry else {
+            return position;
+        };
+        let viewport = geometry.viewport;
+        point(
+            position.x.clamp(viewport.left(), (viewport.right() - px(1.0)).max(viewport.left())),
+            position.y.clamp(viewport.top(), (viewport.bottom() - px(1.0)).max(viewport.top())),
+        )
+    }
+
+    /// Scroll per autoscroll tick for a pointer past an edge along the scroll
+    /// axis, as the SDK text area: one line per tick, up to six the further out
+    /// the pointer is; zero inside the text or when nothing can scroll.
+    fn autoscroll_delta(&self, position: Point<Pixels>) -> Pixels {
+        let Some(geometry) = &self.geometry else {
+            return px(0.0);
+        };
+        let (viewport, size) = (geometry.viewport, geometry.layout.size());
+        let (at, start, end, content, visible) = if self.is_multiline() {
+            (position.y, viewport.top(), viewport.bottom(), size.height, viewport.size.height)
+        } else {
+            (position.x, viewport.left(), viewport.right(), size.width, viewport.size.width)
+        };
+        if content - visible <= px(0.5) {
+            return px(0.0);
+        }
+        let overflow = if at < start {
+            at - start
+        } else if at > end {
+            at - end
+        } else {
+            return px(0.0);
+        };
+        let unit = geometry.line_height.max(px(1.0));
+        let lines = (f32::from(overflow.abs()) / f32::from(unit)).clamp(1.0, AUTOSCROLL_MAX_LINES);
+        unit * lines * f32::from(overflow).signum()
+    }
+
+    fn schedule_autoscroll(&mut self, cx: &mut Context<Self>) {
+        self.autoscroll_epoch += 1;
+        let epoch = self.autoscroll_epoch;
+        self.autoscroll_task = cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(AUTOSCROLL_TICK).await;
+            if let Some(this) = this.upgrade() {
+                this.update(cx, |this, cx| this.autoscroll_tick(epoch, cx));
+            }
+        });
+    }
+
+    fn autoscroll_tick(&mut self, epoch: usize, cx: &mut Context<Self>) {
+        if epoch != self.autoscroll_epoch || !self.dragging {
+            return;
+        }
+        let Some(position) = self.drag_position else {
+            return;
+        };
+        let delta = self.autoscroll_delta(position);
+        if delta == px(0.0) {
+            return;
+        }
+        // The next frame clamps the offset to the content.
+        self.scroll += delta;
+        if let Some(hit) = self.hit_scrolled(self.clamp_to_viewport(position), delta) {
+            self.caret = hit;
+            self.preferred_x = None;
+        }
+        self.pause_caret_blink(cx);
+        cx.notify();
+        self.schedule_autoscroll(cx);
     }
 
     /// Logical ends of the visual line holding the caret.
+    ///
+    /// A row is a contiguous logical range, but with mixed directions its visual
+    /// edges need not be its logical ends (in `abc אבג` the right edge is inside
+    /// the text), so the ends are found by binary search over the character
+    /// boundaries for the first and last caret on the row.
     fn line_bounds(&self) -> Option<Range<usize>> {
         let geometry = self.geometry.as_ref()?;
         let layout = &geometry.layout;
-        let caret = layout.caret_bounds(self.caret).ok()?;
-        let y = caret.center().y;
-        let left = layout.hit_test(point(px(-1.0), y)).ok()?.byte_index;
-        let right = layout.hit_test(point(layout.size().width + px(1.0), y)).ok()?.byte_index;
-        Some(left.min(right)..left.max(right))
+        let row = layout.caret_bounds(self.caret).ok()?.center().y;
+        let boundaries: Vec<usize> =
+            self.value.char_indices().map(|(index, _)| index).chain([self.value.len()]).collect();
+        let row_of = |byte_index: usize, affinity| {
+            layout
+                .caret_bounds(ParagraphPosition { byte_index, affinity })
+                .map_or(px(f32::MAX), |caret| caret.center().y)
+        };
+        // Rows hold increasing logical ranges, so a caret's row rises with its index.
+        let first = boundaries.partition_point(|index| row_of(*index, TextAffinity::Downstream) < row - px(0.5));
+        let after = boundaries.partition_point(|index| row_of(*index, TextAffinity::Upstream) <= row + px(0.5));
+        let last = boundaries.len() - 1;
+        let start = first.min(last);
+        Some(boundaries[start]..boundaries[after.saturating_sub(1).clamp(start, last)])
     }
 
     /// Move one visual line up or down, keeping the horizontal position.
@@ -418,6 +805,7 @@ impl ParleyTextField {
     }
 
     fn set_caret(&mut self, caret: ParagraphPosition, extend: bool, cx: &mut Context<Self>) {
+        self.group = None; // Moving the caret ends a run of typing or deleting.
         self.caret = caret;
         if !extend {
             self.anchor = caret;
@@ -445,7 +833,27 @@ impl ParleyTextField {
             })
             .unwrap_or(inserted.len()..inserted.len());
         let changed = self.value[range.clone()] != inserted;
+        let group = if mark || self.marked.is_some() {
+            Some(EditGroup::Composing)
+        } else if inserted.is_empty() {
+            Some(EditGroup::Deleting)
+        } else if inserted.graphemes(true).count() == 1 {
+            Some(EditGroup::Typing)
+        } else {
+            None // Paste, multi-character input: a step of its own.
+        };
+        if changed {
+            // Typing over a selection starts a new step, then continues it.
+            let continues =
+                group.is_some() && group == self.group && (group != Some(EditGroup::Typing) || range.is_empty());
+            if !continues {
+                self.push_undo();
+            }
+            self.redo_stack.clear();
+        }
+        self.group = group;
         self.value.replace_range(range.clone(), &inserted);
+        self.revision += 1;
         self.marked = (mark && !inserted.is_empty()).then(|| range.start..range.start + inserted.len());
         self.anchor = at(range.start + selected.start);
         self.caret = at(range.start + selected.end);
@@ -453,8 +861,63 @@ impl ParleyTextField {
         self.geometry = None;
         self.reveal_caret = true;
         if changed {
-            cx.emit(ParleyTextFieldEvent::Change(self.value()));
+            self.recompute_invalid();
+            cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         }
+        self.pause_caret_blink(cx);
+        cx.notify();
+    }
+
+    fn snapshot(&self) -> Snapshot {
+        Snapshot { value: self.value.clone(), anchor: self.anchor, caret: self.caret }
+    }
+
+    fn push_undo(&mut self) {
+        self.undo_stack.push(self.snapshot());
+        if self.undo_stack.len() > MAX_UNDO_STEPS {
+            self.undo_stack.remove(0);
+        }
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
+
+    /// Restore the text and selection from before the last edit step.
+    pub fn undo(&mut self, cx: &mut Context<Self>) {
+        if self.marked.is_none()
+            && let Some(snapshot) = self.undo_stack.pop()
+        {
+            self.redo_stack.push(self.snapshot());
+            self.restore(snapshot, cx);
+        }
+    }
+
+    /// Reapply the last undone edit step.
+    pub fn redo(&mut self, cx: &mut Context<Self>) {
+        if self.marked.is_none()
+            && let Some(snapshot) = self.redo_stack.pop()
+        {
+            self.undo_stack.push(self.snapshot());
+            self.restore(snapshot, cx);
+        }
+    }
+
+    fn restore(&mut self, snapshot: Snapshot, cx: &mut Context<Self>) {
+        self.value = snapshot.value;
+        self.anchor = snapshot.anchor;
+        self.caret = snapshot.caret;
+        self.group = None;
+        self.marked = None;
+        self.revision += 1;
+        self.geometry = None;
+        self.reveal_caret = true;
+        self.recompute_invalid();
+        cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         self.pause_caret_blink(cx);
         cx.notify();
     }
@@ -538,14 +1001,15 @@ impl ParleyTextField {
         self.set_caret(target, extend, cx);
     }
 
-    /// Base direction of the current layout: right-to-left if the logical start
-    /// is right of the logical end.
+    /// Base direction where the caret is: right-to-left if its visual line's
+    /// logical start is right of its logical end. A text area's lines each have
+    /// their own direction.
     fn is_rtl(&self) -> bool {
-        let Some(geometry) = &self.geometry else {
+        let (Some(geometry), Some(ends)) = (&self.geometry, self.line_bounds()) else {
             return false;
         };
-        let (Ok(start), Ok(end)) =
-            (geometry.layout.caret_bounds(at(0)), geometry.layout.caret_bounds(at(self.value.len())))
+        let end = ParagraphPosition { byte_index: ends.end, affinity: TextAffinity::Upstream };
+        let (Ok(start), Ok(end)) = (geometry.layout.caret_bounds(at(ends.start)), geometry.layout.caret_bounds(end))
         else {
             return false;
         };
@@ -553,6 +1017,10 @@ impl ParleyTextField {
     }
 
     fn key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.enabled {
+            cx.stop_propagation();
+            return;
+        }
         if self.marked.is_some() {
             return; // The platform IME owns keys during composition.
         }
@@ -560,26 +1028,33 @@ impl ParleyTextField {
         let secondary = modifiers.secondary(cx);
         let key = event.keystroke.key.as_str();
         let handled = match key {
-            "a" if secondary => {
-                self.anchor = at(0);
-                self.set_caret(at(self.value.len()), true, cx);
+            "z" if secondary && modifiers.shift => {
+                self.redo(cx);
                 true
             }
-            "c" | "x" if secondary => {
-                let range = self.selected_range();
-                if !range.is_empty() {
-                    let copied = self.value[range.clone()].replace(LINE_SEPARATOR, "\n");
-                    cx.write_to_clipboard(ClipboardItem::new_string(copied));
-                    if key == "x" {
-                        self.replace(range, "", None, false, cx);
-                    }
-                }
+            "z" if secondary => {
+                self.undo(cx);
+                true
+            }
+            // Ctrl-Y also redoes on Windows and Linux.
+            "y" if secondary && modifiers.control => {
+                self.redo(cx);
+                true
+            }
+            "a" if secondary => {
+                self.select_all(cx);
+                true
+            }
+            "c" if secondary => {
+                self.copy_selection(cx);
+                true
+            }
+            "x" if secondary => {
+                self.cut_selection(cx);
                 true
             }
             "v" if secondary => {
-                if let Some(text) = cx.read_from_clipboard().and_then(|item| item.text()) {
-                    self.replace(self.selected_range(), &text, None, false, cx);
-                }
+                self.paste(cx);
                 true
             }
             "backspace" => {
@@ -611,23 +1086,51 @@ impl ParleyTextField {
                 self.move_to_line_end(key == "end", modifiers.shift, cx);
                 true
             }
+            // Tab types a tab when allowed (Shift-Tab still moves focus back).
+            "tab" if self.options.allow_tab_character && !modifiers.shift => {
+                self.replace(self.selected_range(), "\t", None, false, cx);
+                true
+            }
+            // As the SDK's default: Tab and Shift-Tab move focus.
+            "tab" => {
+                if modifiers.shift {
+                    window.focus_prev(cx);
+                } else {
+                    window.focus_next(cx);
+                }
+                true
+            }
+            "escape" => {
+                // As the SDK: Escape is always handled; it clears the text if asked to.
+                if self.options.clean_on_escape && !self.value.is_empty() {
+                    self.replace(0..self.value.len(), "", None, false, cx);
+                }
+                true
+            }
             "enter" if self.is_multiline() => {
                 self.replace(self.selected_range(), "\n", None, false, cx);
                 true
             }
             "enter" => {
-                cx.emit(ParleyTextFieldEvent::Submit(self.value()));
+                cx.emit(ParleyTextFieldEvent::Submit { value: self.value() });
                 true
             }
             _ => false,
         };
         if handled {
             window.prevent_default();
-            cx.stop_propagation();
+            let to_parent = self.options.propagate_home_end_to_parent && matches!(key, "home" | "end");
+            if !to_parent {
+                cx.stop_propagation();
+            }
         }
     }
 
     fn mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.enabled {
+            cx.stop_propagation();
+            return;
+        }
         window.focus(&self.focus, cx);
         let Some(hit) = self.hit(event.position) else {
             return;
@@ -652,14 +1155,24 @@ impl ParleyTextField {
     /// Extend a drag selection to `position`, which may be anywhere in the window:
     /// the field follows the pointer until the button is released.
     fn drag_to(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
-        if self.dragging
-            && let Some(hit) = self.hit(position)
-        {
+        if !self.dragging {
+            return;
+        }
+        self.drag_position = Some(position);
+        if let Some(hit) = self.hit(self.clamp_to_viewport(position)) {
             self.set_caret(hit, true, cx);
+        }
+        if self.autoscroll_delta(position) != px(0.0) {
+            self.schedule_autoscroll(cx);
+        } else {
+            self.autoscroll_epoch += 1; // Back inside: stop.
         }
     }
 
     fn end_drag(&mut self, cx: &mut Context<Self>) {
+        self.drag_position = None;
+        self.autoscroll_epoch += 1;
+        self.autoscroll_task = Task::ready(());
         if self.dragging {
             self.dragging = false;
             cx.notify();
@@ -674,12 +1187,22 @@ impl ParleyTextField {
         self.focused = focused;
         self.dragging = false;
         if focused {
+            // As the SDK: Tab into the field selects all of it; a click does not.
+            if self.options.select_all_on_tab_focus && window.last_input_was_keyboard() {
+                self.anchor = at(0);
+                self.caret = at(self.value.len());
+            }
             self.reveal_caret = true;
             self.start_caret_blink(cx);
         } else {
+            if self.options.select_all_on_tab_focus {
+                self.caret = at(self.value.len());
+                self.anchor = self.caret;
+            }
             self.caret_epoch += 1;
             self.caret_visible = false;
         }
+        cx.emit(ParleyTextFieldEvent::FocusChanged { focused });
     }
 
     fn start_caret_blink(&mut self, cx: &mut Context<Self>) {
@@ -722,19 +1245,43 @@ fn wrapped(layout: &dyn PlatformParagraphLayout, text: &str) -> Result<bool> {
     Ok((start.top() - end.top()).abs() > px(0.5))
 }
 
-/// Horizontal extent of a one-line layout across every character boundary.
-fn content_width(layout: &dyn PlatformParagraphLayout, text: &str) -> Result<Pixels> {
-    let (mut left, mut right) = (px(f32::MAX), px(f32::MIN));
-    for index in text.char_indices().map(|(index, _)| index).chain([text.len()]) {
-        let caret = layout.caret_bounds(at(index))?;
-        left = left.min(caret.left());
-        right = right.max(caret.right());
+/// Horizontal extent of a one-row layout: the carets at its two visual edges,
+/// found by hit testing far outside them. Text with no break opportunity can
+/// overflow the layout's width on either side (left for right-to-left text).
+fn line_width(layout: &dyn PlatformParagraphLayout) -> Result<Pixels> {
+    let (y, far) = (layout.size().height / 2.0, px(f32::MAX / 4.0));
+    let left = layout.caret_bounds(layout.hit_test(point(-far, y))?)?;
+    let right = layout.caret_bounds(layout.hit_test(point(far, y))?)?;
+    Ok((right.right() - left.left()).abs())
+}
+
+/// Paint the glyphs near `visible`, skipping the rest of a long text. As
+/// `gpui::paint_paragraph`, which paints every glyph.
+fn paint_visible(
+    layout: &dyn PlatformParagraphLayout,
+    origin: Point<Pixels>,
+    visible: Bounds<Pixels>,
+    color_for_index: impl Fn(usize) -> Hsla,
+    window: &mut Window,
+) -> Result<()> {
+    let font_size = layout.font_size();
+    let margin = font_size * 2.0;
+    let (left, right) = (visible.left() - margin, visible.right() + margin);
+    let (top, bottom) = (visible.top() - margin, visible.bottom() + margin);
+    for run in layout.runs() {
+        for glyph in &run.glyphs {
+            let position = origin + glyph.position;
+            if position.x < left || position.x > right || position.y < top || position.y > bottom {
+                continue;
+            }
+            if glyph.is_emoji {
+                window.paint_emoji(position, run.font_id, glyph.id, font_size)?;
+            } else {
+                window.paint_glyph(position, run.font_id, glyph.id, font_size, color_for_index(glyph.index))?;
+            }
+        }
     }
-    if left > right {
-        Err(anyhow!("empty paragraph extent"))
-    } else {
-        Ok(right - left)
-    }
+    Ok(())
 }
 
 impl Focusable for ParleyTextField {
@@ -745,10 +1292,20 @@ impl Focusable for ParleyTextField {
 
 impl Render for ParleyTextField {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.enabled && self.focus.is_focused(window) {
+            window.blur(cx);
+        }
         self.sync_focus(window, cx);
         let look = self.look(window);
+        let enabled = self.enabled;
         let focused = self.focused;
-        let focus_gap = self.theme.metrics().focus.gap + look.border_width.max(0.0);
+        // As the template: room for the focus ring whenever a ring color is set,
+        // which `look` always does.
+        let focus_gap = if look.focus_border.is_some() {
+            self.theme.metrics().focus.gap + look.border_width.max(0.0)
+        } else {
+            0.0
+        };
         let show_placeholder = self.value.is_empty() && !focused;
         let entity = cx.entity();
         let focus = self.focus.clone();
@@ -804,7 +1361,7 @@ impl Render for ParleyTextField {
                             look.foreground
                         }
                     };
-                    if let Err(error) = gpui::paint_paragraph(layout, origin, color, window) {
+                    if let Err(error) = paint_visible(layout, origin, geometry.viewport, color, window) {
                         eprintln!("Parley text field paint: {error:#}");
                     }
                     if let Some(marked) = &marked
@@ -835,13 +1392,15 @@ impl Render for ParleyTextField {
         )
         .size_full();
 
-        // A text area shows `rows` lines inside the field's padding and border.
+        if self.rows.is_none() {
+            return self.render_with_template(text, look, focus_gap, window, cx);
+        }
+
+        // A text area shows `rows` lines inside the field's padding and border; it
+        // draws its own chrome until it moves to the SDK's text area template.
         let rows = self.rows;
         let viewport_height = line_height * rows.unwrap_or(1) as f32;
-        let control_height = match rows {
-            Some(_) => viewport_height + px(2.0 * (look.padding_y + look.border_width)),
-            None => px(look.min_height),
-        };
+        let control_height = viewport_height + px(2.0 * (look.padding_y + look.border_width));
         let viewport = div().relative().min_w(px(0.0)).flex_1().h(viewport_height).child(text).when(
             show_placeholder,
             |viewport| {
@@ -850,7 +1409,6 @@ impl Render for ParleyTextField {
                         .absolute()
                         .inset_0()
                         .flex()
-                        .when(rows.is_none(), |placeholder| placeholder.items_center())
                         .overflow_hidden()
                         .text_color(look.placeholder)
                         .child(self.placeholder.clone()),
@@ -874,7 +1432,8 @@ impl Render for ParleyTextField {
             .font_family(look.font_family.clone())
             .text_size(px(look.typography.size))
             .line_height(line_height)
-            .cursor_text()
+            .when(enabled, |control| control.cursor_text())
+            .when(!enabled, |control| control.cursor_not_allowed().opacity(look.disabled_opacity))
             .when_some(look.shadow.clone().filter(|shadows| !shadows.is_empty()), |control, shadows| {
                 control.shadow(shadows)
             })
@@ -882,12 +1441,13 @@ impl Render for ParleyTextField {
 
         div()
             .id(self.id.clone())
+            .map(|root| self.accessible(root))
             .relative()
             .w_full()
             .p(px(focus_gap))
             .track_focus(&self.focus)
             .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                this.hovered = *hovered;
+                this.hovered = *hovered && this.enabled;
                 cx.notify();
             }))
             .on_key_down(cx.listener(Self::key_down))
@@ -904,6 +1464,119 @@ impl Render for ParleyTextField {
                         .rounded(px(look.radius + focus_gap)),
                 )
             })
+            .into_any_element()
+    }
+}
+
+impl ParleyTextField {
+    /// Accessibility of the focused element: the SDK text field's `TextInput`
+    /// role (`MultilineTextInput` for a text area), plus the label, the current
+    /// text as the value, and the placeholder.
+    fn accessible(&self, root: Stateful<Div>) -> Stateful<Div> {
+        let role = if self.is_multiline() {
+            Role::MultilineTextInput
+        } else {
+            Role::TextInput
+        };
+        root.role(role)
+            .aria_value(self.value())
+            .when(!self.placeholder.is_empty(), |root| root.aria_placeholder(self.placeholder.clone()))
+            .when_some(self.aria_label.clone(), |root, label| root.aria_label(label))
+    }
+
+    /// A one-line field: the SDK template draws the chrome (background, border,
+    /// padding, focus ring, placeholder, modifiers) around an empty value, and the
+    /// Parley text is laid over its text area.
+    ///
+    /// The template paints text itself with `shape_line` and has no slot for text
+    /// it does not draw, so the overlay repeats its geometry: focus ring, border
+    /// and horizontal padding. That missing slot is what the SDK template needs
+    /// before this control can move into the SDK.
+    fn render_with_template(
+        &self,
+        text: impl IntoElement,
+        look: TextFieldLook,
+        focus_gap: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let empty = SharedString::default();
+        // The template shows its placeholder for an empty value; hide it under real text.
+        let placeholder = if self.value.is_empty() {
+            self.placeholder.clone()
+        } else {
+            empty.clone()
+        };
+        let state = TextFieldState {
+            hovered: self.hovered,
+            focused: self.focused,
+            focus_visible: self.focused,
+            invalid: self.invalid,
+            ..TextFieldState::default()
+        };
+        let model = TextFieldRenderModel {
+            id: &self.id,
+            placeholder: &placeholder,
+            value: &empty,
+            prefix_icon: self.options.prefix_icon.as_ref(),
+            size: self.size,
+            enabled: self.enabled,
+            full_width: self.options.full_width,
+            state,
+            marked_range: None,
+            caret_visible: false,
+            horizontal_scroll: 0.0,
+            character_offsets: vec![0.0],
+            look: look.clone(),
+        };
+        // Pointer input is handled on the wrapper below: in headless tests the
+        // template root's mouse-down listener never fired under the text overlay,
+        // while the wrapper's did. Drags are captured window-wide; see `drag_to`.
+        let handlers = TextFieldTemplateHandlers {
+            hover: Box::new(|_, _, _| {}),
+            mouse_down: Box::new(|_, _, _| {}),
+            mouse_move: Box::new(|_, _, _| {}),
+            mouse_up: Box::new(|_, _, _| {}),
+            mouse_up_out: Box::new(|_, _, _| {}),
+            click: Box::new(|_, _, _| {}),
+            key_down: Box::new(cx.listener(Self::key_down)),
+            drag_move: Box::new(|_, _, _| {}),
+        };
+        // As the SDK text field does, the template's root is the focused element.
+        let chrome = self.accessible(self.template.render(&model, handlers, window, cx).track_focus(&self.focus));
+        let inset = px(focus_gap + look.border_width.max(0.0) + look.padding_x);
+        // The template puts a prefix icon before the text, on the left.
+        let icon = if self.options.prefix_icon.is_some() {
+            px(look.icon_size + look.gap)
+        } else {
+            px(0.0)
+        };
+        let line_height = px(look.typography.line_height);
+        // The overlay belongs to the template's root, so it follows the root's own
+        // width (with or without `full_width`) and height, not the wrapper's.
+        let overlay = div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .right_0()
+            .h(px(look.min_height + 2.0 * focus_gap))
+            .pl(inset + icon)
+            .pr(inset)
+            .flex()
+            .items_center()
+            .when(!self.enabled, |overlay| overlay.opacity(look.disabled_opacity))
+            .child(div().w_full().h(line_height).child(text));
+        div()
+            .id(SharedString::from(format!("{}-parley", self.id)))
+            .relative()
+            .when(self.options.full_width, |wrapper| wrapper.w_full())
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                this.hovered = *hovered && this.enabled;
+                cx.notify();
+            }))
+            .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
+            .child(chrome.child(overlay))
+            .into_any_element()
     }
 }
 
@@ -1006,9 +1679,20 @@ impl EntityInputHandler for ParleyTextField {
     }
 }
 
+#[path = "text_field/builder.rs"]
+mod builder;
+#[path = "text_field/stacked.rs"]
+mod stacked;
+use stacked::StackedLayout;
+pub use builder::ParleyTextFieldBuilder;
+
 #[path = "text_field/page.rs"]
 pub(crate) mod page;
 
 #[cfg(all(test, feature = "test-support"))]
 #[path = "text_field/tests.rs"]
 mod tests;
+
+#[cfg(all(test, feature = "test-support"))]
+#[path = "text_field/sdk_parity_tests.rs"]
+mod sdk_parity_tests;

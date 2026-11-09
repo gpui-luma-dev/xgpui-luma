@@ -18,6 +18,18 @@ use xgpui_luma::{
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 
+/// Present when the whole application runs on the Parley text system
+/// (`--text-system=parley`, or the standalone `--native-text-backend=parley`
+/// window). Controls that edit through GPUI's paragraph API need it.
+pub(crate) struct ParleyTextSystemActive;
+impl Global for ParleyTextSystemActive {}
+
+/// The Parley text system for a whole application, with the lab's sample fonts
+/// (system fonts are found through Parley's `system-fonts` feature).
+pub(crate) fn application_text_system() -> Result<Arc<dyn PlatformTextSystem>> {
+    Ok(Engine::new()?.backend.clone())
+}
+
 struct Engine {
     backend: Arc<xgpui_parley::ParleyTextSystem>,
     system: Arc<TextSystem>,
@@ -52,6 +64,8 @@ pub struct ParleyPage {
     engine: Result<Rc<Engine>>,
     paragraph: Option<Entity<paragraph::ParagraphLab>>,
     line: Option<Entity<line::LinePage>>,
+    /// The Parley text field and text area, in the application's active look.
+    text_field: Entity<text_field::page::TextFieldPage>,
     scroll: Entity<workload::ScrollLab>,
     children: Vec<std::process::Child>,
     child_error: Option<String>,
@@ -79,6 +93,7 @@ impl ParleyPage {
             .as_ref()
             .ok()
             .map(|engine| cx.new(|cx| line::LinePage::new(engine.clone(), look.clone(), cx)));
+        let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, true, cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
                 "Shell native backend".into(),
@@ -169,6 +184,7 @@ impl ParleyPage {
             engine,
             paragraph,
             line,
+            text_field,
             scroll,
             children: vec![],
             child_error: None,
@@ -330,6 +346,9 @@ impl Render for ParleyPage {
         }
         if self.active_tab == "Line Layout" {
             return div().size_full().children(self.line.clone()).into_any_element();
+        }
+        if self.active_tab == "Text Field" {
+            return div().size_full().child(self.text_field.clone()).into_any_element();
         }
         if self.active_tab == "Paragraphs" {
             return match &self.paragraph {
