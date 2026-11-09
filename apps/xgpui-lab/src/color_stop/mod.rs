@@ -2,9 +2,14 @@
 //! [`crate::color_stop_list::ColorStopList`], and usable on its own (e.g. a
 //! mesh background color).
 //!
-//! The control owns the color/position state, its child controls (position
-//! `TextField`, remove `Button`, inline picker) and input isolation. Layout is
-//! delegated to a [`ColorStopTemplate`]; see [`template`].
+//! The control owns the color/position state, its child controls (remove
+//! `Button`, inline picker), focus and input isolation. Layout is delegated to
+//! a [`ColorStopTemplate`]; see [`template`].
+//!
+//! The picker is shown while focus is inside the stop (clicking the swatch
+//! focuses it; focus moving anywhere else, or a click outside, hides it), or
+//! while a host holds it open with [`ColorStop::set_open`] (e.g. while the
+//! stop's knob on a gradient bar owns focus).
 //!
 //! Host setters (`set_*`) never emit; user edits emit [`ColorStopEvent`].
 
@@ -14,15 +19,14 @@ pub(crate) mod template;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AppContext, Bounds, Context, Entity, EventEmitter, IntoElement, MouseButton, Pixels, Render,
-    SharedString, Subscription, Window, div, prelude::*,
+    AnyElement, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement,
+    MouseButton, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
-use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
 use xgpui_luma::controls::tooltip::Tooltip;
-use xgpui_luma::infra::attachments::TooltipEntityExt;
+use xgpui_luma::infra::attachments::{TooltipEntityExt, TooltipHandle};
 use xgpui_luma_look_radix as radix;
 
 use crate::theme::Look;
@@ -38,10 +42,10 @@ pub(crate) use template::{
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum ColorStopEvent {
     ColorChanged(ColorValue),
-    /// Typed position, already clamped to `0.0..=1.0`.
-    PositionChanged(f32),
     /// The remove action was pressed; the owner decides whether to remove.
     RemoveRequested,
+    /// Focus entering or leaving the stop showed (`true`) or hid (`false`) the
+    /// picker. Not emitted for [`ColorStop::set_open`].
     ExpandedChanged(bool),
 }
 
@@ -51,21 +55,12 @@ pub(crate) struct ColorStopBuilder {
     color: ColorValue,
     position: Option<f32>,
     removable: bool,
-    expand_on_swatch_click: bool,
     template: Option<Arc<dyn ColorStopTemplate>>,
 }
 
 impl ColorStopBuilder {
     pub fn new(id: impl Into<SharedString>, color: ColorValue) -> Self {
-        Self {
-            id: id.into(),
-            look: None,
-            color,
-            position: None,
-            removable: false,
-            expand_on_swatch_click: true,
-            template: None,
-        }
+        Self { id: id.into(), look: None, color, position: None, removable: false, template: None }
     }
 
     pub fn look(mut self, look: Arc<Look>) -> Self {
@@ -73,7 +68,7 @@ impl ColorStopBuilder {
         self
     }
 
-    /// Give the stop an editable position (`0.0..=1.0`).
+    /// Give the stop a position (`0.0..=1.0`), shown as a percentage.
     pub fn position(mut self, position: f32) -> Self {
         self.position = Some(position.clamp(0.0, 1.0));
         self
@@ -82,13 +77,6 @@ impl ColorStopBuilder {
     /// Show a remove action that emits [`ColorStopEvent::RemoveRequested`].
     pub fn removable(mut self, removable: bool) -> Self {
         self.removable = removable;
-        self
-    }
-
-    /// Toggle the editor when the swatch is clicked. On by default; lists turn it
-    /// off and drive expansion from their selection instead.
-    pub fn expand_on_swatch_click(mut self, enabled: bool) -> Self {
-        self.expand_on_swatch_click = enabled;
         self
     }
 
@@ -111,8 +99,16 @@ pub(crate) struct ColorStop {
     index: Option<usize>,
     selected: bool,
     expanded: bool,
-    expand_on_swatch_click: bool,
-    position_field: Option<TextField>,
+    /// Focus is on the stop or inside its picker.
+    focus_within: bool,
+    /// Held open by the host regardless of focus.
+    open: bool,
+    focus_handle: FocusHandle,
+    swatch_hovered: bool,
+    /// Swatch help for the closed and open states.
+    swatch_tooltips: [TooltipHandle; 2],
+    /// Focus in/out listeners; registered on first render (they need a window).
+    focus_subscriptions: Option<[Subscription; 2]>,
     remove_button: Option<Entity<Button>>,
     picker: Entity<InlineColorPicker>,
     height: Option<f32>,
@@ -127,28 +123,8 @@ impl ColorStop {
         let id = builder.id;
         let mut subscriptions = Vec::new();
 
-        let position_field = builder.position.map(|position| {
-            let field = radix::TextField::new(format!("{id}-position"))
-                .look(look.as_ref())
-                .size(radix::TextFieldSize::One)
-                .value(format_percent(position))
-                .full_width(true)
-                .select_all_on_tab_focus(true)
-                .validator(Arc::new(|text: &str| parse_percent(text).is_some()))
-                .spawn(cx);
-            subscriptions.push(cx.subscribe(&field, |this, field, event: &TextFieldEvent, cx| match event {
-                TextFieldEvent::Submit { value } => this.commit_position_text(value, cx),
-                TextFieldEvent::FocusChanged { focused: false } => {
-                    let value = field.read(cx).value();
-                    this.commit_position_text(&value, cx);
-                }
-                _ => {}
-            }));
-            field
-        });
-
         let remove_button = builder.removable.then(|| {
-            let button = crate::theme::icon_button(format!("{id}-remove"), LucideIcon::X)
+            let button = crate::theme::icon_button(format!("{id}-remove"), LucideIcon::Trash)
                 .look(look.as_ref())
                 .content_only()
                 .radius(radix::Radius::Medium)
@@ -162,6 +138,7 @@ impl ColorStop {
             button
         });
 
+        let swatch_tooltips = swatch_tooltips(&look, cx);
         let picker = InlineColorPicker::spawn(format!("{id}-picker"), look.as_ref(), builder.color, cx);
         subscriptions.push(cx.subscribe(&picker, |this, _, event: &InlineColorPickerEvent, cx| {
             let InlineColorPickerEvent::Change(color) = *event;
@@ -181,8 +158,12 @@ impl ColorStop {
             index: None,
             selected: false,
             expanded: false,
-            expand_on_swatch_click: builder.expand_on_swatch_click,
-            position_field,
+            focus_within: false,
+            open: false,
+            focus_handle: cx.focus_handle(),
+            swatch_hovered: false,
+            swatch_tooltips,
+            focus_subscriptions: None,
             remove_button,
             picker,
             height: None,
@@ -232,7 +213,6 @@ impl ColorStop {
             self.position = position;
             cx.notify();
         }
-        self.sync_position_field(cx);
     }
 
     pub fn set_index(&mut self, index: Option<usize>, cx: &mut Context<Self>) {
@@ -249,9 +229,11 @@ impl ColorStop {
         }
     }
 
-    pub fn set_expanded(&mut self, expanded: bool, cx: &mut Context<Self>) {
-        if self.expanded != expanded {
-            self.expanded = expanded;
+    /// Hold the picker open (or release it) independent of focus.
+    pub fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
+        if self.open != open {
+            self.open = open;
+            self.expanded = self.open || self.focus_within;
             cx.notify();
         }
     }
@@ -263,39 +245,12 @@ impl ColorStop {
     }
 
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
+        self.swatch_tooltips = swatch_tooltips(&look, cx);
         self.look = look;
         cx.notify();
     }
 
     // ---- User edits -------------------------------------------------------
-
-    /// Commit typed text as a percentage; invalid input reverts to the current value.
-    fn commit_position_text(&mut self, text: &str, cx: &mut Context<Self>) {
-        if let Some(position) = parse_percent(text)
-            && self.position.is_some()
-            && self.position != Some(position)
-        {
-            self.position = Some(position);
-            cx.emit(ColorStopEvent::PositionChanged(position));
-            cx.notify();
-        }
-        self.sync_position_field(cx);
-    }
-
-    fn toggle_expanded_by_user(&mut self, cx: &mut Context<Self>) {
-        self.expanded = !self.expanded;
-        cx.emit(ColorStopEvent::ExpandedChanged(self.expanded));
-        cx.notify();
-    }
-
-    fn sync_position_field(&self, cx: &mut Context<Self>) {
-        if let (Some(field), Some(position)) = (&self.position_field, self.position) {
-            let text = format_percent(position);
-            if field.read(cx).value() != text {
-                field.update(cx, |field, cx| field.set_value(text, cx));
-            }
-        }
-    }
 
     /// Wrap an interactive child so pointer input stays with it and never
     /// reaches a surrounding row (selection, drag source).
@@ -309,14 +264,60 @@ impl ColorStop {
             .into_any_element()
     }
 
+    /// Swatch pressed while the picker is open: close it, giving up focus and
+    /// any host hold.
+    fn close_by_user(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.focus_handle.contains_focused(window, cx) {
+            window.blur(cx);
+        }
+        self.open = false;
+        self.set_focus_within(false, cx);
+    }
+
+    fn set_focus_within(&mut self, focus_within: bool, cx: &mut Context<Self>) {
+        self.focus_within = focus_within;
+        let expanded = self.open || focus_within;
+        if self.expanded != expanded {
+            self.expanded = expanded;
+            cx.emit(ColorStopEvent::ExpandedChanged(expanded));
+            cx.notify();
+        }
+    }
+
+    fn ensure_focus_listeners(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.focus_subscriptions.is_some() {
+            return;
+        }
+        let focus_in = cx.on_focus_in(&self.focus_handle, window, |this, _, cx| this.set_focus_within(true, cx));
+        let focus_out = cx.on_focus_out(&self.focus_handle, window, |this, _, _, cx| this.set_focus_within(false, cx));
+        self.focus_subscriptions = Some([focus_in, focus_out]);
+    }
+
     fn handlers(&self, cx: &mut Context<Self>) -> ColorStopTemplateHandlers {
         let entity = cx.entity().downgrade();
-        let swatch_entity = entity.clone();
-        let expand_on_click = self.expand_on_swatch_click;
+        let focus = self.focus_handle.clone();
         ColorStopTemplateHandlers {
-            swatch_click: Box::new(move |_, _, cx| {
-                if expand_on_click {
-                    let _ = swatch_entity.update(cx, |this, cx| this.toggle_expanded_by_user(cx));
+            swatch_click: Box::new({
+                let entity = entity.clone();
+                move |_, window, cx| {
+                    let _ = entity.update(cx, |this, cx| {
+                        if this.expanded {
+                            this.close_by_user(window, cx);
+                        } else {
+                            window.focus(&focus, cx);
+                        }
+                    });
+                }
+            }),
+            swatch_hover: Box::new({
+                let entity = entity.clone();
+                move |hovered, _, cx| {
+                    let _ = entity.update(cx, |this, cx| {
+                        if this.swatch_hovered != hovered {
+                            this.swatch_hovered = hovered;
+                            cx.notify();
+                        }
+                    });
                 }
             }),
             bounds: Box::new(move |bounds: Bounds<Pixels>, _, cx| {
@@ -334,6 +335,7 @@ impl ColorStop {
 
 impl Render for ColorStop {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.ensure_focus_listeners(window, cx);
         let model = ColorStopRenderModel {
             id: &self.id,
             look: &self.look,
@@ -341,16 +343,42 @@ impl Render for ColorStop {
             label: stop_label(self.color).into(),
             alpha: self.color.alpha(),
             position: self.position,
+            position_label: self.position.map(|position| format_percent(position).into()),
             index: self.index,
             selected: self.selected,
             expanded: self.expanded,
-            position_field: self.position_field.clone().map(|field| self.isolated("position-slot", field)),
             remove_button: self.remove_button.clone().map(|button| self.isolated("remove-slot", button)),
             editor: self.expanded.then(|| self.isolated("editor", self.picker.clone())),
+            swatch_tooltip: Some(self.swatch_tooltips[usize::from(self.expanded)].clone()),
+            swatch_hovered: self.swatch_hovered,
         };
         let handlers = self.handlers(cx);
-        self.template.render(model, handlers, window, cx)
+        let content = self.template.render(model, handlers, window, cx);
+        // The focus scope wraps the whole template so the picker's own controls
+        // count as "inside"; a click elsewhere hides the picker.
+        let focus = self.focus_handle.clone();
+        div()
+            .track_focus(&self.focus_handle)
+            .w_full()
+            .on_mouse_down_out(move |_, window, cx| {
+                if focus.contains_focused(window, cx) {
+                    window.blur(cx);
+                }
+            })
+            .child(content)
     }
+}
+
+impl Focusable for ColorStop {
+    fn focus_handle(&self, _cx: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
+}
+
+fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
+    let theme = radix::tooltip_theme(look);
+    ["Edit color", "Close color editor"]
+        .map(|text| TooltipHandle::new_with_theme(Tooltip::new(text), theme.clone(), cx))
 }
 
 /// Uppercase sRGB hex.
@@ -365,12 +393,6 @@ pub(crate) fn stop_label(color: ColorValue) -> String {
 
 fn format_percent(position: f32) -> String {
     format!("{}%", (position * 100.0).round() as i32)
-}
-
-/// Accepts `50`, `50%`, or `12.5 %`; returns a normalized `0.0..=1.0` position.
-fn parse_percent(text: &str) -> Option<f32> {
-    let value: f32 = text.trim().trim_end_matches('%').trim().parse().ok()?;
-    (value.is_finite() && (0.0..=100.0).contains(&value)).then_some(value / 100.0)
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -395,30 +417,6 @@ mod tests {
     }
 
     #[test]
-    fn position_text_commits_clamped_value_and_reverts_invalid_input() {
-        let mut app = TestAppContext::single();
-        let gray = ColorValue::srgb(0.5, 0.5, 0.5, 1.0);
-        let (stop, events) = spawn_with_events(&mut app, ColorStopBuilder::new("t", gray).position(0.0));
-        let text = |app: &mut TestAppContext| {
-            stop.read_with(app, |stop, cx| stop.position_field.as_ref().unwrap().read(cx).value())
-        };
-        assert_eq!(text(&mut app), "0%");
-
-        stop.update(&mut app, |stop, cx| stop.commit_position_text("75 %", cx));
-        assert_eq!(*events.borrow(), vec![ColorStopEvent::PositionChanged(0.75)]);
-        assert_eq!(text(&mut app), "75%");
-
-        events.borrow_mut().clear();
-        stop.update(&mut app, |stop, cx| stop.commit_position_text("abc", cx));
-        assert!(events.borrow().is_empty());
-        assert_eq!(text(&mut app), "75%", "invalid text reverts");
-
-        stop.update(&mut app, |stop, cx| stop.set_position(0.5, cx));
-        assert!(events.borrow().is_empty(), "host setters never emit");
-        assert_eq!(text(&mut app), "50%");
-    }
-
-    #[test]
     fn picker_edits_emit_and_host_color_syncs_picker() {
         let mut app = TestAppContext::single();
         let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
@@ -440,23 +438,56 @@ mod tests {
     }
 
     #[test]
-    fn toggling_expansion_emits_expanded_changed() {
+    fn focus_inside_the_stop_shows_the_picker() {
         let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let gray = ColorValue::srgb(0.5, 0.5, 0.5, 1.0);
-        let (stop, events) = spawn_with_events(&mut app, ColorStopBuilder::new("t", gray));
-        stop.update(&mut app, |stop, cx| stop.toggle_expanded_by_user(cx));
-        assert_eq!(*events.borrow(), vec![ColorStopEvent::ExpandedChanged(true)]);
+        let look = crate::theme::default_look();
+        let (stop, cx) = app.add_window_view(|_, cx| ColorStop::new(ColorStopBuilder::new("t", gray).look(look), cx));
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let sink = events.clone();
+        cx.update(|_, cx| {
+            cx.subscribe(&stop, move |_, event: &ColorStopEvent, _| sink.borrow_mut().push(*event)).detach();
+        });
+        // Focus listeners only fire in an active window.
+        cx.update(|window, _| window.activate_window());
+        cx.run_until_parked();
+        assert!(!stop.read_with(cx, |stop, _| stop.expanded()));
 
-        assert!(stop.read_with(&app, |stop, _| stop.expanded()));
-    }
+        let swatch = cx.debug_bounds("t-swatch").expect("swatch");
+        cx.simulate_click(swatch.center(), Default::default());
+        cx.run_until_parked();
+        assert!(stop.read_with(cx, |stop, _| stop.expanded()));
 
-    #[test]
-    fn parse_percent_accepts_common_forms() {
-        assert_eq!(parse_percent("50"), Some(0.5));
-        assert_eq!(parse_percent(" 12.5 % "), Some(0.125));
-        assert_eq!(parse_percent("100%"), Some(1.0));
-        assert_eq!(parse_percent("101"), None);
-        assert_eq!(parse_percent("-1"), None);
-        assert_eq!(parse_percent("NaN"), None);
+        cx.update(|window, cx| window.blur(cx));
+        // Focus listeners only fire in an active window.
+        cx.update(|window, _| window.activate_window());
+        cx.run_until_parked();
+        assert!(!stop.read_with(cx, |stop, _| stop.expanded()));
+        assert_eq!(
+            *events.borrow(),
+            vec![ColorStopEvent::ExpandedChanged(true), ColorStopEvent::ExpandedChanged(false)]
+        );
+
+        // The swatch toggles: open, then closed again, including a host hold.
+        events.borrow_mut().clear();
+        cx.simulate_click(swatch.center(), Default::default());
+        cx.run_until_parked();
+        assert!(stop.read_with(cx, |stop, _| stop.expanded()));
+        cx.simulate_click(swatch.center(), Default::default());
+        cx.run_until_parked();
+        assert!(!stop.read_with(cx, |stop, _| stop.expanded()));
+        stop.update(cx, |stop, cx| stop.set_open(true, cx));
+        cx.simulate_click(swatch.center(), Default::default());
+        cx.run_until_parked();
+        assert!(!stop.read_with(cx, |stop, _| stop.expanded()), "a swatch press releases a host hold");
+        assert_eq!(
+            *events.borrow(),
+            vec![
+                ColorStopEvent::ExpandedChanged(true),
+                ColorStopEvent::ExpandedChanged(false),
+                ColorStopEvent::ExpandedChanged(false),
+            ]
+        );
     }
 }

@@ -165,9 +165,8 @@ impl Render for GradientBuilder {
         );
         let controls = self.render_inspector("color-viz-gradient-controls", card_bg);
         let picker_bounds = match self.selected_tab {
-            BuilderTab::Gradients => {
-                self.selected_stop.and_then(|thumb_id| self.stop_swatch_bounds.get(&thumb_id).copied())
-            }
+            // Gradient stops edit colors inline in their list.
+            BuilderTab::Gradients => None,
             BuilderTab::Mesh | BuilderTab::Freeform => match self.mesh_color_target {
                 MeshColorTarget::Point(point_index) => self.mesh_swatch_bounds.get(&point_index).copied(),
                 MeshColorTarget::Background => self.mesh_background_swatch_bounds,
@@ -615,84 +614,6 @@ impl Render for GradientBuilder {
             .justify_start()
             .child(shell)
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(super) fn render_stop_row(
-    index: usize,
-    thumb_id: ThumbId,
-    position: f32,
-    color: gpui::Hsla,
-    selected: bool,
-    delete_button: Option<Entity<Button>>,
-    _label_style: LumaTextStyle,
-    value_style: LumaTextStyle,
-    chrome: xgpui_luma::theme::LumaChrome,
-    interaction: crate::theme::InteractionColors,
-    builder: Entity<GradientBuilder>,
-) -> impl IntoElement {
-    let background = if selected {
-        interaction.selected
-    } else {
-        chrome.panel_background
-    };
-    let swatch_builder = builder.clone();
-    let bounds_builder = builder.clone();
-    div()
-        .id(format!("color-viz-gradient-stop-row-{}", thumb_id.as_u64()))
-        .w_full()
-        .flex()
-        .items_center()
-        .gap_3()
-        .p(px(6.0))
-        .rounded(px(4.0))
-        .bg(background)
-        .hover(move |style| style.bg(interaction.hovered))
-        .active(move |style| style.bg(interaction.pressed))
-        .cursor_pointer()
-        .child(div().w(px(20.0)).flex_shrink_0().child(index.to_string()))
-        .child(
-            div()
-                .id(format!("color-viz-gradient-stop-swatch-{}", thumb_id.as_u64()))
-                .flex_1()
-                .min_w_0()
-                .h(px(36.0))
-                .rounded(px(4.0))
-                .bg(color)
-                .border_2()
-                .border_color(chrome.border)
-                .cursor_pointer()
-                .on_prepaint(move |bounds, _, cx| {
-                    bounds_builder.update(cx, |this, _| {
-                        this.handle_stop_swatch_bounds(thumb_id, &bounds);
-                    });
-                })
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |event: &ClickEvent, _, cx| {
-                    if event.is_keyboard() {
-                        return;
-                    }
-                    cx.stop_propagation();
-                    swatch_builder.update(cx, |this, cx| {
-                        this.open_color_picker_for_stop(thumb_id, cx);
-                    });
-                }),
-        )
-        .child(
-            div()
-                .flex_shrink_0()
-                .typography_style(value_style)
-                .text_color(chrome.muted_text)
-                .child(format!("({})", format_percent(position))),
-        )
-        .when_some(delete_button, |row, button| {
-            row.child(
-                div()
-                    .id(format!("stop-delete-action-{}", thumb_id.as_u64()))
-                    .on_click(|_, _, cx| cx.stop_propagation())
-                    .child(button),
-            )
-        })
 }
 
 pub(super) fn render_mesh_background_row(

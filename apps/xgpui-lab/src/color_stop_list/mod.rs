@@ -10,7 +10,7 @@
 //!   set with [`ColorStopListBuilder::stop_template`].
 //!
 //! The list owns its stops and reports user edits as [`ColorStopListEvent`]s.
-//! Host setters (`set_stops`, `set_color`, `select`) never emit.
+//! Host setters (`set_stops`, `set_keyed_stops`, `set_color`, `select`) never emit.
 
 mod model;
 pub(crate) mod template;
@@ -27,8 +27,7 @@ use xgpui_luma::color::ColorValue;
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxDragDrop, ListBoxDropProposal, ListBoxEvent, ListBoxFlow, ListBoxInput,
-    ListBoxItemRenderModel, ListBoxSnapshot, ListBoxState, ListBoxVirtualization, SelectionMode, SelectionPolicy,
-    make_listbox_item_template,
+    ListBoxItemRenderModel, ListBoxSnapshot, ListBoxState, SelectionMode, SelectionPolicy, make_listbox_item_template,
 };
 use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma::infra::attachments::TooltipEntityExt;
@@ -47,8 +46,6 @@ pub(crate) use template::{ColorStopListRenderModel, ColorStopListTemplate, defau
 /// The Radix ListBox row draws a 1px border around each stop.
 const ROW_BORDER: f32 = 1.0;
 const ROW_GAP: f32 = 2.0;
-/// The viewport fits every row, so overscan only needs to cover small lists.
-const MEASURED_OVERSCAN: usize = 32;
 
 /// User edits, emitted after the list has applied them.
 #[derive(Clone, Debug, PartialEq)]
@@ -59,10 +56,6 @@ pub(crate) enum ColorStopListEvent {
     ColorChanged {
         key: StopKey,
         color: ColorValue,
-    },
-    PositionChanged {
-        key: StopKey,
-        position: f32,
     },
     Added(StopKey),
     Removed(StopKey),
@@ -95,7 +88,6 @@ pub(crate) struct ColorStopListBuilder {
     removable: bool,
     reorderable: bool,
     actions: HeaderActions,
-    expand_selected: bool,
     template: Option<Arc<dyn ColorStopListTemplate>>,
     stop_template: Option<Arc<dyn ColorStopTemplate>>,
 }
@@ -111,7 +103,6 @@ impl ColorStopListBuilder {
             removable: true,
             reorderable: true,
             actions: HeaderActions::NONE,
-            expand_selected: false,
             template: None,
             stop_template: None,
         }
@@ -159,12 +150,6 @@ impl ColorStopListBuilder {
         self
     }
 
-    /// Expand the selected stop's color editor inside its row.
-    pub fn expand_selected(mut self, enabled: bool) -> Self {
-        self.expand_selected = enabled;
-        self
-    }
-
     /// Layout of the header and rows.
     #[allow(dead_code)]
     pub fn template(mut self, template: Arc<dyn ColorStopListTemplate>) -> Self {
@@ -200,8 +185,9 @@ pub(crate) struct ColorStopList {
     look: Arc<Look>,
     model: StopModel,
     selected: Option<StopKey>,
+    /// Row whose editor the host holds open (see [`ColorStopList::open_editor`]).
+    open_editor: Option<StopKey>,
     removable: bool,
-    expand_selected: bool,
     list: ListBoxControl<Self, StopData, StopKey>,
     header: HeaderButtons,
     template: Arc<dyn ColorStopListTemplate>,
@@ -230,13 +216,11 @@ impl ColorStopList {
             |key: &StopKey| ("color-stop", *key as usize).into(),
             |stop: &StopData| stop_label(stop.color).into(),
             cx,
-        )
-        // Rows are content-sized so a stop template may change row height and
-        // the selected stop can expand its editor in place.
-        .virtualization(ListBoxVirtualization::Measured {
-            estimated_height: DEFAULT_LINE_HEIGHT + ROW_BORDER * 2.0,
-            overscan: MEASURED_OVERSCAN,
-        });
+        );
+        // Every row is built (the SDK default, eager): stop lists are short and
+        // the viewport always fits them. Measured virtualization re-anchors its
+        // scroll offset when an open editor collapses, which could leave every
+        // row outside the shrunken viewport.
         if builder.reorderable {
             list = list.drag_drop(ListBoxDragDrop::new(cx.entity_id(), Self::handle_drop));
         }
@@ -289,8 +273,8 @@ impl ColorStopList {
             look,
             model,
             selected: None,
+            open_editor: None,
             removable: builder.removable,
-            expand_selected: builder.expand_selected,
             list,
             header,
             template: builder.template.unwrap_or_else(default_color_stop_list_template),
@@ -305,7 +289,6 @@ impl ColorStopList {
     // ---- Host API (never emits) ------------------------------------------
     // Screens adopt these as they migrate to the list (#131); until then only tests call them.
 
-    #[allow(dead_code)]
     pub fn stops(&self) -> &[StopData] {
         self.model.stops()
     }
@@ -324,6 +307,37 @@ impl ColorStopList {
         cx.notify();
     }
 
+    /// Replace every stop, keeping the caller's keys so rows, selection and an
+    /// open editor survive host-driven updates. Selection is kept while its key
+    /// remains. Notifies only when something changed.
+    pub fn set_keyed_stops(&mut self, stops: impl IntoIterator<Item = StopData>, cx: &mut Context<Self>) {
+        let before = self.model.stops().to_vec();
+        self.model.replace_keyed(stops);
+        if self.model.stops() == before.as_slice() {
+            return;
+        }
+        if self.selected.is_some_and(|key| self.model.get(key).is_none()) {
+            self.selected = None;
+        }
+        self.sync_stops(cx);
+        cx.notify();
+    }
+
+    /// Select `key` and hold its editor open regardless of focus, e.g. while
+    /// its knob on a gradient bar has focus. `None` releases it. Selecting a
+    /// different row (by the user or host) also releases it.
+    pub fn open_editor(&mut self, key: Option<StopKey>, cx: &mut Context<Self>) {
+        let key = key.filter(|key| self.model.get(*key).is_some());
+        if key.is_some() {
+            self.set_selected(key, cx);
+        }
+        if self.open_editor != key {
+            self.open_editor = key;
+            self.sync_stops(cx);
+            cx.notify();
+        }
+    }
+
     #[allow(dead_code)]
     pub fn set_color(&mut self, key: StopKey, color: ColorValue, cx: &mut Context<Self>) {
         if self.model.set_color(key, color) {
@@ -332,12 +346,17 @@ impl ColorStopList {
         }
     }
 
-    #[allow(dead_code)]
     pub fn select(&mut self, key: Option<StopKey>, cx: &mut Context<Self>) {
         let key = key.filter(|key| self.model.get(*key).is_some());
         if self.set_selected(key, cx) {
             cx.notify();
         }
+    }
+
+    /// Whether `key`'s row currently shows its editor.
+    #[cfg(test)]
+    pub fn row_expanded(&self, key: StopKey, cx: &App) -> bool {
+        self.rows.get(&key).is_some_and(|row| row.control.read(cx).expanded())
     }
 
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -411,16 +430,18 @@ impl ColorStopList {
                     cx.emit(ColorStopListEvent::ColorChanged { key, color });
                 }
             }
-            ColorStopEvent::PositionChanged(position) => {
-                if let Some(position) = self.model.set_position(key, position) {
-                    cx.emit(ColorStopListEvent::PositionChanged { key, position });
-                }
-                // Re-sort, renumber, and push canonical positions back to the rows.
-                self.sync_stops(cx);
-            }
             ColorStopEvent::RemoveRequested => self.remove_by_user(key, cx),
-            // Rows are built with `expand_on_swatch_click(false)`; selection drives expansion.
-            ColorStopEvent::ExpandedChanged(_) => {}
+            // Focus entered the row's picker: the row being edited becomes the
+            // selection. Its new height reaches the viewport through `height()`.
+            ColorStopEvent::ExpandedChanged(expanded) => {
+                if expanded && self.set_selected(Some(key), cx) {
+                    cx.emit(ColorStopListEvent::SelectionChanged(Some(key)));
+                }
+                // The user closed a held editor from its swatch.
+                if !expanded && self.open_editor == Some(key) {
+                    self.open_editor = None;
+                }
+            }
         }
         cx.notify();
     }
@@ -475,6 +496,9 @@ impl ColorStopList {
             return false;
         }
         self.selected = key;
+        if self.open_editor.is_some() && self.open_editor != key {
+            self.open_editor = None;
+        }
         self.sync_stops(cx);
         true
     }
@@ -506,6 +530,10 @@ impl ColorStopList {
         let can_remove = self.model.can_remove();
         let stops = self.model.stops().to_vec();
         self.rows.retain(|key, _| stops.iter().any(|stop| stop.key == *key));
+        if self.open_editor.is_some_and(|key| self.model.get(key).is_none()) {
+            self.open_editor = None;
+        }
+        let open_editor = self.open_editor;
         for (index, stop) in stops.into_iter().enumerate() {
             let key = stop.key;
             if !self.rows.contains_key(&key) {
@@ -513,7 +541,6 @@ impl ColorStopList {
                 self.rows.insert(key, row);
             }
             let selected = self.selected == Some(key);
-            let expanded = selected && self.expand_selected;
             let control = self.rows[&key].control.clone();
             control.update(cx, |row, cx| {
                 row.set_index(Some(index), cx);
@@ -522,12 +549,10 @@ impl ColorStopList {
                     row.set_position(position, cx);
                 }
                 row.set_selected(selected, cx);
-                row.set_expanded(expanded, cx);
+                row.set_open(open_editor == Some(key), cx);
                 row.set_can_remove(can_remove, cx);
             });
         }
-        // Row content (expansion, template) changed; let the ListBox re-measure.
-        self.list.invalidate_measurements(None, cx);
     }
 
     fn spawn_row(&mut self, stop: &StopData, cx: &mut Context<Self>) -> StopRow {
@@ -535,7 +560,6 @@ impl ColorStopList {
         let mut builder = ColorStopBuilder::new(format!("{}-stop-{key}", self.id), stop.color)
             .look(self.look.clone())
             .removable(self.removable)
-            .expand_on_swatch_click(false)
             .template(self.stop_template.clone());
         if let Some(position) = stop.position {
             builder = builder.position(position);
@@ -662,7 +686,7 @@ mod tests {
     }
 
     #[test]
-    fn row_edits_flow_into_the_model_and_renumber_rows() {
+    fn row_color_edits_flow_into_the_model_and_rows_renumber() {
         let mut app = TestAppContext::single();
         let (list, events) = spawn_with_events(
             &mut app,
@@ -676,31 +700,45 @@ mod tests {
 
         let green = ColorValue::srgb(0.0, 1.0, 0.0, 1.0);
         row(&app, &list, first).update(&mut app, |_, cx| cx.emit(ColorStopEvent::ColorChanged(green)));
-        row(&app, &list, first).update(&mut app, |_, cx| cx.emit(ColorStopEvent::PositionChanged(0.75)));
-        assert_eq!(
-            *events.borrow(),
-            vec![
-                ColorStopListEvent::ColorChanged { key: first, color: green },
-                ColorStopListEvent::PositionChanged { key: first, position: 0.75 },
-            ]
-        );
-        assert_eq!(list.read_with(&app, |list, _| list.model.index_of(first)), Some(1), "list re-sorts");
-        assert_eq!(row(&app, &list, first).read_with(&app, |stop, _| stop.index()), Some(1), "row renumbered");
+        assert_eq!(*events.borrow(), vec![ColorStopListEvent::ColorChanged { key: first, color: green }]);
+        assert_eq!(list.read_with(&app, |list, _| list.stops()[0].color), green);
+
+        list.update(&mut app, |list, cx| list.reverse_by_user(cx));
+        assert_eq!(row(&app, &list, first).read_with(&app, |stop, _| stop.index()), Some(2), "row renumbered");
     }
 
     #[test]
-    fn selection_expands_only_the_selected_row() {
+    fn focusing_a_rows_picker_selects_that_row() {
         let mut app = TestAppContext::single();
-        let (list, _) = spawn_with_events(
-            &mut app,
-            ColorStopListBuilder::new("test-expand").colors([gray(0.0), gray(1.0)]).expand_selected(true),
-        );
+        let (list, events) =
+            spawn_with_events(&mut app, ColorStopListBuilder::new("test-expand").colors([gray(0.0), gray(1.0)]));
         let keys: Vec<StopKey> = list.read_with(&app, |list, _| list.stops().iter().map(|stop| stop.key).collect());
-        list.update(&mut app, |list, cx| list.select(Some(keys[1]), cx));
+        row(&app, &list, keys[1]).update(&mut app, |_, cx| cx.emit(ColorStopEvent::ExpandedChanged(true)));
+        assert_eq!(list.read_with(&app, |list, _| list.selected()), Some(keys[1]));
+        assert_eq!(*events.borrow(), vec![ColorStopListEvent::SelectionChanged(Some(keys[1]))]);
+        row(&app, &list, keys[1]).update(&mut app, |_, cx| cx.emit(ColorStopEvent::ExpandedChanged(false)));
+        assert_eq!(list.read_with(&app, |list, _| list.selected()), Some(keys[1]), "collapsing keeps the selection");
+    }
+
+    #[test]
+    fn host_held_editor_stays_open_until_released_or_another_row_is_selected() {
+        let mut app = TestAppContext::single();
+        let (list, events) =
+            spawn_with_events(&mut app, ColorStopListBuilder::new("test-open").colors([gray(0.0), gray(1.0)]));
+        let keys: Vec<StopKey> = list.read_with(&app, |list, _| list.stops().iter().map(|stop| stop.key).collect());
         let expanded = |app: &TestAppContext, key| row(app, &list, key).read_with(app, |stop, _| stop.expanded());
-        assert!(!expanded(&app, keys[0]) && expanded(&app, keys[1]));
-        list.update(&mut app, |list, cx| list.select(Some(keys[0]), cx));
+
+        list.update(&mut app, |list, cx| list.open_editor(Some(keys[0]), cx));
         assert!(expanded(&app, keys[0]) && !expanded(&app, keys[1]));
+        assert_eq!(list.read_with(&app, |list, _| list.selected()), Some(keys[0]));
+
+        list.update(&mut app, |list, cx| list.select(Some(keys[1]), cx));
+        assert!(!expanded(&app, keys[0]), "selecting another row releases the held editor");
+
+        list.update(&mut app, |list, cx| list.open_editor(Some(keys[1]), cx));
+        list.update(&mut app, |list, cx| list.open_editor(None, cx));
+        assert!(!expanded(&app, keys[1]));
+        assert!(events.borrow().is_empty(), "host calls never emit");
     }
 
     #[test]
@@ -735,20 +773,63 @@ mod tests {
         });
         let (list, cx) = app.add_window_view(|_, cx| {
             ColorStopList::new(
-                ColorStopListBuilder::new("test-row-picker")
-                    .positioned_stops([(gray(0.0), 0.0), (gray(1.0), 1.0)])
-                    .expand_selected(true),
+                ColorStopListBuilder::new("test-row-picker").positioned_stops([(gray(0.0), 0.0), (gray(1.0), 1.0)]),
                 cx,
             )
         });
+        // Focus listeners only fire in an active window.
+        cx.update(|window, _| window.activate_window());
         cx.run_until_parked();
         let collapsed = cx.update(|_, cx| list.read(cx).viewport_height(cx));
         let second = cx.update(|_, cx| list.read(cx).stops()[1].key);
-        list.update(cx, |list, cx| list.select(Some(second), cx));
+        let selector: &'static str = Box::leak(format!("test-row-picker-stop-{second}-swatch").into_boxed_str());
+        let swatch = cx.debug_bounds(selector).expect("swatch");
+        cx.simulate_click(swatch.center(), Default::default());
         cx.run_until_parked();
         let row_height = cx.update(|_, cx| list.read(cx).rows[&second].control.read(cx).height()).unwrap();
         let expanded = cx.update(|_, cx| list.read(cx).viewport_height(cx));
         assert!(row_height > 100.0, "editor laid out inside the row, got {row_height}");
         assert!(expanded > collapsed + 100.0, "viewport grew from {collapsed} to {expanded}");
+    }
+
+    #[test]
+    fn rows_stay_visible_after_a_held_editor_closes() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (list, cx) = app.add_window_view(|_, cx| {
+            ColorStopList::new(
+                ColorStopListBuilder::new("test-collapse").positioned_stops([
+                    (gray(0.0), 0.0),
+                    (gray(0.5), 0.5),
+                    (gray(1.0), 1.0),
+                ]),
+                cx,
+            )
+        });
+        cx.update(|window, _| window.activate_window());
+        cx.run_until_parked();
+        let report = |_label: &str, cx: &mut gpui::VisualTestContext| {
+            let rows: Vec<_> = ["color-stop-rows-item-0", "color-stop-rows-item-1", "color-stop-rows-item-2"]
+                .into_iter()
+                .map(|selector| cx.debug_bounds(selector).map(|b| (b.top().as_f32(), b.size.height.as_f32())))
+                .collect();
+            rows
+        };
+        report("initial", cx);
+        let last = cx.update(|_, cx| list.read(cx).stops()[2].key);
+        list.update(cx, |list, cx| list.open_editor(Some(last), cx));
+        cx.run_until_parked();
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        report("open", cx);
+        list.update(cx, |list, cx| {
+            list.open_editor(None, cx);
+            list.select(None, cx);
+        });
+        cx.run_until_parked();
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        let rows = report("closed", cx);
+        assert!(rows.iter().all(Option::is_some), "every row is still rendered: {rows:?}");
     }
 }

@@ -12,6 +12,7 @@ use xgpui_luma::controls::selector::{Selector, SelectorEvent};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbPolicy, ThumbId};
 use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsWidthMode};
 use xgpui_luma::theme::{ControlSize, ThemeMode};
+use crate::color_stop_list::ColorStopList;
 use crate::theme::{Look, TextSize};
 use xgpui_luma_look_radix as radix;
 use lucide_svg_static::Icon as LucideIcon;
@@ -30,6 +31,7 @@ mod field_handle;
 mod field_shader;
 mod color_list;
 mod sections;
+mod stops;
 
 use super::paint::{GradientType, MeshPoint, PreviewRenderer};
 use super::sv_triangle_picker::SvTrianglePicker;
@@ -47,12 +49,10 @@ pub struct GradientBuilder {
     selected_stop: Option<ThumbId>,
     domain_renderer: Arc<ColorSliderDomainRenderer>,
     track_context: ColorSliderTrackContext,
-    add_stop_button: Entity<Button>,
     mesh_reset_button: Entity<Button>,
     export_button: Entity<Button>,
     export_status: Option<String>,
-    stop_delete_buttons: HashMap<ThumbId, Entity<Button>>,
-    stop_list: color_list::ColorFieldList,
+    stop_list: Entity<ColorStopList>,
     point_list: color_list::ColorFieldList,
     rotation_slider: Entity<SliderControl>,
     saturation_slider: Entity<SliderControl>,
@@ -142,7 +142,6 @@ pub struct GradientBuilder {
     last_render_ms: Option<f32>,
     color_picker: Entity<SvTrianglePicker>,
     color_picker_open: bool,
-    stop_swatch_bounds: HashMap<ThumbId, Bounds<Pixels>>,
     mesh_swatch_bounds: HashMap<usize, Bounds<Pixels>>,
     mesh_background_swatch_bounds: Option<Bounds<Pixels>>,
     mesh_preview_container_size: Size<Pixels>,
@@ -212,12 +211,7 @@ impl GradientBuilder {
             stop_colors.insert(thumb.id, thumb.preview.unwrap_or(start));
         }
         let selected_stop = None;
-        let add_stop_button = crate::theme::icon_button("color-viz-gradient-add-stop", LucideIcon::Plus)
-            .look(look.as_ref())
-            .content_only()
-            .radius(radix::Radius::Medium)
-            .spawn(cx)
-            .tooltip(Tooltip::new("Add color stop"), cx);
+        let stop_list = Self::spawn_stop_list(look.clone(), cx);
         let mesh_reset_button = crate::theme::icon_button("color-viz-mesh-reset", LucideIcon::RotateCcw)
             .look(look.as_ref())
             .content_only()
@@ -417,12 +411,10 @@ impl GradientBuilder {
             selected_stop,
             domain_renderer,
             track_context,
-            add_stop_button: add_stop_button.clone(),
             mesh_reset_button: mesh_reset_button.clone(),
             export_button: export_button.clone(),
             export_status: None,
-            stop_delete_buttons: HashMap::new(),
-            stop_list: color_list::ColorFieldList::new(cx),
+            stop_list,
             point_list: color_list::ColorFieldList::new(cx),
             rotation_slider: rotation_slider.clone(),
             saturation_slider: saturation_slider.clone(),
@@ -518,7 +510,6 @@ impl GradientBuilder {
             last_render_ms: None,
             color_picker: color_picker.clone(),
             color_picker_open: false,
-            stop_swatch_bounds: HashMap::new(),
             mesh_swatch_bounds: HashMap::new(),
             mesh_background_swatch_bounds: None,
             mesh_preview_container_size: size(px(0.0), px(0.0)),
@@ -546,7 +537,6 @@ impl GradientBuilder {
             cx,
             top_tabs,
             gradient_stops,
-            add_stop_button,
             mesh_reset_button,
             rotation_slider,
             type_selector,
@@ -736,7 +726,7 @@ impl GradientBuilder {
         }));
         builder.init_section_accordions(cx);
         builder.init_freeform_buttons(cx);
-        builder.sync_stop_buttons(cx);
+        builder.wire_stop_list(cx);
         builder.rebuild_stops(cx);
         builder
     }
@@ -747,7 +737,6 @@ impl GradientBuilder {
         cx: &mut Context<Self>,
         top_tabs: Entity<Tabs>,
         gradient_stops: Entity<SliderControl>,
-        add_stop_button: Entity<Button>,
         mesh_reset_button: Entity<Button>,
         rotation_slider: Entity<SliderControl>,
         type_selector: Entity<Selector>,
@@ -761,11 +750,6 @@ impl GradientBuilder {
         }));
         self._subscriptions.push(cx.subscribe(&top_tabs, |this, _, event: &TabsEvent, cx| {
             this.handle_top_tabs_event(event, cx);
-        }));
-        self._subscriptions.push(cx.subscribe(&add_stop_button, |this, _, event: &ButtonEvent, cx| {
-            if matches!(event, ButtonEvent::Click) {
-                this.handle_add_stop(cx);
-            }
         }));
         self._subscriptions.push(cx.subscribe(&mesh_reset_button, |this, _, event: &ButtonEvent, cx| {
             if matches!(event, ButtonEvent::Click) {
@@ -797,6 +781,7 @@ impl GradientBuilder {
 mod tests {
     use super::*;
     use gpui::TestAppContext;
+    use gpui::App;
 
     #[test]
     fn redesigned_inspector_retains_freeform_edits_across_modes() {
@@ -959,6 +944,150 @@ mod tests {
         });
     }
 
+    fn list_rows(builder: &GradientBuilder, cx: &App) -> Vec<(u64, f32)> {
+        builder
+            .stop_list
+            .read(cx)
+            .stops()
+            .iter()
+            .map(|stop| (stop.key, stop.position.unwrap_or(-1.0)))
+            .collect()
+    }
+
+    fn bar_rows(builder: &GradientBuilder, cx: &App) -> Vec<(u64, f32)> {
+        let mut rows: Vec<(u64, f32)> = builder
+            .gradient_stops
+            .read(cx)
+            .thumbs()
+            .iter()
+            .map(|thumb| (thumb.id.as_u64(), thumb.position))
+            .collect();
+        rows.sort_by(|a, b| a.1.total_cmp(&b.1));
+        rows
+    }
+
+    #[test]
+    fn stop_list_mirrors_the_gradient_bar() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            assert_eq!(list_rows(builder, cx).len(), 3);
+        });
+        // Bar edits (insert, select) reach the list under the thumb's key.
+        view.update(cx, |builder, cx| {
+            builder.gradient_stops.update(cx, |slider, cx| {
+                slider.insert_thumb_at(0.25, cx);
+            });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            let selected = builder.selected_stop.map(ThumbId::as_u64);
+            assert!(selected.is_some());
+            assert_eq!(builder.stop_list.read(cx).selected(), selected);
+        });
+    }
+
+    #[test]
+    fn grabbing_a_knob_opens_its_picker_and_clicking_away_releases_it() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        let open_row = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|_, cx| {
+                let list = view.read(cx).stop_list.read(cx);
+                list.stops().iter().map(|stop| stop.key).find(|key| list.row_expanded(*key, cx))
+            })
+        };
+        cx.update(|window, _| window.activate_window());
+        let thumb = view.update(cx, |builder, cx| builder.ordered_stop_rows(cx)[1].0);
+        view.update(cx, |builder, cx| builder.handle_stops_event(&SliderEvent::DragStart { thumb_id: thumb }, cx));
+        cx.run_until_parked();
+        assert_eq!(open_row(cx), Some(thumb.as_u64()));
+        cx.update(|_, cx| assert_eq!(view.read(cx).selected_stop, Some(thumb)));
+
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        let rows = |cx: &mut gpui::VisualTestContext| {
+            ["color-stop-rows-item-0", "color-stop-rows-item-1", "color-stop-rows-item-2"]
+                .map(|selector| cx.debug_bounds(selector).map(|b| (b.top().as_f32(), b.size.height.as_f32())))
+        };
+        let canvas = cx.debug_bounds("gradient-preview").expect("preview");
+        cx.simulate_click(canvas.center(), Default::default());
+        cx.run_until_parked();
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        assert!(rows(cx).iter().all(Option::is_some), "rows still rendered after the picker closes");
+        assert_eq!(open_row(cx), None);
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(builder.selected_stop, None);
+            assert_eq!(builder.stop_list.read(cx).selected(), None);
+        });
+    }
+
+    #[test]
+    fn stop_list_edits_flow_back_to_the_gradient_bar() {
+        use crate::color_stop_list::{ColorStopListEvent, StopData};
+        use xgpui_luma::color::ColorValue;
+
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        view.update(cx, |builder, cx| {
+            let keys: Vec<u64> = list_rows(builder, cx).iter().map(|row| row.0).collect();
+            let thumb = |builder: &GradientBuilder, cx: &App, key: u64| {
+                builder.gradient_stops.read(cx).thumbs().iter().map(|thumb| thumb.id).find(|id| id.as_u64() == key)
+            };
+
+            // Color edits land in the bar's colors.
+            let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
+            builder.handle_stop_list_event(&ColorStopListEvent::ColorChanged { key: keys[1], color: red }, cx);
+            let id = thumb(builder, cx, keys[1]).expect("thumb");
+            let stored = builder.stop_colors[&id];
+            assert!(stored.l > 0.45 && stored.l < 0.55 && stored.s > 0.95, "{stored:?}");
+
+            // Distribute: the list's positions become the bar's, slot by slot.
+            builder.stop_list.update(cx, |list, cx| {
+                let stops: Vec<StopData> = list
+                    .stops()
+                    .iter()
+                    .enumerate()
+                    .map(|(index, stop)| StopData { position: Some(index as f32 * 0.5), ..*stop })
+                    .collect();
+                list.set_keyed_stops(stops, cx);
+            });
+            builder.handle_stop_list_event(&ColorStopListEvent::Distributed, cx);
+            let positions: Vec<f32> = bar_rows(builder, cx).iter().map(|row| row.1).collect();
+            assert_eq!(positions, vec![0.0, 0.5, 1.0]);
+
+            // Added: the list's provisional stop becomes a real thumb and is selected.
+            builder.stop_list.update(cx, |list, cx| {
+                let mut stops = list.stops().to_vec();
+                stops.push(StopData { key: 9_999_999, color: red, position: Some(0.75) });
+                list.set_keyed_stops(stops, cx);
+            });
+            builder.handle_stop_list_event(&ColorStopListEvent::Added(9_999_999), cx);
+            assert_eq!(bar_rows(builder, cx).len(), 4);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            let selected = builder.selected_stop.expect("new stop selected");
+            assert!((builder.gradient_stops.read(cx).thumb_value(selected).unwrap_or(-1.0) - 0.75).abs() < 1e-4);
+
+            // Removed deletes the thumb.
+            builder.handle_stop_list_event(&ColorStopListEvent::Removed(keys[0]), cx);
+            assert_eq!(bar_rows(builder, cx).len(), 3);
+            assert!(thumb(builder, cx, keys[0]).is_none());
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+        });
+    }
+
     #[test]
     fn css_copy_uses_the_displayed_gradient_after_edits() {
         let mut app = TestAppContext::single();
@@ -966,7 +1095,9 @@ mod tests {
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         view.update(cx, |builder, cx| {
             builder.rotation_deg = 137.0;
-            builder.handle_add_stop(cx);
+            builder.gradient_stops.update(cx, |slider, cx| {
+                slider.insert_thumb_at(0.25, cx);
+            });
         });
         cx.run_until_parked();
         let (button, expected) =
@@ -1007,7 +1138,7 @@ mod tests {
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         for (index, id, selector, row_selector) in [
-            (0, "gradients", "color-viz-gradients-section-FIELDS", "color-viz-stop-list-first-row"),
+            (0, "gradients", "color-viz-gradients-section-FIELDS", "color-stop-rows-item-0"),
             (1, "mesh", "color-viz-mesh-section-FIELDS", "color-viz-point-list-first-row"),
             (2, "freeform", "color-viz-freeform-section-FIELDS", "color-viz-point-list-first-row"),
         ] {
@@ -1051,7 +1182,7 @@ mod tests {
             let builder = view.read(cx);
             assert_eq!(builder.selected_stop, None);
             assert_eq!(builder.selected_mesh_point, None);
-            assert_eq!(builder.stop_list.state.selected_keys().count(), 0);
+            assert_eq!(builder.stop_list.read(cx).selected(), None);
         });
         for id in ["mesh", "freeform", "mesh", "freeform"] {
             view.update(cx, |builder, cx| {
@@ -1081,27 +1212,6 @@ mod tests {
         app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
-        let thumb_id = view.update(cx, |builder, cx| builder.ordered_stop_rows(cx)[0].0);
-        let bounds = cx.debug_bounds("color-viz-stop-list-first-row").expect("stop row");
-        // The leading label selects/focuses the collection without opening a picker.
-        cx.simulate_click(gpui::point(bounds.left() + gpui::px(12.0), bounds.center().y), Default::default());
-        cx.run_until_parked();
-        cx.update(|window, cx| {
-            let builder = view.read(cx);
-            assert_eq!(builder.selected_stop, Some(thumb_id));
-            assert!(builder.stop_list.binding.focus_handle().is_focused(window));
-        });
-        cx.simulate_keystrokes("down");
-        cx.run_until_parked();
-        view.update(cx, |builder, cx| assert_eq!(builder.selected_stop, Some(builder.ordered_stop_rows(cx)[1].0)));
-        let canvas = cx.debug_bounds("gradient-preview").expect("preview");
-        cx.simulate_click(canvas.center(), Default::default());
-        cx.run_until_parked();
-        cx.update(|window, cx| {
-            let builder = view.read(cx);
-            assert_eq!(builder.selected_stop, None);
-            assert!(!builder.stop_list.binding.focus_handle().is_focused(window));
-        });
         for id in ["mesh", "freeform"] {
             view.update(cx, |builder, cx| {
                 builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: id.into(), label: id.into() }, cx)

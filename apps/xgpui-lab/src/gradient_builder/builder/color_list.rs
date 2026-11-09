@@ -97,41 +97,6 @@ impl ColorFieldList {
 }
 
 impl GradientBuilder {
-    pub(super) fn handle_stop_list_input(
-        &mut self,
-        input: ListBoxInput<u64>,
-        _window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let update = self.stop_list.state.apply(input);
-        for event in update.events {
-            match event {
-                ListBoxEvent::SelectionChanged { selected, .. } => {
-                    let selected = selected.first().copied();
-                    let thumb = self
-                        .ordered_stop_rows(cx)
-                        .into_iter()
-                        .find(|(id, _, _)| Some(id.as_u64()) == selected)
-                        .map(|(id, _, _)| id);
-                    if let Some(id) = thumb {
-                        self.select_stop_row(id, cx);
-                    } else {
-                        self.selected_stop = None;
-                    }
-                }
-                ListBoxEvent::ItemActivated { key } => {
-                    if let Some((id, _, _)) =
-                        self.ordered_stop_rows(cx).into_iter().find(|(id, _, _)| id.as_u64() == key)
-                    {
-                        self.open_color_picker_for_stop(id, cx);
-                    }
-                }
-                _ => {}
-            }
-        }
-        cx.notify();
-    }
-
     pub(super) fn handle_point_list_input(
         &mut self,
         input: ListBoxInput<u64>,

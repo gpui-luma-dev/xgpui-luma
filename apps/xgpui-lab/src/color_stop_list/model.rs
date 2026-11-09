@@ -91,6 +91,27 @@ impl StopModel {
         self.sort();
     }
 
+    /// Replace all stops with caller-owned keys (e.g. a host's own ids).
+    ///
+    /// Duplicate keys keep their first entry. Later [`Self::add`] calls
+    /// allocate keys above every supplied key.
+    pub fn replace_keyed(&mut self, stops: impl IntoIterator<Item = StopData>) {
+        let positioned = self.positioned;
+        let mut next: Vec<StopData> = Vec::new();
+        for stop in stops {
+            if next.iter().any(|existing| existing.key == stop.key) {
+                continue;
+            }
+            let position = positioned.then(|| stop.position.unwrap_or(0.0).clamp(0.0, 1.0));
+            next.push(StopData { position, ..stop });
+        }
+        if let Some(max) = next.iter().map(|stop| stop.key).max() {
+            self.next_key = self.next_key.max(max.saturating_add(1));
+        }
+        self.stops = next;
+        self.sort();
+    }
+
     /// Insert a stop next to `anchor` (or into the widest gap when `None`).
     ///
     /// Positioned lists insert at the midpoint of the chosen gap with the
@@ -141,6 +162,8 @@ impl StopModel {
     }
 
     /// Move a positioned stop; returns the clamped position actually applied.
+    // Unused while stop positions are display-only (#131).
+    #[allow(dead_code)]
     pub fn set_position(&mut self, key: StopKey, position: f32) -> Option<f32> {
         if !self.positioned {
             return None;
@@ -271,6 +294,18 @@ mod tests {
         let model = StopModel::new([(gray(1.0), Some(1.4)), (gray(0.0), Some(-0.2))], CountLimits::default(), true);
         assert_eq!(positions(&model), vec![0.0, 1.0]);
         assert_ne!(model.stops()[0].key, model.stops()[1].key);
+    }
+
+    #[test]
+    fn replace_keyed_keeps_host_keys_sorts_and_allocates_above_them() {
+        let mut model = gradient();
+        let stop = |key, position| StopData { key, color: gray(0.5), position: Some(position) };
+        model.replace_keyed([stop(40, 1.0), stop(7, 0.0), stop(7, 0.5), stop(12, 0.5)]);
+        let keys: Vec<StopKey> = model.stops().iter().map(|stop| stop.key).collect();
+        assert_eq!(keys, vec![7, 12, 40]);
+        assert_eq!(positions(&model), vec![0.0, 0.5, 1.0]);
+        let added = model.add(Some(7)).expect("room to add");
+        assert!(added > 40);
     }
 
     #[test]

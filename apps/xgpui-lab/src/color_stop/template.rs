@@ -1,26 +1,34 @@
 //! Presentation for [`super::ColorStop`].
 //!
 //! The control owns state, child controls and input; a template only arranges
-//! what the render model provides. Interactive children (`position_field`,
-//! `remove_button`, `editor`) arrive pre-rendered and already isolated from the
+//! what the render model provides. Interactive children (`remove_button`,
+//! `editor`) arrive pre-rendered and already isolated from the
 //! surrounding row, so a template cannot break their input handling.
 
 use std::sync::{Arc, OnceLock};
 
-use gpui::{AnyElement, App, Bounds, ClickEvent, IntoElement, Pixels, SharedString, Window, div, prelude::*, px};
+use gpui::{
+    AnyElement, App, Bounds, ClickEvent, Div, IntoElement, MouseButton, Pixels, SharedString, Stateful, Window, div,
+    prelude::*, px,
+};
 use xgpui_luma::color::ColorValue;
 use xgpui_luma::infra::ElementExt;
+use xgpui_luma::infra::attachments::TooltipHandle;
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_color::ColorSwatch;
 
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
 pub(crate) type ColorStopClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub(crate) type ColorStopBoundsHandler = Box<dyn Fn(Bounds<Pixels>, &mut Window, &mut App) + 'static>;
+pub(crate) type ColorStopHoverHandler = Box<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 
 /// Behavior the template attaches to its own elements.
 pub(crate) struct ColorStopTemplateHandlers {
-    /// Attach to the swatch (or whatever the template uses to open the editor).
+    /// Attach to the swatch (or whatever the template uses to toggle the editor).
     pub swatch_click: ColorStopClickHandler,
+    /// Swatch hover, which drives its tooltip.
+    pub swatch_hover: ColorStopHoverHandler,
     /// Attach to the root (e.g. via `on_prepaint`) so the control knows its
     /// laid-out size; lists use it to size their viewport.
     pub bounds: ColorStopBoundsHandler,
@@ -41,12 +49,15 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub index: Option<usize>,
     pub selected: bool,
     pub expanded: bool,
-    /// Editable position, when the stop is positioned.
-    pub position_field: Option<AnyElement>,
+    /// Position as text (e.g. `50%`), when the stop is positioned.
+    pub position_label: Option<SharedString>,
     /// Remove action, when the stop is removable.
     pub remove_button: Option<AnyElement>,
     /// Color editor; present only while expanded.
     pub editor: Option<AnyElement>,
+    /// Swatch help ("Edit color" / "Close color editor"), for the current state.
+    pub swatch_tooltip: Option<TooltipHandle>,
+    pub swatch_hovered: bool,
 }
 
 pub(crate) trait ColorStopTemplate: Send + Sync {
@@ -109,7 +120,7 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
         model: ColorStopRenderModel<'_>,
         handlers: ColorStopTemplateHandlers,
         _window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> AnyElement {
         let group: SharedString = format!("{}-group", model.id).into();
         let line = div()
@@ -118,11 +129,9 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
             .flex()
             .items_center()
             .gap_2()
-            .child(swatch(&model, handlers.swatch_click))
+            .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
             .child(label(&model))
-            .when_some(model.position_field, |line, field| {
-                line.child(div().flex_shrink_0().w(px(POSITION_WIDTH)).child(field))
-            })
+            .children(position_label(&model))
             .when_some(model.remove_button, |line, button| {
                 line.child(
                     div()
@@ -149,15 +158,36 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
 
 // Building blocks shared with custom templates.
 
-/// Clickable color swatch with checkerboard for translucent colors.
-pub(crate) fn swatch(model: &ColorStopRenderModel<'_>, on_click: ColorStopClickHandler) -> impl IntoElement {
-    div()
-        .id(format!("{}-swatch", model.id))
+/// Color swatch (checkerboard for translucent colors) that toggles the editor,
+/// with its tooltip. The press stays with the swatch, so the surrounding row
+/// neither takes focus from an open editor nor starts a drag.
+pub(crate) fn swatch(
+    model: &ColorStopRenderModel<'_>,
+    on_click: ColorStopClickHandler,
+    on_hover: ColorStopHoverHandler,
+    cx: &App,
+) -> Stateful<Div> {
+    let id: SharedString = format!("{}-swatch", model.id).into();
+    let selector = id.to_string();
+    let root = div()
+        .id(id)
+        .debug_selector(move || selector.clone())
         .flex_shrink_0()
         .w(px(SWATCH_SIZE))
         .cursor_pointer()
-        .on_click(move |event, window, cx| on_click(event, window, cx))
-        .child(ColorSwatch::new(model.color).checkerboard(true).height(px(SWATCH_SIZE)).rounded(px(6.0)))
+        .on_hover(move |hovered, window, cx| on_hover(*hovered, window, cx))
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+        .on_click(move |event, window, cx| {
+            cx.stop_propagation();
+            on_click(event, window, cx);
+        })
+        .child(ColorSwatch::new(model.color).checkerboard(true).height(px(SWATCH_SIZE)).rounded(px(6.0)));
+    match &model.swatch_tooltip {
+        Some(tooltip) => {
+            tooltip.render(root, InteractionState { hovered: model.swatch_hovered, ..Default::default() }, cx)
+        }
+        None => root,
+    }
 }
 
 /// Hex label with muted alpha, filling the remaining width.
@@ -172,6 +202,21 @@ pub(crate) fn label(model: &ColorStopRenderModel<'_>) -> impl IntoElement {
         .typography_style(model.look.typography_scale(TextSize::Sm))
         .child(div().text_color(chrome.body_text).child(model.label.clone()))
         .child(div().text_color(chrome.muted_text).child(format!("{}%", (model.alpha * 100.0).round() as i32)))
+}
+
+/// Right-aligned muted position text, when the stop is positioned.
+pub(crate) fn position_label(model: &ColorStopRenderModel<'_>) -> Option<gpui::Div> {
+    let chrome = model.look.chrome();
+    model.position_label.clone().map(|text| {
+        div()
+            .flex_shrink_0()
+            .w(px(POSITION_WIDTH))
+            .flex()
+            .justify_end()
+            .typography_style(model.look.typography_scale(TextSize::Sm))
+            .text_color(chrome.muted_text)
+            .child(text)
+    })
 }
 
 /// Card around the editor.

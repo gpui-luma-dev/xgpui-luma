@@ -8,7 +8,7 @@ use gpui::{AnyElement, App, Context, Entity, Render, SharedString, Subscription,
 use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 use xgpui_luma::infra::ElementExt;
 
-use crate::color_stop::template::{editor_panel, label, swatch};
+use crate::color_stop::template::{editor_panel, label, position_label, swatch};
 use crate::color_stop::{
     ColorStop, ColorStopBuilder, ColorStopEvent, ColorStopRenderModel, ColorStopTemplate, ColorStopTemplateHandlers,
     make_color_stop_template,
@@ -47,14 +47,12 @@ impl ColorStopListExposition {
             ])
             .count_limits(2, 8)
             .header_actions(HeaderActions::ALL)
-            .expand_selected(true)
             .spawn(cx);
         let palette = ColorStopListBuilder::new("composition-color-stops-palette")
             .look(look.clone())
             .colors([srgb(0xf2, 0x6d, 0x5b), srgb(0xf6, 0xc3, 0x4a), srgb(0x5b, 0xc0, 0xbe), srgb(0x4a, 0x6f, 0xd1)])
             .count_limits(1, 8)
             .header_actions(HeaderActions { reverse: true, distribute: false, add: true })
-            .expand_selected(true)
             .spawn(cx);
         // Same control, different presentation: only the stop template changes.
         let numbered = ColorStopListBuilder::new("composition-color-stops-numbered")
@@ -66,7 +64,6 @@ impl ColorStopListExposition {
             ])
             .count_limits(2, 8)
             .header_actions(HeaderActions { reverse: false, distribute: false, add: true })
-            .expand_selected(true)
             .stop_template(numbered_stop_template())
             .spawn(cx);
         // A single ColorStop without a list (e.g. a mesh background color).
@@ -132,7 +129,7 @@ impl Render for ColorStopListExposition {
                     .child(render_demo_section(
                         look,
                         "Gradient stops",
-                        "Positioned, sorted, 2–8 stops. Select a row to edit its color; drag rows to move colors between stops.",
+                        "Positioned, sorted, 2–8 stops. Click a swatch to edit its color; drag rows to move colors between stops.",
                         render_demo_card(look, CARD_WIDTH, self.gradient.clone()),
                     ))
                     .child(render_demo_section(
@@ -173,9 +170,6 @@ fn format_event(event: &ColorStopListEvent) -> String {
         ColorStopListEvent::SelectionChanged(key) => format!("SelectionChanged({key:?})"),
         ColorStopListEvent::Activated(key) => format!("Activated({key})"),
         ColorStopListEvent::ColorChanged { key, color } => format!("ColorChanged {{ key: {key}, {} }}", hex(*color)),
-        ColorStopListEvent::PositionChanged { key, position } => {
-            format!("PositionChanged {{ key: {key}, position: {position:.3} }}")
-        }
         ColorStopListEvent::Added(key) => format!("Added({key})"),
         ColorStopListEvent::Removed(key) => format!("Removed({key})"),
         ColorStopListEvent::Reordered => "Reordered".into(),
@@ -187,7 +181,6 @@ fn format_event(event: &ColorStopListEvent) -> String {
 fn format_stop_event(event: &ColorStopEvent) -> String {
     match event {
         ColorStopEvent::ColorChanged(color) => format!("ColorChanged({})", crate::color_stop::stop_label(*color)),
-        ColorStopEvent::PositionChanged(position) => format!("PositionChanged({position:.3})"),
         ColorStopEvent::RemoveRequested => "RemoveRequested".into(),
         ColorStopEvent::ExpandedChanged(expanded) => format!("ExpandedChanged({expanded})"),
     }
@@ -198,7 +191,7 @@ fn format_stop_event(event: &ColorStopEvent) -> String {
 fn numbered_stop_template() -> Arc<dyn ColorStopTemplate> {
     const NUMBER_WIDTH: f32 = 18.0;
     make_color_stop_template(
-        |model: ColorStopRenderModel<'_>, handlers: ColorStopTemplateHandlers, _: &mut Window, _: &mut App| {
+        |model: ColorStopRenderModel<'_>, handlers: ColorStopTemplateHandlers, _: &mut Window, cx: &mut App| {
             let chrome = model.look.chrome();
             let number: SharedString = model.index.map(|index| (index + 1).to_string()).unwrap_or_default().into();
             let line = div()
@@ -215,9 +208,9 @@ fn numbered_stop_template() -> Arc<dyn ColorStopTemplate> {
                         .text_color(chrome.muted_text)
                         .child(number),
                 )
-                .child(swatch(&model, handlers.swatch_click))
+                .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
                 .child(label(&model))
-                .children(model.position_field.map(|field| div().flex_shrink_0().w(px(60.0)).child(field)))
+                .children(position_label(&model))
                 .children(model.remove_button);
             let editor: Option<AnyElement> =
                 model.editor.map(|editor| editor_panel(model.look, editor).into_any_element());

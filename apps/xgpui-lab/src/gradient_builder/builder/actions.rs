@@ -42,43 +42,22 @@ impl GradientBuilder {
             SliderEvent::ThumbAdded { thumb_id, .. } => {
                 self.hydrate_thumb_color(*thumb_id, cx);
                 self.selected_stop = Some(*thumb_id);
-                self.sync_stop_buttons(cx);
                 self.rebuild_stops(cx);
             }
             SliderEvent::ThumbRemoved { thumb_id } => {
                 self.stop_colors.remove(thumb_id);
-                self.sync_stop_buttons(cx);
                 self.rebuild_stops(cx);
             }
             SliderEvent::ThumbSelected { thumb_id } => {
                 self.selected_stop = Some(*thumb_id);
-                if self.color_picker_open {
-                    let color = self.selected_color(cx);
-                    self.color_picker.update(cx, |picker, cx| picker.set_color(color, cx));
-                }
+                self.sync_stop_list(cx);
                 cx.notify();
             }
+            SliderEvent::DragStart { thumb_id } => self.open_stop_editor(*thumb_id, cx),
             SliderEvent::Change { .. } | SliderEvent::Release { .. } => {
                 self.rebuild_stops(cx);
             }
             _ => {}
-        }
-    }
-
-    pub(super) fn handle_add_stop(&mut self, cx: &mut Context<Self>) {
-        let position = self.new_stop_position(cx);
-        let color = color_at_position(&self.preview_stops(cx), position);
-        let mut inserted = None;
-        self.gradient_stops.update(cx, |slider, cx| {
-            inserted = slider.insert_thumb_at(position, cx);
-        });
-
-        if let Some(thumb_id) = inserted {
-            self.stop_colors.insert(thumb_id, color);
-            self.selected_stop = Some(thumb_id);
-            self.sync_stop_buttons(cx);
-            self.rebuild_stops(cx);
-            cx.notify();
         }
     }
 
@@ -90,7 +69,6 @@ impl GradientBuilder {
         self.gradient_stops.update(cx, |slider, cx| {
             slider.remove_thumb_id(thumb_id, cx);
         });
-        self.sync_stop_buttons(cx);
         self.rebuild_stops(cx);
         cx.notify();
     }
@@ -207,13 +185,8 @@ impl GradientBuilder {
         }
         let color = self.color_picker.read(cx).color();
         match self.selected_tab {
-            BuilderTab::Gradients => {
-                let Some(thumb_id) = self.selected_stop else {
-                    return;
-                };
-                self.stop_colors.insert(thumb_id, color);
-                self.rebuild_stops(cx);
-            }
+            // Gradient stops edit colors inline in their list.
+            BuilderTab::Gradients => {}
             BuilderTab::Mesh | BuilderTab::Freeform => match self.mesh_color_target {
                 MeshColorTarget::Point(point_index) => {
                     if let Some(point) = self.mesh_points.get_mut(point_index) {
@@ -229,14 +202,6 @@ impl GradientBuilder {
                 }
             },
         }
-    }
-
-    pub(super) fn open_color_picker_for_stop(&mut self, thumb_id: ThumbId, cx: &mut Context<Self>) {
-        self.selected_stop = Some(thumb_id);
-        let color = self.selected_color(cx);
-        self.color_picker.update(cx, |picker, cx| picker.set_color(color, cx));
-        self.color_picker_open = true;
-        cx.notify();
     }
 
     pub(super) fn open_color_picker_for_mesh_point(&mut self, point_index: usize, cx: &mut Context<Self>) {
@@ -322,38 +287,6 @@ impl GradientBuilder {
         cx.notify();
     }
 
-    pub(super) fn sync_stop_buttons(&mut self, cx: &mut Context<Self>) {
-        let thumbs = self.gradient_stops.read(cx).thumbs().to_vec();
-        let thumb_ids = thumbs.iter().map(|thumb| thumb.id).collect::<Vec<_>>();
-        self.stop_delete_buttons.retain(|thumb_id, _| thumb_ids.contains(thumb_id));
-        self.stop_swatch_bounds.retain(|thumb_id, _| thumb_ids.contains(thumb_id));
-
-        let can_remove = thumb_ids.len() > 2;
-        for thumb_id in thumb_ids {
-            if let Some(button) = self.stop_delete_buttons.get(&thumb_id) {
-                button.update(cx, |button, cx| button.set_enabled(can_remove, cx));
-                continue;
-            }
-
-            let button = crate::theme::icon_button(
-                format!("color-viz-gradient-stop-delete-{}", thumb_id.as_u64()),
-                LucideIcon::Trash,
-            )
-            .look(self.look.as_ref())
-            .content_only()
-            .radius(radix::Radius::Medium)
-            .spawn(cx)
-            .tooltip(Tooltip::new("Remove color stop"), cx);
-            button.update(cx, |button, cx| button.set_enabled(can_remove, cx));
-            self._subscriptions.push(cx.subscribe(&button, move |this, _, event: &ButtonEvent, cx| {
-                if matches!(event, ButtonEvent::Click) {
-                    this.handle_delete_stop(thumb_id, cx);
-                }
-            }));
-            self.stop_delete_buttons.insert(thumb_id, button);
-        }
-    }
-
     pub(super) fn hydrate_thumb_color(&mut self, thumb_id: ThumbId, cx: &Context<Self>) {
         if self.stop_colors.contains_key(&thumb_id) {
             return;
@@ -386,31 +319,8 @@ impl GradientBuilder {
         self.stop_colors.insert(thumb_id, color);
     }
 
-    pub(super) fn new_stop_position(&self, cx: &Context<Self>) -> f32 {
-        let stops = self.ordered_stop_rows(cx);
-        if stops.is_empty() {
-            return 0.5;
-        }
-
-        let Some(selected_stop) = self.selected_stop else {
-            return 0.5;
-        };
-        let Some(index) = stops.iter().position(|(thumb_id, _, _)| *thumb_id == selected_stop) else {
-            return 0.5;
-        };
-
-        if index + 1 < stops.len() {
-            return (stops[index].1 + stops[index + 1].1) * 0.5;
-        }
-        if index > 0 {
-            return (stops[index - 1].1 + stops[index].1) * 0.5;
-        }
-
-        (stops[index].1 + 0.5).min(1.0)
-    }
-
     pub(super) fn rebuild_stops(&mut self, cx: &mut Context<Self>) {
-        self.sync_stop_buttons(cx);
+        self.sync_stop_list(cx);
         let slider = self.gradient_stops.read(cx);
         let stops = sorted_stops(
             &slider
@@ -442,24 +352,6 @@ impl GradientBuilder {
         cx.notify();
     }
 
-    pub(super) fn selected_color(&self, cx: &Context<Self>) -> gpui::Hsla {
-        let Some(thumb_id) = self.selected_stop else {
-            return gpui::hsla(0.0, 0.0, 0.5, 1.0);
-        };
-        self.stop_colors
-            .get(&thumb_id)
-            .copied()
-            .or_else(|| {
-                self.gradient_stops
-                    .read(cx)
-                    .thumbs()
-                    .iter()
-                    .find(|thumb| thumb.id == thumb_id)
-                    .and_then(|thumb| thumb.preview)
-            })
-            .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0))
-    }
-
     pub(super) fn selected_mesh_color(&self) -> gpui::Hsla {
         match self.mesh_color_target {
             MeshColorTarget::Point(point_index) => self
@@ -469,10 +361,6 @@ impl GradientBuilder {
                 .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0)),
             MeshColorTarget::Background => self.mesh_background,
         }
-    }
-
-    pub(super) fn handle_stop_swatch_bounds(&mut self, thumb_id: ThumbId, bounds: &Bounds<Pixels>) {
-        self.stop_swatch_bounds.insert(thumb_id, *bounds);
     }
 
     pub(super) fn handle_mesh_swatch_bounds(&mut self, point_index: usize, bounds: &Bounds<Pixels>) {

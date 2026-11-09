@@ -1,5 +1,5 @@
 use super::*;
-use super::view::{INSPECTOR_WIDTH, compact_slider_row, render_mesh_background_row, render_mesh_point_row, render_stop_row};
+use super::view::{INSPECTOR_WIDTH, compact_slider_row, render_mesh_background_row, render_mesh_point_row};
 
 use crate::theme::{ColorVizLookExt, TypographyExt};
 use gpui::{IntoElement, MouseButton, Window, div, prelude::*};
@@ -329,60 +329,18 @@ impl GradientBuilder {
                     .child(render_mesh_background_row(mesh_background, info_label_style, chrome, builder.clone()));
                 panel.into_any_element()
             }
-            1 if self.selected_tab == BuilderTab::Gradients => {
-                let stop_rows = self.ordered_stop_rows(cx);
-                let stop_content = stop_rows
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, (thumb_id, position, color))| {
-                        (
-                            thumb_id.as_u64(),
-                            render_stop_row(
-                                index + 1,
-                                thumb_id,
-                                position,
-                                color,
-                                self.selected_stop == Some(thumb_id),
-                                self.stop_delete_buttons.get(&thumb_id).cloned(),
-                                self.look.typography_scale(TextSize::Sm),
-                                self.look.typography_scale(TextSize::Sm),
-                                chrome,
-                                self.look.interaction_colors(),
-                                cx.entity(),
-                            )
-                            .into_any_element(),
-                        )
-                    })
-                    .collect();
-                let stop_list = self.stop_list.render(
-                    stop_content,
-                    self.selected_stop.map(|id| id.as_u64()),
-                    "color-viz-stop-list",
-                    chrome,
-                    self.look.interaction_colors(),
-                    window,
-                    cx,
-                    GradientBuilder::handle_stop_list_input,
-                );
-
-                div()
-                    .w_full()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(
-                        div()
-                            .w_full()
-                            .flex()
-                            .items_start()
-                            .justify_between()
-                            .gap_4()
-                            .child(div().flex_1().min_w(px(0.0)).pt_1().child(self.gradient_stops.clone()))
-                            .child(self.add_stop_button.clone()),
-                    )
-                    .child(stop_list)
-                    .into_any_element()
-            }
+            1 if self.selected_tab == BuilderTab::Gradients => div()
+                .w_full()
+                .flex()
+                .flex_col()
+                .gap_2()
+                // The bar and list share one selection: a press anywhere else releases it.
+                .on_mouse_down_out(cx.listener(|this, _: &gpui::MouseDownEvent, window, cx| {
+                    this.release_stop_editor(window, cx);
+                }))
+                .child(div().w_full().pt_1().child(self.gradient_stops.clone()))
+                .child(self.stop_list.clone())
+                .into_any_element(),
             1 => {
                 let point_content = self
                     .mesh_points
