@@ -10,7 +10,7 @@ use gpui::{
 };
 #[cfg(not(target_family = "wasm"))]
 use std::time::Instant;
-use std::{hint::black_box, sync::Arc};
+use std::{hint::black_box, rc::Rc, sync::Arc};
 #[cfg(target_family = "wasm")]
 use web_time::Instant;
 
@@ -99,7 +99,7 @@ pub fn measure(system: Arc<TextSystem>, iterations: usize) -> Result<Vec<Timing>
 }
 
 pub struct ParagraphLab {
-    engine: Arc<super::Engine>,
+    engine: Rc<super::Engine>,
     buttons: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
     sample_choice: crate::lab_controls::Choice,
     look: Arc<xgpui_luma_look_radix::Look>,
@@ -122,7 +122,7 @@ pub struct ParagraphLab {
 }
 impl ParagraphLab {
     pub fn new(
-        engine: Arc<super::Engine>,
+        engine: Rc<super::Engine>,
         timings: Vec<Timing>,
         look: Arc<xgpui_luma_look_radix::Look>,
         cx: &mut Context<Self>,
