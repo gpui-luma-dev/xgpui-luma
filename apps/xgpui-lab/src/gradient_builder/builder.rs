@@ -323,6 +323,7 @@ impl GradientBuilder {
         let visibility_button = radix::Switch::new("color-viz-point-visibility")
             .look(&look)
             .label("Show points")
+            .size(radix::SwitchSize::One)
             .checked(true)
             .spawn(cx)
             .tooltip(Tooltip::new("Hide/show points (right-click canvas)"), cx);
