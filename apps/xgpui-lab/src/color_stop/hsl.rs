@@ -41,7 +41,7 @@ pub(crate) fn hsl_to_rgb([hue, saturation, lightness]: [f32; 3]) -> [f32; 3] {
     let f = |n: f32| {
         let k = (n + hue / 30.0) % 12.0;
         let a = saturation * lightness.min(1.0 - lightness);
-        lightness - a * (k - 3.0).min(9.0 - k).min(1.0).max(-1.0)
+        lightness - a * (k - 3.0).min(9.0 - k).clamp(-1.0, 1.0)
     };
     [f(0.0), f(8.0), f(4.0)]
 }
