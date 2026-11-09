@@ -77,7 +77,6 @@ mod tests {
                     assert_eq!(view.point_transforms[0], [75., 0.4]);
                     assert_eq!(view.point_spreads[0], 65.);
                     assert_eq!(view.uses_render_preview(cx), id == "cpu");
-                    assert_eq!(view.adjustments_supported(), id == "cpu");
                     assert_eq!(
                         view.freeform_mixing == super::super::super::color_field::Mixing::Normalized,
                         method == "normalized"

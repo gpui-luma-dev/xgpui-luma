@@ -37,10 +37,12 @@ use crate::look::{ShadcnLook, resolve_look_from};
 
 const CORNER_RADIUS: f32 = 8.0;
 
+use xgpui_luma::controls::tooltip::TooltipLook;
+
 type Surface = Stateful<Div>;
 type InputHandler<M, K> = fn(&mut M, ListBoxInput<K>, &mut Window, &mut Context<M>);
 type ItemRenderer<'a, T, K> = Box<dyn Fn(Surface, ListBoxVisibleItem<'_, T, K>, &mut App) -> AnyElement + 'a>;
-type DragRow<'a, M, T, K> = Box<dyn Fn(Surface, &T, &K, &mut Context<M>) -> Surface + 'a>;
+type DragRow<'a, M, T, K> = Box<dyn Fn(Surface, &T, &K, &TooltipLook, &mut Context<M>) -> Surface + 'a>;
 type DropTarget<'a, M, K> = Box<dyn Fn(Surface, Option<K>, &mut Context<M>) -> Surface + 'a>;
 
 struct DragDropBindings<'a, M: 'static, T, K> {
@@ -166,8 +168,13 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             let state = self.state;
             let scroll = self.scroll;
             self.drag_drop = Some(DragDropBindings {
-                row: Box::new(move |surface, item, key, cx| {
-                    row_binding.bind_row(surface, state.drag_keys(key), label(item), cx)
+                row: Box::new(move |surface, item, key, preview, cx| {
+                    row_binding.clone().preview_style(preview.clone()).bind_row(
+                        surface,
+                        state.drag_keys(key),
+                        label(item),
+                        cx,
+                    )
                 }),
                 target: Box::new(move |surface, before, cx| target_binding.bind_target(surface, before, cx)),
                 viewport: Box::new(move |surface, _, axis| scroll_binding.bind_viewport(surface, scroll, axis)),
@@ -249,7 +256,8 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
         let target_events = on_event;
         // Read scope and theme at build time so fluent option order is immaterial.
         self.drag_drop = Some(DragDropBindings {
-            row: Box::new(move |surface, item, key, cx| {
+            // Host-supplied previews keep their own styling.
+            row: Box::new(move |surface, item, key, _preview, cx| {
                 let Some(drag) =
                     state.drag_keys(key).and_then(|keys| KeyedDrag::new(cx.entity_id(), source.clone(), keys))
                 else {
@@ -335,6 +343,8 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             drop.configure_transition(&profile.drop_layout);
         }
         let highlight = look.token_color("ring").unwrap_or(look.chrome().border);
+        // Drag labels share the tooltip's chrome so they read on any background.
+        let preview_style = crate::tooltip_theme(&look).resolve();
         let insertion_target = |before: Option<K>, edge: DropEdge, cx: &mut Context<M>| {
             let zone = DropZone {
                 axis: match self.axis {
@@ -407,7 +417,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             let surface = look.listbox_row((self.item_id)(&key), item.state, self.binding.focus_visible(window));
             let mut surface = self.binding.bind_row(surface, key.clone(), item.state, cx, self.on_input);
             if let Some(drag_drop) = &self.drag_drop {
-                surface = (drag_drop.row)(surface, item.item, &key, cx);
+                surface = (drag_drop.row)(surface, item.item, &key, &preview_style, cx);
             }
             // Stable keyed wrappers survive window movement; spacers have no bindings.
             let mut row = div()

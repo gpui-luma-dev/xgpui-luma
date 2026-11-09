@@ -1,5 +1,5 @@
-use std::sync::Arc;
-use gpui::{Hsla, RenderImage, Rgba};
+use gpui::RenderImage;
+use xgpui_luma::color::ColorValue;
 
 #[derive(Clone, Copy, Default)]
 pub struct ImageAdjustments {
@@ -12,42 +12,27 @@ impl ImageAdjustments {
         self.saturation == 0.0 && self.vibrance == 0.0
     }
 
-    fn adjust(self, color: Rgba) -> Rgba {
-        let mut hsl = Hsla::from(color);
-        // Vibrance preferentially affects muted colors; neutral gray stays gray.
-        hsl.s = (hsl.s + self.vibrance.clamp(-100.0, 100.0) / 100.0 * hsl.s * (1.0 - hsl.s)).clamp(0.0, 1.0);
-        hsl.s = (hsl.s * (1.0 + self.saturation.clamp(-100.0, 100.0) / 100.0)).clamp(0.0, 1.0);
-        hsl.to_rgb()
-    }
-
-    pub fn apply(self, source: Arc<RenderImage>) -> Option<Arc<RenderImage>> {
+    /// Adjust a source color before it is encoded for any renderer (CPU,
+    /// shaders, Display P3). Works on HSL over encoded Display P3, unclamped,
+    /// so wide colors are neither clipped nor capped at sRGB saturation.
+    /// Vibrance preferentially affects muted colors; neutral gray stays gray.
+    /// Saturation never rises above 100% unless the source already did.
+    /// Neutral settings return the source unchanged (space and components).
+    pub fn adjust_color(self, color: ColorValue) -> ColorValue {
+        use crate::color_stop::hsl::{hsl_to_rgb, rgb_to_hsl};
         if self.is_neutral() {
-            return Some(source);
+            return color;
         }
-        let size = source.size(0);
-        let mut bytes = source.as_bytes(0)?.to_vec();
-        // GPUI raster images use premultiplied BGRA. Unpremultiply before editing.
-        for pixel in bytes.as_chunks_mut::<4>().0 {
-            let alpha = pixel[3] as f32 / 255.0;
-            if alpha == 0.0 {
-                continue;
-            }
-            let color = self.adjust(Rgba {
-                r: (pixel[2] as f32 / 255.0 / alpha).clamp(0.0, 1.0),
-                g: (pixel[1] as f32 / 255.0 / alpha).clamp(0.0, 1.0),
-                b: (pixel[0] as f32 / 255.0 / alpha).clamp(0.0, 1.0),
-                a: alpha,
-            });
-            pixel[0] = (color.b * alpha * 255.0).round() as u8;
-            pixel[1] = (color.g * alpha * 255.0).round() as u8;
-            pixel[2] = (color.r * alpha * 255.0).round() as u8;
-        }
-        let buffer = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(
-            size.width.0.try_into().ok()?,
-            size.height.0.try_into().ok()?,
-            bytes,
-        )?;
-        Some(Arc::new(RenderImage::new(smallvec::smallvec![image::Frame::new(buffer)])))
+        let Ok(p3) = color.to_display_p3_unclamped() else {
+            return color;
+        };
+        // Extended-range HSL over the P3-encoded values (no clipping).
+        let [hue, original, lightness] = rgb_to_hsl([p3.red, p3.green, p3.blue]);
+        let muted = original.clamp(0.0, 1.0);
+        let mut saturation = original + self.vibrance.clamp(-100.0, 100.0) / 100.0 * muted * (1.0 - muted);
+        saturation *= 1.0 + self.saturation.clamp(-100.0, 100.0) / 100.0;
+        let [r, g, b] = hsl_to_rgb([hue, saturation.clamp(0.0, original.max(1.0)), lightness]);
+        ColorValue::display_p3(r, g, b, p3.alpha)
     }
 }
 
@@ -76,6 +61,7 @@ pub fn save_preview_png(source: &RenderImage, path: &std::path::Path) -> anyhow:
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::color::Gamut;
 
     #[test]
     fn png_export_writes_straight_rgba_pixels() {
@@ -90,32 +76,46 @@ mod tests {
         assert_eq!(output.get_pixel(0, 0).0, [255, 0, 0, 128]);
     }
 
+    fn p3(color: ColorValue) -> [f32; 4] {
+        let c = color.to_display_p3_unclamped().unwrap();
+        [c.red, c.green, c.blue, c.alpha]
+    }
+
+    #[test]
+    fn neutral_settings_keep_the_source_exactly() {
+        let color = ColorValue::srgb(0.2, 0.4, 0.7, 0.3);
+        assert_eq!(ImageAdjustments::default().adjust_color(color), color);
+    }
+
     #[test]
     fn saturation_zeroes_chroma_and_preserves_alpha() {
-        let color =
-            ImageAdjustments { saturation: -100.0, vibrance: 100.0 }.adjust(gpui::hsla(0.2, 0.8, 0.4, 0.5).to_rgb());
-        assert!((color.r - color.g).abs() < 0.00001 && (color.g - color.b).abs() < 0.00001);
-        assert_eq!(color.a, 0.5);
+        let color = ColorValue::srgb(0.6, 0.3, 0.1, 0.5);
+        let [r, g, b, a] = p3(ImageAdjustments { saturation: -100.0, vibrance: 100.0 }.adjust_color(color));
+        assert!((r - g).abs() < 1e-5 && (g - b).abs() < 1e-5, "{r} {g} {b}");
+        assert!((a - 0.5).abs() < 1e-6);
     }
 
     #[test]
     fn vibrance_boosts_muted_colors_and_preserves_saturated_colors() {
         let settings = ImageAdjustments { saturation: 0.0, vibrance: 100.0 };
-        let muted = gpui::hsla(0.6, 0.4, 0.5, 1.0);
-        assert!(Hsla::from(settings.adjust(muted.to_rgb())).s > muted.s);
-        let saturated = gpui::hsla(0.6, 1.0, 0.5, 1.0).to_rgb();
-        let output = settings.adjust(saturated);
-        assert!((output.r - saturated.r).abs() < 0.00001);
-        assert!((output.g - saturated.g).abs() < 0.00001);
-        assert!((output.b - saturated.b).abs() < 0.00001);
+        let chroma = |c: ColorValue| c.to_oklcha_unclamped().unwrap().chroma;
+        let muted = ColorValue::display_p3(0.5, 0.4, 0.45, 1.0);
+        assert!(chroma(settings.adjust_color(muted)) > chroma(muted) + 0.01);
+        let saturated = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
+        let out = p3(settings.adjust_color(saturated));
+        assert!((out[0] - 1.0).abs() < 1e-5 && out[1].abs() < 1e-5 && out[2].abs() < 1e-5);
     }
 
     #[test]
-    fn postprocess_handles_bgra_transparency_and_neutral_identity() {
-        let buffer = image::ImageBuffer::from_raw(1, 1, vec![0, 0, 128, 128]).unwrap();
-        let source = Arc::new(RenderImage::new(smallvec::smallvec![image::Frame::new(buffer)]));
-        assert!(Arc::ptr_eq(&source, &ImageAdjustments::default().apply(source.clone()).unwrap()));
-        let output = ImageAdjustments { saturation: -100.0, vibrance: 0.0 }.apply(source).unwrap();
-        assert_eq!(output.as_bytes(0).unwrap(), &[64, 64, 64, 128]);
+    fn saturation_reaches_beyond_srgb_without_clipping() {
+        // +100% saturation of sRGB red lands on P3 red, outside sRGB.
+        let boosted =
+            ImageAdjustments { saturation: 100.0, vibrance: 0.0 }.adjust_color(ColorValue::srgb(1.0, 0.0, 0.0, 1.0));
+        assert!(!boosted.is_in_gamut(Gamut::Srgb).unwrap());
+        assert!(boosted.is_in_gamut(Gamut::DisplayP3).unwrap());
+        // Already-wide colors are not pulled back to 100% by a boost.
+        let wide = ColorValue::oklch(0.65, 0.4, 145.0, 1.0);
+        let boosted = ImageAdjustments { saturation: 10.0, vibrance: 50.0 }.adjust_color(wide);
+        assert!(!boosted.is_in_gamut(Gamut::DisplayP3).unwrap());
     }
 }

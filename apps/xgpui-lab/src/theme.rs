@@ -37,7 +37,6 @@ pub(crate) struct InteractionColors {
     pub selected: gpui::Hsla,
     pub hovered: gpui::Hsla,
     pub pressed: gpui::Hsla,
-    pub focus_border: gpui::Hsla,
 }
 impl InteractionColors {
     pub fn background(self, selected: bool, state: xgpui_luma::theme::InteractionState) -> Option<gpui::Hsla> {
@@ -83,7 +82,7 @@ impl ColorVizLookExt for Look {
 
     fn interaction_colors(&self) -> InteractionColors {
         let gray = |step| self.resolve_step(xgpui_luma_look_radix::ScaleFamily::Gray, step).hsla();
-        InteractionColors { selected: gray(3), hovered: gray(4), pressed: gray(5), focus_border: gray(8) }
+        InteractionColors { selected: gray(3), hovered: gray(4), pressed: gray(5) }
     }
 
     fn typography_scale(&self, size: TextSize) -> LumaTextStyle {

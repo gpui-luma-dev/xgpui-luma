@@ -17,6 +17,8 @@ mod compositions;
 mod extension_pane;
 mod gamut;
 mod color_lab;
+mod color_stop;
+mod color_stop_list;
 mod color_demos;
 mod media_lab;
 mod photo_viewport;

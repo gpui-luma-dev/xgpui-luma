@@ -1,6 +1,7 @@
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use xgpui_luma::controls::tooltip::Tooltip;
 use std::collections::HashMap;
+use xgpui_luma::color::ColorValue;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -12,6 +13,8 @@ use xgpui_luma::controls::selector::{Selector, SelectorEvent};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbPolicy, ThumbId};
 use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsWidthMode};
 use xgpui_luma::theme::{ControlSize, ThemeMode};
+use crate::color_stop::ColorStop;
+use crate::color_stop_list::ColorStopList;
 use crate::theme::{Look, TextSize};
 use xgpui_luma_look_radix as radix;
 use lucide_svg_static::Icon as LucideIcon;
@@ -28,11 +31,12 @@ mod freeform;
 mod freeform_p3;
 mod field_handle;
 mod field_shader;
-mod color_list;
 mod sections;
+mod stops;
+mod mesh_stops;
 
 use super::paint::{GradientType, MeshPoint, PreviewRenderer};
-use super::sv_triangle_picker::SvTrianglePicker;
+use super::encode::{OutputSpace, encode, encode_points, encode_stops, srgb_source};
 use mesh::{
     BuilderTab, MeshAspectRatioPreset, MeshColorTarget, MeshGridPreset, PreviewImageCacheKey, builder_tab_items,
     default_mesh_background, default_mesh_points, mesh_aspect_ratio_items, mesh_grid_items, renderer_items, type_items,
@@ -43,17 +47,17 @@ pub struct GradientBuilder {
     section_accordions: Vec<Vec<Entity<xgpui_luma::controls::accordion::AccordionControl>>>,
     selected_tab: BuilderTab,
     gradient_stops: Entity<SliderControl>,
-    stop_colors: HashMap<ThumbId, gpui::Hsla>,
+    stop_colors: HashMap<ThumbId, ColorValue>,
     selected_stop: Option<ThumbId>,
     domain_renderer: Arc<ColorSliderDomainRenderer>,
     track_context: ColorSliderTrackContext,
-    add_stop_button: Entity<Button>,
     mesh_reset_button: Entity<Button>,
     export_button: Entity<Button>,
     export_status: Option<String>,
-    stop_delete_buttons: HashMap<ThumbId, Entity<Button>>,
-    stop_list: color_list::ColorFieldList,
-    point_list: color_list::ColorFieldList,
+    stop_list: Entity<ColorStopList>,
+    mesh_point_list: Entity<ColorStopList>,
+    freeform_point_list: Entity<ColorStopList>,
+    point_extras: Entity<mesh_stops::PointEditorExtras>,
     rotation_slider: Entity<SliderControl>,
     saturation_slider: Entity<SliderControl>,
     vibrance_slider: Entity<SliderControl>,
@@ -104,6 +108,8 @@ pub struct GradientBuilder {
     preview_renderer: PreviewRenderer,
     linear_shader_cache: linear_shader::Cache,
     preview_p3: bool,
+    /// The window can present Display P3 (refreshed every render).
+    wide_output_available: bool,
     p3_switch: xgpui_luma::controls::switch::Switch,
     p3_cache: p3::Cache,
     mesh_palette: usize,
@@ -123,11 +129,12 @@ pub struct GradientBuilder {
     mesh_point_ids: Vec<u64>,
     inactive_mesh_point_ids: Vec<u64>,
     next_point_id: u64,
-    inactive_mesh_background: gpui::Hsla,
+    inactive_mesh_background: ColorValue,
     mesh_state_is_freeform: bool,
     random_seed: u64,
     freeform_buttons: Vec<Entity<Button>>,
-    mesh_background: gpui::Hsla,
+    mesh_background: ColorValue,
+    mesh_background_stop: Entity<ColorStop>,
     selected_mesh_point: Option<usize>,
     mesh_color_target: MeshColorTarget,
     active_mesh_drag: Option<usize>,
@@ -135,16 +142,10 @@ pub struct GradientBuilder {
     freeform_controls_visible: bool,
     visibility_button: xgpui_luma::controls::switch::Switch,
     copy_css_button: Entity<Button>,
-    point_buttons: Vec<[Entity<Button>; 2]>,
     preview_size: Size<Pixels>,
     preview_image_cache: Option<(PreviewImageCacheKey, Arc<RenderImage>)>,
     active_preview_strategy: &'static str,
     last_render_ms: Option<f32>,
-    color_picker: Entity<SvTrianglePicker>,
-    color_picker_open: bool,
-    stop_swatch_bounds: HashMap<ThumbId, Bounds<Pixels>>,
-    mesh_swatch_bounds: HashMap<usize, Bounds<Pixels>>,
-    mesh_background_swatch_bounds: Option<Bounds<Pixels>>,
     mesh_preview_container_size: Size<Pixels>,
     mesh_preview_bounds: Option<Bounds<Pixels>>,
     render_task: Option<gpui::Task<()>>,
@@ -209,15 +210,11 @@ impl GradientBuilder {
 
         let mut stop_colors = HashMap::new();
         for thumb in gradient_stops.read(cx).thumbs() {
-            stop_colors.insert(thumb.id, thumb.preview.unwrap_or(start));
+            stop_colors.insert(thumb.id, srgb_source(thumb.preview.unwrap_or(start)));
         }
         let selected_stop = None;
-        let add_stop_button = crate::theme::icon_button("color-viz-gradient-add-stop", LucideIcon::Plus)
-            .look(look.as_ref())
-            .content_only()
-            .radius(radix::Radius::Medium)
-            .spawn(cx)
-            .tooltip(Tooltip::new("Add color stop"), cx);
+        let stop_list = Self::spawn_stop_list(look.clone(), cx);
+        let mesh_background_stop = Self::spawn_mesh_background_stop(look.clone(), mesh_background, cx);
         let mesh_reset_button = crate::theme::icon_button("color-viz-mesh-reset", LucideIcon::RotateCcw)
             .look(look.as_ref())
             .content_only()
@@ -320,13 +317,13 @@ impl GradientBuilder {
             .items(mesh_aspect_ratio_items())
             .selected_id("fill")
             .spawn(cx);
-        let color_picker = cx.new(|cx| SvTrianglePicker::new(start, cx));
         let mesh_grid_preset = MeshGridPreset::SampleThreeByFour;
         let mesh_aspect_ratio_preset = MeshAspectRatioPreset::Fill;
 
         let visibility_button = radix::Switch::new("color-viz-point-visibility")
             .look(&look)
             .label("Show points")
+            .size(radix::SwitchSize::One)
             .checked(true)
             .spawn(cx)
             .tooltip(Tooltip::new("Hide/show points (right-click canvas)"), cx);
@@ -377,7 +374,6 @@ impl GradientBuilder {
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.freeform_p3 = on;
-                this.sync_adjustment_support(cx);
                 let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                 cx.notify();
             })
@@ -389,7 +385,6 @@ impl GradientBuilder {
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.mesh_p3 = on;
                 this.render_task = None;
-                this.sync_adjustment_support(cx);
                 cx.notify();
             })
             .spawn(cx);
@@ -399,7 +394,6 @@ impl GradientBuilder {
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.preview_p3 = on;
-                this.sync_adjustment_support(cx);
                 cx.notify();
             })
             .spawn(cx);
@@ -408,6 +402,8 @@ impl GradientBuilder {
             .content_only()
             .spawn(cx)
             .tooltip(Tooltip::new("Copy gradient CSS"), cx);
+        let [mesh_point_list, freeform_point_list] = Self::spawn_point_lists(look.clone(), cx);
+        let point_extras = Self::spawn_point_extras(look.clone(), point_spread_slider.clone(), cx);
         let mut builder = Self {
             look: look.clone(),
             section_accordions: Vec::new(),
@@ -417,13 +413,13 @@ impl GradientBuilder {
             selected_stop,
             domain_renderer,
             track_context,
-            add_stop_button: add_stop_button.clone(),
             mesh_reset_button: mesh_reset_button.clone(),
             export_button: export_button.clone(),
             export_status: None,
-            stop_delete_buttons: HashMap::new(),
-            stop_list: color_list::ColorFieldList::new(cx),
-            point_list: color_list::ColorFieldList::new(cx),
+            stop_list,
+            mesh_point_list,
+            freeform_point_list,
+            point_extras,
             rotation_slider: rotation_slider.clone(),
             saturation_slider: saturation_slider.clone(),
             vibrance_slider: vibrance_slider.clone(),
@@ -474,6 +470,7 @@ impl GradientBuilder {
             preview_renderer: PreviewRenderer::Quads,
             linear_shader_cache: linear_shader::Cache::default(),
             preview_p3: false,
+            wide_output_available: false,
             p3_switch,
             p3_cache: p3::Cache::default(),
             mesh_palette: mesh::default_mesh_palette(mesh_grid_preset),
@@ -504,6 +501,7 @@ impl GradientBuilder {
                 | 1,
             freeform_buttons: Vec::new(),
             mesh_background,
+            mesh_background_stop,
             selected_mesh_point: None,
             mesh_color_target: MeshColorTarget::Background,
             active_mesh_drag: None,
@@ -511,16 +509,10 @@ impl GradientBuilder {
             freeform_controls_visible: true,
             visibility_button: visibility_button.clone(),
             copy_css_button: copy_css_button.clone(),
-            point_buttons: Vec::new(),
             preview_size: size(px(0.0), px(0.0)),
             preview_image_cache: None,
             active_preview_strategy: "quads",
             last_render_ms: None,
-            color_picker: color_picker.clone(),
-            color_picker_open: false,
-            stop_swatch_bounds: HashMap::new(),
-            mesh_swatch_bounds: HashMap::new(),
-            mesh_background_swatch_bounds: None,
             mesh_preview_container_size: size(px(0.0), px(0.0)),
             mesh_preview_bounds: None,
             render_task: None,
@@ -546,14 +538,12 @@ impl GradientBuilder {
             cx,
             top_tabs,
             gradient_stops,
-            add_stop_button,
             mesh_reset_button,
             rotation_slider,
             type_selector,
             renderer_selector,
             mesh_grid_selector,
             mesh_aspect_ratio_selector,
-            color_picker,
         );
         builder._subscriptions.push(cx.subscribe(&spread_slider, |this, _, event: &SliderEvent, cx| {
             if let SliderEvent::Change { value, .. } | SliderEvent::Release { value, .. } = event {
@@ -595,9 +585,6 @@ impl GradientBuilder {
         for (slider, saturation) in [(saturation_slider, true), (vibrance_slider, false)] {
             builder._subscriptions.push(cx.subscribe(&slider, move |this, _, event: &SliderEvent, cx| {
                 if let SliderEvent::Change { value, .. } | SliderEvent::Release { value, .. } = event {
-                    if !this.adjustments_supported() {
-                        return;
-                    }
                     if saturation {
                         this.image_adjustments.saturation = *value;
                     } else {
@@ -639,7 +626,6 @@ impl GradientBuilder {
                 if let SelectorEvent::Change { item_id, .. } = event {
                     this.mesh_shader_enabled = item_id.as_ref() == "shader";
                     this.render_task = None;
-                    this.sync_adjustment_support(cx);
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                     cx.notify();
                 }
@@ -677,7 +663,6 @@ impl GradientBuilder {
                     this.freeform_gpu = item_id.as_ref() == "gpu";
                     this.render_task = None;
                     this.preview_image_cache = None;
-                    this.sync_adjustment_support(cx);
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                     cx.notify();
                 }
@@ -736,7 +721,9 @@ impl GradientBuilder {
         }));
         builder.init_section_accordions(cx);
         builder.init_freeform_buttons(cx);
-        builder.sync_stop_buttons(cx);
+        builder.wire_stop_list(cx);
+        builder.wire_mesh_background_stop(cx);
+        builder.wire_point_lists(cx);
         builder.rebuild_stops(cx);
         builder
     }
@@ -747,25 +734,18 @@ impl GradientBuilder {
         cx: &mut Context<Self>,
         top_tabs: Entity<Tabs>,
         gradient_stops: Entity<SliderControl>,
-        add_stop_button: Entity<Button>,
         mesh_reset_button: Entity<Button>,
         rotation_slider: Entity<SliderControl>,
         type_selector: Entity<Selector>,
         renderer_selector: Entity<Selector>,
         mesh_grid_selector: Entity<Selector>,
         mesh_aspect_ratio_selector: Entity<Selector>,
-        color_picker: Entity<SvTrianglePicker>,
     ) {
         self._subscriptions.push(cx.subscribe(&gradient_stops, |this, _, event, cx| {
             this.handle_stops_event(event, cx);
         }));
         self._subscriptions.push(cx.subscribe(&top_tabs, |this, _, event: &TabsEvent, cx| {
             this.handle_top_tabs_event(event, cx);
-        }));
-        self._subscriptions.push(cx.subscribe(&add_stop_button, |this, _, event: &ButtonEvent, cx| {
-            if matches!(event, ButtonEvent::Click) {
-                this.handle_add_stop(cx);
-            }
         }));
         self._subscriptions.push(cx.subscribe(&mesh_reset_button, |this, _, event: &ButtonEvent, cx| {
             if matches!(event, ButtonEvent::Click) {
@@ -787,9 +767,6 @@ impl GradientBuilder {
         self._subscriptions.push(cx.subscribe(&mesh_aspect_ratio_selector, |this, _, event, cx| {
             this.handle_mesh_aspect_ratio_event(event, cx);
         }));
-        self._subscriptions.push(cx.observe(&color_picker, |this, _, cx| {
-            this.apply_picker_color(cx);
-        }));
     }
 }
 
@@ -797,6 +774,7 @@ impl GradientBuilder {
 mod tests {
     use super::*;
     use gpui::TestAppContext;
+    use gpui::App;
 
     #[test]
     fn redesigned_inspector_retains_freeform_edits_across_modes() {
@@ -833,7 +811,6 @@ mod tests {
                 assert_eq!(view.selected_mesh_point, Some(index));
                 assert_eq!(view.mesh_color_target, MeshColorTarget::Point(index));
                 view.finish_mesh_drag(cx);
-                view.open_color_picker_for_mesh_point(index, cx);
                 assert_eq!(view.selected_mesh_point, Some(index));
             }
             view.deselect_freeform_point(cx);
@@ -914,15 +891,16 @@ mod tests {
         });
         cx.run_until_parked();
         let retained_key = cx.update(|_, cx| view.read(cx).mesh_point_ids[2]);
-        let (color_action, delete_action, before) = cx.update(|_, cx| {
+        let (randomize, before) = cx.update(|_, cx| {
             let builder = view.read(cx);
-            (
-                builder.point_buttons[2][1].clone(),
-                builder.point_buttons[1][0].clone(),
-                builder.mesh_points.clone(),
-            )
+            (builder.point_extras.read(cx).randomize_button.clone(), builder.mesh_points.clone())
         });
-        color_action.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        // The panel's randomize button recolors the selected point only.
+        view.update(cx, |builder, cx| {
+            builder.selected_mesh_point = Some(2);
+            builder.sync_point_spread(cx);
+        });
+        randomize.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         cx.run_until_parked();
         cx.update(|_, cx| {
             let builder = view.read(cx);
@@ -933,20 +911,23 @@ mod tests {
             }
             assert_eq!(builder.point_spread_slider.read(cx).value(), 90.0);
         });
-        delete_action.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        // Removing a row deletes that point and keeps per-point settings aligned.
+        view.update(cx, |builder, cx| {
+            let key = builder.mesh_point_ids[1];
+            builder.handle_point_list_event(&crate::color_stop_list::ColorStopListEvent::Removed(key), cx);
+            builder.sync_point_list(cx);
+        });
         cx.run_until_parked();
-        let (slider, action_after_delete) = cx.update(|_, cx| {
+        let slider = cx.update(|_, cx| {
             let builder = view.read(cx);
             assert_eq!(builder.mesh_points.len(), 3);
             assert_eq!(builder.mesh_point_ids[1], retained_key);
-            assert_eq!(builder.point_list.state.selected_keys().copied().collect::<Vec<_>>(), vec![retained_key]);
+            assert_eq!(builder.freeform_point_list.read(cx).selected(), Some(retained_key));
             assert_eq!(builder.mesh_points[1].u, before[2].u);
             assert_eq!(builder.point_spreads, vec![50.0, 90.0, 110.0]);
             assert_eq!(builder.point_transforms, vec![[0., 1.], [60., 3.], [90., 4.]]);
-            (builder.point_spread_slider.clone(), builder.point_buttons[1][1].clone())
+            builder.point_spread_slider.clone()
         });
-        action_after_delete.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
-        cx.run_until_parked();
         slider.update(cx, |slider, cx| {
             let thumb_id = slider.thumbs()[0].id;
             cx.emit(SliderEvent::Change { thumb_id, value: 125.0 });
@@ -960,13 +941,286 @@ mod tests {
     }
 
     #[test]
+    fn p3_colors_stay_unclipped_from_controls_to_shader_inputs() {
+        use crate::color_stop_list::ColorStopListEvent;
+        use super::super::encode::{OutputSpace, encode_points, encode_rgba};
+        use xgpui_luma::color::{ColorValue, Gamut};
+
+        let p3_red = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
+        assert!(!p3_red.is_in_gamut(Gamut::Srgb).unwrap());
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+
+        // Gradients: list → host → gradient bar → P3 shader input.
+        view.update(cx, |builder, cx| {
+            let key = list_rows(builder, cx)[1].0;
+            builder.handle_stop_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert!(builder.stop_colors.values().any(|color| *color == p3_red));
+            assert!(builder.stop_list.read(cx).stops().iter().any(|stop| stop.color == p3_red));
+            assert!(builder.slider_gradient_stops(cx).iter().any(|stop| stop.color == p3_red));
+            let stops = builder.preview_stops(cx);
+            let (_, stop) = stops.iter().find(|(_, color)| *color == p3_red).copied().expect("stop");
+            assert_eq!(encode_rgba(stop, OutputSpace::DisplayP3), [1.0, 0.0, 0.0, 1.0]);
+            // sRGB outputs see the gamut-mapped fallback instead.
+            assert!(encode_rgba(stop, OutputSpace::Srgb)[1] > 0.0);
+        });
+
+        // Mesh: point list → host point → mesh shader grid.
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx);
+            let key = builder.mesh_point_ids[0];
+            builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert_eq!(builder.mesh_points[0].color, p3_red);
+            let grid =
+                super::super::paint::shader_mesh_grid(&encode_points(&builder.mesh_points, OutputSpace::DisplayP3))
+                    .unwrap();
+            let corner =
+                grid.points().iter().find(|p| p.position == [builder.mesh_points[0].u, builder.mesh_points[0].v]);
+            let [r, g, b] = corner.expect("grid point").color;
+            assert!((r - 1.0).abs() < 1e-4 && g.abs() < 1e-4 && b.abs() < 1e-4, "{r} {g} {b}");
+        });
+
+        // Freeform: point list → host point → P3 color field.
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(
+                &TabsEvent::Activate { tab_id: "freeform".into(), label: "freeform".into() },
+                cx,
+            );
+            let key = builder.mesh_point_ids[0];
+            builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert_eq!(builder.mesh_points[0].color, p3_red);
+            let field = super::super::paint::build_color_field(
+                &encode_points(&builder.mesh_points, OutputSpace::DisplayP3),
+                super::super::encode::encode(builder.mesh_background, OutputSpace::DisplayP3),
+                builder.spread_percent,
+                builder.freeform_hsl,
+                &super::super::paint::FieldShape {
+                    mixing: builder.freeform_mixing,
+                    background_weight: builder.field_background_weight,
+                    point_transforms: &builder.point_transforms,
+                    point_spreads: &builder.point_spreads,
+                    softness_percent: builder.softness_percent,
+                },
+            );
+            let [r, g, b, a] = field.points[0].color;
+            assert!((r - 1.0).abs() < 1e-4 && g.abs() < 1e-4 && b.abs() < 1e-4 && a == 1.0, "{:?}", field.points[0]);
+            // Without a P3 window the CPU raster stays sRGB.
+            builder.freeform_p3 = true;
+            builder.wide_output_available = false;
+            assert_eq!(builder.raster_output(), OutputSpace::Srgb);
+            builder.wide_output_available = true;
+            assert_eq!(builder.raster_output(), OutputSpace::wide(cfg!(target_os = "macos")));
+            // Status bar reports the presented color space and renderer note.
+            builder.wide_output_available = false;
+            assert_eq!(builder.output_status(), "sRGB (Display P3 unavailable)");
+            assert_eq!(builder.renderer_note(), None);
+            builder.freeform_p3 = false;
+            assert_eq!(builder.output_status(), "sRGB");
+            if cfg!(target_os = "macos") {
+                builder.freeform_p3 = true;
+                builder.wide_output_available = true;
+                assert_eq!(builder.output_status(), "Display P3");
+                assert!(builder.renderer_note().is_some_and(|note| note.starts_with("P3 ")));
+            }
+        });
+    }
+
+    fn list_rows(builder: &GradientBuilder, cx: &App) -> Vec<(u64, f32)> {
+        builder
+            .stop_list
+            .read(cx)
+            .stops()
+            .iter()
+            .map(|stop| (stop.key, stop.position.unwrap_or(-1.0)))
+            .collect()
+    }
+
+    fn bar_rows(builder: &GradientBuilder, cx: &App) -> Vec<(u64, f32)> {
+        let mut rows: Vec<(u64, f32)> = builder
+            .gradient_stops
+            .read(cx)
+            .thumbs()
+            .iter()
+            .map(|thumb| (thumb.id.as_u64(), thumb.position))
+            .collect();
+        rows.sort_by(|a, b| a.1.total_cmp(&b.1));
+        rows
+    }
+
+    #[test]
+    fn stop_list_mirrors_the_gradient_bar() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            assert_eq!(list_rows(builder, cx).len(), 3);
+        });
+        // Bar edits (insert, select) reach the list under the thumb's key.
+        view.update(cx, |builder, cx| {
+            builder.gradient_stops.update(cx, |slider, cx| {
+                slider.insert_thumb_at(0.25, cx);
+            });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            let selected = builder.selected_stop.map(ThumbId::as_u64);
+            assert!(selected.is_some());
+            assert_eq!(builder.stop_list.read(cx).selected(), selected);
+        });
+    }
+
+    #[test]
+    fn grabbing_a_knob_opens_its_picker_and_clicking_away_releases_it() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        let open_row = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|_, cx| {
+                let list = view.read(cx).stop_list.read(cx);
+                list.stops().iter().map(|stop| stop.key).find(|key| list.row_expanded(*key, cx))
+            })
+        };
+        cx.update(|window, _| window.activate_window());
+        let thumb = view.update(cx, |builder, cx| builder.ordered_stop_rows(cx)[1].0);
+        view.update(cx, |builder, cx| builder.handle_stops_event(&SliderEvent::DragStart { thumb_id: thumb }, cx));
+        cx.run_until_parked();
+        assert_eq!(open_row(cx), Some(thumb.as_u64()));
+        cx.update(|_, cx| assert_eq!(view.read(cx).selected_stop, Some(thumb)));
+
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        let rows = |cx: &mut gpui::VisualTestContext| {
+            ["color-stop-rows-item-0", "color-stop-rows-item-1", "color-stop-rows-item-2"]
+                .map(|selector| cx.debug_bounds(selector).map(|b| (b.top().as_f32(), b.size.height.as_f32())))
+        };
+        let canvas = cx.debug_bounds("gradient-preview").expect("preview");
+        cx.simulate_click(canvas.center(), Default::default());
+        cx.run_until_parked();
+        cx.update(|window, _| window.refresh());
+        cx.run_until_parked();
+        assert!(rows(cx).iter().all(Option::is_some), "rows still rendered after the picker closes");
+        assert_eq!(open_row(cx), None);
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(builder.selected_stop, None);
+            assert_eq!(builder.stop_list.read(cx).selected(), None);
+        });
+    }
+
+    #[test]
+    fn mesh_background_is_a_color_stop_that_follows_tab_swaps() {
+        use crate::color_stop::ColorStopEvent;
+        use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx)
+        });
+        cx.run_until_parked();
+        let stop = cx.update(|_, cx| view.read(cx).mesh_background_stop.clone());
+        let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
+        stop.update(cx, |_, cx| cx.emit(ColorStopEvent::ColorChanged(red)));
+        cx.run_until_parked();
+        let mesh_red = cx.update(|_, cx| view.read(cx).mesh_background);
+        assert_eq!(mesh_red, red, "stored exactly, not as a mapped preview");
+
+        // Freeform keeps its own background; the control follows the swap both ways.
+        view.update(cx, |builder, cx| {
+            builder
+                .handle_top_tabs_event(&TabsEvent::Activate { tab_id: "freeform".into(), label: "freeform".into() }, cx)
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let builder = view.read(cx);
+            assert_eq!(stop.read(cx).color(), builder.mesh_background);
+            let shown = gpui_bridge::to_hsla(stop.read(cx).color(), GamutMapping::CssLocalMinde).unwrap();
+            assert!(shown.s < 0.9);
+        });
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx)
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let shown = gpui_bridge::to_hsla(stop.read(cx).color(), GamutMapping::CssLocalMinde).unwrap();
+            assert!(shown.s > 0.95, "mesh red is back: {shown:?}");
+        });
+    }
+
+    #[test]
+    fn stop_list_edits_flow_back_to_the_gradient_bar() {
+        use crate::color_stop_list::{ColorStopListEvent, StopData};
+        use xgpui_luma::color::ColorValue;
+
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+        view.update(cx, |builder, cx| {
+            let keys: Vec<u64> = list_rows(builder, cx).iter().map(|row| row.0).collect();
+            let thumb = |builder: &GradientBuilder, cx: &App, key: u64| {
+                builder.gradient_stops.read(cx).thumbs().iter().map(|thumb| thumb.id).find(|id| id.as_u64() == key)
+            };
+
+            // Color edits land in the bar's colors.
+            let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
+            builder.handle_stop_list_event(&ColorStopListEvent::ColorChanged { key: keys[1], color: red }, cx);
+            let id = thumb(builder, cx, keys[1]).expect("thumb");
+            assert_eq!(builder.stop_colors[&id], red);
+
+            // Distribute: the list's positions become the bar's, slot by slot.
+            builder.stop_list.update(cx, |list, cx| {
+                let stops: Vec<StopData> = list
+                    .stops()
+                    .iter()
+                    .enumerate()
+                    .map(|(index, stop)| StopData { position: Some(index as f32 * 0.5), ..*stop })
+                    .collect();
+                list.set_keyed_stops(stops, cx);
+            });
+            builder.handle_stop_list_event(&ColorStopListEvent::Distributed, cx);
+            let positions: Vec<f32> = bar_rows(builder, cx).iter().map(|row| row.1).collect();
+            assert_eq!(positions, vec![0.0, 0.5, 1.0]);
+
+            // Added: the list's provisional stop becomes a real thumb and is selected.
+            builder.stop_list.update(cx, |list, cx| {
+                let mut stops = list.stops().to_vec();
+                stops.push(StopData { key: 9_999_999, color: red, position: Some(0.75) });
+                list.set_keyed_stops(stops, cx);
+            });
+            builder.handle_stop_list_event(&ColorStopListEvent::Added(9_999_999), cx);
+            assert_eq!(bar_rows(builder, cx).len(), 4);
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+            let selected = builder.selected_stop.expect("new stop selected");
+            assert!((builder.gradient_stops.read(cx).thumb_value(selected).unwrap_or(-1.0) - 0.75).abs() < 1e-4);
+
+            // Removed deletes the thumb.
+            builder.handle_stop_list_event(&ColorStopListEvent::Removed(keys[0]), cx);
+            assert_eq!(bar_rows(builder, cx).len(), 3);
+            assert!(thumb(builder, cx, keys[0]).is_none());
+            assert_eq!(list_rows(builder, cx), bar_rows(builder, cx));
+        });
+    }
+
+    #[test]
     fn css_copy_uses_the_displayed_gradient_after_edits() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         view.update(cx, |builder, cx| {
             builder.rotation_deg = 137.0;
-            builder.handle_add_stop(cx);
+            builder.gradient_stops.update(cx, |slider, cx| {
+                slider.insert_thumb_at(0.25, cx);
+            });
         });
         cx.run_until_parked();
         let (button, expected) =
@@ -1007,9 +1261,9 @@ mod tests {
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
         cx.run_until_parked();
         for (index, id, selector, row_selector) in [
-            (0, "gradients", "color-viz-gradients-section-FIELDS", "color-viz-stop-list-first-row"),
-            (1, "mesh", "color-viz-mesh-section-FIELDS", "color-viz-point-list-first-row"),
-            (2, "freeform", "color-viz-freeform-section-FIELDS", "color-viz-point-list-first-row"),
+            (0, "gradients", "color-viz-gradients-section-FIELDS", "color-stop-rows-item-0"),
+            (1, "mesh", "color-viz-mesh-section-FIELDS", "color-stop-rows-item-0"),
+            (2, "freeform", "color-viz-freeform-section-FIELDS", "color-stop-rows-item-0"),
         ] {
             view.update(cx, |builder, cx| {
                 builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: id.into(), label: id.into() }, cx)
@@ -1051,7 +1305,7 @@ mod tests {
             let builder = view.read(cx);
             assert_eq!(builder.selected_stop, None);
             assert_eq!(builder.selected_mesh_point, None);
-            assert_eq!(builder.stop_list.state.selected_keys().count(), 0);
+            assert_eq!(builder.stop_list.read(cx).selected(), None);
         });
         for id in ["mesh", "freeform", "mesh", "freeform"] {
             view.update(cx, |builder, cx| {
@@ -1060,92 +1314,79 @@ mod tests {
             cx.run_until_parked();
             view.update(cx, |builder, cx| {
                 assert_eq!(builder.selected_mesh_point, None);
-                assert_eq!(builder.point_list.state.selected_keys().count(), 0);
+                builder.sync_point_list(cx);
+                assert_eq!(builder.active_point_list().read(cx).selected(), None);
                 builder.begin_mesh_drag(0, cx);
                 assert_eq!(builder.selected_mesh_point, Some(0));
                 builder.finish_mesh_drag(cx);
                 builder.reset_mesh_state(cx);
             });
             cx.run_until_parked();
-            cx.update(|_, cx| {
-                let builder = view.read(cx);
+            view.update(cx, |builder, cx| {
                 assert_eq!(builder.selected_mesh_point, None);
-                assert_eq!(builder.point_list.state.selected_keys().count(), 0);
+                builder.sync_point_list(cx);
+                assert_eq!(builder.active_point_list().read(cx).selected(), None);
             });
         }
     }
 
     #[test]
-    fn color_lists_own_focus_and_leave_child_controls_interactive() {
+    fn grabbing_a_canvas_handle_opens_that_points_panel() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
-        cx.run_until_parked();
-        let thumb_id = view.update(cx, |builder, cx| builder.ordered_stop_rows(cx)[0].0);
-        let bounds = cx.debug_bounds("color-viz-stop-list-first-row").expect("stop row");
-        // The leading label selects/focuses the collection without opening a picker.
-        cx.simulate_click(gpui::point(bounds.left() + gpui::px(12.0), bounds.center().y), Default::default());
-        cx.run_until_parked();
-        cx.update(|window, cx| {
-            let builder = view.read(cx);
-            assert_eq!(builder.selected_stop, Some(thumb_id));
-            assert!(builder.stop_list.binding.focus_handle().is_focused(window));
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "freeform".into(), label: "f".into() }, cx)
         });
-        cx.simulate_keystrokes("down");
         cx.run_until_parked();
-        view.update(cx, |builder, cx| assert_eq!(builder.selected_stop, Some(builder.ordered_stop_rows(cx)[1].0)));
-        let canvas = cx.debug_bounds("gradient-preview").expect("preview");
-        cx.simulate_click(canvas.center(), Default::default());
-        cx.run_until_parked();
-        cx.update(|window, cx| {
-            let builder = view.read(cx);
-            assert_eq!(builder.selected_stop, None);
-            assert!(!builder.stop_list.binding.focus_handle().is_focused(window));
+        view.update(cx, |builder, cx| {
+            builder.begin_mesh_drag(1, cx);
+            builder.finish_mesh_drag(cx);
+            builder.sync_point_list(cx);
+            let key = builder.mesh_point_ids[1];
+            let list = builder.freeform_point_list.read(cx);
+            assert_eq!(list.selected(), Some(key));
+            assert!(list.row_expanded(key, cx), "the grabbed point's picker is open");
+            assert!(!list.row_expanded(builder.mesh_point_ids[0], cx));
+            builder.release_point_editor(cx);
+            builder.sync_point_list(cx);
+            assert!(!builder.freeform_point_list.read(cx).row_expanded(key, cx));
+            assert_eq!(builder.selected_mesh_point, None);
         });
+    }
+
+    #[test]
+    fn point_lists_select_by_click_and_keys_and_clear_on_canvas_click() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| {
+            xgpui_luma::init(cx).expect("initialize SDK");
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
+        });
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
         for id in ["mesh", "freeform"] {
             view.update(cx, |builder, cx| {
                 builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: id.into(), label: id.into() }, cx)
             });
             cx.run_until_parked();
-            let bounds = cx.debug_bounds("color-viz-point-list-first-row").expect("point row");
-            cx.simulate_click(
-                gpui::point(
-                    bounds.left() + gpui::px(if id == "freeform" { 42.0 } else { 12.0 }),
-                    bounds.top() + gpui::px(20.0),
-                ),
-                Default::default(),
-            );
+            let bounds = cx.debug_bounds("color-stop-rows-item-0").expect("point row");
+            cx.simulate_click(bounds.center(), Default::default());
             cx.run_until_parked();
-            cx.update(|window, cx| {
-                let builder = view.read(cx);
-                assert_eq!(builder.selected_mesh_point, Some(0));
-                assert!(builder.point_list.binding.focus_handle().is_focused(window));
-            });
+            cx.update(|_, cx| assert_eq!(view.read(cx).selected_mesh_point, Some(0), "{id}"));
             cx.simulate_keystrokes("down");
             cx.run_until_parked();
-            cx.update(|_, cx| assert_eq!(view.read(cx).selected_mesh_point, Some(1)));
-            if id == "freeform" {
-                let spread = cx.debug_bounds("point-spread-control").expect("selected spread");
-                cx.simulate_click(spread.center(), Default::default());
-                cx.run_until_parked();
-                cx.simulate_keystrokes("down");
-                cx.run_until_parked();
-                cx.update(|window, cx| {
-                    let builder = view.read(cx);
-                    assert_eq!(builder.selected_mesh_point, Some(1));
-                    assert!(!builder.point_list.binding.focus_handle().is_focused(window));
-                });
-            }
+            cx.update(|_, cx| assert_eq!(view.read(cx).selected_mesh_point, Some(1), "{id}"));
             let canvas = cx.update(|_, cx| view.read(cx).mesh_preview_bounds.expect("preview"));
             cx.simulate_click(canvas.center(), Default::default());
             cx.run_until_parked();
-            cx.update(|window, cx| {
+            cx.update(|_, cx| {
                 let builder = view.read(cx);
-                assert_eq!(builder.selected_mesh_point, None);
-                assert!(!builder.point_list.binding.focus_handle().is_focused(window));
+                assert_eq!(builder.selected_mesh_point, None, "{id}");
+                assert_eq!(builder.active_point_list().read(cx).selected(), None, "{id}");
             });
         }
     }
+
     #[test]
     fn suspension_stops_all_gradient_playback_and_tab_changes_do_not_resume_it() {
         let mut app = TestAppContext::single();
