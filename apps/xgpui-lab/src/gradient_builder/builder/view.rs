@@ -14,7 +14,7 @@ use crate::theme::TypographyExt;
 use super::super::paint::paint_gradient_preview;
 use super::mesh::{MESH_HANDLE_SIZE, fit_aspect_ratio, preview_panel_corner_radii};
 
-pub(super) const INSPECTOR_WIDTH: f32 = 352.0;
+pub(super) const INSPECTOR_WIDTH: f32 = 400.0;
 
 pub(super) fn compact_slider_row(
     label: &'static str,
