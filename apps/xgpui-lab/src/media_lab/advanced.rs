@@ -151,7 +151,7 @@ impl MediaPage {
             Some(Vignette::new(self.values[12] as f64, 0.35, 0.65, 1.)?),
         )
     }
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     pub(super) fn blur(&self) -> anyhow::Result<ImageBlur> {
         Ok(ImageBlur::new(px([0., 4., 8., 16.][self.blur_index]))?.with_quality(if self.full_quality {
             LayerBlurQuality::FullResolution
