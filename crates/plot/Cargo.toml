@@ -7,7 +7,7 @@ repository.workspace = true
 publish = ["crates-io"]
 homepage.workspace = true
 description = "Native plotting SDK foundations for XGPUI-Luma"
-keywords = ["gpui", "plotting", "charts", "gui"]
+keywords = ["xgpui", "gpui", "plotting", "charts", "gui"]
 categories = ["gui", "visualization"]
 
 [dependencies]

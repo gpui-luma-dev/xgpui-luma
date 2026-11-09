@@ -7,7 +7,7 @@ publish = ["crates-io"]
 description = "Radix themes, color scales, and styled controls for XGPUI-Luma"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["gpui", "gui", "radix", "themes", "widgets"]
+keywords = ["xgpui", "gpui", "radix", "themes", "widgets"]
 categories = ["gui"]
 
 [features]

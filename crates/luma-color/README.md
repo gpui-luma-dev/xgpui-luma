@@ -2,21 +2,11 @@
 
 Source repository: [gpui-luma-dev/xgpui-luma](https://github.com/gpui-luma-dev/xgpui-luma).
 
-Color system primitives and interactive controls for **XGPUI-Luma** ([gpui-luma.dev](https://gpui-luma.dev)).
+Color primitives and interactive color controls for **xgpui**, built with XGPUI-Luma.
 
 Provides domain renderers, checkerboard painting, palette calculations, and interactive color manipulation components built on the lookless Luma SDK.
 
-This crate is part of the **xgui ecosystem**, built on [xgpui](https://xgpui.dev/).
-The XGPUI-Luma crates generally release shortly after xgpui releases to track
-framework updates. Luma and xgpui have separate version numbers; use the
-compatible versions shown in the installation examples.
-
-The framework dependency is the Cargo package **`xgpui`**. In these examples,
-`gpui` is a local dependency alias for `xgpui`, so `gpui::` imports refer to xgpui.
-The `gpui-unofficial` package and packages ending in `-gpui-unofficial` are distinct
-registry packages; retain their full package names when referring to them. The
-original [gpui-luma](https://github.com/gpui-luma-dev/gpui-luma), based on
-`gpui-unofficial`, remains a separate project.
+Built on [xgpui](https://xgpui.dev/) and the [XGPUI-Luma SDK](https://github.com/gpui-luma-dev/xgpui-luma/tree/main/crates/sdk).
 
 ## Components
 
@@ -28,12 +18,10 @@ original [gpui-luma](https://github.com/gpui-luma-dev/gpui-luma), based on
 
 ## Installation
 
-The installation commands below apply once version 1.0.1 is published to crates.io.
-
 ```sh
 cargo add xgpui-luma@1.0.1
 cargo add xgpui-luma-color@1.0.1
-cargo add xgpui@2.0.1 --rename gpui
+cargo add xgpui@3.1.0 --rename gpui
 ```
 
 The package is named `xgpui-luma-color`; Rust imports use `xgpui_luma_color`.

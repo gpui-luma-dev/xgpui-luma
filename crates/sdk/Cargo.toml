@@ -7,7 +7,7 @@ publish = ["crates-io"]
 description = "XGPUI-Luma foundation: controls, layouts, themes, and shared look contracts"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["gpui", "gui", "ui", "widgets", "desktop"]
+keywords = ["xgpui", "gpui", "ui", "widgets", "desktop"]
 categories = ["gui"]
 
 [features]
