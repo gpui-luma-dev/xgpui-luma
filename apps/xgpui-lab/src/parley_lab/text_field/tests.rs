@@ -1045,3 +1045,40 @@ fn autoscroll_speed_grows_with_distance_and_is_capped() {
     let viewport = short.geometry().viewport;
     assert_eq!(delta(&mut short, point(viewport.left(), viewport.bottom() + px(50.0))), px(0.0));
 }
+
+/// Role, value, placeholder and label the control gives its focused element,
+/// read as the SDK's accessibility tests do (GPUI's test windows build no
+/// accessibility tree, since no assistive technology is connected).
+fn accessibility(field: &ParleyTextField) -> (Option<Role>, Option<String>, Option<String>, Option<String>) {
+    use gpui::Element as _;
+    let root = field.accessible(div().id("probe"));
+    let role = root.a11y_role();
+    let mut node = gpui::accesskit::Node::new(role.unwrap_or(Role::Unknown));
+    root.write_a11y_info(&mut node);
+    (
+        role,
+        node.value().map(str::to_owned),
+        node.placeholder().map(str::to_owned),
+        node.label().map(str::to_owned),
+    )
+}
+
+#[test]
+fn fields_and_areas_expose_text_input_accessibility() {
+    let mut field = Fixture::with("hello", |builder| builder.placeholder("Name").aria_label("Full name"));
+    let (role, value, placeholder, label) = field.read(accessibility);
+    assert_eq!(role, Some(Role::TextInput), "the SDK text field's role");
+    assert_eq!(value.as_deref(), Some("hello"));
+    assert_eq!(placeholder.as_deref(), Some("Name"));
+    assert_eq!(label.as_deref(), Some("Full name"));
+    // The value follows edits.
+    field.visual.simulate_input("!");
+    field.draw();
+    assert_eq!(field.read(accessibility).1.as_deref(), Some("hello!"));
+
+    let mut area = Fixture::area("one\ntwo", 3);
+    let (role, value, placeholder, label) = area.read(accessibility);
+    assert_eq!(role, Some(Role::MultilineTextInput));
+    assert_eq!(value.as_deref(), Some("one\ntwo"), "line breaks as \\n");
+    assert_eq!((placeholder, label), (None, None), "none set");
+}

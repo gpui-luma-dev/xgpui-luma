@@ -42,6 +42,7 @@ pub struct ParleyTextFieldBuilder {
     pub(super) look_override: Option<TextFieldLookOverride>,
     pub(super) options: Options,
     pub(super) validator: Option<Validator>,
+    pub(super) aria_label: Option<SharedString>,
     modifiers: Vec<TemplateModifier>,
 }
 
@@ -64,6 +65,7 @@ impl ParleyTextFieldBuilder {
             look_override: None,
             options: Options::default(),
             validator: None,
+            aria_label: None,
             modifiers: Vec::new(),
         }
     }
@@ -206,6 +208,13 @@ impl ParleyTextFieldBuilder {
     /// focus back). Off by default, as the SDK's text field and text area.
     pub fn allow_tab_character(mut self, allow: bool) -> Self {
         self.options.allow_tab_character = allow;
+        self
+    }
+
+    /// The name assistive technology announces for the control (its label).
+    /// Not in the SDK text field yet, which exposes only its role.
+    pub fn aria_label(mut self, label: impl Into<SharedString>) -> Self {
+        self.aria_label = Some(label.into());
         self
     }
 

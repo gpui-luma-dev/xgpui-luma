@@ -172,6 +172,7 @@ impl TextFieldPage {
                     .font(font())
                     .value(*value)
                     .placeholder(*placeholder)
+                    .aria_label(label)
                     .enabled(index != DISABLED)
                     .look_override(move |look| if invert_colors { inverted(look) } else { look })
                     .on_event(cx, move |this: &mut Self, event, cx| {
