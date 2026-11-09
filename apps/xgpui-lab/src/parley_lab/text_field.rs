@@ -108,6 +108,26 @@ fn cap_paste(text: &str, max_bytes: Option<usize>) -> &str {
     &text[..end]
 }
 
+/// Text and selection before an edit, for undo and redo.
+#[derive(Clone)]
+struct Snapshot {
+    value: String,
+    anchor: ParagraphPosition,
+    caret: ParagraphPosition,
+}
+
+/// Kinds of edit that join one undo step while they continue without the
+/// caret moving: a run of typing, a run of deleting, or one IME composition.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum EditGroup {
+    Typing,
+    Deleting,
+    Composing,
+}
+
+/// Undo steps kept; older steps are dropped.
+const MAX_UNDO_STEPS: usize = 100;
+
 /// Geometry of the last painted frame, for hit testing and IME bounds.
 #[derive(Clone)]
 struct Geometry {
@@ -134,6 +154,10 @@ pub struct ParleyTextField {
     invalid: bool,
     validator: Option<Validator>,
     aria_label: Option<SharedString>,
+    undo_stack: Vec<Snapshot>,
+    redo_stack: Vec<Snapshot>,
+    /// The edit group the last edit belongs to, while it can still grow.
+    group: Option<EditGroup>,
     /// Source text; a text area stores line breaks as [`LINE_SEPARATOR`].
     value: String,
     /// Bumped on every text change; keys the one-line width cache.
@@ -256,6 +280,9 @@ impl ParleyTextField {
             invalid: false,
             validator: builder.validator.clone(),
             aria_label: builder.aria_label.clone(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+            group: None,
             value: String::new(),
             revision: 0,
             measured: Cell::new(None),
@@ -329,7 +356,11 @@ impl ParleyTextField {
     }
 
     /// Replace the text, putting the caret at its end; emits no `Change`.
+    /// Replaces the text and clears the undo history.
     pub fn set_value(&mut self, value: impl Into<String>, cx: &mut Context<Self>) {
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+        self.group = None;
         self.value = self.normalize(&value.into());
         self.revision += 1;
         self.marked = None;
@@ -760,6 +791,7 @@ impl ParleyTextField {
     }
 
     fn set_caret(&mut self, caret: ParagraphPosition, extend: bool, cx: &mut Context<Self>) {
+        self.group = None; // Moving the caret ends a run of typing or deleting.
         self.caret = caret;
         if !extend {
             self.anchor = caret;
@@ -787,6 +819,25 @@ impl ParleyTextField {
             })
             .unwrap_or(inserted.len()..inserted.len());
         let changed = self.value[range.clone()] != inserted;
+        let group = if mark || self.marked.is_some() {
+            Some(EditGroup::Composing)
+        } else if inserted.is_empty() {
+            Some(EditGroup::Deleting)
+        } else if inserted.graphemes(true).count() == 1 {
+            Some(EditGroup::Typing)
+        } else {
+            None // Paste, multi-character input: a step of its own.
+        };
+        if changed {
+            // Typing over a selection starts a new step, then continues it.
+            let continues =
+                group.is_some() && group == self.group && (group != Some(EditGroup::Typing) || range.is_empty());
+            if !continues {
+                self.push_undo();
+            }
+            self.redo_stack.clear();
+        }
+        self.group = group;
         self.value.replace_range(range.clone(), &inserted);
         self.revision += 1;
         self.marked = (mark && !inserted.is_empty()).then(|| range.start..range.start + inserted.len());
@@ -799,6 +850,60 @@ impl ParleyTextField {
             self.recompute_invalid();
             cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         }
+        self.pause_caret_blink(cx);
+        cx.notify();
+    }
+
+    fn snapshot(&self) -> Snapshot {
+        Snapshot { value: self.value.clone(), anchor: self.anchor, caret: self.caret }
+    }
+
+    fn push_undo(&mut self) {
+        self.undo_stack.push(self.snapshot());
+        if self.undo_stack.len() > MAX_UNDO_STEPS {
+            self.undo_stack.remove(0);
+        }
+    }
+
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    pub fn can_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
+
+    /// Restore the text and selection from before the last edit step.
+    pub fn undo(&mut self, cx: &mut Context<Self>) {
+        if self.marked.is_none()
+            && let Some(snapshot) = self.undo_stack.pop()
+        {
+            self.redo_stack.push(self.snapshot());
+            self.restore(snapshot, cx);
+        }
+    }
+
+    /// Reapply the last undone edit step.
+    pub fn redo(&mut self, cx: &mut Context<Self>) {
+        if self.marked.is_none()
+            && let Some(snapshot) = self.redo_stack.pop()
+        {
+            self.undo_stack.push(self.snapshot());
+            self.restore(snapshot, cx);
+        }
+    }
+
+    fn restore(&mut self, snapshot: Snapshot, cx: &mut Context<Self>) {
+        self.value = snapshot.value;
+        self.anchor = snapshot.anchor;
+        self.caret = snapshot.caret;
+        self.group = None;
+        self.marked = None;
+        self.revision += 1;
+        self.geometry = None;
+        self.reveal_caret = true;
+        self.recompute_invalid();
+        cx.emit(ParleyTextFieldEvent::Change { value: self.value() });
         self.pause_caret_blink(cx);
         cx.notify();
     }
@@ -909,6 +1014,19 @@ impl ParleyTextField {
         let secondary = modifiers.secondary(cx);
         let key = event.keystroke.key.as_str();
         let handled = match key {
+            "z" if secondary && modifiers.shift => {
+                self.redo(cx);
+                true
+            }
+            "z" if secondary => {
+                self.undo(cx);
+                true
+            }
+            // Ctrl-Y also redoes on Windows and Linux.
+            "y" if secondary && modifiers.control => {
+                self.redo(cx);
+                true
+            }
             "a" if secondary => {
                 self.select_all(cx);
                 true

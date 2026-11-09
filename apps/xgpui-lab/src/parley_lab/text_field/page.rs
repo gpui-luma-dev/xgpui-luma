@@ -56,7 +56,8 @@ impl Screen {
         match self {
             Self::Fields => {
                 "Left/Right move visually; Alt moves by word; Home/End go to the ends. Backspace removes whole \
-                 characters. Double-click selects a word, triple-click all. Enter submits."
+                 characters. Double-click selects a word, triple-click all. Enter submits. Cmd/Ctrl-Z undoes \
+                 a run of typing or deleting; Cmd/Ctrl-Shift-Z redoes."
             }
             Self::RightToLeft => {
                 "Right-to-left text starts at the right edge; Left/Right still move visually. In the text area \
