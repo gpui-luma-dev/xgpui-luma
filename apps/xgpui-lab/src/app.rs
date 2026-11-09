@@ -73,6 +73,7 @@ const SECTIONS: &[Section] = &[
             ("sv-triangle", "SV Triangle"),
             ("split-ring", "Split Ring"),
             ("harmonies", "Color Harmonies"),
+            ("color-stops", "Color Stop List"),
         ],
     ),
     (Workspace::ColorGamut, "Color & Gamut", &[("Color & Gamut", "Color & Gamut")]),
