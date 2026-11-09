@@ -7,7 +7,7 @@ publish = ["crates-io"]
 description = "Color primitives and interactive color controls for XGPUI-Luma"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["gpui", "gui", "color", "color-picker", "widgets"]
+keywords = ["xgpui", "gpui", "color", "color-picker", "widgets"]
 categories = ["gui", "graphics"]
 
 [features]

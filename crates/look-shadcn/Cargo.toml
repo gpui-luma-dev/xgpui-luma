@@ -7,7 +7,7 @@ publish = ["crates-io"]
 description = "Shadcn themes, CSS tokens, and styled controls for XGPUI-Luma"
 repository.workspace = true
 homepage.workspace = true
-keywords = ["gpui", "gui", "shadcn", "themes", "widgets"]
+keywords = ["xgpui", "gpui", "shadcn", "themes", "widgets"]
 categories = ["gui"]
 
 [features]
