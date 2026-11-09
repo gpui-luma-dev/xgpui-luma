@@ -179,7 +179,7 @@ impl GradientBuilder {
     pub(super) fn render_accordion_section(
         &mut self,
         section: usize,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
         let chrome = self.look.chrome();
@@ -206,13 +206,6 @@ impl GradientBuilder {
                             .child(div().flex_1().min_w_0().child(form_field!("Renderer", chrome; renderer_selector))),
                     )
                     .child(self.p3_switch.clone())
-                    .when(self.preview_p3, |this| {
-                        this.child(div().text_size(px(11.0)).child(if super::p3::available(window) {
-                            "Display P3 · native shader"
-                        } else {
-                            "Display P3 unavailable · sRGB fallback"
-                        }))
-                    })
                     .child(form_field!("Aspect", chrome; self.mesh_aspect_ratio_selector.clone()))
                     .when(self.gradient_type != GradientType::Radial, |this| {
                         this.child(compact_slider_row(
@@ -281,20 +274,6 @@ impl GradientBuilder {
                             ))
                             .child(form_field!("Renderer", chrome; self.mesh_renderer_selector.clone()))
                             .child(self.mesh_p3_switch.clone())
-                            .when(self.mesh_p3, |panel| {
-                                panel.child(div().text_size(px(10.)).child(
-                                    if cfg!(target_os = "macos") && super::p3::available(window) {
-                                        "Display P3 · native mesh shader"
-                                    } else {
-                                        "Display P3 unavailable · sRGB fallback"
-                                    },
-                                ))
-                            })
-                            .when(self.mesh_shader_enabled, |panel| {
-                                panel.child(div().text_size(px(10.)).child(
-                                    "Native Hermite mesh · opaque colors · interpolation differs from CPU Coons",
-                                ))
-                            })
                     })
                     .when(freeform, |panel| {
                         panel
@@ -310,19 +289,6 @@ impl GradientBuilder {
                                 ))
                             })
                             .child(self.freeform_p3_switch.clone())
-                            .when(self.freeform_p3, |panel| {
-                                panel.child(div().text_size(px(10.)).child(
-                                    if cfg!(target_os = "macos") && super::p3::available(window) {
-                                        if self.freeform_gpu {
-                                            "Display P3 · GPU field"
-                                        } else {
-                                            "Display P3 · CPU field"
-                                        }
-                                    } else {
-                                        "Display P3 unavailable · sRGB fallback"
-                                    },
-                                ))
-                            })
                     })
                     .child(form_field!("Background", chrome; self.mesh_background_stop.clone()));
                 panel.into_any_element()

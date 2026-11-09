@@ -40,7 +40,7 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub id: &'a SharedString,
     pub look: &'a Look,
     pub color: ColorValue,
-    /// CSS `hsl()` text, e.g. `hsl(312 48% 44%)`; see [`super::stop_label`].
+    /// CSS `hsl()` text with alpha, e.g. `hsl(312 48% 44% / 100%)`; see [`super::stop_label`].
     pub label: SharedString,
     /// Out-of-sRGB indicator source; see [`super::StopGamut`].
     pub gamut: super::StopGamut,
@@ -108,7 +108,8 @@ pub(crate) fn default_color_stop_template() -> Arc<dyn ColorStopTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(DefaultColorStopTemplate)).clone()
 }
 
-/// Swatch · hex + alpha · position · remove, with the editor in a panel below.
+/// Swatch · `hsl(h s l / a)` · gamut badge · position · remove, with the
+/// editor in a panel below.
 /// The remove action shows on hover or while selected.
 pub(crate) struct DefaultColorStopTemplate;
 
@@ -134,6 +135,7 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
             .gap_2()
             .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
             .child(label(&model))
+            .children(gamut_badge(&model))
             .children(detail_label(&model))
             .when_some(model.remove_button, |line, button| {
                 line.child(
@@ -193,19 +195,19 @@ pub(crate) fn swatch(
     }
 }
 
-/// Hex label with muted alpha, filling the remaining width.
+/// `hsl(h s l / a)` label filling the remaining width; truncates rather than
+/// running into the trailing badge/detail.
 pub(crate) fn label(model: &ColorStopRenderModel<'_>) -> impl IntoElement {
     let chrome = model.look.chrome();
     div()
         .flex_1()
         .min_w_0()
-        .flex()
-        .items_center()
-        .gap_2()
+        .overflow_hidden()
+        .whitespace_nowrap()
+        .text_ellipsis()
         .typography_style(model.look.typography_scale(TextSize::Sm))
-        .child(div().text_color(chrome.body_text).child(model.label.clone()))
-        .child(div().text_color(chrome.muted_text).child(format!("{}%", (model.alpha * 100.0).round() as i32)))
-        .children(gamut_badge(model))
+        .text_color(chrome.body_text)
+        .child(model.label.clone())
 }
 
 /// Out-of-sRGB indicator: `P3` for Display P3 colors outside sRGB, `> P3`

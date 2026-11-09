@@ -98,8 +98,23 @@ pub(super) fn element(material: Result<Material, String>) -> AnyElement {
         )
         .size_full()
         .into_any_element(),
-        Err(error) => div().p_3().child(error).into_any_element(),
+        Err(error) => preview_notice(error),
     }
+}
+
+/// A message in place of a preview: centered, wrapped, and clear of the
+/// top-left performance HUD.
+pub(super) fn preview_notice(text: impl Into<gpui::SharedString>) -> AnyElement {
+    div()
+        .size_full()
+        .flex()
+        .items_center()
+        .justify_center()
+        .px(gpui::px(32.))
+        .pt(gpui::px(48.))
+        .pb(gpui::px(16.))
+        .child(div().max_w(gpui::px(420.)).text_center().text_size(gpui::px(13.)).child(text.into()))
+        .into_any_element()
 }
 
 #[cfg(test)]

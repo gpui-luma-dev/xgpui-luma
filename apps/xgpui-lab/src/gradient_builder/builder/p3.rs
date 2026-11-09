@@ -65,10 +65,9 @@ impl Cache {
         neutral: bool,
     ) -> AnyElement {
         if !neutral {
-            return div()
-                .p_3()
-                .child("P3 preview requires neutral Saturation/Vibrance adjustments.")
-                .into_any_element();
+            return super::linear_shader::preview_notice(
+                "P3 preview requires neutral Saturation/Vibrance adjustments.",
+            );
         }
         if stops.len() < 2 {
             return div().into_any_element();
@@ -91,7 +90,7 @@ impl Cache {
             )
             .size_full()
             .into_any_element(),
-            Err(error) => div().p_3().child(error).into_any_element(),
+            Err(error) => super::linear_shader::preview_notice(error),
         }
     }
 }

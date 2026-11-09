@@ -595,6 +595,42 @@ impl GradientBuilder {
         self.selected_tab == BuilderTab::Gradients && self.preview_p3 && self.wide_output_available
     }
 
+    /// Status-bar color space: what the preview is actually presented in.
+    pub(super) fn output_status(&self) -> &'static str {
+        let requested = match self.selected_tab {
+            BuilderTab::Gradients => self.preview_p3,
+            BuilderTab::Mesh => self.mesh_p3,
+            BuilderTab::Freeform => self.freeform_p3,
+        };
+        let active = match self.selected_tab {
+            BuilderTab::Gradients => self.gradient_p3_active(),
+            BuilderTab::Mesh => self.mesh_p3_active(),
+            BuilderTab::Freeform => self.freeform_p3_active(),
+        };
+        match (requested, active) {
+            (_, true) => "Display P3",
+            (true, false) => "sRGB (Display P3 unavailable)",
+            (false, false) => "sRGB",
+        }
+    }
+
+    /// Status-bar note for the active renderer, when it has a caveat.
+    pub(super) fn renderer_note(&self) -> Option<&'static str> {
+        match self.selected_tab {
+            BuilderTab::Gradients if self.gradient_p3_active() => Some("Native P3 shader"),
+            BuilderTab::Mesh if self.mesh_p3_active() => Some("Native P3 mesh shader"),
+            BuilderTab::Mesh if self.mesh_shader_enabled => {
+                Some("Native Hermite mesh · opaque colors · interpolation differs from CPU Coons")
+            }
+            BuilderTab::Freeform if self.freeform_p3_active() => Some(if self.freeform_gpu {
+                "P3 GPU field"
+            } else {
+                "P3 CPU field"
+            }),
+            _ => None,
+        }
+    }
+
     pub(super) fn cached_preview_image(&self) -> Option<Arc<RenderImage>> {
         self.preview_image_cache.as_ref().map(|(_, image)| image.clone())
     }

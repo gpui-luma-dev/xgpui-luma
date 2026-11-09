@@ -1019,6 +1019,18 @@ mod tests {
             assert_eq!(builder.raster_output(), OutputSpace::Srgb);
             builder.wide_output_available = true;
             assert_eq!(builder.raster_output(), OutputSpace::wide(cfg!(target_os = "macos")));
+            // Status bar reports the presented color space and renderer note.
+            builder.wide_output_available = false;
+            assert_eq!(builder.output_status(), "sRGB (Display P3 unavailable)");
+            assert_eq!(builder.renderer_note(), None);
+            builder.freeform_p3 = false;
+            assert_eq!(builder.output_status(), "sRGB");
+            if cfg!(target_os = "macos") {
+                builder.freeform_p3 = true;
+                builder.wide_output_available = true;
+                assert_eq!(builder.output_status(), "Display P3");
+                assert!(builder.renderer_note().is_some_and(|note| note.starts_with("P3 ")));
+            }
         });
     }
 

@@ -531,10 +531,22 @@ impl Render for GradientBuilder {
                             }
                         )
                     }))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .px_3()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .text_center()
+                            .child(self.renderer_note().unwrap_or_default()),
+                    )
                     .child(format!(
-                        "{:.0} × {:.0}  ·  sRGB",
+                        "{:.0} × {:.0}  ·  {}",
                         self.preview_size.width.as_f32(),
-                        self.preview_size.height.as_f32()
+                        self.preview_size.height.as_f32(),
+                        self.output_status()
                     )),
             );
 

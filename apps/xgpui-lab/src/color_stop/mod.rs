@@ -431,7 +431,7 @@ fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
         .map(|text| TooltipHandle::new_with_theme(Tooltip::new(text), theme.clone(), cx))
 }
 
-/// CSS `hsl()` text (alpha is shown separately), e.g. `hsl(312 48% 44%)`.
+/// CSS `hsl()` text with alpha, e.g. `hsl(312 48% 44% / 100%)`.
 ///
 /// Derived from unmapped sRGB: a source outside sRGB (e.g. Display P3) shows
 /// out-of-range saturation/lightness rather than being silently clipped, so a
@@ -443,10 +443,11 @@ pub(crate) fn stop_label(color: ColorValue) -> String {
         .map(|rgba| {
             let hsl = Hsl::from_color_unclamped(rgba.color);
             format!(
-                "hsl({:.0} {:.0}% {:.0}%)",
+                "hsl({:.0} {:.0}% {:.0}% / {:.0}%)",
                 hsl.hue.into_positive_degrees(),
                 hsl.saturation * 100.0,
-                hsl.lightness * 100.0
+                hsl.lightness * 100.0,
+                rgba.alpha * 100.0
             )
         })
         .unwrap_or_else(|_| "Invalid color".into())
@@ -588,8 +589,8 @@ mod tests {
 
     #[test]
     fn labels_are_hsl_and_keep_out_of_gamut_values_visible() {
-        assert_eq!(stop_label(ColorValue::srgb(1.0, 0.0, 0.0, 1.0)), "hsl(0 100% 50%)");
-        assert_eq!(stop_label(ColorValue::srgb(0.5, 0.5, 0.5, 0.25)), "hsl(0 0% 50%)");
+        assert_eq!(stop_label(ColorValue::srgb(1.0, 0.0, 0.0, 1.0)), "hsl(0 100% 50% / 100%)");
+        assert_eq!(stop_label(ColorValue::srgb(0.5, 0.5, 0.5, 0.25)), "hsl(0 0% 50% / 25%)");
         // Display P3 red lies outside sRGB: saturation reads above 100% instead of clipping.
         let label = stop_label(ColorValue::display_p3(1.0, 0.0, 0.0, 1.0));
         let saturation: f32 =

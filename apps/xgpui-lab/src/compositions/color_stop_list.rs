@@ -158,7 +158,7 @@ impl Render for ColorStopListExposition {
 }
 
 fn format_event(event: &ColorStopListEvent) -> String {
-    let hsl = |color: ColorValue| format!("{} a={:.2}", crate::color_stop::stop_label(color), color.alpha());
+    let hsl = |color: ColorValue| crate::color_stop::stop_label(color);
     match event {
         ColorStopListEvent::SelectionChanged(key) => format!("SelectionChanged({key:?})"),
         ColorStopListEvent::Activated(key) => format!("Activated({key})"),
