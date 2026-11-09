@@ -47,3 +47,19 @@ same window size in light and dark themes. Check a narrow window for wrapping,
 vertical scrolling, visible controls, and undistorted photos. Run the existing
 Italy selection/presentation and fixture tests and the Color Spaces interaction
 tests; native wide-gamut fidelity still requires a capable display.
+
+## Desktop window shell
+
+The main Lab window uses published `xgpui-shell 0.1.0` with XGPUI 3.1.0.
+`app_shell.rs` opens a shell window with separate `LabTitlebar` and
+`XgpuiLabApp` views. The shell owns platform decorations, native traffic lights,
+window controls and desktop preference handling. The Lab owns its Radix toolbar
+controls, theme, navigation and workspace content. Title text and empty toolbar
+space use `ShellDragRegion`; interactive controls stay outside drag regions.
+
+Toolbar alignment measures the actual toolbar/body origins, including shell
+insets, rather than assuming a macOS traffic-light offset or fixed header height.
+The shell follows desktop preferences independently of the Lab's explicit content
+theme toggle. The shell API is alpha. Interactive macOS, Windows and Linux desktop
+verification remains necessary, including decoration negotiation, fullscreen,
+window operations and scaled text; headless tests cannot establish those results.

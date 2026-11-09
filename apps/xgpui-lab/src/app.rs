@@ -31,6 +31,7 @@ mod shell_style;
 mod titlebar;
 use shell_style::*;
 use titlebar::TitlebarControls;
+pub(crate) use titlebar::LabTitlebar;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Workspace {
@@ -187,6 +188,7 @@ pub struct XgpuiLabApp {
     panels: Entity<ResizablePanels>,
     rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: gpui::Pixels,
+    body_origin: gpui::Pixels,
     titlebar: TitlebarControls,
     content: Rc<RefCell<gpui::AnyView>>,
     active_page: &'static str,
@@ -382,6 +384,7 @@ impl XgpuiLabApp {
             rail,
             titlebar,
             sidebar_width: INITIAL_SIDEBAR_WIDTH,
+            body_origin: px(0.0),
             content,
             active_page: "gradients",
         }
@@ -513,10 +516,26 @@ impl Render for XgpuiLabApp {
         let chrome = self.look.chrome();
         let sans_family = "System UI".to_string();
 
-        let title_bar = self.titlebar.render(&self.look, self.sidebar_width, _window);
+        let app_entity = _cx.entity().downgrade();
         let body = div()
             .size_full()
             .bg(shell_background(&self.look))
+            .relative()
+            .child(
+                gpui::canvas(
+                    move |bounds, _, cx| {
+                        let _ = app_entity.update(cx, |app, cx| {
+                            if app.body_origin != bounds.origin.x {
+                                app.body_origin = bounds.origin.x;
+                                cx.notify();
+                            }
+                        });
+                    },
+                    |_, _, _, _| {},
+                )
+                .absolute()
+                .size_full(),
+            )
             .flex()
             .child(
                 div()
@@ -561,7 +580,6 @@ impl Render for XgpuiLabApp {
             .font_family(sans_family)
             .bg(shell_background(&self.look))
             .text_color(chrome.body_text)
-            .child(title_bar)
             .child(div().flex_1().min_h_0().child(body))
     }
 }
@@ -654,7 +672,6 @@ mod tests {
     }
 
     use super::titlebar::{CLOSED_TITLEBAR_WIDTH, titlebar_compartment_width};
-    use xgpui_luma::shell::TITLE_BAR_LEFT_PADDING;
     use gpui::{MouseButton, MouseDownEvent, VisualTestContext, point};
 
     fn assert_aligned(cx: &mut VisualTestContext) {
@@ -668,16 +685,38 @@ mod tests {
         assert_eq!(cx.debug_bounds("shell-2026-sidebar-fill").unwrap().right(), workspace.left());
         assert!(separator.bottom() < workspace.top(), "the two separators must remain disconnected");
         assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().size.width, RAIL_WIDTH);
-        assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().top(), SHELL_TITLEBAR_HEIGHT);
+        assert_eq!(
+            cx.debug_bounds("shell-2026-rail-bounds").unwrap().top(),
+            cx.debug_bounds("shell-titlebar-bounds").unwrap().bottom()
+        );
     }
 
     #[test]
     fn rendered_separator_tracks_drag_and_restores_from_both_collapse_paths() {
-        let mut app = TestAppContext::single();
-        let (view, cx) = app.add_window_view(|window, cx| {
+        let app = TestAppContext::single();
+        use xgpui_shell::{ShellApp, ShellOptions, ShellWindowTitle};
+        let (window, view) = app.update(|cx| {
             xgpui_luma::init(cx).unwrap();
-            XgpuiLabApp::new(window, cx)
+            let mut content = None;
+            let window = cx
+                .open_shell_window_with_titlebar(
+                    gpui::WindowOptions {
+                        window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds::maximized(None, cx))),
+                        ..Default::default()
+                    },
+                    ShellOptions::default(),
+                    |window, cx| {
+                        window.set_shell_title("XGPUI Lab");
+                        let view = cx.new(|cx| XgpuiLabApp::new(window, cx));
+                        let header = cx.new(|cx| LabTitlebar::new(&view, cx));
+                        content = Some(view.clone());
+                        (header, view)
+                    },
+                )
+                .unwrap();
+            (window, content.unwrap())
         });
+        let cx = &mut VisualTestContext::from_window(window.into(), &app);
         assert_aligned(cx);
         let workspace = cx.debug_bounds("shell-2026-workspace").unwrap();
         let start = point(workspace.left(), workspace.top() + px(100.0));
@@ -707,8 +746,14 @@ mod tests {
             "collapse must publish intermediate animated widths"
         );
         let closed_separator = cx.debug_bounds("shell-2026-separator").unwrap();
-        assert_eq!(closed_separator.left(), TITLE_BAR_LEFT_PADDING + CLOSED_TITLEBAR_WIDTH - px(1.0));
-        assert_eq!(cx.debug_bounds("shell-2026-workspace").unwrap().left(), RAIL_WIDTH + CANVAS_BORDER);
+        assert_eq!(
+            closed_separator.left(),
+            cx.debug_bounds("lab-toolbar-bounds").unwrap().left() + CLOSED_TITLEBAR_WIDTH - px(1.0)
+        );
+        assert_eq!(
+            cx.debug_bounds("shell-2026-workspace").unwrap().left(),
+            cx.debug_bounds("shell-2026-rail-bounds").unwrap().left() + RAIL_WIDTH + CANVAS_BORDER
+        );
         assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().size.width, RAIL_WIDTH);
         cx.simulate_click(toggle, Default::default());
         cx.run_until_parked();

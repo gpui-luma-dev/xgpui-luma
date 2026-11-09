@@ -15,6 +15,7 @@ test-support = ["xgpui-luma/test-support", "xgpui-luma-color/test-support"]
 portable-app = []
 
 [dependencies]
+xgpui-shell = "0.1.0"
 clap = { version = "4", features = ["derive"] }
 xgpui-canvas = { version = "0.3.3", features = ["gpui"] }
 log = "0.4"

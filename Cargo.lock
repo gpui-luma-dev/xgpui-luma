@@ -7354,6 +7354,7 @@ dependencies = [
  "xgpui-parley",
  "xgpui-platform",
  "xgpui-shader",
+ "xgpui-shell",
  "xgpui-svg",
  "xgpui-wgpu",
  "xgpui-windows",
@@ -7588,6 +7589,16 @@ dependencies = [
  "xgpui-apple",
  "xgpui-wgpu",
  "xgpui-windows",
+]
+
+[[package]]
+name = "xgpui-shell"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b7c6b01fe1c2ba5b92b4849473842d40d9b68321f1b1384807aaf1ff8d1cae"
+dependencies = [
+ "anyhow",
+ "xgpui",
 ]
 
 [[package]]

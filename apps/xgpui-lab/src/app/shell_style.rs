@@ -4,7 +4,6 @@ use xgpui_luma_look_radix::Look;
 use crate::theme::ColorVizLookExt;
 
 pub(super) const RAIL_WIDTH: Pixels = px(52.0);
-pub(crate) const SHELL_TITLEBAR_HEIGHT: Pixels = px(40.0);
 pub(super) const CANVAS_BORDER: Pixels = px(1.0);
 pub(super) const CANVAS_RADIUS: Pixels = px(10.0);
 pub(super) const INITIAL_SIDEBAR_WIDTH: Pixels = px(260.0);
