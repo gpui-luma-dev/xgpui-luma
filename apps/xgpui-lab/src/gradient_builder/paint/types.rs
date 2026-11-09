@@ -1,4 +1,5 @@
 use gpui::Hsla;
+use xgpui_luma::color::ColorValue;
 
 use super::super::color::interpolate_rgb;
 
@@ -34,13 +35,28 @@ impl PreviewRenderer {
     }
 }
 
+/// A mesh/freeform control point. Hosts store `ControlPoint` (a source
+/// [`ColorValue`]); renderers take [`PaintPoint`], produced only by
+/// [`crate::gradient_builder::encode::encode_points`] for an explicit output.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MeshPoint {
+pub struct ControlPoint<C = ColorValue> {
     pub row: u8,
     pub col: u8,
     pub u: f32,
     pub v: f32,
-    pub color: Hsla,
+    pub color: C,
+}
+
+/// Paint-layer point: `color` is encoded RGB in the selected output primaries
+/// (see [`crate::gradient_builder::encode::OutputSpace`]), carried as
+/// `gpui::Hsla` for the existing interpolation math.
+pub type PaintPoint = ControlPoint<Hsla>;
+
+impl<C> ControlPoint<C> {
+    /// Same geometry with a different color representation.
+    pub fn with_color<D>(&self, color: D) -> ControlPoint<D> {
+        ControlPoint { row: self.row, col: self.col, u: self.u, v: self.v, color }
+    }
 }
 
 pub fn color_at_position(stops: &[(f32, Hsla)], position: f32) -> Hsla {
@@ -72,7 +88,7 @@ pub fn color_at_position(stops: &[(f32, Hsla)], position: f32) -> Hsla {
     stops[stops.len() - 1].1
 }
 
-pub fn sorted_stops(stops: &[(f32, Hsla)]) -> Vec<(f32, Hsla)> {
+pub fn sorted_stops<C: Copy>(stops: &[(f32, C)]) -> Vec<(f32, C)> {
     let mut sorted = stops.to_vec();
     sorted.sort_by(|left, right| left.0.total_cmp(&right.0));
     sorted

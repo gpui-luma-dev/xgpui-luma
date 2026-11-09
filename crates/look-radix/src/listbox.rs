@@ -139,6 +139,8 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
                 .when(!horizontal, |s| s.h(px(extent)))
                 .into_any_element()
         };
+        // Drag labels share the tooltip's chrome so they read on any background.
+        let drag_drop = parts.drag_drop.map(|binding| binding.preview_style(crate::tooltip_theme(&look).resolve()));
         let mut rows = Vec::new();
         if let Some(extent) = virtual_window.as_ref().and_then(|v| v.leading_space) {
             rows.push(spacer(extent));
@@ -147,7 +149,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             let row = listbox_row(&look, (parts.item_id)(&item.key), item.state, parts.binding.focus_visible(window));
             let key = item.key.clone();
             let mut row = parts.binding.bind_row(row, item.key, item.state, cx, parts.on_input);
-            if let Some(drag_drop) = &parts.drag_drop {
+            if let Some(drag_drop) = &drag_drop {
                 row = drag_drop.bind_row(row, parts.state.drag_keys(&key), (parts.item_label)(item.item), cx);
             }
             let model = ListBoxItemRenderModel {
@@ -166,7 +168,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
                 .when(!content_sized, |row| row.h(px(layout.item_height)))
                 .aria_label((parts.item_label)(item.item))
                 .child((self.template)(&model, cx));
-            if let Some(drag_drop) = &parts.drag_drop {
+            if let Some(drag_drop) = &drag_drop {
                 rendered = rendered.relative();
                 if cx.has_active_drag() {
                     for (edge, before) in [
@@ -220,7 +222,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             .when(horizontal, |v| v.overflow_x_scroll())
             .when(!horizontal, |v| v.flex_col().overflow_y_scroll())
             .children(rows);
-        if let Some(drag_drop) = &parts.drag_drop {
+        if let Some(drag_drop) = &drag_drop {
             viewport = drag_drop.bind_viewport(viewport, parts.scroll, axis);
         }
         let mut surface = crate::tree_view_frame(&look)
@@ -230,7 +232,7 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             .w_full()
             .min_w_0()
             .aria_label(self.id);
-        if let Some(drag_drop) = &parts.drag_drop {
+        if let Some(drag_drop) = &drag_drop {
             use xgpui_luma::infra::drag_drop::DragDropElementExt;
             surface = drag_drop.bind_target(surface, None, cx).cancel_drag_on_escape();
         }

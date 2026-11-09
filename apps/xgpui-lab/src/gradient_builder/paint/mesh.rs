@@ -4,7 +4,7 @@ use smallvec::smallvec;
 use std::sync::Arc;
 use tiny_skia::{Paint, PathBuilder, Pixmap, PremultipliedColorU8, Stroke, Transform};
 
-use super::types::MeshPoint;
+use super::types::PaintPoint;
 use super::super::color::interpolate_rgb;
 
 const GEOMETRY_TANGENT_LIMIT: f32 = 0.7;
@@ -14,7 +14,7 @@ pub trait MeshGradientAlgorithm {
     fn rasterize(
         &self,
         size: gpui::Size<Pixels>,
-        points: &[MeshPoint],
+        points: &[PaintPoint],
         background: Hsla,
     ) -> Option<Arc<gpui::RenderImage>>;
 }
@@ -25,7 +25,7 @@ impl MeshGradientAlgorithm for CoonsPatchMeshAlgorithm {
     fn rasterize(
         &self,
         size: gpui::Size<Pixels>,
-        points: &[MeshPoint],
+        points: &[PaintPoint],
         background: Hsla,
     ) -> Option<Arc<gpui::RenderImage>> {
         rasterize_with_coons_patch(size, points, background, true)
@@ -37,7 +37,7 @@ static DEFAULT_MESH_ALGORITHM: CoonsPatchMeshAlgorithm = CoonsPatchMeshAlgorithm
 /// Render the mesh with optional editing guides.
 pub fn rasterize_mesh_gradient_preview(
     size: gpui::Size<Pixels>,
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
     show_guides: bool,
 ) -> Option<Arc<gpui::RenderImage>> {
@@ -53,13 +53,13 @@ pub fn rasterize_mesh_gradient_preview(
 pub fn rasterize_mesh_gradient_preview_with<A: MeshGradientAlgorithm + ?Sized>(
     algorithm: &A,
     size: gpui::Size<Pixels>,
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
 ) -> Option<Arc<gpui::RenderImage>> {
     algorithm.rasterize(size, points, background)
 }
 
-pub fn mesh_dimensions(points: &[MeshPoint]) -> Option<(usize, usize)> {
+pub fn mesh_dimensions<C>(points: &[super::ControlPoint<C>]) -> Option<(usize, usize)> {
     let rows = points.iter().map(|point| point.row as usize).max()? + 1;
     let cols = points.iter().map(|point| point.col as usize).max()? + 1;
     if rows < 2 || cols < 2 || points.len() != rows * cols {
@@ -70,7 +70,7 @@ pub fn mesh_dimensions(points: &[MeshPoint]) -> Option<(usize, usize)> {
 
 fn rasterize_with_coons_patch(
     size: gpui::Size<Pixels>,
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
     show_guides: bool,
 ) -> Option<Arc<gpui::RenderImage>> {
@@ -102,10 +102,10 @@ fn rasterize_with_coons_patch(
 
 #[derive(Clone, Copy, Debug)]
 struct MeshCell {
-    p00: MeshPoint,
-    p10: MeshPoint,
-    p01: MeshPoint,
-    p11: MeshPoint,
+    p00: PaintPoint,
+    p10: PaintPoint,
+    p01: PaintPoint,
+    p11: PaintPoint,
     top_geom: Cubic2,
     bottom_geom: Cubic2,
     left_geom: Cubic2,
@@ -308,12 +308,12 @@ fn signed_triangle_area(a: (f32, f32), b: (f32, f32), c: (f32, f32)) -> f32 {
     (b.0 - a.0) * (c.1 - a.1) - (b.1 - a.1) * (c.0 - a.0)
 }
 
-fn mesh_point(points: &[MeshPoint], row: usize, col: usize) -> MeshPoint {
+fn mesh_point(points: &[PaintPoint], row: usize, col: usize) -> PaintPoint {
     points
         .iter()
         .copied()
         .find(|point| point.row as usize == row && point.col as usize == col)
-        .unwrap_or(MeshPoint {
+        .unwrap_or(PaintPoint {
             row: row as u8,
             col: col as u8,
             u: col as f32 * 0.5,
@@ -322,7 +322,7 @@ fn mesh_point(points: &[MeshPoint], row: usize, col: usize) -> MeshPoint {
         })
 }
 
-fn build_mesh_cells(points: &[MeshPoint], rows: usize, cols: usize) -> Vec<MeshCell> {
+fn build_mesh_cells(points: &[PaintPoint], rows: usize, cols: usize) -> Vec<MeshCell> {
     let mut cells = Vec::with_capacity((rows - 1) * (cols - 1));
     for row in 0..(rows - 1) {
         for col in 0..(cols - 1) {
@@ -369,7 +369,7 @@ fn build_mesh_cells(points: &[MeshPoint], rows: usize, cols: usize) -> Vec<MeshC
 }
 
 fn mesh_tangent_position(
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     rows: usize,
     cols: usize,
     row: usize,
@@ -396,7 +396,7 @@ fn mesh_tangent_position(
 }
 
 fn mesh_tangent_color(
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     rows: usize,
     cols: usize,
     row: usize,
@@ -428,11 +428,11 @@ fn mesh_tangent_color(
     scale4(raw, COLOR_TANGENT_SCALE)
 }
 
-fn point2(point: MeshPoint) -> (f32, f32) {
+fn point2(point: PaintPoint) -> (f32, f32) {
     (point.u, point.v)
 }
 
-fn color4(point: MeshPoint) -> [f32; 4] {
+fn color4(point: PaintPoint) -> [f32; 4] {
     let rgb = point.color.to_rgb();
     [rgb.r, rgb.g, rgb.b, point.color.a]
 }
@@ -559,7 +559,7 @@ fn rgba_to_pixel(rgba: [f32; 4]) -> Option<PremultipliedColorU8> {
 }
 
 fn tangent_position_limit(
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     rows: usize,
     cols: usize,
     row: usize,
@@ -625,7 +625,7 @@ fn barycentric_weights(sample: (f32, f32), a: (f32, f32), b: (f32, f32), c: (f32
     Some((w0, w1, w2))
 }
 
-fn paint_mesh_guides(pixmap: &mut Pixmap, points: &[MeshPoint], rows: usize, cols: usize, width: f32, height: f32) {
+fn paint_mesh_guides(pixmap: &mut Pixmap, points: &[PaintPoint], rows: usize, cols: usize, width: f32, height: f32) {
     let stroke = Stroke { width: (width.min(height) * 0.004).max(1.5), ..Stroke::default() };
     let mut paint = Paint::default();
     paint.set_color_rgba8(255, 255, 255, 96);
@@ -665,7 +665,7 @@ fn _paint_mesh_debug_overlay(_window: &mut Window, _bounds: Bounds<Pixels>, _cor
 }
 
 /// Adapt the editor's row/column points and existing geometry tangents to xgpui.
-pub fn shader_mesh_grid(points: &[MeshPoint]) -> anyhow::Result<xgpui_shader::MeshGrid> {
+pub fn shader_mesh_grid(points: &[PaintPoint]) -> anyhow::Result<xgpui_shader::MeshGrid> {
     let (rows, cols) = mesh_dimensions(points).ok_or_else(|| anyhow::anyhow!("Invalid mesh grid"))?;
     let mut controls = Vec::with_capacity(points.len());
     for row in 0..rows {
@@ -692,7 +692,7 @@ pub fn shader_mesh_grid(points: &[MeshPoint]) -> anyhow::Result<xgpui_shader::Me
     xgpui_shader::MeshGrid::new(cols as u32, rows as u32, controls)
 }
 
-pub fn rasterize_mesh_guides(size: gpui::Size<Pixels>, points: &[MeshPoint]) -> Option<Arc<gpui::RenderImage>> {
+pub fn rasterize_mesh_guides(size: gpui::Size<Pixels>, points: &[PaintPoint]) -> Option<Arc<gpui::RenderImage>> {
     let (rows, cols) = mesh_dimensions(points)?;
     let scale = raster_scale_for_size(size);
     let width = (size.width.as_f32() * scale).round() as u32;

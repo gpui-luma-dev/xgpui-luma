@@ -59,39 +59,31 @@ mod tests {
 mod control_tests {
     use super::super::*;
     #[test]
-    fn unsupported_modes_reset_adjustments_and_supported_tabs_restore_controls() {
+    fn adjustments_apply_to_colors_for_every_renderer() {
         let mut app = gpui::TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
         view.update(cx, |view, cx| {
+            let sources = view.preview_stops(cx);
+            assert_eq!(view.render_stops(cx), sources, "neutral adjustments leave sources untouched");
+            view.image_adjustments.saturation = -100.;
+            let gray = view.render_stops(cx);
+            assert_eq!(gray.len(), sources.len());
+            for (_, color) in &gray {
+                let c = color.to_display_p3_unclamped().unwrap();
+                assert!((c.red - c.green).abs() < 1e-4 && (c.green - c.blue).abs() < 1e-4);
+            }
+            // Shader and P3 renderers no longer force a CPU raster or reject adjustments.
             for renderer in [PreviewRenderer::ShaderPaint, PreviewRenderer::ShaderBrush] {
-                view.preview_renderer = PreviewRenderer::Quads;
-                view.image_adjustments.saturation = 40.;
-                view.image_adjustments.vibrance = -20.;
-                view.saturation_slider.update(cx, |slider, cx| slider.set_value(40., cx));
-                view.vibrance_slider.update(cx, |slider, cx| slider.set_value(-20., cx));
                 view.preview_renderer = renderer;
-                view.sync_adjustment_support(cx);
-                assert!(!view.adjustments_supported());
-                assert!(view.image_adjustments.is_neutral());
-                assert_eq!(view.saturation_slider.read(cx).value(), 0.);
-                assert_eq!(view.vibrance_slider.read(cx).value(), 0.);
+                assert_eq!(view.effective_preview_renderer(), renderer);
+                assert!(!view.uses_render_preview(cx));
             }
             view.preview_renderer = PreviewRenderer::Quads;
-            view.image_adjustments.saturation = 50.;
-            view.image_adjustments.vibrance = 30.;
-            view.preview_p3 = true;
-            view.sync_adjustment_support(cx);
-            assert!(!view.adjustments_supported());
-            assert!(view.image_adjustments.is_neutral());
-            view.selected_tab = BuilderTab::Mesh;
-            view.sync_adjustment_support(cx);
-            assert!(view.adjustments_supported());
-            view.selected_tab = BuilderTab::Gradients;
-            view.preview_p3 = false;
-            view.sync_adjustment_support(cx);
-            assert!(view.adjustments_supported());
+            assert_eq!(view.effective_preview_renderer(), PreviewRenderer::Quads);
+            // The source stops themselves are never modified.
+            assert_eq!(view.preview_stops(cx), sources);
         });
     }
 }

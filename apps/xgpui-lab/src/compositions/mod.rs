@@ -9,6 +9,7 @@ mod color_hsv_plane;
 mod color_hsv_wheel;
 mod color_picker;
 mod color_split_ring;
+mod color_stop_list;
 mod color_sv_triangle;
 mod event_log_view;
 mod event_stream;
@@ -26,21 +27,23 @@ use color_hsv_plane::ColorHsvPlaneControlExposition;
 use color_hsv_wheel::ColorHsvWheelControlExposition;
 use color_picker::ColorPickerControlExposition;
 use color_split_ring::ColorSplitRingControlExposition;
+use color_stop_list::ColorStopListExposition;
 use color_sv_triangle::ColorSvTriangleControlExposition;
 
-const EXAMPLES: [(&str, &str); 6] = [
+const EXAMPLES: [(&str, &str); 7] = [
     ("picker", "Color Picker"),
     ("hsv-plane", "HSV Plane"),
     ("hsv-wheel", "HSV Wheel"),
     ("sv-triangle", "SV Triangle"),
     ("split-ring", "Split Ring"),
     ("harmonies", "Color Harmonies"),
+    ("color-stops", "Color Stop List"),
 ];
 
 pub struct ColorCompositions {
     look: Arc<Look>,
-    pages: [AnyView; 6],
-    scrolls: [ScrollContainer; 6],
+    pages: [AnyView; 7],
+    scrolls: [ScrollContainer; 7],
     active: usize,
     _subscriptions: Vec<Subscription>,
 }
@@ -62,6 +65,7 @@ impl ColorCompositions {
             cx.new(|cx| ColorSvTriangleControlExposition::new(cx, look.clone())).into(),
             cx.new(|cx| ColorSplitRingControlExposition::new(cx, look.clone())).into(),
             cx.new(|cx| ColorHarmoniesControlExposition::new(cx, look.clone())).into(),
+            cx.new(|cx| ColorStopListExposition::new(cx, look.clone())).into(),
         ];
         let scrolls = EXAMPLES.map(|(id, _)| {
             ScrollContainer::new(format!("color-viz-composition-{id}-scroll"), look.scrollbar_template(), cx)

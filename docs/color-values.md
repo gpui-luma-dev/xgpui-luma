@@ -47,6 +47,12 @@ requiring premultiplication must perform it separately. `preview_rgba` and
 HSL editor views use `from_palette_hsla` / `to_palette_hsla` to isolate degrees
 versus turns while retaining authored achromatic hue and the 360° endpoint.
 
+`to_display_p3_unclamped` converts to encoded Display P3 without clipping
+(Display P3 sources are returned unchanged). `to_display_p3_fallback` maps a copy
+into the Display P3 cube with the same policies, for wide-gamut SDR producers
+(`xgpui-gamut`, custom P3 shaders); in-gamut P3 sources keep exact components.
+Use it only where output is actually Display P3: GPUI paints remain sRGB.
+
 Mapping is explicit: `Clip` clips RGB channels; `CssLocalMinde` implements the
 binary-search/local-MINDE UI policy from the
 [30 September 2026 CSS Color 4 draft, section 14.2.2](https://www.w3.org/TR/2026/CRD-css-color-4-20260930/#binsearch).

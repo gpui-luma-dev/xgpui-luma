@@ -3,12 +3,12 @@ use super::*;
 use gpui::{AnyElement, IntoElement, MouseButton, PathBuilder, Window, canvas, div, point, prelude::*};
 const ARM: f32 = 0.18;
 
-pub(super) fn endpoint(p: MeshPoint, transform: [f32; 2]) -> [f32; 2] {
+pub(in super::super) fn endpoint(p: ControlPoint, transform: [f32; 2]) -> [f32; 2] {
     let angle = transform[0].to_radians();
     let length = ARM * transform[1].sqrt();
     [p.u + angle.cos() * length, p.v + angle.sin() * length]
 }
-pub(super) fn from_offset(dx: f32, dy: f32, previous_angle: f32) -> [f32; 2] {
+pub(in super::super) fn from_offset(dx: f32, dy: f32, previous_angle: f32) -> [f32; 2] {
     let distance = dx.hypot(dy);
     let angle = if distance < 0.0001 {
         previous_angle
@@ -18,7 +18,7 @@ pub(super) fn from_offset(dx: f32, dy: f32, previous_angle: f32) -> [f32; 2] {
     [angle, (distance / ARM).powi(2).clamp(1. / 9., 9.)]
 }
 impl GradientBuilder {
-    pub(super) fn drag_field_handle(&mut self, position: gpui::Point<Pixels>, cx: &mut Context<Self>) {
+    pub(in super::super) fn drag_field_handle(&mut self, position: gpui::Point<Pixels>, cx: &mut Context<Self>) {
         let Some(index) = self.active_field_drag else {
             return;
         };
@@ -28,7 +28,7 @@ impl GradientBuilder {
         if self.selected_tab != BuilderTab::Freeform || bounds.size.width <= px(0.) || bounds.size.height <= px(0.) {
             return;
         }
-        let Some(p) = self.mesh_points.get(index) else {
+        let Some(p) = self.points.get(index) else {
             return;
         };
         let dx = (position.x - bounds.origin.x).as_f32() / bounds.size.width.as_f32() - p.u;
@@ -41,12 +41,12 @@ impl GradientBuilder {
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
         cx.notify();
     }
-    pub(super) fn field_handle(&self, extent: Size<Pixels>, cx: &Context<Self>) -> Option<AnyElement> {
+    pub(in super::super) fn field_handle(&self, extent: Size<Pixels>, cx: &Context<Self>) -> Option<AnyElement> {
         if self.selected_tab != BuilderTab::Freeform || !self.points_visible() {
             return None;
         }
-        let index = self.selected_mesh_point?;
-        let p = *self.mesh_points.get(index)?;
+        let index = self.selected_point?;
+        let p = *self.points.get(index)?;
         let transform = self.point_transforms.get(index).copied().unwrap_or([0., 1.]);
         let end = endpoint(p, transform);
         let builder = cx.entity();
@@ -103,10 +103,10 @@ impl GradientBuilder {
                             builder.update(cx, |this, cx| {
                                 this.active_mesh_drag = None;
                                 this.active_field_drag = Some(index);
-                                this.selected_mesh_point = Some(index);
+                                this.selected_point = Some(index);
                                 this.mesh_color_target = MeshColorTarget::Point(index);
                                 this.sync_point_spread(cx);
-                                this.color_picker_open = false;
+                                this.open_point_editor(index, cx);
                                 cx.notify();
                             });
                         })
@@ -121,7 +121,7 @@ mod tests {
     use super::*;
     #[test]
     fn endpoint_drag_roundtrips_rotation_and_stretch() {
-        let p = MeshPoint { row: 0, col: 0, u: 0.4, v: 0.5, color: gpui::white() };
+        let p = ControlPoint { row: 0, col: 0, u: 0.4, v: 0.5, color: ColorValue::srgb(1.0, 1.0, 1.0, 1.0) };
         for angle in [0., 45., 90., 180., 270., 359.] {
             for stretch in [1. / 9., 0.25, 0.5, 1., 2., 9.] {
                 let end = endpoint(p, [angle, stretch]);
@@ -154,32 +154,32 @@ mod interaction_tests {
         });
         cx.run_until_parked();
         let endpoint = cx.debug_bounds("freeform-angle-stretch-handle").expect("selected endpoint").center();
-        let (center, bounds) = view.update(cx, |view, _| (view.mesh_points[1], view.mesh_preview_bounds.unwrap()));
+        let (center, bounds) = view.update(cx, |view, _| (view.points[1], view.mesh_preview_bounds.unwrap()));
         cx.simulate_mouse_down(endpoint, MouseButton::Left, Default::default());
         cx.run_until_parked();
         view.update(cx, |view, _| {
             assert_eq!(view.active_field_drag, Some(1));
-            assert_eq!(view.selected_mesh_point, Some(1));
+            assert_eq!(view.selected_point, Some(1));
         });
         let target =
             bounds.origin + point(bounds.size.width * (center.u + 0.25), bounds.size.height * (center.v + 0.25));
         cx.simulate_mouse_move(target, MouseButton::Left, Default::default());
         cx.run_until_parked();
         view.update(cx, |view, _| {
-            assert_eq!(view.selected_mesh_point, Some(1), "selection during drag");
+            assert_eq!(view.selected_point, Some(1), "selection during drag");
             assert_eq!(view.active_field_drag, Some(1), "active endpoint during drag");
             assert!(view.freeform_controls_visible);
         });
         assert!(cx.debug_bounds("freeform-angle-stretch-handle").is_some(), "endpoint remains visible during drag");
         assert!(cx.debug_bounds("freeform-angle-stretch-vector").is_some(), "vector remains visible during drag");
         view.update(cx, |view, _| {
-            assert_eq!(view.selected_mesh_point, Some(1));
+            assert_eq!(view.selected_point, Some(1));
             assert_eq!(view.active_field_drag, Some(1));
         });
         cx.simulate_mouse_up(target, MouseButton::Left, Default::default());
         cx.run_until_parked();
         view.update(cx, |view, cx| {
-            assert_eq!(view.mesh_points[1], center);
+            assert_eq!(view.points[1], center);
             assert!((view.point_transforms[1][0] - 45.).abs() < 0.01);
             assert!(view.point_transforms[1][1] > 3.);
             assert_eq!(view.active_field_drag, None);

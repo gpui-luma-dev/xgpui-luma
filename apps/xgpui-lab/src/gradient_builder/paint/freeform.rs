@@ -1,6 +1,17 @@
+//! Freeform CPU paint path.
+//!
+//! - [`rasterize_freeform_preview`]: CPU raster of the Freeform canvas (the
+//!   default renderer, PNG export, and the source for the P3 presentation in
+//!   `builder/freeform/p3.rs`).
+//! - [`build_color_field`]: converts the same inputs into a
+//!   [`ColorField`] for the GPU path (`builder/freeform/gpu_field.rs`).
+//!
+//! Inputs are already encoded (`PaintPoint`, `Hsla` background) by
+//! `gradient_builder/encode.rs`; nothing here gamut-maps.
+
 use std::sync::Arc;
 use gpui::{Hsla, Pixels, RenderImage, Size};
-use super::MeshPoint;
+use super::PaintPoint;
 use super::super::color_field::{ColorField, FieldPoint, Mixing};
 
 pub struct FieldShape<'a> {
@@ -31,7 +42,7 @@ fn field_weight(distance_squared: f32, spread_percent: f32, point_spread: f32, s
 
 // Lift palette hues onto one fixed axis. Choosing a shortest arc from the
 // spatially varying intermediate color can flip at 180 degrees and create seams.
-fn palette_hues(points: &[MeshPoint], background: Hsla) -> Vec<f32> {
+fn palette_hues(points: &[PaintPoint], background: Hsla) -> Vec<f32> {
     points
         .iter()
         .map(|point| {
@@ -43,7 +54,7 @@ fn palette_hues(points: &[MeshPoint], background: Hsla) -> Vec<f32> {
 }
 
 #[cfg(test)]
-fn sample(points: &[MeshPoint], background: Hsla, u: f32, v: f32, spread_percent: f32, use_hsl: bool) -> gpui::Rgba {
+fn sample(points: &[PaintPoint], background: Hsla, u: f32, v: f32, spread_percent: f32, use_hsl: bool) -> gpui::Rgba {
     let hues = use_hsl.then(|| palette_hues(points, background));
     sample_with_hues(
         points,
@@ -64,7 +75,7 @@ fn sample(points: &[MeshPoint], background: Hsla, u: f32, v: f32, spread_percent
 
 // Soft radial fields layered over a base color, independent of mesh topology.
 fn sample_with_hues(
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
     u: f32,
     v: f32,
@@ -102,7 +113,7 @@ fn sample_with_hues(
 
 /// Keep editor adaptation outside the reusable field primitive.
 pub fn build_color_field(
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
     spread: f32,
     hsl: bool,
@@ -142,7 +153,7 @@ pub fn build_color_field(
 
 pub fn rasterize_freeform_preview(
     size: Size<Pixels>,
-    points: &[MeshPoint],
+    points: &[PaintPoint],
     background: Hsla,
     spread_percent: f32,
     use_hsl: bool,
@@ -200,8 +211,8 @@ mod tests {
     fn overlapping_opposing_hues_have_no_spatial_seam() {
         let background = gpui::hsla(0.0, 1.0, 0.5, 1.0);
         let points = [
-            MeshPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(0.4, 1.0, 0.5, 1.0) },
-            MeshPoint { row: 0, col: 1, u: 0.8, v: 0.5, color: gpui::hsla(0.8, 1.0, 0.5, 1.0) },
+            PaintPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(0.4, 1.0, 0.5, 1.0) },
+            PaintPoint { row: 0, col: 1, u: 0.8, v: 0.5, color: gpui::hsla(0.8, 1.0, 0.5, 1.0) },
         ];
         // The first field crosses hue 0.3 here, opposite the second field's 0.8.
         let crossing = 0.5 - (-0.75_f32.ln() / 5.0).sqrt();
@@ -215,7 +226,7 @@ mod tests {
     #[test]
     fn hsl_blends_through_hue_wheel_and_preserves_composited_alpha() {
         let background = gpui::hsla(0.0, 1.0, 0.5, 0.4);
-        let point = MeshPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(1.0 / 3.0, 1.0, 0.5, 0.5) };
+        let point = PaintPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(1.0 / 3.0, 1.0, 0.5, 0.5) };
         let hsl = sample(&[point], background, 0.5, 0.5, 100.0, true);
         let rgb = sample(&[point], background, 0.5, 0.5, 100.0, false);
         assert!((hsl.r - 1.0).abs() < 0.001 && (hsl.g - 1.0).abs() < 0.001);
@@ -233,7 +244,7 @@ mod tests {
     #[test]
     fn smaller_spread_tightens_field_without_changing_center() {
         let background = gpui::hsla(0.0, 0.0, 0.0, 1.0);
-        let point = MeshPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(0.0, 1.0, 0.5, 1.0) };
+        let point = PaintPoint { row: 0, col: 0, u: 0.5, v: 0.5, color: gpui::hsla(0.0, 1.0, 0.5, 1.0) };
         assert!(
             sample(&[point], background, 0.7, 0.5, 25.0, false).r
                 < sample(&[point], background, 0.7, 0.5, 100.0, false).r
@@ -244,7 +255,7 @@ mod tests {
     #[test]
     fn field_follows_its_position_and_fades_smoothly() {
         let background = gpui::hsla(0.0, 0.0, 0.0, 1.0);
-        let mut point = MeshPoint { row: 0, col: 0, u: 0.2, v: 0.3, color: gpui::hsla(0.0, 1.0, 0.5, 1.0) };
+        let mut point = PaintPoint { row: 0, col: 0, u: 0.2, v: 0.3, color: gpui::hsla(0.0, 1.0, 0.5, 1.0) };
         assert_eq!(sample(&[point], background, 0.2, 0.3, 100.0, false), point.color.to_rgb());
         assert!(
             sample(&[point], background, 0.4, 0.3, 100.0, false).r
@@ -280,8 +291,8 @@ mod prototype_parity_tests {
     fn ordered_field_reference_matches_original_editor_algorithm() {
         let background = gpui::hsla(0.15, 0.6, 0.3, 0.35);
         let points = vec![
-            MeshPoint { row: 0, col: 0, u: 0.3, v: 0.2, color: gpui::hsla(0.8, 0.8, 0.5, 0.6) },
-            MeshPoint { row: 0, col: 1, u: 0.7, v: 0.8, color: gpui::hsla(0.4, 0.7, 0.3, 0.9) },
+            PaintPoint { row: 0, col: 0, u: 0.3, v: 0.2, color: gpui::hsla(0.8, 0.8, 0.5, 0.6) },
+            PaintPoint { row: 0, col: 1, u: 0.7, v: 0.8, color: gpui::hsla(0.4, 0.7, 0.3, 0.9) },
         ];
         let shape = FieldShape {
             mixing: Mixing::Ordered,

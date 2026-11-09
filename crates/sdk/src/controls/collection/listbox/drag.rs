@@ -1,6 +1,7 @@
 //! Persistent ListBox drag/drop configuration and host-owned transactions.
 use std::{hash::Hash, rc::Rc};
-use gpui::{App, Context, Div, EntityId, SharedString, Stateful, WeakEntity, Window, div, prelude::*};
+use gpui::{App, Context, Div, EntityId, SharedString, Stateful, WeakEntity, Window, div, prelude::*, px};
+use crate::controls::tooltip::TooltipLook;
 use crate::infra::drag_drop::{DragDropEvent, DropProposal, KeyedDrag, bind_drag_source};
 use super::{ListBoxAxis, ListBoxEvent, ListBoxScrollHandle};
 
@@ -163,13 +164,22 @@ fn deliver_batch<K: Clone + 'static>(events: Vec<DragDropEvent<WeakEntity<ListBo
 pub struct ListBoxDragDropBinding<M: 'static, K: 'static> {
     pub(super) source: WeakEntity<ListBoxEventSource<K>>,
     pub(super) config: ListBoxDragDrop<M, K>,
+    pub(super) preview_style: Option<Rc<TooltipLook>>,
 }
 impl<M: 'static, K: 'static> Clone for ListBoxDragDropBinding<M, K> {
     fn clone(&self) -> Self {
-        Self { source: self.source.clone(), config: self.config.clone() }
+        Self { source: self.source.clone(), config: self.config.clone(), preview_style: self.preview_style.clone() }
     }
 }
 impl<M: 'static, K: Clone + Eq + Hash + 'static> ListBoxDragDropBinding<M, K> {
+    /// Paint the floating drag label with a look's tooltip chrome (background,
+    /// foreground, padding, radius, typography, shadow). Without a style the
+    /// preview is a bare label that inherits nothing and may be unreadable.
+    pub fn preview_style(mut self, style: TooltipLook) -> Self {
+        self.preview_style = Some(Rc::new(style));
+        self
+    }
+
     pub fn bind_row(
         &self,
         surface: Stateful<Div>,
@@ -180,10 +190,11 @@ impl<M: 'static, K: Clone + Eq + Hash + 'static> ListBoxDragDropBinding<M, K> {
         let Some(drag) = keys.and_then(|keys| KeyedDrag::new(self.config.scope, self.source.clone(), keys)) else {
             return surface;
         };
+        let style = self.preview_style.clone();
         bind_drag_source(
             surface.cursor_grab(),
             drag,
-            move |_, _, _, cx| cx.new(|_| Preview(label.clone())),
+            move |_, _, _, cx| cx.new(|_| Preview { label: label.clone(), style: style.clone() }),
             cx,
             |_, event, cx| deliver_batch(vec![event], cx),
         )
@@ -231,9 +242,25 @@ impl<M: 'static, K: Clone + Eq + Hash + 'static> ListBoxDragDropBinding<M, K> {
     }
 }
 
-struct Preview(SharedString);
+struct Preview {
+    label: SharedString,
+    style: Option<Rc<TooltipLook>>,
+}
 impl gpui::Render for Preview {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().child(self.0.clone())
+        let preview = div().child(self.label.clone());
+        let Some(style) = &self.style else {
+            return preview;
+        };
+        preview
+            .max_w(px(style.max_width))
+            .px(px(style.padding))
+            .py(px(style.padding_y))
+            .rounded(px(style.radius))
+            .shadow(style.shadow.clone())
+            .bg(style.background)
+            .text_color(style.foreground)
+            .text_size(px(style.text_size))
+            .line_height(px(style.line_height))
     }
 }

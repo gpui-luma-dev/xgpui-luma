@@ -152,3 +152,39 @@ fn editor_hsl_bridge_retains_achromatic_hue_and_turn_endpoint() {
         }
     }
 }
+
+#[test]
+fn display_p3_fallback_keeps_p3_sources_exact_and_maps_wider_sources() {
+    // In-gamut P3, including P3-only red, is returned with its exact components.
+    let p3_red = ColorValue::display_p3(1.0, 0.0, 0.0, 0.4);
+    for policy in [GamutMapping::Clip, GamutMapping::CssLocalMinde] {
+        assert_eq!(p3_red.to_display_p3_fallback(policy).unwrap(), DisplayP3Color::new(1.0, 0.0, 0.0, 0.4));
+    }
+    // sRGB red lies inside P3: no mapping, just a primaries conversion.
+    let srgb_red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0).to_display_p3_fallback(GamutMapping::CssLocalMinde).unwrap();
+    assert!(srgb_red.red < 1.0 && srgb_red.green > 0.0, "{srgb_red:?}");
+    let back = ColorValue::DisplayP3(srgb_red).to_srgba_unclamped().unwrap();
+    assert!((back.red - 1.0).abs() < 1e-4 && back.green.abs() < 1e-4 && back.blue.abs() < 1e-4);
+    // Rec. 2020-like chroma beyond P3 is bounded into the P3 cube by either policy.
+    let wide = ColorValue::oklch(0.65, 0.4, 145.0, 1.0);
+    assert!(!wide.is_in_gamut(Gamut::DisplayP3).unwrap());
+    for policy in [GamutMapping::Clip, GamutMapping::CssLocalMinde] {
+        let mapped = wide.to_display_p3_fallback(policy).unwrap();
+        for v in [mapped.red, mapped.green, mapped.blue] {
+            assert!((0.0..=1.0).contains(&v), "{policy:?}: {mapped:?}");
+        }
+    }
+    // Unclamped conversion retains channels outside P3; the source is untouched.
+    let unclamped = wide.to_display_p3_unclamped().unwrap();
+    assert!([unclamped.red, unclamped.green, unclamped.blue].iter().any(|v| !(0.0..=1.0).contains(v)));
+    assert_eq!(wide, ColorValue::oklch(0.65, 0.4, 145.0, 1.0));
+}
+
+#[test]
+fn display_p3_fallback_retains_more_chroma_than_srgb_fallback() {
+    let source = ColorValue::display_p3(0.0, 1.0, 0.0, 1.0);
+    let srgb = ColorValue::Srgb(source.to_srgba_fallback(GamutMapping::CssLocalMinde).unwrap());
+    let p3 = ColorValue::DisplayP3(source.to_display_p3_fallback(GamutMapping::CssLocalMinde).unwrap());
+    let chroma = |c: ColorValue| c.to_oklcha_unclamped().unwrap().chroma;
+    assert!(chroma(p3) > chroma(srgb) + 0.02, "{} vs {}", chroma(p3), chroma(srgb));
+}

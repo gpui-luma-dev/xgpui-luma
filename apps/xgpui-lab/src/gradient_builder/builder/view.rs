@@ -2,21 +2,19 @@ use crate::theme::ColorVizLookExt;
 use super::*;
 
 use gpui::{
-    ClickEvent, Context, Anchor, Corners, HitboxBehavior, ImageSource, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, Window, anchored, canvas, deferred, div, img, point, prelude::*, px, relative, size,
+    AnyElement, ClickEvent, Context, Corners, HitboxBehavior, ImageSource, MouseButton, MouseMoveEvent, MouseUpEvent,
+    Render, Window, canvas, div, img, prelude::*, px, relative, size,
 };
 use xgpui_luma::infra::{ElementExt, StyledExt};
 
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::hstack;
 use crate::theme::TypographyExt;
-use xgpui_luma_look_radix as radix;
 
-use super::super::color::{format_percent};
 use super::super::paint::paint_gradient_preview;
 use super::mesh::{MESH_HANDLE_SIZE, fit_aspect_ratio, preview_panel_corner_radii};
 
-pub(super) const INSPECTOR_WIDTH: f32 = 352.0;
+pub(super) const INSPECTOR_WIDTH: f32 = 400.0;
 
 pub(super) fn compact_slider_row(
     label: &'static str,
@@ -77,9 +75,46 @@ impl GradientBuilder {
     }
 }
 
+impl GradientBuilder {
+    /// Mesh/Freeform canvas surface painted by a GPU or P3 path.
+    ///
+    /// `None` means the CPU raster (`preview_image_cache`) is shown instead.
+    fn point_canvas_surface(&mut self, frame_size: Size<Pixels>) -> Option<AnyElement> {
+        match self.selected_tab {
+            BuilderTab::Gradients => None,
+            BuilderTab::Mesh => self.mesh_shader_surface(frame_size),
+            BuilderTab::Freeform => self.freeform_surface(),
+        }
+    }
+
+    /// Mesh shader (sRGB or P3) when enabled; `None` falls back to the CPU raster.
+    fn mesh_shader_surface(&mut self, frame_size: Size<Pixels>) -> Option<AnyElement> {
+        let mesh_p3_active = self.mesh_p3_active();
+        if !(self.mesh_shader_enabled || mesh_p3_active) {
+            return None;
+        }
+        Some(self.mesh_shader_cache.element(
+            &encode_points(&self.render_points(), OutputSpace::wide(mesh_p3_active)),
+            frame_size,
+            // Painted by GPUI behind the mesh: always sRGB.
+            encode(self.render_background(), OutputSpace::Srgb),
+            self.mesh_controls_visible,
+            mesh_p3_active,
+        ))
+    }
+}
+
 impl Render for GradientBuilder {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let now = Instant::now();
+        // Before any preview work: the raster output (and its cache key) depends on it.
+        let wide = super::p3::available(window);
+        if self.wide_output_available != wide {
+            self.wide_output_available = wide;
+            let _ = self.ensure_preview_image_cache(self.preview_size, cx);
+        }
+        // Mesh points have many writers; reconcile their list before children render.
+        self.sync_point_list(cx);
         if self.angle_animation
             && self.selected_tab == BuilderTab::Gradients
             && self.gradient_type != GradientType::Radial
@@ -95,7 +130,7 @@ impl Render for GradientBuilder {
         if mesh_animating {
             let elapsed = now.duration_since(self.mesh_palette_last_frame).as_secs_f32().min(0.1);
             self.advance_mesh_palette(elapsed);
-            if !self.mesh_p3 || !cfg!(target_os = "macos") || !super::p3::available(window) {
+            if !self.mesh_p3_active() {
                 let _ = self.ensure_preview_image_cache(self.preview_size, cx);
             }
             window.request_animation_frame();
@@ -114,21 +149,21 @@ impl Render for GradientBuilder {
         self.spread_last_frame = now;
         let chrome = self.look.chrome();
         let rotation_deg = self.rotation_deg;
-        let stops = self.preview_stops(cx);
-        self.sync_preview_strategy(stops.len());
-        let color_picker = self.color_picker.clone();
-        let color_picker_open = self.color_picker_open;
+        // Saturation/Vibrance are applied to the colors, so every renderer
+        // (CPU, shaders, Display P3) shows them.
+        let source_stops = self.render_stops(cx);
+        self.sync_preview_strategy(source_stops.len());
+        // GPUI paints and the sRGB shaders take sRGB-encoded stops.
+        let stops = encode_stops(&source_stops, OutputSpace::Srgb);
         let card_bg = chrome.panel_background;
         let preview_corner_radii = preview_panel_corner_radii();
         let preview_surface_radii =
             Corners { top_left: px(0.0), top_right: px(0.0), bottom_left: px(0.0), bottom_right: px(0.0) };
-        let p3_active = self.selected_tab == BuilderTab::Gradients && self.preview_p3 && super::p3::available(window);
+        let p3_active = self.gradient_p3_active();
         if p3_active {
             self.active_preview_strategy = "Display P3 shader";
         }
-        let p3_preview = p3_active.then(|| {
-            self.p3_cache.element(self.gradient_type, &stops, rotation_deg, self.image_adjustments.is_neutral())
-        });
+        let p3_preview = p3_active.then(|| self.p3_cache.element(self.gradient_type, &source_stops, rotation_deg));
         let preview_uses_render_image = !p3_active && self.uses_render_preview(cx);
         let shader_preview =
             if !p3_active && self.selected_tab == BuilderTab::Gradients && self.preview_renderer.is_shader() {
@@ -138,7 +173,6 @@ impl Render for GradientBuilder {
                     &stops,
                     rotation_deg,
                     self.preview_size,
-                    self.image_adjustments.is_neutral(),
                 ))
             } else {
                 None
@@ -164,48 +198,8 @@ impl Render for GradientBuilder {
             self.preview_metrics.fps.map(|fps| format!("{fps:.0}")).unwrap_or_else(|| "—".into())
         );
         let controls = self.render_inspector("color-viz-gradient-controls", card_bg);
-        let picker_bounds = match self.selected_tab {
-            BuilderTab::Gradients => {
-                self.selected_stop.and_then(|thumb_id| self.stop_swatch_bounds.get(&thumb_id).copied())
-            }
-            BuilderTab::Mesh | BuilderTab::Freeform => match self.mesh_color_target {
-                MeshColorTarget::Point(point_index) => self.mesh_swatch_bounds.get(&point_index).copied(),
-                MeshColorTarget::Background => self.mesh_background_swatch_bounds,
-            },
-        };
         let content = match self.selected_tab {
             BuilderTab::Gradients => {
-                let controls = if color_picker_open {
-                    if let Some(bounds) = picker_bounds {
-                        controls.child(
-                            deferred(
-                                anchored()
-                                    .snap_to_window_with_margin(px(8.0))
-                                    .anchor(Anchor::TopLeft)
-                                    .position(point(bounds.left(), bounds.bottom()))
-                                    .offset(point(px(0.0), px(4.0)))
-                                    .child(
-                                        div()
-                                            .child(
-                                                radix::Card::new(self.look.as_ref())
-                                                    .variant(radix::CardVariant::Classic)
-                                                    .child(color_picker.clone()),
-                                            )
-                                            .occlude()
-                                            .on_mouse_down_out(cx.listener(|this, _: &MouseDownEvent, _, cx| {
-                                                this.color_picker_open = false;
-                                                cx.notify();
-                                            })),
-                                    ),
-                            )
-                            .with_priority(1),
-                        )
-                    } else {
-                        controls
-                    }
-                } else {
-                    controls
-                };
                 let preview_builder = cx.entity();
                 let preview_container_builder = cx.entity();
                 let frame_size = fit_aspect_ratio(self.mesh_preview_container_size, self.mesh_aspect_ratio_preset);
@@ -301,80 +295,8 @@ impl Render for GradientBuilder {
                 let work_area_size =
                     size(frame_size.width + px(MESH_HANDLE_SIZE), frame_size.height + px(MESH_HANDLE_SIZE));
                 let mesh_controls = div().child(self.render_inspector("color-viz-mesh-controls", card_bg));
-                let mesh_controls = if color_picker_open {
-                    if let Some(bounds) = picker_bounds {
-                        mesh_controls.child(
-                            deferred(
-                                anchored()
-                                    .snap_to_window_with_margin(px(8.0))
-                                    .anchor(Anchor::TopLeft)
-                                    .position(point(bounds.left(), bounds.bottom()))
-                                    .offset(point(px(0.0), px(4.0)))
-                                    .child(
-                                        div()
-                                            .child(
-                                                radix::Card::new(self.look.as_ref())
-                                                    .variant(radix::CardVariant::Classic)
-                                                    .child(color_picker.clone()),
-                                            )
-                                            .occlude()
-                                            .on_mouse_down_out(cx.listener(|this, _: &MouseDownEvent, _, cx| {
-                                                this.color_picker_open = false;
-                                                cx.notify();
-                                            })),
-                                    ),
-                            )
-                            .with_priority(1),
-                        )
-                    } else {
-                        mesh_controls
-                    }
-                } else {
-                    mesh_controls
-                };
-                let mesh_p3_active = self.selected_tab == BuilderTab::Mesh
-                    && self.mesh_p3
-                    && cfg!(target_os = "macos")
-                    && super::p3::available(window);
-                let mesh_shader_active =
-                    self.selected_tab == BuilderTab::Mesh && (self.mesh_shader_enabled || mesh_p3_active);
-                let mesh_shader_preview = mesh_shader_active.then(|| {
-                    self.mesh_shader_cache.element(
-                        &self.mesh_points,
-                        frame_size,
-                        self.mesh_background,
-                        self.mesh_controls_visible,
-                        mesh_p3_active,
-                    )
-                });
-                let freeform_p3_active = self.selected_tab == BuilderTab::Freeform
-                    && self.freeform_p3
-                    && cfg!(target_os = "macos")
-                    && super::p3::available(window);
-                let freeform_gpu_active = self.selected_tab == BuilderTab::Freeform && self.freeform_gpu;
-                let freeform_gpu_preview = if freeform_gpu_active {
-                    let field = super::super::paint::build_color_field(
-                        &self.mesh_points,
-                        self.mesh_background,
-                        self.spread_percent,
-                        self.freeform_hsl,
-                        &super::super::paint::FieldShape {
-                            mixing: self.freeform_mixing,
-                            background_weight: self.field_background_weight,
-                            point_transforms: &self.point_transforms,
-                            point_spreads: &self.point_spreads,
-                            softness_percent: self.softness_percent,
-                        },
-                    );
-                    Some(self.field_shader_cache.element(field, freeform_p3_active))
-                } else {
-                    None
-                };
-                let freeform_p3_preview = if freeform_p3_active && !freeform_gpu_active {
-                    self.cached_preview_image().map(|image| self.freeform_p3_cache.element(image))
-                } else {
-                    None
-                };
+                // Built before the metrics sample so GPU/P3 prep counts as CPU prep time.
+                let canvas_surface = self.point_canvas_surface(frame_size);
                 let (metrics, animating) = if self.selected_tab == BuilderTab::Freeform {
                     (&mut self.freeform_metrics, self.spread_animation)
                 } else {
@@ -414,7 +336,7 @@ impl Render for GradientBuilder {
                             .h(frame_size.height)
                             .overflow_hidden()
                             .when_some(
-                                if mesh_shader_active || freeform_p3_active || freeform_gpu_active {
+                                if canvas_surface.is_some() {
                                     None
                                 } else {
                                     self.cached_preview_image()
@@ -423,9 +345,7 @@ impl Render for GradientBuilder {
                                     this.child(img(ImageSource::Render(image)).size_full().absolute().top_0().left_0())
                                 },
                             )
-                            .when_some(mesh_shader_preview, |this, preview| this.child(preview))
-                            .when_some(freeform_p3_preview, |this, preview| this.child(preview))
-                            .when_some(freeform_gpu_preview, |this, preview| this.child(preview))
+                            .when_some(canvas_surface, |this, surface| this.child(surface))
                             .child(
                                 div()
                                     .absolute()
@@ -484,12 +404,12 @@ impl Render for GradientBuilder {
                                 .top(handle_inset)
                                 .w(frame_size.width)
                                 .h(frame_size.height)
-                                .children(self.mesh_points.iter().enumerate().map(|(point_index, point)| {
+                                .children(self.points.iter().enumerate().map(|(point_index, point)| {
                                     render_mesh_handle(
                                         self.selected_tab == BuilderTab::Freeform,
                                         point_index,
                                         *point,
-                                        self.selected_mesh_point == Some(point_index),
+                                        self.selected_point == Some(point_index),
                                         cx.entity(),
                                     )
                                 }))
@@ -590,7 +510,7 @@ impl Render for GradientBuilder {
                             if self.selected_tab == BuilderTab::Gradients {
                                 stops.len()
                             } else {
-                                self.mesh_points.len()
+                                self.points.len()
                             },
                             if self.selected_tab == BuilderTab::Gradients {
                                 "stops"
@@ -599,10 +519,22 @@ impl Render for GradientBuilder {
                             }
                         )
                     }))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .px_3()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_ellipsis()
+                            .text_center()
+                            .child(self.renderer_note().unwrap_or_default()),
+                    )
                     .child(format!(
-                        "{:.0} × {:.0}  ·  sRGB",
+                        "{:.0} × {:.0}  ·  {}",
                         self.preview_size.width.as_f32(),
-                        self.preview_size.height.as_f32()
+                        self.preview_size.height.as_f32(),
+                        self.output_status()
                     )),
             );
 
@@ -617,237 +549,10 @@ impl Render for GradientBuilder {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn render_stop_row(
-    index: usize,
-    thumb_id: ThumbId,
-    position: f32,
-    color: gpui::Hsla,
-    selected: bool,
-    delete_button: Option<Entity<Button>>,
-    _label_style: LumaTextStyle,
-    value_style: LumaTextStyle,
-    chrome: xgpui_luma::theme::LumaChrome,
-    interaction: crate::theme::InteractionColors,
-    builder: Entity<GradientBuilder>,
-) -> impl IntoElement {
-    let background = if selected {
-        interaction.selected
-    } else {
-        chrome.panel_background
-    };
-    let swatch_builder = builder.clone();
-    let bounds_builder = builder.clone();
-    div()
-        .id(format!("color-viz-gradient-stop-row-{}", thumb_id.as_u64()))
-        .w_full()
-        .flex()
-        .items_center()
-        .gap_3()
-        .p(px(6.0))
-        .rounded(px(4.0))
-        .bg(background)
-        .hover(move |style| style.bg(interaction.hovered))
-        .active(move |style| style.bg(interaction.pressed))
-        .cursor_pointer()
-        .child(div().w(px(20.0)).flex_shrink_0().child(index.to_string()))
-        .child(
-            div()
-                .id(format!("color-viz-gradient-stop-swatch-{}", thumb_id.as_u64()))
-                .flex_1()
-                .min_w_0()
-                .h(px(36.0))
-                .rounded(px(4.0))
-                .bg(color)
-                .border_2()
-                .border_color(chrome.border)
-                .cursor_pointer()
-                .on_prepaint(move |bounds, _, cx| {
-                    bounds_builder.update(cx, |this, _| {
-                        this.handle_stop_swatch_bounds(thumb_id, &bounds);
-                    });
-                })
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |event: &ClickEvent, _, cx| {
-                    if event.is_keyboard() {
-                        return;
-                    }
-                    cx.stop_propagation();
-                    swatch_builder.update(cx, |this, cx| {
-                        this.open_color_picker_for_stop(thumb_id, cx);
-                    });
-                }),
-        )
-        .child(
-            div()
-                .flex_shrink_0()
-                .typography_style(value_style)
-                .text_color(chrome.muted_text)
-                .child(format!("({})", format_percent(position))),
-        )
-        .when_some(delete_button, |row, button| {
-            row.child(
-                div()
-                    .id(format!("stop-delete-action-{}", thumb_id.as_u64()))
-                    .on_click(|_, _, cx| cx.stop_propagation())
-                    .child(button),
-            )
-        })
-}
-
-pub(super) fn render_mesh_background_row(
-    background: gpui::Hsla,
-    label_style: LumaTextStyle,
-    chrome: xgpui_luma::theme::LumaChrome,
-    builder: Entity<GradientBuilder>,
-) -> impl IntoElement {
-    let bounds_builder = builder.clone();
-    let row_builder = builder.clone();
-
-    div()
-        .id("color-viz-mesh-background-row")
-        .w_full()
-        .flex()
-        .items_center()
-        .justify_between()
-        .gap_3()
-        .py(px(8.0))
-        .bg(chrome.panel_background)
-        .cursor_pointer()
-        .on_click(move |event: &ClickEvent, _, cx| {
-            if event.is_keyboard() {
-                return;
-            }
-            row_builder.update(cx, |this, cx| {
-                this.open_color_picker_for_mesh_background(cx);
-            });
-        })
-        .child(div().typography_style(label_style).text_color(chrome.body_text).child("Background"))
-        .child(
-            div()
-                .id("color-viz-mesh-background-swatch")
-                .size(px(22.0))
-                .rounded(px(4.0))
-                .bg(background)
-                .border_2()
-                .border_color(chrome.border)
-                .cursor_pointer()
-                .on_prepaint(move |bounds, _, cx| {
-                    bounds_builder.update(cx, |this, _| {
-                        this.handle_mesh_background_swatch_bounds(&bounds);
-                    });
-                })
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |event: &ClickEvent, _, cx| {
-                    if event.is_keyboard() {
-                        return;
-                    }
-                    cx.stop_propagation();
-                    builder.update(cx, |this, cx| {
-                        this.open_color_picker_for_mesh_background(cx);
-                    });
-                }),
-        )
-}
-
-pub(super) fn render_mesh_point_row(
-    buttons: Option<[Entity<Button>; 2]>,
-    point_index: usize,
-    point: MeshPoint,
-    selected: bool,
-    label_style: LumaTextStyle,
-    look: &radix::Look,
-    builder: Entity<GradientBuilder>,
-) -> impl IntoElement {
-    let chrome = look.chrome();
-    let interaction = look.interaction_colors();
-    let bounds_builder = builder.clone();
-    let swatch_builder = builder.clone();
-    let background = if selected {
-        interaction.selected
-    } else {
-        chrome.panel_background
-    };
-
-    div()
-        .id(format!("color-viz-mesh-point-row-{point_index}"))
-        .w_full()
-        .flex()
-        .items_center()
-        .gap_3()
-        .p(px(6.0))
-        .rounded(px(4.0))
-        .bg(background)
-        .hover(move |style| style.bg(interaction.hovered))
-        .active(move |style| style.bg(interaction.pressed))
-        .cursor_pointer()
-        .when(buttons.is_some(), |row| {
-            if let Some([delete, _]) = buttons.clone() {
-                row.child(
-                    div()
-                        .id(format!("point-delete-action-{point_index}"))
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                        .on_click(|_, _, cx| cx.stop_propagation())
-                        .child(delete),
-                )
-            } else {
-                row
-            }
-        })
-        .child(div().w(px(20.0)).flex_shrink_0().child((point_index + 1).to_string()))
-        .child(
-            div()
-                .id(format!("color-viz-mesh-point-swatch-{point_index}"))
-                .flex_1()
-                .min_w_0()
-                .h(px(36.0))
-                .rounded(px(4.0))
-                .bg(point.color)
-                .border_2()
-                .border_color(chrome.border)
-                .cursor_pointer()
-                .on_prepaint(move |bounds, _, cx| {
-                    bounds_builder.update(cx, |this, _| {
-                        this.handle_mesh_swatch_bounds(point_index, &bounds);
-                    });
-                })
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_click(move |event: &ClickEvent, _, cx| {
-                    if event.is_keyboard() {
-                        return;
-                    }
-                    cx.stop_propagation();
-                    swatch_builder.update(cx, |this, cx| {
-                        this.open_color_picker_for_mesh_point(point_index, cx);
-                    });
-                }),
-        )
-        .child(div().flex_shrink_0().typography_style(label_style).text_color(chrome.muted_text).child(format!(
-            "({}, {})",
-            format_percent(point.u),
-            format_percent(point.v)
-        )))
-        .when(buttons.is_some(), |row| {
-            if let Some([_, color]) = buttons {
-                row.child(
-                    div()
-                        .id(format!("point-randomize-actions-{point_index}"))
-                        .flex()
-                        .gap_1()
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                        .on_click(|_, _, cx| cx.stop_propagation())
-                        .child(color),
-                )
-            } else {
-                row
-            }
-        })
-}
-
 fn render_mesh_handle(
     _freeform: bool,
     point_index: usize,
-    point: MeshPoint,
+    point: ControlPoint,
     selected: bool,
     builder: Entity<GradientBuilder>,
 ) -> impl IntoElement {
@@ -899,10 +604,9 @@ fn render_mesh_handle(
             }
             cx.stop_propagation();
             builder.update(cx, |this, cx| {
-                this.selected_mesh_point = Some(point_index);
+                this.selected_point = Some(point_index);
                 this.sync_point_spread(cx);
                 this.mesh_color_target = MeshColorTarget::Point(point_index);
-                this.color_picker_open = false;
                 cx.notify();
             });
         })
