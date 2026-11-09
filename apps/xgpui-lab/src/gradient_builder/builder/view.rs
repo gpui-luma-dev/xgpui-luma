@@ -2,8 +2,8 @@ use crate::theme::ColorVizLookExt;
 use super::*;
 
 use gpui::{
-    ClickEvent, Context, Corners, HitboxBehavior, ImageSource, MouseButton, MouseMoveEvent, MouseUpEvent, Render,
-    Window, canvas, div, img, prelude::*, px, relative, size,
+    AnyElement, ClickEvent, Context, Corners, HitboxBehavior, ImageSource, MouseButton, MouseMoveEvent, MouseUpEvent,
+    Render, Window, canvas, div, img, prelude::*, px, relative, size,
 };
 use xgpui_luma::infra::{ElementExt, StyledExt};
 
@@ -72,6 +72,35 @@ impl GradientBuilder {
                 style,
                 chrome,
             ))
+    }
+}
+
+impl GradientBuilder {
+    /// Mesh/Freeform canvas surface painted by a GPU or P3 path.
+    ///
+    /// `None` means the CPU raster (`preview_image_cache`) is shown instead.
+    fn point_canvas_surface(&mut self, frame_size: Size<Pixels>) -> Option<AnyElement> {
+        match self.selected_tab {
+            BuilderTab::Gradients => None,
+            BuilderTab::Mesh => self.mesh_shader_surface(frame_size),
+            BuilderTab::Freeform => self.freeform_surface(),
+        }
+    }
+
+    /// Mesh shader (sRGB or P3) when enabled; `None` falls back to the CPU raster.
+    fn mesh_shader_surface(&mut self, frame_size: Size<Pixels>) -> Option<AnyElement> {
+        let mesh_p3_active = self.mesh_p3_active();
+        if !(self.mesh_shader_enabled || mesh_p3_active) {
+            return None;
+        }
+        Some(self.mesh_shader_cache.element(
+            &encode_points(&self.render_points(), OutputSpace::wide(mesh_p3_active)),
+            frame_size,
+            // Painted by GPUI behind the mesh: always sRGB.
+            encode(self.render_background(), OutputSpace::Srgb),
+            self.mesh_controls_visible,
+            mesh_p3_active,
+        ))
     }
 }
 
@@ -266,45 +295,8 @@ impl Render for GradientBuilder {
                 let work_area_size =
                     size(frame_size.width + px(MESH_HANDLE_SIZE), frame_size.height + px(MESH_HANDLE_SIZE));
                 let mesh_controls = div().child(self.render_inspector("color-viz-mesh-controls", card_bg));
-                let mesh_p3_active = self.mesh_p3_active();
-                let mesh_shader_active =
-                    self.selected_tab == BuilderTab::Mesh && (self.mesh_shader_enabled || mesh_p3_active);
-                let mesh_shader_preview = mesh_shader_active.then(|| {
-                    self.mesh_shader_cache.element(
-                        &encode_points(&self.render_points(), OutputSpace::wide(mesh_p3_active)),
-                        frame_size,
-                        // Painted by GPUI behind the mesh: always sRGB.
-                        encode(self.render_background(), OutputSpace::Srgb),
-                        self.mesh_controls_visible,
-                        mesh_p3_active,
-                    )
-                });
-                let freeform_p3_active = self.freeform_p3_active();
-                let freeform_gpu_active = self.selected_tab == BuilderTab::Freeform && self.freeform_gpu;
-                let freeform_gpu_preview = if freeform_gpu_active {
-                    let output = OutputSpace::wide(freeform_p3_active);
-                    let field = super::super::paint::build_color_field(
-                        &encode_points(&self.render_points(), output),
-                        encode(self.render_background(), output),
-                        self.spread_percent,
-                        self.freeform_hsl,
-                        &super::super::paint::FieldShape {
-                            mixing: self.freeform_mixing,
-                            background_weight: self.field_background_weight,
-                            point_transforms: &self.point_transforms,
-                            point_spreads: &self.point_spreads,
-                            softness_percent: self.softness_percent,
-                        },
-                    );
-                    Some(self.field_shader_cache.element(field, freeform_p3_active))
-                } else {
-                    None
-                };
-                let freeform_p3_preview = if freeform_p3_active && !freeform_gpu_active {
-                    self.cached_preview_image().map(|image| self.freeform_p3_cache.element(image))
-                } else {
-                    None
-                };
+                // Built before the metrics sample so GPU/P3 prep counts as CPU prep time.
+                let canvas_surface = self.point_canvas_surface(frame_size);
                 let (metrics, animating) = if self.selected_tab == BuilderTab::Freeform {
                     (&mut self.freeform_metrics, self.spread_animation)
                 } else {
@@ -344,7 +336,7 @@ impl Render for GradientBuilder {
                             .h(frame_size.height)
                             .overflow_hidden()
                             .when_some(
-                                if mesh_shader_active || freeform_p3_active || freeform_gpu_active {
+                                if canvas_surface.is_some() {
                                     None
                                 } else {
                                     self.cached_preview_image()
@@ -353,9 +345,7 @@ impl Render for GradientBuilder {
                                     this.child(img(ImageSource::Render(image)).size_full().absolute().top_0().left_0())
                                 },
                             )
-                            .when_some(mesh_shader_preview, |this, preview| this.child(preview))
-                            .when_some(freeform_p3_preview, |this, preview| this.child(preview))
-                            .when_some(freeform_gpu_preview, |this, preview| this.child(preview))
+                            .when_some(canvas_surface, |this, surface| this.child(surface))
                             .child(
                                 div()
                                     .absolute()
@@ -414,12 +404,12 @@ impl Render for GradientBuilder {
                                 .top(handle_inset)
                                 .w(frame_size.width)
                                 .h(frame_size.height)
-                                .children(self.mesh_points.iter().enumerate().map(|(point_index, point)| {
+                                .children(self.points.iter().enumerate().map(|(point_index, point)| {
                                     render_mesh_handle(
                                         self.selected_tab == BuilderTab::Freeform,
                                         point_index,
                                         *point,
-                                        self.selected_mesh_point == Some(point_index),
+                                        self.selected_point == Some(point_index),
                                         cx.entity(),
                                     )
                                 }))
@@ -520,7 +510,7 @@ impl Render for GradientBuilder {
                             if self.selected_tab == BuilderTab::Gradients {
                                 stops.len()
                             } else {
-                                self.mesh_points.len()
+                                self.points.len()
                             },
                             if self.selected_tab == BuilderTab::Gradients {
                                 "stops"
@@ -562,7 +552,7 @@ impl Render for GradientBuilder {
 fn render_mesh_handle(
     _freeform: bool,
     point_index: usize,
-    point: MeshPoint,
+    point: ControlPoint,
     selected: bool,
     builder: Entity<GradientBuilder>,
 ) -> impl IntoElement {
@@ -614,7 +604,7 @@ fn render_mesh_handle(
             }
             cx.stop_propagation();
             builder.update(cx, |this, cx| {
-                this.selected_mesh_point = Some(point_index);
+                this.selected_point = Some(point_index);
                 this.sync_point_spread(cx);
                 this.mesh_color_target = MeshColorTarget::Point(point_index);
                 cx.notify();

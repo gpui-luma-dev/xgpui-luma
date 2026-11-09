@@ -130,12 +130,12 @@ mod tests {
             view.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "Mesh".into() }, cx);
         });
         let selector = view.update(cx, |view, _| view.mesh_renderer_selector.clone());
-        let points = view.update(cx, |view, _| view.mesh_points.clone());
+        let points = view.update(cx, |view, _| view.points.clone());
         for id in ["shader", "cpu", "shader"] {
             selector.update(cx, |_, cx| cx.emit(SelectorEvent::Change { item_id: id.into(), label: id.into() }));
             cx.run_until_parked();
             view.update(cx, |view, cx| {
-                assert_eq!(view.mesh_points, points);
+                assert_eq!(view.points, points);
                 assert_eq!(view.mesh_shader_enabled, id == "shader");
                 assert_eq!(view.uses_render_preview(cx), id == "cpu");
             });

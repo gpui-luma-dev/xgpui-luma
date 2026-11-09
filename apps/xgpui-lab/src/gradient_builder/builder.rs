@@ -1,3 +1,26 @@
+//! The `GradientBuilder` view.
+//!
+//! # Where each tab lives
+//!
+//! | Tab | State | Editing | Rendering | P3 |
+//! | --- | --- | --- | --- | --- |
+//! | Gradients | `gradient_stops`, `stop_colors`, `gradient_type`, `preview_renderer` | `actions.rs`, `stops.rs` | `view.rs` → `paint/gradient.rs`, `linear_shader.rs` | `p3.rs` |
+//! | Mesh | `points`, `point_ids`, `background`, `mesh_*` | `actions.rs` (drag, grid, palette), `mesh_stops.rs` | `view.rs` (`mesh_shader_surface`) → `mesh_shader.rs`, `paint/mesh.rs` | `mesh_p3.rs` |
+//! | Freeform | `points`, `point_ids`, `background`, `point_spreads`, `point_transforms`, `freeform_*` | `freeform/actions.rs`, `freeform/handles.rs`, `mesh_stops.rs` | `freeform/mod.rs` (`freeform_surface`) → `paint/freeform.rs`, `freeform/gpu_field.rs` | `freeform/p3.rs` |
+//!
+//! Mesh and Freeform share `points` / `point_ids` / `background`: the active
+//! tab's set is live and the other tab's is parked in `inactive_*`
+//! (swapped in `actions.rs::handle_top_tabs_event`; `points_are_freeform`
+//! records which set is live).
+//!
+//! Shared pieces: `mesh.rs` (tab enum, presets, cache keys), `sections.rs`
+//! (inspector accordions), `metrics.rs` (HUD timing), `view.rs` (render and
+//! canvas surface selection). The CPU raster for Mesh/Freeform and Gradients
+//! is cached by `actions.rs::ensure_preview_image_cache`.
+//!
+//! Colors are source `ColorValue`s here; every render path encodes through
+//! `gradient_builder/encode.rs` for its output.
+
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use xgpui_luma::controls::tooltip::Tooltip;
 use std::collections::HashMap;
@@ -28,14 +51,11 @@ mod metrics;
 mod mesh;
 mod view;
 mod freeform;
-mod freeform_p3;
-mod field_handle;
-mod field_shader;
 mod sections;
 mod stops;
 mod mesh_stops;
 
-use super::paint::{GradientType, MeshPoint, PreviewRenderer};
+use super::paint::{GradientType, ControlPoint, PreviewRenderer};
 use super::encode::{OutputSpace, encode, encode_points, encode_stops, srgb_source};
 use mesh::{
     BuilderTab, MeshAspectRatioPreset, MeshColorTarget, MeshGridPreset, PreviewImageCacheKey, builder_tab_items,
@@ -86,10 +106,10 @@ pub struct GradientBuilder {
     freeform_mixing_selector: Entity<Selector>,
     field_background_weight: f32,
     field_background_slider: Entity<SliderControl>,
-    field_shader_cache: field_shader::Cache,
+    freeform_gpu_cache: freeform::gpu_field::Cache,
     freeform_p3: bool,
     freeform_p3_switch: xgpui_luma::controls::switch::Switch,
-    freeform_p3_cache: freeform_p3::Cache,
+    freeform_p3_cache: freeform::p3::Cache,
     mesh_p3: bool,
     mesh_p3_switch: xgpui_luma::controls::switch::Switch,
     mesh_shader_enabled: bool,
@@ -124,18 +144,20 @@ pub struct GradientBuilder {
     mesh_cycle_button: Entity<Button>,
     mesh_grid_preset: MeshGridPreset,
     mesh_aspect_ratio_preset: MeshAspectRatioPreset,
-    mesh_points: Vec<MeshPoint>,
-    inactive_mesh_points: Vec<MeshPoint>,
-    mesh_point_ids: Vec<u64>,
-    inactive_mesh_point_ids: Vec<u64>,
+    /// Live Mesh or Freeform points (see `points_are_freeform`); the other tab's are in `inactive_points`.
+    points: Vec<ControlPoint>,
+    inactive_points: Vec<ControlPoint>,
+    point_ids: Vec<u64>,
+    inactive_point_ids: Vec<u64>,
     next_point_id: u64,
-    inactive_mesh_background: ColorValue,
-    mesh_state_is_freeform: bool,
+    inactive_background: ColorValue,
+    points_are_freeform: bool,
     random_seed: u64,
     freeform_buttons: Vec<Entity<Button>>,
-    mesh_background: ColorValue,
-    mesh_background_stop: Entity<ColorStop>,
-    selected_mesh_point: Option<usize>,
+    /// Mesh/Freeform canvas background (swapped with `inactive_background`).
+    background: ColorValue,
+    background_stop: Entity<ColorStop>,
+    selected_point: Option<usize>,
     mesh_color_target: MeshColorTarget,
     active_mesh_drag: Option<usize>,
     mesh_controls_visible: bool,
@@ -184,7 +206,7 @@ impl GradientBuilder {
         let start = gpui::hsla(198.0 / 360.0, 1.0, 0.24, 1.0);
         let middle = gpui::hsla(313.0 / 360.0, 0.48, 0.45, 1.0);
         let end = gpui::hsla(33.0 / 360.0, 1.0, 0.46, 1.0);
-        let mesh_background = default_mesh_background();
+        let background = default_mesh_background();
 
         let slider_builder = ColorSliderBuilder::gradient(
             "color-viz-gradient-stops",
@@ -214,7 +236,7 @@ impl GradientBuilder {
         }
         let selected_stop = None;
         let stop_list = Self::spawn_stop_list(look.clone(), cx);
-        let mesh_background_stop = Self::spawn_mesh_background_stop(look.clone(), mesh_background, cx);
+        let background_stop = Self::spawn_background_stop(look.clone(), background, cx);
         let mesh_reset_button = crate::theme::icon_button("color-viz-mesh-reset", LucideIcon::RotateCcw)
             .look(look.as_ref())
             .content_only()
@@ -448,10 +470,10 @@ impl GradientBuilder {
             freeform_mixing_selector: freeform_mixing_selector.clone(),
             field_background_weight: 0.25,
             field_background_slider: field_background_slider.clone(),
-            field_shader_cache: field_shader::Cache::default(),
+            freeform_gpu_cache: freeform::gpu_field::Cache::default(),
             freeform_p3: false,
             freeform_p3_switch,
-            freeform_p3_cache: freeform_p3::Cache::default(),
+            freeform_p3_cache: freeform::p3::Cache::default(),
             mesh_p3: false,
             mesh_p3_switch,
             mesh_shader_enabled: false,
@@ -485,24 +507,24 @@ impl GradientBuilder {
             mesh_cycle_button: mesh_cycle_button.clone(),
             mesh_grid_preset,
             mesh_aspect_ratio_preset,
-            mesh_points: default_mesh_points(mesh_grid_preset),
-            inactive_mesh_points: freeform::default_points(),
-            mesh_point_ids: (0..default_mesh_points(mesh_grid_preset).len() as u64).collect(),
-            inactive_mesh_point_ids: (default_mesh_points(mesh_grid_preset).len() as u64
+            points: default_mesh_points(mesh_grid_preset),
+            inactive_points: freeform::default_points(),
+            point_ids: (0..default_mesh_points(mesh_grid_preset).len() as u64).collect(),
+            inactive_point_ids: (default_mesh_points(mesh_grid_preset).len() as u64
                 ..(default_mesh_points(mesh_grid_preset).len() + freeform::default_points().len()) as u64)
                 .collect(),
             next_point_id: (default_mesh_points(mesh_grid_preset).len() + freeform::default_points().len()) as u64,
-            inactive_mesh_background: mesh_background,
-            mesh_state_is_freeform: false,
+            inactive_background: background,
+            points_are_freeform: false,
             random_seed: std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_nanos() as u64
                 | 1,
             freeform_buttons: Vec::new(),
-            mesh_background,
-            mesh_background_stop,
-            selected_mesh_point: None,
+            background,
+            background_stop,
+            selected_point: None,
             mesh_color_target: MeshColorTarget::Background,
             active_mesh_drag: None,
             mesh_controls_visible: true,
@@ -566,7 +588,7 @@ impl GradientBuilder {
                 return;
             }
             if let SliderEvent::Change { value, .. } | SliderEvent::Release { value, .. } = event {
-                if let Some(spread) = this.selected_mesh_point.and_then(|index| this.point_spreads.get_mut(index)) {
+                if let Some(spread) = this.selected_point.and_then(|index| this.point_spreads.get_mut(index)) {
                     *spread = *value;
                 }
                 this.preview_image_cache = None;
@@ -789,15 +811,15 @@ mod tests {
             cx.run_until_parked();
             if id == "freeform" {
                 view.update(cx, |view, cx| {
-                    assert_eq!(view.mesh_points.len(), 4);
+                    assert_eq!(view.points.len(), 4);
                     if view.point_spreads[0] == 100.0 {
                         view.point_spreads[0] = 65.0;
-                        view.mesh_points[0].u = 0.25;
+                        view.points[0].u = 0.25;
                         view.preview_image_cache = None;
                         cx.notify();
                     } else {
                         assert_eq!(view.point_spreads[0], 65.0);
-                        assert_eq!(view.mesh_points[0].u, 0.25);
+                        assert_eq!(view.points[0].u, 0.25);
                     }
                 });
                 cx.run_until_parked();
@@ -805,16 +827,16 @@ mod tests {
         }
         view.update(cx, |view, cx| {
             view.deselect_freeform_point(cx);
-            assert_eq!(view.selected_mesh_point, None);
+            assert_eq!(view.selected_point, None);
             for index in [1, 0, 3, 2] {
                 view.begin_mesh_drag(index, cx);
-                assert_eq!(view.selected_mesh_point, Some(index));
+                assert_eq!(view.selected_point, Some(index));
                 assert_eq!(view.mesh_color_target, MeshColorTarget::Point(index));
                 view.finish_mesh_drag(cx);
-                assert_eq!(view.selected_mesh_point, Some(index));
+                assert_eq!(view.selected_point, Some(index));
             }
             view.deselect_freeform_point(cx);
-            assert_eq!(view.selected_mesh_point, None);
+            assert_eq!(view.selected_point, None);
         });
         cx.run_until_parked();
     }
@@ -885,45 +907,45 @@ mod tests {
             );
             builder.point_spreads = vec![50.0, 70.0, 90.0, 110.0];
             builder.point_transforms = vec![[0., 1.], [30., 2.], [60., 3.], [90., 4.]];
-            builder.selected_mesh_point = Some(0);
+            builder.selected_point = Some(0);
             builder.random_seed = 1;
             builder.sync_point_spread(cx);
         });
         cx.run_until_parked();
-        let retained_key = cx.update(|_, cx| view.read(cx).mesh_point_ids[2]);
+        let retained_key = cx.update(|_, cx| view.read(cx).point_ids[2]);
         let (randomize, before) = cx.update(|_, cx| {
             let builder = view.read(cx);
-            (builder.point_extras.read(cx).randomize_button.clone(), builder.mesh_points.clone())
+            (builder.point_extras.read(cx).randomize_button.clone(), builder.points.clone())
         });
         // The panel's randomize button recolors the selected point only.
         view.update(cx, |builder, cx| {
-            builder.selected_mesh_point = Some(2);
+            builder.selected_point = Some(2);
             builder.sync_point_spread(cx);
         });
         randomize.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         cx.run_until_parked();
         cx.update(|_, cx| {
             let builder = view.read(cx);
-            assert_eq!(builder.selected_mesh_point, Some(2));
-            assert_ne!(builder.mesh_points[2].color, before[2].color);
+            assert_eq!(builder.selected_point, Some(2));
+            assert_ne!(builder.points[2].color, before[2].color);
             for index in [0, 1, 3] {
-                assert_eq!(builder.mesh_points[index].color, before[index].color);
+                assert_eq!(builder.points[index].color, before[index].color);
             }
             assert_eq!(builder.point_spread_slider.read(cx).value(), 90.0);
         });
         // Removing a row deletes that point and keeps per-point settings aligned.
         view.update(cx, |builder, cx| {
-            let key = builder.mesh_point_ids[1];
+            let key = builder.point_ids[1];
             builder.handle_point_list_event(&crate::color_stop_list::ColorStopListEvent::Removed(key), cx);
             builder.sync_point_list(cx);
         });
         cx.run_until_parked();
         let slider = cx.update(|_, cx| {
             let builder = view.read(cx);
-            assert_eq!(builder.mesh_points.len(), 3);
-            assert_eq!(builder.mesh_point_ids[1], retained_key);
+            assert_eq!(builder.points.len(), 3);
+            assert_eq!(builder.point_ids[1], retained_key);
             assert_eq!(builder.freeform_point_list.read(cx).selected(), Some(retained_key));
-            assert_eq!(builder.mesh_points[1].u, before[2].u);
+            assert_eq!(builder.points[1].u, before[2].u);
             assert_eq!(builder.point_spreads, vec![50.0, 90.0, 110.0]);
             assert_eq!(builder.point_transforms, vec![[0., 1.], [60., 3.], [90., 4.]]);
             builder.point_spread_slider.clone()
@@ -936,7 +958,7 @@ mod tests {
         cx.update(|_, cx| assert_eq!(view.read(cx).point_spreads, vec![50.0, 125.0, 110.0]));
         view.update(cx, |builder, cx| {
             builder.deselect_freeform_point(cx);
-            assert_eq!(builder.selected_mesh_point, None);
+            assert_eq!(builder.selected_point, None);
         });
     }
 
@@ -970,14 +992,12 @@ mod tests {
         // Mesh: point list → host point → mesh shader grid.
         view.update(cx, |builder, cx| {
             builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx);
-            let key = builder.mesh_point_ids[0];
+            let key = builder.point_ids[0];
             builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
-            assert_eq!(builder.mesh_points[0].color, p3_red);
+            assert_eq!(builder.points[0].color, p3_red);
             let grid =
-                super::super::paint::shader_mesh_grid(&encode_points(&builder.mesh_points, OutputSpace::DisplayP3))
-                    .unwrap();
-            let corner =
-                grid.points().iter().find(|p| p.position == [builder.mesh_points[0].u, builder.mesh_points[0].v]);
+                super::super::paint::shader_mesh_grid(&encode_points(&builder.points, OutputSpace::DisplayP3)).unwrap();
+            let corner = grid.points().iter().find(|p| p.position == [builder.points[0].u, builder.points[0].v]);
             let [r, g, b] = corner.expect("grid point").color;
             assert!((r - 1.0).abs() < 1e-4 && g.abs() < 1e-4 && b.abs() < 1e-4, "{r} {g} {b}");
         });
@@ -988,12 +1008,12 @@ mod tests {
                 &TabsEvent::Activate { tab_id: "freeform".into(), label: "freeform".into() },
                 cx,
             );
-            let key = builder.mesh_point_ids[0];
+            let key = builder.point_ids[0];
             builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
-            assert_eq!(builder.mesh_points[0].color, p3_red);
+            assert_eq!(builder.points[0].color, p3_red);
             let field = super::super::paint::build_color_field(
-                &encode_points(&builder.mesh_points, OutputSpace::DisplayP3),
-                super::super::encode::encode(builder.mesh_background, OutputSpace::DisplayP3),
+                &encode_points(&builder.points, OutputSpace::DisplayP3),
+                super::super::encode::encode(builder.background, OutputSpace::DisplayP3),
                 builder.spread_percent,
                 builder.freeform_hsl,
                 &super::super::paint::FieldShape {
@@ -1127,11 +1147,11 @@ mod tests {
             builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx)
         });
         cx.run_until_parked();
-        let stop = cx.update(|_, cx| view.read(cx).mesh_background_stop.clone());
+        let stop = cx.update(|_, cx| view.read(cx).background_stop.clone());
         let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
         stop.update(cx, |_, cx| cx.emit(ColorStopEvent::ColorChanged(red)));
         cx.run_until_parked();
-        let mesh_red = cx.update(|_, cx| view.read(cx).mesh_background);
+        let mesh_red = cx.update(|_, cx| view.read(cx).background);
         assert_eq!(mesh_red, red, "stored exactly, not as a mapped preview");
 
         // Freeform keeps its own background; the control follows the swap both ways.
@@ -1142,7 +1162,7 @@ mod tests {
         cx.run_until_parked();
         cx.update(|_, cx| {
             let builder = view.read(cx);
-            assert_eq!(stop.read(cx).color(), builder.mesh_background);
+            assert_eq!(stop.read(cx).color(), builder.background);
             let shown = gpui_bridge::to_hsla(stop.read(cx).color(), GamutMapping::CssLocalMinde).unwrap();
             assert!(shown.s < 0.9);
         });
@@ -1304,7 +1324,7 @@ mod tests {
         cx.update(|_, cx| {
             let builder = view.read(cx);
             assert_eq!(builder.selected_stop, None);
-            assert_eq!(builder.selected_mesh_point, None);
+            assert_eq!(builder.selected_point, None);
             assert_eq!(builder.stop_list.read(cx).selected(), None);
         });
         for id in ["mesh", "freeform", "mesh", "freeform"] {
@@ -1313,17 +1333,17 @@ mod tests {
             });
             cx.run_until_parked();
             view.update(cx, |builder, cx| {
-                assert_eq!(builder.selected_mesh_point, None);
+                assert_eq!(builder.selected_point, None);
                 builder.sync_point_list(cx);
                 assert_eq!(builder.active_point_list().read(cx).selected(), None);
                 builder.begin_mesh_drag(0, cx);
-                assert_eq!(builder.selected_mesh_point, Some(0));
+                assert_eq!(builder.selected_point, Some(0));
                 builder.finish_mesh_drag(cx);
                 builder.reset_mesh_state(cx);
             });
             cx.run_until_parked();
             view.update(cx, |builder, cx| {
-                assert_eq!(builder.selected_mesh_point, None);
+                assert_eq!(builder.selected_point, None);
                 builder.sync_point_list(cx);
                 assert_eq!(builder.active_point_list().read(cx).selected(), None);
             });
@@ -1343,15 +1363,15 @@ mod tests {
             builder.begin_mesh_drag(1, cx);
             builder.finish_mesh_drag(cx);
             builder.sync_point_list(cx);
-            let key = builder.mesh_point_ids[1];
+            let key = builder.point_ids[1];
             let list = builder.freeform_point_list.read(cx);
             assert_eq!(list.selected(), Some(key));
             assert!(list.row_expanded(key, cx), "the grabbed point's picker is open");
-            assert!(!list.row_expanded(builder.mesh_point_ids[0], cx));
+            assert!(!list.row_expanded(builder.point_ids[0], cx));
             builder.release_point_editor(cx);
             builder.sync_point_list(cx);
             assert!(!builder.freeform_point_list.read(cx).row_expanded(key, cx));
-            assert_eq!(builder.selected_mesh_point, None);
+            assert_eq!(builder.selected_point, None);
         });
     }
 
@@ -1372,16 +1392,16 @@ mod tests {
             let bounds = cx.debug_bounds("color-stop-rows-item-0").expect("point row");
             cx.simulate_click(bounds.center(), Default::default());
             cx.run_until_parked();
-            cx.update(|_, cx| assert_eq!(view.read(cx).selected_mesh_point, Some(0), "{id}"));
+            cx.update(|_, cx| assert_eq!(view.read(cx).selected_point, Some(0), "{id}"));
             cx.simulate_keystrokes("down");
             cx.run_until_parked();
-            cx.update(|_, cx| assert_eq!(view.read(cx).selected_mesh_point, Some(1), "{id}"));
+            cx.update(|_, cx| assert_eq!(view.read(cx).selected_point, Some(1), "{id}"));
             let canvas = cx.update(|_, cx| view.read(cx).mesh_preview_bounds.expect("preview"));
             cx.simulate_click(canvas.center(), Default::default());
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let builder = view.read(cx);
-                assert_eq!(builder.selected_mesh_point, None, "{id}");
+                assert_eq!(builder.selected_point, None, "{id}");
                 assert_eq!(builder.active_point_list().read(cx).selected(), None, "{id}");
             });
         }

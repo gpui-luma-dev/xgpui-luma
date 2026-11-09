@@ -1,3 +1,14 @@
+//! Freeform CPU paint path.
+//!
+//! - [`rasterize_freeform_preview`]: CPU raster of the Freeform canvas (the
+//!   default renderer, PNG export, and the source for the P3 presentation in
+//!   `builder/freeform/p3.rs`).
+//! - [`build_color_field`]: converts the same inputs into a
+//!   [`ColorField`] for the GPU path (`builder/freeform/gpu_field.rs`).
+//!
+//! Inputs are already encoded (`PaintPoint`, `Hsla` background) by
+//! `gradient_builder/encode.rs`; nothing here gamut-maps.
+
 use std::sync::Arc;
 use gpui::{Hsla, Pixels, RenderImage, Size};
 use super::PaintPoint;

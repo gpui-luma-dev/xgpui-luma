@@ -35,11 +35,11 @@ impl PreviewRenderer {
     }
 }
 
-/// A mesh/freeform control point. Hosts store `MeshPoint` (a source
+/// A mesh/freeform control point. Hosts store `ControlPoint` (a source
 /// [`ColorValue`]); renderers take [`PaintPoint`], produced only by
 /// [`crate::gradient_builder::encode::encode_points`] for an explicit output.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MeshPoint<C = ColorValue> {
+pub struct ControlPoint<C = ColorValue> {
     pub row: u8,
     pub col: u8,
     pub u: f32,
@@ -50,12 +50,12 @@ pub struct MeshPoint<C = ColorValue> {
 /// Paint-layer point: `color` is encoded RGB in the selected output primaries
 /// (see [`crate::gradient_builder::encode::OutputSpace`]), carried as
 /// `gpui::Hsla` for the existing interpolation math.
-pub type PaintPoint = MeshPoint<Hsla>;
+pub type PaintPoint = ControlPoint<Hsla>;
 
-impl<C> MeshPoint<C> {
+impl<C> ControlPoint<C> {
     /// Same geometry with a different color representation.
-    pub fn with_color<D>(&self, color: D) -> MeshPoint<D> {
-        MeshPoint { row: self.row, col: self.col, u: self.u, v: self.v, color }
+    pub fn with_color<D>(&self, color: D) -> ControlPoint<D> {
+        ControlPoint { row: self.row, col: self.col, u: self.u, v: self.v, color }
     }
 }
 

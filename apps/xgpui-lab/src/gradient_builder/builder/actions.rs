@@ -20,13 +20,13 @@ impl GradientBuilder {
     }
 
     /// Mesh/Freeform points with Saturation/Vibrance applied.
-    pub(super) fn render_points(&self) -> Vec<MeshPoint> {
+    pub(super) fn render_points(&self) -> Vec<ControlPoint> {
         let adjust = self.image_adjustments;
-        self.mesh_points.iter().map(|point| point.with_color(adjust.adjust_color(point.color))).collect()
+        self.points.iter().map(|point| point.with_color(adjust.adjust_color(point.color))).collect()
     }
 
     pub(super) fn render_background(&self) -> ColorValue {
-        self.image_adjustments.adjust_color(self.mesh_background)
+        self.image_adjustments.adjust_color(self.background)
     }
 
     pub(super) fn handle_stops_event(&mut self, event: &SliderEvent, cx: &mut Context<Self>) {
@@ -84,13 +84,13 @@ impl GradientBuilder {
         };
         if self.selected_tab != next {
             self.suspend(cx);
-            if next != BuilderTab::Gradients && (next == BuilderTab::Freeform) != self.mesh_state_is_freeform {
-                std::mem::swap(&mut self.mesh_points, &mut self.inactive_mesh_points);
-                std::mem::swap(&mut self.mesh_point_ids, &mut self.inactive_mesh_point_ids);
-                std::mem::swap(&mut self.mesh_background, &mut self.inactive_mesh_background);
+            if next != BuilderTab::Gradients && (next == BuilderTab::Freeform) != self.points_are_freeform {
+                std::mem::swap(&mut self.points, &mut self.inactive_points);
+                std::mem::swap(&mut self.point_ids, &mut self.inactive_point_ids);
+                std::mem::swap(&mut self.background, &mut self.inactive_background);
                 self.sync_mesh_background_stop(cx);
-                self.mesh_state_is_freeform = next == BuilderTab::Freeform;
-                self.selected_mesh_point = None;
+                self.points_are_freeform = next == BuilderTab::Freeform;
+                self.selected_point = None;
                 self.mesh_color_target = MeshColorTarget::Background;
             }
             self.preview_image_cache = None;
@@ -173,7 +173,7 @@ impl GradientBuilder {
         let steps = phase.floor() as usize;
         self.mesh_palette = (self.mesh_palette + steps) % super::mesh::MESH_PALETTE_NAMES.len();
         self.mesh_palette_phase = phase.fract();
-        super::mesh::blend_mesh_palettes(&mut self.mesh_points, self.mesh_palette, self.mesh_palette_phase);
+        super::mesh::blend_mesh_palettes(&mut self.points, self.mesh_palette, self.mesh_palette_phase);
         self.preview_image_cache = None;
         self.render_task = None;
     }
@@ -184,7 +184,7 @@ impl GradientBuilder {
         }
         self.mesh_palette_phase = 0.;
         self.mesh_palette = (self.mesh_palette + 1) % super::mesh::MESH_PALETTE_NAMES.len();
-        super::mesh::apply_mesh_palette(&mut self.mesh_points, self.mesh_palette);
+        super::mesh::apply_mesh_palette(&mut self.points, self.mesh_palette);
         self.preview_image_cache = None;
         self.render_task = None;
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
@@ -197,21 +197,21 @@ impl GradientBuilder {
             self.mesh_palette = super::mesh::default_mesh_palette(self.mesh_grid_preset);
             self.mesh_palette_phase = 0.;
         }
-        self.mesh_points = if self.selected_tab == BuilderTab::Freeform {
+        self.points = if self.selected_tab == BuilderTab::Freeform {
             super::freeform::default_points()
         } else {
             default_mesh_points(self.mesh_grid_preset)
         };
-        self.mesh_point_ids = (self.next_point_id..self.next_point_id + self.mesh_points.len() as u64).collect();
-        self.next_point_id += self.mesh_points.len() as u64;
+        self.point_ids = (self.next_point_id..self.next_point_id + self.points.len() as u64).collect();
+        self.next_point_id += self.points.len() as u64;
         if self.selected_tab == BuilderTab::Freeform {
-            self.point_spreads = vec![100.0; self.mesh_points.len()];
-            self.point_transforms = vec![[0., 1.]; self.mesh_points.len()];
+            self.point_spreads = vec![100.0; self.points.len()];
+            self.point_transforms = vec![[0., 1.]; self.points.len()];
         }
         self.sync_freeform_buttons(cx);
-        self.mesh_background = default_mesh_background();
+        self.background = default_mesh_background();
         self.sync_mesh_background_stop(cx);
-        self.selected_mesh_point = None;
+        self.selected_point = None;
         self.sync_point_spread(cx);
         self.mesh_color_target = MeshColorTarget::Background;
         self.active_mesh_drag = None;
@@ -656,7 +656,7 @@ impl GradientBuilder {
     }
 
     pub(super) fn begin_mesh_drag(&mut self, point_index: usize, cx: &mut Context<Self>) {
-        self.selected_mesh_point = Some(point_index);
+        self.selected_point = Some(point_index);
         self.sync_point_spread(cx);
         self.mesh_color_target = MeshColorTarget::Point(point_index);
         self.active_field_drag = None;
@@ -685,7 +685,7 @@ impl GradientBuilder {
         let u = ((position.x - bounds.origin.x).as_f32() / width).clamp(0.0, 1.0);
         let v = ((position.y - bounds.origin.y).as_f32() / height).clamp(0.0, 1.0);
         let (u, v) = self.constrained_mesh_position(point_index, u, v);
-        let Some(point) = self.mesh_points.get_mut(point_index) else {
+        let Some(point) = self.points.get_mut(point_index) else {
             return;
         };
         if (point.u - u).abs() <= f32::EPSILON && (point.v - v).abs() <= f32::EPSILON {
@@ -708,10 +708,10 @@ impl GradientBuilder {
         if self.selected_tab == BuilderTab::Freeform {
             return (proposed_u.clamp(0.0, 1.0), proposed_v.clamp(0.0, 1.0));
         }
-        let Some(point) = self.mesh_points.get(point_index).copied() else {
+        let Some(point) = self.points.get(point_index).copied() else {
             return (proposed_u.clamp(0.0, 1.0), proposed_v.clamp(0.0, 1.0));
         };
-        let Some((rows, cols)) = mesh_dimensions(&self.mesh_points) else {
+        let Some((rows, cols)) = mesh_dimensions(&self.points) else {
             return (proposed_u.clamp(0.0, 1.0), proposed_v.clamp(0.0, 1.0));
         };
 
@@ -721,26 +721,26 @@ impl GradientBuilder {
         let mut v = proposed_v.clamp(0.0, 1.0);
 
         if col == 0 {
-            let right = self.mesh_points[mesh_point_index(row, col + 1, cols)].u - MESH_POINT_GAP;
+            let right = self.points[mesh_point_index(row, col + 1, cols)].u - MESH_POINT_GAP;
             u = u.clamp(0.0, right.max(0.0));
         } else if col + 1 == cols {
-            let left = self.mesh_points[mesh_point_index(row, col - 1, cols)].u + MESH_POINT_GAP;
+            let left = self.points[mesh_point_index(row, col - 1, cols)].u + MESH_POINT_GAP;
             u = u.clamp(left.min(1.0), 1.0);
         } else {
-            let left = self.mesh_points[mesh_point_index(row, col - 1, cols)].u + MESH_POINT_GAP;
-            let right = self.mesh_points[mesh_point_index(row, col + 1, cols)].u - MESH_POINT_GAP;
+            let left = self.points[mesh_point_index(row, col - 1, cols)].u + MESH_POINT_GAP;
+            let right = self.points[mesh_point_index(row, col + 1, cols)].u - MESH_POINT_GAP;
             u = u.clamp(left.min(right), left.max(right));
         }
 
         if row == 0 {
-            let bottom = self.mesh_points[mesh_point_index(row + 1, col, cols)].v - MESH_POINT_GAP;
+            let bottom = self.points[mesh_point_index(row + 1, col, cols)].v - MESH_POINT_GAP;
             v = v.clamp(0.0, bottom.max(0.0));
         } else if row + 1 == rows {
-            let top = self.mesh_points[mesh_point_index(row - 1, col, cols)].v + MESH_POINT_GAP;
+            let top = self.points[mesh_point_index(row - 1, col, cols)].v + MESH_POINT_GAP;
             v = v.clamp(top.min(1.0), 1.0);
         } else {
-            let top = self.mesh_points[mesh_point_index(row - 1, col, cols)].v + MESH_POINT_GAP;
-            let bottom = self.mesh_points[mesh_point_index(row + 1, col, cols)].v - MESH_POINT_GAP;
+            let top = self.points[mesh_point_index(row - 1, col, cols)].v + MESH_POINT_GAP;
+            let bottom = self.points[mesh_point_index(row + 1, col, cols)].v - MESH_POINT_GAP;
             v = v.clamp(top.min(bottom), top.max(bottom));
         }
 

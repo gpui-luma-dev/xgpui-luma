@@ -59,7 +59,7 @@ pub fn rasterize_mesh_gradient_preview_with<A: MeshGradientAlgorithm + ?Sized>(
     algorithm.rasterize(size, points, background)
 }
 
-pub fn mesh_dimensions<C>(points: &[super::MeshPoint<C>]) -> Option<(usize, usize)> {
+pub fn mesh_dimensions<C>(points: &[super::ControlPoint<C>]) -> Option<(usize, usize)> {
     let rows = points.iter().map(|point| point.row as usize).max()? + 1;
     let cols = points.iter().map(|point| point.col as usize).max()? + 1;
     if rows < 2 || cols < 2 || points.len() != rows * cols {

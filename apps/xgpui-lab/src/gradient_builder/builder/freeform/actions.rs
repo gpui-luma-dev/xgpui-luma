@@ -1,18 +1,20 @@
+//! Freeform point editing: default points, add/remove/shuffle buttons, point
+//! selection, and the spread animation curve.
 use super::*;
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use xgpui_luma::controls::tooltip::Tooltip;
 
-pub(super) fn default_points() -> Vec<MeshPoint> {
+pub(in super::super) fn default_points() -> Vec<ControlPoint> {
     let [yellow, pink, blue] = super::mesh::default_point_palette();
     [(0.82, 0.90, blue), (0.30, 0.28, yellow), (0.38, 0.46, pink), (0.08, 0.12, pink)]
         .into_iter()
         .enumerate()
-        .map(|(index, (u, v, color))| MeshPoint { row: 0, col: index as u8, u, v, color })
+        .map(|(index, (u, v, color))| ControlPoint { row: 0, col: index as u8, u, v, color })
         .collect()
 }
 
 impl GradientBuilder {
-    pub(super) fn init_freeform_buttons(&mut self, cx: &mut Context<Self>) {
+    pub(in super::super) fn init_freeform_buttons(&mut self, cx: &mut Context<Self>) {
         let add = crate::theme::icon_button("color-viz-freeform-add", LucideIcon::Plus)
             .look(&self.look)
             .content_only()
@@ -37,28 +39,27 @@ impl GradientBuilder {
         self.freeform_buttons.push(shuffle);
     }
 
-    pub(super) fn sync_freeform_buttons(&mut self, cx: &mut Context<Self>) {
-        let can_add = self.mesh_points.len() < super::mesh_stops::FREEFORM_MAX_POINTS;
+    pub(in super::super) fn sync_freeform_buttons(&mut self, cx: &mut Context<Self>) {
+        let can_add = self.points.len() < super::mesh_stops::FREEFORM_MAX_POINTS;
         self.freeform_buttons[0].update(cx, |button, cx| button.set_enabled(can_add, cx));
     }
 
-    pub(super) fn sync_point_spread(&mut self, cx: &mut Context<Self>) {
+    pub(in super::super) fn sync_point_spread(&mut self, cx: &mut Context<Self>) {
         if self.selected_tab == BuilderTab::Freeform {
-            let value =
-                self.selected_mesh_point.and_then(|index| self.point_spreads.get(index)).copied().unwrap_or(100.0);
+            let value = self.selected_point.and_then(|index| self.point_spreads.get(index)).copied().unwrap_or(100.0);
             self.point_spread_slider.update(cx, |slider, cx| {
                 slider.set_value(value, cx);
-                slider.set_enabled(self.selected_mesh_point.is_some(), cx);
+                slider.set_enabled(self.selected_point.is_some(), cx);
             });
             self.sync_freeform_buttons(cx);
         }
     }
 
-    pub(super) fn deselect_freeform_point(&mut self, cx: &mut Context<Self>) {
+    pub(in super::super) fn deselect_freeform_point(&mut self, cx: &mut Context<Self>) {
         if self.selected_tab != BuilderTab::Freeform {
             return;
         }
-        self.selected_mesh_point = None;
+        self.selected_point = None;
         self.mesh_color_target = MeshColorTarget::Background;
         self.active_mesh_drag = None;
         self.active_field_drag = None;
@@ -82,47 +83,47 @@ impl GradientBuilder {
         ))
     }
 
-    pub(super) fn edit_freeform(&mut self, action: usize, cx: &mut Context<Self>) {
+    pub(in super::super) fn edit_freeform(&mut self, action: usize, cx: &mut Context<Self>) {
         if self.selected_tab != BuilderTab::Freeform {
             return;
         }
         match action {
-            0 if self.mesh_points.len() < super::mesh_stops::FREEFORM_MAX_POINTS => {
-                let point = MeshPoint {
+            0 if self.points.len() < super::mesh_stops::FREEFORM_MAX_POINTS => {
+                let point = ControlPoint {
                     row: 0,
-                    col: self.mesh_points.len() as u8,
+                    col: self.points.len() as u8,
                     u: self.random_unit(),
                     v: self.random_unit(),
                     color: self.random_color(),
                 };
-                self.mesh_points.push(point);
-                self.mesh_point_ids.push(self.next_point_id);
+                self.points.push(point);
+                self.point_ids.push(self.next_point_id);
                 self.next_point_id += 1;
                 self.point_spreads.push(100.0);
                 self.point_transforms.push([0., 1.]);
-                self.selected_mesh_point = Some(self.mesh_points.len() - 1);
+                self.selected_point = Some(self.points.len() - 1);
             }
-            1 if self.mesh_points.len() > 1 => {
-                if let Some(index) = self.selected_mesh_point.filter(|index| *index < self.mesh_points.len()) {
-                    self.mesh_points.remove(index);
-                    self.mesh_point_ids.remove(index);
+            1 if self.points.len() > 1 => {
+                if let Some(index) = self.selected_point.filter(|index| *index < self.points.len()) {
+                    self.points.remove(index);
+                    self.point_ids.remove(index);
                     self.point_spreads.remove(index);
                     self.point_transforms.remove(index);
-                    for (index, point) in self.mesh_points.iter_mut().enumerate() {
+                    for (index, point) in self.points.iter_mut().enumerate() {
                         point.col = index as u8;
                     }
-                    self.selected_mesh_point = Some(index.min(self.mesh_points.len() - 1));
+                    self.selected_point = Some(index.min(self.points.len() - 1));
                 }
             }
             2 => {
-                for index in 0..self.mesh_points.len() {
-                    self.mesh_points[index].u = self.random_unit();
-                    self.mesh_points[index].v = self.random_unit();
+                for index in 0..self.points.len() {
+                    self.points[index].u = self.random_unit();
+                    self.points[index].v = self.random_unit();
                 }
             }
             3 => {
                 let color = self.random_color();
-                if let Some(point) = self.selected_mesh_point.and_then(|index| self.mesh_points.get_mut(index)) {
+                if let Some(point) = self.selected_point.and_then(|index| self.points.get_mut(index)) {
                     point.color = color;
                 }
             }
@@ -130,8 +131,7 @@ impl GradientBuilder {
         }
         self.sync_point_spread(cx);
         self.sync_freeform_buttons(cx);
-        self.mesh_color_target =
-            self.selected_mesh_point.map(MeshColorTarget::Point).unwrap_or(MeshColorTarget::Background);
+        self.mesh_color_target = self.selected_point.map(MeshColorTarget::Point).unwrap_or(MeshColorTarget::Background);
         self.active_mesh_drag = None;
         self.active_field_drag = None;
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
@@ -140,7 +140,7 @@ impl GradientBuilder {
 }
 
 // Smooth reversals at 50% and 100%; the speed control sets the phase rate.
-pub(super) fn animated_spread(phase: f32) -> f32 {
+pub(in super::super) fn animated_spread(phase: f32) -> f32 {
     75. + 25. * phase.cos()
 }
 #[cfg(test)]

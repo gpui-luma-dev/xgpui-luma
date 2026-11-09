@@ -2,7 +2,7 @@
 use super::*;
 use gpui::{AnyElement, IntoElement, div, prelude::*};
 #[derive(Default)]
-pub(super) struct Cache {
+pub(in super::super) struct Cache {
     #[cfg(target_os = "macos")]
     cached: Option<(Arc<RenderImage>, Arc<super::mesh_p3::Paint>)>,
     #[cfg(target_os = "macos")]
@@ -72,7 +72,7 @@ mod metal {
     }
 }
 impl Cache {
-    pub(super) fn element(&mut self, image: Arc<RenderImage>) -> AnyElement {
+    pub(in super::super) fn element(&mut self, image: Arc<RenderImage>) -> AnyElement {
         #[cfg(target_os = "macos")]
         {
             use gpui::{Corners, CustomGeometry, canvas};
@@ -169,8 +169,8 @@ mod control_tests {
             assert!(!view.image_adjustments.is_neutral());
             assert_eq!(view.point_transforms[0], [70., 0.5]);
             let adjusted = view.render_points();
-            assert_ne!(adjusted[0].color, view.mesh_points[0].color);
-            assert_eq!((adjusted[0].u, adjusted[0].v), (view.mesh_points[0].u, view.mesh_points[0].v));
+            assert_ne!(adjusted[0].color, view.points[0].color);
+            assert_eq!((adjusted[0].u, adjusted[0].v), (view.points[0].u, view.points[0].v));
         });
     }
 }
