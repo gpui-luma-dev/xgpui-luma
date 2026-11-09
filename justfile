@@ -231,6 +231,24 @@ lab-test:
 lab-clippy:
     cargo clippy --locked -p xgpui-lab --all-targets --features test-support -- -D warnings
 
+# --- XGPUI Lab: Parley text field (apps/xgpui-lab/src/parley_lab) ---
+
+# Open the standalone Parley window on the text field tabs.
+lab-parley-field *args:
+    cargo run {{ run-options }} -p xgpui-lab -- --native-text-backend=parley --text-field "$@"
+
+# Run the whole lab on the Parley text system (xgpui-parley › Text Field).
+lab-parley *args:
+    cargo run {{ run-options }} -p xgpui-lab -- --text-system=parley "$@"
+
+# Run the Parley text field headless tests; extra args filter or pass through.
+lab-parley-test *args:
+    cargo test --locked -p xgpui-lab --features test-support --bin xgpui-lab text_field "$@"
+
+# Run the ignored Parley text field performance measurements in release.
+lab-parley-perf:
+    cargo test --release --locked -p xgpui-lab --features test-support --bin xgpui-lab measure_ -- --ignored --nocapture
+
 lab-chromaticity *args:
     cargo run {{ run-options }} -p xgpui-lab --bin chromaticity-lab -- "$@"
 
