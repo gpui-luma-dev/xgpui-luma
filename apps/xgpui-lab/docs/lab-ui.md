@@ -62,10 +62,17 @@ space use `ShellDragRegion`; interactive controls stay outside drag regions.
 
 Toolbar alignment measures the actual toolbar/body origins, including shell
 insets, rather than assuming a macOS traffic-light offset or fixed header height.
-The app-owned toolbar background follows the same Radix palette as its text and
-controls. The shell-owned gutters, frame and native control area still follow
-desktop appearance. Full app-controlled shell styling is tracked by
-[upstream issue #192](https://github.com/gpui-luma-dev/xgpui/issues/192); the
-published shell API cannot yet make those areas follow the Lab theme. The shell API is alpha. Interactive macOS, Windows and Linux desktop
+The light shell background is `#ECECED` while active and `#F0F0F0` while inactive.
+The Lab also sets its native macOS window appearance to Aqua/DarkAqua when the
+Radix mode changes, so native traffic lights use the corresponding AppKit artwork.
+This is per window and does not change the system appearance.
+Window activation observers refresh the outer shell, toolbar and macOS edge fill
+together; content surfaces keep their own Radix palette.
+On macOS, a deferred noninteractive background pass fills the measured native-control
+gutter, trailing inset and bottom seam with that palette too. It leaves toolbar
+content and native traffic lights untouched. This is a local visual workaround;
+other platforms retain shell-owned frame/control colors. Full app-controlled shell
+styling is tracked by [upstream issue #192](https://github.com/gpui-luma-dev/xgpui/issues/192).
+The shell API is alpha. Interactive macOS, Windows and Linux desktop
 verification remains necessary, including decoration negotiation, fullscreen,
 window operations and scaled text; headless tests cannot establish those results.

@@ -1,5 +1,7 @@
 //! Lab shell composition: window setup, toolbar layout, controls and callbacks.
-use std::collections::HashMap;
+#[cfg(target_os = "macos")]
+mod native_appearance;
+use std::{cell::Cell, collections::HashMap, rc::Rc};
 use gpui::{prelude::*, *};
 use xgpui_shell::{ShellApp, ShellOptions, ShellWindow, ShellWindowTitle, ShellDragRegion};
 use xgpui_luma::focus::LumaFocusScopeExt;
@@ -41,15 +43,21 @@ pub(super) fn open_shell_window(cx: &mut App) -> anyhow::Result<(WindowHandle<Sh
             let app = cx.new(|cx| XgpuiLabApp::new(window, cx));
             content = Some(app.clone());
             let titlebar = cx.new(|cx| {
-                LabTitlebar::new(&app, cx, |titlebar, app, cx| {
+                LabTitlebar::new(&app, window, cx, |titlebar, app, window, cx| {
                     let chrome = app.look.chrome();
                     let compartment_width =
                         titlebar_compartment_width(app.sidebar_width, titlebar.content_origin - app.body_origin);
                     div()
                         .size_full()
-                        // Theme the app-owned toolbar; shell gutters remain desktop-owned
-                        // until xgpui#192 supplies app-controlled shared chrome styling.
-                        .bg(chrome.app_background)
+                        // The app chooses its toolbar background from Radix.
+                        .bg(shell_background(&app.look, window.is_window_active()))
+                        // Optical alignment with the native macOS traffic lights.
+                        // Bottom padding raises the row center without shifting its background.
+                        .pb(if cx.platform_info().os == OperatingSystem::Mac && !window.is_fullscreen() {
+                            px(4.)
+                        } else {
+                            px(0.)
+                        })
                         .flex()
                         .items_center()
                         .child(
@@ -200,7 +208,8 @@ fn icon_button(id: &'static str, icon: Icon, look: &Look) -> xgpui_luma_look_rad
 }
 
 type Button = xgpui_luma::controls::button::Button;
-type TitlebarTemplate = Box<dyn Fn(&mut TitlebarState, &mut XgpuiLabApp, &mut Context<XgpuiLabApp>) -> AnyElement>;
+type TitlebarTemplate =
+    Box<dyn Fn(&mut TitlebarState, &mut XgpuiLabApp, &mut Window, &mut Context<XgpuiLabApp>) -> AnyElement>;
 
 /// Retain controls across renders, so inline declarations bind callbacks only once.
 #[derive(Default)]
@@ -227,13 +236,18 @@ struct LabTitlebar {
     template: TitlebarTemplate,
     focus_scope: FocusHandle,
     _subscription: Subscription,
+    _activation_subscription: Subscription,
+    #[cfg(target_os = "macos")]
+    native_mode: Option<ThemeMode>,
 }
 
 impl LabTitlebar {
     fn new(
         app: &Entity<XgpuiLabApp>,
+        window: &mut Window,
         cx: &mut Context<Self>,
-        template: impl Fn(&mut TitlebarState, &mut XgpuiLabApp, &mut Context<XgpuiLabApp>) -> AnyElement + 'static,
+        template: impl Fn(&mut TitlebarState, &mut XgpuiLabApp, &mut Window, &mut Context<XgpuiLabApp>) -> AnyElement
+        + 'static,
     ) -> Self {
         Self {
             app: app.downgrade(),
@@ -241,6 +255,9 @@ impl LabTitlebar {
             template: Box::new(template),
             focus_scope: cx.focus_handle(),
             _subscription: cx.observe(app, |_, _, cx| cx.notify()),
+            _activation_subscription: cx.observe_window_activation(window, |_, _, cx| cx.notify()),
+            #[cfg(target_os = "macos")]
+            native_mode: None,
         }
     }
 }
@@ -250,8 +267,27 @@ impl Render for LabTitlebar {
         let Some(app) = self.app.upgrade() else {
             return div().into_any_element();
         };
-        let composition = app.update(cx, |app, cx| (self.template)(&mut self.state, app, cx));
+        #[cfg(target_os = "macos")]
+        {
+            let mode = app.read(cx).look.mode();
+            if !cx.is_test() && self.native_mode != Some(mode) {
+                self.native_mode = Some(mode);
+                // Apply after rendering, outside AppKit's layout callbacks. This changes
+                // this window's native controls, never the system or other app windows.
+                _window.defer(cx, move |window, _cx| {
+                    if let Err(error) = native_appearance::sync(window, mode) {
+                        log::warn!("could not synchronize Lab native appearance: {error:#}");
+                    }
+                    window.refresh();
+                });
+            }
+        }
+        let composition = app.update(cx, |app, cx| (self.template)(&mut self.state, app, _window, cx));
         let header = cx.entity().downgrade();
+        let background = shell_background(&app.read(cx).look, _window.is_window_active());
+        let mac_native = cx.platform_info().os == OperatingSystem::Mac;
+        let measured_toolbar = Rc::new(Cell::new(Bounds::default()));
+        let background_bounds = measured_toolbar.clone();
         div()
             .luma_focus_scope(&self.focus_scope)
             .size_full()
@@ -259,9 +295,28 @@ impl Render for LabTitlebar {
             .relative()
             .debug_selector(|| "lab-toolbar-bounds".into())
             .child(composition)
+            .when(mac_native, |root| {
+                // Deferred painting escapes the shell's custom-content clip, while
+                // restricting paint to empty gutters and the bottom seam.
+                root.child(deferred(
+                    canvas(
+                        |_, _, _| (),
+                        move |_, _, window, _| {
+                            for edge in titlebar_background_edges(background_bounds.get(), window.viewport_size()) {
+                                window.paint_quad(fill(edge, background));
+                            }
+                        },
+                    )
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .size_full(),
+                ))
+            })
             .child(
                 canvas(
                     move |bounds, _, cx| {
+                        measured_toolbar.set(bounds);
                         let _ = header.update(cx, |header, cx| {
                             if header.state.content_origin != bounds.origin.x {
                                 header.state.content_origin = bounds.origin.x;
@@ -272,8 +327,22 @@ impl Render for LabTitlebar {
                     |_, _, _, _| {},
                 )
                 .absolute()
+                .top_0()
+                .left_0()
                 .size_full(),
             )
             .into_any_element()
     }
+}
+
+/// Exposed macOS background only: native-control gutter, trailing inset and seam.
+fn titlebar_background_edges(toolbar: Bounds<Pixels>, viewport: Size<Pixels>) -> [Bounds<Pixels>; 3] {
+    [
+        Bounds::new(point(px(0.), toolbar.top()), size(toolbar.left().max(px(0.)), toolbar.size.height)),
+        Bounds::new(
+            point(toolbar.right(), toolbar.top()),
+            size((viewport.width - toolbar.right()).max(px(0.)), toolbar.size.height),
+        ),
+        Bounds::new(point(px(0.), toolbar.bottom()), size(viewport.width, px(1.))),
+    ]
 }

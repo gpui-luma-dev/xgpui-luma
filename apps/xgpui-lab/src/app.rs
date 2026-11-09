@@ -43,16 +43,12 @@ enum Workspace {
     Svg,
     Canvas,
     Standalone,
+    Shell,
 }
 
 type Section = (Workspace, &'static str, &'static [(&'static str, &'static str)]);
 
 const SECTIONS: &[Section] = &[
-    (
-        Workspace::Canvas,
-        "xgpui-canvas",
-        &[("Spatial Canvas", "Spatial Canvas"), ("Mandelbrot", "Mandelbrot")],
-    ),
     (
         Workspace::Standalone,
         "Standalone Benchmarks",
@@ -80,6 +76,11 @@ const SECTIONS: &[Section] = &[
         ],
     ),
     (Workspace::ColorGamut, "Color & Gamut", &[("Color & Gamut", "Color & Gamut")]),
+    (
+        Workspace::Canvas,
+        "xgpui-canvas",
+        &[("Spatial Canvas", "Spatial Canvas"), ("Mandelbrot", "Mandelbrot")],
+    ),
     (
         Workspace::Color,
         "xgpui-color",
@@ -154,6 +155,7 @@ const SECTIONS: &[Section] = &[
             ("Benchmarks", "Benchmarks"),
         ],
     ),
+    (Workspace::Shell, "xgpui-shell", crate::shell_lab::PAGES),
     (
         Workspace::Svg,
         "xgpui-svg",
@@ -186,6 +188,7 @@ pub struct XgpuiLabApp {
     rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: gpui::Pixels,
     body_origin: gpui::Pixels,
+    _activation_subscription: gpui::Subscription,
     content: Rc<RefCell<gpui::AnyView>>,
     active_page: &'static str,
     extensions: Vec<(Workspace, Entity<ExtensionPane>)>,
@@ -198,6 +201,7 @@ impl XgpuiLabApp {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let p3_error = window.set_color_mode(gpui::WindowColorMode::WideGamutSdr).err().map(|error| error.to_string());
         let focus_scope = cx.focus_handle();
+        let activation_subscription = cx.observe_window_activation(window, |_, _, cx| cx.notify());
         let look = crate::theme::default_look();
         let nav_look = look.clone();
         sync_color_control_theme(&look);
@@ -215,6 +219,7 @@ impl XgpuiLabApp {
                     Workspace::Svg => "xgpui-svg-tabs",
                     Workspace::Canvas => "xgpui-canvas-tabs",
                     Workspace::Standalone => "standalone-benchmark-tabs",
+                    Workspace::Shell => "xgpui-shell-tabs",
                 };
                 Some((workspace, cx.new(|cx| ExtensionPane::new(id, look.clone(), p3_error.clone(), cx))))
             })
@@ -353,6 +358,7 @@ impl XgpuiLabApp {
             rail,
             sidebar_width: INITIAL_SIDEBAR_WIDTH,
             body_origin: px(0.0),
+            _activation_subscription: activation_subscription,
             content,
             active_page: "gradients",
         }
@@ -487,7 +493,7 @@ impl Render for XgpuiLabApp {
         let app_entity = _cx.entity().downgrade();
         let body = div()
             .size_full()
-            .bg(shell_background(&self.look))
+            .bg(shell_background(&self.look, _window.is_window_active()))
             .relative()
             .child(
                 gpui::canvas(
@@ -546,7 +552,7 @@ impl Render for XgpuiLabApp {
             .flex()
             .flex_col()
             .font_family(sans_family)
-            .bg(shell_background(&self.look))
+            .bg(shell_background(&self.look, _window.is_window_active()))
             .text_color(chrome.body_text)
             .child(div().flex_1().min_h_0().child(body))
     }
@@ -590,6 +596,8 @@ mod tests {
             (Workspace::Compositions, "harmonies"),
             (Workspace::Gradients, "mesh"),
             (Workspace::Canvas, "Spatial Canvas"),
+            (Workspace::Shell, "Shell Lab"),
+            (Workspace::Shell, "Desktop Preferences"),
             (Workspace::Shader, "Pastel Waves"),
             (Workspace::Standalone, "Quad Benchmark"),
             (Workspace::Standalone, "Color Field Benchmark"),
@@ -794,6 +802,59 @@ mod tests {
                 assert_eq!(shell.look.mode(), mode);
                 assert_eq!((shell.active, shell.active_page), (Workspace::Gradients, "gradients"));
             });
+        }
+    }
+
+    #[test]
+    fn mac_titlebar_edges_follow_radix_on_startup_and_theme_changes() {
+        let mut app = TestAppContext::single();
+        app.set_platform_info(gpui::PlatformInfo {
+            os: gpui::OperatingSystem::Mac,
+            target: gpui::PlatformTarget::Native,
+        });
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        for mode in [ThemeMode::Dark, ThemeMode::Light, ThemeMode::Dark] {
+            if cx.update(|_, cx| view.read(cx).look.mode()) != mode {
+                let toggle = cx.debug_bounds("shell-2026-theme").unwrap().center();
+                cx.simulate_click(toggle, Default::default());
+                cx.run_until_parked();
+            }
+            for active in [true, false, true] {
+                if active {
+                    cx.update(|window, _| window.activate_window());
+                } else {
+                    cx.deactivate_window();
+                }
+                cx.run_until_parked();
+                let toolbar = cx.debug_bounds("lab-toolbar-bounds").unwrap();
+                cx.update(|window, cx| {
+                    let expected = shell_background(&view.read(cx).look, active);
+                    assert_eq!(window.is_window_active(), active);
+                    if mode == ThemeMode::Light {
+                        assert_eq!(
+                            expected,
+                            gpui::Hsla::from(gpui::rgb(if active { 0xececed } else { 0xf0f0f0 })),
+                            "light shell must use the requested off-white"
+                        );
+                    }
+                    let quads = window.painted_quads();
+                    let scale = window.scale_factor();
+                    for sample in [
+                        point(px(2.), toolbar.center().y),
+                        point(window.viewport_size().width - px(2.), toolbar.center().y),
+                        point(window.viewport_size().width / 2., toolbar.bottom() + px(0.5)),
+                    ] {
+                        let point = sample.scale(scale);
+                        let top = quads
+                            .iter()
+                            .filter(|quad| quad.bounds.contains(&point) && quad.content_mask.bounds.contains(&point))
+                            .max_by_key(|quad| quad.order)
+                            .expect("titlebar background painted");
+                        assert_eq!(top.background.as_solid(), Some(expected), "sample {sample:?} in {mode:?}");
+                    }
+                });
+            }
         }
     }
 

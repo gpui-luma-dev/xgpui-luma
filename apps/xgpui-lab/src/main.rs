@@ -12,6 +12,7 @@ mod lab_ui;
 mod benchmarks;
 
 mod app_shell;
+mod shell_lab;
 mod compositions;
 mod extension_pane;
 mod gamut;

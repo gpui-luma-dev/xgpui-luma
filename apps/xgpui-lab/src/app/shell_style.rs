@@ -13,8 +13,12 @@ pub(super) const MIN_WORKSPACE_WIDTH: Pixels = px(380.0);
 pub(super) const CANVAS_TOP_INSET: Pixels = px(2.0);
 pub(super) const CANVAS_EDGE_INSET: Pixels = px(5.0);
 
-pub(super) fn shell_background(look: &Look) -> Hsla {
-    look.chrome().app_background
+pub(super) fn shell_background(look: &Look, active: bool) -> Hsla {
+    if active && look.mode() == xgpui_luma::theme::ThemeMode::Light {
+        gpui::rgb(0xececed).into()
+    } else {
+        look.chrome().app_background
+    }
 }
 
 pub(super) fn canvas_border_color(look: &Look) -> Hsla {
