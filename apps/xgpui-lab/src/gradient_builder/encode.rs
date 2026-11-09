@@ -3,7 +3,7 @@
 //! Hosts store [`ColorValue`]s, unclipped. Renderers consume encoded RGB in
 //! their *output* primaries: GPUI paints, the CPU rasterizers and PNG export
 //! are sRGB; the Display P3 shaders/producers (`p3`, `mesh_p3`,
-//! `freeform_p3`, the P3 color field) are Display P3. Each render path names
+//! `freeform::p3`, the P3 color field) are Display P3. Each render path names
 //! its [`OutputSpace`] and encodes here, mapping into that gamut with the SDK's
 //! CSS local-MINDE policy only at this point.
 //!
@@ -14,7 +14,7 @@
 use gpui::Hsla;
 use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
-use super::paint::{MeshPoint, PaintPoint};
+use super::paint::{ControlPoint, PaintPoint};
 
 /// Gamut-mapping policy applied when encoding for an output.
 pub(crate) const OUTPUT_MAPPING: GamutMapping = GamutMapping::CssLocalMinde;
@@ -56,7 +56,7 @@ pub(crate) fn encode_stops(stops: &[(f32, ColorValue)], space: OutputSpace) -> V
     stops.iter().map(|(position, color)| (*position, encode(*color, space))).collect()
 }
 
-pub(crate) fn encode_points(points: &[MeshPoint], space: OutputSpace) -> Vec<PaintPoint> {
+pub(crate) fn encode_points(points: &[ControlPoint], space: OutputSpace) -> Vec<PaintPoint> {
     points.iter().map(|point| point.with_color(encode(point.color, space))).collect()
 }
 
@@ -96,7 +96,8 @@ mod tests {
 
     #[test]
     fn points_keep_geometry_and_encode_color() {
-        let point = MeshPoint { row: 1, col: 2, u: 0.25, v: 0.75, color: ColorValue::display_p3(0.0, 1.0, 0.0, 1.0) };
+        let point =
+            ControlPoint { row: 1, col: 2, u: 0.25, v: 0.75, color: ColorValue::display_p3(0.0, 1.0, 0.0, 1.0) };
         let [encoded] = encode_points(&[point], OutputSpace::DisplayP3)[..] else {
             panic!()
         };

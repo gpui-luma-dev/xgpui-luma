@@ -290,7 +290,7 @@ impl GradientBuilder {
                             })
                             .child(self.freeform_p3_switch.clone())
                     })
-                    .child(form_field!("Background", chrome; self.mesh_background_stop.clone()));
+                    .child(form_field!("Background", chrome; self.background_stop.clone()));
                 panel.into_any_element()
             }
             1 if self.selected_tab == BuilderTab::Gradients => div()

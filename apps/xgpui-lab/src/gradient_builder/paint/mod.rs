@@ -4,7 +4,7 @@ mod types;
 
 pub use gradient::{paint_gradient_preview, rasterize_gradient_preview};
 pub use mesh::{shader_mesh_grid, rasterize_mesh_guides, mesh_dimensions, rasterize_mesh_gradient_preview};
-pub use types::{GradientType, MeshPoint, PaintPoint, PreviewRenderer, color_at_position, sorted_stops};
+pub use types::{GradientType, ControlPoint, PaintPoint, PreviewRenderer, color_at_position, sorted_stops};
 
 mod freeform;
 pub use freeform::{build_color_field, FieldShape, rasterize_freeform_preview};

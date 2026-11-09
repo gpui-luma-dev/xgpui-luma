@@ -6,7 +6,7 @@ use crate::theme::TypographyExt;
 
 use super::super::encode::srgb_source;
 use xgpui_luma::color::ColorValue;
-use super::super::paint::{GradientType, MeshPoint, PaintPoint};
+use super::super::paint::{GradientType, ControlPoint, PaintPoint};
 use super::super::paint::color_at_position;
 
 pub(super) const SHELL_RADIUS: f32 = 0.0;
@@ -299,7 +299,7 @@ pub(super) fn default_mesh_palette(preset: MeshGridPreset) -> usize {
 }
 
 /// sRGB-authored palette colors for each point, in encoded sRGB.
-fn mesh_palette_colors(points: &[MeshPoint], palette: usize) -> Option<Vec<gpui::Hsla>> {
+fn mesh_palette_colors(points: &[ControlPoint], palette: usize) -> Option<Vec<gpui::Hsla>> {
     const COLORS: [[u32; 4]; 5] = [
         [0xffcb69, 0xf28482, 0x7b2cbf, 0x240046],
         [0x023e8a, 0x00b4d8, 0x007f5f, 0xcaffbf],
@@ -323,13 +323,13 @@ fn mesh_palette_colors(points: &[MeshPoint], palette: usize) -> Option<Vec<gpui:
     )
 }
 
-pub(super) fn apply_mesh_palette(points: &mut [MeshPoint], palette: usize) {
+pub(super) fn apply_mesh_palette(points: &mut [ControlPoint], palette: usize) {
     blend_mesh_palettes(points, palette, 0.0);
 }
 
 /// Palettes replace every point color; both palettes are sRGB, so they blend
 /// in encoded sRGB before becoming source colors.
-pub(super) fn blend_mesh_palettes(points: &mut [MeshPoint], palette: usize, phase: f32) {
+pub(super) fn blend_mesh_palettes(points: &mut [ControlPoint], palette: usize, phase: f32) {
     let Some(mut colors) = mesh_palette_colors(points, palette) else {
         return;
     };
@@ -344,11 +344,11 @@ pub(super) fn blend_mesh_palettes(points: &mut [MeshPoint], palette: usize, phas
     }
 }
 
-pub(super) fn default_mesh_points(preset: MeshGridPreset) -> Vec<MeshPoint> {
+pub(super) fn default_mesh_points(preset: MeshGridPreset) -> Vec<ControlPoint> {
     let (rows, cols) = preset.dimensions();
     let mut points: Vec<_> = (0..rows)
         .flat_map(|row| {
-            (0..cols).map(move |col| MeshPoint {
+            (0..cols).map(move |col| ControlPoint {
                 row: row as u8,
                 col: col as u8,
                 u: col as f32 / (cols - 1) as f32,
@@ -461,27 +461,27 @@ mod animation_tests {
             view.selected_tab = BuilderTab::Mesh;
             view.mesh_palette = 4;
             view.mesh_palette_speed = 0.5;
-            view.mesh_points[0].u = 0.08;
-            let positions: Vec<_> = view.mesh_points.iter().map(|p| (p.u, p.v)).collect();
-            let ids = view.mesh_point_ids.clone();
-            let mut start = view.mesh_points.clone();
+            view.points[0].u = 0.08;
+            let positions: Vec<_> = view.points.iter().map(|p| (p.u, p.v)).collect();
+            let ids = view.point_ids.clone();
+            let mut start = view.points.clone();
             mesh::apply_mesh_palette(&mut start, 4);
             let mut end = start.clone();
             mesh::apply_mesh_palette(&mut end, 0);
             view.advance_mesh_palette(1.);
             assert_eq!(view.mesh_palette, 4);
             assert_eq!(view.mesh_palette_phase, 0.5);
-            let mut expected = view.mesh_points.clone();
+            let mut expected = view.points.clone();
             mesh::blend_mesh_palettes(&mut expected, 4, 0.5);
-            assert_eq!(view.mesh_points[0].color, expected[0].color);
+            assert_eq!(view.points[0].color, expected[0].color);
             assert_ne!(expected[0].color, start[0].color);
             assert_ne!(expected[0].color, end[0].color);
             view.advance_mesh_palette(1.);
             assert_eq!(view.mesh_palette, 0);
             assert_eq!(view.mesh_palette_phase, 0.);
-            assert_eq!(view.mesh_points, end);
-            assert_eq!(view.mesh_point_ids, ids);
-            assert_eq!(view.mesh_points.iter().map(|p| (p.u, p.v)).collect::<Vec<_>>(), positions);
+            assert_eq!(view.points, end);
+            assert_eq!(view.point_ids, ids);
+            assert_eq!(view.points.iter().map(|p| (p.u, p.v)).collect::<Vec<_>>(), positions);
         });
     }
 }
