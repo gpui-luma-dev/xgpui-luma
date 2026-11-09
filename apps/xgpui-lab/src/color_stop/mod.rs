@@ -147,6 +147,8 @@ impl ColorStop {
             let button = crate::theme::icon_button(format!("{id}-remove"), LucideIcon::Trash)
                 .look(look.as_ref())
                 .content_only()
+                // Smallest Radix size: the row only needs room for the glyph.
+                .size(radix::ButtonSize::One)
                 .radius(radix::Radius::Medium)
                 .spawn(cx)
                 .tooltip(Tooltip::new("Remove color"), cx);
