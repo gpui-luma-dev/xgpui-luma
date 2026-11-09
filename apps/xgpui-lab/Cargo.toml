@@ -15,6 +15,7 @@ test-support = ["xgpui-luma/test-support", "xgpui-luma-color/test-support"]
 portable-app = []
 
 [dependencies]
+xgpui-shell = "0.1.0"
 clap = { version = "4", features = ["derive"] }
 xgpui-canvas = { version = "0.3.3", features = ["gpui"] }
 log = "0.4"
@@ -52,6 +53,8 @@ tracing = "0.1"
 gtk = { version = "0.18" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+raw-window-handle = { version = "0.6", features = ["std"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAppearance", "NSResponder", "NSView", "NSWindow"] }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
 objc2-core-foundation = "0.3.2"

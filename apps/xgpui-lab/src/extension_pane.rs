@@ -24,6 +24,7 @@ pub struct ExtensionPane {
     photo: Option<Entity<crate::photo_viewport::PhotoViewport>>,
     parley: Option<Entity<crate::parley_lab::ParleyPage>>,
     svg: Option<Entity<crate::svg_lab::SvgPage>>,
+    shell: Option<Entity<crate::shell_lab::ShellPage>>,
 }
 
 impl ExtensionPane {
@@ -163,6 +164,9 @@ impl ExtensionPane {
         if let Some(shader) = &self.shader {
             shader.update(cx, |page, cx| page.activate(tab_id.clone(), cx));
         }
+        if let Some(shell) = &self.shell {
+            shell.update(cx, |page, cx| page.activate(tab_id.clone(), cx));
+        }
     }
 
     pub fn new(id: &'static str, look: Arc<Look>, p3_error: Option<String>, cx: &mut Context<Self>) -> Self {
@@ -181,6 +185,7 @@ impl ExtensionPane {
             _ => None,
         };
         let benchmarks = suite.map(|suite| cx.new(|cx| crate::benchmarks::Page::new(suite, look.clone(), cx)));
+        let shell = (id == "xgpui-shell-tabs").then(|| cx.new(|cx| crate::shell_lab::ShellPage::new(look.clone(), cx)));
         let canvas = None;
         let standalone = (id == "standalone-benchmark-tabs")
             .then(|| cx.new(|cx| crate::standalone_benchmarks::Page::new(look.clone(), cx)));
@@ -204,6 +209,7 @@ impl ExtensionPane {
             photo: None,
             svg,
             parley,
+            shell,
         }
     }
 }
@@ -230,6 +236,7 @@ impl Render for ExtensionPane {
                             .children(self.media.clone())
                             .children(self.svg.clone())
                             .children(self.parley.clone())
+                            .children(self.shell.clone())
                     }),
             )
             .into_any_element()

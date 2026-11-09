@@ -12,8 +12,9 @@ pub(crate) fn default_look() -> Arc<Look> {
     let seed = xgpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
-        // Match Radix Studio's theme visualizer: black in dark mode, white in light.
-        let value = if mode == ThemeMode::Dark { 0. } else { 1. };
+        // Keep light chrome off-white so native macOS traffic-light effects
+        // remain legible against the app background.
+        let value = if mode == ThemeMode::Dark { 0. } else { 240. / 255. };
         let background = xgpui_luma::color::ColorValue::srgb(value, value, value, 1.);
         look.set_custom_colors(CustomColors { accent: seed, gray: seed, background })
             .expect("opaque sRGB palette seeds are valid");
@@ -65,7 +66,12 @@ impl ColorVizLookExt for Look {
     fn chrome(&self) -> LumaChrome {
         let color = |role| self.resolve_role(role).hsla();
         LumaChrome {
-            app_background: color(SemanticRole::Background),
+            // CustomColors.background seeds the scales; shell paint is an explicit app choice.
+            app_background: if self.mode() == ThemeMode::Light {
+                gpui::rgb(0xf0f0f0).into()
+            } else {
+                color(SemanticRole::Background)
+            },
             content_background: color(SemanticRole::Background),
             panel_background: color(SemanticRole::Surface),
             border: color(SemanticRole::Border),
