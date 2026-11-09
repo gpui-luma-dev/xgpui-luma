@@ -260,10 +260,11 @@ impl<M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxControl<M, T
     /// Borrow existing state/handles for composition without recreating them.
     pub fn render_parts(&mut self) -> ListBoxRenderParts<'_, M, T, K> {
         self.scroll.set_wheel_focus_owner(self.binding.focus_handle().clone());
-        let drag_drop = self
-            .drag_drop
-            .clone()
-            .map(|config| super::ListBoxDragDropBinding { source: self.event_source.downgrade(), config });
+        let drag_drop = self.drag_drop.clone().map(|config| super::ListBoxDragDropBinding {
+            source: self.event_source.downgrade(),
+            config,
+            preview_style: None,
+        });
         ListBoxRenderParts {
             motion_config: &mut self.motion_config,
             drop_layout: self.drop_layout.clone(),
