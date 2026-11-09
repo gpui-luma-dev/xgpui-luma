@@ -27,6 +27,13 @@ pub(crate) fn open_shell(cx: &mut App) -> anyhow::Result<()> {
 
 /// The production composition is also used by headless shell interaction tests.
 pub(super) fn open_shell_window(cx: &mut App) -> anyhow::Result<(WindowHandle<ShellWindow>, Entity<XgpuiLabApp>)> {
+    open_configured_shell_window(cx, false)
+}
+
+fn open_configured_shell_window(
+    cx: &mut App,
+    fixed_size: bool,
+) -> anyhow::Result<(WindowHandle<ShellWindow>, Entity<XgpuiLabApp>)> {
     let bounds = Bounds::centered(None, size(px(1280.0), px(800.0)), cx);
     let mut content = None;
     let window = cx.open_shell_window_with_titlebar(
@@ -35,6 +42,7 @@ pub(super) fn open_shell_window(cx: &mut App) -> anyhow::Result<(WindowHandle<Sh
             #[cfg(target_os = "macos")]
             window_background: WindowBackgroundAppearance::Opaque,
             window_min_size: Some(size(px(720.0), px(480.0))),
+            is_resizable: !fixed_size,
             ..Default::default()
         },
         ShellOptions::default(),
@@ -124,7 +132,7 @@ pub(super) fn open_shell_window(cx: &mut App) -> anyhow::Result<(WindowHandle<Sh
                                         .min_w_0()
                                         .overflow_hidden()
                                         .text_ellipsis()
-                                        .child("XGPUI Lab"),
+                                        .child(window.shell_title()),
                                 ),
                         ))
                         .child(
@@ -185,6 +193,21 @@ pub(super) fn open_shell_window(cx: &mut App) -> anyhow::Result<(WindowHandle<Sh
     // The shell invokes its content builder synchronously on successful open.
     let content = content.ok_or_else(|| anyhow::anyhow!("shell did not construct Lab content"))?;
     Ok((window, content))
+}
+
+/// Open another full Lab with independent view/theme/preview state, directly on Shell Lab.
+pub(crate) fn open_shell_test_window(cx: &mut App, fixed_size: bool) -> anyhow::Result<()> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    static NEXT_WINDOW: AtomicUsize = AtomicUsize::new(1);
+    let (handle, app) = open_configured_shell_window(cx, fixed_size)?;
+    app.update(cx, |app, cx| app.activate(super::Workspace::Shell, "Shell Lab", cx));
+    let number = NEXT_WINDOW.fetch_add(1, Ordering::Relaxed);
+    let kind = if fixed_size { "Fixed-size" } else { "Resizable" };
+    handle.update(cx, |_, window, _| {
+        window.set_shell_title(&format!("XGPUI Shell Lab — {kind} window {number}"));
+        window.activate_window();
+    })?;
+    Ok(())
 }
 
 // The splitter's one-pixel stroke starts at the panel boundary. The titlebar

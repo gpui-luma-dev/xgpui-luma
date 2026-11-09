@@ -73,6 +73,7 @@ pub(crate) struct ShellPage {
     values: [usize; 14],
     choices: Vec<(Setting, Choice)>,
     reset: Entity<xgpui_luma::controls::button::Button>,
+    new_windows: Vec<Entity<xgpui_luma::controls::button::Button>>,
     events: VecDeque<String>,
     subscriptions: Vec<Subscription>,
     observing_window: bool,
@@ -114,6 +115,27 @@ impl ShellPage {
                 cx.notify();
             })
             .spawn(cx);
+        let new_windows =
+            [("shell-new-window", "New window", false), ("shell-new-fixed-window", "New fixed-size window", true)]
+                .into_iter()
+                .map(|(id, label, fixed)| {
+                    xgpui_luma_look_radix::Button::new(id)
+                        .look(&look)
+                        .content(move |_, _| label)
+                        .with_template_modifier(move |root, _| root.debug_selector(move || id.into()))
+                        .on_click(cx, move |page: &mut Self, cx| {
+                            match crate::app::open_shell_test_window(cx, fixed) {
+                                Ok(()) => page.record(format!(
+                                    "Opened {} window with independent defaults",
+                                    if fixed { "fixed-size" } else { "resizable" }
+                                )),
+                                Err(error) => page.record(format!("Could not open test window: {error:#}")),
+                            }
+                            cx.notify();
+                        })
+                        .spawn(cx)
+                })
+                .collect();
         let weak = cx.entity().downgrade();
         let desktop = cx.observe_desktop_preferences(move |app| {
             let _ = weak.update(app, |page, cx| {
@@ -127,6 +149,7 @@ impl ShellPage {
             values,
             choices,
             reset,
+            new_windows,
             events: VecDeque::from(["Following desktop preferences; overrides affect the preview only".into()]),
             subscriptions: vec![desktop],
             observing_window: false,
@@ -360,6 +383,11 @@ impl Render for ShellPage {
             content = content.child(self.readings(window, cx));
         } else {
             content = content
+                .child(lab_ui::panel(&self.look)
+                    .child(heading("Real test windows"))
+                    .child(property("This window", if window.is_resizable() { "Resizable" } else { "Fixed-size (resizing disabled)" }.into()))
+                    .child(lab_ui::control_row().children(self.new_windows.clone()))
+                    .child(lab_ui::caption(&self.look, "Each button opens a separate Lab on this page with its own theme and preview state. Close a test window with its native traffic lights; no restart is needed.")))
                 .child(lab_ui::caption(&self.look, "Simulation only: frame buttons, dragging and resizing never operate the Lab window. Preview overrides do not change desktop settings or the host titlebar."))
                 .child(self.rows(true))
                 .child(div().id("shell-client-frame-preview").debug_selector(|| "shell-client-frame-preview".into())
@@ -386,6 +414,34 @@ mod tests {
     use super::*;
     use gpui::TestAppContext;
     use ::core::prelude::v1::test;
+
+    #[test]
+    fn new_window_buttons_open_distinct_resizable_and_fixed_shell_windows() {
+        use xgpui_shell::{ShellWindow, ShellWindowTitle};
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| ShellPage::new(crate::theme::default_look(), cx));
+        let original = cx.update(|window, _| window.window_bounds());
+        for (index, fixed) in [(0, false), (1, true)] {
+            let (before, button) = cx.update(|_, cx| (cx.windows(), page.read(cx).new_windows[index].clone()));
+            button.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
+            cx.run_until_parked();
+            cx.update(|host, cx| {
+                let windows = cx.windows();
+                assert_eq!(windows.len(), before.len() + 1);
+                let new_window = windows.into_iter().find(|handle| !before.contains(handle)).expect("new window");
+                new_window
+                    .update(cx, |_, window, _| {
+                        assert!(window.root::<ShellWindow>().flatten().is_some());
+                        assert_eq!(window.is_resizable(), !fixed);
+                        assert!(window.shell_title().contains(if fixed { "Fixed-size" } else { "Resizable" }));
+                    })
+                    .unwrap();
+                assert_eq!(host.window_bounds(), original);
+                assert_eq!(page.read(cx).values, ShellPage::defaults());
+            });
+        }
+    }
 
     #[test]
     fn sdk_choices_drive_preview_and_reset_without_mutating_host_or_other_pages() {

@@ -28,7 +28,7 @@ mod nav_accordion;
 mod shell_style;
 mod titlebar;
 use shell_style::*;
-pub(crate) use titlebar::open_shell;
+pub(crate) use titlebar::{open_shell, open_shell_test_window};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Workspace {
