@@ -12,15 +12,13 @@ use std::sync::{
 use std::{cell::RefCell, rc::Rc};
 use xgpui_luma::controls::{
     resizable_panels::{
-        ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, PanelHideMode, ResizeHandleVisibility,
-        ResizeCollapseBehavior, ResizeCollapseMode, ResizeCollapseDirection,
+        ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, ResizeHandleVisibility, ResizeCollapseBehavior,
+        ResizeCollapseMode, ResizeCollapseDirection,
     },
     accordion::{Accordion, AccordionContent, AccordionItem, AccordionTrigger},
 };
 use xgpui_luma::prelude::HasPresenter;
-use xgpui_luma::controls::button::ButtonEventExt;
 use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
-use xgpui_luma::theme::LumaThemeSyncExt;
 
 use crate::gradient_builder::GradientBuilder;
 use crate::compositions::ColorCompositions;
@@ -30,8 +28,7 @@ mod nav_accordion;
 mod shell_style;
 mod titlebar;
 use shell_style::*;
-use titlebar::TitlebarControls;
-pub(crate) use titlebar::LabTitlebar;
+pub(crate) use titlebar::open_shell;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Workspace {
@@ -189,7 +186,6 @@ pub struct XgpuiLabApp {
     rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: gpui::Pixels,
     body_origin: gpui::Pixels,
-    titlebar: TitlebarControls,
     content: Rc<RefCell<gpui::AnyView>>,
     active_page: &'static str,
     extensions: Vec<(Workspace, Entity<ExtensionPane>)>,
@@ -333,7 +329,6 @@ impl XgpuiLabApp {
             )
             .spawn(cx);
         let rail = spawn_rail(&nav_look, cx);
-        let titlebar = TitlebarControls::new(&look, cx);
         panels.clone().on_event(cx, |this: &mut Self, event, cx| {
             if let ResizablePanelsEvent::SizesChanged { sizes_px } = event
                 && let Some(width) = sizes_px.first()
@@ -341,32 +336,6 @@ impl XgpuiLabApp {
                 this.sidebar_width = px(*width);
                 cx.notify();
             }
-        });
-        titlebar.sidebar_toggle.clone().on_click(cx, |this: &mut Self, cx| {
-            this.panels.update(cx, |panels, cx| panels.toggle_panel_hidden(0, PanelHideMode::Completely, cx));
-        });
-        titlebar.theme_toggle.clone().on_click(cx, |this: &mut Self, cx| {
-            let mode = match this.look.mode() {
-                ThemeMode::Light => ThemeMode::Dark,
-                ThemeMode::Dark => ThemeMode::Light,
-            };
-            this.look.set_mode(mode);
-            sync_color_control_theme(&this.look);
-            let icon = if mode == ThemeMode::Dark {
-                lucide_svg_static::Icon::Sun
-            } else {
-                lucide_svg_static::Icon::Moon
-            };
-            this.titlebar.theme_toggle.update(cx, |button, cx| {
-                button.set_presenter(
-                    Arc::new(move |model, _| {
-                        xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
-                    }),
-                    cx,
-                );
-            });
-            cx.bump_luma_theme_revision();
-            cx.notify();
         });
         Self {
             focus_scope,
@@ -382,7 +351,6 @@ impl XgpuiLabApp {
             presentation_pending: false,
             panels,
             rail,
-            titlebar,
             sidebar_width: INITIAL_SIDEBAR_WIDTH,
             body_origin: px(0.0),
             content,
@@ -674,9 +642,22 @@ mod tests {
     use super::titlebar::{CLOSED_TITLEBAR_WIDTH, titlebar_compartment_width};
     use gpui::{MouseButton, MouseDownEvent, VisualTestContext, point};
 
+    fn shell_test_window(app: &TestAppContext) -> (Entity<XgpuiLabApp>, VisualTestContext) {
+        let (window, view) = app.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            super::titlebar::open_shell_window(cx).unwrap()
+        });
+        let visual = VisualTestContext::from_window(window.into(), app);
+        visual.run_until_parked();
+        (view, visual)
+    }
+
     fn assert_aligned(cx: &mut VisualTestContext) {
         cx.run_until_parked();
         let separator = cx.debug_bounds("shell-2026-separator").unwrap();
+        let title = cx.debug_bounds("lab-title-label").unwrap();
+        let toggle = cx.debug_bounds("shell-2026-toggle-sidebar").unwrap();
+        assert!((title.center().y - toggle.center().y).abs() <= px(1.0), "title {title:?}, toggle {toggle:?}");
         let workspace = cx.debug_bounds("shell-2026-workspace").unwrap();
         assert!(
             (separator.origin.x - workspace.origin.x).abs() <= px(1.0),
@@ -694,29 +675,8 @@ mod tests {
     #[test]
     fn rendered_separator_tracks_drag_and_restores_from_both_collapse_paths() {
         let app = TestAppContext::single();
-        use xgpui_shell::{ShellApp, ShellOptions, ShellWindowTitle};
-        let (window, view) = app.update(|cx| {
-            xgpui_luma::init(cx).unwrap();
-            let mut content = None;
-            let window = cx
-                .open_shell_window_with_titlebar(
-                    gpui::WindowOptions {
-                        window_bounds: Some(gpui::WindowBounds::Windowed(gpui::Bounds::maximized(None, cx))),
-                        ..Default::default()
-                    },
-                    ShellOptions::default(),
-                    |window, cx| {
-                        window.set_shell_title("XGPUI Lab");
-                        let view = cx.new(|cx| XgpuiLabApp::new(window, cx));
-                        let header = cx.new(|cx| LabTitlebar::new(&view, cx));
-                        content = Some(view.clone());
-                        (header, view)
-                    },
-                )
-                .unwrap();
-            (window, content.unwrap())
-        });
-        let cx = &mut VisualTestContext::from_window(window.into(), &app);
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
         assert_aligned(cx);
         let workspace = cx.debug_bounds("shell-2026-workspace").unwrap();
         let start = point(workspace.left(), workspace.top() + px(100.0));
@@ -822,13 +782,12 @@ mod tests {
 
     #[test]
     fn theme_toggle_switches_radix_and_keeps_selected_page() {
-        let mut app = TestAppContext::single();
-        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
-        let (view, cx) = app.add_window_view(XgpuiLabApp::new);
-        cx.run_until_parked();
-        let toggle = cx.update(|_, cx| view.read(cx).titlebar.theme_toggle.clone());
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
+            let toggle = cx.debug_bounds("shell-2026-theme").unwrap().center();
+            cx.simulate_click(toggle, Default::default());
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let shell = view.read(cx);
@@ -840,17 +799,14 @@ mod tests {
 
     #[test]
     fn sidebar_toggle_retains_width_and_selected_content() {
-        let mut app = TestAppContext::single();
-        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
-        let (view, cx) = app.add_window_view(XgpuiLabApp::new);
-        cx.run_until_parked();
-        let (split, toggle) = cx.update(|_, cx| {
-            let shell = view.read(cx);
-            (shell.panels.clone(), shell.titlebar.sidebar_toggle.clone())
-        });
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        let split = cx.update(|_, cx| view.read(cx).panels.clone());
         let width = cx.update(|_, cx| split.read(cx).panel_sizes_px()[0]);
         for collapsed in [true, false] {
-            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
+            let toggle = cx.debug_bounds("shell-2026-toggle-sidebar").unwrap().center();
+            cx.simulate_click(toggle, Default::default());
             cx.run_until_parked();
             cx.update(|_, cx| {
                 assert_eq!(split.read(cx).is_panel_hidden(0), collapsed);

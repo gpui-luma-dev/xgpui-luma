@@ -51,15 +51,21 @@ tests; native wide-gamut fidelity still requires a capable display.
 ## Desktop window shell
 
 The main Lab window uses published `xgpui-shell 0.1.0` with XGPUI 3.1.0.
-`app_shell.rs` opens a shell window with separate `LabTitlebar` and
-`XgpuiLabApp` views. The shell owns platform decorations, native traffic lights,
+`app/titlebar.rs` declares the shell window, toolbar layout, Radix controls and
+callbacks together in `open_shell_window`. `app_shell.rs` forwards to that
+composition. `LabTitlebar` renders the inline template alongside the
+`XgpuiLabApp` content view. Its button cache retains SDK entities and binds
+callbacks once, while layout and theme content update on redraw. The shell owns platform decorations, native traffic lights,
 window controls and desktop preference handling. The Lab owns its Radix toolbar
 controls, theme, navigation and workspace content. Title text and empty toolbar
 space use `ShellDragRegion`; interactive controls stay outside drag regions.
 
 Toolbar alignment measures the actual toolbar/body origins, including shell
 insets, rather than assuming a macOS traffic-light offset or fixed header height.
-The shell follows desktop preferences independently of the Lab's explicit content
-theme toggle. The shell API is alpha. Interactive macOS, Windows and Linux desktop
+The app-owned toolbar background follows the same Radix palette as its text and
+controls. The shell-owned gutters, frame and native control area still follow
+desktop appearance. Full app-controlled shell styling is tracked by
+[upstream issue #192](https://github.com/gpui-luma-dev/xgpui/issues/192); the
+published shell API cannot yet make those areas follow the Lab theme. The shell API is alpha. Interactive macOS, Windows and Linux desktop
 verification remains necessary, including decoration negotiation, fullscreen,
 window operations and scaled text; headless tests cannot establish those results.
