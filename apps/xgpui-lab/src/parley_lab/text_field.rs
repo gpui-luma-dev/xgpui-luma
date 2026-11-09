@@ -742,14 +742,28 @@ impl ParleyTextField {
     }
 
     /// Logical ends of the visual line holding the caret.
+    ///
+    /// A row is a contiguous logical range, but with mixed directions its visual
+    /// edges need not be its logical ends (in `abc אבג` the right edge is inside
+    /// the text), so the ends are found by binary search over the character
+    /// boundaries for the first and last caret on the row.
     fn line_bounds(&self) -> Option<Range<usize>> {
         let geometry = self.geometry.as_ref()?;
         let layout = &geometry.layout;
-        let caret = layout.caret_bounds(self.caret).ok()?;
-        let y = caret.center().y;
-        let left = layout.hit_test(point(px(-1.0), y)).ok()?.byte_index;
-        let right = layout.hit_test(point(layout.size().width + px(1.0), y)).ok()?.byte_index;
-        Some(left.min(right)..left.max(right))
+        let row = layout.caret_bounds(self.caret).ok()?.center().y;
+        let boundaries: Vec<usize> =
+            self.value.char_indices().map(|(index, _)| index).chain([self.value.len()]).collect();
+        let row_of = |byte_index: usize, affinity| {
+            layout
+                .caret_bounds(ParagraphPosition { byte_index, affinity })
+                .map_or(px(f32::MAX), |caret| caret.center().y)
+        };
+        // Rows hold increasing logical ranges, so a caret's row rises with its index.
+        let first = boundaries.partition_point(|index| row_of(*index, TextAffinity::Downstream) < row - px(0.5));
+        let after = boundaries.partition_point(|index| row_of(*index, TextAffinity::Upstream) <= row + px(0.5));
+        let last = boundaries.len() - 1;
+        let start = first.min(last);
+        Some(boundaries[start]..boundaries[after.saturating_sub(1).clamp(start, last)])
     }
 
     /// Move one visual line up or down, keeping the horizontal position.

@@ -1206,3 +1206,47 @@ fn undo_reports_the_change_and_revalidates() {
     assert!(!f.read(|field| field.is_invalid()), "valid again");
     assert!(matches!(f.events.borrow().last(), Some(ParleyTextFieldEvent::Change { value }) if value == "12"));
 }
+
+#[test]
+fn home_and_end_reach_the_logical_ends_of_mixed_direction_rows() {
+    // Left-to-right with a Hebrew run at the end, and right-to-left with a Latin
+    // run at the end: in both, a visual edge falls inside the text.
+    for line in ["abc אבג", "שלום abc"] {
+        let mut f = Fixture::area(&format!("{line}\nnext"), 3);
+        let top = format!("{}-up", f.secondary);
+        f.keys(&top);
+        f.keys("end");
+        assert_eq!(f.selection().1, line.len(), "{line}: End goes to the row's logical end");
+        f.keys("home");
+        assert_eq!(f.selection().1, 0, "{line}: Home goes to its logical start");
+        f.keys("end");
+        let delete_line = format!("{}-backspace", f.secondary);
+        f.keys(&delete_line);
+        assert_eq!(f.value(), "\nnext", "{line}: deleting to the row start removes the whole row");
+    }
+}
+
+#[test]
+fn home_and_end_stay_on_a_wrapped_mixed_direction_row() {
+    let text = "first row words then אבג דהו זחט עברית and more English words to wrap onto more rows";
+    let mut f = Fixture::area(text, 4);
+    let geometry = f.geometry();
+    let first = geometry.layout.caret_bounds(at(0)).unwrap();
+    let row = point(geometry.origin.x + px(40.0), geometry.origin.y + first.bottom() + first.size.height / 2.0);
+    f.visual.simulate_click(row, Modifiers::default());
+    f.draw();
+    let clicked = caret_row(&mut f);
+    f.keys("home");
+    let start = f.selection().1;
+    assert_eq!(caret_row(&mut f), clicked, "Home stays on the row");
+    f.keys("end");
+    let end = f.selection().1;
+    assert_eq!(caret_row(&mut f), clicked, "End stays on the row");
+    assert!(start > 0 && end > start && end < text.len(), "a middle row: {start}..{end}");
+    // Every character of the row lies between its logical ends.
+    let layout = f.geometry().layout;
+    for (index, _) in text.char_indices().filter(|(index, _)| (start..end).contains(index)) {
+        let caret = layout.caret_bounds(at(index)).unwrap();
+        assert!((caret.center().y - layout.caret_bounds(at(start)).unwrap().center().y).abs() < px(1.0));
+    }
+}
