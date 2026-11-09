@@ -3,9 +3,7 @@ use super::*;
 use xgpui_luma_color::color_slider::{GradientDelegate, GradientStop, refresh_color_slider, update_domain_delegate};
 
 use super::super::color::format_css_gradient;
-use super::super::paint::{
-    color_at_position, mesh_dimensions, rasterize_gradient_preview, rasterize_mesh_gradient_preview, sorted_stops,
-};
+use super::super::paint::{mesh_dimensions, rasterize_gradient_preview, rasterize_mesh_gradient_preview, sorted_stops};
 use super::mesh::{
     MESH_POINT_GAP, default_mesh_background, default_mesh_points, fit_aspect_ratio, mesh_point_index,
     mesh_preview_content_size, preview_gradient_cache_key, preview_mesh_cache_key,
@@ -252,49 +250,25 @@ impl GradientBuilder {
             .iter()
             .filter(|candidate| candidate.id != thumb_id)
             .map(|candidate| {
-                let color = self
-                    .stop_colors
-                    .get(&candidate.id)
-                    .copied()
-                    .or(candidate.preview)
-                    .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0));
+                let color = self.thumb_color(candidate);
                 (candidate.position, color)
             })
             .collect::<Vec<_>>();
 
         let color = if fallback_stops.is_empty() {
-            thumb.preview.unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0))
+            thumb.preview.map(srgb_source).unwrap_or(NEUTRAL_STOP)
         } else {
-            color_at_position(&sorted_stops(&fallback_stops), thumb.position)
+            source_at_position(&sorted_stops(&fallback_stops), thumb.position)
         };
         self.stop_colors.insert(thumb_id, color);
     }
 
     pub(super) fn rebuild_stops(&mut self, cx: &mut Context<Self>) {
         self.sync_stop_list(cx);
-        let slider = self.gradient_stops.read(cx);
-        let stops = sorted_stops(
-            &slider
-                .thumbs()
-                .iter()
-                .map(|thumb| {
-                    let color = self
-                        .stop_colors
-                        .get(&thumb.id)
-                        .copied()
-                        .or(thumb.preview)
-                        .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0));
-                    (thumb.position, color)
-                })
-                .collect::<Vec<_>>(),
-        );
-        let stops = stops
-            .into_iter()
-            .map(|(position, color)| GradientStop { position, color: xgpui_luma::color::gpui_bridge::from_hsla(color) })
-            .collect();
+        let stops = self.slider_gradient_stops(cx);
         let mut track_context = self.track_context.clone();
         track_context.theme_is_dark = matches!(self.look.mode(), ThemeMode::Dark);
-        let Ok(delegate) = GradientDelegate::new(stops, xgpui_luma::color::GamutMapping::CssLocalMinde) else {
+        let Ok(delegate) = GradientDelegate::new(stops, super::super::encode::OUTPUT_MAPPING) else {
             return;
         };
         update_domain_delegate(&self.domain_renderer, Arc::new(delegate), track_context);
@@ -303,37 +277,44 @@ impl GradientBuilder {
         cx.notify();
     }
 
-    pub(super) fn preview_stops(&self, cx: &Context<Self>) -> Vec<(f32, gpui::Hsla)> {
+    /// The gradient bar's track stops: the unclipped sources. The slider maps
+    /// them to sRGB only when painting its track.
+    pub(super) fn slider_gradient_stops(&self, cx: &Context<Self>) -> Vec<GradientStop> {
+        self.preview_stops(cx)
+            .into_iter()
+            .map(|(position, color)| GradientStop { position, color })
+            .collect()
+    }
+
+    /// A slider thumb's source color: the host's stored color, else the
+    /// slider's own (sRGB) preview, else neutral gray.
+    fn thumb_color(&self, thumb: &xgpui_luma::controls::slider::SliderThumbValue) -> ColorValue {
+        self.stop_colors.get(&thumb.id).copied().or(thumb.preview.map(srgb_source)).unwrap_or(NEUTRAL_STOP)
+    }
+
+    /// Source stops, sorted by position. Render paths encode them for their
+    /// output with [`encode_stops`].
+    pub(super) fn preview_stops(&self, cx: &Context<Self>) -> Vec<(f32, ColorValue)> {
         let slider = self.gradient_stops.read(cx);
         let stops = slider
             .thumbs()
             .iter()
             .map(|thumb| {
-                let color = self
-                    .stop_colors
-                    .get(&thumb.id)
-                    .copied()
-                    .or(thumb.preview)
-                    .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0));
+                let color = self.thumb_color(thumb);
                 (thumb.position, color)
             })
             .collect::<Vec<_>>();
         sorted_stops(&stops)
     }
 
-    pub(super) fn ordered_stop_rows(&self, cx: &Context<Self>) -> Vec<(ThumbId, f32, gpui::Hsla)> {
+    pub(super) fn ordered_stop_rows(&self, cx: &Context<Self>) -> Vec<(ThumbId, f32, ColorValue)> {
         let mut stops = self
             .gradient_stops
             .read(cx)
             .thumbs()
             .iter()
             .map(|thumb| {
-                let color = self
-                    .stop_colors
-                    .get(&thumb.id)
-                    .copied()
-                    .or(thumb.preview)
-                    .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0));
+                let color = self.thumb_color(thumb);
                 (thumb.id, thumb.position, color)
             })
             .collect::<Vec<_>>();
@@ -449,11 +430,17 @@ impl GradientBuilder {
 
         let key = match self.selected_tab {
             BuilderTab::Gradients => {
-                let stops = self.preview_stops(cx);
+                let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
                 preview_gradient_cache_key(self.gradient_type, preview_size, self.rotation_deg, &stops)
             }
+            // The key holds encoded colors, so a change of output re-renders.
             BuilderTab::Mesh | BuilderTab::Freeform => {
-                preview_mesh_cache_key(preview_size, &self.mesh_points, self.mesh_background)
+                let output = self.raster_output();
+                preview_mesh_cache_key(
+                    preview_size,
+                    &encode_points(&self.mesh_points, output),
+                    encode(self.mesh_background, output),
+                )
             }
         };
         if let Some((cached_key, _)) = &self.preview_image_cache
@@ -470,13 +457,13 @@ impl GradientBuilder {
             let started = Instant::now();
             let image = match self.selected_tab {
                 BuilderTab::Gradients => {
-                    let stops = self.preview_stops(cx);
+                    let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
                     rasterize_gradient_preview(self.gradient_type, preview_size, &stops, self.rotation_deg)
                 }
                 BuilderTab::Freeform => super::super::paint::rasterize_freeform_preview(
                     preview_size,
-                    &self.mesh_points,
-                    self.mesh_background,
+                    &encode_points(&self.mesh_points, self.raster_output()),
+                    encode(self.mesh_background, self.raster_output()),
                     self.spread_percent,
                     self.freeform_hsl,
                     &super::super::paint::FieldShape {
@@ -489,8 +476,8 @@ impl GradientBuilder {
                 ),
                 BuilderTab::Mesh => rasterize_mesh_gradient_preview(
                     preview_size,
-                    &self.mesh_points,
-                    self.mesh_background,
+                    &encode_points(&self.mesh_points, OutputSpace::Srgb),
+                    encode(self.mesh_background, OutputSpace::Srgb),
                     self.mesh_controls_visible,
                 ),
             };
@@ -503,7 +490,7 @@ impl GradientBuilder {
         } else {
             let gradient_type = self.gradient_type;
             let rotation_deg = self.rotation_deg;
-            let stops = self.preview_stops(cx);
+            let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
             self.render_task = Some(cx.spawn(async move |this, cx| {
                 let started = Instant::now();
                 let image = cx
@@ -525,20 +512,25 @@ impl GradientBuilder {
 
     pub(super) fn export_png(&mut self, cx: &mut Context<Self>) {
         // Export the artwork, excluding editor handles and mesh guide lines.
+        // PNGs are written untagged, i.e. sRGB: wide colors are gamut-mapped.
+        let srgb = OutputSpace::Srgb;
         let image = match self.selected_tab {
             BuilderTab::Gradients => rasterize_gradient_preview(
                 self.gradient_type,
                 self.preview_size,
-                &self.preview_stops(cx),
+                &encode_stops(&self.preview_stops(cx), srgb),
                 self.rotation_deg,
             ),
-            BuilderTab::Mesh => {
-                rasterize_mesh_gradient_preview(self.preview_size, &self.mesh_points, self.mesh_background, false)
-            }
+            BuilderTab::Mesh => rasterize_mesh_gradient_preview(
+                self.preview_size,
+                &encode_points(&self.mesh_points, srgb),
+                encode(self.mesh_background, srgb),
+                false,
+            ),
             BuilderTab::Freeform => super::super::paint::rasterize_freeform_preview(
                 self.preview_size,
-                &self.mesh_points,
-                self.mesh_background,
+                &encode_points(&self.mesh_points, srgb),
+                encode(self.mesh_background, srgb),
                 self.spread_percent,
                 self.freeform_hsl,
                 &super::super::paint::FieldShape {
@@ -580,6 +572,27 @@ impl GradientBuilder {
             });
         })
         .detach();
+    }
+
+    /// Output of the CPU raster preview: Display P3 only when the Freeform P3
+    /// path re-presents that image as P3; otherwise the sRGB GPUI image.
+    pub(super) fn raster_output(&self) -> OutputSpace {
+        OutputSpace::wide(self.freeform_p3_active())
+    }
+
+    pub(super) fn freeform_p3_active(&self) -> bool {
+        self.selected_tab == BuilderTab::Freeform
+            && self.freeform_p3
+            && cfg!(target_os = "macos")
+            && self.wide_output_available
+    }
+
+    pub(super) fn mesh_p3_active(&self) -> bool {
+        self.selected_tab == BuilderTab::Mesh && self.mesh_p3 && cfg!(target_os = "macos") && self.wide_output_available
+    }
+
+    pub(super) fn gradient_p3_active(&self) -> bool {
+        self.selected_tab == BuilderTab::Gradients && self.preview_p3 && self.wide_output_available
     }
 
     pub(super) fn cached_preview_image(&self) -> Option<Arc<RenderImage>> {
@@ -709,4 +722,26 @@ impl GradientBuilder {
 
         (u, v)
     }
+}
+
+/// Fallback for a stop with no stored or slider color.
+const NEUTRAL_STOP: ColorValue = ColorValue::Srgb(palette::Srgba::new(0.5, 0.5, 0.5, 1.0));
+
+/// Source color at `position` along sorted stops, interpolated without gamut
+/// mapping (see [`crate::color_stop_list::mix_colors`]).
+fn source_at_position(stops: &[(f32, ColorValue)], position: f32) -> ColorValue {
+    let Some(&(first_position, first)) = stops.first() else {
+        return NEUTRAL_STOP;
+    };
+    if position <= first_position {
+        return first;
+    }
+    for pair in stops.windows(2) {
+        let ((left_position, left), (right_position, right)) = (pair[0], pair[1]);
+        if position <= right_position {
+            let t = (position - left_position) / (right_position - left_position).max(f32::EPSILON);
+            return crate::color_stop_list::mix_colors(left, right, t.clamp(0.0, 1.0));
+        }
+    }
+    stops[stops.len() - 1].1
 }

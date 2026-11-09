@@ -1,6 +1,7 @@
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use xgpui_luma::controls::tooltip::Tooltip;
 use std::collections::HashMap;
+use xgpui_luma::color::ColorValue;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -35,6 +36,7 @@ mod stops;
 mod mesh_stops;
 
 use super::paint::{GradientType, MeshPoint, PreviewRenderer};
+use super::encode::{OutputSpace, encode, encode_points, encode_stops, srgb_source};
 use mesh::{
     BuilderTab, MeshAspectRatioPreset, MeshColorTarget, MeshGridPreset, PreviewImageCacheKey, builder_tab_items,
     default_mesh_background, default_mesh_points, mesh_aspect_ratio_items, mesh_grid_items, renderer_items, type_items,
@@ -45,7 +47,7 @@ pub struct GradientBuilder {
     section_accordions: Vec<Vec<Entity<xgpui_luma::controls::accordion::AccordionControl>>>,
     selected_tab: BuilderTab,
     gradient_stops: Entity<SliderControl>,
-    stop_colors: HashMap<ThumbId, gpui::Hsla>,
+    stop_colors: HashMap<ThumbId, ColorValue>,
     selected_stop: Option<ThumbId>,
     domain_renderer: Arc<ColorSliderDomainRenderer>,
     track_context: ColorSliderTrackContext,
@@ -106,6 +108,8 @@ pub struct GradientBuilder {
     preview_renderer: PreviewRenderer,
     linear_shader_cache: linear_shader::Cache,
     preview_p3: bool,
+    /// The window can present Display P3 (refreshed every render).
+    wide_output_available: bool,
     p3_switch: xgpui_luma::controls::switch::Switch,
     p3_cache: p3::Cache,
     mesh_palette: usize,
@@ -125,11 +129,11 @@ pub struct GradientBuilder {
     mesh_point_ids: Vec<u64>,
     inactive_mesh_point_ids: Vec<u64>,
     next_point_id: u64,
-    inactive_mesh_background: gpui::Hsla,
+    inactive_mesh_background: ColorValue,
     mesh_state_is_freeform: bool,
     random_seed: u64,
     freeform_buttons: Vec<Entity<Button>>,
-    mesh_background: gpui::Hsla,
+    mesh_background: ColorValue,
     mesh_background_stop: Entity<ColorStop>,
     selected_mesh_point: Option<usize>,
     mesh_color_target: MeshColorTarget,
@@ -206,7 +210,7 @@ impl GradientBuilder {
 
         let mut stop_colors = HashMap::new();
         for thumb in gradient_stops.read(cx).thumbs() {
-            stop_colors.insert(thumb.id, thumb.preview.unwrap_or(start));
+            stop_colors.insert(thumb.id, srgb_source(thumb.preview.unwrap_or(start)));
         }
         let selected_stop = None;
         let stop_list = Self::spawn_stop_list(look.clone(), cx);
@@ -468,6 +472,7 @@ impl GradientBuilder {
             preview_renderer: PreviewRenderer::Quads,
             linear_shader_cache: linear_shader::Cache::default(),
             preview_p3: false,
+            wide_output_available: false,
             p3_switch,
             p3_cache: p3::Cache::default(),
             mesh_palette: mesh::default_mesh_palette(mesh_grid_preset),
@@ -942,6 +947,81 @@ mod tests {
         });
     }
 
+    #[test]
+    fn p3_colors_stay_unclipped_from_controls_to_shader_inputs() {
+        use crate::color_stop_list::ColorStopListEvent;
+        use super::super::encode::{OutputSpace, encode_points, encode_rgba};
+        use xgpui_luma::color::{ColorValue, Gamut};
+
+        let p3_red = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
+        assert!(!p3_red.is_in_gamut(Gamut::Srgb).unwrap());
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(Look::built_in().into(), cx));
+        cx.run_until_parked();
+
+        // Gradients: list → host → gradient bar → P3 shader input.
+        view.update(cx, |builder, cx| {
+            let key = list_rows(builder, cx)[1].0;
+            builder.handle_stop_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert!(builder.stop_colors.values().any(|color| *color == p3_red));
+            assert!(builder.stop_list.read(cx).stops().iter().any(|stop| stop.color == p3_red));
+            assert!(builder.slider_gradient_stops(cx).iter().any(|stop| stop.color == p3_red));
+            let stops = builder.preview_stops(cx);
+            let (_, stop) = stops.iter().find(|(_, color)| *color == p3_red).copied().expect("stop");
+            assert_eq!(encode_rgba(stop, OutputSpace::DisplayP3), [1.0, 0.0, 0.0, 1.0]);
+            // sRGB outputs see the gamut-mapped fallback instead.
+            assert!(encode_rgba(stop, OutputSpace::Srgb)[1] > 0.0);
+        });
+
+        // Mesh: point list → host point → mesh shader grid.
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx);
+            let key = builder.mesh_point_ids[0];
+            builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert_eq!(builder.mesh_points[0].color, p3_red);
+            let grid =
+                super::super::paint::shader_mesh_grid(&encode_points(&builder.mesh_points, OutputSpace::DisplayP3))
+                    .unwrap();
+            let corner =
+                grid.points().iter().find(|p| p.position == [builder.mesh_points[0].u, builder.mesh_points[0].v]);
+            let [r, g, b] = corner.expect("grid point").color;
+            assert!((r - 1.0).abs() < 1e-4 && g.abs() < 1e-4 && b.abs() < 1e-4, "{r} {g} {b}");
+        });
+
+        // Freeform: point list → host point → P3 color field.
+        view.update(cx, |builder, cx| {
+            builder.handle_top_tabs_event(
+                &TabsEvent::Activate { tab_id: "freeform".into(), label: "freeform".into() },
+                cx,
+            );
+            let key = builder.mesh_point_ids[0];
+            builder.handle_point_list_event(&ColorStopListEvent::ColorChanged { key, color: p3_red }, cx);
+            assert_eq!(builder.mesh_points[0].color, p3_red);
+            let field = super::super::paint::build_color_field(
+                &encode_points(&builder.mesh_points, OutputSpace::DisplayP3),
+                super::super::encode::encode(builder.mesh_background, OutputSpace::DisplayP3),
+                builder.spread_percent,
+                builder.freeform_hsl,
+                &super::super::paint::FieldShape {
+                    mixing: builder.freeform_mixing,
+                    background_weight: builder.field_background_weight,
+                    point_transforms: &builder.point_transforms,
+                    point_spreads: &builder.point_spreads,
+                    softness_percent: builder.softness_percent,
+                },
+            );
+            let [r, g, b, a] = field.points[0].color;
+            assert!((r - 1.0).abs() < 1e-4 && g.abs() < 1e-4 && b.abs() < 1e-4 && a == 1.0, "{:?}", field.points[0]);
+            // Without a P3 window the CPU raster stays sRGB.
+            builder.freeform_p3 = true;
+            builder.wide_output_available = false;
+            assert_eq!(builder.raster_output(), OutputSpace::Srgb);
+            builder.wide_output_available = true;
+            assert_eq!(builder.raster_output(), OutputSpace::wide(cfg!(target_os = "macos")));
+        });
+    }
+
     fn list_rows(builder: &GradientBuilder, cx: &App) -> Vec<(u64, f32)> {
         builder
             .stop_list
@@ -1047,7 +1127,7 @@ mod tests {
         stop.update(cx, |_, cx| cx.emit(ColorStopEvent::ColorChanged(red)));
         cx.run_until_parked();
         let mesh_red = cx.update(|_, cx| view.read(cx).mesh_background);
-        assert!(mesh_red.s > 0.95 && (mesh_red.l - 0.5).abs() < 0.05, "{mesh_red:?}");
+        assert_eq!(mesh_red, red, "stored exactly, not as a mapped preview");
 
         // Freeform keeps its own background; the control follows the swap both ways.
         view.update(cx, |builder, cx| {
@@ -1057,8 +1137,9 @@ mod tests {
         cx.run_until_parked();
         cx.update(|_, cx| {
             let builder = view.read(cx);
+            assert_eq!(stop.read(cx).color(), builder.mesh_background);
             let shown = gpui_bridge::to_hsla(stop.read(cx).color(), GamutMapping::CssLocalMinde).unwrap();
-            assert!((shown.l - builder.mesh_background.l).abs() < 0.01 && shown.s < 0.9);
+            assert!(shown.s < 0.9);
         });
         view.update(cx, |builder, cx| {
             builder.handle_top_tabs_event(&TabsEvent::Activate { tab_id: "mesh".into(), label: "mesh".into() }, cx)
@@ -1089,8 +1170,7 @@ mod tests {
             let red = ColorValue::srgb(1.0, 0.0, 0.0, 1.0);
             builder.handle_stop_list_event(&ColorStopListEvent::ColorChanged { key: keys[1], color: red }, cx);
             let id = thumb(builder, cx, keys[1]).expect("thumb");
-            let stored = builder.stop_colors[&id];
-            assert!(stored.l > 0.45 && stored.l < 0.55 && stored.s > 0.95, "{stored:?}");
+            assert_eq!(builder.stop_colors[&id], red);
 
             // Distribute: the list's positions become the bar's, slot by slot.
             builder.stop_list.update(cx, |list, cx| {

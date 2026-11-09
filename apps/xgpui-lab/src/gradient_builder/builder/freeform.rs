@@ -73,8 +73,13 @@ impl GradientBuilder {
         (self.random_seed >> 40) as f32 / 16_777_216.0
     }
 
-    fn random_color(&mut self) -> gpui::Hsla {
-        gpui::hsla(self.random_unit(), 0.86 + self.random_unit() * 0.14, 0.49 + self.random_unit() * 0.09, 1.0)
+    fn random_color(&mut self) -> ColorValue {
+        srgb_source(gpui::hsla(
+            self.random_unit(),
+            0.86 + self.random_unit() * 0.14,
+            0.49 + self.random_unit() * 0.09,
+            1.0,
+        ))
     }
 
     pub(super) fn edit_freeform(&mut self, action: usize, cx: &mut Context<Self>) {

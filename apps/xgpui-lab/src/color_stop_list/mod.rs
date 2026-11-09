@@ -23,7 +23,7 @@ use gpui::{
     Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
-use xgpui_luma::color::ColorValue;
+use xgpui_luma::color::{ColorValue, Gamut};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxDragDrop, ListBoxDropProposal, ListBoxEvent, ListBoxFlow, ListBoxInput,
@@ -39,7 +39,7 @@ use crate::color_stop::{
 };
 use crate::theme::Look;
 
-pub(crate) use model::{CountLimits, StopData, StopKey};
+pub(crate) use model::{CountLimits, StopData, StopKey, mix_colors};
 use model::StopModel;
 pub(crate) use template::{ColorStopListRenderModel, ColorStopListTemplate, default_color_stop_list_template};
 
@@ -88,6 +88,7 @@ pub(crate) struct ColorStopListBuilder {
     removable: bool,
     reorderable: bool,
     actions: HeaderActions,
+    edit_gamut: Gamut,
     template: Option<Arc<dyn ColorStopListTemplate>>,
     stop_template: Option<Arc<dyn ColorStopTemplate>>,
 }
@@ -103,9 +104,16 @@ impl ColorStopListBuilder {
             removable: true,
             reorderable: true,
             actions: HeaderActions::NONE,
+            edit_gamut: Gamut::Srgb,
             template: None,
             stop_template: None,
         }
+    }
+
+    /// Picker edit gamut for every stop; see [`ColorStopBuilder::edit_gamut`].
+    pub fn edit_gamut(mut self, gamut: Gamut) -> Self {
+        self.edit_gamut = gamut;
+        self
     }
 
     pub fn look(mut self, look: Arc<Look>) -> Self {
@@ -192,6 +200,7 @@ pub(crate) struct ColorStopList {
     /// Host content under one row's picker (see [`ColorStopList::set_editor_extra`]).
     editor_extra: Option<(StopKey, AnyView)>,
     removable: bool,
+    edit_gamut: Gamut,
     list: ListBoxControl<Self, StopData, StopKey>,
     header: HeaderButtons,
     template: Arc<dyn ColorStopListTemplate>,
@@ -281,6 +290,7 @@ impl ColorStopList {
             details: HashMap::new(),
             editor_extra: None,
             removable: builder.removable,
+            edit_gamut: builder.edit_gamut,
             list,
             header,
             template: builder.template.unwrap_or_else(default_color_stop_list_template),
@@ -599,6 +609,7 @@ impl ColorStopList {
         let mut builder = ColorStopBuilder::new(format!("{}-stop-{key}", self.id), stop.color)
             .look(self.look.clone())
             .removable(self.removable)
+            .edit_gamut(self.edit_gamut)
             .template(self.stop_template.clone());
         if let Some(position) = stop.position {
             builder = builder.position(position);

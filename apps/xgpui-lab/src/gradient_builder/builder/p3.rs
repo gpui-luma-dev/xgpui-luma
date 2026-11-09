@@ -1,5 +1,8 @@
 //! App-owned Display P3 preview using the public typed shader API.
+//! Stops arrive as source colors and are encoded to bounded Display P3 here;
+//! sRGB stops keep their meaning (they are converted, not relabeled).
 use super::*;
+use super::super::encode::encode_rgba;
 use gpui::{AnyElement, IntoElement, Window, canvas, div, prelude::*};
 use xgpui_shader::instanced::{InstanceField, ShaderInstance, ShaderProgram, WindowShaderExt};
 
@@ -21,7 +24,7 @@ pub(super) fn available(window: &Window) -> bool {
         && status.display_wide_gamut() == Some(true)
 }
 
-fn source(kind: GradientType, stops: &[(f32, gpui::Hsla)]) -> String {
+fn source(kind: GradientType, stops: &[(f32, ColorValue)]) -> String {
     let position = match kind {
         GradientType::Linear => {
             "let t = clamp(0.5 + dot(input.uv - vec2<f32>(0.5), vec2<f32>(sin(p.angle), -cos(p.angle))), 0.0, 1.0);"
@@ -31,9 +34,10 @@ fn source(kind: GradientType, stops: &[(f32, gpui::Hsla)]) -> String {
             "let d = (input.uv - vec2<f32>(0.5)) * input.size; let turn = (atan2(d.x, -d.y) - p.angle) / 6.28318530718; let t = fract(turn + 2.0);"
         }
     };
-    let color = |c: gpui::Hsla| {
-        let rgb = c.to_rgb();
-        format!("vec4<f32>({:?}, {:?}, {:?}, {:?})", rgb.r * c.a, rgb.g * c.a, rgb.b * c.a, c.a)
+    // Premultiplied encoded P3; the shader decodes after interpolation.
+    let color = |c: ColorValue| {
+        let [r, g, b, a] = encode_rgba(c, OutputSpace::DisplayP3);
+        format!("vec4<f32>({:?}, {:?}, {:?}, {:?})", r * a, g * a, b * a, a)
     };
     let sorted = super::super::paint::sorted_stops(stops);
     let mut body = format!("var c = {};", color(sorted[0].1));
@@ -56,7 +60,7 @@ impl Cache {
     pub(super) fn element(
         &mut self,
         kind: GradientType,
-        stops: &[(f32, gpui::Hsla)],
+        stops: &[(f32, ColorValue)],
         angle: f32,
         neutral: bool,
     ) -> AnyElement {
@@ -97,9 +101,24 @@ mod tests {
     use super::*;
     #[test]
     fn p3_programs_compile_for_all_gradient_types_and_eight_stops() {
-        let stops: Vec<_> = (0..8).map(|i| (i as f32 / 7., gpui::hsla(i as f32 / 8., 1., 0.5, 0.7))).collect();
+        let stops: Vec<_> =
+            (0..8).map(|i| (i as f32 / 7., srgb_source(gpui::hsla(i as f32 / 8., 1., 0.5, 0.7)))).collect();
         for kind in [GradientType::Linear, GradientType::Radial, GradientType::Conic] {
             ShaderProgram::<Parameters>::new_linear_p3(&source(kind, &stops)).unwrap();
         }
+    }
+
+    #[test]
+    fn p3_stops_reach_the_shader_unclipped() {
+        let stops =
+            [(0.0, ColorValue::display_p3(1.0, 0.0, 0.0, 1.0)), (1.0, ColorValue::display_p3(0.0, 1.0, 0.0, 0.5))];
+        let wgsl = source(GradientType::Linear, &stops);
+        // Exact P3 primaries (premultiplied), not their sRGB gamut-mapped previews.
+        assert!(wgsl.contains("vec4<f32>(1.0, 0.0, 0.0, 1.0)"), "{wgsl}");
+        assert!(wgsl.contains("vec4<f32>(0.0, 0.5, 0.0, 0.5)"), "{wgsl}");
+        ShaderProgram::<Parameters>::new_linear_p3(&wgsl).unwrap();
+        // sRGB red is converted into P3 coordinates rather than relabeled as P3 red.
+        let srgb = source(GradientType::Linear, &[(0.0, ColorValue::srgb(1.0, 0.0, 0.0, 1.0)); 2]);
+        assert!(!srgb.contains("vec4<f32>(1.0, 0.0, 0.0, 1.0)"), "{srgb}");
     }
 }

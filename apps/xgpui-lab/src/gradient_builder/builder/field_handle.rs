@@ -121,7 +121,7 @@ mod tests {
     use super::*;
     #[test]
     fn endpoint_drag_roundtrips_rotation_and_stretch() {
-        let p = MeshPoint { row: 0, col: 0, u: 0.4, v: 0.5, color: gpui::white() };
+        let p = MeshPoint { row: 0, col: 0, u: 0.4, v: 0.5, color: ColorValue::srgb(1.0, 1.0, 1.0, 1.0) };
         for angle in [0., 45., 90., 180., 270., 359.] {
             for stretch in [1. / 9., 0.25, 0.5, 1., 2., 9.] {
                 let end = endpoint(p, [angle, stretch]);

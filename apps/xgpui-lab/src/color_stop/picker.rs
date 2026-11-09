@@ -3,6 +3,12 @@
 //! Composed from the same `xgpui_luma_color` primitives as the Compositions →
 //! Color Picker example. Edits are emitted as [`InlineColorPickerEvent`];
 //! [`InlineColorPicker::set_color`] syncs from the host without emitting.
+//!
+//! The SV/hue plane edits HSV over the encoded RGB of an explicit edit gamut
+//! (sRGB or Display P3). The picker keeps the host's source color: syncing,
+//! opening or changing alpha never re-authors it; only an SV/hue edit authors
+//! a new color, tagged with the edit gamut. The picker's own field and sliders
+//! are ordinary GPUI (sRGB) previews of that plane.
 
 use std::sync::Arc;
 
@@ -10,7 +16,7 @@ use gpui::{
     App, AppContext, Context, Entity, EventEmitter, IntoElement, Render, SharedString, Subscription, Window, div,
     prelude::*, px,
 };
-use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::{ColorValue, Gamut, GamutMapping};
 use xgpui_luma::controls::slider::SliderControl;
 use xgpui_luma::theme::ControlSize;
 use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
@@ -30,6 +36,9 @@ pub(crate) enum InlineColorPickerEvent {
 }
 
 pub(crate) struct InlineColorPicker {
+    gamut: Gamut,
+    /// The color as the host gave it, or as last authored by an SV/hue edit.
+    source: ColorValue,
     hsv: Hsv,
     sync: ColorCompositionSync,
     field: Entity<ColorFieldState>,
@@ -42,14 +51,20 @@ pub(crate) struct InlineColorPicker {
 impl EventEmitter<InlineColorPickerEvent> for InlineColorPicker {}
 
 impl InlineColorPicker {
-    pub fn spawn(id: impl Into<SharedString>, look: &Look, color: ColorValue, cx: &mut App) -> Entity<Self> {
+    pub fn spawn(
+        id: impl Into<SharedString>,
+        look: &Look,
+        color: ColorValue,
+        gamut: Gamut,
+        cx: &mut App,
+    ) -> Entity<Self> {
         let id = id.into();
         let radius = px(look.metrics().radius.sm);
-        cx.new(|cx| Self::new(id, radius, color, cx))
+        cx.new(|cx| Self::new(id, radius, color, gamut, cx))
     }
 
-    fn new(id: SharedString, radius: gpui::Pixels, color: ColorValue, cx: &mut Context<Self>) -> Self {
-        let hsv = hsv_from(color);
+    fn new(id: SharedString, radius: gpui::Pixels, color: ColorValue, gamut: Gamut, cx: &mut Context<Self>) -> Self {
+        let hsv = hsv_from(color, gamut);
         let field = cx.new(|_| {
             ColorFieldState::saturation_value(format!("{id}-field"), hsv, FIELD_THUMB).rounded(radius).vector()
         });
@@ -74,6 +89,7 @@ impl InlineColorPicker {
                     return;
                 };
                 this.hsv = Hsv { a: this.hsv.a, ..*hsv };
+                this.source = color_from(this.hsv, this.gamut);
                 this.sync_controls(false, cx);
                 this.emit_change(cx);
             }),
@@ -85,6 +101,7 @@ impl InlineColorPicker {
                     return;
                 };
                 this.hsv.h = hue;
+                this.source = color_from(this.hsv, this.gamut);
                 this.sync_controls(true, cx);
                 this.emit_change(cx);
             }),
@@ -96,12 +113,18 @@ impl InlineColorPicker {
                     return;
                 };
                 this.hsv.a = alpha;
+                // Replace alpha only; the source's space and channels are kept.
+                if let Ok(source) = this.source.with_alpha(alpha) {
+                    this.source = source;
+                }
                 this.sync_controls(true, cx);
                 this.emit_change(cx);
             }),
         ];
 
         let this = Self {
+            gamut,
+            source: color,
             hsv,
             sync: ColorCompositionSync::new(),
             field,
@@ -115,12 +138,16 @@ impl InlineColorPicker {
     }
 
     pub fn color(&self) -> ColorValue {
-        gpui_bridge::from_hsla(self.hsv.to_hsla_ext())
+        self.source
     }
 
-    /// Host sync; never emits.
+    /// Host sync; never emits. The source is kept as given.
     pub fn set_color(&mut self, color: ColorValue, cx: &mut Context<Self>) {
-        let hsv = hsv_from(color);
+        if color == self.source {
+            return;
+        }
+        self.source = color;
+        let hsv = hsv_from(color, self.gamut);
         if hsv == self.hsv {
             return;
         }
@@ -167,12 +194,31 @@ impl Render for InlineColorPicker {
     }
 }
 
-/// Wide-gamut sources are previewed through sRGB; the HSV edit model is sRGB.
-fn hsv_from(color: ColorValue) -> Hsv {
-    gpui_bridge::to_rgba(color, GamutMapping::CssLocalMinde).map(Hsv::from_rgba).unwrap_or(Hsv {
+/// HSV of `color`'s encoded RGB in the edit gamut. A source outside that gamut
+/// is placed at its CSS local-MINDE fallback; the source itself is not changed.
+pub(crate) fn hsv_from(color: ColorValue, gamut: Gamut) -> Hsv {
+    let encoded = match gamut {
+        Gamut::Srgb => color.to_srgba_fallback(GamutMapping::CssLocalMinde).map(|c| (c.red, c.green, c.blue, c.alpha)),
+        Gamut::DisplayP3 => {
+            color.to_display_p3_fallback(GamutMapping::CssLocalMinde).map(|c| (c.red, c.green, c.blue, c.alpha))
+        }
+    };
+    encoded.map(|(r, g, b, a)| Hsv::from_rgba(gpui::Rgba { r, g, b, a })).unwrap_or(Hsv {
         h: 0.0,
         s: 0.0,
         v: 0.0,
         a: 1.0,
     })
+}
+
+/// Author a source color from an HSV position over the edit gamut's encoded RGB.
+/// HSV↔RGB is independent of primaries, so the same math serves both gamuts;
+/// only the resulting tag differs.
+pub(crate) fn color_from(hsv: Hsv, gamut: Gamut) -> ColorValue {
+    use palette::convert::FromColorUnclamped;
+    let rgb = palette::Srgba::from_color_unclamped(palette::Hsva::new(hsv.h, hsv.s, hsv.v, hsv.a));
+    match gamut {
+        Gamut::Srgb => ColorValue::Srgb(rgb),
+        Gamut::DisplayP3 => ColorValue::display_p3(rgb.red, rgb.green, rgb.blue, rgb.alpha),
+    }
 }

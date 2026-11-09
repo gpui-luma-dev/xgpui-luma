@@ -9,11 +9,14 @@
 //! writers (canvas drags, palette animation, Freeform edits), so the list is
 //! reconciled once per frame from `GradientBuilder::render` via host setters
 //! that notify only on change. User edits arrive as list events.
+//!
+//! Colors stay source [`ColorValue`]s; pickers edit over Display P3, and each
+//! renderer encodes for its own output (see `gradient_builder::encode`).
 
 use super::*;
 
 use gpui::{AnyView, App, IntoElement, Render, SharedString, Window, div, prelude::*};
-use xgpui_luma::color::{GamutMapping, gpui_bridge};
+use xgpui_luma::color::Gamut;
 
 use super::super::color::format_percent;
 use super::view::compact_slider_row;
@@ -57,18 +60,17 @@ impl Render for PointEditorExtras {
 }
 
 impl GradientBuilder {
-    pub(super) fn spawn_mesh_background_stop(look: Arc<Look>, color: gpui::Hsla, cx: &mut App) -> Entity<ColorStop> {
-        ColorStopBuilder::new("color-viz-mesh-background", gpui_bridge::from_hsla(color))
+    pub(super) fn spawn_mesh_background_stop(look: Arc<Look>, color: ColorValue, cx: &mut App) -> Entity<ColorStop> {
+        ColorStopBuilder::new("color-viz-mesh-background", color)
             .look(look)
+            .edit_gamut(Gamut::DisplayP3)
             .spawn(cx)
     }
 
     pub(super) fn wire_mesh_background_stop(&mut self, cx: &mut Context<Self>) {
         self._subscriptions
             .push(cx.subscribe(&self.mesh_background_stop, |this, _, event: &ColorStopEvent, cx| {
-                if let ColorStopEvent::ColorChanged(color) = *event
-                    && let Ok(color) = gpui_bridge::to_hsla(color, GamutMapping::CssLocalMinde)
-                {
+                if let ColorStopEvent::ColorChanged(color) = *event {
                     this.mesh_background = color;
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                     cx.notify();
@@ -85,6 +87,7 @@ impl GradientBuilder {
                 .removable(removable)
                 .reorderable(false)
                 .header_actions(HeaderActions::NONE)
+                .edit_gamut(Gamut::DisplayP3)
         };
         [list("color-viz-mesh-points", false).spawn(cx), list("color-viz-freeform-points", true).spawn(cx)]
     }
@@ -137,7 +140,7 @@ impl GradientBuilder {
             .mesh_point_ids
             .iter()
             .zip(&self.mesh_points)
-            .map(|(key, point)| StopData { key: *key, color: gpui_bridge::from_hsla(point.color), position: None })
+            .map(|(key, point)| StopData { key: *key, color: point.color, position: None })
             .collect();
         let details: Vec<(StopKey, SharedString)> = self
             .mesh_point_ids
@@ -173,8 +176,7 @@ impl GradientBuilder {
                 cx.notify();
             }
             ColorStopListEvent::ColorChanged { key, color } => {
-                if let (Some(index), Ok(color)) =
-                    (self.point_index(key), gpui_bridge::to_hsla(color, GamutMapping::CssLocalMinde))
+                if let Some(index) = self.point_index(key)
                     && let Some(point) = self.mesh_points.get_mut(index)
                 {
                     point.color = color;
@@ -218,7 +220,7 @@ impl GradientBuilder {
 
     /// Push `mesh_background` into its control after a host-side change (tab swap, reset).
     pub(super) fn sync_mesh_background_stop(&mut self, cx: &mut Context<Self>) {
-        let color = gpui_bridge::from_hsla(self.mesh_background);
+        let color = self.mesh_background;
         self.mesh_background_stop.update(cx, |stop, cx| stop.set_color(color, cx));
     }
 }

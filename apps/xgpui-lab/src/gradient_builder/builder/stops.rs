@@ -4,11 +4,15 @@
 //! source of truth. The list is keyed by `ThumbId::as_u64`, so rows, selection
 //! and the inline editor survive edits made on the bar. List edits are applied
 //! to the bar, and `rebuild_stops` pushes the canonical result back.
+//!
+//! Colors are source [`ColorValue`]s end to end (list ↔ `stop_colors` ↔
+//! slider track ↔ renderers); nothing here maps them to a gamut. The pickers
+//! edit over Display P3, so stops can be wider than sRGB.
 
 use super::*;
 
 use gpui::{App, Focusable, Window};
-use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::Gamut;
 
 use crate::color_stop_list::{ColorStopListBuilder, ColorStopListEvent, HeaderActions, StopData, StopKey};
 
@@ -19,6 +23,7 @@ impl GradientBuilder {
             .positioned_stops(std::iter::empty())
             .count_limits(STOP_LIMITS.0, STOP_LIMITS.1)
             .header_actions(HeaderActions::ALL)
+            .edit_gamut(Gamut::DisplayP3)
             .spawn(cx)
     }
 
@@ -33,11 +38,7 @@ impl GradientBuilder {
         let stops: Vec<StopData> = self
             .ordered_stop_rows(cx)
             .into_iter()
-            .map(|(thumb_id, position, color)| StopData {
-                key: thumb_id.as_u64(),
-                color: gpui_bridge::from_hsla(color),
-                position: Some(position),
-            })
+            .map(|(thumb_id, position, color)| StopData { key: thumb_id.as_u64(), color, position: Some(position) })
             .collect();
         let selected = self.selected_stop.map(ThumbId::as_u64);
         self.stop_list.update(cx, |list, cx| {
@@ -83,7 +84,7 @@ impl GradientBuilder {
                 }
             },
             ColorStopListEvent::ColorChanged { key, color } => {
-                if let (Some(thumb_id), Some(color)) = (self.thumb_for_key(key, cx), to_hsla(color)) {
+                if let Some(thumb_id) = self.thumb_for_key(key, cx) {
                     self.stop_colors.insert(thumb_id, color);
                     self.rebuild_stops(cx);
                 }
@@ -111,9 +112,7 @@ impl GradientBuilder {
         let mut inserted = None;
         self.gradient_stops.update(cx, |slider, cx| inserted = slider.insert_thumb_at(position, cx));
         if let Some(thumb_id) = inserted {
-            if let Some(color) = to_hsla(color) {
-                self.stop_colors.insert(thumb_id, color);
-            }
+            self.stop_colors.insert(thumb_id, color);
             self.selected_stop = Some(thumb_id);
         }
         self.rebuild_stops(cx);
@@ -131,9 +130,7 @@ impl GradientBuilder {
             return;
         }
         for (thumb_id, stop) in thumbs.iter().zip(&targets) {
-            if let Some(color) = to_hsla(stop.color) {
-                self.stop_colors.insert(*thumb_id, color);
-            }
+            self.stop_colors.insert(*thumb_id, stop.color);
         }
         // Moving in order can still clamp against a neighbour that has not moved
         // yet; a few passes settle every thumb because the order is preserved.
@@ -157,7 +154,3 @@ impl GradientBuilder {
 
 /// Matches the gradient bar's thumb policy.
 pub(super) const STOP_LIMITS: (usize, usize) = (2, 8);
-
-fn to_hsla(color: ColorValue) -> Option<gpui::Hsla> {
-    gpui_bridge::to_hsla(color, GamutMapping::CssLocalMinde).ok()
-}

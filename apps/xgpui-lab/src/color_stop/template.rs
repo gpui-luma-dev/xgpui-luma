@@ -42,6 +42,8 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub color: ColorValue,
     /// CSS `hsl()` text, e.g. `hsl(312 48% 44%)`; see [`super::stop_label`].
     pub label: SharedString,
+    /// Out-of-sRGB indicator source; see [`super::StopGamut`].
+    pub gamut: super::StopGamut,
     pub alpha: f32,
     /// Normalized `0.0..=1.0`; `None` when the stop has no position.
     pub position: Option<f32>,
@@ -203,6 +205,18 @@ pub(crate) fn label(model: &ColorStopRenderModel<'_>) -> impl IntoElement {
         .typography_style(model.look.typography_scale(TextSize::Sm))
         .child(div().text_color(chrome.body_text).child(model.label.clone()))
         .child(div().text_color(chrome.muted_text).child(format!("{}%", (model.alpha * 100.0).round() as i32)))
+        .children(gamut_badge(model))
+}
+
+/// Out-of-sRGB indicator: `P3` for Display P3 colors outside sRGB, `> P3`
+/// beyond that. sRGB-only renderers show such colors gamut-mapped.
+pub(crate) fn gamut_badge(model: &ColorStopRenderModel<'_>) -> Option<impl IntoElement> {
+    model.gamut.badge().map(|text| {
+        let selector: SharedString = format!("{}-gamut", model.id).into();
+        div().flex_shrink_0().debug_selector(move || selector.to_string()).child(
+            xgpui_luma_look_radix::Badge::new(model.look, text).variant(xgpui_luma_look_radix::BadgeVariant::Outline),
+        )
+    })
 }
 
 /// Right-aligned muted detail text (position or host detail), when present.

@@ -2,7 +2,9 @@ use super::*;
 use gpui::{AnyElement, Corners, CustomGeometry, ImageSource, IntoElement, canvas, div, img, prelude::*};
 use xgpui_shader::MeshGradient;
 
-type Guides = (Vec<MeshPoint>, Size<Pixels>, Option<Arc<RenderImage>>);
+use super::super::paint::PaintPoint;
+
+type Guides = (Vec<PaintPoint>, Size<Pixels>, Option<Arc<RenderImage>>);
 
 #[derive(Default)]
 pub(super) struct Cache {
@@ -14,9 +16,11 @@ pub(super) struct Cache {
     guides: Option<Guides>,
 }
 impl Cache {
+    /// `points` are encoded for the output: Display P3 when `wide`, else sRGB
+    /// (`mesh_p3` re-presents the producer's encoded output as P3).
     pub(super) fn element(
         &mut self,
-        points: &[MeshPoint],
+        points: &[PaintPoint],
         extent: Size<Pixels>,
         background: gpui::Hsla,
         guides: bool,
@@ -86,7 +90,10 @@ mod tests {
     use super::*;
     #[test]
     fn mesh_adapter_preserves_points_and_cache_reuses_unchanged_paint() {
-        let points = default_mesh_points(MeshGridPreset::SampleThreeByFour);
+        let points = super::super::super::encode::encode_points(
+            &default_mesh_points(MeshGridPreset::SampleThreeByFour),
+            super::super::super::encode::OutputSpace::Srgb,
+        );
         let mut shuffled = points.clone();
         shuffled.reverse();
         let grid = super::super::super::paint::shader_mesh_grid(&shuffled).unwrap();

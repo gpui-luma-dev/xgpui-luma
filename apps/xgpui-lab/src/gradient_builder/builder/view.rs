@@ -78,6 +78,12 @@ impl GradientBuilder {
 impl Render for GradientBuilder {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let now = Instant::now();
+        // Before any preview work: the raster output (and its cache key) depends on it.
+        let wide = super::p3::available(window);
+        if self.wide_output_available != wide {
+            self.wide_output_available = wide;
+            let _ = self.ensure_preview_image_cache(self.preview_size, cx);
+        }
         // Mesh points have many writers; reconcile their list before children render.
         self.sync_point_list(cx);
         if self.angle_animation
@@ -95,7 +101,7 @@ impl Render for GradientBuilder {
         if mesh_animating {
             let elapsed = now.duration_since(self.mesh_palette_last_frame).as_secs_f32().min(0.1);
             self.advance_mesh_palette(elapsed);
-            if !self.mesh_p3 || !cfg!(target_os = "macos") || !super::p3::available(window) {
+            if !self.mesh_p3_active() {
                 let _ = self.ensure_preview_image_cache(self.preview_size, cx);
             }
             window.request_animation_frame();
@@ -114,18 +120,21 @@ impl Render for GradientBuilder {
         self.spread_last_frame = now;
         let chrome = self.look.chrome();
         let rotation_deg = self.rotation_deg;
-        let stops = self.preview_stops(cx);
-        self.sync_preview_strategy(stops.len());
+        let source_stops = self.preview_stops(cx);
+        self.sync_preview_strategy(source_stops.len());
+        // GPUI paints and the sRGB shaders take sRGB-encoded stops.
+        let stops = encode_stops(&source_stops, OutputSpace::Srgb);
         let card_bg = chrome.panel_background;
         let preview_corner_radii = preview_panel_corner_radii();
         let preview_surface_radii =
             Corners { top_left: px(0.0), top_right: px(0.0), bottom_left: px(0.0), bottom_right: px(0.0) };
-        let p3_active = self.selected_tab == BuilderTab::Gradients && self.preview_p3 && super::p3::available(window);
+        let p3_active = self.gradient_p3_active();
         if p3_active {
             self.active_preview_strategy = "Display P3 shader";
         }
         let p3_preview = p3_active.then(|| {
-            self.p3_cache.element(self.gradient_type, &stops, rotation_deg, self.image_adjustments.is_neutral())
+            self.p3_cache
+                .element(self.gradient_type, &source_stops, rotation_deg, self.image_adjustments.is_neutral())
         });
         let preview_uses_render_image = !p3_active && self.uses_render_preview(cx);
         let shader_preview =
@@ -259,30 +268,26 @@ impl Render for GradientBuilder {
                 let work_area_size =
                     size(frame_size.width + px(MESH_HANDLE_SIZE), frame_size.height + px(MESH_HANDLE_SIZE));
                 let mesh_controls = div().child(self.render_inspector("color-viz-mesh-controls", card_bg));
-                let mesh_p3_active = self.selected_tab == BuilderTab::Mesh
-                    && self.mesh_p3
-                    && cfg!(target_os = "macos")
-                    && super::p3::available(window);
+                let mesh_p3_active = self.mesh_p3_active();
                 let mesh_shader_active =
                     self.selected_tab == BuilderTab::Mesh && (self.mesh_shader_enabled || mesh_p3_active);
                 let mesh_shader_preview = mesh_shader_active.then(|| {
                     self.mesh_shader_cache.element(
-                        &self.mesh_points,
+                        &encode_points(&self.mesh_points, OutputSpace::wide(mesh_p3_active)),
                         frame_size,
-                        self.mesh_background,
+                        // Painted by GPUI behind the mesh: always sRGB.
+                        encode(self.mesh_background, OutputSpace::Srgb),
                         self.mesh_controls_visible,
                         mesh_p3_active,
                     )
                 });
-                let freeform_p3_active = self.selected_tab == BuilderTab::Freeform
-                    && self.freeform_p3
-                    && cfg!(target_os = "macos")
-                    && super::p3::available(window);
+                let freeform_p3_active = self.freeform_p3_active();
                 let freeform_gpu_active = self.selected_tab == BuilderTab::Freeform && self.freeform_gpu;
                 let freeform_gpu_preview = if freeform_gpu_active {
+                    let output = OutputSpace::wide(freeform_p3_active);
                     let field = super::super::paint::build_color_field(
-                        &self.mesh_points,
-                        self.mesh_background,
+                        &encode_points(&self.mesh_points, output),
+                        encode(self.mesh_background, output),
                         self.spread_percent,
                         self.freeform_hsl,
                         &super::super::paint::FieldShape {

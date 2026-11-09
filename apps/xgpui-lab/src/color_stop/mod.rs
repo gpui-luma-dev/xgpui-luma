@@ -23,7 +23,7 @@ use gpui::{
     MouseButton, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
-use xgpui_luma::color::ColorValue;
+use xgpui_luma::color::{ColorValue, Gamut};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma::infra::attachments::{TooltipEntityExt, TooltipHandle};
@@ -55,12 +55,28 @@ pub(crate) struct ColorStopBuilder {
     color: ColorValue,
     position: Option<f32>,
     removable: bool,
+    edit_gamut: Gamut,
     template: Option<Arc<dyn ColorStopTemplate>>,
 }
 
 impl ColorStopBuilder {
     pub fn new(id: impl Into<SharedString>, color: ColorValue) -> Self {
-        Self { id: id.into(), look: None, color, position: None, removable: false, template: None }
+        Self {
+            id: id.into(),
+            look: None,
+            color,
+            position: None,
+            removable: false,
+            edit_gamut: Gamut::Srgb,
+            template: None,
+        }
+    }
+
+    /// RGB gamut the picker's SV/hue plane spans (default sRGB). With Display
+    /// P3, edits author P3 colors, including ones outside sRGB.
+    pub fn edit_gamut(mut self, gamut: Gamut) -> Self {
+        self.edit_gamut = gamut;
+        self
     }
 
     pub fn look(mut self, look: Arc<Look>) -> Self {
@@ -143,7 +159,8 @@ impl ColorStop {
         });
 
         let swatch_tooltips = swatch_tooltips(&look, cx);
-        let picker = InlineColorPicker::spawn(format!("{id}-picker"), look.as_ref(), builder.color, cx);
+        let picker =
+            InlineColorPicker::spawn(format!("{id}-picker"), look.as_ref(), builder.color, builder.edit_gamut, cx);
         subscriptions.push(cx.subscribe(&picker, |this, _, event: &InlineColorPickerEvent, cx| {
             let InlineColorPickerEvent::Change(color) = *event;
             if this.color != color {
@@ -364,6 +381,7 @@ impl Render for ColorStop {
             look: &self.look,
             color: self.color,
             label: stop_label(self.color).into(),
+            gamut: StopGamut::of(self.color),
             alpha: self.color.alpha(),
             position: self.position,
             detail_label: self.position.map(|position| format_percent(position).into()).or_else(|| self.detail.clone()),
@@ -432,6 +450,39 @@ pub(crate) fn stop_label(color: ColorValue) -> String {
             )
         })
         .unwrap_or_else(|_| "Invalid color".into())
+}
+
+/// Smallest standard gamut containing a stop's color, for the out-of-gamut
+/// indicator. Anything but [`StopGamut::Srgb`] is shown clipped/mapped by
+/// sRGB-only renderers (and its [`stop_label`] saturation reads above 100%).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum StopGamut {
+    Srgb,
+    DisplayP3,
+    /// Outside Display P3 too (e.g. an Oklch or extended-range source).
+    WiderThanP3,
+}
+
+impl StopGamut {
+    pub fn of(color: ColorValue) -> Self {
+        // Invalid colors are rendered transparent elsewhere; flag nothing.
+        if color.is_in_gamut(Gamut::Srgb).unwrap_or(true) {
+            Self::Srgb
+        } else if color.is_in_gamut(Gamut::DisplayP3).unwrap_or(true) {
+            Self::DisplayP3
+        } else {
+            Self::WiderThanP3
+        }
+    }
+
+    /// Indicator text, or `None` for sRGB colors.
+    pub fn badge(self) -> Option<&'static str> {
+        match self {
+            Self::Srgb => None,
+            Self::DisplayP3 => Some("P3"),
+            Self::WiderThanP3 => Some("> P3"),
+        }
+    }
 }
 
 fn format_percent(position: f32) -> String {
@@ -544,5 +595,46 @@ mod tests {
         let saturation: f32 =
             label.split_whitespace().nth(1).and_then(|s| s.trim_end_matches('%').parse().ok()).unwrap();
         assert!(saturation > 100.0, "{label}");
+    }
+
+    #[test]
+    fn gamut_indicator_flags_colors_outside_srgb() {
+        assert_eq!(StopGamut::of(ColorValue::srgb(1.0, 0.0, 0.0, 1.0)), StopGamut::Srgb);
+        assert_eq!(StopGamut::of(ColorValue::display_p3(0.5, 0.5, 0.5, 1.0)), StopGamut::Srgb);
+        assert_eq!(StopGamut::of(ColorValue::display_p3(1.0, 0.0, 0.0, 1.0)), StopGamut::DisplayP3);
+        assert_eq!(StopGamut::of(ColorValue::oklch(0.65, 0.4, 145.0, 1.0)), StopGamut::WiderThanP3);
+        assert_eq!(StopGamut::Srgb.badge(), None);
+        assert_eq!(StopGamut::DisplayP3.badge(), Some("P3"));
+    }
+
+    #[test]
+    fn p3_edit_gamut_authors_p3_and_alpha_edits_keep_the_source() {
+        use super::picker::{color_from, hsv_from};
+        // Full saturation/value red over P3 is P3 red: outside sRGB, unclipped.
+        let red = color_from(
+            xgpui_luma_color::color_slider::color_spec::Hsv { h: 0.0, s: 1.0, v: 1.0, a: 1.0 },
+            Gamut::DisplayP3,
+        );
+        assert_eq!(red, ColorValue::display_p3(1.0, 0.0, 0.0, 1.0));
+        assert_eq!(StopGamut::of(red), StopGamut::DisplayP3);
+        // Round trip through the P3 plane is exact for P3 sources.
+        let hsv = hsv_from(red, Gamut::DisplayP3);
+        assert_eq!((hsv.h, hsv.s, hsv.v), (0.0, 1.0, 1.0));
+        // The sRGB plane maps it to the sRGB boundary instead.
+        assert!(hsv_from(red, Gamut::Srgb).s <= 1.0);
+    }
+
+    #[test]
+    fn p3_stop_keeps_wide_source_through_picker_sync() {
+        let mut app = TestAppContext::single();
+        let red = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
+        let (stop, events) = spawn_with_events(&mut app, ColorStopBuilder::new("p3", red).edit_gamut(Gamut::DisplayP3));
+        let picker = stop.read_with(&app, |stop, _| stop.picker.clone());
+        assert_eq!(picker.read_with(&app, |picker, _| picker.color()), red);
+        let green = ColorValue::display_p3(0.0, 1.0, 0.0, 0.5);
+        stop.update(&mut app, |stop, cx| stop.set_color(green, cx));
+        assert_eq!(picker.read_with(&app, |picker, _| picker.color()), green);
+        assert_eq!(stop.read_with(&app, |stop, _| stop.color()), green);
+        assert!(events.borrow().is_empty());
     }
 }

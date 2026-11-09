@@ -4,7 +4,7 @@
 //! Positioned lists (gradient stops) are kept sorted by position; unpositioned
 //! lists (mesh points, palette colors) keep insertion order.
 
-use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::ColorValue;
 
 /// Stable identity for one stop. Keys are allocated by the model and never reused.
 pub(crate) type StopKey = u64;
@@ -128,7 +128,7 @@ impl StopModel {
             if pb - pa < MIN_INSERT_GAP * 2.0 {
                 return None;
             }
-            (right, mix(a.color, b.color, 0.5), Some((pa + pb) * 0.5))
+            (right, mix_colors(a.color, b.color, 0.5), Some((pa + pb) * 0.5))
         } else {
             let anchor_index = anchor.and_then(|key| self.index_of(key)).unwrap_or(self.stops.len().saturating_sub(1));
             let color =
@@ -257,16 +257,29 @@ impl StopModel {
     }
 }
 
-/// Straight sRGB interpolation; adequate for seeding an inserted stop's color.
-fn mix(a: ColorValue, b: ColorValue, t: f32) -> ColorValue {
-    let (Ok(a), Ok(b)) = (
-        gpui_bridge::to_rgba(a, GamutMapping::CssLocalMinde),
-        gpui_bridge::to_rgba(b, GamutMapping::CssLocalMinde),
-    ) else {
+/// Seed an inserted stop's color: straight interpolation of encoded RGB, with
+/// no gamut mapping. Two sRGB-tagged stops mix in encoded sRGB (staying sRGB);
+/// any other pair mixes in encoded Display P3, the gradient demos' wide working
+/// space, so P3 stops are never clipped to sRGB here.
+pub(crate) fn mix_colors(a: ColorValue, b: ColorValue, t: f32) -> ColorValue {
+    let lerp = |x: f32, y: f32| x + (y - x) * t;
+    if let (ColorValue::Srgb(a), ColorValue::Srgb(b)) = (a, b) {
+        return ColorValue::srgb(
+            lerp(a.red, b.red),
+            lerp(a.green, b.green),
+            lerp(a.blue, b.blue),
+            lerp(a.alpha, b.alpha),
+        );
+    }
+    let (Ok(pa), Ok(pb)) = (a.to_display_p3_unclamped(), b.to_display_p3_unclamped()) else {
         return a;
     };
-    let lerp = |x: f32, y: f32| x + (y - x) * t;
-    ColorValue::srgb(lerp(a.r, b.r), lerp(a.g, b.g), lerp(a.b, b.b), lerp(a.a, b.a))
+    ColorValue::display_p3(
+        lerp(pa.red, pb.red),
+        lerp(pa.green, pb.green),
+        lerp(pa.blue, pb.blue),
+        lerp(pa.alpha, pb.alpha),
+    )
 }
 
 #[cfg(test)]
@@ -391,5 +404,17 @@ mod tests {
         let added = palette.add(Some(first)).unwrap();
         assert_eq!(palette.index_of(added), Some(1));
         assert_eq!(palette.get(added).unwrap().color, gray(0.0));
+    }
+
+    #[test]
+    fn inserted_stop_between_p3_stops_stays_unclipped() {
+        let red = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
+        let mut model = StopModel::new([(red, Some(0.0)), (red, Some(1.0))], CountLimits::default(), true);
+        let key = model.add(None).unwrap();
+        let color = model.get(key).unwrap().color;
+        assert_eq!(color, ColorValue::display_p3(1.0, 0.0, 0.0, 1.0));
+        assert!(!color.is_in_gamut(xgpui_luma::color::Gamut::Srgb).unwrap());
+        // Two sRGB stops keep producing sRGB.
+        assert!(matches!(mix_colors(gray(0.0), gray(1.0), 0.5), ColorValue::Srgb(_)));
     }
 }
