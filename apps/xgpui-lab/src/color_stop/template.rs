@@ -40,7 +40,7 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub id: &'a SharedString,
     pub look: &'a Look,
     pub color: ColorValue,
-    /// sRGB hex, e.g. `#A73B93`.
+    /// CSS `hsl()` text, e.g. `hsl(312 48% 44%)`; see [`super::stop_label`].
     pub label: SharedString,
     pub alpha: f32,
     /// Normalized `0.0..=1.0`; `None` when the stop has no position.
@@ -49,8 +49,9 @@ pub(crate) struct ColorStopRenderModel<'a> {
     pub index: Option<usize>,
     pub selected: bool,
     pub expanded: bool,
-    /// Position as text (e.g. `50%`), when the stop is positioned.
-    pub position_label: Option<SharedString>,
+    /// Trailing text: the position (e.g. `50%`) for positioned stops, otherwise
+    /// any host-supplied detail (e.g. mesh point coordinates).
+    pub detail_label: Option<SharedString>,
     /// Remove action, when the stop is removable.
     pub remove_button: Option<AnyElement>,
     /// Color editor; present only while expanded.
@@ -112,7 +113,7 @@ pub(crate) struct DefaultColorStopTemplate;
 /// Height of the default template's single line.
 pub(crate) const DEFAULT_LINE_HEIGHT: f32 = 32.0;
 const SWATCH_SIZE: f32 = 26.0;
-const POSITION_WIDTH: f32 = 60.0;
+const DETAIL_MIN_WIDTH: f32 = 60.0;
 
 impl ColorStopTemplate for DefaultColorStopTemplate {
     fn render(
@@ -131,7 +132,7 @@ impl ColorStopTemplate for DefaultColorStopTemplate {
             .gap_2()
             .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
             .child(label(&model))
-            .children(position_label(&model))
+            .children(detail_label(&model))
             .when_some(model.remove_button, |line, button| {
                 line.child(
                     div()
@@ -204,13 +205,13 @@ pub(crate) fn label(model: &ColorStopRenderModel<'_>) -> impl IntoElement {
         .child(div().text_color(chrome.muted_text).child(format!("{}%", (model.alpha * 100.0).round() as i32)))
 }
 
-/// Right-aligned muted position text, when the stop is positioned.
-pub(crate) fn position_label(model: &ColorStopRenderModel<'_>) -> Option<gpui::Div> {
+/// Right-aligned muted detail text (position or host detail), when present.
+pub(crate) fn detail_label(model: &ColorStopRenderModel<'_>) -> Option<gpui::Div> {
     let chrome = model.look.chrome();
-    model.position_label.clone().map(|text| {
+    model.detail_label.clone().map(|text| {
         div()
             .flex_shrink_0()
-            .w(px(POSITION_WIDTH))
+            .min_w(px(DETAIL_MIN_WIDTH))
             .flex()
             .justify_end()
             .typography_style(model.look.typography_scale(TextSize::Sm))

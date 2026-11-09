@@ -35,39 +35,11 @@ impl GradientBuilder {
             }
         }));
         self.freeform_buttons.push(shuffle);
-        // Fixed row slots keep subscriptions stable as points are added or removed.
-        for point_index in 0..16 {
-            let buttons = [(1, LucideIcon::Trash, "Remove point"), (3, LucideIcon::Palette, "Randomize point color")]
-                .map(|(action, icon, label)| {
-                    let button = crate::theme::icon_button(format!("color-viz-point-{point_index}-{action}"), icon)
-                        .look(&self.look)
-                        .content_only()
-                        .spawn(cx)
-                        .tooltip(Tooltip::new(label), cx);
-                    self._subscriptions.push(cx.subscribe(&button, move |this, _, event: &ButtonEvent, cx| {
-                        if event.is_click() {
-                            this.edit_freeform_point(point_index, action, cx);
-                        }
-                    }));
-                    button
-                });
-            self.point_buttons.push(buttons);
-        }
     }
 
     pub(super) fn sync_freeform_buttons(&mut self, cx: &mut Context<Self>) {
-        self.freeform_buttons[0].update(cx, |button, cx| button.set_enabled(self.mesh_points.len() < 16, cx));
-        for [delete, _] in &self.point_buttons {
-            delete.update(cx, |button, cx| button.set_enabled(self.mesh_points.len() > 1, cx));
-        }
-    }
-
-    pub(super) fn edit_freeform_point(&mut self, point_index: usize, action: usize, cx: &mut Context<Self>) {
-        if self.selected_tab != BuilderTab::Freeform || point_index >= self.mesh_points.len() {
-            return;
-        }
-        self.selected_mesh_point = Some(point_index);
-        self.edit_freeform(action, cx);
+        let can_add = self.mesh_points.len() < super::mesh_stops::FREEFORM_MAX_POINTS;
+        self.freeform_buttons[0].update(cx, |button, cx| button.set_enabled(can_add, cx));
     }
 
     pub(super) fn sync_point_spread(&mut self, cx: &mut Context<Self>) {
@@ -90,7 +62,6 @@ impl GradientBuilder {
         self.mesh_color_target = MeshColorTarget::Background;
         self.active_mesh_drag = None;
         self.active_field_drag = None;
-        self.color_picker_open = false;
         self.sync_point_spread(cx);
         cx.notify();
     }
@@ -106,12 +77,12 @@ impl GradientBuilder {
         gpui::hsla(self.random_unit(), 0.86 + self.random_unit() * 0.14, 0.49 + self.random_unit() * 0.09, 1.0)
     }
 
-    fn edit_freeform(&mut self, action: usize, cx: &mut Context<Self>) {
+    pub(super) fn edit_freeform(&mut self, action: usize, cx: &mut Context<Self>) {
         if self.selected_tab != BuilderTab::Freeform {
             return;
         }
         match action {
-            0 if self.mesh_points.len() < 16 => {
+            0 if self.mesh_points.len() < super::mesh_stops::FREEFORM_MAX_POINTS => {
                 let point = MeshPoint {
                     row: 0,
                     col: self.mesh_points.len() as u8,
@@ -158,8 +129,6 @@ impl GradientBuilder {
             self.selected_mesh_point.map(MeshColorTarget::Point).unwrap_or(MeshColorTarget::Background);
         self.active_mesh_drag = None;
         self.active_field_drag = None;
-        self.color_picker_open = false;
-        self.mesh_swatch_bounds.clear();
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
         cx.notify();
     }

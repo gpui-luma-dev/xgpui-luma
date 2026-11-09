@@ -96,10 +96,10 @@ impl GradientBuilder {
                 std::mem::swap(&mut self.mesh_points, &mut self.inactive_mesh_points);
                 std::mem::swap(&mut self.mesh_point_ids, &mut self.inactive_mesh_point_ids);
                 std::mem::swap(&mut self.mesh_background, &mut self.inactive_mesh_background);
+                self.sync_mesh_background_stop(cx);
                 self.mesh_state_is_freeform = next == BuilderTab::Freeform;
                 self.selected_mesh_point = None;
                 self.mesh_color_target = MeshColorTarget::Background;
-                self.mesh_swatch_bounds.clear();
             }
             self.preview_image_cache = None;
             self.selected_tab = next;
@@ -112,7 +112,6 @@ impl GradientBuilder {
             self.render_task = None;
             self.active_mesh_drag = None;
             self.active_field_drag = None;
-            self.color_picker_open = false;
             let _ = self.ensure_preview_image_cache(self.preview_size, cx);
             cx.notify();
         }
@@ -179,48 +178,6 @@ impl GradientBuilder {
         }
     }
 
-    pub(super) fn apply_picker_color(&mut self, cx: &mut Context<Self>) {
-        if !self.color_picker_open {
-            return;
-        }
-        let color = self.color_picker.read(cx).color();
-        match self.selected_tab {
-            // Gradient stops edit colors inline in their list.
-            BuilderTab::Gradients => {}
-            BuilderTab::Mesh | BuilderTab::Freeform => match self.mesh_color_target {
-                MeshColorTarget::Point(point_index) => {
-                    if let Some(point) = self.mesh_points.get_mut(point_index) {
-                        point.color = color;
-                        let _ = self.ensure_preview_image_cache(self.preview_size, cx);
-                        cx.notify();
-                    }
-                }
-                MeshColorTarget::Background => {
-                    self.mesh_background = color;
-                    let _ = self.ensure_preview_image_cache(self.preview_size, cx);
-                    cx.notify();
-                }
-            },
-        }
-    }
-
-    pub(super) fn open_color_picker_for_mesh_point(&mut self, point_index: usize, cx: &mut Context<Self>) {
-        self.selected_mesh_point = Some(point_index);
-        self.sync_point_spread(cx);
-        self.mesh_color_target = MeshColorTarget::Point(point_index);
-        let color = self.selected_mesh_color();
-        self.color_picker.update(cx, |picker, cx| picker.set_color(color, cx));
-        self.color_picker_open = true;
-        cx.notify();
-    }
-
-    pub(super) fn open_color_picker_for_mesh_background(&mut self, cx: &mut Context<Self>) {
-        self.mesh_color_target = MeshColorTarget::Background;
-        self.color_picker.update(cx, |picker, cx| picker.set_color(self.mesh_background, cx));
-        self.color_picker_open = true;
-        cx.notify();
-    }
-
     pub(super) fn advance_mesh_palette(&mut self, elapsed: f32) {
         let phase = self.mesh_palette_phase + elapsed * self.mesh_palette_speed;
         let steps = phase.floor() as usize;
@@ -238,12 +195,6 @@ impl GradientBuilder {
         self.mesh_palette_phase = 0.;
         self.mesh_palette = (self.mesh_palette + 1) % super::mesh::MESH_PALETTE_NAMES.len();
         super::mesh::apply_mesh_palette(&mut self.mesh_points, self.mesh_palette);
-        if self.color_picker_open
-            && let MeshColorTarget::Point(index) = self.mesh_color_target
-            && let Some(point) = self.mesh_points.get(index)
-        {
-            self.color_picker.update(cx, |picker, cx| picker.set_color(point.color, cx));
-        }
         self.preview_image_cache = None;
         self.render_task = None;
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
@@ -269,12 +220,12 @@ impl GradientBuilder {
         }
         self.sync_freeform_buttons(cx);
         self.mesh_background = default_mesh_background();
+        self.sync_mesh_background_stop(cx);
         self.selected_mesh_point = None;
         self.sync_point_spread(cx);
         self.mesh_color_target = MeshColorTarget::Background;
         self.active_mesh_drag = None;
         self.active_field_drag = None;
-        self.color_picker_open = false;
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
         cx.notify();
     }
@@ -350,25 +301,6 @@ impl GradientBuilder {
         let _ = self.ensure_preview_image_cache(self.preview_size, cx);
         refresh_color_slider(&self.gradient_stops, cx);
         cx.notify();
-    }
-
-    pub(super) fn selected_mesh_color(&self) -> gpui::Hsla {
-        match self.mesh_color_target {
-            MeshColorTarget::Point(point_index) => self
-                .mesh_points
-                .get(point_index)
-                .map(|point| point.color)
-                .unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.5, 1.0)),
-            MeshColorTarget::Background => self.mesh_background,
-        }
-    }
-
-    pub(super) fn handle_mesh_swatch_bounds(&mut self, point_index: usize, bounds: &Bounds<Pixels>) {
-        self.mesh_swatch_bounds.insert(point_index, *bounds);
-    }
-
-    pub(super) fn handle_mesh_background_swatch_bounds(&mut self, bounds: &Bounds<Pixels>) {
-        self.mesh_background_swatch_bounds = Some(*bounds);
     }
 
     pub(super) fn preview_stops(&self, cx: &Context<Self>) -> Vec<(f32, gpui::Hsla)> {
@@ -692,7 +624,7 @@ impl GradientBuilder {
         self.mesh_color_target = MeshColorTarget::Point(point_index);
         self.active_field_drag = None;
         self.active_mesh_drag = Some(point_index);
-        self.color_picker_open = false;
+        self.open_point_editor(point_index, cx);
         cx.notify();
     }
 

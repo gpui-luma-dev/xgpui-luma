@@ -106,7 +106,7 @@ impl GradientBuilder {
                                 this.selected_mesh_point = Some(index);
                                 this.mesh_color_target = MeshColorTarget::Point(index);
                                 this.sync_point_spread(cx);
-                                this.color_picker_open = false;
+                                this.open_point_editor(index, cx);
                                 cx.notify();
                             });
                         })

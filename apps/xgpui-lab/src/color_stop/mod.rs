@@ -19,11 +19,11 @@ pub(crate) mod template;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement,
+    AnyElement, AnyView, App, AppContext, Bounds, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement,
     MouseButton, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
-use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::ColorValue;
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma::infra::attachments::{TooltipEntityExt, TooltipHandle};
@@ -111,6 +111,10 @@ pub(crate) struct ColorStop {
     focus_subscriptions: Option<[Subscription; 2]>,
     remove_button: Option<Entity<Button>>,
     picker: Entity<InlineColorPicker>,
+    /// Host text shown when the stop has no position (e.g. point coordinates).
+    detail: Option<SharedString>,
+    /// Host content shown under the picker while the editor is open.
+    editor_extra: Option<AnyView>,
     height: Option<f32>,
     _subscriptions: Vec<Subscription>,
 }
@@ -166,6 +170,8 @@ impl ColorStop {
             focus_subscriptions: None,
             remove_button,
             picker,
+            detail: None,
+            editor_extra: None,
             height: None,
             _subscriptions: subscriptions,
         }
@@ -234,6 +240,23 @@ impl ColorStop {
         if self.open != open {
             self.open = open;
             self.expanded = self.open || self.focus_within;
+            cx.notify();
+        }
+    }
+
+    /// Trailing text for a stop without a position.
+    pub fn set_detail(&mut self, detail: Option<SharedString>, cx: &mut Context<Self>) {
+        if self.detail != detail {
+            self.detail = detail;
+            cx.notify();
+        }
+    }
+
+    /// Host content (e.g. per-point settings) placed under the picker.
+    pub fn set_editor_extra(&mut self, extra: Option<AnyView>, cx: &mut Context<Self>) {
+        let id = |view: &Option<AnyView>| view.as_ref().map(AnyView::entity_id);
+        if id(&self.editor_extra) != id(&extra) {
+            self.editor_extra = extra;
             cx.notify();
         }
     }
@@ -343,12 +366,21 @@ impl Render for ColorStop {
             label: stop_label(self.color).into(),
             alpha: self.color.alpha(),
             position: self.position,
-            position_label: self.position.map(|position| format_percent(position).into()),
+            detail_label: self.position.map(|position| format_percent(position).into()).or_else(|| self.detail.clone()),
             index: self.index,
             selected: self.selected,
             expanded: self.expanded,
             remove_button: self.remove_button.clone().map(|button| self.isolated("remove-slot", button)),
-            editor: self.expanded.then(|| self.isolated("editor", self.picker.clone())),
+            editor: self.expanded.then(|| {
+                let editor = div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .gap_3()
+                    .child(self.picker.clone())
+                    .children(self.editor_extra.clone());
+                self.isolated("editor", editor)
+            }),
             swatch_tooltip: Some(self.swatch_tooltips[usize::from(self.expanded)].clone()),
             swatch_hovered: self.swatch_hovered,
         };
@@ -381,12 +413,23 @@ fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
         .map(|text| TooltipHandle::new_with_theme(Tooltip::new(text), theme.clone(), cx))
 }
 
-/// Uppercase sRGB hex.
+/// CSS `hsl()` text (alpha is shown separately), e.g. `hsl(312 48% 44%)`.
+///
+/// Derived from unmapped sRGB: a source outside sRGB (e.g. Display P3) shows
+/// out-of-range saturation/lightness rather than being silently clipped, so a
+/// later out-of-gamut indicator can build on it.
 pub(crate) fn stop_label(color: ColorValue) -> String {
-    gpui_bridge::to_rgba(color, GamutMapping::CssLocalMinde)
+    use palette::{Hsl, convert::FromColorUnclamped};
+    color
+        .to_srgba_unclamped()
         .map(|rgba| {
-            let channel = |value: f32| (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-            format!("#{:02X}{:02X}{:02X}", channel(rgba.r), channel(rgba.g), channel(rgba.b))
+            let hsl = Hsl::from_color_unclamped(rgba.color);
+            format!(
+                "hsl({:.0} {:.0}% {:.0}%)",
+                hsl.hue.into_positive_degrees(),
+                hsl.saturation * 100.0,
+                hsl.lightness * 100.0
+            )
         })
         .unwrap_or_else(|_| "Invalid color".into())
 }
@@ -398,6 +441,7 @@ fn format_percent(position: f32) -> String {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
+    use xgpui_luma::color::{GamutMapping, gpui_bridge};
     use std::cell::RefCell;
     use std::rc::Rc;
     use gpui::TestAppContext;
@@ -489,5 +533,16 @@ mod tests {
                 ColorStopEvent::ExpandedChanged(false),
             ]
         );
+    }
+
+    #[test]
+    fn labels_are_hsl_and_keep_out_of_gamut_values_visible() {
+        assert_eq!(stop_label(ColorValue::srgb(1.0, 0.0, 0.0, 1.0)), "hsl(0 100% 50%)");
+        assert_eq!(stop_label(ColorValue::srgb(0.5, 0.5, 0.5, 0.25)), "hsl(0 0% 50%)");
+        // Display P3 red lies outside sRGB: saturation reads above 100% instead of clipping.
+        let label = stop_label(ColorValue::display_p3(1.0, 0.0, 0.0, 1.0));
+        let saturation: f32 =
+            label.split_whitespace().nth(1).and_then(|s| s.trim_end_matches('%').parse().ok()).unwrap();
+        assert!(saturation > 100.0, "{label}");
     }
 }

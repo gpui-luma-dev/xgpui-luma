@@ -5,10 +5,10 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Context, Entity, Render, SharedString, Subscription, Window, div, prelude::*, px};
-use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
+use xgpui_luma::color::ColorValue;
 use xgpui_luma::infra::ElementExt;
 
-use crate::color_stop::template::{editor_panel, label, position_label, swatch};
+use crate::color_stop::template::{detail_label, editor_panel, label, swatch};
 use crate::color_stop::{
     ColorStop, ColorStopBuilder, ColorStopEvent, ColorStopRenderModel, ColorStopTemplate, ColorStopTemplateHandlers,
     make_color_stop_template,
@@ -158,18 +158,11 @@ impl Render for ColorStopListExposition {
 }
 
 fn format_event(event: &ColorStopListEvent) -> String {
-    let hex = |color: ColorValue| {
-        gpui_bridge::to_rgba(color, GamutMapping::CssLocalMinde)
-            .map(|c| {
-                let ch = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-                format!("#{:02X}{:02X}{:02X} a={:.2}", ch(c.r), ch(c.g), ch(c.b), c.a)
-            })
-            .unwrap_or_else(|_| "invalid".into())
-    };
+    let hsl = |color: ColorValue| format!("{} a={:.2}", crate::color_stop::stop_label(color), color.alpha());
     match event {
         ColorStopListEvent::SelectionChanged(key) => format!("SelectionChanged({key:?})"),
         ColorStopListEvent::Activated(key) => format!("Activated({key})"),
-        ColorStopListEvent::ColorChanged { key, color } => format!("ColorChanged {{ key: {key}, {} }}", hex(*color)),
+        ColorStopListEvent::ColorChanged { key, color } => format!("ColorChanged {{ key: {key}, {} }}", hsl(*color)),
         ColorStopListEvent::Added(key) => format!("Added({key})"),
         ColorStopListEvent::Removed(key) => format!("Removed({key})"),
         ColorStopListEvent::Reordered => "Reordered".into(),
@@ -210,7 +203,7 @@ fn numbered_stop_template() -> Arc<dyn ColorStopTemplate> {
                 )
                 .child(swatch(&model, handlers.swatch_click, handlers.swatch_hover, cx))
                 .child(label(&model))
-                .children(position_label(&model))
+                .children(detail_label(&model))
                 .children(model.remove_button);
             let editor: Option<AnyElement> =
                 model.editor.map(|editor| editor_panel(model.look, editor).into_any_element());

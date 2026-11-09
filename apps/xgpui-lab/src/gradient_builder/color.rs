@@ -1,6 +1,5 @@
-use gpui::{Hsla, Rgba, hsla};
-use xgpui_luma_color::color_slider::color_spec::Hsv as SdkHsv;
-use palette::{FromColor, Hsl, Hsv as PaletteHsv, Mix, Srgb, Srgba};
+use gpui::{Hsla, hsla};
+use palette::{FromColor, Hsl, Mix, Srgb, Srgba};
 
 use super::paint::GradientType;
 
@@ -38,22 +37,6 @@ pub fn parse_hex_color(raw: &str) -> Option<Hsla> {
 pub fn interpolate_rgb(start: Hsla, end: Hsla, t: f32) -> Hsla {
     let mixed = hsla_to_srgba(start).mix(hsla_to_srgba(end), t.clamp(0.0, 1.0));
     srgba_to_hsla(mixed)
-}
-
-pub fn hsla_to_sdk_hsv(color: Hsla) -> SdkHsv {
-    let palette_hsv = PaletteHsv::from_color(hsla_to_srgba(color));
-    SdkHsv {
-        h: palette_hsv.hue.into_positive_degrees(),
-        s: palette_hsv.saturation,
-        v: palette_hsv.value,
-        a: color.a,
-    }
-}
-
-pub fn sdk_hsv_to_hsla(hsv: SdkHsv) -> Hsla {
-    let palette_hsv = PaletteHsv::new(hsv.h, hsv.s, hsv.v);
-    let srgb: Srgb = Srgb::from_color(palette_hsv);
-    Rgba { r: srgb.red, g: srgb.green, b: srgb.blue, a: hsv.a }.into()
 }
 
 pub fn format_percent(position: f32) -> String {

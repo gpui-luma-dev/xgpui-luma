@@ -1,8 +1,8 @@
 use super::*;
-use super::view::{INSPECTOR_WIDTH, compact_slider_row, render_mesh_background_row, render_mesh_point_row};
+use super::view::{INSPECTOR_WIDTH, compact_slider_row};
 
 use crate::theme::{ColorVizLookExt, TypographyExt};
-use gpui::{IntoElement, MouseButton, Window, div, prelude::*};
+use gpui::{IntoElement, Window, div, prelude::*};
 use xgpui_luma::{form_field};
 use super::mesh::render_info_row;
 use xgpui_luma::infra::StyledExt;
@@ -239,8 +239,6 @@ impl GradientBuilder {
                 let blend_selector = self.blend_selector.clone();
                 let mesh_grid_selector = self.mesh_grid_selector.clone();
                 let mesh_aspect_ratio_selector = self.mesh_aspect_ratio_selector.clone();
-                let mesh_background = self.mesh_background;
-                let builder = cx.entity();
                 let panel = div()
                     .w_full()
                     .flex()
@@ -326,7 +324,7 @@ impl GradientBuilder {
                                 ))
                             })
                     })
-                    .child(render_mesh_background_row(mesh_background, info_label_style, chrome, builder.clone()));
+                    .child(form_field!("Background", chrome; self.mesh_background_stop.clone()));
                 panel.into_any_element()
             }
             1 if self.selected_tab == BuilderTab::Gradients => div()
@@ -342,58 +340,6 @@ impl GradientBuilder {
                 .child(self.stop_list.clone())
                 .into_any_element(),
             1 => {
-                let point_content = self
-                    .mesh_points
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .map(|(index, point)| {
-                        let selected = self.selected_mesh_point == Some(index);
-                        let row = div()
-                            .w_full()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(render_mesh_point_row(
-                                if self.selected_tab == BuilderTab::Freeform {
-                                    self.point_buttons.get(index).cloned()
-                                } else {
-                                    None
-                                },
-                                index,
-                                point,
-                                selected,
-                                info_label_style,
-                                &self.look,
-                                cx.entity(),
-                            ))
-                            .when(self.selected_tab == BuilderTab::Freeform && selected, |row| {
-                                row.child(
-                                    div()
-                                        .px_2()
-                                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                                        .child(compact_slider_row(
-                                            "Point spread",
-                                            self.point_spread_slider.clone(),
-                                            format!("{:.0}%", self.point_spreads.get(index).copied().unwrap_or(100.0)),
-                                            info_label_style,
-                                            chrome,
-                                        )),
-                                )
-                            });
-                        (self.mesh_point_ids[index], row.into_any_element())
-                    })
-                    .collect();
-                let point_list = self.point_list.render(
-                    point_content,
-                    self.selected_mesh_point.map(|index| self.mesh_point_ids[index]),
-                    "color-viz-point-list",
-                    chrome,
-                    self.look.interaction_colors(),
-                    window,
-                    cx,
-                    GradientBuilder::handle_point_list_input,
-                );
                 let freeform_buttons = self.freeform_buttons.clone();
                 let spread_slider = self.spread_slider.clone();
                 let spread_percent = self.spread_percent;
@@ -425,7 +371,23 @@ impl GradientBuilder {
                                 chrome,
                             ))
                     });
-                div().w_full().flex().flex_col().gap_2().child(fields).child(point_list).into_any_element()
+                div()
+                    .w_full()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(fields)
+                    .child(
+                        // Points and their canvas handles share one selection: a
+                        // press anywhere else releases it.
+                        div()
+                            .w_full()
+                            .on_mouse_down_out(cx.listener(|this, _: &gpui::MouseDownEvent, _, cx| {
+                                this.release_point_editor(cx);
+                            }))
+                            .child(self.active_point_list().clone()),
+                    )
+                    .into_any_element()
             }
             2 => self.render_image_adjustments().into_any_element(),
             _ => {

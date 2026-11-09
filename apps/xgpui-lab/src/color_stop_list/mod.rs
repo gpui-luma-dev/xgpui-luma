@@ -19,8 +19,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, AppContext, Context, Entity, EventEmitter, IntoElement, SharedString, Subscription, Window, div,
-    prelude::*,
+    AnyElement, AnyView, App, AppContext, Context, Entity, EventEmitter, IntoElement, SharedString, Subscription,
+    Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::color::ColorValue;
@@ -187,6 +187,10 @@ pub(crate) struct ColorStopList {
     selected: Option<StopKey>,
     /// Row whose editor the host holds open (see [`ColorStopList::open_editor`]).
     open_editor: Option<StopKey>,
+    /// Host trailing text per row (see [`ColorStopList::set_row_details`]).
+    details: HashMap<StopKey, SharedString>,
+    /// Host content under one row's picker (see [`ColorStopList::set_editor_extra`]).
+    editor_extra: Option<(StopKey, AnyView)>,
     removable: bool,
     list: ListBoxControl<Self, StopData, StopKey>,
     header: HeaderButtons,
@@ -274,6 +278,8 @@ impl ColorStopList {
             model,
             selected: None,
             open_editor: None,
+            details: HashMap::new(),
+            editor_extra: None,
             removable: builder.removable,
             list,
             header,
@@ -338,6 +344,31 @@ impl ColorStopList {
         }
     }
 
+    /// Trailing text for unpositioned rows (e.g. point coordinates), replacing
+    /// all previous details. Notifies only when something changed.
+    pub fn set_row_details(
+        &mut self,
+        details: impl IntoIterator<Item = (StopKey, SharedString)>,
+        cx: &mut Context<Self>,
+    ) {
+        let details: HashMap<StopKey, SharedString> = details.into_iter().collect();
+        if self.details != details {
+            self.details = details;
+            self.sync_stops(cx);
+            cx.notify();
+        }
+    }
+
+    /// Host content shown under `key`'s picker while it is open (one row at a time).
+    pub fn set_editor_extra(&mut self, extra: Option<(StopKey, AnyView)>, cx: &mut Context<Self>) {
+        let id = |extra: &Option<(StopKey, AnyView)>| extra.as_ref().map(|(key, view)| (*key, view.entity_id()));
+        if id(&self.editor_extra) != id(&extra) {
+            self.editor_extra = extra;
+            self.sync_stops(cx);
+            cx.notify();
+        }
+    }
+
     #[allow(dead_code)]
     pub fn set_color(&mut self, key: StopKey, color: ColorValue, cx: &mut Context<Self>) {
         if self.model.set_color(key, color) {
@@ -355,6 +386,7 @@ impl ColorStopList {
 
     /// Whether `key`'s row currently shows its editor.
     #[cfg(test)]
+    #[allow(dead_code)]
     pub fn row_expanded(&self, key: StopKey, cx: &App) -> bool {
         self.rows.get(&key).is_some_and(|row| row.control.read(cx).expanded())
     }
@@ -534,6 +566,8 @@ impl ColorStopList {
             self.open_editor = None;
         }
         let open_editor = self.open_editor;
+        let details = self.details.clone();
+        let extra = self.editor_extra.clone();
         for (index, stop) in stops.into_iter().enumerate() {
             let key = stop.key;
             if !self.rows.contains_key(&key) {
@@ -550,6 +584,11 @@ impl ColorStopList {
                 }
                 row.set_selected(selected, cx);
                 row.set_open(open_editor == Some(key), cx);
+                row.set_detail(details.get(&key).cloned(), cx);
+                row.set_editor_extra(
+                    extra.clone().filter(|(extra_key, _)| *extra_key == key).map(|(_, view)| view),
+                    cx,
+                );
                 row.set_can_remove(can_remove, cx);
             });
         }
