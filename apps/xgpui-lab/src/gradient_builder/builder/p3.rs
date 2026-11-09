@@ -57,18 +57,7 @@ fn decode(v: vec3<f32>) -> vec3<f32> {{ return select(pow((v + vec3<f32>(0.055))
 fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {{ {position} {body} return vec4<f32>(decode(c.rgb / max(c.a, 0.000001)), c.a); }}")
 }
 impl Cache {
-    pub(super) fn element(
-        &mut self,
-        kind: GradientType,
-        stops: &[(f32, ColorValue)],
-        angle: f32,
-        neutral: bool,
-    ) -> AnyElement {
-        if !neutral {
-            return super::linear_shader::preview_notice(
-                "P3 preview requires neutral Saturation/Vibrance adjustments.",
-            );
-        }
+    pub(super) fn element(&mut self, kind: GradientType, stops: &[(f32, ColorValue)], angle: f32) -> AnyElement {
         if stops.len() < 2 {
             return div().into_any_element();
         }

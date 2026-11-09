@@ -13,6 +13,7 @@
 //!
 //! Host setters (`set_*`) never emit; user edits emit [`ColorStopEvent`].
 
+pub(crate) mod hsl;
 mod picker;
 pub(crate) mod template;
 
@@ -439,18 +440,11 @@ fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
 /// out-of-range saturation/lightness rather than being silently clipped, so a
 /// later out-of-gamut indicator can build on it.
 pub(crate) fn stop_label(color: ColorValue) -> String {
-    use palette::{Hsl, convert::FromColorUnclamped};
     color
         .to_srgba_unclamped()
         .map(|rgba| {
-            let hsl = Hsl::from_color_unclamped(rgba.color);
-            format!(
-                "hsl({:.0} {:.0}% {:.0}% / {:.0}%)",
-                hsl.hue.into_positive_degrees(),
-                hsl.saturation * 100.0,
-                hsl.lightness * 100.0,
-                rgba.alpha * 100.0
-            )
+            let [hue, saturation, lightness] = hsl::rgb_to_hsl([rgba.red, rgba.green, rgba.blue]);
+            format!("hsl({:.0} {:.0}% {:.0}% / {:.0}%)", hue, saturation * 100.0, lightness * 100.0, rgba.alpha * 100.0)
         })
         .unwrap_or_else(|_| "Invalid color".into())
 }

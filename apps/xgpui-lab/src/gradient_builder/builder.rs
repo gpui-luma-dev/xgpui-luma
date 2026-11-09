@@ -374,7 +374,6 @@ impl GradientBuilder {
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.freeform_p3 = on;
-                this.sync_adjustment_support(cx);
                 let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                 cx.notify();
             })
@@ -386,7 +385,6 @@ impl GradientBuilder {
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.mesh_p3 = on;
                 this.render_task = None;
-                this.sync_adjustment_support(cx);
                 cx.notify();
             })
             .spawn(cx);
@@ -396,7 +394,6 @@ impl GradientBuilder {
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.preview_p3 = on;
-                this.sync_adjustment_support(cx);
                 cx.notify();
             })
             .spawn(cx);
@@ -588,9 +585,6 @@ impl GradientBuilder {
         for (slider, saturation) in [(saturation_slider, true), (vibrance_slider, false)] {
             builder._subscriptions.push(cx.subscribe(&slider, move |this, _, event: &SliderEvent, cx| {
                 if let SliderEvent::Change { value, .. } | SliderEvent::Release { value, .. } = event {
-                    if !this.adjustments_supported() {
-                        return;
-                    }
                     if saturation {
                         this.image_adjustments.saturation = *value;
                     } else {
@@ -632,7 +626,6 @@ impl GradientBuilder {
                 if let SelectorEvent::Change { item_id, .. } = event {
                     this.mesh_shader_enabled = item_id.as_ref() == "shader";
                     this.render_task = None;
-                    this.sync_adjustment_support(cx);
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                     cx.notify();
                 }
@@ -670,7 +663,6 @@ impl GradientBuilder {
                     this.freeform_gpu = item_id.as_ref() == "gpu";
                     this.render_task = None;
                     this.preview_image_cache = None;
-                    this.sync_adjustment_support(cx);
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
                     cx.notify();
                 }

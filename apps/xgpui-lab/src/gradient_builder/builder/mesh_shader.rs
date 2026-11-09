@@ -138,7 +138,6 @@ mod tests {
                 assert_eq!(view.mesh_points, points);
                 assert_eq!(view.mesh_shader_enabled, id == "shader");
                 assert_eq!(view.uses_render_preview(cx), id == "cpu");
-                assert_eq!(view.adjustments_supported(), id == "cpu");
             });
         }
         view.update(cx, |view, cx| {
@@ -147,7 +146,6 @@ mod tests {
                 cx,
             );
             assert!(view.uses_render_preview(cx));
-            assert!(view.adjustments_supported());
         });
     }
 }

@@ -120,7 +120,9 @@ impl Render for GradientBuilder {
         self.spread_last_frame = now;
         let chrome = self.look.chrome();
         let rotation_deg = self.rotation_deg;
-        let source_stops = self.preview_stops(cx);
+        // Saturation/Vibrance are applied to the colors, so every renderer
+        // (CPU, shaders, Display P3) shows them.
+        let source_stops = self.render_stops(cx);
         self.sync_preview_strategy(source_stops.len());
         // GPUI paints and the sRGB shaders take sRGB-encoded stops.
         let stops = encode_stops(&source_stops, OutputSpace::Srgb);
@@ -132,10 +134,7 @@ impl Render for GradientBuilder {
         if p3_active {
             self.active_preview_strategy = "Display P3 shader";
         }
-        let p3_preview = p3_active.then(|| {
-            self.p3_cache
-                .element(self.gradient_type, &source_stops, rotation_deg, self.image_adjustments.is_neutral())
-        });
+        let p3_preview = p3_active.then(|| self.p3_cache.element(self.gradient_type, &source_stops, rotation_deg));
         let preview_uses_render_image = !p3_active && self.uses_render_preview(cx);
         let shader_preview =
             if !p3_active && self.selected_tab == BuilderTab::Gradients && self.preview_renderer.is_shader() {
@@ -145,7 +144,6 @@ impl Render for GradientBuilder {
                     &stops,
                     rotation_deg,
                     self.preview_size,
-                    self.image_adjustments.is_neutral(),
                 ))
             } else {
                 None
@@ -273,10 +271,10 @@ impl Render for GradientBuilder {
                     self.selected_tab == BuilderTab::Mesh && (self.mesh_shader_enabled || mesh_p3_active);
                 let mesh_shader_preview = mesh_shader_active.then(|| {
                     self.mesh_shader_cache.element(
-                        &encode_points(&self.mesh_points, OutputSpace::wide(mesh_p3_active)),
+                        &encode_points(&self.render_points(), OutputSpace::wide(mesh_p3_active)),
                         frame_size,
                         // Painted by GPUI behind the mesh: always sRGB.
-                        encode(self.mesh_background, OutputSpace::Srgb),
+                        encode(self.render_background(), OutputSpace::Srgb),
                         self.mesh_controls_visible,
                         mesh_p3_active,
                     )
@@ -286,8 +284,8 @@ impl Render for GradientBuilder {
                 let freeform_gpu_preview = if freeform_gpu_active {
                     let output = OutputSpace::wide(freeform_p3_active);
                     let field = super::super::paint::build_color_field(
-                        &encode_points(&self.mesh_points, output),
-                        encode(self.mesh_background, output),
+                        &encode_points(&self.render_points(), output),
+                        encode(self.render_background(), output),
                         self.spread_percent,
                         self.freeform_hsl,
                         &super::super::paint::FieldShape {

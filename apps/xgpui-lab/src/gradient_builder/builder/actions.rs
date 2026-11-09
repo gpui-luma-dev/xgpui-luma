@@ -10,29 +10,23 @@ use super::mesh::{
 };
 
 impl GradientBuilder {
-    pub(super) fn adjustments_supported(&self) -> bool {
-        match self.selected_tab {
-            BuilderTab::Gradients => !self.preview_p3 && !self.preview_renderer.is_shader(),
-            BuilderTab::Mesh => !self.mesh_shader_enabled && !self.mesh_p3,
-            BuilderTab::Freeform => !self.freeform_p3 && !self.freeform_gpu,
-        }
+    /// Source stops with Saturation/Vibrance applied: what every renderer draws.
+    pub(super) fn render_stops(&self, cx: &Context<Self>) -> Vec<(f32, ColorValue)> {
+        let adjust = self.image_adjustments;
+        self.preview_stops(cx)
+            .into_iter()
+            .map(|(position, color)| (position, adjust.adjust_color(color)))
+            .collect()
     }
 
-    pub(super) fn sync_adjustment_support(&mut self, cx: &mut Context<Self>) {
-        let enabled = self.adjustments_supported();
-        if !enabled {
-            self.image_adjustments = super::super::paint::ImageAdjustments::default();
-            self.preview_image_cache = None;
-            self.render_task = None;
-        }
-        for slider in [&self.saturation_slider, &self.vibrance_slider] {
-            slider.update(cx, |slider, cx| {
-                if !enabled {
-                    slider.set_value(0., cx);
-                }
-                slider.set_enabled(enabled, cx);
-            });
-        }
+    /// Mesh/Freeform points with Saturation/Vibrance applied.
+    pub(super) fn render_points(&self) -> Vec<MeshPoint> {
+        let adjust = self.image_adjustments;
+        self.mesh_points.iter().map(|point| point.with_color(adjust.adjust_color(point.color))).collect()
+    }
+
+    pub(super) fn render_background(&self) -> ColorValue {
+        self.image_adjustments.adjust_color(self.mesh_background)
     }
 
     pub(super) fn handle_stops_event(&mut self, event: &SliderEvent, cx: &mut Context<Self>) {
@@ -101,7 +95,6 @@ impl GradientBuilder {
             }
             self.preview_image_cache = None;
             self.selected_tab = next;
-            self.sync_adjustment_support(cx);
             self.sync_visibility_button(cx);
             if next == BuilderTab::Freeform {
                 self.sync_freeform_buttons(cx);
@@ -144,7 +137,6 @@ impl GradientBuilder {
         };
         if self.preview_renderer != next {
             self.preview_renderer = next;
-            self.sync_adjustment_support(cx);
             self.render_task = None;
             let _ = self.ensure_preview_image_cache(self.preview_size, cx);
             cx.notify();
@@ -323,15 +315,12 @@ impl GradientBuilder {
     }
 
     pub(super) fn gradient_spec(&self, cx: &Context<Self>) -> String {
-        format_css_gradient(self.gradient_type, &self.preview_stops(cx), self.rotation_deg)
+        format_css_gradient(self.gradient_type, &self.render_stops(cx), self.rotation_deg)
     }
 
     pub(super) fn effective_preview_renderer(&self) -> PreviewRenderer {
         if self.selected_tab == BuilderTab::Gradients && self.preview_renderer.is_shader() {
             return self.preview_renderer;
-        }
-        if !self.image_adjustments.is_neutral() {
-            return PreviewRenderer::RenderImageSync;
         }
         match (self.gradient_type, self.preview_renderer) {
             (GradientType::Linear, renderer) => renderer,
@@ -350,7 +339,7 @@ impl GradientBuilder {
         if self.selected_tab == BuilderTab::Gradients && self.preview_renderer.is_shader() {
             return false;
         }
-        if self.selected_tab != BuilderTab::Gradients || !self.image_adjustments.is_neutral() {
+        if self.selected_tab != BuilderTab::Gradients {
             return true;
         }
         let stop_count = self.preview_stops(cx).len();
@@ -430,7 +419,7 @@ impl GradientBuilder {
 
         let key = match self.selected_tab {
             BuilderTab::Gradients => {
-                let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
+                let stops = encode_stops(&self.render_stops(cx), OutputSpace::Srgb);
                 preview_gradient_cache_key(self.gradient_type, preview_size, self.rotation_deg, &stops)
             }
             // The key holds encoded colors, so a change of output re-renders.
@@ -438,8 +427,8 @@ impl GradientBuilder {
                 let output = self.raster_output();
                 preview_mesh_cache_key(
                     preview_size,
-                    &encode_points(&self.mesh_points, output),
-                    encode(self.mesh_background, output),
+                    &encode_points(&self.render_points(), output),
+                    encode(self.render_background(), output),
                 )
             }
         };
@@ -457,13 +446,13 @@ impl GradientBuilder {
             let started = Instant::now();
             let image = match self.selected_tab {
                 BuilderTab::Gradients => {
-                    let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
+                    let stops = encode_stops(&self.render_stops(cx), OutputSpace::Srgb);
                     rasterize_gradient_preview(self.gradient_type, preview_size, &stops, self.rotation_deg)
                 }
                 BuilderTab::Freeform => super::super::paint::rasterize_freeform_preview(
                     preview_size,
-                    &encode_points(&self.mesh_points, self.raster_output()),
-                    encode(self.mesh_background, self.raster_output()),
+                    &encode_points(&self.render_points(), self.raster_output()),
+                    encode(self.render_background(), self.raster_output()),
                     self.spread_percent,
                     self.freeform_hsl,
                     &super::super::paint::FieldShape {
@@ -476,12 +465,12 @@ impl GradientBuilder {
                 ),
                 BuilderTab::Mesh => rasterize_mesh_gradient_preview(
                     preview_size,
-                    &encode_points(&self.mesh_points, OutputSpace::Srgb),
-                    encode(self.mesh_background, OutputSpace::Srgb),
+                    &encode_points(&self.render_points(), OutputSpace::Srgb),
+                    encode(self.render_background(), OutputSpace::Srgb),
                     self.mesh_controls_visible,
                 ),
             };
-            let Some(image) = image.and_then(|image| self.image_adjustments.apply(image)) else {
+            let Some(image) = image else {
                 return false;
             };
             self.preview_image_cache = Some((key, image));
@@ -490,7 +479,7 @@ impl GradientBuilder {
         } else {
             let gradient_type = self.gradient_type;
             let rotation_deg = self.rotation_deg;
-            let stops = encode_stops(&self.preview_stops(cx), OutputSpace::Srgb);
+            let stops = encode_stops(&self.render_stops(cx), OutputSpace::Srgb);
             self.render_task = Some(cx.spawn(async move |this, cx| {
                 let started = Instant::now();
                 let image = cx
@@ -518,19 +507,19 @@ impl GradientBuilder {
             BuilderTab::Gradients => rasterize_gradient_preview(
                 self.gradient_type,
                 self.preview_size,
-                &encode_stops(&self.preview_stops(cx), srgb),
+                &encode_stops(&self.render_stops(cx), srgb),
                 self.rotation_deg,
             ),
             BuilderTab::Mesh => rasterize_mesh_gradient_preview(
                 self.preview_size,
-                &encode_points(&self.mesh_points, srgb),
-                encode(self.mesh_background, srgb),
+                &encode_points(&self.render_points(), srgb),
+                encode(self.render_background(), srgb),
                 false,
             ),
             BuilderTab::Freeform => super::super::paint::rasterize_freeform_preview(
                 self.preview_size,
-                &encode_points(&self.mesh_points, srgb),
-                encode(self.mesh_background, srgb),
+                &encode_points(&self.render_points(), srgb),
+                encode(self.render_background(), srgb),
                 self.spread_percent,
                 self.freeform_hsl,
                 &super::super::paint::FieldShape {
@@ -541,8 +530,7 @@ impl GradientBuilder {
                     softness_percent: self.softness_percent,
                 },
             ),
-        }
-        .and_then(|image| self.image_adjustments.apply(image));
+        };
         let Some(image) = image else {
             self.export_status = Some("Preview not ready to export".into());
             cx.notify();

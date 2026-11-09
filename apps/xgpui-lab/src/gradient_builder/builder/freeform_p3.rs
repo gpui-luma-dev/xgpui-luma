@@ -150,7 +150,7 @@ mod native_tests {
 mod control_tests {
     use super::*;
     #[test]
-    fn freeform_p3_resets_adjustments_and_preserves_field_transforms() {
+    fn freeform_p3_keeps_adjustments_and_field_transforms() {
         let mut app = gpui::TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| GradientBuilder::new(crate::theme::default_look(), cx));
@@ -163,18 +163,14 @@ mod control_tests {
             view.point_transforms[0] = [70., 0.5];
             view.image_adjustments.saturation = 50.;
             view.image_adjustments.vibrance = -30.;
-            view.saturation_slider.update(cx, |slider, cx| slider.set_value(50., cx));
-            view.vibrance_slider.update(cx, |slider, cx| slider.set_value(-30., cx));
             view.freeform_p3 = true;
-            view.sync_adjustment_support(cx);
-            assert!(!view.adjustments_supported());
-            assert!(view.image_adjustments.is_neutral());
-            assert_eq!(view.saturation_slider.read(cx).value(), 0.);
-            assert_eq!(view.vibrance_slider.read(cx).value(), 0.);
+            view.wide_output_available = true;
+            // Adjustments now apply to colors, so P3 keeps them.
+            assert!(!view.image_adjustments.is_neutral());
             assert_eq!(view.point_transforms[0], [70., 0.5]);
-            view.freeform_p3 = false;
-            view.sync_adjustment_support(cx);
-            assert!(view.adjustments_supported());
+            let adjusted = view.render_points();
+            assert_ne!(adjusted[0].color, view.mesh_points[0].color);
+            assert_eq!((adjusted[0].u, adjusted[0].v), (view.mesh_points[0].u, view.mesh_points[0].v));
         });
     }
 }
