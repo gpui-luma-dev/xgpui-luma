@@ -307,7 +307,7 @@ impl ComboBoxControl {
 
         self.last_keyboard_event = SharedString::from(format!("key:{}", event.keystroke.key));
 
-        if event.keystroke.modifiers.control || event.keystroke.modifiers.secondary() {
+        if event.keystroke.modifiers.control || event.keystroke.modifiers.secondary(cx) {
             return;
         }
 

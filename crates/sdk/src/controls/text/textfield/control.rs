@@ -611,7 +611,7 @@ impl TextFieldControl {
             return;
         }
 
-        let clipboard_text = if event.keystroke.modifiers.secondary() && event.keystroke.key == "v" {
+        let clipboard_text = if event.keystroke.modifiers.secondary(cx) && event.keystroke.key == "v" {
             cx.read_from_clipboard().and_then(|item| item.text())
         } else {
             None
@@ -621,6 +621,7 @@ impl TextFieldControl {
             self.model.value.as_ref(),
             event,
             clipboard_text.as_deref(),
+            event.keystroke.modifiers.secondary(cx),
             EditableTextPolicy {
                 multiline: false,
                 submit_on_enter: true,

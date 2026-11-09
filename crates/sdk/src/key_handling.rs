@@ -301,7 +301,7 @@ mod tests {
         assert!(has_binding::<ActivateControl>(&bindings, "space"));
     }
 
-    fn has_binding<A: Action>(bindings: &[KeyBinding], keystrokes: &str) -> bool {
+    fn has_binding<A: Action>(bindings: &[KeyBinding], keystrokes: &'static str) -> bool {
         let expected = Keystroke::parse(keystrokes).expect("valid test keystroke");
         bindings.iter().any(|binding| {
             binding.keystrokes().len() == 1
