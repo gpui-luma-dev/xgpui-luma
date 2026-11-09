@@ -1,6 +1,6 @@
 # Run from the repository root. Windows: put Git for Windows Bash on PATH.
 set shell := ["bash", "-cu"]
-set windows-shell := ["bash", "-cu"]
+set windows-shell := ["bash.exe", "-cu"]
 set positional-arguments
 
 # App launches and explicit builds default to release; checks/tests use Cargo defaults.
@@ -75,7 +75,7 @@ sdk-build *args:
 
 # Run the library suites selected by CI, excluding benchmarks and demo binaries.
 sdk-test *args:
-    @{{ python }} -B scripts/quiet_check.py cargo test --locked --lib --bins --tests --all-features -p xgpui-luma -p xgpui-luma-color -p xgpui-luma-plot -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p luma-app-common "$@"
+    cargo test --locked --lib --bins --tests --all-features -p xgpui-luma -p xgpui-luma-color -p xgpui-luma-plot -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p luma-app-common "$@"
 
 # Lint default SDK/library members with every target and feature.
 sdk-clippy *args:
@@ -83,9 +83,13 @@ sdk-clippy *args:
 
 # Run documentation tests for the library packages selected by CI.
 sdk-doc-test *args:
-    @{{ python }} -B scripts/quiet_check.py cargo test --locked --doc --all-features -p xgpui-luma -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-luma-plot "$@"
+    cargo test --locked --doc --all-features -p xgpui-luma -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-luma-plot "$@"
 
 # --- Workspace ---
+
+# Run Rust suites with live output, timings and logs (--list, --only <name>).
+test *args:
+    bash scripts/test.sh "$@"
 
 # Check all workspace targets and features, including the native profiling app.
 workspace-check *args:
@@ -97,7 +101,11 @@ workspace-build *args:
 
 # Run workspace unit/integration tests, excluding benchmark executables.
 workspace-test *args:
-    @{{ python }} -B scripts/quiet_check.py cargo test --locked --workspace --lib --bins --tests --all-features "$@"
+    cargo test --locked --workspace --lib --bins --tests --all-features "$@"
+
+# Run documentation tests across the workspace.
+workspace-doc-test *args:
+    cargo test --locked --workspace --doc --all-features "$@"
 
 # Lint the full workspace with the same targets and features as CI.
 workspace-clippy *args:
@@ -145,6 +153,10 @@ wasm-check:
 
 # --- Aggregate Checks ---
 
+# Publish the five crates using Rust tooling (default: publish; --mode plan|dry-run).
+publish-crates *args:
+    cargo run --locked -p luma-release --bin luma-release -- "$@"
+
 # Run the local equivalents of CI formatting, script, lint and library/doc checks.
 ci: fmt-check scripts-check workspace-clippy sdk-test sdk-doc-test _control-docs-check
 
@@ -152,26 +164,9 @@ ci: fmt-check scripts-check workspace-clippy sdk-test sdk-doc-test _control-docs
 pre-pr: ci workflows-check docs-check wasm-check
     git diff --check
 
-# Check release changes before committing; clean candidates also get final archive verification.
-preflight-release: _preflight-source-check _release-registry-check ci
-    #!/usr/bin/env bash
-    set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
-    VERSION=${release_package_id##*@}
-    GITHUB_SHA=$(git rev-parse HEAD)
-    export VERSION GITHUB_SHA
-    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
-    export PUBLISH_RELEASE=false
-    if [[ -n "$(git status --porcelain)" ]]; then
-        cargo package --locked --allow-dirty --registry crates-io {{ lib-packages }}
-        echo "Local pre-flight checks passed for uncommitted changes."
-        echo "Final release archive verification is pending: commit changes and rerun just preflight-release."
-        exit 0
-    fi
-    cargo package --locked --registry crates-io {{ lib-packages }}
-    # With PUBLISH_RELEASE=false this only verifies archives, including already published versions.
-    {{ python }} -B scripts/release.py publish
-    echo "Release pre-flight passed. Publishing remains a separate action."
+# Verify crates.io candidates without uploading.
+preflight-release:
+    cargo run --locked -p luma-release --bin luma-release -- --mode dry-run
 
 # Build and verify the release Pages artifact locally; never deploy or open a browser.
 preflight-pages: _preflight-source-check fmt-check scripts-check workflows-check docs-check wasm-check
@@ -189,16 +184,6 @@ loc:
     tokei --types Rust
 
 # --- Internal Prerequisites ---
-
-_release-registry-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
-    VERSION=${release_package_id##*@}
-    GITHUB_SHA=$(git rev-parse HEAD)
-    export VERSION GITHUB_SHA
-    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
-    PUBLISH_RELEASE=false {{ python }} -B scripts/release.py preflight --require-unpublished
 
 _preflight-source-check:
     #!/usr/bin/env {{ python }}

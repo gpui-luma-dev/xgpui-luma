@@ -57,7 +57,7 @@ EXAMPLES = {
     "stepper.html": 0,
     "slider.html": 0,
     "colors.html": 1,
-    "color-slider.html": [0, 1],
+    "color-slider.html": [0, 1, 2],
     "color-field.html": 0,
     "color-ring.html": 0,
     "color-arc.html": 0,

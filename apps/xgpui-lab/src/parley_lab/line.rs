@@ -6,7 +6,7 @@ struct Snapshot {
     image: Arc<RenderImage>,
 }
 pub(super) struct LinePage {
-    engine: std::rc::Rc<Engine>,
+    engine: Rc<Engine>,
     sample: usize,
     width: f32,
     size: f32,
@@ -18,7 +18,7 @@ pub(super) struct LinePage {
     hit: Option<ParagraphPosition>,
 }
 impl LinePage {
-    pub fn new(engine: std::rc::Rc<Engine>, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
+    pub fn new(engine: Rc<Engine>, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let sample_choice = crate::lab_controls::Choice::new(
             "text-line-sample",
             "Sample",
