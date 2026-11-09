@@ -12,15 +12,13 @@ use std::sync::{
 use std::{cell::RefCell, rc::Rc};
 use xgpui_luma::controls::{
     resizable_panels::{
-        ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, PanelHideMode, ResizeHandleVisibility,
-        ResizeCollapseBehavior, ResizeCollapseMode, ResizeCollapseDirection,
+        ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, ResizeHandleVisibility, ResizeCollapseBehavior,
+        ResizeCollapseMode, ResizeCollapseDirection,
     },
     accordion::{Accordion, AccordionContent, AccordionItem, AccordionTrigger},
 };
 use xgpui_luma::prelude::HasPresenter;
-use xgpui_luma::controls::button::ButtonEventExt;
 use xgpui_luma::controls::resizable_panels::ResizablePanelsEventExt;
-use xgpui_luma::theme::LumaThemeSyncExt;
 
 use crate::gradient_builder::GradientBuilder;
 use crate::compositions::ColorCompositions;
@@ -30,7 +28,7 @@ mod nav_accordion;
 mod shell_style;
 mod titlebar;
 use shell_style::*;
-use titlebar::TitlebarControls;
+pub(crate) use titlebar::{open_shell, open_shell_test_window};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Workspace {
@@ -45,16 +43,12 @@ enum Workspace {
     Svg,
     Canvas,
     Standalone,
+    Shell,
 }
 
 type Section = (Workspace, &'static str, &'static [(&'static str, &'static str)]);
 
 const SECTIONS: &[Section] = &[
-    (
-        Workspace::Canvas,
-        "xgpui-canvas",
-        &[("Spatial Canvas", "Spatial Canvas"), ("Mandelbrot", "Mandelbrot")],
-    ),
     (
         Workspace::Standalone,
         "Standalone Benchmarks",
@@ -82,6 +76,11 @@ const SECTIONS: &[Section] = &[
         ],
     ),
     (Workspace::ColorGamut, "Color & Gamut", &[("Color & Gamut", "Color & Gamut")]),
+    (
+        Workspace::Canvas,
+        "xgpui-canvas",
+        &[("Spatial Canvas", "Spatial Canvas"), ("Mandelbrot", "Mandelbrot")],
+    ),
     (
         Workspace::Color,
         "xgpui-color",
@@ -156,6 +155,7 @@ const SECTIONS: &[Section] = &[
             ("Benchmarks", "Benchmarks"),
         ],
     ),
+    (Workspace::Shell, "xgpui-shell", crate::shell_lab::PAGES),
     (
         Workspace::Svg,
         "xgpui-svg",
@@ -187,7 +187,8 @@ pub struct XgpuiLabApp {
     panels: Entity<ResizablePanels>,
     rail: Entity<xgpui_luma::controls::frame::FrameControl>,
     sidebar_width: gpui::Pixels,
-    titlebar: TitlebarControls,
+    body_origin: gpui::Pixels,
+    _activation_subscription: gpui::Subscription,
     content: Rc<RefCell<gpui::AnyView>>,
     active_page: &'static str,
     extensions: Vec<(Workspace, Entity<ExtensionPane>)>,
@@ -200,6 +201,7 @@ impl XgpuiLabApp {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let p3_error = window.set_color_mode(gpui::WindowColorMode::WideGamutSdr).err().map(|error| error.to_string());
         let focus_scope = cx.focus_handle();
+        let activation_subscription = cx.observe_window_activation(window, |_, _, cx| cx.notify());
         let look = crate::theme::default_look();
         let nav_look = look.clone();
         sync_color_control_theme(&look);
@@ -217,6 +219,7 @@ impl XgpuiLabApp {
                     Workspace::Svg => "xgpui-svg-tabs",
                     Workspace::Canvas => "xgpui-canvas-tabs",
                     Workspace::Standalone => "standalone-benchmark-tabs",
+                    Workspace::Shell => "xgpui-shell-tabs",
                 };
                 Some((workspace, cx.new(|cx| ExtensionPane::new(id, look.clone(), p3_error.clone(), cx))))
             })
@@ -331,7 +334,6 @@ impl XgpuiLabApp {
             )
             .spawn(cx);
         let rail = spawn_rail(&nav_look, cx);
-        let titlebar = TitlebarControls::new(&look, cx);
         panels.clone().on_event(cx, |this: &mut Self, event, cx| {
             if let ResizablePanelsEvent::SizesChanged { sizes_px } = event
                 && let Some(width) = sizes_px.first()
@@ -339,32 +341,6 @@ impl XgpuiLabApp {
                 this.sidebar_width = px(*width);
                 cx.notify();
             }
-        });
-        titlebar.sidebar_toggle.clone().on_click(cx, |this: &mut Self, cx| {
-            this.panels.update(cx, |panels, cx| panels.toggle_panel_hidden(0, PanelHideMode::Completely, cx));
-        });
-        titlebar.theme_toggle.clone().on_click(cx, |this: &mut Self, cx| {
-            let mode = match this.look.mode() {
-                ThemeMode::Light => ThemeMode::Dark,
-                ThemeMode::Dark => ThemeMode::Light,
-            };
-            this.look.set_mode(mode);
-            sync_color_control_theme(&this.look);
-            let icon = if mode == ThemeMode::Dark {
-                lucide_svg_static::Icon::Sun
-            } else {
-                lucide_svg_static::Icon::Moon
-            };
-            this.titlebar.theme_toggle.update(cx, |button, cx| {
-                button.set_presenter(
-                    Arc::new(move |model, _| {
-                        xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
-                    }),
-                    cx,
-                );
-            });
-            cx.bump_luma_theme_revision();
-            cx.notify();
         });
         Self {
             focus_scope,
@@ -380,8 +356,9 @@ impl XgpuiLabApp {
             presentation_pending: false,
             panels,
             rail,
-            titlebar,
             sidebar_width: INITIAL_SIDEBAR_WIDTH,
+            body_origin: px(0.0),
+            _activation_subscription: activation_subscription,
             content,
             active_page: "gradients",
         }
@@ -513,10 +490,26 @@ impl Render for XgpuiLabApp {
         let chrome = self.look.chrome();
         let sans_family = "System UI".to_string();
 
-        let title_bar = self.titlebar.render(&self.look, self.sidebar_width, _window);
+        let app_entity = _cx.entity().downgrade();
         let body = div()
             .size_full()
-            .bg(shell_background(&self.look))
+            .bg(shell_background(&self.look, _window.is_window_active()))
+            .relative()
+            .child(
+                gpui::canvas(
+                    move |bounds, _, cx| {
+                        let _ = app_entity.update(cx, |app, cx| {
+                            if app.body_origin != bounds.origin.x {
+                                app.body_origin = bounds.origin.x;
+                                cx.notify();
+                            }
+                        });
+                    },
+                    |_, _, _, _| {},
+                )
+                .absolute()
+                .size_full(),
+            )
             .flex()
             .child(
                 div()
@@ -559,9 +552,8 @@ impl Render for XgpuiLabApp {
             .flex()
             .flex_col()
             .font_family(sans_family)
-            .bg(shell_background(&self.look))
+            .bg(shell_background(&self.look, _window.is_window_active()))
             .text_color(chrome.body_text)
-            .child(title_bar)
             .child(div().flex_1().min_h_0().child(body))
     }
 }
@@ -604,6 +596,8 @@ mod tests {
             (Workspace::Compositions, "harmonies"),
             (Workspace::Gradients, "mesh"),
             (Workspace::Canvas, "Spatial Canvas"),
+            (Workspace::Shell, "Shell Lab"),
+            (Workspace::Shell, "Desktop Preferences"),
             (Workspace::Shader, "Pastel Waves"),
             (Workspace::Standalone, "Quad Benchmark"),
             (Workspace::Standalone, "Color Field Benchmark"),
@@ -654,12 +648,24 @@ mod tests {
     }
 
     use super::titlebar::{CLOSED_TITLEBAR_WIDTH, titlebar_compartment_width};
-    use xgpui_luma::shell::TITLE_BAR_LEFT_PADDING;
     use gpui::{MouseButton, MouseDownEvent, VisualTestContext, point};
+
+    fn shell_test_window(app: &TestAppContext) -> (Entity<XgpuiLabApp>, VisualTestContext) {
+        let (window, view) = app.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            super::titlebar::open_shell_window(cx).unwrap()
+        });
+        let visual = VisualTestContext::from_window(window.into(), app);
+        visual.run_until_parked();
+        (view, visual)
+    }
 
     fn assert_aligned(cx: &mut VisualTestContext) {
         cx.run_until_parked();
         let separator = cx.debug_bounds("shell-2026-separator").unwrap();
+        let title = cx.debug_bounds("lab-title-label").unwrap();
+        let toggle = cx.debug_bounds("shell-2026-toggle-sidebar").unwrap();
+        assert!((title.center().y - toggle.center().y).abs() <= px(1.0), "title {title:?}, toggle {toggle:?}");
         let workspace = cx.debug_bounds("shell-2026-workspace").unwrap();
         assert!(
             (separator.origin.x - workspace.origin.x).abs() <= px(1.0),
@@ -668,16 +674,17 @@ mod tests {
         assert_eq!(cx.debug_bounds("shell-2026-sidebar-fill").unwrap().right(), workspace.left());
         assert!(separator.bottom() < workspace.top(), "the two separators must remain disconnected");
         assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().size.width, RAIL_WIDTH);
-        assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().top(), SHELL_TITLEBAR_HEIGHT);
+        assert_eq!(
+            cx.debug_bounds("shell-2026-rail-bounds").unwrap().top(),
+            cx.debug_bounds("shell-titlebar-bounds").unwrap().bottom()
+        );
     }
 
     #[test]
     fn rendered_separator_tracks_drag_and_restores_from_both_collapse_paths() {
-        let mut app = TestAppContext::single();
-        let (view, cx) = app.add_window_view(|window, cx| {
-            xgpui_luma::init(cx).unwrap();
-            XgpuiLabApp::new(window, cx)
-        });
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
         assert_aligned(cx);
         let workspace = cx.debug_bounds("shell-2026-workspace").unwrap();
         let start = point(workspace.left(), workspace.top() + px(100.0));
@@ -707,8 +714,14 @@ mod tests {
             "collapse must publish intermediate animated widths"
         );
         let closed_separator = cx.debug_bounds("shell-2026-separator").unwrap();
-        assert_eq!(closed_separator.left(), TITLE_BAR_LEFT_PADDING + CLOSED_TITLEBAR_WIDTH - px(1.0));
-        assert_eq!(cx.debug_bounds("shell-2026-workspace").unwrap().left(), RAIL_WIDTH + CANVAS_BORDER);
+        assert_eq!(
+            closed_separator.left(),
+            cx.debug_bounds("lab-toolbar-bounds").unwrap().left() + CLOSED_TITLEBAR_WIDTH - px(1.0)
+        );
+        assert_eq!(
+            cx.debug_bounds("shell-2026-workspace").unwrap().left(),
+            cx.debug_bounds("shell-2026-rail-bounds").unwrap().left() + RAIL_WIDTH + CANVAS_BORDER
+        );
         assert_eq!(cx.debug_bounds("shell-2026-rail-bounds").unwrap().size.width, RAIL_WIDTH);
         cx.simulate_click(toggle, Default::default());
         cx.run_until_parked();
@@ -777,13 +790,12 @@ mod tests {
 
     #[test]
     fn theme_toggle_switches_radix_and_keeps_selected_page() {
-        let mut app = TestAppContext::single();
-        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
-        let (view, cx) = app.add_window_view(XgpuiLabApp::new);
-        cx.run_until_parked();
-        let toggle = cx.update(|_, cx| view.read(cx).titlebar.theme_toggle.clone());
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
+            let toggle = cx.debug_bounds("shell-2026-theme").unwrap().center();
+            cx.simulate_click(toggle, Default::default());
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let shell = view.read(cx);
@@ -794,18 +806,68 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_toggle_retains_width_and_selected_content() {
+    fn mac_titlebar_edges_follow_radix_on_startup_and_theme_changes() {
         let mut app = TestAppContext::single();
-        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
-        let (view, cx) = app.add_window_view(XgpuiLabApp::new);
-        cx.run_until_parked();
-        let (split, toggle) = cx.update(|_, cx| {
-            let shell = view.read(cx);
-            (shell.panels.clone(), shell.titlebar.sidebar_toggle.clone())
+        app.set_platform_info(gpui::PlatformInfo {
+            os: gpui::OperatingSystem::Mac,
+            target: gpui::PlatformTarget::Native,
         });
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        for mode in [ThemeMode::Dark, ThemeMode::Light, ThemeMode::Dark] {
+            if cx.update(|_, cx| view.read(cx).look.mode()) != mode {
+                let toggle = cx.debug_bounds("shell-2026-theme").unwrap().center();
+                cx.simulate_click(toggle, Default::default());
+                cx.run_until_parked();
+            }
+            for active in [true, false, true] {
+                if active {
+                    cx.update(|window, _| window.activate_window());
+                } else {
+                    cx.deactivate_window();
+                }
+                cx.run_until_parked();
+                let toolbar = cx.debug_bounds("lab-toolbar-bounds").unwrap();
+                cx.update(|window, cx| {
+                    let expected = shell_background(&view.read(cx).look, active);
+                    assert_eq!(window.is_window_active(), active);
+                    if mode == ThemeMode::Light {
+                        assert_eq!(
+                            expected,
+                            gpui::Hsla::from(gpui::rgb(if active { 0xececed } else { 0xf0f0f0 })),
+                            "light shell must use the requested off-white"
+                        );
+                    }
+                    let quads = window.painted_quads();
+                    let scale = window.scale_factor();
+                    for sample in [
+                        point(px(2.), toolbar.center().y),
+                        point(window.viewport_size().width - px(2.), toolbar.center().y),
+                        point(window.viewport_size().width / 2., toolbar.bottom() + px(0.5)),
+                    ] {
+                        let point = sample.scale(scale);
+                        let top = quads
+                            .iter()
+                            .filter(|quad| quad.bounds.contains(&point) && quad.content_mask.bounds.contains(&point))
+                            .max_by_key(|quad| quad.order)
+                            .expect("titlebar background painted");
+                        assert_eq!(top.background.as_solid(), Some(expected), "sample {sample:?} in {mode:?}");
+                    }
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn sidebar_toggle_retains_width_and_selected_content() {
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        let split = cx.update(|_, cx| view.read(cx).panels.clone());
         let width = cx.update(|_, cx| split.read(cx).panel_sizes_px()[0]);
         for collapsed in [true, false] {
-            toggle.update(cx, |_, cx| cx.emit(xgpui_luma::controls::button::ButtonEvent::Click));
+            let toggle = cx.debug_bounds("shell-2026-toggle-sidebar").unwrap().center();
+            cx.simulate_click(toggle, Default::default());
             cx.run_until_parked();
             cx.update(|_, cx| {
                 assert_eq!(split.read(cx).is_panel_hidden(0), collapsed);
