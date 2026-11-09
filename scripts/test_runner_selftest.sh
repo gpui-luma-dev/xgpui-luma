@@ -23,16 +23,16 @@ cargo() {
 export -f cargo
 bash scripts/test.sh --list > "$tmp/list"
 [[ ! -s "$RUNNER_CALLS" && ! -e "$TEST_ALL_LOG_DIR" ]]
-[[ $(wc -l < "$tmp/list") -eq 9 ]]
+[[ $(wc -l < "$tmp/list") -eq 10 ]]
 
-# A failure in the first suite must survive later successes.
+# A failure in an early suite must survive later successes.
 export FAKE_SDK_STATUS=101 FAKE_DOC_STATUS=0
 status=0
 bash scripts/test.sh > "$tmp/early" 2>&1 || status=$?
-[[ "$status" -eq 1 && $(wc -l < "$RUNNER_CALLS") -eq 9 ]]
+[[ "$status" -eq 1 && $(wc -l < "$RUNNER_CALLS") -eq 10 ]]
 grep -q '^FAIL  sdk .*exit 101' "$tmp/early"
 grep -q '^PASS  doc-tests ' "$tmp/early"
-grep -q '^1 of 9 suites failed\.' "$tmp/early"
+grep -q '^1 of 10 suites failed\.' "$tmp/early"
 grep -q '^test output stays visible' "$tmp/early"
 grep -q '^test output stays visible' "$TEST_ALL_LOG_DIR/sdk.log"
 
@@ -46,11 +46,11 @@ export FAKE_SDK_STATUS=101
 status=0
 bash scripts/test.sh > "$tmp/both" 2>&1 || status=$?
 [[ "$status" -eq 1 ]]
-grep -q '^2 of 9 suites failed\.' "$tmp/both"
+grep -q '^2 of 10 suites failed\.' "$tmp/both"
 
 export FAKE_SDK_STATUS=0 FAKE_DOC_STATUS=0
 bash scripts/test.sh > "$tmp/pass" 2>&1
-grep -q '^0 of 9 suites failed\.' "$tmp/pass"
+grep -q '^0 of 10 suites failed\.' "$tmp/pass"
 
 : > "$RUNNER_CALLS"
 bash scripts/test.sh --only look --offline > "$tmp/filter" 2>&1

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+  "tools/release",
   "apps/xgpui-lab",
   "apps/docs-embed",
   "apps/sdk-perf",

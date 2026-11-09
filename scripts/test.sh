@@ -44,6 +44,7 @@ suite() {
     modes+=("$2")
     packages+=("$3")
 }
+suite release-tool tests 'luma-release'
 suite sdk tests 'xgpui-luma'
 suite color tests 'xgpui-luma-color'
 suite look-shadcn tests 'xgpui-luma-look-shadcn'

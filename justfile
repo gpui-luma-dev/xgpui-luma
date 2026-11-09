@@ -153,6 +153,10 @@ wasm-check:
 
 # --- Aggregate Checks ---
 
+# Publish the five crates using Rust tooling (default: publish; --mode plan|dry-run).
+publish-crates *args:
+    cargo run --locked -p luma-release --bin luma-release -- "$@"
+
 # Run the local equivalents of CI formatting, script, lint and library/doc checks.
 ci: fmt-check scripts-check workspace-clippy sdk-test sdk-doc-test _control-docs-check
 
@@ -160,26 +164,9 @@ ci: fmt-check scripts-check workspace-clippy sdk-test sdk-doc-test _control-docs
 pre-pr: ci workflows-check docs-check wasm-check
     git diff --check
 
-# Check release changes before committing; clean candidates also get final archive verification.
-preflight-release: _preflight-source-check _release-registry-check ci
-    #!/usr/bin/env bash
-    set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
-    VERSION=${release_package_id##*@}
-    GITHUB_SHA=$(git rev-parse HEAD)
-    export VERSION GITHUB_SHA
-    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
-    export PUBLISH_RELEASE=false
-    if [[ -n "$(git status --porcelain)" ]]; then
-        cargo package --locked --allow-dirty --registry crates-io {{ lib-packages }}
-        echo "Local pre-flight checks passed for uncommitted changes."
-        echo "Final release archive verification is pending: commit changes and rerun just preflight-release."
-        exit 0
-    fi
-    cargo package --locked --registry crates-io {{ lib-packages }}
-    # With PUBLISH_RELEASE=false this only verifies archives, including already published versions.
-    {{ python }} -B scripts/release.py publish
-    echo "Release pre-flight passed. Publishing remains a separate action."
+# Verify crates.io candidates without uploading.
+preflight-release:
+    cargo run --locked -p luma-release --bin luma-release -- --mode dry-run
 
 # Build and verify the release Pages artifact locally; never deploy or open a browser.
 preflight-pages: _preflight-source-check fmt-check scripts-check workflows-check docs-check wasm-check
@@ -197,16 +184,6 @@ loc:
     tokei --types Rust
 
 # --- Internal Prerequisites ---
-
-_release-registry-check:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    release_package_id=$(cargo pkgid --locked --package xgpui-luma)
-    VERSION=${release_package_id##*@}
-    GITHUB_SHA=$(git rev-parse HEAD)
-    export VERSION GITHUB_SHA
-    export LIB_PACKAGES="xgpui-luma xgpui-luma-color xgpui-luma-look-radix xgpui-luma-look-shadcn xgpui-luma-plot"
-    PUBLISH_RELEASE=false {{ python }} -B scripts/release.py preflight --require-unpublished
 
 _preflight-source-check:
     #!/usr/bin/env {{ python }}
