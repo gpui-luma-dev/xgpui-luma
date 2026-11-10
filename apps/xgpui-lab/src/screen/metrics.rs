@@ -91,6 +91,8 @@ pub(crate) enum TextRole {
     Caption,
     /// Card name.
     Name,
+    /// Parameter labels above a field: the panel subtitle's size, in foreground.
+    Field,
     /// Keys and small labels (UI face, muted): `R`, `x`, `Clip`, `Source`.
     Label,
     /// Small words (UI face): legend names.
@@ -115,6 +117,7 @@ impl TextRole {
         let muted = look.chrome().muted_text;
         match self {
             Self::Crumb | Self::Lede | Self::Caption => element.text_sm().text_color(muted),
+            Self::Field => element.text_sm(),
             Self::Title => element.text_3xl().font_weight(FontWeight::SEMIBOLD),
             Self::Section => element.text_lg().font_weight(FontWeight::SEMIBOLD),
             Self::Name => {

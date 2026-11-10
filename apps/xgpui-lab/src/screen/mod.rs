@@ -22,9 +22,9 @@ mod metrics;
 mod panel;
 
 pub(crate) use card::LabCard;
-pub(crate) use hero::{Hero, Legend, Mark};
+pub(crate) use hero::{ComparePane, Hero, Legend, Mark};
 pub(crate) use metrics::{LabMetrics, MONO_FAMILY, TextRole, readout, text, value_field_look};
-pub(crate) use panel::{Panel, Param, ParametersPanel, PreviewPanel};
+pub(crate) use panel::{ChainPanel, Panel, Param, ParametersPanel, PreviewPanel};
 
 #[derive(IntoElement)]
 pub(crate) struct LabScreen {
@@ -36,6 +36,7 @@ pub(crate) struct LabScreen {
     hero: Option<Hero>,
     caption: Option<SharedString>,
     controls: Vec<AnyElement>,
+    actions: Vec<AnyElement>,
     notices: Vec<SharedString>,
     cards: Vec<LabCard>,
     panels: Option<(Panel, Panel)>,
@@ -54,6 +55,7 @@ impl LabScreen {
             hero: None,
             caption: None,
             controls: Vec::new(),
+            actions: Vec::new(),
             notices: Vec::new(),
             cards: Vec::new(),
             panels: None,
@@ -92,6 +94,12 @@ impl LabScreen {
     /// Append one item to the wrapping control row.
     pub fn control(mut self, element: impl IntoElement) -> Self {
         self.controls.push(element.into_any_element());
+        self
+    }
+
+    /// Append one action (usually a button) to the right end of the control row.
+    pub fn action(mut self, element: impl IntoElement) -> Self {
+        self.actions.push(element.into_any_element());
         self
     }
 
@@ -142,8 +150,12 @@ impl RenderOnce for LabScreen {
         let mut content: Vec<Div> = Vec::new();
         content.extend(self.hero.map(|hero| slot(hero.render(look, &metrics), "hero")));
         content.extend(self.caption.map(|text| caption(text, "caption")));
-        if !self.controls.is_empty() {
-            content.push(slot(control_row(), "controls").children(self.controls));
+        if !self.controls.is_empty() || !self.actions.is_empty() {
+            // Actions stay together at the right end; the spacer pushes them there and lets the row wrap.
+            let actions = (!self.actions.is_empty())
+                .then(|| div().flex().items_center().gap(metrics.control_gap).children(self.actions));
+            let spacer = actions.is_some().then(|| div().flex_1());
+            content.push(slot(control_row(), "controls").children(self.controls).children(spacer).children(actions));
         }
         content.extend(self.notices.into_iter().map(|text| caption(text, "notice")));
         if !self.cards.is_empty() {

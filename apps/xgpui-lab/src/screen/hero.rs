@@ -1,7 +1,6 @@
 //! The screen's main visualization.
 //!
-//! `Compare` (Image Filters) and `Fixed` (Italy) are added with the screens that
-//! need them; see `docs/lab-screen-api.md`.
+//! `Fixed` (Italy) is added with the screen that needs it; see `docs/lab-screen-api.md`.
 use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, SharedString, Styled, div, px};
 use xgpui_luma_look_radix::Look;
 
@@ -13,6 +12,8 @@ pub(crate) enum Hero {
     Full(AnyElement),
     /// Visual with a legend column to its right; the legend wraps below when narrow. Chromaticity.
     WithLegend { visual: AnyElement, legend: Legend },
+    /// Two panes side by side, each with its own heading; they wrap below each other when narrow.
+    Compare(ComparePane, ComparePane),
 }
 
 impl Hero {
@@ -22,6 +23,10 @@ impl Hero {
 
     pub fn with_legend(visual: impl IntoElement, legend: Legend) -> Self {
         Self::WithLegend { visual: visual.into_any_element(), legend }
+    }
+
+    pub fn compare(left: ComparePane, right: ComparePane) -> Self {
+        Self::Compare(left, right)
     }
 
     pub(super) fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
@@ -34,7 +39,67 @@ impl Hero {
                 .gap(metrics.part_gap)
                 .child(div().flex_1().min_w(metrics.hero_min_width).child(visual))
                 .child(legend.render(look, metrics)),
+            Self::Compare(left, right) => div()
+                .flex()
+                .flex_wrap()
+                .gap(metrics.section_gap)
+                .child(left.render(look, metrics))
+                .child(right.render(look, metrics)),
         }
+    }
+}
+
+/// One side of a comparison: a one-line heading (title, subtitle, badge) over the visual.
+pub(crate) struct ComparePane {
+    title: SharedString,
+    subtitle: Option<SharedString>,
+    badge: Option<AnyElement>,
+    visual: AnyElement,
+}
+
+impl gpui::prelude::FluentBuilder for ComparePane {}
+
+impl ComparePane {
+    pub fn new(title: impl Into<SharedString>, visual: impl IntoElement) -> Self {
+        Self { title: title.into(), subtitle: None, badge: None, visual: visual.into_any_element() }
+    }
+
+    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+        self.subtitle = Some(text.into());
+        self
+    }
+
+    /// Any element at the right of the heading. The screen decides what a badge is.
+    pub fn badge(mut self, badge: impl IntoElement) -> Self {
+        self.badge = Some(badge.into_any_element());
+        self
+    }
+
+    fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
+        // Title and subtitle share one line, so the heading costs a single row of height.
+        let heading = div()
+            .flex()
+            .items_baseline()
+            .gap_2()
+            .flex_1()
+            .min_w_0()
+            .child(text(look, TextRole::Name, self.title).flex_shrink_0())
+            .children(self.subtitle.map(|subtitle| text(look, TextRole::Caption, subtitle).truncate()));
+        let header = div()
+            .flex()
+            .items_center()
+            .gap_2()
+            .child(heading)
+            .children(self.badge.map(|badge| div().flex().flex_shrink_0().child(badge)));
+        div()
+            .flex()
+            .flex_col()
+            .gap_2()
+            .flex_1()
+            .flex_basis(px(0.))
+            .min_w(metrics.hero_min_width)
+            .child(header)
+            .child(super::card_surface(div(), look).child(self.visual))
     }
 }
 
@@ -76,6 +141,8 @@ pub(crate) struct Legend {
     note: Option<SharedString>,
     markers: Vec<LegendRow>,
 }
+
+impl gpui::prelude::FluentBuilder for Legend {}
 
 impl Legend {
     pub fn new() -> Self {

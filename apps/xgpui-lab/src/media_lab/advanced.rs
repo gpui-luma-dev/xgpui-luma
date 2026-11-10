@@ -47,7 +47,7 @@ impl MediaPage {
                             .opacity(self.values[3])
                     };
                     let view = make_view();
-                    let mut panel = self.camera_viewport(usize::from(right), width, height, cx);
+                    let mut panel = self.camera_viewport(usize::from(right), width, height, false, cx);
                     let (view, error) = if right && wide {
                         match view.wide_gamut() {
                             Ok(view) => (Some(view), None),
@@ -85,20 +85,28 @@ impl MediaPage {
         index: usize,
         width: f32,
         height: f32,
+        fill: bool,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
         let owner = cx.entity();
+        // `fill` takes the parent's width; the measured width feeds the next frame's image fit.
         div()
             .id(format!("media-image-viewport-{index}"))
             .relative()
-            .w(px(width))
+            .map(|view| if fill { view.w_full() } else { view.w(px(width)) })
             .h(px(height))
             .flex_shrink_0()
             .overflow_hidden()
             .cursor_crosshair()
             .child(super::advanced::checker())
             .on_prepaint(move |bounds, _, cx| {
-                owner.update(cx, |this, _| this.bounds[index] = bounds);
+                owner.update(cx, |this, cx| {
+                    let resized = this.bounds[index].size.width != bounds.size.width;
+                    this.bounds[index] = bounds;
+                    if fill && resized {
+                        cx.notify();
+                    }
+                });
             })
             .on_scroll(cx.listener(move |this, event: &ScrollEvent, _, cx| {
                 let delta = f32::from(event.delta.pixel_delta(px(24.)).y);

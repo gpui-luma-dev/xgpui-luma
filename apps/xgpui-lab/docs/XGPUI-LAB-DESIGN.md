@@ -38,9 +38,9 @@ Paths are relative to `apps/xgpui-lab/`. [lab-ui.md](lab-ui.md) records how the 
 | Screen | Breadcrumb | Reference image | Implementation | State |
 | --- | --- | --- | --- | --- |
 | Color Spaces | `xgpui-color / Color Spaces` | [mockups/color-spaces-reference.webp](mockups/color-spaces-reference.webp) | [`src/color_demos/interactive_spaces.rs`](../src/color_demos/interactive_spaces.rs) | **Source of the design.** Copy it when in doubt. |
-| Chromaticity & Gamut | `xgpui-color / Chromaticity` | [mockups/chromaticity-mockup.png](mockups/chromaticity-mockup.png) | [`src/chromaticity.rs`](../src/chromaticity.rs), [`src/color_demos/chromaticity.rs`](../src/color_demos/chromaticity.rs), hosted by [`src/color_gamut_page.rs`](../src/color_gamut_page.rs) | being restyled |
+| Chromaticity & Gamut | `xgpui-gamut / Chromaticity` | [mockups/chromaticity-mockup.png](mockups/chromaticity-mockup.png) | [`src/color_demos/chromaticity.rs`](../src/color_demos/chromaticity.rs), hosted by [`src/color_gamut_page.rs`](../src/color_gamut_page.rs) | follows the design (`LabScreen`) |
 | Italy Photo Comparison | — | — | [`src/color_demos/`](../src/color_demos/) | follows the design. Photo variant: 3:2 photo, 200 px selectable photo cards (see [lab-ui.md](lab-ui.md#supported-variations)) |
-| Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab.rs`](../src/media_lab.rs), [`src/media_lab/views.rs`](../src/media_lab/views.rs) | being restyled |
+| Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab/filters_screen.rs`](../src/media_lab/filters_screen.rs) (state in [`src/media_lab.rs`](../src/media_lab.rs)) | follows the design (`LabScreen`). The mockup's "linear light" and "skipped steps" text is wrong for `ImageFilter`; the screen says what the code does |
 
 Shared building blocks already exist. Use them before you write new ones:
 
@@ -189,6 +189,7 @@ A screen picks a role; it never sets a size, weight or font family itself.
 | `Crumb`, `Lede`, `Caption` | breadcrumb, lede, live state, notices, notes, panel subtitles | UI, `text_sm`, `MutedForeground` |
 | `Section` | panel title | UI, `text_lg`, semibold |
 | `Name` | card name | UI, base, semibold |
+| `Field` | parameter label above its text field (`Red`, `Contrast`) | UI, `text_sm` (the panel subtitle's size), `Foreground` |
 | `Label` | keys and small labels: `R`, `x`, `u′`, `Y`, `Clip`, `Source`, legend notes | UI, 12 px, `MutedForeground` |
 | `Detail` | small words: legend names | UI, 12 px, `Foreground` |
 | `Value` | measured or edited values | **mono**, 11.5 px (`VALUE_SIZE`), `Foreground` |

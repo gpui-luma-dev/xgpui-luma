@@ -3,8 +3,11 @@ use gpui::{
     AnyElement, Div, Hsla, InteractiveElement, IntoElement, ParentElement, SharedString, Styled, div,
     prelude::FluentBuilder,
 };
-use xgpui_luma::{hstack, vstack};
-use xgpui_luma_look_radix::Look;
+use lucide_svg_static::Icon;
+use xgpui_luma::{hstack, infra::icon::lucide_icon, vstack};
+use xgpui_luma_look_radix::{Look, ScaleFamily};
+
+use crate::theme::ColorVizLookExt;
 
 use super::{LabMetrics, TextRole, card_surface, readout, text};
 
@@ -12,6 +15,7 @@ use super::{LabMetrics, TextRole, card_surface, readout, text};
 pub(crate) struct LabCard {
     name: SharedString,
     swatch: Option<AnyElement>,
+    icon: Option<Icon>,
     mark: Option<Hsla>,
     subtitle: Option<SharedString>,
     badge: Option<AnyElement>,
@@ -27,6 +31,7 @@ impl LabCard {
         Self {
             name: name.into(),
             swatch: None,
+            icon: None,
             mark: None,
             subtitle: None,
             badge: None,
@@ -45,6 +50,12 @@ impl LabCard {
     /// Swatch filled with one data color.
     pub fn swatch_color(self, color: impl Into<Hsla>) -> Self {
         self.swatch(div().size_full().rounded_sm().bg(color.into()))
+    }
+
+    /// A line icon in place of the swatch, for status cards: gray 3 box, gray 6 border.
+    pub fn icon(mut self, icon: Icon) -> Self {
+        self.icon = Some(icon);
+        self
     }
 
     /// Small square in a data color before the name, tying the card to a series in the hero.
@@ -85,8 +96,23 @@ impl LabCard {
     }
 
     pub(super) fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
-        let swatch =
-            self.swatch.map(|swatch| div().size(metrics.card_swatch).flex_shrink_0().rounded_sm().child(swatch));
+        let gray = |step| look.resolve_step(ScaleFamily::Gray, step).hsla();
+        let icon = self.icon.map(|icon| {
+            div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .rounded_sm()
+                .bg(gray(3))
+                .border_1()
+                .border_color(gray(6))
+                .child(lucide_icon(icon, look.chrome().body_text, 16.))
+                .into_any_element()
+        });
+        let swatch = icon
+            .or(self.swatch)
+            .map(|swatch| div().size(metrics.card_swatch).flex_shrink_0().rounded_sm().child(swatch));
         // Names and subtitles stay on one line and truncate, so a badge never wraps or overflows.
         let name = text(look, TextRole::Name, self.name).min_w_0().truncate();
         let name = match self.mark {

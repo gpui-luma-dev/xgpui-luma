@@ -1,6 +1,6 @@
 # LabScreen: proposed screen layout API
 
-Status: **migration steps 1–3 implemented** (`src/screen/`, Color Spaces, Chromaticity).
+Status: **migration steps 1–3 and 5 implemented** (`src/screen/`, Color Spaces, Chromaticity, Image Filters). Italy (step 4) is next.
 Later sections are still proposals; *Implemented so far* below records where
 the code differs from them.
 
@@ -27,6 +27,38 @@ re-exports them. The chart shader now takes its grid (`Border`), locus outline
 (`MutedForeground`) and D65 marker (`Foreground` on a `Background` halo) from
 the look. The gold source marker has a fixed dark halo (`MARKER_SUBJECT_HALO`),
 so light mode reads correctly. Color Spaces screenshots are still byte-identical.
+
+Image Filters (step 5) renders through `LabScreen` in `src/media_lab/filters_screen.rs`;
+the other media tabs keep their own views. It added:
+
+- `Hero::compare(ComparePane, ComparePane)`. A pane's title, subtitle and badge
+  share one heading line, and the visual sits in a card surface. The comparison
+  viewports fill their pane width (measured on the previous frame) at 3:2.
+- `LabCard::icon(lucide Icon)` for status cards: a gray 3 box with a gray 6 border.
+- `LabScreen::action(..)`: buttons kept together at the right end of the control row.
+- `ParametersPanel::action(..)`, a header control (*Reset filters*), and
+  `Param::range(..)`, the accepted range shown at the right of the label.
+  Parameters lay out in at most three columns.
+- `ChainPanel` with `.step(name, detail, active)` and `.note(..)`. It renders
+  numbered rows (inactive steps muted, details in mono) and generates the
+  "N of M steps active" count.
+- `FluentBuilder` on every builder (`ComparePane`, `Legend`, the panels).
+- Value text fields for the six filter parameters, synced both ways with their sliders.
+
+Where it differs from the mockup:
+
+- The mockup's credits say filters run in linear light and that identity steps
+  are skipped. `ImageFilter` composes all steps into one affine matrix in
+  **encoded sRGB**, and steps are never skipped (an identity step just has no
+  effect). The screen states what the code does.
+- The atlas pane subtitle is "Baseline · single level", without "bilinear",
+  which isn't verified here. The *Aliasing* and *Filtered* badges show only
+  while the image is downscaled (scale < 1×), when they're true.
+- *Animate adjustments* is left out: it drives the linear-adjustments path,
+  not these filters. *Sweep zoom* is a switch.
+- Badges sit right after the card name (the `LabCard` rule), not at the far right.
+- Slider tracks are the plain Radix slider. The mockup's gradient tracks and
+  identity ticks are not built yet.
 
 Differences from the proposal below:
 
