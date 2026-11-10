@@ -1,19 +1,14 @@
-# Upstream Pastel Waves lab notes
+# Upstream Pastel Waves app documentation
 
-Waves-specific Markdown sections carried over from XGPUI at
-`e0a7833b6e6ae234eb6c19d2988c085e9524daeb` (Apache-2.0). These snapshots preserve upstream
-usage, rendering descriptions and visual-reference attribution without copying
-unrelated lab documentation. Commands and source paths refer to upstream XGPUI.
-The brushes section describes the older path reference; use the implementation
-and [Luma notes](../pastel-waves.md) for current renderer support.
+Preserved from the Pastel Waves section of
+`apps/xgpui-ext-lab/paint-lab/README.md` at XGPUI revision
+`e0a7833b6e6ae234eb6c19d2988c085e9524daeb` (Apache-2.0).
+Commands and source paths below refer to the upstream app. For the embedded
+Luma app, see [integration notes](../pastel-waves.md).
 
-See also the [full upstream performance study](pastel-waves-performance-study.md).
+---
 
-## Source: `apps/xgpui-ext-lab/paint-lab/README.md`
-
-[Original at inspected revision](https://github.com/gpui-luma-dev/xgpui/blob/e0a7833b6e6ae234eb6c19d2988c085e9524daeb/apps/xgpui-ext-lab/paint-lab/README.md)
-
-### Pastel waves
+## Pastel waves
 
 Open the standalone pastel ribbon composition:
 
@@ -52,50 +47,3 @@ The pastel waves demo was visually inspired by
 on PNGTree. Credit for the reference artwork belongs to its original creator.
 The demo recreates the visual style with procedural Rust geometry and shaders;
 the reference image is not bundled or used as a texture.
-
-
-## Source: `docs/extensions/brushes.md`
-
-[Original at inspected revision](https://github.com/gpui-luma-dev/xgpui/blob/e0a7833b6e6ae234eb6c19d2988c085e9524daeb/docs/extensions/brushes.md)
-
-### Pastel waves composition
-
-The standalone native example combines nine translucent mesh-gradient ribbons
-with fixed pastel background color fields. Separate variable-width contours and
-soft inward bleed gradients create the rounded-fold illusion. The shading
-follows the ribbon geometry rather than blurring its silhouette.
-
-```sh
-cargo run --release --locked --config .cargo/validation.toml \
-  --manifest-path apps/xgpui-ext-lab/Cargo.toml --bin paint-lab --features portable-shaders -- --pastel-waves
-```
-
-Use **Animate / Pause**, **Reverse**, **Grain**, and **Reset**. Motion travels
-forward and backward with eased endpoint turns. The bottom-right label shows
-render frame count, measured render FPS and direction; it does not measure GPU
-presentation cadence. The background fields stay fixed.
-
-This is a visual reference implementation, not an optimized animation pipeline.
-Each foreground ribbon's bleed uses 24 overlapping translucent shapes with
-native path coverage. Frame timing is smoothed and capped, so animation can slow
-under load. [Issue #35](https://github.com/gpui-luma-dev/xgpui/issues/35) tracks
-release profiling, cached-background experiments and directly shaded ribbon
-strips, with in-app comparisons and resource measurements. No performance gain
-or target frame rate is claimed yet. Source: `apps/xgpui-ext-lab/paint-lab/src/pastel_waves.rs`.
-
-
-
-## Source: `docs/extensions/extension-lab.md`
-
-[Original at inspected revision](https://github.com/gpui-luma-dev/xgpui/blob/e0a7833b6e6ae234eb6c19d2988c085e9524daeb/docs/extensions/extension-lab.md)
-
-#### Pastel waves
-
-Open the native paint lab's animated ribbon experiment:
-
-```sh
-just lab-paint --pastel-waves
-```
-
-
-

@@ -102,13 +102,11 @@ stops in system-library discovery because no cross-compilation pkg-config
 sysroot is configured. Neither establishes Windows/Linux compile acceptance.
 GUI/capture probes have not been run.
 
-## Carried-over upstream documentation
+## Carried-over app documentation
 
-- [Performance study](upstream/pastel-waves-performance-study.md), including the
-  upstream Metal screenshot and measurement caveats. These are upstream results,
-  not Luma benchmark claims.
-- [Lab notes and visual attribution](upstream/pastel-waves-lab-notes.md), preserving
-  the Waves sections from the upstream paint-lab documentation, brushes guide
-  and extension-lab guide. Incidental navigation mentions in extensions-web and
-  the 1.27.0 integration checklist remain linked through upstream provenance.
-- [Remove Pastel Waves Lab App — xgpui#195](https://github.com/gpui-luma-dev/xgpui/issues/195).
+[Pastel Waves app documentation and visual attribution](upstream/pastel-waves-lab-notes.md)
+preserves only the Waves section of the upstream paint-lab README. No Markdown
+exists inside upstream `src/pastel_waves/` at the inspected revision.
+
+[Remove Pastel Waves Lab App — xgpui#195](https://github.com/gpui-luma-dev/xgpui/issues/195)
+tracks eventual removal from XGPUI.
