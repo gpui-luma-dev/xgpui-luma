@@ -220,6 +220,7 @@ impl ShellPage {
             double_click_action: action(Setting::DoubleClick),
             middle_click_action: action(Setting::MiddleClick),
             right_click_action: action(Setting::RightClick),
+            ..Default::default()
         }
     }
     fn appearance(&self, window: &Window) -> WindowAppearance {

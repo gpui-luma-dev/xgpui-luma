@@ -1,7 +1,7 @@
 [package]
 name = "xgpui-lab"
 default-run = "xgpui-lab"
-version = "0.1.0"
+version = "0.2.1"
 edition = "2024"
 license = "Apache-2.0"
 publish = false
@@ -15,7 +15,7 @@ test-support = ["xgpui-luma/test-support", "xgpui-luma-color/test-support"]
 portable-app = []
 
 [dependencies]
-xgpui-shell = "0.1.0"
+xgpui-shell = "0.2.0"
 clap = { version = "4", features = ["derive"] }
 xgpui-canvas = { version = "0.3.3", features = ["gpui"] }
 log = "0.4"

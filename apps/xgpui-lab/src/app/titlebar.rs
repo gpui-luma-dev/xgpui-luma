@@ -1,9 +1,9 @@
 //! Lab shell composition: window setup, toolbar layout, controls and callbacks.
 #[cfg(target_os = "macos")]
 mod native_appearance;
-use std::{cell::Cell, collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 use gpui::{prelude::*, *};
-use xgpui_shell::{ShellApp, ShellOptions, ShellWindow, ShellWindowTitle, ShellDragRegion};
+use xgpui_shell::{ShellApp, ShellColors, ShellOptions, ShellWindow, ShellWindowTitle, ShellDragRegion};
 use xgpui_luma::focus::LumaFocusScopeExt;
 use xgpui_luma_look_radix::Look;
 use xgpui_luma::prelude::HasPresenter;
@@ -258,6 +258,7 @@ struct LabTitlebar {
     state: TitlebarState,
     template: TitlebarTemplate,
     focus_scope: FocusHandle,
+    colors: Option<ShellColors>,
     _subscription: Subscription,
     _activation_subscription: Subscription,
     #[cfg(target_os = "macos")]
@@ -277,6 +278,7 @@ impl LabTitlebar {
             state: TitlebarState::default(),
             template: Box::new(template),
             focus_scope: cx.focus_handle(),
+            colors: None,
             _subscription: cx.observe(app, |_, _, cx| cx.notify()),
             _activation_subscription: cx.observe_window_activation(window, |_, _, cx| cx.notify()),
             #[cfg(target_os = "macos")]
@@ -305,12 +307,41 @@ impl Render for LabTitlebar {
                 });
             }
         }
+        let look = &app.read(cx).look;
+        let background = shell_rgb(shell_background(look, _window.is_window_active()));
+        let chrome = look.chrome();
+        let colors = ShellColors {
+            header: background,
+            text: shell_rgb(chrome.title_text),
+            // Preserve the seamless macOS header without painting over shell chrome.
+            border: if cx.platform_info().os == OperatingSystem::Mac {
+                background
+            } else {
+                shell_rgb(chrome.border)
+            },
+            hover: shell_rgb(look.interaction_colors().hovered),
+        };
+        if self.colors != Some(colors) {
+            self.colors = Some(colors);
+            // Update the shell after rendering, when its root entity is available.
+            // The shell owns the entire header, including native-control gutters.
+            _window.defer(cx, move |window, cx| {
+                if let Some(shell) = window.root::<ShellWindow>().flatten() {
+                    shell.update(cx, |shell, cx| {
+                        shell.set_options(
+                            ShellOptions {
+                                titlebar_background: Some(background),
+                                colors: Some(colors),
+                                ..Default::default()
+                            },
+                            cx,
+                        );
+                    });
+                }
+            });
+        }
         let composition = app.update(cx, |app, cx| (self.template)(&mut self.state, app, _window, cx));
         let header = cx.entity().downgrade();
-        let background = shell_background(&app.read(cx).look, _window.is_window_active());
-        let mac_native = cx.platform_info().os == OperatingSystem::Mac;
-        let measured_toolbar = Rc::new(Cell::new(Bounds::default()));
-        let background_bounds = measured_toolbar.clone();
         div()
             .luma_focus_scope(&self.focus_scope)
             .size_full()
@@ -318,28 +349,9 @@ impl Render for LabTitlebar {
             .relative()
             .debug_selector(|| "lab-toolbar-bounds".into())
             .child(composition)
-            .when(mac_native, |root| {
-                // Deferred painting escapes the shell's custom-content clip, while
-                // restricting paint to empty gutters and the bottom seam.
-                root.child(deferred(
-                    canvas(
-                        |_, _, _| (),
-                        move |_, _, window, _| {
-                            for edge in titlebar_background_edges(background_bounds.get(), window.viewport_size()) {
-                                window.paint_quad(fill(edge, background));
-                            }
-                        },
-                    )
-                    .absolute()
-                    .top_0()
-                    .left_0()
-                    .size_full(),
-                ))
-            })
             .child(
                 canvas(
                     move |bounds, _, cx| {
-                        measured_toolbar.set(bounds);
                         let _ = header.update(cx, |header, cx| {
                             if header.state.content_origin != bounds.origin.x {
                                 header.state.content_origin = bounds.origin.x;
@@ -358,14 +370,8 @@ impl Render for LabTitlebar {
     }
 }
 
-/// Exposed macOS background only: native-control gutter, trailing inset and seam.
-fn titlebar_background_edges(toolbar: Bounds<Pixels>, viewport: Size<Pixels>) -> [Bounds<Pixels>; 3] {
-    [
-        Bounds::new(point(px(0.), toolbar.top()), size(toolbar.left().max(px(0.)), toolbar.size.height)),
-        Bounds::new(
-            point(toolbar.right(), toolbar.top()),
-            size((viewport.width - toolbar.right()).max(px(0.)), toolbar.size.height),
-        ),
-        Bounds::new(point(px(0.), toolbar.bottom()), size(viewport.width, px(1.))),
-    ]
+/// The shell API accepts opaque sRGB 0xRRGGBB values.
+fn shell_rgb(color: Hsla) -> u32 {
+    let color = color.to_rgb();
+    ((color.r * 255.).round() as u32) << 16 | ((color.g * 255.).round() as u32) << 8 | (color.b * 255.).round() as u32
 }
