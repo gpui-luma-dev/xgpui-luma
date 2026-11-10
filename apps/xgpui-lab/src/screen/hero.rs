@@ -17,6 +17,8 @@ pub(crate) enum Hero {
     /// A visual that owns its geometry, centered at up to `max_width`. Italy photo.
     /// The screen's caption sits under it and the control row centers.
     Fixed { visual: AnyElement, max_width: Pixels },
+    /// One full-width pane with a heading and badges over a surface. Typography stage.
+    Stage(ComparePane),
 }
 
 impl Hero {
@@ -30,6 +32,10 @@ impl Hero {
 
     pub fn fixed(visual: impl IntoElement, max_width: Pixels) -> Self {
         Self::Fixed { visual: visual.into_any_element(), max_width }
+    }
+
+    pub fn stage(pane: ComparePane) -> Self {
+        Self::Stage(pane)
     }
 
     pub fn compare(left: ComparePane, right: ComparePane) -> Self {
@@ -54,8 +60,9 @@ impl Hero {
                 .flex()
                 .flex_wrap()
                 .gap(metrics.section_gap)
-                .child(left.render(look, metrics))
-                .child(right.render(look, metrics)),
+                .child(left.render(look, metrics).flex_1().flex_basis(px(0.)).min_w(metrics.hero_min_width))
+                .child(right.render(look, metrics).flex_1().flex_basis(px(0.)).min_w(metrics.hero_min_width)),
+            Self::Stage(pane) => pane.render(look, metrics).w_full(),
         }
     }
 }
@@ -86,7 +93,7 @@ impl ComparePane {
         self
     }
 
-    fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
+    fn render(self, look: &Look, _metrics: &LabMetrics) -> Div {
         // Title and subtitle share one line, so the heading costs a single row of height.
         let heading = div()
             .flex()
@@ -106,9 +113,6 @@ impl ComparePane {
             .flex()
             .flex_col()
             .gap_2()
-            .flex_1()
-            .flex_basis(px(0.))
-            .min_w(metrics.hero_min_width)
             .child(header)
             .child(super::card_surface(div(), look).child(self.visual))
     }

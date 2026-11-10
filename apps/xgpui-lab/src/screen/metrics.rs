@@ -25,6 +25,8 @@ pub(crate) struct LabMetrics {
     pub control_gap: Rems,
     pub card_min_width: Pixels,
     pub card_swatch: Pixels,
+    /// Status-card line icon (drawn plain, without a box).
+    pub card_icon: Pixels,
     /// Small data-color square before a card name.
     pub card_mark: Pixels,
     /// Minimum width of a hero visual that sits beside a legend.
@@ -67,6 +69,7 @@ impl LabMetrics {
         control_gap: rems(0.75),
         card_min_width: px(200.),
         card_swatch: px(28.),
+        card_icon: px(32.),
         card_mark: px(6.),
         hero_min_width: px(400.),
         legend_width: px(220.),

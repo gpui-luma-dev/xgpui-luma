@@ -5,7 +5,7 @@ use gpui::{
 };
 use lucide_svg_static::Icon;
 use xgpui_luma::{hstack, infra::icon::lucide_icon, vstack};
-use xgpui_luma_look_radix::{Look, ScaleFamily};
+use xgpui_luma_look_radix::Look;
 
 use crate::theme::ColorVizLookExt;
 
@@ -20,6 +20,7 @@ pub(crate) struct LabCard {
     subtitle: Option<SharedString>,
     badge: Option<AnyElement>,
     values: Vec<(SharedString, SharedString)>,
+    body: Option<AnyElement>,
     disabled: bool,
     selector: Option<String>,
 }
@@ -36,6 +37,7 @@ impl LabCard {
             subtitle: None,
             badge: None,
             values: Vec::new(),
+            body: None,
             disabled: false,
             selector: None,
         }
@@ -52,7 +54,7 @@ impl LabCard {
         self.swatch(div().size_full().rounded_sm().bg(color.into()))
     }
 
-    /// A line icon in place of the swatch, for status cards: gray 3 box, gray 6 border.
+    /// A line icon in place of the swatch, for status cards: plain, `card_icon` sized, foreground.
     pub fn icon(mut self, icon: Icon) -> Self {
         self.icon = Some(icon);
         self
@@ -84,6 +86,12 @@ impl LabCard {
         self
     }
 
+    /// Free content between the heading and the values row, e.g. a sample line.
+    pub fn body(mut self, element: impl IntoElement) -> Self {
+        self.body = Some(element.into_any_element());
+        self
+    }
+
     /// Dims the card, e.g. a color outside this space's range.
     pub fn disabled(mut self, disabled: bool) -> Self {
         self.disabled = disabled;
@@ -96,23 +104,33 @@ impl LabCard {
     }
 
     pub(super) fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
-        let gray = |step| look.resolve_step(ScaleFamily::Gray, step).hsla();
+        let disabled = self.disabled;
+        let selector = self.selector.clone();
+        card_surface(self.contents(look), look)
+            .flex_1()
+            .min_w(metrics.card_min_width)
+            .flex_basis(metrics.card_min_width)
+            .when(disabled, |card| card.opacity(0.45))
+            .when_some(selector, |card, selector| card.debug_selector(|| selector))
+    }
+
+    /// The card's content without its surface, for hosts that draw the surface themselves
+    /// (e.g. `card_button`, where the card is a Luma button).
+    pub fn contents(self, look: &Look) -> Div {
+        let metrics = LabMetrics::STANDARD;
+        // A status icon is a plain line icon, not a box, so it never reads as a button.
         let icon = self.icon.map(|icon| {
             div()
-                .size_full()
+                .size(metrics.card_icon)
+                .flex_shrink_0()
                 .flex()
                 .items_center()
                 .justify_center()
-                .rounded_sm()
-                .bg(gray(3))
-                .border_1()
-                .border_color(gray(6))
-                .child(lucide_icon(icon, look.chrome().body_text, 16.))
-                .into_any_element()
+                .child(lucide_icon(icon, look.chrome().body_text, metrics.card_icon.as_f32()))
         });
-        let swatch = icon
-            .or(self.swatch)
-            .map(|swatch| div().size(metrics.card_swatch).flex_shrink_0().rounded_sm().child(swatch));
+        let swatch = icon.or_else(|| {
+            self.swatch.map(|swatch| div().size(metrics.card_swatch).flex_shrink_0().rounded_sm().child(swatch))
+        });
         // Names and subtitles stay on one line and truncate, so a badge never wraps or overflows.
         let name = text(look, TextRole::Name, self.name).min_w_0().truncate();
         let name = match self.mark {
@@ -132,14 +150,13 @@ impl LabCard {
             .child(name_row)
             .children(self.subtitle.map(|subtitle| text(look, TextRole::Label, subtitle).truncate()));
         let values = (!self.values.is_empty()).then(|| readout(look, self.values));
-        let selector = self.selector;
-        card_surface(div().flex().flex_col(), look)
-            .flex_1()
-            .min_w(metrics.card_min_width)
-            .flex_basis(metrics.card_min_width)
+        div()
+            .flex()
+            .flex_col()
+            .gap_3()
+            .min_w_0()
             .child(hstack! {}.children(swatch).child(heading).items_center().gap_3())
+            .children(self.body)
             .children(values)
-            .when(self.disabled, |card| card.opacity(0.45))
-            .when_some(selector, |card, selector| card.debug_selector(|| selector))
     }
 }

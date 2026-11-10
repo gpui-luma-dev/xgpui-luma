@@ -2,14 +2,14 @@ use std::sync::{
     Arc, RwLock,
     atomic::{AtomicBool, AtomicUsize, Ordering},
 };
-use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
+use xgpui_luma::controls::button::Button;
 
 use gpui::{prelude::*, *};
 use xgpui_luma_look_radix::Look;
 use xgpui_media::{ImageJob, LoadStatus, MediaImage, MediaLimits, MediaLoader, UploadStatus};
 use crate::{
     lab_controls::{Choice, labels},
-    screen::{self, Hero, LabMetrics, LabScreen, TextRole, labeled_control},
+    screen::{self, CardWidth, Hero, LabMetrics, LabScreen, TextRole, card_button, labeled_control},
     theme::ColorVizLookExt,
 };
 use super::italy_model as model;
@@ -61,27 +61,20 @@ impl ItalyLab {
             native: AtomicBool::new(false),
         });
         let metrics = LabMetrics::STANDARD;
+        // Photo cards are selectable cards (Luma buttons), so selection, hover and focus fill from the look.
         let thumbnails = NAMES
             .iter()
             .enumerate()
             .map(|(index, &label)| {
                 let state = thumbnail_state.clone();
+                let selected_state = thumbnail_state.clone();
                 let text_look = look.clone();
-                let geometry = xgpui_luma_look_radix::button_look_for::<()>(
+                card_button(
                     &look,
-                    xgpui_luma_look_radix::ButtonVariant::Ghost,
-                    xgpui_luma_look_radix::Paint::gray(),
-                    xgpui_luma_look_radix::ButtonSize::One,
-                    Default::default(),
-                );
-                let button = Button::new(format!("italy-thumb-{index}"))
-                    .with_look(move |model| {
-                        let mut resolved = geometry(model);
-                        // Selection and keyboard focus use the card fill, without an outer ring.
-                        resolved.border = None;
-                        resolved
-                    })
-                    .content(move |_, _| {
+                    format!("italy-thumb-{index}"),
+                    CardWidth::Fixed(metrics.photo_card_width),
+                    move || selected_state.selected.load(Ordering::Relaxed) == index,
+                    move |_| {
                         let image = state.images.read().unwrap_or_else(|error| error.into_inner())[index].clone();
                         let mut preview = div()
                             .w(metrics.photo_thumbnail.width)
@@ -115,31 +108,10 @@ impl ItalyLab {
                             .gap_3()
                             .child(preview)
                             .child(screen::text(&text_look, TextRole::Name, label))
-                    })
-                    .on_click(cx, move |this: &mut Self, cx| this.select_photo(index, cx))
-                    .spawn(cx);
-                let state = thumbnail_state.clone();
-                let paint_look = look.clone();
-                let template = xgpui_luma::controls::button::DefaultButtonTemplate::new(
-                    xgpui_luma_look_radix::button_family_theme_with(
-                        &look,
-                        xgpui_luma_look_radix::ButtonVariant::Ghost,
-                        xgpui_luma_look_radix::Paint::gray(),
-                    ),
+                    },
+                    cx,
+                    move |this: &mut Self, cx| this.select_photo(index, cx),
                 )
-                .with_modifier(move |row, model| {
-                    let colors = paint_look.interaction_colors();
-                    let selected = state.selected.load(Ordering::Relaxed) == index;
-                    screen::card_surface(row, &paint_look)
-                        .w(metrics.photo_card_width)
-                        .max_w_full()
-                        .min_w_0()
-                        .debug_selector(move || format!("italy-thumb-{index}"))
-                        .h_auto()
-                        .when_some(colors.background(selected, model.state), |row, color| row.bg(color))
-                });
-                button.update(cx, |button, cx| button.set_template(Arc::new(template), cx));
-                button
             })
             .collect();
         let mut this = Self {

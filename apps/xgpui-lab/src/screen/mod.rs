@@ -17,12 +17,14 @@ use xgpui_luma_look_radix::Look;
 use crate::theme::{ColorVizLookExt, TypographyExt};
 
 mod card;
+mod card_button;
 pub(crate) mod data;
 mod hero;
 mod metrics;
 mod panel;
 
 pub(crate) use card::LabCard;
+pub(crate) use card_button::{CardWidth, card_button};
 pub(crate) use hero::{ComparePane, Hero, Legend, Mark};
 pub(crate) use metrics::{LabMetrics, TextRole, mono_family, readout, text, value_field_look};
 pub(crate) use panel::{
@@ -47,6 +49,7 @@ pub(crate) struct LabScreen {
     actions: Vec<AnyElement>,
     notices: Vec<SharedString>,
     cards: Vec<LabCard>,
+    card_elements: Vec<AnyElement>,
     panels: Option<(Panel, Panel)>,
     sections: Vec<Section>,
     note: Option<SharedString>,
@@ -67,6 +70,7 @@ impl LabScreen {
             actions: Vec::new(),
             notices: Vec::new(),
             cards: Vec::new(),
+            card_elements: Vec::new(),
             panels: None,
             sections: Vec::new(),
             note: None,
@@ -116,6 +120,12 @@ impl LabScreen {
     /// Errors and fallbacks, under the controls. `None` adds nothing; may be called repeatedly.
     pub fn notice(mut self, text: Option<impl Into<SharedString>>) -> Self {
         self.notices.extend(text.map(Into::into));
+        self
+    }
+
+    /// Append a card-like element (e.g. a `card_button`) to the card row, sized like a `LabCard`.
+    pub fn card(mut self, element: impl IntoElement) -> Self {
+        self.card_elements.push(element.into_any_element());
         self
     }
 
@@ -187,9 +197,14 @@ impl RenderOnce for LabScreen {
             content.push(slot(row, "controls").children(self.controls).children(spacer).children(actions));
         }
         content.extend(self.notices.into_iter().map(|text| caption(text, "notice")));
-        if !self.cards.is_empty() {
+        if !self.cards.is_empty() || !self.card_elements.is_empty() {
             let cards = self.cards.into_iter().map(|card| card.render(look, &metrics));
-            content.push(slot(hstack! {}.flex_wrap().gap(metrics.section_gap), "cards").children(cards));
+            // Hosted cards grow from the same basis as a `LabCard`, so the row stays even.
+            let hosted = self.card_elements.into_iter().map(|card| {
+                div().flex_1().min_w(metrics.card_min_width).flex_basis(metrics.card_min_width).child(card)
+            });
+            content
+                .push(slot(hstack! {}.flex_wrap().gap(metrics.section_gap), "cards").children(cards).children(hosted));
         }
         if let Some((wide, narrow)) = self.panels {
             let sized = |panel: Div, width: metrics::PanelWidth, name| {

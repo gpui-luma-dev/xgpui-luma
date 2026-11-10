@@ -34,7 +34,8 @@ the other media tabs keep their own views. It added:
 - `Hero::compare(ComparePane, ComparePane)`. A pane's title, subtitle and badge
   share one heading line, and the visual sits in a card surface. The comparison
   viewports fill their pane width (measured on the previous frame) at 3:2.
-- `LabCard::icon(lucide Icon)` for status cards: a gray 3 box with a gray 6 border.
+- `LabCard::icon(lucide Icon)` for status cards: a plain 32 px line icon (`card_icon`),
+  with no box or border, so it doesn't read as a button.
 - `LabScreen::action(..)`: buttons kept together at the right end of the control row.
 - `ParametersPanel::action(..)`, a header control (*Reset filters*), and
   `Param::range(..)`, the accepted range shown at the right of the label.
@@ -76,6 +77,18 @@ Italy (step 4) and Shell Lab render through `LabScreen` too. They added:
 - `screen::form_group(look, title, rows)` with `FormRow::new(label, control, set)`,
   and `form_groups(..)` to lay groups side by side: a settings form with aligned
   labels, muted until a row is set. `Choice::label()` exposes a selector's label for it.
+
+Typography (xgpui-shader) joins `LabScreen` too, which answers open question 1
+(the eyebrows, the display line and the 1040 px column are gone). It added:
+
+- `Hero::stage(ComparePane)`: one full-width pane with a heading and badges over a surface.
+- `screen::card_button(look, id, CardWidth, selected, content, cx, on_click)`: a
+  selectable card that stays a Luma button (input, focus, accessibility), filled
+  from the look's interaction colors. Italy's photo cards and Typography's sample
+  cards both use it. `CardWidth::Fixed` is Italy's 200 px; `Flexible` fills a host.
+- `LabScreen::card(element)`: hosts a card-like element in the card row, sized like a `LabCard`.
+- `LabCard::contents(look)` (a card without its surface, for `card_button`) and
+  `LabCard::body(element)` (free content between the heading and the values).
 
 Differences from the proposal below:
 

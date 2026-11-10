@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typography mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Mockup of the xgpui-shader Typography screen in the LabScreen design language.
+   Values mirror src/screen/metrics.rs (LabMetrics::STANDARD, TextRole -> look typography tokens). */
+:root {
+  --bg: #000000; --surface: #111113; --border: #2b2b2f; --fg: #ededef; --muted: #9c9ca3;
+  --gray3: #1c1c1f; --gray6: #34343a; --sel: rgba(84, 132, 255, .38); --field: #000000;
+  --badge-soft: #26262b; --badge-line: #4a4a52; --track: #2e2e33; --thumb: #ededef;
+  --glyph-a: #40a6ff; --glyph-b: #80ffcc; --glow: rgba(86, 218, 200, .85);
+}
+:root[data-theme="light"] {
+  --bg: #f0f0f0; --surface: #e7e7e9; --border: #cfcfd4; --fg: #1c1c1f; --muted: #62626a;
+  --gray3: #dcdce0; --gray6: #c4c4ca; --sel: rgba(40, 109, 229, .25); --field: #f7f7f8;
+  --badge-soft: #d6d6db; --badge-line: #a9a9b1; --track: #cfcfd4; --thumb: #ffffff;
+  --glyph-a: #0526a0; --glyph-b: #007340; --glow: rgba(40, 109, 229, .45);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body { font: 14px/20px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+.mono { font-family: "IBM Plex Mono", Menlo, monospace; font-size: 13px; line-height: 18px; }
+
+/* Page: container() max 1240, p_6 (24), part gap 20, section gap 16 */
+.page { max-width: 1240px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.crumb, .lede, .caption { color: var(--muted); }
+.header { display: flex; flex-direction: column; gap: 8px; }
+.title { font-size: 28px; line-height: 36px; font-weight: 600; margin: 0; }           /* role.h2 */
+.content { display: flex; flex-direction: column; gap: 16px; }
+.label { font-size: 12.5px; line-height: 18px; font-weight: 500; color: var(--muted); }  /* label */
+.detail { font-size: 12.5px; line-height: 18px; font-weight: 500; }
+.fine { font-size: 11px; line-height: 16px; font-weight: 500; color: var(--muted); }    /* caption */
+.section { font-size: 20px; line-height: 28px; font-weight: 600; }                      /* role.h3 */
+.name { font-size: 16px; line-height: 22px; font-weight: 500; }                         /* role.h4 */
+
+/* Hero: one stage pane (ComparePane heading over a card surface) */
+.pane-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pane-head .titles { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+.surface { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.stage { height: 220px; padding: 12px; display: flex; flex-direction: column; justify-content: center; }
+.stage-line { padding: 0 28px; font-size: 40px; line-height: 56px; white-space: nowrap; overflow: hidden; }
+.glyphs { background: linear-gradient(90deg, var(--glyph-a), var(--glyph-b)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 8px var(--glow)); }
+.selected { background-color: var(--sel); border-radius: 2px; }
+.caret { display: inline-block; width: 2px; height: 44px; background: var(--fg); vertical-align: -8px; margin-left: 1px; }
+.stage-meta { display: flex; justify-content: space-between; padding: 0 28px; margin-top: 18px; }
+
+.badge { font-size: 12px; line-height: 16px; font-weight: 500; padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+.badge.soft { background: var(--badge-soft); color: var(--fg); }
+.badge.outline { border: 1px solid var(--badge-line); color: var(--fg); }
+
+/* Control row: wrap, gap_3 (12), actions pushed right */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.spacer { flex: 1; }
+.select { display: inline-flex; align-items: center; gap: 8px; }
+.select .box { border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; background: var(--field); display: inline-flex; gap: 10px; align-items: center; }
+.select .box::after { content: "⌃⌄"; font-size: 9px; letter-spacing: -2px; color: var(--muted); transform: rotate(0); }
+.switch { display: inline-flex; align-items: center; gap: 8px; }
+.switch i { width: 34px; height: 20px; border-radius: 10px; background: var(--track); position: relative; }
+.switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--thumb); }
+.switch.on i { background: #7c7c85; }
+.switch.on i::after { left: 16px; }
+.btn { border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; background: transparent; color: var(--fg); font: inherit; white-space: nowrap; }
+.btn.small { padding: 3px 9px; font-size: 13px; }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+/* Cards: p_3, gap_3, card min 200, swatch 28 */
+.cards { display: flex; flex-wrap: wrap; gap: 16px; }
+.card { flex: 1 1 200px; min-width: 200px; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.card.is-selected { background: var(--gray3); border-color: var(--gray6); }
+.card-head { display: flex; align-items: center; gap: 12px; }
+.icon { width: 28px; height: 28px; flex: none; border-radius: 4px; background: var(--gray3); border: 1px solid var(--gray6); display: grid; place-items: center; font-size: 13px; font-weight: 600; }
+.card .sample { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
+.readout { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.readout span { display: inline-flex; gap: 4px; align-items: baseline; }
+
+/* Panels: wide grow 2 basis 440, narrow grow 1 basis 265; p_4 gap_3 */
+.panels { display: flex; flex-wrap: wrap; gap: 16px; }
+.panel { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.wide { flex: 2 1 440px; min-width: 240px; }
+.narrow { flex: 1 1 265px; min-width: 225px; }
+.panel-head { display: flex; align-items: flex-start; gap: 12px; }
+.panel-head > div { flex: 1; display: flex; flex-direction: column; }
+.params { display: flex; flex-wrap: wrap; gap: 16px; }
+.param { flex: 1 1 28%; min-width: 100px; display: flex; flex-direction: column; gap: 8px; }
+.param-label { display: flex; justify-content: space-between; align-items: baseline; }
+.field { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: var(--field); }
+.slider { height: 4px; border-radius: 2px; background: var(--track); position: relative; margin: 6px 0; }
+.slider b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--fg); }
+.slider em { position: absolute; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: var(--thumb); border: 1px solid var(--badge-line); }
+.transport { display: flex; flex-wrap: wrap; gap: 6px; }
+.props { display: flex; flex-direction: column; gap: 4px; }
+.props div { display: flex; gap: 12px; align-items: flex-start; }
+.props .label { width: 100px; flex: none; }
+
+/* Mockup chrome (not part of the screen) */
+.mock-bar { position: fixed; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; }
+.mock-bar button { font: 12px system-ui; padding: 4px 10px; border-radius: 6px; border: 1px solid #888; background: #fff; color: #111; cursor: pointer; }
+.notes { max-width: 1240px; margin: 24px auto 48px; padding: 16px 24px; border-top: 1px dashed var(--border); color: var(--muted); font-size: 13px; line-height: 20px; }
+.notes h2 { font-size: 14px; color: var(--fg); margin: 0 0 8px; }
+.notes ul { margin: 0; padding-left: 18px; }
+@media (max-width: 760px) { .stage-line { font-size: 28px; } }
+</style>
+</head>
+<body>
+<div class="mock-bar">
+  <button onclick="document.documentElement.dataset.theme='dark'">Dark</button>
+  <button onclick="document.documentElement.dataset.theme='light'">Light</button>
+</div>
+
+<main class="page">
+  <!-- 1 Breadcrumb -->
+  <div class="crumb">xgpui-shader&nbsp;&nbsp;/&nbsp;&nbsp;Typography</div>
+
+  <!-- 2–3 Title and lede (no gap between title and lede beyond the header gap) -->
+  <div class="header">
+    <h1 class="title">Typography</h1>
+    <div class="lede">Explore painted glyph effects on selectable text. Motion, fill and shadow change the pixels; selection and the clipboard always read the original source.</div>
+  </div>
+
+  <div class="content">
+    <!-- 4 Hero: one stage pane -->
+    <section>
+      <div class="pane-head">
+        <div class="titles"><span class="name">Visual layer</span><span class="caption">Painted glyphs · canonical selection</span></div>
+        <span class="badge soft">Wave</span>
+        <span class="badge outline">Fluid width</span>
+      </div>
+      <div class="surface stage">
+        <div class="stage-line"><span class="glyphs">Good <span class="selected">typography</span><span class="caret"></span> keeps its meaning.</span></div>
+        <div class="stage-meta"><span class="label">Selection follows the original baseline</span><span class="label">40 px · cool gradient · glow 8 px</span></div>
+      </div>
+    </section>
+
+    <!-- 5 Caption: live state -->
+    <div class="caption">Editorial · wave, 8 px amplitude · phase 1.2 rad · selected 10 of 34 scalars · copy reads the source</div>
+
+    <!-- 6 Control row: selectors, switches, actions right -->
+    <div class="controls">
+      <label class="select">Motion <span class="box">Wave</span></label>
+      <label class="select">Fill <span class="box">Cool gradient</span></label>
+      <label class="select">Shadow <span class="box">Glow</span></label>
+      <label class="select">Softness <span class="box">8 px</span></label>
+      <span class="switch"><i></i>Narrow</span>
+      <span class="switch"><i></i>Large type</span>
+      <span class="switch"><i></i>Reduce motion</span>
+    </div>
+
+    <!-- 7 Cards: the four samples, selectable (Luma buttons, like Italy's photo cards) -->
+    <div class="cards">
+      <div class="surface card is-selected">
+        <div class="card-head"><span class="icon">Aa</span><div><div class="name">Editorial</div><div class="label">Shaped line</div></div></div>
+        <div class="sample">Good typography keeps its meaning.</div>
+        <div class="readout"><span><span class="label">scalars</span><span class="mono">34</span></span><span><span class="label">bytes</span><span class="mono">34</span></span></div>
+      </div>
+      <div class="surface card">
+        <div class="card-head"><span class="icon">ﬁ</span><div><div class="name">Ligatures</div><div class="label">Carets inside fi / ffi</div></div></div>
+        <div class="sample">office · affine · efficient · café</div>
+        <div class="readout"><span><span class="label">scalars</span><span class="mono">34</span></span><span><span class="label">bytes</span><span class="mono">39</span></span></div>
+      </div>
+      <div class="surface card">
+        <div class="card-head"><span class="icon">é</span><div><div class="name">Unicode</div><div class="label">Grapheme clusters</div></div></div>
+        <div class="sample">Café · naïve · 👩🏽‍💻 · 🇺🇸</div>
+        <div class="readout"><span><span class="label">scalars</span><span class="mono">23</span></span><span><span class="label">bytes</span><span class="mono">47</span></span></div>
+      </div>
+      <div class="surface card">
+        <div class="card-head"><span class="icon">↔</span><div><div class="name">Overflow</div><div class="label">Caret scrolls into view</div></div></div>
+        <div class="sample">The whole sentence remains selectable, even when…</div>
+        <div class="readout"><span><span class="label">scalars</span><span class="mono">86</span></span><span><span class="label">bytes</span><span class="mono">86</span></span></div>
+      </div>
+    </div>
+
+    <!-- 8 Panels: wide Motion (parameters), narrow Logical layer (result) -->
+    <div class="panels">
+      <section class="surface panel wide">
+        <div class="panel-head">
+          <div><span class="section">Motion</span><span class="caption">Effects repaint glyphs only; the source never changes</span></div>
+          <button class="btn primary">Pause</button>
+        </div>
+        <div class="params">
+          <div class="param">
+            <div class="param-label"><span>Progress</span><span class="label">0–100%</span></div>
+            <div class="field mono">45</div>
+            <div class="slider"><b style="width:45%"></b><em style="left:calc(45% - 8px)"></em></div>
+          </div>
+          <div class="param">
+            <div class="param-label"><span>Seed</span><span class="label">scramble</span></div>
+            <div class="field mono">42</div>
+            <div class="transport"><button class="btn small">New seed</button></div>
+          </div>
+          <div class="param">
+            <div class="param-label"><span>Frame</span><span class="label">scramble · wave</span></div>
+            <div class="field mono">12</div>
+            <div class="transport"><button class="btn small">Next frame</button></div>
+          </div>
+        </div>
+        <div class="transport"><button class="btn small">Restart</button><button class="btn small">−10%</button><button class="btn small">+10%</button></div>
+      </section>
+
+      <section class="surface panel narrow">
+        <div class="panel-head">
+          <div><span class="section">Logical layer</span><span class="caption">What selection and the clipboard read</span></div>
+          <button class="btn small">Copy</button>
+        </div>
+        <div class="props">
+          <div><span class="label">Source</span><span class="mono">Good typography keeps its meaning.</span></div>
+          <div><span class="label">Selection</span><span class="mono">typography</span></div>
+          <div><span class="label">Range</span><span class="mono">UTF-8 5..15</span></div>
+          <div><span class="label">Scalars</span><span class="mono">10 of 34</span></div>
+        </div>
+        <div class="transport"><button class="btn small">Select all</button></div>
+        <div class="caption">Copy requested for the selected source. Paste into another app to verify.</div>
+      </section>
+    </div>
+
+    <!-- 9 Note -->
+    <div class="caption">Try it: Tab to focus · Shift + arrows to select · Home / End · ⌘A / ⌘C · double-click a word · triple-click the line.</div>
+
+    <!-- 10 Fine print -->
+    <div class="fine">Read-only text field with the full source, a text run and selection endpoints; motion does not change the accessible source or selection. Single-line LTR text: wrapping, bidirectional selection and rich-text editing are outside this milestone. Glyph glow and shadow present in SDR; the previous color mode is restored on exit.</div>
+  </div>
+</main>
+
+<section class="notes">
+  <h2>Design notes (not part of the screen)</h2>
+  <ul>
+    <li><b>Slots:</b> hero = one stage pane (heading + badges over a card surface), cards = the four samples, wide panel = Motion, narrow panel = Logical layer, note = Try it, fine print = accessibility and scope.</li>
+    <li><b>Removed:</b> the "TYPE / 04" eyebrow, the "Bright ideas. Real words." display line, the issue number in the breadcrumb, and the 1040 px column. The title is the screen name.</li>
+    <li><b>Buttons become controls:</b> sample buttons with ✓ become selectable cards; the motion buttons become a <i>Motion</i> selector; "Width / Type / Reduced motion: on/off" text buttons become switches; "Sample colors: ink/light" is dropped because the sample gradient follows the look's mode.</li>
+    <li><b>Selection actions</b> (Select all, Copy) sit on the Logical layer panel, next to what they act on, so the control row holds only settings.</li>
+    <li><b>Transport</b> (Play/Pause, Restart, ±10%, New seed, Next frame) lives with the motion parameters, not in the control row. Seed and frame rows apply to Scramble (and frame to Wave); disabled otherwise.</li>
+    <li><b>Values in mono</b> (IBM Plex Mono, the look's <code>code</code> style): field values, scalars/bytes, range, selection and source in the logical layer.</li>
+  </ul>
+</section>
+</body>
+</html>

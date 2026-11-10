@@ -41,6 +41,7 @@ Paths are relative to `apps/xgpui-lab/`. Screens are built with `LabScreen` in `
 | Chromaticity & Gamut | `xgpui-gamut / Chromaticity` | [mockups/chromaticity-mockup.png](mockups/chromaticity-mockup.png) | [`src/color_demos/chromaticity.rs`](../src/color_demos/chromaticity.rs), hosted by [`src/color_gamut_page.rs`](../src/color_gamut_page.rs) | follows the design (`LabScreen`) |
 | Italy Photo Comparison | `xgpui-color / Italy Photo Comparison` | — | [`src/color_demos/italy.rs`](../src/color_demos/italy.rs) | follows the design (`LabScreen`). Photo variant: `Hero::fixed` 3:2 photo up to 600 px with its caption under it and the control row centered; 200 px selectable photo cards in a section (see [lab-ui.md](lab-ui.md#supported-variations)) |
 | Shell Lab, Desktop Preferences | `xgpui-shell / …` | — | [`src/shell_lab.rs`](../src/shell_lab.rs) | follows the design (`LabScreen`). Diagnostics variant: `PanelShell` panels and `properties` lists |
+| Typography | `xgpui-shader / Typography` | [mockups/typography-mockup.html](mockups/typography-mockup.html) | [`src/shader/typography.rs`](../src/shader/typography.rs) | follows the design (`LabScreen`): stage hero, selectable sample cards, Motion and Logical layer panels. Sample colors follow the look's mode |
 | Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab/filters_screen.rs`](../src/media_lab/filters_screen.rs) (state in [`src/media_lab.rs`](../src/media_lab.rs)) | follows the design (`LabScreen`). The mockup's "linear light" and "skipped steps" text is wrong for `ImageFilter`; the screen says what the code does |
 
 Shared building blocks already exist. Use them before you write new ones:
@@ -290,8 +291,9 @@ Use the look-radix builders, passing `.look(look)`. Don't draw controls by hand.
 ```
 
 - Start from `comparison_card(look)` or `comparison_surface(button_row, look)`.
-- The swatch shows the actual color (a data color). For a status card, use a box
-  with a line icon on gray 3 with a gray 6 border.
+- The swatch shows the actual color (a data color). For a status card, use a
+  plain 32 px line icon (`LabCard::icon`, `card_icon`) in `Foreground`, with no
+  box, fill or border, so it never reads as a button.
 - Put a small square of the gamut's data color before the name when the card
   stands for a gamut that also appears in the hero.
 - Name and subtitle stay on one line. Truncate rather than wrap.
