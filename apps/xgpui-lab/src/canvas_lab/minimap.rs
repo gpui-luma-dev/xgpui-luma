@@ -133,17 +133,12 @@ impl Lab {
         let entity = cx.entity();
         let image = self.preview.image.clone();
         let image_size = self.preview.image_size;
-        div()
-            .id("canvas-preview")
-            .absolute()
-            .right(px(12.))
-            .bottom(px(12.))
-            .w(px(230.))
-            .h(px(170.))
-            .bg(rgb(0x172238))
-            .border_1()
-            .border_color(rgb(0x6484a8))
-            .overflow_hidden()
+        let title = if self.fractal.enabled {
+            "Current view · M hides"
+        } else {
+            "Current view · T map · M hides"
+        };
+        map_panel(&self.look, "canvas-preview", title)
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_move(cx.listener(|lab, event: &MouseMoveEvent, _, cx| {
                 if lab.gesture.is_some() && event.pressed_button == Some(MouseButton::Left) {
@@ -164,18 +159,13 @@ impl Lab {
             )
             .on_scroll(|_, _, cx| cx.stop_propagation())
             .on_pinch(|_, _, cx| cx.stop_propagation())
-            .child(div().absolute().top(px(3.)).left(px(6.)).text_size(px(12.)).child(if self.fractal.enabled {
-                "Current view • M: hide"
-            } else {
-                "Current view • T: map • M: hide"
-            }))
             .child(
                 canvas(
                     move |bounds, _, cx| {
                         entity.update(cx, |lab, _| lab.map_bounds = bounds);
                     },
                     move |bounds, _, window, _| {
-                        window.paint_quad(fill(bounds, rgb(0x101824)));
+                        window.paint_quad(fill(bounds, rgb(palette::STAGE)));
                         if let Some(image) = image {
                             let scale = (f32::from(bounds.size.width) / image_size[0] as f32)
                                 .min(f32::from(bounds.size.height) / image_size[1] as f32);
@@ -204,4 +194,22 @@ impl Lab {
             )
             .into_any_element()
     }
+}
+
+/// The floating map panel at the bottom right of the canvas, with its title. Chrome comes from the look.
+pub(super) fn map_panel(look: &Look, id: &'static str, title: &'static str) -> Stateful<Div> {
+    let chrome = look.chrome();
+    div()
+        .id(id)
+        .absolute()
+        .right(px(12.))
+        .bottom(px(12.))
+        .w(px(230.))
+        .h(px(170.))
+        .bg(chrome.panel_background)
+        .border_1()
+        .border_color(chrome.border)
+        .rounded_md()
+        .overflow_hidden()
+        .child(crate::screen::text(look, TextRole::Label, title).absolute().top(px(3.)).left(px(6.)))
 }

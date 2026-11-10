@@ -36,6 +36,8 @@ DEFAULT_PAGES = [
     "xgpui-shell/Shell Lab",
     "xgpui-shell/Desktop Preferences",
     "xgpui-shader/Typography",
+    "xgpui-canvas/Spatial Canvas",
+    "xgpui-canvas/Mandelbrot",
 ]
 THEMES = ["dark", "light"]
 REPO = Path(__file__).resolve().parents[3]

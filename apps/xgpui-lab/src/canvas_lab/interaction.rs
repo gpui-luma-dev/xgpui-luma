@@ -144,14 +144,14 @@ pub(super) fn paint_overlay(
         let a = screen(rect.min);
         let b = screen(rect.max);
         let rect = Bounds::new(a, size(b.x - a.x, b.y - a.y));
-        window.paint_quad(fill(rect, rgba(0x59b0ff22)));
+        window.paint_quad(fill(rect, rgba(palette::MARQUEE_FILL)));
         for (origin, size) in [
             (a, size(rect.size.width, px(1.))),
             (a, size(px(1.), rect.size.height)),
             (point(a.x, b.y - px(1.)), size(rect.size.width, px(1.))),
             (point(b.x - px(1.), a.y), size(px(1.), rect.size.height)),
         ] {
-            window.paint_quad(fill(Bounds::new(origin, size), rgb(0x59b0ff)));
+            window.paint_quad(fill(Bounds::new(origin, size), rgb(palette::MARQUEE)));
         }
     }
     for guide in guides {
@@ -161,7 +161,10 @@ pub(super) fn paint_overlay(
         };
         let a = screen(a);
         let b = screen(b);
-        window.paint_quad(fill(Bounds::new(a, size((b.x - a.x).max(px(1.)), (b.y - a.y).max(px(1.)))), rgb(0xff79db)));
+        window.paint_quad(fill(
+            Bounds::new(a, size((b.x - a.x).max(px(1.)), (b.y - a.y).max(px(1.)))),
+            rgb(palette::SNAP_GUIDE),
+        ));
     }
 }
 
