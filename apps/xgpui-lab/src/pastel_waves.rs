@@ -6,7 +6,10 @@ use xgpui_luma::{
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
-use crate::theme::ColorVizLookExt;
+use crate::{
+    theme::ColorVizLookExt,
+    lab_controls::{Choice, labels},
+};
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, Noise, painted};
 
 mod renderers;
@@ -26,12 +29,12 @@ impl Renderer {
             Self::Paths => "paths",
         }
     }
-    fn next(self) -> Self {
-        match self {
-            Self::Native => Self::Wgsl,
-            Self::Wgsl => Self::Paths,
-            Self::Paths => Self::Native,
-        }
+    const ALL: [Self; 3] = [Self::Native, Self::Wgsl, Self::Paths];
+    fn index(self) -> usize {
+        Self::ALL.iter().position(|renderer| *renderer == self).unwrap_or(2)
+    }
+    fn labels() -> Vec<String> {
+        Self::ALL.into_iter().map(|renderer| renderer.label().to_owned()).collect()
     }
 }
 
@@ -45,7 +48,10 @@ pub struct PastelWaves {
     look: Arc<Look>,
     scene: Rc<RefCell<WaveScene>>,
     buttons: Vec<Entity<Button>>,
+    play_label: &'static str,
     scrub: Slider,
+    renderer_choice: Choice,
+    grain_choice: Choice,
     renderer: Renderer,
     status: Arc<std::sync::Mutex<RenderStatus>>,
     frame_interval: f32,
@@ -62,7 +68,32 @@ pub struct PastelWaves {
 }
 impl PastelWaves {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let buttons = ["Animate / pause", "Reverse", "Grain on / off", "Reset", "Renderer"]
+        let renderer = if cfg!(target_os = "macos") {
+            Renderer::Native
+        } else {
+            Renderer::Wgsl
+        };
+        let renderer_choice = Choice::new(
+            "waves-renderer",
+            "Renderer",
+            &look,
+            Renderer::labels(),
+            renderer.index(),
+            cx,
+            |this: &mut Self, index, cx| {
+                this.renderer = Renderer::ALL[index];
+                if let Ok(mut status) = this.status.lock() {
+                    *status = RenderStatus::default();
+                }
+                cx.notify();
+            },
+        );
+        let grain_choice =
+            Choice::new("waves-grain", "Grain", &look, labels(&["Off", "On"]), 1, cx, |this: &mut Self, index, cx| {
+                this.grain = index == 1;
+                cx.notify();
+            });
+        let buttons = ["Animate", "Reverse", "Reset"]
             .into_iter()
             .enumerate()
             .map(|(i, label)| {
@@ -76,13 +107,6 @@ impl PastelWaves {
                                 this.scrub.update(cx, |slider, cx| slider.set_value(this.phase, cx));
                             }
                             1 => this.direction = -this.direction,
-                            2 => this.grain = !this.grain,
-                            4 => {
-                                this.renderer = this.renderer.next();
-                                if let Ok(mut status) = this.status.lock() {
-                                    *status = RenderStatus::default();
-                                }
-                            }
                             _ => {
                                 this.phase = 0.;
                                 this.direction = 1.;
@@ -117,12 +141,11 @@ impl PastelWaves {
             look,
             scene: Rc::new(RefCell::new(WaveScene::new(true))),
             buttons,
+            play_label: "Animate",
             scrub,
-            renderer: if cfg!(target_os = "macos") {
-                Renderer::Native
-            } else {
-                Renderer::Wgsl
-            },
+            renderer_choice,
+            grain_choice,
+            renderer,
             status: Default::default(),
             frame_interval: 1. / 60.,
             frames: 0,
@@ -188,6 +211,13 @@ impl Render for PastelWaves {
             window.request_animation_frame();
         }
         self.updated = now;
+        self.renderer_choice.sync(Renderer::labels(), self.renderer.index(), cx);
+        self.grain_choice.sync(labels(&["Off", "On"]), usize::from(self.grain), cx);
+        let play_label = if self.playing { "Pause" } else { "Animate" };
+        if self.play_label != play_label {
+            self.play_label = play_label;
+            self.buttons[0].update(cx, |button, cx| button.set_label(play_label, cx));
+        }
         let chrome = self.look.chrome();
         div()
             .id("pastel-waves-pane")
@@ -204,7 +234,7 @@ impl Render for PastelWaves {
                     .flex()
                     .flex_col()
                     .gap_2()
-                    .child(div().flex().flex_wrap().gap_2().children(self.buttons.iter().cloned()))
+                    .child(div().flex().flex_wrap().gap_2().children(self.buttons.iter().cloned()).child(self.renderer_choice.clone()).child(self.grain_choice.clone()))
                     .child(
                         div()
                             .flex()
@@ -714,21 +744,32 @@ mod tests {
             assert!((page.phase - std::f32::consts::FRAC_PI_2).abs() < 0.02);
         });
         let initial_renderer = cx.update(|_, cx| page.read(cx).renderer);
-        buttons[4].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        let renderer_choice = cx.update(|_, cx| page.read(cx).renderer_choice.clone());
+        let selected_renderer = Renderer::ALL[(initial_renderer.index() + 1) % 3];
+        cx.update(|_, cx| renderer_choice.select(selected_renderer.index(), cx));
         page.update(cx, |page, _| {
-            assert_eq!(page.renderer, initial_renderer.next());
+            assert_eq!(page.renderer, selected_renderer);
             assert!(!page.playing);
         });
         buttons[1].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         page.update(cx, |page, _| assert_eq!(page.direction, -1.));
-        buttons[2].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        let grain_choice = cx.update(|_, cx| page.read(cx).grain_choice.clone());
+        cx.update(|_, cx| grain_choice.select(0, cx));
         page.update(cx, |page, _| assert!(!page.grain));
-        buttons[3].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        buttons[2].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         page.update(cx, |page, _| assert!(page.grain && page.phase == 0. && !page.playing && page.direction == 1.));
         page.update(cx, |page, cx| {
-            assert_eq!(page.renderer, initial_renderer.next());
+            assert_eq!(page.renderer, selected_renderer);
             page.activate(cx);
             assert!(!page.playing);
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert_eq!(grain_choice.selector.read(cx).selected_id().map(|id| id.as_ref()), Some("1"));
+            assert_eq!(
+                renderer_choice.selector.read(cx).selected_id().map(|id| id.as_ref()),
+                Some(selected_renderer.index().to_string().as_str())
+            );
         });
     }
 }

@@ -132,3 +132,8 @@ Pastel Waves native Metal/D3D11/wgpu producers and portable WGSL rendering adapt
 apps/xgpui-ext-lab/paint-lab/src/pastel_waves{.rs,.wgsl,/} at
 e0a7833b6e6ae234eb6c19d2988c085e9524daeb (Apache-2.0). Luma retains SDK/Radix
 controls, path caches, scrub/navigation lifecycle and app-owned diagnostics.
+
+Pastel Waves upstream performance-study.md, associated lab documentation excerpts
+and docs/images/pastel-waves-metal-120hz.webp are carried over at the same
+e0a7833b6e6ae234eb6c19d2988c085e9524daeb revision. The preserved study reports
+upstream measurements, not performance measurements of the embedded Luma app.

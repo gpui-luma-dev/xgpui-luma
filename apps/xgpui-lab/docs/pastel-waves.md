@@ -7,14 +7,16 @@ Published dependencies remain xgpui 3.1.0, shader 0.4.3, apple 4.0.1 and wgpu 2.
 
 ## Rendering and app integration
 
-The SDK/Radix Renderer button cycles native → WGSL → paths. Defaults follow
+The SDK/Radix Renderer selector directly selects native, WGSL or paths.
+Grain has a separate Off/On Radix selector; Animate/Pause, Reverse and Reset
+use Radix buttons, and phase scrubbing uses the Radix slider. Defaults follow
 upstream: native on macOS, WGSL elsewhere. Native means Metal on macOS, D3D11
 on Windows and wgpu on Linux. The paths implementation keeps Luma's retained
 brush/material and paused-geometry caches. Reset preserves the chosen renderer.
 
 WGSL compile/draw errors fall back to paths in the same paint. Native preparation
 runs later in the platform renderer: failures are recorded, request a subsequent
-UI redraw, and use paths thereafter. Changing renderer clears the failure and
+UI redraw, and use paths thereafter. Selecting a different renderer clears the failure and
 allows a retry. The first failed native frame may show only the background.
 Requested/effective renderer and the preparation error are visible. Errors after
 successful native preparation (for example device loss) remain platform errors.
@@ -99,3 +101,14 @@ Windows stops in GPUI's resource build because `llvm-rc` is unavailable; Linux
 stops in system-library discovery because no cross-compilation pkg-config
 sysroot is configured. Neither establishes Windows/Linux compile acceptance.
 GUI/capture probes have not been run.
+
+## Carried-over upstream documentation
+
+- [Performance study](upstream/pastel-waves-performance-study.md), including the
+  upstream Metal screenshot and measurement caveats. These are upstream results,
+  not Luma benchmark claims.
+- [Lab notes and visual attribution](upstream/pastel-waves-lab-notes.md), preserving
+  the Waves sections from the upstream paint-lab documentation, brushes guide
+  and extension-lab guide. Incidental navigation mentions in extensions-web and
+  the 1.27.0 integration checklist remain linked through upstream provenance.
+- [Remove Pastel Waves Lab App — xgpui#195](https://github.com/gpui-luma-dev/xgpui/issues/195).
