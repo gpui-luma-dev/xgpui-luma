@@ -1,0 +1,312 @@
+---
+name: xgpui-lab-design
+description: Layout and look rules for xgpui-lab demo screens (Color Spaces, Chromaticity & Gamut, Image Filters). Colors, type and controls come from the xgpui-luma look-radix Look; this document says which roles, steps and builders to use and how a lab page is laid out. Read before building or restyling a lab screen.
+applies_to: apps/xgpui-lab/src/**
+status: draft — screens are being implemented against this document
+---
+
+# XGPUI Lab Design
+
+This document describes how a lab screen in `xgpui-luma/apps/xgpui-lab` is
+laid out and styled. It is written so that a person can skim it and an LLM
+agent can follow it step by step.
+
+**The rule everything else rests on:** the lab is a look-radix app. Every
+chrome color, type style and control comes from the shared `Look` that
+`theme::default_look()` builds. This document picks roles, scale steps and
+builders. It never defines a color of its own. The only literal colors on a
+lab page are *data*: the colors a screen exists to show.
+
+When this document and a reference image disagree, the document wins. The
+mockup images were drawn before this rule was applied, so their hex values are
+illustrations only.
+
+## When to use this
+
+Use it when you:
+
+- add a demo screen to `xgpui-lab`;
+- restyle a screen that still uses the older "buttons on top, status text below" layout;
+- review a screen for consistency.
+
+Don't use it for benchmark harnesses, headless tools, or the shell chrome.
+
+## Reference screens
+
+Paths are relative to `apps/xgpui-lab/`. [lab-ui.md](lab-ui.md) records how the shared helpers were extracted from Color Spaces (issues #29 and #33) and how they were verified; this document is the rule set for new and restyled screens.
+
+| Screen | Breadcrumb | Reference image | Implementation | State |
+| --- | --- | --- | --- | --- |
+| Color Spaces | `xgpui-color / Color Spaces` | [mockups/color-spaces-reference.webp](mockups/color-spaces-reference.webp) | [`src/color_demos/interactive_spaces.rs`](../src/color_demos/interactive_spaces.rs) | **Source of the design.** Copy it when in doubt. |
+| Chromaticity & Gamut | `xgpui-color / Chromaticity` | [mockups/chromaticity-mockup.png](mockups/chromaticity-mockup.png) | [`src/chromaticity.rs`](../src/chromaticity.rs), [`src/color_demos/chromaticity.rs`](../src/color_demos/chromaticity.rs), hosted by [`src/color_gamut_page.rs`](../src/color_gamut_page.rs) | being restyled |
+| Italy Photo Comparison | — | — | [`src/color_demos/`](../src/color_demos/) | follows the design. Photo variant: 3:2 photo, 200 px selectable photo cards (see [lab-ui.md](lab-ui.md#supported-variations)) |
+| Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab.rs`](../src/media_lab.rs), [`src/media_lab/views.rs`](../src/media_lab/views.rs) | being restyled |
+
+Shared building blocks already exist. Use them before you write new ones:
+
+| File | Provides |
+| --- | --- |
+| [`src/theme.rs`](../src/theme.rs) | `default_look()`, `ColorVizLookExt` (`chrome()`, `interaction_colors()`, `typography_scale()`), `TypographyExt`, `icon_button()` |
+| [`src/lab_ui.rs`](../src/lab_ui.rs) | `page`, `container`, `header`, `caption`, `control_row`, `control`, `panel`, `comparison_card`, `comparison_surface` |
+| [`src/lab_controls.rs`](../src/lab_controls.rs) | `Choice`, a labeled Radix `Selector` with stable numeric IDs |
+
+## Page anatomy
+
+Every lab screen is one vertical scroll column (`lab_ui::page` →
+`lab_ui::container`), with the parts in this order. Leave out a part only if
+the screen has nothing to put in it. Don't reorder them.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ 1  Breadcrumb        crate / Screen name                     │
+│ 2  Title             Screen name                             │
+│ 3  Lede              one sentence: what you compare or explore│
+│ 4  Hero visual       the thing being studied, full width     │
+│ 5  Caption line      live state of the hero in one line      │
+│ 6  Control row       selectors · switches · (actions right)  │
+│ 7  Card row          up to 4 equal cards: variant or status  │
+│ 8  Panels            [ Parameters  wide ][ Preview  narrow ] │
+│ 9  Note              how the controls relate (1–2 sentences) │
+│ 10 Fine print        licenses, limits, what isn't measured   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+1. **Breadcrumb**: the crate that owns the feature, then ` / `, then the screen
+   name. This tells a reader which extension the demo tests.
+2. **Title**: the screen name only (`lab_ui::header`).
+3. **Lede**: one sentence in the form "Compare X…" or "Explore X…" (the
+   `header` subtitle).
+4. **Hero visual**: the canvas, field, diagram or image comparison. It is the
+   largest element. Two-way comparisons go side by side, each with its own
+   header. A square diagram can have a narrow legend column to its right.
+5. **Caption line**: one line of `caption` text separated by ` · `, restating
+   what the hero shows with live values. It replaces loose status lines such as
+   `Sweep false · Adjustment animation false`.
+6. **Control row** (`lab_ui::control_row`): selectors first, then switches, then
+   actions such as *Open image…*, *Reload* and *Reset view* pushed to the right.
+7. **Card row**: equal-width cards (`comparison_card`). Each is a variant being
+   compared (sRGB / Display P3 / OKLCH / Rec2020) or a status (Image mode /
+   Upload / Sample / Tint). If you have fewer than four, use the count you have.
+8. **Panels** (`lab_ui::panel`): a wide *Parameters* panel with editable values
+   and a narrow *Preview* (or *Chain*, *Details*) panel that shows their result.
+9. **Note**: plain `caption` text on how the controls and the hero relate.
+10. **Fine print**: data sources and licenses (for example the CIE locus credit),
+    and what the screen does **not** measure.
+
+## Color
+
+### Where colors come from
+
+The lab's `Look` is Radix with a custom palette (`theme::default_look()`):
+
+- accent palette `Gray` and gray palette `Sand`, both re-seeded from one custom
+  neutral (`#5A6169`), so accent and gray are the same cool neutral;
+- background seed black in dark mode and `#F0F0F0` in light mode;
+- dark mode by default, with light mode supported. **Every screen must work in both.**
+
+The palette is deliberately neutral, so a lab screen has no brand accent. The
+subject (swatches, gradients, the hero) supplies the color.
+
+### Chrome roles
+
+Read chrome colors through `look.chrome()` or `look.resolve_role(..)`:
+
+| Use | API | Radix step |
+| --- | --- | --- |
+| Page background | `chrome().content_background` | `Background`, gray 1 |
+| Cards, panels, tab strip | `chrome().panel_background` | `Surface`, gray 2 |
+| Card, panel and divider borders | `chrome().border` | `Border`, gray 6 |
+| Titles, body text, values | `chrome().body_text` / `title_text` | `Foreground`, gray 12 |
+| Lede, captions, subtitles, labels | `chrome().muted_text` | `MutedForeground`, gray 11 |
+| Selected card, active row | `interaction_colors().selected` | gray 3 |
+| Hovered / focused card | `interaction_colors().hovered` | gray 4 |
+| Pressed card | `interaction_colors().pressed` | gray 5 |
+| Focus ring | `resolve_role(SemanticRole::Focus)` | color 8 |
+
+For anything else, take a gray step with
+`look.resolve_step(ScaleFamily::Gray, n)` and use it the way the Radix
+scale defines:
+
+| Steps | Use |
+| --- | --- |
+| 1–2 | backgrounds |
+| 3–5 | component fills: normal, hover, pressed |
+| 6–8 | borders: subtle, normal, strong or focus |
+| 9–10 | solid fills, scrollbar thumb (7 / 9 / 10 is already used by `theme.rs`) |
+| 11 | low-contrast text: grid labels, axis ticks, fine print |
+| 12 | high-contrast text |
+
+Rules:
+
+- No `rgb(0x…)` or `hsla(..)` for chrome. If a screen needs a color that isn't
+  a role or a step, add the role to look-radix (`SemanticRole`) or to
+  `ColorVizLookExt` in `theme.rs`, and document it here.
+- Use the same role for the same job on every screen. For example, every card
+  border is `chrome().border`.
+- Use Radix alpha steps where something sits over the hero, such as a legend
+  over a canvas, so it reads on any content.
+
+### Badges
+
+The lab doesn't standardize badges. A card or comparison pane has a badge
+slot, and the screen passes whatever element suits it, usually a look-radix
+`Badge` with whatever variant and tone it chooses. The layout only places it.
+
+Two rules still apply:
+
+- keep badge text short so it never wraps or pushes the name onto a second line;
+- the text carries the meaning, so a badge must still make sense to someone
+  who can't tell its colors apart.
+
+### Data colors (the one exception)
+
+Colors that are the *subject* of a screen aren't chrome, and they don't come
+from the Look:
+
+- swatches, gradient slider tracks, the field and diagram fill: computed from
+  the color math (`xgpui-color`) for the current values;
+- **gamut outlines**: one fixed color per gamut, the same on every screen that
+  plots gamuts. Define them once (for example `chromaticity.rs` `COLORS`) and
+  reuse them. Check that each still reads on both gray 1 backgrounds;
+- **markers**: the reference point (D65) uses `Foreground`, with a halo of
+  `Background`. The subject point uses one fixed marker color, with the same halo.
+
+Keep data colors in one module per screen family, named for what they mean
+(`GAMUT_SRGB`, `MARKER_SOURCE`), not for how they look.
+
+## Type
+
+Type also comes from the Look:
+
+| Role | Source |
+| --- | --- |
+| Title | `lab_ui::header` (`text_3xl`, semibold) |
+| Lede, caption, fine print | `lab_ui::caption` (`text_sm`, `muted_text`) |
+| Control labels | `lab_ui::control`, which applies the Radix switch label typography |
+| Body / small / extra small | `look.typography_scale(TextSize::Base / Sm / Xs)` + `.typography_style(..)` |
+
+- Show hierarchy with size and the `Foreground` / `MutedForeground` split. Use
+  heavier weight only where the shared helpers already do (the title).
+- Numbers that line up or change live use a monospaced or tabular face.
+- Fix decimals per quantity: encoded channels `0.000`, filter factors `0.00`,
+  chromaticity `0.0000`, angles `0.0°`, hex in upper case (`#DB5294`).
+- Put units on values: `16 px`, `8.00 MiB`, `1536×1024`.
+
+## Spacing and shape
+
+Use the values the shared helpers already set rather than new numbers:
+
+| Thing | Value |
+| --- | --- |
+| Content column | `container()`: max width 1240, centered, `p_6`, `gap_5` between parts |
+| Control row | `control_row()`: wraps, `gap_3` |
+| Panel | `panel()`: `p_4`, `gap_3`, `rounded_lg`, 1 px `border` |
+| Card | `comparison_card()`: `p_3`, `gap_3`, `rounded_lg`, 1 px `border` |
+| Card row / panel row gaps | `gap_4` / `gap_5` |
+| Control radius, heights, focus ring | the Look's metrics (`look.metrics()`), via the builders below |
+
+## Controls
+
+Use the look-radix builders, passing `.look(look)`. Don't draw controls by hand.
+
+| Need | Builder | Notes |
+| --- | --- | --- |
+| Pick one of several | `lab_controls::Choice` (Radix `Selector`) | Label to the left, in the control row |
+| Boolean that changes the hero | Radix `Switch` | Never show a boolean as text like `Sweep false` |
+| Action | Radix `Button` (`icon_button` for icon-only) | Right end of the control row, or in a panel header when it acts on that panel only (*Reset filters*) |
+| Numeric value | Radix `TextField` + `Slider` | Kept in sync. Typing a value outside the range doesn't move the thumb |
+| Color channel | `xgpui_luma_color::color_slider` (`ColorSliderBuilder`, `GradientDelegate`) | The track shows the channel's real color sweep, as in Color Spaces |
+| Badge | any element, usually a Radix `Badge` | See *Badges* |
+| Sub-pages | SDK `Tabs` with `studio_tabs::template`, as in `color_gamut_page.rs` | Tab strip on `panel_background` with a bottom `border` |
+
+## Components
+
+### Variant / status card
+
+```
+┌───────────────────────────────────────┐
+│ ██  Name                       [Tag]  │  swatch or icon · name · Badge
+│ ██  Subtitle                          │  muted_text: standard, transfer, role
+│                                       │
+│ R 0.797  G 0.356  B 0.573             │  mono values; keys in muted_text
+└───────────────────────────────────────┘
+```
+
+- Start from `comparison_card(look)` or `comparison_surface(button_row, look)`.
+- The swatch shows the actual color (a data color). For a status card, use a box
+  with a line icon on gray 3 with a gray 6 border.
+- Put a small square of the gamut's data color before the name when the card
+  stands for a gamut that also appears in the hero.
+- Name and subtitle stay on one line. Truncate rather than wrap.
+- Selected, hovered and pressed fills come from `interaction_colors().background(selected, state)`.
+
+### Parameter
+
+A label in `Foreground`, an optional range in `MutedForeground`, a `TextField`,
+then a slider. For a color channel, the color slider track shows the real
+sweep. For a filter factor, the track shows the effect where that is cheap
+to draw (black→white for brightness, the hue wheel for hue rotation).
+Otherwise use the plain Radix slider. When a parameter has a neutral value
+(1.0 for factors, 0 for rotation), mark it so that changed values stand out.
+Lay parameters out in a 3-column grid inside the panel.
+
+### Preview panel
+
+One large result swatch, or a pair of them (for example *Clip* | *Reduce
+chroma*), with a `caption` under each and the value in mono. A reference line
+ends the panel (`sRGB reference #DB5294`, or the source xy / u′v′ / Y).
+
+### Chain panel
+
+For an ordered pipeline (filters, transforms), list its steps as numbered
+rows, with the name on the left and the formula or value on the right in mono.
+Active rows use `Foreground` on `interaction_colors().selected`, and rows left
+at their neutral value use `MutedForeground`. Separate rows with `border`. End
+with a count line (`2 of 7 active`).
+
+### Comparison panes (hero)
+
+Two panes side by side, each with a header row
+`Name · muted subtitle · Badge (right)`. Each image sits on a gray 3 stage, so
+that rounded corners and transparency show in both modes. Both panes draw the
+same source at the same size, and the caption line states that size and scale.
+
+### Diagram
+
+- Grid lines on gray 4–6, axis ticks and axis names in gray 11.
+- The outline of the locus or plotted shape is gray 11–12.
+- Series (gamuts) use their data colors. The selected series gets a heavier
+  stroke than the others, so don't change its color.
+- The legend goes to the right of a square diagram, or under it in a narrow
+  window. Explain markers in the legend, not only in the fine print.
+
+## Writing rules
+
+- Name things the way the reader recognizes them: *Upload*, *Sample*, *Tint*,
+  not internal type names.
+- Status reads as `Thing · value · value`, not `Thing: value, Flag false`.
+- The fine print states limits plainly: what is a preview, what is simulated,
+  and what is not measured.
+- Don't use emoji, and don't put exclamation marks in UI text.
+
+## Keeping it in the lab
+
+These helpers and data colors belong in `xgpui-lab`. A missing color role or
+control variant belongs in look-radix, not in GPUI core. Treat any addition to
+a published crate's public API (look-radix, the Luma SDK, xgpui) as an API
+change that needs its own review.
+
+## Review checklist
+
+Before you call a screen done, check that:
+
+- [ ] the parts follow the order in *Page anatomy*, using the `lab_ui` helpers;
+- [ ] no chrome color is a literal: everything is `chrome()`, `interaction_colors()`, `resolve_role` or `resolve_step`;
+- [ ] data colors live in one named module, and gamut colors match the other screens;
+- [ ] the screen looks right in **both** light and dark mode;
+- [ ] controls are look-radix builders: selectors, switches (no text booleans), buttons, text fields, sliders, badges;
+- [ ] the hero is the largest element, and the caption line under it shows live values;
+- [ ] cards are equal width, and no name, subtitle or badge wraps;
+- [ ] numbers use the fixed decimals and units, in mono or tabular figures;
+- [ ] the fine print credits external data and names what is not measured;
+- [ ] the reference image in `docs/mockups/` matches the shipped screen, or has been updated.

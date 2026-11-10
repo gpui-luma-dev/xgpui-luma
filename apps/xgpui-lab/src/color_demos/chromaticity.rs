@@ -11,7 +11,7 @@ use xgpui_shader::WindowShaderExt;
 use super::chromaticity_shader::{self, Parameters};
 use crate::{
     lab_controls::{Choice, labels},
-    theme::ColorVizLookExt,
+    theme::{ColorVizLookExt, TypographyExt},
 };
 use super::chromaticity_model as model;
 
@@ -130,6 +130,12 @@ impl ChromaticityLab {
                 radix::TextField::new(format!("chroma-rgb-{index}"))
                     .look(&look)
                     .surface()
+                    .look_override(|mut look| {
+                        look.typography.size = 10.;
+                        look.typography.line_height = 14.;
+                        look.font_family = "monospace".into();
+                        look
+                    })
                     .full_width(true)
                     .value(format!("{:.3}", model::PATCHES[0].1[index]))
                     .validator(Arc::new(|text| parse_channel(text).is_some()))
@@ -176,6 +182,8 @@ impl ChromaticityLab {
             .map(|(index, (label, _))| {
                 radix::Button::new(format!("chroma-preset-{index}"))
                     .look(&look)
+                    .radius(radix::Radius::Full)
+                    .size(radix::ButtonSize::One)
                     .outline()
                     .label(*label)
                     .on_click(cx, move |this: &mut Self, cx| {
@@ -421,18 +429,19 @@ fn hex(rgb: [f64; 3]) -> String {
 impl Render for ChromaticityLab {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
+        let typography = self.look.common_stylesheet().tokens.typography.text;
         let outside = self.cells.iter().filter(|cell| cell.outside).count();
         let fraction = 100. * outside as f64 / self.cells.len().max(1) as f64;
         let panel = || {
             div()
-                .p_5()
+                .p_4()
                 .rounded_lg()
                 .border_1()
                 .border_color(chrome.border)
                 .bg(chrome.panel_background)
                 .flex()
                 .flex_col()
-                .gap_3()
+                .gap_2()
         };
         let legend = div()
             .w(px(220.))
@@ -462,27 +471,66 @@ impl Render for ChromaticityLab {
             .map(|(index, name)| {
                 let values = model::source_linear(self.source, self.rgb)
                     .and_then(|v| Ok(v.convert(model::SPACES[index])?.encode()?.components()));
-                let mut card = panel().flex_1().min_w(px(205.));
+                let mut card = div()
+                    .p_3()
+                    .rounded_lg()
+                    .border_1()
+                    .border_color(chrome.border)
+                    .bg(chrome.panel_background)
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .text_size(px(12.))
+                    .line_height(px(16.))
+                    .flex_1()
+                    .min_w(px(205.));
                 match values {
                     Ok(values) => {
                         let inside = values.iter().all(|v| (-1e-7..=1. + 1e-7).contains(v));
                         let preview = model::preview(self.source, self.rgb, index, GamutMapping::Clip);
                         let mut title = div().flex().items_center().gap_2();
                         if let Ok(color) = preview {
-                            title = title.child(div().size(px(40.)).rounded_md().bg(swatch(color)));
+                            title = title.child(div().size(px(34.)).flex_shrink_0().rounded_md().bg(swatch(color)));
                         }
-                        card = card
-                            .child(title.child(div().flex_1().child(name)).child(if inside { "In" } else { "Out" }))
-                            .child(div().text_sm().text_color(chrome.muted_text).child(if self.source == index {
-                                "Source · D65"
-                            } else {
-                                ["IEC 61966-2-1", "P3 · D65", "γ 2.2", "ITU-R BT.2020"][index]
-                            }))
+                        let metadata = if self.source == index {
+                            "Source · D65"
+                        } else {
+                            ["IEC 61966-2-1", "P3 · D65", "γ 2.2", "ITU-R BT.2020"][index]
+                        };
+                        let label = div()
+                            .flex_1()
+                            .min_w_0()
+                            .flex()
+                            .flex_col()
                             .child(
                                 div()
-                                    .text_sm()
-                                    .child(format!("R {:.3}   G {:.3}   B {:.3}", values[0], values[1], values[2])),
-                            );
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .child(
+                                        div().size(px(6.)).flex_shrink_0().rounded_sm().bg(rgb(model::COLORS[index])),
+                                    )
+                                    .child(name),
+                            )
+                            .child(div().text_size(px(11.)).text_color(chrome.muted_text).child(metadata));
+                        let status_color = if inside { rgb(0x79b97c) } else { rgb(0xe6a06c) };
+                        let badge = div()
+                            .flex_shrink_0()
+                            .px_2()
+                            .rounded_full()
+                            .border_1()
+                            .border_color(status_color.opacity(0.3))
+                            .text_color(status_color)
+                            .text_size(px(10.))
+                            .line_height(px(16.))
+                            .child(if inside { "In" } else { "Out" });
+                        card = card.child(title.child(label).child(badge)).child(
+                            div()
+                                .font_family("monospace")
+                                .text_size(px(10.))
+                                .line_height(px(14.))
+                                .child(format!("R {:.3}  G {:.3}  B {:.3}", values[0], values[1], values[2])),
+                        );
                     }
                     Err(error) => card = card.child(error.to_string()),
                 }
@@ -490,42 +538,61 @@ impl Render for ChromaticityLab {
             })
             .collect::<Vec<_>>();
         let parameters = panel()
-            .flex_1()
+            .flex_grow(1.)
+            .flex_basis(px(500.))
             .min_w(px(400.))
-            .child(div().text_xl().child("Pixel parameters"))
+            .text_size(px(12.))
+            .line_height(px(16.))
+            .gap_2()
+            .child(div().text_size(px(12.)).font_weight(FontWeight::MEDIUM).child("Pixel parameters"))
             .child(
                 div()
+                    .text_size(px(11.))
                     .text_color(chrome.muted_text)
                     .child(format!("Encoded {} values (0–1)", model::NAMES[self.source])),
             )
-            .child(div().flex().gap_4().children((0..3).map(|index| {
+            .child(div().flex().gap_2().children((0..3).map(|index| {
                 div()
                     .flex_1()
                     .min_w_0()
                     .flex()
                     .flex_col()
-                    .gap_3()
+                    .gap(px(6.))
                     .child(["Red", "Green", "Blue"][index])
                     .child(self.inputs[index].clone())
                     .child(self.sliders[index].clone())
             })))
-            .child(div().flex().flex_wrap().gap_2().children(self.presets.clone()));
+            .child(div().flex().flex_wrap().gap_1().children(self.presets.clone()));
         let previews = panel()
-            .flex_1()
+            .flex_grow(1.)
+            .flex_basis(px(300.))
             .min_w(px(300.))
-            .child(div().text_xl().child("Pixel preview"))
-            .child(div().text_color(chrome.muted_text).child("Source pixel mapped into the simulated gamut"))
-            .child(div().flex().gap_3().children(
+            .text_size(px(12.))
+            .line_height(px(16.))
+            .gap_2()
+            .child(div().text_size(px(12.)).font_weight(FontWeight::MEDIUM).child("Pixel preview"))
+            .child(
+                div()
+                    .text_size(px(11.))
+                    .text_color(chrome.muted_text)
+                    .child("Source pixel mapped into the simulated gamut"),
+            )
+            .child(div().flex().gap(px(6.)).children(
                 [("Clip", GamutMapping::Clip), ("Reduce chroma", GamutMapping::ReduceChroma)].into_iter().map(
                     |(label, mapping)| {
                         let mut view = div().flex_1().flex().flex_col().gap_2();
                         match model::preview(self.source, self.rgb, self.simulated, mapping) {
                             Ok(color) => {
-                                view = view.child(div().w_full().h(px(110.)).rounded_md().bg(swatch(color))).child(
+                                view = view.child(div().w_full().h(px(64.)).rounded_md().bg(swatch(color))).child(
                                     div()
-                                        .text_sm()
-                                        .text_color(chrome.muted_text)
-                                        .child(format!("{label} · {}", hex(color))),
+                                        .flex()
+                                        .flex_wrap()
+                                        .items_baseline()
+                                        .gap_1()
+                                        .text_size(px(10.))
+                                        .line_height(px(14.))
+                                        .child(div().text_color(chrome.muted_text).child(format!("{label} ·")))
+                                        .child(div().font_family("monospace").child(hex(color))),
                                 )
                             }
                             Err(error) => view = view.child(error.to_string()),
@@ -534,34 +601,44 @@ impl Render for ChromaticityLab {
                     },
                 ),
             ))
-            .child(div().text_sm().child(
-                match model::source_linear(self.source, self.rgb).and_then(|v| Ok(v.to_xyz()?.components())) {
-                    Ok(xyz) => match model::xy(xyz) {
-                        Some([x, y]) => {
-                            let d = xyz[0] + 15. * xyz[1] + 3. * xyz[2];
-                            format!(
-                                "Source x {x:.4}  y {y:.4} · u′ {:.4}  v′ {:.4} · Y {:.4}",
-                                4. * xyz[0] / d,
-                                9. * xyz[1] / d,
-                                xyz[1]
-                            )
-                        }
-                        None => "Black · chromaticity undefined".into(),
-                    },
-                    Err(error) => error.to_string(),
-                },
-            ));
-        div().id("chromaticity-lab-scroll").size_full().overflow_y_scroll().p_6()
+            .child(
+                div()
+                    .flex()
+                    .items_baseline()
+                    .gap_1()
+                    .text_size(px(10.))
+                    .line_height(px(14.))
+                    .child(div().text_color(chrome.muted_text).child("Source"))
+                    .child(div().flex_1().min_w_0().font_family("monospace").child(
+                        match model::source_linear(self.source, self.rgb).and_then(|v| Ok(v.to_xyz()?.components())) {
+                            Ok(xyz) => match model::xy(xyz) {
+                                Some([x, y]) => {
+                                    let d = xyz[0] + 15. * xyz[1] + 3. * xyz[2];
+                                    format!(
+                                        "x {x:.4}  y {y:.4} · u′ {:.4}  v′ {:.4} · Y {:.4}",
+                                        4. * xyz[0] / d,
+                                        9. * xyz[1] / d,
+                                        xyz[1]
+                                    )
+                                }
+                                None => "Black · chromaticity undefined".into(),
+                            },
+                            Err(error) => error.to_string(),
+                        },
+                    )),
+            );
+        div().id("chromaticity-lab-scroll").size_full().overflow_y_scroll().p_4()
             .bg(chrome.content_background).text_color(chrome.body_text)
             .child(div().w_full().max_w(px(1280.)).mx_auto().flex().flex_col().gap_5()
                 .child(div().text_sm().text_color(chrome.muted_text).child("xgpui-gamut / Chromaticity"))
-                .child(div().text_size(px(32.)).child("Chromaticity & Gamut"))
-                .child(div().max_w(px(650.)).text_color(chrome.muted_text).child("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram."))
+                .child(div().flex().flex_col().gap_1()
+                    .child(div().typography_style(typography.role.h2).child("Chromaticity & Gamut"))
+                    .child(div().w_full().typography_style(typography.scale.sm).text_color(chrome.muted_text).child("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram.")))
                 .child(div().flex().flex_wrap().items_center().gap_5().child(div().flex_1().min_w(px(400.)).child(self.chart(cx))).child(legend))
                 .child(format!("{} · fill Y {} · {} · sampled area outside {}: {fraction:.1}%", if self.uv { "CIE 1976 u′v′" } else { "CIE 1931 xy" }, model::LUMINANCE[self.luminance], if self.mapping == GamutMapping::Clip { "clip" } else { "reduce chroma" }, model::NAMES[self.simulated]))
                 .child(div().flex().flex_wrap().gap_3().children(self.choices.iter().enumerate().filter(|(i, _)| *i != 1).map(|(_, c)| c.clone())).children(self.switches.clone()))
                 .child(div().flex().flex_wrap().gap_3().children(cards))
-                .child(div().flex().flex_wrap().gap_5().child(parameters).child(previews))
+                .child(div().flex().flex_wrap().items_stretch().gap_4().child(parameters).child(previews))
                 .when_some(self.error.clone(), |view, error| view.child(error))
                 .child(div().text_sm().text_color(chrome.muted_text).child("Click or drag the diagram to move the source pixel. Positions outside the source gamut are constrained to its RGB bounds. Changing source keeps the encoded RGB values and reinterprets them, so the gold cross moves while the controls stay the same. The simulated gamut sets hatching, mapping, and preview colors. Cards report source-pixel membership in each reference gamut."))
                 .child(div().text_size(px(12.)).text_color(chrome.muted_text).child("CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Fill colors are an sRGB preview, even on a wide-gamut window. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.")))
