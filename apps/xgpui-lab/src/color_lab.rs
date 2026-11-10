@@ -64,11 +64,9 @@ impl Parameter {
             _ => "0–1",
         }
     }
-    /// Fixed decimals per quantity: channels and `t` `0.000`, pixels `0`.
+    /// Every value shows three decimals: channels, `t` and saturation.
     fn format(self, value: f64) -> String {
-        match self {
-            _ => format!("{value:.3}"),
-        }
+        format!("{value:.3}")
     }
     fn parse(self, text: &str) -> Option<f64> {
         let (_, min, max, _) = self.config();
