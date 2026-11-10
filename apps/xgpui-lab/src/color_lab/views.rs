@@ -65,6 +65,24 @@ fn bar(look: &Look, label: impl Into<SharedString>, display: AnyElement, outside
     vstack! { text(look, TextRole::Detail, label.into()), display, strip }.gap_2().w_full()
 }
 
+/// Marks position `t` on a bar that spans t 0–1: a 2 px foreground line over a 4 px background
+/// halo, like the diagram markers, so it reads on any color. Positions outside 0–1 pin to the
+/// nearer end, where the gradient holds its end color.
+fn with_marker(look: &Look, display: AnyElement, t: f64) -> Div {
+    let chrome = look.chrome();
+    let marker = div()
+        .absolute()
+        .top(px(-4.))
+        .bottom(px(-4.))
+        .left(gpui::relative(t.clamp(0., 1.) as f32))
+        .ml(px(-2.))
+        .w(px(4.))
+        .rounded_sm()
+        .bg(chrome.content_background)
+        .child(div().ml(px(1.)).w(px(2.)).h_full().bg(chrome.body_text));
+    div().relative().w_full().child(display).child(marker)
+}
+
 /// A labeled bar of encoded sRGB reference samples.
 fn reference_bar(
     look: &Look,
@@ -355,7 +373,8 @@ impl ColorPage {
         let sample = self.gradient(self.model())?.sample(point)?;
         let mapped = sample.map_gamut(destination, self.policy)?;
         let premultiplied = mapped.premultiplied();
-        let label = format!("{count} samples, mapped into {}", space_name(destination));
+        let label =
+            format!("{count} samples, mapped into {} · marker at t = {:.3}", space_name(destination), self.position);
         let model = match self.model() {
             ColorInterpolation::Oklch(hue) => format!("OkLCh {hue:?} hue"),
             ColorInterpolation::Oklab => "OkLab".to_owned(),
@@ -368,7 +387,12 @@ impl ColorPage {
             .subtitle("Where along the gradient to sample: 0 is the first color, 1 the second")
             .params(self.params(&[Parameter::Position]));
         Ok(screen
-            .hero(Hero::full(bar(look, label, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, &outside)))
+            .hero(Hero::full(bar(
+                look,
+                label,
+                with_marker(look, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, self.position).into_any_element(),
+                &outside,
+            )))
             .caption(format!(
                 "{} · {model} · output {} · {} · {}",
                 reference::PRESETS[self.preset],
