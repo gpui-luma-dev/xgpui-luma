@@ -127,3 +127,8 @@ metal-producer-regression/src/main.rs at the same revision. The SV workload
 retains its original attribution to gpui-luma-color at
 b5a4a23ce6ed98731c1e3aef0abec02da4879274. Standalone launchers are replaced with
 Luma controls, retained reports and bounded same-executable worker isolation.
+
+Pastel Waves native Metal/D3D11/wgpu producers and portable WGSL rendering adapt
+apps/xgpui-ext-lab/paint-lab/src/pastel_waves{.rs,.wgsl,/} at
+e0a7833b6e6ae234eb6c19d2988c085e9524daeb (Apache-2.0). Luma retains SDK/Radix
+controls, path caches, scrub/navigation lifecycle and app-owned diagnostics.

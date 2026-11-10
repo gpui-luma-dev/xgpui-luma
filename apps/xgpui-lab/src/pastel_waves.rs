@@ -9,11 +9,50 @@ use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, Noise, painted};
 
+mod renderers;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Renderer {
+    Native,
+    Wgsl,
+    #[default]
+    Paths,
+}
+impl Renderer {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Native => renderers::NATIVE_BACKEND,
+            Self::Wgsl => "WGSL",
+            Self::Paths => "paths",
+        }
+    }
+    fn next(self) -> Self {
+        match self {
+            Self::Native => Self::Wgsl,
+            Self::Wgsl => Self::Paths,
+            Self::Paths => Self::Native,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct RenderStatus {
+    effective: Option<Renderer>,
+    error: Option<String>,
+}
+
 pub struct PastelWaves {
     look: Arc<Look>,
     scene: Rc<RefCell<WaveScene>>,
     buttons: Vec<Entity<Button>>,
     scrub: Slider,
+    renderer: Renderer,
+    status: Arc<std::sync::Mutex<RenderStatus>>,
+    frame_interval: f32,
+    frames: u64,
+    fps_frames: u32,
+    fps_since: Instant,
+    fps: f32,
     active: bool,
     playing: bool,
     grain: bool,
@@ -23,7 +62,7 @@ pub struct PastelWaves {
 }
 impl PastelWaves {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let buttons = ["Animate / pause", "Reverse", "Grain on / off", "Reset"]
+        let buttons = ["Animate / pause", "Reverse", "Grain on / off", "Reset", "Renderer"]
             .into_iter()
             .enumerate()
             .map(|(i, label)| {
@@ -38,6 +77,12 @@ impl PastelWaves {
                             }
                             1 => this.direction = -this.direction,
                             2 => this.grain = !this.grain,
+                            4 => {
+                                this.renderer = this.renderer.next();
+                                if let Ok(mut status) = this.status.lock() {
+                                    *status = RenderStatus::default();
+                                }
+                            }
                             _ => {
                                 this.phase = 0.;
                                 this.direction = 1.;
@@ -46,6 +91,10 @@ impl PastelWaves {
                                 this.scrub.update(cx, |slider, cx| slider.set_value(0., cx));
                             }
                         }
+                        this.frame_interval = 1. / 60.;
+                        this.fps_since = Instant::now();
+                        this.fps_frames = 0;
+                        this.fps = 0.;
                         this.updated = Instant::now();
                         cx.notify();
                     })
@@ -60,6 +109,7 @@ impl PastelWaves {
             .on_value_changed(cx, |this: &mut Self, _, value, cx| {
                 this.phase = value;
                 this.playing = false;
+                this.fps = 0.;
                 cx.notify();
             })
             .spawn(cx);
@@ -68,6 +118,17 @@ impl PastelWaves {
             scene: Rc::new(RefCell::new(WaveScene::new(true))),
             buttons,
             scrub,
+            renderer: if cfg!(target_os = "macos") {
+                Renderer::Native
+            } else {
+                Renderer::Wgsl
+            },
+            status: Default::default(),
+            frame_interval: 1. / 60.,
+            frames: 0,
+            fps_frames: 0,
+            fps_since: Instant::now(),
+            fps: 0.,
             active: false,
             playing: false,
             grain: true,
@@ -88,19 +149,33 @@ impl PastelWaves {
         self.scrub.update(cx, |slider, cx| slider.set_value(self.phase, cx));
         self.active = true;
         self.updated = Instant::now();
+        self.frame_interval = 1. / 60.;
+        self.fps_since = self.updated;
+        self.fps_frames = 0;
+        self.fps = 0.;
         cx.notify();
     }
     pub fn suspend(&mut self) {
         self.active = false;
         self.playing = false;
+        self.fps = 0.;
         self.updated = Instant::now();
     }
 }
 impl Render for PastelWaves {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let now = Instant::now();
+        self.frames += 1;
         if self.active && self.playing && !cx.reduce_motion() {
-            self.phase += (now.duration_since(self.updated).as_secs_f32().min(0.05)) * 0.22 * self.direction;
+            self.fps_frames += 1;
+            let sample = now.duration_since(self.fps_since).as_secs_f32();
+            if sample >= 0.5 {
+                self.fps = self.fps_frames as f32 / sample;
+                self.fps_frames = 0;
+                self.fps_since = now;
+            }
+            self.phase += animation_step(&mut self.frame_interval, now.duration_since(self.updated).as_secs_f32())
+                * self.direction;
             let end = std::f32::consts::PI;
             if self.phase > end {
                 self.phase = 2. * end - self.phase;
@@ -149,7 +224,10 @@ impl Render for PastelWaves {
                         },
                         self.grain,
                         self.phase
-                    )),
+                    ))
+                    .child(format!("Frame {} · render {:.1} FPS · {} · requested {} · effective {}", self.frames, if self.playing && !cx.reduce_motion() { self.fps } else { 0. }, if self.direction > 0. { "forward" } else { "reverse" }, self.renderer.label(), self.status.lock().ok().and_then(|status| status.effective).map_or("pending", Renderer::label)))
+                    .child("Render FPS measures view calls, not presented FPS. CPU draw/readback timings are available in --waves-check; GPU time is unmeasured.")
+                    .children(self.status.lock().ok().and_then(|status| status.error.clone()).map(|error| format!("Renderer error: {error}"))),
             )
             .child(
                 div()
@@ -164,12 +242,45 @@ impl Render for PastelWaves {
                             std::f32::consts::PI * 0.5 * (1. - self.phase.cos()),
                             self.grain,
                             self.scene.clone(),
+                            self.renderer,
+                            self.status.clone(),
                         )
                         .absolute()
                         .size_full(),
                     ),
             )
     }
+}
+
+const BACKGROUND_POINTS: [([f32; 2], [f32; 4]); 5] = [
+    ([0.03, 0.08], [0.95, 0.90, 0.99, 1.]),
+    ([0.58, 0.02], [1., 0.98, 0.96, 1.]),
+    ([0.98, 0.20], [1., 0.95, 0.87, 1.]),
+    ([0.07, 0.96], [0.73, 0.91, 1., 1.]),
+    ([0.96, 0.94], [0.95, 0.76, 0.96, 1.]),
+];
+const FOLD_CRESTS: [f32; 4] = [0.18, 0.67, 0.69, 0.35];
+type Field = ([f32; 2], [f32; 2], [f32; 3], f32);
+
+// Fixed, overlapping veils make the pale background carry color even above
+// the ribbons. Each radial field fades completely into the underlying surface.
+const FIELDS: [Field; 9] = [
+    ([0.09, 0.13], [0.42, 0.48], [0.82, 0.68, 0.97], 0.20),
+    ([0.29, 0.32], [0.37, 0.30], [0.95, 0.72, 0.86], 0.18),
+    ([0.44, 0.06], [0.30, 0.32], [1., 0.84, 0.77], 0.16),
+    ([0.76, 0.18], [0.42, 0.43], [1., 0.92, 0.70], 0.23),
+    ([0.02, 0.48], [0.36, 0.35], [0.69, 0.80, 1.], 0.19),
+    ([0.54, 0.50], [0.42, 0.29], [0.96, 0.70, 0.90], 0.17),
+    ([0.87, 0.58], [0.33, 0.39], [1., 0.76, 0.84], 0.18),
+    ([0.28, 0.89], [0.51, 0.29], [0.59, 0.88, 1.], 0.23),
+    ([0.73, 0.92], [0.40, 0.37], [0.85, 0.68, 0.98], 0.20),
+];
+
+// Decorative animation deliberately slows below 30 render frames/second.
+// The 50 ms input cap and 1/30 s step cap avoid catch-up jumps under load.
+fn animation_step(interval: &mut f32, elapsed: f32) -> f32 {
+    *interval += (elapsed.clamp(0., 0.05) - *interval) * 0.15;
+    interval.min(1. / 30.) * 0.22
 }
 
 // Brush parameters are independent of animation phase. Retain their programs
@@ -206,13 +317,9 @@ struct WaveScene {
 }
 impl WaveScene {
     fn new(retain: bool) -> Self {
-        let background = Brush::freeform(vec![
-            BrushPoint::new([0.03, 0.08], [0.95, 0.90, 0.99, 1.]),
-            BrushPoint::new([0.58, 0.02], [1., 0.98, 0.96, 1.]),
-            BrushPoint::new([0.98, 0.20], [1., 0.95, 0.87, 1.]),
-            BrushPoint::new([0.07, 0.96], [0.73, 0.91, 1., 1.]),
-            BrushPoint::new([0.96, 0.94], [0.95, 0.76, 0.96, 1.]),
-        ])
+        let background = Brush::freeform(
+            BACKGROUND_POINTS.iter().map(|&(position, color)| BrushPoint::new(position, color)).collect(),
+        )
         .unwrap();
         Self { background, materials: Default::default(), geometry: None, retain, geometry_builds: 0 }
     }
@@ -234,13 +341,50 @@ impl WaveScene {
         }
     }
 }
-fn composition(phase: f32, grain: bool, scene: Rc<RefCell<WaveScene>>) -> impl IntoElement + Styled {
+fn composition(
+    phase: f32,
+    grain: bool,
+    scene: Rc<RefCell<WaveScene>>,
+    renderer: Renderer,
+    status: Arc<std::sync::Mutex<RenderStatus>>,
+) -> impl IntoElement + Styled {
     let background = scene.borrow().background.clone();
     painted().relative().w_full().overflow_hidden().bg_brush(background).child(
         canvas(
             |_, _, _| (),
             move |bounds, (), window, _| {
                 window.with_content_mask(Some(ContentMask { bounds }), |window| {
+                    let previous = status.lock().ok().map(|s| s.clone());
+                    let observed = status.clone();
+                    window.on_next_frame(move |window, _| {
+                        if observed.lock().ok().map(|s| s.clone()) != previous {
+                            window.refresh();
+                        }
+                    });
+                    let native_failed = status.lock().ok().is_some_and(|s| s.error.is_some());
+                    if renderer == Renderer::Native && !native_failed {
+                        renderers::paint_native(bounds, phase, grain, window, status.clone());
+                        return;
+                    }
+                    if renderer == Renderer::Wgsl {
+                        match renderers::paint_shader(bounds, phase, grain, window) {
+                            Ok(()) => {
+                                if let Ok(mut status) = status.lock() {
+                                    status.effective = Some(Renderer::Wgsl);
+                                    status.error = None;
+                                }
+                                return;
+                            }
+                            Err(error) => {
+                                if let Ok(mut status) = status.lock() {
+                                    status.error = Some(error);
+                                }
+                            }
+                        }
+                    }
+                    if let Ok(mut status) = status.lock() {
+                        status.effective = Some(Renderer::Paths);
+                    }
                     scene.borrow_mut().paint(bounds, phase, grain, window)
                 });
             },
@@ -252,18 +396,7 @@ fn composition(phase: f32, grain: bool, scene: Rc<RefCell<WaveScene>>) -> impl I
 // Fixed, overlapping veils make the pale background carry color even above
 // the ribbons. Each radial field fades completely into the underlying surface.
 fn paint_background_fields(bounds: Bounds<Pixels>, window: &mut Window, materials: &mut Materials) {
-    let fields = [
-        ([0.09, 0.13], [0.42, 0.48], [0.82, 0.68, 0.97], 0.20),
-        ([0.29, 0.32], [0.37, 0.30], [0.95, 0.72, 0.86], 0.18),
-        ([0.44, 0.06], [0.30, 0.32], [1., 0.84, 0.77], 0.16),
-        ([0.76, 0.18], [0.42, 0.43], [1., 0.92, 0.70], 0.23),
-        ([0.02, 0.48], [0.36, 0.35], [0.69, 0.80, 1.], 0.19),
-        ([0.54, 0.50], [0.42, 0.29], [0.96, 0.70, 0.90], 0.17),
-        ([0.87, 0.58], [0.33, 0.39], [1., 0.76, 0.84], 0.18),
-        ([0.28, 0.89], [0.51, 0.29], [0.59, 0.88, 1.], 0.23),
-        ([0.73, 0.92], [0.40, 0.37], [0.85, 0.68, 0.98], 0.20),
-    ];
-    for (center, radii, color, alpha) in fields {
+    for (center, radii, color, alpha) in FIELDS {
         materials
             .get(|| {
                 Brush::radial(
@@ -510,6 +643,57 @@ mod tests {
     use super::*;
     use xgpui_luma::controls::button::ButtonEvent;
     #[::core::prelude::v1::test]
+    fn image_comparison_rejects_flat_and_mismatched_outputs() -> anyhow::Result<()> {
+        let reference = image::RgbaImage::from_fn(2, 2, |x, _| {
+            if x == 0 {
+                image::Rgba([0, 0, 0, 255])
+            } else {
+                image::Rgba([200, 200, 200, 255])
+            }
+        });
+        assert_eq!(image_difference(&reference, &reference)?, (0., 0.));
+        let flat = image::RgbaImage::from_pixel(2, 2, image::Rgba([0, 0, 0, 255]));
+        assert!(image_difference(&reference, &flat).is_err());
+        assert!(image_difference(&reference, &image::RgbaImage::new(1, 1)).is_err());
+        let shifted = image::RgbaImage::from_fn(2, 2, |x, _| {
+            if x == 0 {
+                image::Rgba([20, 20, 20, 255])
+            } else {
+                image::Rgba([220, 220, 220, 255])
+            }
+        });
+        assert_eq!(image_difference(&reference, &shifted)?, (20., 1.));
+        Ok(())
+    }
+    #[::core::prelude::v1::test]
+    fn timing_caps_stalls_and_preserves_nominal_speed() {
+        let mut interval = 1. / 60.;
+        for _ in 0..120 {
+            assert!((animation_step(&mut interval, 1. / 60.) - 0.22 / 60.).abs() < 1e-6);
+        }
+        for _ in 0..120 {
+            assert!(animation_step(&mut interval, 2.) <= 0.22 / 30. + 1e-8);
+        }
+    }
+    #[::core::prelude::v1::test]
+    fn reduced_motion_freezes_phase() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            cx.set_reduce_motion(true);
+        });
+        let (page, cx) = app.add_window_view(|_, cx| PastelWaves::new(crate::theme::default_look(), cx));
+        page.update(cx, |page, cx| {
+            page.activate(cx);
+            page.playing = true;
+            page.phase = 0.7;
+            page.updated = Instant::now() - std::time::Duration::from_secs(1);
+            cx.notify();
+        });
+        cx.run_until_parked();
+        page.update(cx, |page, _| assert_eq!(page.phase, 0.7));
+    }
+    #[::core::prelude::v1::test]
     fn luma_controls_scrub_reset_and_stop_hidden_animation() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
@@ -529,10 +713,23 @@ mod tests {
             assert!(!page.playing);
             assert!((page.phase - std::f32::consts::FRAC_PI_2).abs() < 0.02);
         });
+        let initial_renderer = cx.update(|_, cx| page.read(cx).renderer);
+        buttons[4].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        page.update(cx, |page, _| {
+            assert_eq!(page.renderer, initial_renderer.next());
+            assert!(!page.playing);
+        });
+        buttons[1].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        page.update(cx, |page, _| assert_eq!(page.direction, -1.));
         buttons[2].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         page.update(cx, |page, _| assert!(!page.grain));
         buttons[3].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
-        page.update(cx, |page, _| assert!(page.grain && page.phase == 0. && !page.playing));
+        page.update(cx, |page, _| assert!(page.grain && page.phase == 0. && !page.playing && page.direction == 1.));
+        page.update(cx, |page, cx| {
+            assert_eq!(page.renderer, initial_renderer.next());
+            page.activate(cx);
+            assert!(!page.playing);
+        });
     }
 }
 
@@ -543,15 +740,17 @@ pub(crate) fn run_check(cx: &mut App, output: std::path::PathBuf) -> anyhow::Res
         scene: Rc<RefCell<WaveScene>>,
         phase: f32,
         grain: bool,
+        renderer: Renderer,
+        status: Arc<std::sync::Mutex<RenderStatus>>,
     }
     impl Render for Surface {
         fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-            composition(self.phase, self.grain, self.scene.clone()).size_full()
+            composition(self.phase, self.grain, self.scene.clone(), self.renderer, self.status.clone()).size_full()
         }
     }
     std::fs::create_dir_all(&output)?;
     cx.open_window(WindowOptions {window_bounds:Some(WindowBounds::Windowed(Bounds::centered(None,size(px(1100.),px(750.)),cx))),inactive_frame_interval:None,..Default::default()},|window,cx| {
-        let surface=cx.new(|_|Surface {scene:Rc::new(RefCell::new(WaveScene::new(true))),phase:0.,grain:true});
+        let surface=cx.new(|_|Surface {scene:Rc::new(RefCell::new(WaveScene::new(true))),phase:0.,grain:true,renderer:Renderer::Paths,status:Default::default()});
         let entity=surface.clone();
         window.on_next_frame(move|window,cx| {
             let result=(||->anyhow::Result<()> {
@@ -580,7 +779,41 @@ pub(crate) fn run_check(cx: &mut App, output: std::path::PathBuf) -> anyhow::Res
                     for _ in 0..3 {entity.update(cx,|_,cx|cx.notify());window.draw(cx).clear(cx);}
                     anyhow::ensure!(retained.borrow().geometry_builds==builds,"paused redraw rebuilt ribbon geometry");
                 }
-                std::fs::write(output.join("report.json"),serde_json::to_vec_pretty(&serde_json::json!({"profile":if cfg!(debug_assertions){"debug"}else{"release"},"scope":"Native window draw CPU wall time and separate readback wall time; not GPU-only timing or presented FPS. Reference rebuilds ribbon materials/geometry each frame; retained path reuses materials and unchanged geometry.","checks":["exact native pixels across grain modes and phases","no new ribbon brushes after warmup","paused geometry reuse"],"samples":records,"errors":[]}))?)?;
+                // Keep exact retained/rebuilt checks above. Different renderer
+                // algorithms are compared separately with configurable tolerances.
+                let mut comparisons = Vec::new();
+                let max_mean_error: f64 = std::env::var("WAVES_MAX_MEAN_ERROR").unwrap_or_else(|_| "8".into()).parse()?;
+                let max_bad_fraction: f64 = std::env::var("WAVES_MAX_BAD_FRACTION").unwrap_or_else(|_| "0.10".into()).parse()?;
+                anyhow::ensure!(max_mean_error.is_finite() && max_mean_error >= 0. && (0. ..=1.).contains(&max_bad_fraction), "invalid Waves comparison tolerances");
+                for dimensions in [(640., 400.), (900., 506.)] {
+                    window.resize(size(px(dimensions.0), px(dimensions.1)));
+                    for grain in [false, true] {
+                        for phase in [0., 0.7, 1.8, std::f32::consts::PI] {
+                            let mut reference = None;
+                            for renderer in [Renderer::Paths, Renderer::Wgsl, Renderer::Native] {
+                                let status: Arc<std::sync::Mutex<RenderStatus>> = Default::default();
+                                entity.update(cx, |view, cx| { view.renderer = renderer; view.phase = phase; view.grain = grain; view.status = status.clone(); cx.notify(); });
+                                let started = Instant::now();
+                                window.draw(cx).clear(cx);
+                                let draw_ms = started.elapsed().as_secs_f64() * 1000.;
+                                let started = Instant::now();
+                                let image = window.render_to_image()?;
+                                let readback_ms = started.elapsed().as_secs_f64() * 1000.;
+                                let report = status.lock().map_err(|_| anyhow::anyhow!("Waves status poisoned"))?;
+                                anyhow::ensure!(report.error.is_none(), "{} capture failed: {:?}", renderer.label(), report.error);
+                                anyhow::ensure!(report.effective == Some(renderer), "capture silently fell back from {}", renderer.label());
+                                let filename = format!("{}-{}x{}-grain-{grain}-phase-{phase:.2}.png", renderer.label(), dimensions.0, dimensions.1);
+                                image.save(output.join(&filename))?;
+                                if let Some(expected) = reference.as_ref() {
+                                    let (mean, bad_fraction) = image_difference(expected, &image)?;
+                                    comparisons.push(serde_json::json!({"renderer":renderer.label(),"phase":phase,"grain":grain,"logical_size":[dimensions.0,dimensions.1],"scale_factor":window.scale_factor(),"mean_channel_error":mean,"fraction_channels_over_16":bad_fraction,"draw_ms":draw_ms,"readback_ms":readback_ms,"image":filename}));
+                                    anyhow::ensure!(mean <= max_mean_error && bad_fraction <= max_bad_fraction, "{} differs from paths: mean={mean:.3}, channels over 16={bad_fraction:.4}", renderer.label());
+                                } else { reference = Some(image); }
+                            }
+                        }
+                    }
+                }
+                std::fs::write(output.join("report.json"),serde_json::to_vec_pretty(&serde_json::json!({"profile":if cfg!(debug_assertions){"debug"}else{"release"},"scope":"Native window draw CPU wall time and separate readback wall time; not GPU-only timing or presented FPS. Reference rebuilds ribbon materials/geometry each frame; retained path reuses materials and unchanged geometry.","checks":["exact native pixels across grain modes and phases","no new ribbon brushes after warmup","paused geometry reuse"],"samples":records,"cross_renderer_comparisons":comparisons,"comparison_tolerances":{"max_mean_channel_error":max_mean_error,"max_fraction_channels_over_16":max_bad_fraction,"status":"provisional; calibrate with authorized reference captures"},"errors":[]}))?)?;
                 Ok(())
             })();
             if let Err(error)=result {eprintln!("Waves check: {error:#}");std::process::exit(1);}
@@ -589,4 +822,26 @@ pub(crate) fn run_check(cx: &mut App, output: std::path::PathBuf) -> anyhow::Res
     })?;
     cx.activate(true);
     Ok(())
+}
+
+/// Image tolerances apply only across algorithms, never retained-path caching.
+fn image_difference(expected: &image::RgbaImage, actual: &image::RgbaImage) -> anyhow::Result<(f64, f64)> {
+    anyhow::ensure!(expected.dimensions() == actual.dimensions(), "image dimensions differ");
+    anyhow::ensure!(!expected.is_empty(), "empty reference image");
+    let mut total = 0u64;
+    let mut bad = 0usize;
+    let mut channels = 0usize;
+    let (mut lo, mut hi) = (255u8, 0u8);
+    for (a, b) in expected.pixels().zip(actual.pixels()) {
+        for channel in 0..3 {
+            lo = lo.min(b[channel]);
+            hi = hi.max(b[channel]);
+            let difference = a[channel].abs_diff(b[channel]);
+            total += u64::from(difference);
+            bad += usize::from(difference > 16);
+            channels += 1;
+        }
+    }
+    anyhow::ensure!(hi.saturating_sub(lo) > 32, "flat renderer output");
+    Ok((total as f64 / channels as f64, bad as f64 / channels as f64))
 }
