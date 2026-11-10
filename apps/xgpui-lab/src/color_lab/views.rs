@@ -158,14 +158,22 @@ impl ColorPage {
         Some(Param::new(parameter.config().0, field, slider).range(parameter.range_label()))
     }
 
-    fn params(&self, parameters: [Parameter; 3]) -> impl Iterator<Item = Param> + '_ {
-        parameters.into_iter().filter_map(|parameter| self.param(parameter))
+    fn params<'a>(&'a self, parameters: &'a [Parameter]) -> impl Iterator<Item = Param> + 'a {
+        parameters.iter().filter_map(|parameter| self.param(*parameter))
     }
 
-    fn input_parameters(&self) -> ParametersPanel {
-        ParametersPanel::new("Encoded input")
-            .subtitle(format!("{} channels", space_name(SPACES[self.source_index])))
-            .params(self.params([Parameter::Red, Parameter::Green, Parameter::Blue]))
+    /// The encoded input channels, and on Gamut Mapping the saturation that pushes them outward.
+    fn input_parameters(&self, saturation: bool) -> ParametersPanel {
+        let source = space_name(SPACES[self.source_index]);
+        let (subtitle, parameters): (_, &[Parameter]) = if saturation {
+            (
+                format!("{source} channels, then OkLCh chroma scaled by Saturation"),
+                &[Parameter::Red, Parameter::Green, Parameter::Blue, Parameter::Saturation],
+            )
+        } else {
+            (format!("{source} channels"), &[Parameter::Red, Parameter::Green, Parameter::Blue])
+        };
+        ParametersPanel::new("Encoded input").subtitle(subtitle).params(self.params(parameters))
     }
 
     /// `Soft` for a positive state, `Outline` otherwise.
@@ -238,7 +246,7 @@ impl ColorPage {
                     ("H", format!("{:.1}°", lch[2])),
                 ]),
             ])
-            .panels(self.input_parameters(), round_trip)
+            .panels(self.input_parameters(false), round_trip)
             .note("Converting never clips: values outside 0–1 are kept. Changing the source space reinterprets the same encoded numbers.")
             .credits(PREVIEW_CREDITS))
     }
@@ -278,13 +286,17 @@ impl ColorPage {
     fn mapping(&self, screen: LabScreen, display: &Display) -> anyhow::Result<LabScreen> {
         let look = &self.look;
         let destination = SPACES[self.destination_index];
-        let input = self.input_color()?;
+        let input = self.saturated_input()?;
         let extended = input.convert(destination)?;
-        let pane = |policy: GamutMapping| -> anyhow::Result<ComparePane> {
+        // How far the unmapped color is outside 0–1 in the destination, in linear channel units.
+        let excess = extended.components().into_iter().map(|v| (-v).max(v - 1.).max(0.)).fold(0., f64::max);
+        let pane = |policy: GamutMapping, verb: &'static str| -> anyhow::Result<ComparePane> {
             let mapped = input.map_gamut(destination, policy)?;
+            let changed = mapped.components().into_iter().zip(extended.components()).any(|(a, b)| (a - b).abs() > 1e-9);
             let swatch = display.fill(mapped, 1., GamutMapping::ReduceChroma, px(6.))?;
             Ok(ComparePane::new(mapping_name(policy), swatch_with(look, swatch, channels(mapped.components(), 4)))
-                .subtitle(format!("Linear {}", space_name(destination))))
+                .subtitle(format!("Linear {}", space_name(destination)))
+                .badge(self.badge(if changed { verb } else { "Unchanged" }, changed)))
         };
         let clip = reference::rows(self.preset, GamutMapping::Clip, self.translucent)?;
         let reduced = reference::rows(self.preset, GamutMapping::ReduceChroma, self.translucent)?;
@@ -302,29 +314,39 @@ impl ColorPage {
                     .child(reduced.flex_1().min_w(px(280.))),
             );
         }
-        let unmapped = PanelShell::new("Unmapped").subtitle(format!("Converted to {}", space_name(destination))).child(
-            properties(
+        // The color before mapping, drawn as far as the display allows (P3 on a wide window).
+        let unmapped = PanelShell::new("Unmapped")
+            .subtitle(format!("Converted to {}, before mapping", space_name(destination)))
+            .child(div().w_full().h(px(80.)).child(display.fill(extended, 1., GamutMapping::ReduceChroma, px(6.))?))
+            .child(properties(
                 look,
-                [("Linear", triple(extended.components())), ("In gamut", yes_no(extended.is_in_gamut()).into())],
-            ),
-        );
+                [
+                    ("Linear", triple(extended.components())),
+                    ("In gamut", yes_no(extended.is_in_gamut()).into()),
+                    ("Outside by", format!("{excess:.4}")),
+                ],
+            ));
         Ok(screen
-            .hero(Hero::compare(pane(GamutMapping::Clip)?, pane(GamutMapping::ReduceChroma)?))
+            .hero(Hero::compare(pane(GamutMapping::Clip, "Clipped")?, pane(GamutMapping::ReduceChroma, "Reduced")?))
             .caption(format!(
-                "{} → {} · unmapped {} · {} · {}",
+                "{} → {} · saturation ×{:.2} · {} · {}",
                 space_name(SPACES[self.source_index]),
                 space_name(destination),
-                triple(extended.components()),
-                if extended.is_in_gamut() { "in gamut, so both policies agree" } else { "out of gamut" },
+                self.saturation,
+                if extended.is_in_gamut() {
+                    "in gamut, so both policies agree".to_owned()
+                } else {
+                    format!("outside by {excess:.4}")
+                },
                 display.label(),
             ))
-            .panels(self.input_parameters(), unmapped)
+            .panels(self.input_parameters(true), unmapped)
             .section_panel(
                 PanelShell::new("Reference gradients")
                     .subtitle(format!("{} into sRGB, Clip beside Reduce chroma", reference::PRESETS[self.preset]))
                     .child(gradients),
             )
-            .note("The strip under each bar marks samples outside sRGB before mapping. Endpoint transparency fades the second color to 25%.")
+            .note("Raise Saturation to push the color out of the destination gamut and watch the two policies part: Clip moves each channel into 0–1 on its own, Reduce chroma lowers chroma until the color fits. The strip under each reference bar marks samples outside sRGB before mapping; Endpoint transparency fades the second color to 25%.")
             .credits(PREVIEW_CREDITS))
     }
 
@@ -366,7 +388,7 @@ impl ColorPage {
             .reference_values("Point", [("x", format!("{:.2}", point[0])), ("y", format!("{:.2}", point[1]))]);
         let sampling = ParametersPanel::new("Sampling")
             .subtitle("Position along the axis and the axis end point")
-            .params(self.params([Parameter::Position, Parameter::AxisX, Parameter::AxisY]));
+            .params(self.params(&[Parameter::Position, Parameter::AxisX, Parameter::AxisY]));
         Ok(screen
             .hero(Hero::full(bar(look, label, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, &outside)))
             .caption(format!(

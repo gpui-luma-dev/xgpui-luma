@@ -11,7 +11,8 @@ use xgpui_luma::{
 };
 use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_color::{
-    ColorInterpolation, EncodedRgb, GamutMapping, HueInterpolation, LinearGradient, LinearRgb, LinearRgba, RgbSpace,
+    ColorInterpolation, EncodedRgb, GamutMapping, HueInterpolation, LinearGradient, LinearRgb, LinearRgba, Oklch,
+    RgbSpace,
 };
 use crate::gamut::reference;
 
@@ -42,14 +43,17 @@ enum Parameter {
     Position,
     AxisX,
     AxisY,
+    /// OkLCh chroma scale applied to the input on Gamut Mapping.
+    Saturation,
 }
-const PARAMETERS: [Parameter; 6] = [
+const PARAMETERS: [Parameter; 7] = [
     Parameter::Red,
     Parameter::Green,
     Parameter::Blue,
     Parameter::Position,
     Parameter::AxisX,
     Parameter::AxisY,
+    Parameter::Saturation,
 ];
 
 impl Parameter {
@@ -61,6 +65,7 @@ impl Parameter {
             Self::Position => ("Position t", -0.25, 1.25, 0.5),
             Self::AxisX => ("Axis end x", 0., 640., 320.),
             Self::AxisY => ("Axis end y", 0., 320., 0.),
+            Self::Saturation => ("Saturation", 0., 2., 1.),
         }
     }
     fn range_label(self) -> &'static str {
@@ -68,6 +73,7 @@ impl Parameter {
             Self::Position => "−0.25–1.25",
             Self::AxisX => "0–640 px",
             Self::AxisY => "0–320 px",
+            Self::Saturation => "×0–2",
             _ => "0–1",
         }
     }
@@ -75,6 +81,7 @@ impl Parameter {
     fn format(self, value: f64) -> String {
         match self {
             Self::AxisX | Self::AxisY => format!("{value:.0}"),
+            Self::Saturation => format!("{value:.2}"),
             _ => format!("{value:.3}"),
         }
     }
@@ -119,6 +126,8 @@ pub struct ColorPage {
     sample_count_index: usize,
     position: f64,
     axis: [f64; 2],
+    /// OkLCh chroma scale for Gamut Mapping; 1 leaves the input unchanged.
+    saturation: f64,
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
@@ -291,8 +300,9 @@ impl ColorPage {
             look,
             active_tab: "Conversions".into(),
             input: [0.2, 0.5, 0.8],
-            source_index: 0,
-            destination_index: 1,
+            // Display P3 into sRGB: the source is wider than the destination, so mapping has work to do.
+            source_index: 1,
+            destination_index: 0,
             preset: 0,
             policy: GamutMapping::Clip,
             translucent: false,
@@ -301,6 +311,7 @@ impl ColorPage {
             sample_count_index: 0,
             position: 0.5,
             axis: [320., 0.],
+            saturation: 1.,
             buttons,
             choices: Vec::new(),
             transparency,
@@ -327,6 +338,7 @@ impl ColorPage {
                 self.input = [0.2, 0.5, 0.8];
                 self.position = 0.5;
                 self.axis = [320., 0.];
+                self.saturation = 1.;
                 for (parameter, slider) in &self.sliders {
                     slider.update(cx, |slider, cx| slider.set_value(parameter.config().3, cx));
                 }
@@ -346,6 +358,7 @@ impl ColorPage {
             Parameter::Position => self.position,
             Parameter::AxisX => self.axis[0],
             Parameter::AxisY => self.axis[1],
+            Parameter::Saturation => self.saturation,
         }
     }
 
@@ -357,6 +370,7 @@ impl ColorPage {
             Parameter::Position => self.position = value,
             Parameter::AxisX => self.axis[0] = value,
             Parameter::AxisY => self.axis[1] = value,
+            Parameter::Saturation => self.saturation = value,
         }
     }
 
@@ -369,6 +383,19 @@ impl ColorPage {
 
     fn input_color(&self) -> Result<LinearRgb, xgpui_color::ColorError> {
         EncodedRgb::new(SPACES[self.source_index], self.input)?.decode()
+    }
+
+    /// The input with its OkLCh chroma scaled by the Saturation parameter, in the source space.
+    /// Scaling past 1 can push it outside the source gamut; that is the point of the control.
+    fn saturated_input(&self) -> Result<LinearRgb, xgpui_color::ColorError> {
+        let source = SPACES[self.source_index];
+        let input = self.input_color()?;
+        // The OkLab round trip is not bit-exact, so the neutral value returns the input itself.
+        if self.saturation == 1. {
+            return Ok(input);
+        }
+        let [l, c, h] = input.to_oklab()?.to_oklch()?.components();
+        Oklch::new(l, c * self.saturation, h)?.to_oklab()?.to_linear(source)
     }
 
     fn model(&self) -> ColorInterpolation {
@@ -426,7 +453,7 @@ mod tests {
             switch.set_data(true, cx);
             cx.emit(xgpui_luma::controls::switch::SwitchEvent::Change { on: true });
         });
-        cx.update(|_, cx| source.select(1, cx));
+        cx.update(|_, cx| source.select(2, cx));
         red.update(cx, |slider, cx| {
             slider.set_thumb_position(slider.primary_thumb_id(), 0.9, cx);
         });
@@ -436,7 +463,7 @@ mod tests {
             let page = page.read(cx);
             assert!(page.translucent);
             assert!(*page.transparency.read(cx).data());
-            assert_eq!(page.source_index, 1);
+            assert_eq!(page.source_index, 2);
             assert_eq!(page.preset, 1);
             assert!((page.input[0] - 0.9).abs() < 0.001);
             let roundtrip = page
@@ -475,6 +502,29 @@ mod tests {
             }
             page.axis = [0., 0.];
             assert_eq!(page.gradient(page.model()).unwrap().sample([0., 0.]).unwrap(), last);
+        });
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod saturation_tests {
+    use super::ColorPage;
+    use gpui::TestAppContext;
+
+    #[test]
+    fn saturation_pushes_a_p3_input_out_of_srgb_and_one_leaves_it_unchanged() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (page, cx) = app.add_window_view(|_, cx| ColorPage::new(crate::theme::default_look(), cx));
+        page.update(cx, |page, _| {
+            let input = page.input_color().unwrap().components();
+            let neutral = page.saturated_input().unwrap().components();
+            for (a, b) in input.into_iter().zip(neutral) {
+                assert_eq!(a, b, "saturation 1 is the input");
+            }
+            page.saturation = 2.;
+            let pushed = page.saturated_input().unwrap().convert(xgpui_color::RgbSpace::Srgb).unwrap();
+            assert!(!pushed.is_in_gamut(), "doubling chroma leaves sRGB");
         });
     }
 }
