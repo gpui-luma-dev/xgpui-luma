@@ -13,9 +13,9 @@ pub(super) const CANVAS_HEIGHT: f32 = 560.;
 const SCENE_SIZES: [usize; 2] = [10_000, 100_000];
 const SWEEP_FRAMES: usize = 450;
 
-const CANVAS_NOTE: &str = "Drag the background or Space-drag to pan, and scroll or pinch to zoom. Shift-drag selects; drag cards to move them and snap to their neighbors (Option moves freely); Esc cancels. Keys: G grid · R reset · O overview · B 10k / 100k · M map · T map mode · F Mandelbrot.";
+const CANVAS_NOTE: &str = "Drag the background or Space-drag to pan, and scroll or pinch to zoom. Shift-drag selects; drag cards to move them and snap to their neighbors (Option moves freely); Esc cancels. Keys: G grid · R reset · O overview · B 10k / 100k · M map · T map mode.";
 const CANVAS_CREDITS: &str = "Cards too small for full detail draw as filled proxies, then as 1 px points. The current-view map copies the drawn canvas, which adds capture cost. The sweep records render-callback intervals over 450 frames, not GPU time or displayed FPS; its captures and timing JSON go to a temporary folder.";
-const FRACTAL_NOTE: &str = "Drag to pan, and scroll or pinch to zoom up to 10¹⁰×. The shown frame stays whole while its successor renders offscreen; a settled view refines and blends in. Keys: R reset · M preview · F cards.";
+const FRACTAL_NOTE: &str = "Drag to pan, and scroll or pinch to zoom up to 10¹⁰×. The shown frame stays whole while its successor renders offscreen; a settled view refines and blends in. Keys: R reset · M preview.";
 const FRACTAL_CREDITS: &str = "The Metal route computes in f32 and is used only up to 64× zoom; deeper views use f64 on the CPU, without perturbation. Colors are a sine palette, linearized and shown in Display P3. The preview copies the drawn frame, which adds capture cost.";
 
 /// Counts of what the canvas drew this frame.

@@ -90,6 +90,22 @@ Typography (xgpui-shader) joins `LabScreen` too, which answers open question 1
 - `LabCard::contents(look)` (a card without its surface, for `card_button`) and
   `LabCard::body(element)` (free content between the heading and the values).
 
+Spatial Canvas and Mandelbrot (xgpui-canvas) and the four xgpui-color tabs
+(Conversions, Interpolation, Gamut Mapping, CPU Gradients) join `LabScreen` too.
+They add no new `screen/` types beyond `data::OUT_OF_GAMUT`:
+
+- **Canvas pages** use `Hero::full` with a fixed-height, interactive viewport that owns
+  scroll and pinch. The map overlay floats inside the hero with look chrome. The scene and
+  the fractal keep their own dark data colors in both themes (`canvas_lab/palette.rs`),
+  because they are the subject, like a photo. Each page has its own navigation entry, so
+  the old F page-swap key is gone.
+- **Color pages** draw swatches and the CPU-sampled bar at the window's real output
+  (`color_lab/display.rs`): linear Display P3 through xgpui-gamut's `WidePainter` when
+  the window presents wide-gamut SDR, sRGB previews otherwise. The caption says which.
+  Reference rows that map into sRGB stay sRGB. Gamut Mapping opens on Display P3 → sRGB
+  and has a Saturation control (OkLCh chroma ×0–2). Whole gradients through both
+  policies live on xgpui-gamut → Gamut Mapping, which draws them natively.
+
 Differences from the proposal below:
 
 - **Metrics.** `LabMetrics::STANDARD` is a const, not `LabLookExt::lab_metrics()`,

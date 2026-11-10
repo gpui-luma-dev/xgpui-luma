@@ -255,7 +255,7 @@ pub(super) fn smoke_invalidation_and_modes(entity: &Entity<Lab>, window: &mut Wi
     });
     window.draw(cx).clear(cx);
     assert_ne!(entity.read(cx).overview_key, prior, "replacement scene invalidates revision-zero cache");
-    for key in ["m", "m", "t", "t", "r", "o", "f", "f", "escape"] {
+    for key in ["m", "m", "t", "t", "r", "o", "escape"] {
         entity.update(cx, |lab, _| {
             lab.map_drag = true;
             lab.drag.begin(WorldPoint::default());

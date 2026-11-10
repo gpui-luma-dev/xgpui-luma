@@ -41,20 +41,11 @@ enum Parameter {
     Green,
     Blue,
     Position,
-    AxisX,
-    AxisY,
     /// OkLCh chroma scale applied to the input on Gamut Mapping.
     Saturation,
 }
-const PARAMETERS: [Parameter; 7] = [
-    Parameter::Red,
-    Parameter::Green,
-    Parameter::Blue,
-    Parameter::Position,
-    Parameter::AxisX,
-    Parameter::AxisY,
-    Parameter::Saturation,
-];
+const PARAMETERS: [Parameter; 5] =
+    [Parameter::Red, Parameter::Green, Parameter::Blue, Parameter::Position, Parameter::Saturation];
 
 impl Parameter {
     fn config(self) -> (&'static str, f32, f32, f32) {
@@ -63,16 +54,12 @@ impl Parameter {
             Self::Green => ("Green", 0., 1., 0.5),
             Self::Blue => ("Blue", 0., 1., 0.8),
             Self::Position => ("Position t", -0.25, 1.25, 0.5),
-            Self::AxisX => ("Axis end x", 0., 640., 320.),
-            Self::AxisY => ("Axis end y", 0., 320., 0.),
             Self::Saturation => ("Saturation", 0., 2., 1.),
         }
     }
     fn range_label(self) -> &'static str {
         match self {
             Self::Position => "−0.25–1.25",
-            Self::AxisX => "0–640 px",
-            Self::AxisY => "0–320 px",
             Self::Saturation => "×0–2",
             _ => "0–1",
         }
@@ -80,7 +67,6 @@ impl Parameter {
     /// Fixed decimals per quantity: channels and `t` `0.000`, pixels `0`.
     fn format(self, value: f64) -> String {
         match self {
-            Self::AxisX | Self::AxisY => format!("{value:.0}"),
             Self::Saturation => format!("{value:.2}"),
             _ => format!("{value:.3}"),
         }
@@ -125,6 +111,8 @@ pub struct ColorPage {
     model_index: usize,
     sample_count_index: usize,
     position: f64,
+    /// Gradient axis end; the start is the origin. Samples follow the axis, so the bar does not
+    /// depend on it, and the page keeps it fixed.
     axis: [f64; 2],
     /// OkLCh chroma scale for Gamut Mapping; 1 leaves the input unchanged.
     saturation: f64,
@@ -250,11 +238,7 @@ impl ColorPage {
                         .look(look.as_ref())
                         .size(radix::SliderSize::One)
                         .range(min..max)
-                        .step(if matches!(parameter, Parameter::AxisX | Parameter::AxisY) {
-                            1.
-                        } else {
-                            0.01
-                        })
+                        .step(0.01)
                         .value(value as f64)
                         .on_value_changed(cx, move |this: &mut Self, _, value, cx| {
                             this.set_value(parameter, value as f64);
@@ -356,8 +340,6 @@ impl ColorPage {
             Parameter::Green => self.input[1],
             Parameter::Blue => self.input[2],
             Parameter::Position => self.position,
-            Parameter::AxisX => self.axis[0],
-            Parameter::AxisY => self.axis[1],
             Parameter::Saturation => self.saturation,
         }
     }
@@ -368,8 +350,6 @@ impl ColorPage {
             Parameter::Green => self.input[1] = value,
             Parameter::Blue => self.input[2] = value,
             Parameter::Position => self.position = value,
-            Parameter::AxisX => self.axis[0] = value,
-            Parameter::AxisY => self.axis[1] = value,
             Parameter::Saturation => self.saturation = value,
         }
     }

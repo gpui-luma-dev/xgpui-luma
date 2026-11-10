@@ -18,7 +18,7 @@ const SWATCH_HEIGHT: f32 = 120.;
 const BAR_HEIGHT: f32 = 48.;
 const CHANNELS: [&str; 3] = ["R", "G", "B"];
 
-const PREVIEW_CREDITS: &str = "On a wide-gamut window, swatches and the sampled bar are drawn in Display P3, and colors outside P3 are reduced in chroma for display only; on other windows they are sRGB previews. Reference gradients target sRGB and are drawn as sRGB. The numbers are xgpui-color's CPU reference math and keep extended values.";
+const PREVIEW_CREDITS: &str = "On a wide-gamut window, swatches and the sampled bar are drawn in Display P3, and colors outside P3 are reduced in chroma for display only; on other windows they are sRGB previews. The numbers are xgpui-color's CPU reference math and keep extended values.";
 const SRGB_REFERENCE_CREDITS: &str = "These reference rows map into sRGB, so they are drawn as sRGB on any window. The numbers are xgpui-color's CPU reference math.";
 const INTERPOLATION_NOTE: &str = "32 CPU reference samples per row. The strip under each bar marks samples outside sRGB before mapping. Display paints interpolate between the mapped samples; color interpolation uses premultiplied components.";
 
@@ -119,8 +119,8 @@ impl ColorPage {
             "Gamut Mapping" => (
                 "color-gamut-mapping",
                 "Compare two ways to show a color that a screen cannot display: cut it off at the screen's limit, or make it a little less vivid until it fits.",
-                &[Action::Source, Action::Destination, Action::Preset],
-                true,
+                &[Action::Source, Action::Destination],
+                false,
                 true,
             ),
             _ => (
@@ -298,22 +298,6 @@ impl ColorPage {
                 .subtitle(format!("Linear {}", space_name(destination)))
                 .badge(self.badge(if changed { verb } else { "Unchanged" }, changed)))
         };
-        let clip = reference::rows(self.preset, GamutMapping::Clip, self.translucent)?;
-        let reduced = reference::rows(self.preset, GamutMapping::ReduceChroma, self.translucent)?;
-        let mut gradients = vstack! {}.gap_4();
-        for (clip, reduced) in clip.iter().zip(&reduced) {
-            // Each reference row puts its two policies side by side, so a difference reads across.
-            let clip = reference_bar(look, format!("{} · Clip", clip.label), &clip.rgba, &clip.outside)?;
-            let reduced =
-                reference_bar(look, format!("{} · Reduce chroma", reduced.label), &reduced.rgba, &reduced.outside)?;
-            gradients = gradients.child(
-                hstack! {}
-                    .flex_wrap()
-                    .gap_4()
-                    .child(clip.flex_1().min_w(px(280.)))
-                    .child(reduced.flex_1().min_w(px(280.))),
-            );
-        }
         // The color before mapping, drawn as far as the display allows (P3 on a wide window).
         let unmapped = PanelShell::new("Unmapped")
             .subtitle(format!("Converted to {}, before mapping", space_name(destination)))
@@ -341,12 +325,7 @@ impl ColorPage {
                 display.label(),
             ))
             .panels(self.input_parameters(true), unmapped)
-            .section_panel(
-                PanelShell::new("Reference gradients")
-                    .subtitle(format!("{} into sRGB, Clip beside Reduce chroma", reference::PRESETS[self.preset]))
-                    .child(gradients),
-            )
-            .note("Raise Saturation to push the color out of the destination gamut and watch the two policies part: Clip moves each channel into 0–1 on its own, Reduce chroma lowers chroma until the color fits. The strip under each reference bar marks samples outside sRGB before mapping; Endpoint transparency fades the second color to 25%.")
+.note("Raise Saturation to push the color out of the destination gamut and watch the two policies part: Clip moves each channel into 0–1 on its own, Reduce chroma lowers chroma until the color fits. Whole gradients through both policies, drawn natively in P3, are on xgpui-gamut → Gamut Mapping.")
             .credits(PREVIEW_CREDITS))
     }
 
@@ -372,7 +351,7 @@ impl ColorPage {
         let destination = SPACES[self.destination_index];
         let count = [32, 64, 128][self.sample_count_index];
         let (colors, outside) = self.cpu_samples()?;
-        let point = [self.axis[0] * self.position, self.axis[1] * self.position];
+        let point = self.axis.map(|end| end * self.position);
         let sample = self.gradient(self.model())?.sample(point)?;
         let mapped = sample.map_gamut(destination, self.policy)?;
         let premultiplied = mapped.premultiplied();
@@ -384,20 +363,17 @@ impl ColorPage {
         };
         let sample_preview = PreviewPanel::new("Sample")
             .subtitle(format!("At t = {:.3} · {}", self.position, display.label()))
-            .swatch(display.fill(mapped.rgb(), mapped.alpha(), self.policy, px(6.))?)
-            .reference_values("Point", [("x", format!("{:.2}", point[0])), ("y", format!("{:.2}", point[1]))]);
-        let sampling = ParametersPanel::new("Sampling")
-            .subtitle("Position along the axis and the axis end point")
-            .params(self.params(&[Parameter::Position, Parameter::AxisX, Parameter::AxisY]));
+            .swatch(display.fill(mapped.rgb(), mapped.alpha(), self.policy, px(6.))?);
+        let sampling = ParametersPanel::new("Sample position")
+            .subtitle("Where along the gradient to sample: 0 is the first color, 1 the second")
+            .params(self.params(&[Parameter::Position]));
         Ok(screen
             .hero(Hero::full(bar(look, label, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, &outside)))
             .caption(format!(
-                "{} · {model} · output {} · {} · axis 0, 0 → {:.0}, {:.0} · {}",
+                "{} · {model} · output {} · {} · {}",
                 reference::PRESETS[self.preset],
                 space_name(destination),
                 mapping_name(self.policy),
-                self.axis[0],
-                self.axis[1],
                 display.label(),
             ))
             .cards([
@@ -417,7 +393,7 @@ impl ColorPage {
                     .values(["R", "G", "B", "A"].into_iter().zip(premultiplied).map(|(key, v)| (key, format!("{v:.3}")))),
             ])
             .panels(sampling, sample_preview)
-            .note("Positions outside 0–1 extend the endpoint colors. A zero-length axis selects the second endpoint.")
+            .note("Positions outside 0–1 extend the end colors. This page checks xgpui-color's CPU gradient API: sampling, extension, mapping and premultiplied output.")
             .credits("Sampling is CPU reference math; these previews do not measure GPU performance. On a wide-gamut window the bar and sample are drawn in Display P3, with colors outside P3 fitted using the selected mapping; otherwise they are sRGB previews. Bars with more than 32 samples draw every sample as its own band."))
     }
 }

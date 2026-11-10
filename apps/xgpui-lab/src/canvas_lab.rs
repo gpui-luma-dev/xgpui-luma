@@ -284,15 +284,8 @@ impl Render for Lab {
                     };
                     cx.notify();
                 }
-                if event.keystroke.key == "f" {
-                    this.cancel_interaction();
-                    this.fractal.toggle();
-                    this.show_minimap = !this.fractal.enabled;
-                    this.whole_scene_map = !this.fractal.enabled;
-                    this.camera = Camera2D::default();
-                    this.invalidate_preview();
-                    cx.notify();
-                }
+                // No page-swap key: Spatial Canvas and Mandelbrot each have a navigation entry,
+                // and a key that swapped them would leave the navigation showing the wrong page.
                 if event.keystroke.key == "t" && !this.fractal.enabled {
                     this.cancel_interaction();
                     this.whole_scene_map = !this.whole_scene_map;
