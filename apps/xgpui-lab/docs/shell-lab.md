@@ -27,8 +27,9 @@ the event log retains the twelve most recent distinct messages.
 
 This is the first port. Additional real window operation controls, decoration
 requests, and applying overrides to a selected real window remain to be ported. Simulated frame controls never move, resize, minimize or
-close the host Lab. The whole-titlebar theming gap remains tracked by
-[xgpui#192](https://github.com/gpui-luma-dev/xgpui/issues/192).
+close the host Lab. The host titlebar uses the published 0.2.0 color overrides to replace the local
+edge-painting workaround from [xgpui#192](https://github.com/gpui-luma-dev/xgpui/issues/192).
+Native macOS appearance synchronization and optical alignment remain app-side.
 
 Headless tests exercise SDK selector callbacks, override resolution and reset,
 page retention, explorer routing and preservation of host window/desktop state.

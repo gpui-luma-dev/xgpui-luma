@@ -7315,7 +7315,7 @@ dependencies = [
 
 [[package]]
 name = "xgpui-lab"
-version = "0.1.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7595,9 +7595,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-shell"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b7c6b01fe1c2ba5b92b4849473842d40d9b68321f1b1384807aaf1ff8d1cae"
+checksum = "46473ce9b0958294da997db266dd5e34b2ccde5cfceb2317598db0702ae5d103"
 dependencies = [
  "anyhow",
  "xgpui",

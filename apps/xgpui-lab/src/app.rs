@@ -807,7 +807,7 @@ mod tests {
     }
 
     #[test]
-    fn mac_titlebar_edges_follow_radix_on_startup_and_theme_changes() {
+    fn mac_titlebar_edges_follow_radix_on_startup_theme_and_activation_changes() {
         let mut app = TestAppContext::single();
         app.set_platform_info(gpui::PlatformInfo {
             os: gpui::OperatingSystem::Mac,
@@ -815,6 +815,8 @@ mod tests {
         });
         let (view, mut visual) = shell_test_window(&app);
         let cx = &mut visual;
+        let root = cx.update(|window, _| window.root::<xgpui_shell::ShellWindow>().flatten().unwrap());
+
         for mode in [ThemeMode::Dark, ThemeMode::Light, ThemeMode::Dark] {
             if cx.update(|_, cx| view.read(cx).look.mode()) != mode {
                 let toggle = cx.debug_bounds("shell-2026-theme").unwrap().center();
@@ -827,9 +829,15 @@ mod tests {
                 } else {
                     cx.deactivate_window();
                 }
+                cx.update(|window, cx| {
+                    let focus = view.read(cx).focus_scope.clone();
+                    focus.focus(window, cx);
+                });
                 cx.run_until_parked();
                 let toolbar = cx.debug_bounds("lab-toolbar-bounds").unwrap();
                 cx.update(|window, cx| {
+                    assert_eq!(window.root::<xgpui_shell::ShellWindow>().flatten().unwrap(), root);
+                    assert!(view.read(cx).focus_scope.is_focused(window), "color updates retain content focus");
                     let expected = shell_background(&view.read(cx).look, active);
                     assert_eq!(window.is_window_active(), active);
                     if mode == ThemeMode::Light {
@@ -849,10 +857,27 @@ mod tests {
                         let point = sample.scale(scale);
                         let top = quads
                             .iter()
-                            .filter(|quad| quad.bounds.contains(&point) && quad.content_mask.bounds.contains(&point))
+                            .filter(|quad| {
+                                quad.bounds.contains(&point)
+                                    && quad.content_mask.bounds.contains(&point)
+                                    && quad.background.as_solid().is_some_and(|color| color.a > 0.)
+                            })
                             .max_by_key(|quad| quad.order)
                             .expect("titlebar background painted");
                         assert_eq!(top.background.as_solid(), Some(expected), "sample {sample:?} in {mode:?}");
+                        if sample.y > toolbar.bottom() {
+                            let border = quads
+                                .iter()
+                                .rev()
+                                .find(|quad| {
+                                    quad.bounds.contains(&point)
+                                        && quad.content_mask.bounds.contains(&point)
+                                        && point.y >= quad.bounds.bottom() - quad.border_widths.bottom
+                                        && quad.border_color.a > 0.
+                                })
+                                .expect("shell-owned bottom border");
+                            assert_eq!(border.border_color, expected, "shell-owned bottom seam");
+                        }
                     }
                 });
             }

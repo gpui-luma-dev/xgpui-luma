@@ -50,7 +50,7 @@ tests; native wide-gamut fidelity still requires a capable display.
 
 ## Desktop window shell
 
-The main Lab window uses published `xgpui-shell 0.1.0` with XGPUI 3.1.0.
+The main Lab window uses published `xgpui-shell 0.2.0` with XGPUI 3.1.0.
 `app/titlebar.rs` declares the shell window, toolbar layout, Radix controls and
 callbacks together in `open_shell_window`. `app_shell.rs` forwards to that
 composition. `LabTitlebar` renders the inline template alongside the
@@ -66,13 +66,16 @@ The light shell background is `#ECECED` while active and `#F0F0F0` while inactiv
 The Lab also sets its native macOS window appearance to Aqua/DarkAqua when the
 Radix mode changes, so native traffic lights use the corresponding AppKit artwork.
 This is per window and does not change the system appearance.
-Window activation observers refresh the outer shell, toolbar and macOS edge fill
-together; content surfaces keep their own Radix palette.
-On macOS, a deferred noninteractive background pass fills the measured native-control
-gutter, trailing inset and bottom seam with that palette too. It leaves toolbar
-content and native traffic lights untouched. This is a local visual workaround;
-other platforms retain shell-owned frame/control colors. Full app-controlled shell
-styling is tracked by [upstream issue #192](https://github.com/gpui-luma-dev/xgpui/issues/192).
+Window activation observers refresh the outer shell and toolbar together; content
+surfaces keep their own Radix palette. The Lab updates `ShellWindow::set_options`
+with the 0.2.0 `titlebar_background` and `colors` overrides on theme/activation
+changes. The shell paints the complete header, including native-control gutters
+and trailing padding; its macOS border uses the same background for a seamless
+bottom edge. Other platforms use the Radix border, text and hover colors.
+These explicit colors also override the default high-contrast palette; the Lab
+owns their contrast. Native AppKit appearance synchronization and the optical
+alignment adjustment remain separate from this color API. This replaces the local
+deferred edge painting associated with [upstream issue #192](https://github.com/gpui-luma-dev/xgpui/issues/192).
 The shell API is alpha. Interactive macOS, Windows and Linux desktop
 verification remains necessary, including decoration negotiation, fullscreen,
 window operations and scaled text; headless tests cannot establish those results.
