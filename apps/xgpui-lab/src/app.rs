@@ -320,7 +320,7 @@ impl XgpuiLabApp {
                         .text_color(sidebar_look.chrome().body_text)
                         .child(explorer_heading("LAB EXPLORER", &sidebar_look))
                         .child(accordion.clone())
-                        .child(explorer_heading("XGPUI Lab Explorer", &sidebar_look))
+                        .child(explorer_heading("XGPUI LAB EXPLORER", &sidebar_look))
                         .child(extension_accordion.clone())
                 })
                 .size(INITIAL_SIDEBAR_WIDTH)
