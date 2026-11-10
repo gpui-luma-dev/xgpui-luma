@@ -1,10 +1,11 @@
 //! The xgpui-color tabs (Conversions, Interpolation, Gamut Mapping, CPU Gradients), laid out with `LabScreen`.
 use super::*;
-use gpui::{Div, IntoElement, ParentElement, Render, Rgba, Styled, Window, div, prelude::*, px, rgb};
+use gpui::{AnyElement, Div, IntoElement, ParentElement, Render, Styled, Window, WindowColorMode, div, prelude::*, px, rgb};
 use lucide_svg_static::Icon;
 use xgpui_luma::{hstack, vstack};
 use xgpui_luma_look_radix::{Badge, BadgeVariant};
-use xgpui_shader::{Gradient, GradientStop, painted};
+
+use super::display::{Display, srgb_bar};
 
 use crate::screen::{
     ComparePane, Hero, LabCard, LabScreen, PanelShell, Param, ParametersPanel, PreviewPanel, TextRole, data,
@@ -17,22 +18,20 @@ const SWATCH_HEIGHT: f32 = 120.;
 const BAR_HEIGHT: f32 = 48.;
 const CHANNELS: [&str; 3] = ["R", "G", "B"];
 
-const PREVIEW_CREDITS: &str = "Swatches and bars are sRGB previews, with chroma reduced for display only; the numbers are xgpui-color's CPU reference math and keep extended values.";
+const PREVIEW_CREDITS: &str = "On a wide-gamut window, swatches and the sampled bar are drawn in Display P3, and colors outside P3 are reduced in chroma for display only; on other windows they are sRGB previews. Reference gradients target sRGB and are drawn as sRGB. The numbers are xgpui-color's CPU reference math and keep extended values.";
+const SRGB_REFERENCE_CREDITS: &str = "These reference rows map into sRGB, so they are drawn as sRGB on any window. The numbers are xgpui-color's CPU reference math.";
 const INTERPOLATION_NOTE: &str = "32 CPU reference samples per row. The strip under each bar marks samples outside sRGB before mapping. Display paints interpolate between the mapped samples; color interpolation uses premultiplied components.";
 
+/// Encoded sRGB with straight alpha, for reference rows that target sRGB.
 fn preview(color: LinearRgb, policy: GamutMapping, alpha: f64) -> anyhow::Result<[f32; 4]> {
     let [r, g, b] = color.map_gamut(RgbSpace::Srgb, policy)?.encode()?.components();
     Ok([r as f32, g as f32, b as f32, alpha as f32])
 }
 
-fn fill([r, g, b, a]: [f32; 4]) -> Rgba {
-    Rgba { r, g, b, a }
-}
-
 /// A hero swatch with the values it shows underneath.
-fn swatch_with(look: &Look, color: [f32; 4], values: [(&'static str, String); 3]) -> Div {
+fn swatch_with(look: &Look, fill: AnyElement, values: [(&'static str, String); 3]) -> Div {
     vstack! {
-        div().w_full().h(px(SWATCH_HEIGHT)).rounded_md().bg(fill(color)),
+        div().w_full().h(px(SWATCH_HEIGHT)).child(fill),
         readout(look, values),
     }
     .gap_3()
@@ -52,29 +51,8 @@ fn yes_no(value: bool) -> &'static str {
     if value { "yes" } else { "no" }
 }
 
-/// A labeled gradient bar of CPU samples, with a strip marking samples outside sRGB before mapping.
-fn bar(look: &Look, label: impl Into<SharedString>, colors: &[[f32; 4]], outside: &[bool]) -> anyhow::Result<Div> {
-    // Same display path as extensions-web/color.rs: shader interpolation between CPU-mapped samples.
-    let display = if colors.len() <= 32 {
-        let stops = colors
-            .iter()
-            .enumerate()
-            .map(|(i, color)| GradientStop::new(i as f32 / (colors.len() - 1) as f32, *color))
-            .collect();
-        let paint = Arc::new(Gradient::linear(90., stops)?);
-        painted().w_full().h(px(BAR_HEIGHT)).rounded_md().bg_paint(paint).into_any_element()
-    } else {
-        // The shader producer accepts at most 32 stops. Preserve every CPU sample
-        // at higher resolutions instead of silently truncating the reference.
-        div()
-            .flex()
-            .w_full()
-            .h(px(BAR_HEIGHT))
-            .rounded_md()
-            .overflow_hidden()
-            .children(colors.iter().map(|&color| div().flex_1().min_w_0().h_full().bg(fill(color))))
-            .into_any_element()
-    };
+/// A labeled gradient bar, with a strip marking samples outside sRGB before mapping.
+fn bar(look: &Look, label: impl Into<SharedString>, display: AnyElement, outside: &[bool]) -> Div {
     let inside = look.chrome().border;
     let strip = hstack! {}.h(px(4.)).w_full().rounded_sm().overflow_hidden().children(outside.iter().map(|outside| {
         let color = if *outside {
@@ -84,19 +62,36 @@ fn bar(look: &Look, label: impl Into<SharedString>, colors: &[[f32; 4]], outside
         };
         div().flex_1().h_full().bg(color)
     }));
-    Ok(vstack! { text(look, TextRole::Detail, label.into()), display, strip }.gap_2().w_full())
+    vstack! { text(look, TextRole::Detail, label.into()), display, strip }.gap_2().w_full()
+}
+
+/// A labeled bar of encoded sRGB reference samples.
+fn reference_bar(
+    look: &Look,
+    label: impl Into<SharedString>,
+    colors: &[[f32; 4]],
+    outside: &[bool],
+) -> anyhow::Result<Div> {
+    Ok(bar(look, label, srgb_bar(colors, px(BAR_HEIGHT))?, outside))
 }
 
 impl Render for ColorPage {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sync_choices(cx);
+        // Draw at the window's real output: linear P3 when it presents wide-gamut SDR.
+        let wide = window.color_status().effective() == WindowColorMode::WideGamutSdr;
+        let display = Display::new(self.painter.as_ref().ok().filter(|_| wide).cloned());
         let screen = self.base();
         let screen = match self.active_tab.as_ref() {
-            "Conversions" => self.conversions(screen),
+            "Conversions" => self.conversions(screen, &display),
             "Interpolation" => self.interpolation(screen),
-            "Gamut Mapping" => self.mapping(screen),
-            _ => self.cpu_gradient_screen(screen),
-        };
+            "Gamut Mapping" => self.mapping(screen, &display),
+            _ => self.cpu_gradient_screen(screen, &display),
+        }
+        .map(|screen| {
+            let error = self.painter.as_ref().err().filter(|_| wide);
+            screen.notice(error.map(|error| format!("Wide-gamut painting unavailable, showing sRGB previews: {error}")))
+        });
         // The color math failed: keep the tab's controls and say what happened.
         screen.unwrap_or_else(|error| self.base().notice(Some(format!("Color lab unavailable: {error:#}"))))
     }
@@ -186,7 +181,7 @@ impl ColorPage {
         self.badge(if inside { "In gamut" } else { "Out of gamut" }, inside)
     }
 
-    fn conversions(&self, screen: LabScreen) -> anyhow::Result<LabScreen> {
+    fn conversions(&self, screen: LabScreen, display: &Display) -> anyhow::Result<LabScreen> {
         let look = &self.look;
         let (source, destination) = (SPACES[self.source_index], SPACES[self.destination_index]);
         let linear = self.input_color()?;
@@ -200,12 +195,12 @@ impl ColorPage {
         let inside = converted.is_in_gamut();
         let source_pane = ComparePane::new(
             space_name(source),
-            swatch_with(look, preview(linear, GamutMapping::ReduceChroma, 1.)?, channels(self.input, 3)),
+            swatch_with(look, display.fill(linear, 1., GamutMapping::ReduceChroma, px(6.))?, channels(self.input, 3)),
         )
         .subtitle("Encoded input");
         let destination_pane = ComparePane::new(
             space_name(destination),
-            swatch_with(look, preview(converted, GamutMapping::ReduceChroma, 1.)?, channels(encoded, 3)),
+            swatch_with(look, display.fill(converted, 1., GamutMapping::ReduceChroma, px(6.))?, channels(encoded, 3)),
         )
         .subtitle("Encoded, unclipped")
         .badge(self.gamut_badge(inside));
@@ -227,10 +222,11 @@ impl ColorPage {
         Ok(screen
             .hero(Hero::compare(source_pane, destination_pane))
             .caption(format!(
-                "{} → {} · {} · round-trip error {error:.1e}",
+                "{} → {} · {} · round-trip error {error:.1e} · {}",
                 space_name(source),
                 space_name(destination),
                 if inside { "in gamut" } else { "outside the destination gamut" },
+                display.label(),
             ))
             .cards([
                 card("Decoded source", "Linear light", CHANNELS, linear.components()),
@@ -253,7 +249,7 @@ impl ColorPage {
         let mut view = vstack! {}.gap_4().w_full();
         for (index, sample) in rows.iter().enumerate() {
             if index != 3 {
-                view = view.child(bar(&self.look, sample.label, &sample.rgba, &sample.outside)?);
+                view = view.child(reference_bar(&self.look, sample.label, &sample.rgba, &sample.outside)?);
                 continue;
             }
             let model = ColorInterpolation::Oklch(hue);
@@ -265,7 +261,7 @@ impl ColorPage {
                 outside.push(!color.rgb().is_in_gamut());
                 colors.push(preview(color.rgb(), self.policy, color.alpha())?);
             }
-            view = view.child(bar(&self.look, format!("OkLCh · {hue:?} hue"), &colors, &outside)?);
+            view = view.child(reference_bar(&self.look, format!("OkLCh · {hue:?} hue"), &colors, &outside)?);
         }
         Ok(screen
             .hero(Hero::full(view))
@@ -276,17 +272,17 @@ impl ColorPage {
                 if self.translucent { "25%" } else { "100%" },
             ))
             .note(INTERPOLATION_NOTE)
-            .credits(PREVIEW_CREDITS))
+            .credits(SRGB_REFERENCE_CREDITS))
     }
 
-    fn mapping(&self, screen: LabScreen) -> anyhow::Result<LabScreen> {
+    fn mapping(&self, screen: LabScreen, display: &Display) -> anyhow::Result<LabScreen> {
         let look = &self.look;
         let destination = SPACES[self.destination_index];
         let input = self.input_color()?;
         let extended = input.convert(destination)?;
         let pane = |policy: GamutMapping| -> anyhow::Result<ComparePane> {
             let mapped = input.map_gamut(destination, policy)?;
-            let swatch = preview(mapped, GamutMapping::ReduceChroma, 1.)?;
+            let swatch = display.fill(mapped, 1., GamutMapping::ReduceChroma, px(6.))?;
             Ok(ComparePane::new(mapping_name(policy), swatch_with(look, swatch, channels(mapped.components(), 4)))
                 .subtitle(format!("Linear {}", space_name(destination))))
         };
@@ -295,8 +291,9 @@ impl ColorPage {
         let mut gradients = vstack! {}.gap_4();
         for (clip, reduced) in clip.iter().zip(&reduced) {
             // Each reference row puts its two policies side by side, so a difference reads across.
-            let clip = bar(look, format!("{} · Clip", clip.label), &clip.rgba, &clip.outside)?;
-            let reduced = bar(look, format!("{} · Reduce chroma", reduced.label), &reduced.rgba, &reduced.outside)?;
+            let clip = reference_bar(look, format!("{} · Clip", clip.label), &clip.rgba, &clip.outside)?;
+            let reduced =
+                reference_bar(look, format!("{} · Reduce chroma", reduced.label), &reduced.rgba, &reduced.outside)?;
             gradients = gradients.child(
                 hstack! {}
                     .flex_wrap()
@@ -314,11 +311,12 @@ impl ColorPage {
         Ok(screen
             .hero(Hero::compare(pane(GamutMapping::Clip)?, pane(GamutMapping::ReduceChroma)?))
             .caption(format!(
-                "{} → {} · unmapped {} · {}",
+                "{} → {} · unmapped {} · {} · {}",
                 space_name(SPACES[self.source_index]),
                 space_name(destination),
                 triple(extended.components()),
                 if extended.is_in_gamut() { "in gamut, so both policies agree" } else { "out of gamut" },
+                display.label(),
             ))
             .panels(self.input_parameters(), unmapped)
             .section_panel(
@@ -330,8 +328,9 @@ impl ColorPage {
             .credits(PREVIEW_CREDITS))
     }
 
-    /// CPU samples along the gradient axis, mapped into the destination: preview colors and out-of-gamut flags.
-    pub(super) fn cpu_samples(&self) -> anyhow::Result<(Vec<[f32; 4]>, Vec<bool>)> {
+    /// CPU samples along the gradient axis, mapped into the destination, and whether each
+    /// sample was outside the destination gamut before mapping.
+    pub(super) fn cpu_samples(&self) -> anyhow::Result<(Vec<LinearRgba>, Vec<bool>)> {
         let destination = SPACES[self.destination_index];
         let gradient = self.gradient(self.model())?;
         let count = [32, 64, 128][self.sample_count_index];
@@ -341,12 +340,12 @@ impl ColorPage {
             let t = i as f64 / (count - 1) as f64;
             let color = gradient.sample([self.axis[0] * t, self.axis[1] * t])?;
             outside.push(!color.rgb().is_in_gamut());
-            colors.push(preview(color.map_gamut(destination, self.policy)?.rgb(), self.policy, color.alpha())?);
+            colors.push(color.map_gamut(destination, self.policy)?);
         }
         Ok((colors, outside))
     }
 
-    fn cpu_gradient_screen(&self, screen: LabScreen) -> anyhow::Result<LabScreen> {
+    fn cpu_gradient_screen(&self, screen: LabScreen, display: &Display) -> anyhow::Result<LabScreen> {
         let look = &self.look;
         let destination = SPACES[self.destination_index];
         let count = [32, 64, 128][self.sample_count_index];
@@ -362,21 +361,22 @@ impl ColorPage {
             _ => "Linear RGB".to_owned(),
         };
         let sample_preview = PreviewPanel::new("Sample")
-            .subtitle(format!("At t = {:.3}, previewed in sRGB", self.position))
-            .swatch(div().size_full().rounded_md().bg(fill(preview(mapped.rgb(), self.policy, mapped.alpha())?)))
+            .subtitle(format!("At t = {:.3} · {}", self.position, display.label()))
+            .swatch(display.fill(mapped.rgb(), mapped.alpha(), self.policy, px(6.))?)
             .reference_values("Point", [("x", format!("{:.2}", point[0])), ("y", format!("{:.2}", point[1]))]);
         let sampling = ParametersPanel::new("Sampling")
             .subtitle("Position along the axis and the axis end point")
             .params(self.params([Parameter::Position, Parameter::AxisX, Parameter::AxisY]));
         Ok(screen
-            .hero(Hero::full(bar(look, label, &colors, &outside)?))
+            .hero(Hero::full(bar(look, label, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, &outside)))
             .caption(format!(
-                "{} · {model} · output {} · {} · axis 0, 0 → {:.0}, {:.0}",
+                "{} · {model} · output {} · {} · axis 0, 0 → {:.0}, {:.0} · {}",
                 reference::PRESETS[self.preset],
                 space_name(destination),
                 mapping_name(self.policy),
                 self.axis[0],
                 self.axis[1],
+                display.label(),
             ))
             .cards([
                 LabCard::new("Unmapped sample")
@@ -396,6 +396,6 @@ impl ColorPage {
             ])
             .panels(sampling, sample_preview)
             .note("Positions outside 0–1 extend the endpoint colors. A zero-length axis selects the second endpoint.")
-            .credits("Sampling is CPU reference math; these previews do not measure GPU performance. Bars with more than 32 samples draw every sample as its own band."))
+            .credits("Sampling is CPU reference math; these previews do not measure GPU performance. On a wide-gamut window the bar and sample are drawn in Display P3, with colors outside P3 fitted using the selected mapping; otherwise they are sRGB previews. Bars with more than 32 samples draw every sample as its own band."))
     }
 }

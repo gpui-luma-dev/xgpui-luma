@@ -1,5 +1,6 @@
 //! Color-lab reference comparisons and xgpui-color CPU API exploration.
 //! The four tabs are `LabScreen`s (see `views.rs`) that share this page's state and controls.
+mod display;
 mod views;
 
 use std::sync::Arc;
@@ -123,6 +124,8 @@ pub struct ColorPage {
     sliders: Vec<(Parameter, Slider)>,
     fields: Vec<(Parameter, TextField)>,
     transparency: xgpui_luma::controls::switch::Switch,
+    /// Draws colors as linear Display P3 on a wide-gamut window.
+    painter: Result<Arc<xgpui_gamut::instanced::WidePainter>, String>,
 }
 
 impl ColorPage {
@@ -303,6 +306,7 @@ impl ColorPage {
             transparency,
             sliders,
             fields,
+            painter: xgpui_gamut::instanced::WidePainter::new().map(Arc::new).map_err(|error| format!("{error:#}")),
         };
         page.init_choices(cx);
         page
