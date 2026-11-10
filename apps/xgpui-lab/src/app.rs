@@ -198,6 +198,10 @@ pub struct XgpuiLabApp {
     presentation_pending: bool,
 }
 
+fn explorer_heading(label: &'static str, look: &Look) -> impl IntoElement {
+    div().px_2().py_3().text_size(px(11.)).text_color(look.chrome().muted_text).child(label)
+}
+
 impl XgpuiLabApp {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let p3_error = window.set_color_mode(gpui::WindowColorMode::WideGamutSdr).err().map(|error| error.to_string());
@@ -278,15 +282,22 @@ impl XgpuiLabApp {
                 .expanded(workspace == Workspace::Gradients),
             );
         }
-        let accordion: Accordion = xgpui_luma_look_radix::accordion_builder(&nav_look, "lab-explorer")
-            .size(xgpui_luma::theme::ControlSize::Sm)
-            .template(nav_accordion::template(&nav_look))
-            .multiple()
-            .collapsible(true)
-            .item_dividers(false)
-            .content_padding_y(4.)
-            .items(items)
-            .spawn(cx);
+        let split =
+            SECTIONS.iter().position(|(workspace, _, _)| *workspace == Workspace::Canvas).unwrap_or(items.len());
+        let extension_items = items.split_off(split);
+        let make_accordion = |id, items, cx: &mut Context<Self>| -> Accordion {
+            xgpui_luma_look_radix::accordion_builder(&nav_look, id)
+                .size(xgpui_luma::theme::ControlSize::Sm)
+                .template(nav_accordion::template(&nav_look))
+                .multiple()
+                .collapsible(true)
+                .item_dividers(false)
+                .content_padding_y(4.)
+                .items(items)
+                .spawn(cx)
+        };
+        let accordion = make_accordion("lab-explorer", items, cx);
+        let extension_accordion = make_accordion("xgpui-lab-explorer", extension_items, cx);
         let content: Rc<RefCell<gpui::AnyView>> = Rc::new(RefCell::new(gradient_builder.clone().into()));
         let content_view = content.clone();
         let sidebar_look = nav_look.clone();
@@ -307,15 +318,10 @@ impl XgpuiLabApp {
                         .overflow_y_scroll()
                         .p(px(8.))
                         .text_color(sidebar_look.chrome().body_text)
-                        .child(
-                            div()
-                                .px_2()
-                                .py_3()
-                                .text_size(px(11.))
-                                .text_color(sidebar_look.chrome().muted_text)
-                                .child("LAB EXPLORER"),
-                        )
+                        .child(explorer_heading("LAB EXPLORER", &sidebar_look))
                         .child(accordion.clone())
+                        .child(explorer_heading("XGPUI LAB EXPLORER", &sidebar_look))
+                        .child(extension_accordion.clone())
                 })
                 .size(INITIAL_SIDEBAR_WIDTH)
                 .min(MIN_SIDEBAR_WIDTH)
