@@ -13,7 +13,7 @@ use std::{cell::RefCell, rc::Rc};
 use xgpui_luma::controls::{
     resizable_panels::{
         ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, ResizeHandleVisibility, ResizeCollapseBehavior,
-        ResizeCollapseMode, ResizeCollapseDirection,
+        ResizeCollapseMode, ResizeCollapseDirection, PanelHideMode,
     },
     accordion::{Accordion, AccordionContent, AccordionItem, AccordionTrigger},
 };
@@ -170,6 +170,54 @@ const SECTIONS: &[Section] = &[
     ),
 ];
 
+/// A page in the lab's navigation: a section's workspace and one of its page ids.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Route {
+    workspace: Workspace,
+    page: &'static str,
+}
+
+impl Route {
+    /// Resolve `section/page` (e.g. `xgpui-media/Image Filters`) or a page name that is unique
+    /// across sections. Matching ignores case and accepts a page's id or its label.
+    pub(crate) fn resolve(spec: &str) -> Result<Self, String> {
+        let spec = spec.trim();
+        // Section names contain no '/', but page names may ("Float / P3"), so split at the first one.
+        let (section, page) = match spec.split_once('/') {
+            Some((section, page)) if SECTIONS.iter().any(|(_, label, _)| label.eq_ignore_ascii_case(section.trim())) => {
+                (Some(section.trim()), page.trim())
+            }
+            _ => (None, spec),
+        };
+        let matches: Vec<_> = SECTIONS
+            .iter()
+            .filter(|(_, label, _)| section.is_none_or(|section| label.eq_ignore_ascii_case(section)))
+            .flat_map(|(workspace, label, pages)| {
+                pages
+                    .iter()
+                    .filter(|(id, name)| id.eq_ignore_ascii_case(page) || name.eq_ignore_ascii_case(page))
+                    .map(move |(id, _)| (Route { workspace: *workspace, page: id }, *label))
+            })
+            .collect();
+        match matches.as_slice() {
+            [(route, _)] => Ok(*route),
+            [] => Err(format!("no lab page matches \"{spec}\"; run with --list-pages")),
+            many => Err(format!(
+                "\"{spec}\" matches several pages; use one of: {}",
+                many.iter().map(|(route, section)| format!("{section}/{}", route.page)).collect::<Vec<_>>().join(", ")
+            )),
+        }
+    }
+
+    /// Every page as `section/page`, in navigation order.
+    pub(crate) fn all() -> Vec<String> {
+        SECTIONS
+            .iter()
+            .flat_map(|(_, section, pages)| pages.iter().map(move |(id, _)| format!("{section}/{id}")))
+            .collect()
+    }
+}
+
 struct NavigationEntry {
     workspace: Workspace,
     page: &'static str,
@@ -196,6 +244,7 @@ pub struct XgpuiLabApp {
     active: Workspace,
     captured_color_mode: Option<gpui::WindowColorMode>,
     presentation_pending: bool,
+    hide_nav_pending: bool,
 }
 
 fn explorer_heading(label: &'static str, look: &Look) -> impl IntoElement {
@@ -208,6 +257,14 @@ impl XgpuiLabApp {
         let focus_scope = cx.focus_handle();
         let activation_subscription = cx.observe_window_activation(window, |_, _, cx| cx.notify());
         let look = crate::theme::default_look();
+        // Command-line launch options pick the starting page and theme (see `launch.rs`).
+        let launch = cx.try_global::<crate::launch::LaunchOptions>();
+        let start = launch.and_then(|launch| launch.route);
+        let hide_nav = launch.is_some_and(|launch| launch.hide_nav);
+        if let Some(theme) = launch.and_then(|launch| launch.theme) {
+            look.set_mode(theme);
+        }
+        let start_workspace = start.map_or(Workspace::Gradients, |route| route.workspace);
         let nav_look = look.clone();
         sync_color_control_theme(&look);
         let gradient_builder = cx.new(|cx| GradientBuilder::new(look.clone(), cx));
@@ -279,7 +336,7 @@ impl XgpuiLabApp {
                         div().w_full().flex().flex_col().pl(px(20.)).gap_1().children(rows.clone()).into_any_element()
                     }),
                 )
-                .expanded(workspace == Workspace::Gradients),
+                .expanded(workspace == start_workspace),
             );
         }
         let split =
@@ -348,8 +405,12 @@ impl XgpuiLabApp {
                 this.sidebar_width = px(*width);
                 cx.notify();
             }
+            // `--hide-nav`: hiding needs the measured width, which the first size event brings.
+            if matches!(event, ResizablePanelsEvent::SizesChanged { .. }) && std::mem::take(&mut this.hide_nav_pending) {
+                this.panels.update(cx, |panels, cx| panels.hide_panel(0, PanelHideMode::Completely, cx));
+            }
         });
-        Self {
+        let mut this = Self {
             focus_scope,
             look,
             nav_look,
@@ -361,6 +422,7 @@ impl XgpuiLabApp {
             active: Workspace::Gradients,
             captured_color_mode: None,
             presentation_pending: false,
+            hide_nav_pending: hide_nav,
             panels,
             rail,
             sidebar_width: INITIAL_SIDEBAR_WIDTH,
@@ -368,8 +430,21 @@ impl XgpuiLabApp {
             _activation_subscription: activation_subscription,
             content,
             active_page: "gradients",
+        };
+        if let Some(route) = start {
+            this.activate(route.workspace, route.page, cx);
         }
+        this
     }
+    #[cfg(all(test, feature = "test-support"))]
+    pub(crate) fn route(&self) -> Route {
+        Route { workspace: self.active, page: self.active_page }
+    }
+    #[cfg(all(test, feature = "test-support"))]
+    pub(crate) fn look_mode(&self) -> ThemeMode {
+        self.look.mode()
+    }
+
     /// The index always stops the previous page before replacing its view,
     /// including navigation between pages within the same workspace.
     fn leave_active_demo(&mut self, cx: &mut Context<Self>) {
@@ -888,6 +963,26 @@ mod tests {
                 });
             }
         }
+    }
+
+    #[test]
+    fn hide_nav_launch_starts_closed_and_the_toggle_reopens_it() {
+        let app = TestAppContext::single();
+        app.update(|cx| {
+            let args = ["xgpui-lab", "--open", "Typography", "--hide-nav"].map(str::to_owned);
+            cx.set_global(crate::launch::LaunchOptions::parse(&args).unwrap().unwrap());
+        });
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        let split = cx.update(|_, cx| view.read(cx).panels.clone());
+        cx.update(|_, cx| assert!(split.read(cx).is_panel_hidden(0), "--hide-nav starts closed"));
+        let toggle = cx.debug_bounds("shell-2026-toggle-sidebar").unwrap().center();
+        cx.simulate_click(toggle, Default::default());
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert!(!split.read(cx).is_panel_hidden(0));
+            assert!((split.read(cx).panel_sizes_px()[0] - f32::from(INITIAL_SIDEBAR_WIDTH)).abs() < 1.);
+        });
     }
 
     #[test]

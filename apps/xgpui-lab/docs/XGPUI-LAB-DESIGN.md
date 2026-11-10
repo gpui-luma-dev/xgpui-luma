@@ -17,6 +17,16 @@ chrome color, type style and control comes from the shared `Look` that
 builders. It never defines a color of its own. The only literal colors on a
 lab page are *data*: the colors a screen exists to show.
 
+> **Keep the published copy in sync.** `docs/xgpui-lab-screen-design.html` (the
+> docs site's *Lab Screen Design* page) summarizes this document by hand, and
+> `docs/xgpui-lab.html` repeats the launch options from [launching.md](launching.md).
+> When you change a rule, a value in `src/screen/metrics.rs` or a launch option,
+> update those pages in the same change, or they drift.
+>
+> The *Spacing and shape* table below still names older helpers
+> (`panel()`, `comparison_card()`); the current values are in
+> `LabMetrics::STANDARD` and the docs page.
+
 When this document and a reference image disagree, the document wins. The
 mockup images were drawn before this rule was applied, so their hex values are
 illustrations only.
@@ -379,6 +389,7 @@ Before you call a screen done, check that:
 - [ ] no chrome color is a literal: everything is `chrome()`, `interaction_colors()`, `resolve_role` or `resolve_step`;
 - [ ] data colors live in one named module, and gamut colors match the other screens;
 - [ ] the screen looks right in **both** light and dark mode;
+- [ ] snapshots before and after the change compare as expected (`scripts/lab_snapshots.py`, see [launching.md](launching.md));
 - [ ] controls are look-radix builders: selectors, switches (no text booleans), buttons, text fields, sliders, badges;
 - [ ] the hero is the largest element, and the caption line under it shows live values;
 - [ ] cards are equal width, and no name, subtitle or badge wraps;

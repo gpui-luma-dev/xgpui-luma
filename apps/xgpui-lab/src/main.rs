@@ -8,6 +8,7 @@ mod app;
 mod chromaticity;
 mod color_gamut_page;
 mod lab_controls;
+mod launch;
 mod screen;
 mod benchmarks;
 
@@ -158,6 +159,20 @@ fn main() {
         });
         return;
     }
+    if args.iter().any(|arg| arg == "--list-pages") {
+        for page in app::Route::all() {
+            println!("{page}");
+        }
+        return;
+    }
+    // `--open`, `--theme`, `--size`, `--hide-nav` and `--capture` start the normal window on a page (see launch.rs).
+    let launch = match launch::LaunchOptions::parse(&args) {
+        Ok(launch) => launch,
+        Err(error) => {
+            eprintln!("XGPUI Lab: {error:#}");
+            std::process::exit(2);
+        }
+    };
     // `--text-system=parley` runs the whole lab on the Parley text system, so
     // pages that edit through GPUI's paragraph API (the Parley Text Field) work.
     let parley_text_system = std::env::args()
@@ -181,6 +196,9 @@ fn main() {
         if parley {
             cx.set_global(parley_lab::ParleyTextSystemActive);
         }
+        if let Some(launch) = launch {
+            cx.set_global(launch);
+        }
         cx.on_action(quit);
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("XGPUI Lab").items([MenuItem::action("Quit", Quit)])]);
@@ -192,5 +210,6 @@ fn main() {
         }) {
             eprintln!("failed to open XGPUI Lab: {error:?}");
         }
+        launch::schedule_capture(cx);
     });
 }
