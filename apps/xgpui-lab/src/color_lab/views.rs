@@ -109,28 +109,28 @@ impl ColorPage {
         let (id, lede, selectors, transparency, reset): (_, _, &[Action], _, _) = match tab {
             "Conversions" => (
                 "color-conversions",
-                "Explore how one encoded color converts between RGB spaces, XYZ, OkLab and OkLCh without clipping, and how closely it round-trips.",
+                "Explore how one color is written as numbers in different color systems: the numbers change, but the color you see stays the same.",
                 &[Action::Source, Action::Destination],
                 false,
                 true,
             ),
             "Interpolation" => (
                 "color-interpolation",
-                "Compare interpolation models on one pair of wide-gamut colors, and see which samples leave sRGB before mapping.",
+                "Compare ways of blending one color into another: the same two end colors can pass through gray, stay vivid, or travel around the color wheel.",
                 &[Action::Preset, Action::Mapping, Action::Hue],
                 true,
                 false,
             ),
             "Gamut Mapping" => (
                 "color-gamut-mapping",
-                "Compare clipping with chroma reduction for one color and for reference gradients that leave the destination gamut.",
+                "Compare two ways to show a color that a screen cannot display: cut it off at the screen's limit, or make it a little less vivid until it fits.",
                 &[Action::Source, Action::Destination, Action::Preset],
                 true,
                 true,
             ),
             _ => (
                 "color-cpu-gradients",
-                "Explore xgpui-color's CPU linear gradient: sample along an axis, map into an output space and inspect one sample.",
+                "Explore how a smooth color blend is worked out point by point, and look up the exact color at any point along it.",
                 &[Action::Destination, Action::Preset, Action::Mapping, Action::Model, Action::Hue, Action::Samples],
                 true,
                 true,
