@@ -9,17 +9,29 @@ struct Parameters {
     source_y: f32,
     source_visible: f32,
     overlays: f32,
+    hatch: f32,
+    uv: f32,
+}
+fn project(xy: vec2<f32>, uv: f32) -> vec2<f32> {
+    if uv < 0.5 { return xy; }
+    let d = max(-2.0 * xy.x + 12.0 * xy.y + 3.0, 0.000001);
+    return vec2(4.0 * xy.x, 9.0 * xy.y) / d;
+}
+fn unproject(uv: vec2<f32>, enabled: f32) -> vec2<f32> {
+    if enabled < 0.5 { return uv; }
+    let d = 6.0 * uv.x - 16.0 * uv.y + 12.0;
+    return vec2(9.0 * uv.x, 4.0 * uv.y) / max(d, 0.000001);
 }
 fn segment_distance(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
     let edge = b - a;
     return length(p - a - edge * clamp(dot(p - a, edge) / max(dot(edge, edge), 1e-20), 0.0, 1.0));
 }
-fn locus_distance(p: vec2<f32>) -> f32 {
+fn locus_distance(p: vec2<f32>, uv: f32) -> f32 {
     var nearest = 1e10;
     var inside = false;
-    var previous = LOCUS[LOCUS_COUNT - 1u];
+    var previous = project(LOCUS[LOCUS_COUNT - 1u], uv);
     for (var i = 0u; i < LOCUS_COUNT; i++) {
-        let current = LOCUS[i];
+        let current = project(LOCUS[i], uv);
         nearest = min(nearest, segment_distance(p, previous, current));
         if (current.y > p.y) != (previous.y > p.y) {
             let crossing = (previous.x - current.x) * (p.y - current.y) / (previous.y - current.y) + current.x;
@@ -29,10 +41,10 @@ fn locus_distance(p: vec2<f32>) -> f32 {
     }
     return select(nearest, -nearest, inside);
 }
-fn triangle_distance(p: vec2<f32>, index: u32) -> f32 {
-    let a = PRIMARIES[index * 3u];
-    let b = PRIMARIES[index * 3u + 1u];
-    let c = PRIMARIES[index * 3u + 2u];
+fn triangle_distance(p: vec2<f32>, index: u32, uv: f32) -> f32 {
+    let a = project(PRIMARIES[index * 3u], uv);
+    let b = project(PRIMARIES[index * 3u + 1u], uv);
+    let c = project(PRIMARIES[index * 3u + 2u], uv);
     return min(segment_distance(p, a, b), min(segment_distance(p, b, c), segment_distance(p, c, a)));
 }
 fn stroke_coverage(distance: f32, width: f32, aa: f32) -> f32 {
@@ -64,20 +76,22 @@ fn over(base: vec4<f32>, rgb: vec3<f32>, coverage: f32) -> vec4<f32> {
     return vec4(premultiplied / max(alpha, 0.000001), alpha);
 }
 fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
-    let scale = max(1.0, min((input.size.x - 48.0) / 0.8, (input.size.y - 48.0) / 0.9));
-    let left = (input.size.x - scale * 0.8) * 0.5;
+    let extent = select(vec2(0.8, 0.9), vec2(0.65), p.uv > 0.5);
+    let scale = max(1.0, min((input.size.x - 48.0) / extent.x, (input.size.y - 48.0) / extent.y));
+    let left = (input.size.x - scale * extent.x) * 0.5;
     let bottom = input.size.y - 24.0;
-    let xy = vec2((input.position.x - left) / scale, (bottom - input.position.y) / scale);
+    let coordinate = vec2((input.position.x - left) / scale, (bottom - input.position.y) / scale);
+    let xy = unproject(coordinate, p.uv);
     // Distances are in logical pixels. Coverage spans one physical pixel at
     // every backing scale; no low-resolution texture or cell tessellation.
     let aa = 1.0 / max(input.scale_factor, 1.0);
-    let distance = locus_distance(xy) * scale;
+    let distance = locus_distance(coordinate, p.uv) * scale;
     let coverage = 1.0 - smoothstep(-0.5 * aa, 0.5 * aa, distance);
     var color = vec4(0.0);
     if p.show_fill > 0.5 && coverage > 0.0 {
         let fill = chart_rgb(xy, p);
         color = vec4(fill, coverage);
-        if p.overlays > 0.5 {
+        if p.overlays > 0.5 && p.hatch > 0.5 {
             let y = max(xy.y, 0.00001);
             let xyz = vec3(xy.x * p.luminance / y, p.luminance, (1.0 - xy.x - xy.y) * p.luminance / y);
             let linear = gamut_from_xyz(xyz, color_space(p.simulated));
@@ -89,19 +103,21 @@ fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
         }
     }
     if p.overlays > 0.5 {
-        let plot_distance = max(abs(xy.x - 0.4) - 0.4, abs(xy.y - 0.45) - 0.45) * scale;
+        let plot_distance = max(abs(coordinate.x - extent.x * 0.5) - extent.x * 0.5, abs(coordinate.y - extent.y * 0.5) - extent.y * 0.5) * scale;
         let plot_coverage = 1.0 - smoothstep(-0.5 * aa, 0.5 * aa, plot_distance);
-        let grid = abs(xy / vec2(0.1, 0.1125) - round(xy / vec2(0.1, 0.1125))) * vec2(0.1, 0.1125) * scale;
+        let grid = abs(coordinate / vec2(0.1) - round(coordinate / vec2(0.1))) * vec2(0.1) * scale;
         color = over(color, vec3(51.0, 65.0, 85.0) / 255.0,
             stroke_coverage(min(grid.x, grid.y), 1.0, aa) * plot_coverage);
         color = over(color, vec3(168.0, 180.0, 196.0) / 255.0, stroke_coverage(abs(distance), 1.5, aa));
         for (var i = 0u; i < 4u; i++) {
-            color = over(color, OUTLINE_COLORS[i], stroke_coverage(triangle_distance(xy, i) * scale, 2.0, aa));
+            color = over(color, OUTLINE_COLORS[i], stroke_coverage(triangle_distance(coordinate, i, p.uv) * scale, 2.0, aa));
         }
-        let white = vec2(left + 0.3127 * scale, bottom - 0.3290 * scale);
+        let white_coordinate = project(vec2(0.3127, 0.3290), p.uv);
+        let white = vec2(left + white_coordinate.x * scale, bottom - white_coordinate.y * scale);
         color = over(color, vec3(1.0), stroke_coverage(cross_distance(input.position, white), 2.0, aa));
         if p.source_visible > 0.5 {
-            let selected = vec2(left + p.source_x * scale, bottom - p.source_y * scale);
+            let source_coordinate = project(vec2(p.source_x, p.source_y), p.uv);
+            let selected = vec2(left + source_coordinate.x * scale, bottom - source_coordinate.y * scale);
             color = over(color, vec3(1.0, 223.0 / 255.0, 98.0 / 255.0),
                 stroke_coverage(cross_distance(input.position, selected), 2.0, aa));
         }

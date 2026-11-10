@@ -15,6 +15,8 @@ pub(super) struct Parameters {
     pub source_y: f32,
     pub source_visible: f32,
     pub overlays: f32,
+    pub hatch: f32,
+    pub uv: f32,
 }
 impl ShaderInstance for Parameters {
     const FIELDS: &'static [InstanceField] = &[
@@ -26,6 +28,8 @@ impl ShaderInstance for Parameters {
         InstanceField { name: "source_y", offset: 20, components: 1 },
         InstanceField { name: "source_visible", offset: 24, components: 1 },
         InstanceField { name: "overlays", offset: 28, components: 1 },
+        InstanceField { name: "hatch", offset: 32, components: 1 },
+        InstanceField { name: "uv", offset: 36, components: 1 },
     ];
 }
 
@@ -187,6 +191,8 @@ mod gpu_tests {
                         source_y: 0.6,
                         source_visible: 1.,
                         overlays: 0.,
+                        hatch: 1.,
+                        uv: 0.,
                     };
                     let image = capture(&mut renderer, &shader, parameters, backing_scale)?;
                     let cells = model::cells(space, 0.18, mapping, &boundary)?;
@@ -230,6 +236,8 @@ mod gpu_tests {
                 source_y: 0.6,
                 source_visible: 1.,
                 overlays: 1.,
+                hatch: 1.,
+                uv: 0.,
             };
             let image = capture(&mut renderer, &shader, parameters, backing_scale)?;
             anyhow::ensure!(
