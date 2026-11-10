@@ -331,7 +331,7 @@ impl ColorPage {
         Ok(screen
             .hero(Hero::compare(pane(GamutMapping::Clip, "Clipped")?, pane(GamutMapping::ReduceChroma, "Reduced")?))
             .caption(format!(
-                "{} → {} · saturation ×{:.2} · {} · {}",
+                "{} → {} · saturation ×{:.3} · {} · {}",
                 space_name(SPACES[self.source_index]),
                 space_name(destination),
                 self.saturation,

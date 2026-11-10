@@ -67,7 +67,6 @@ impl Parameter {
     /// Fixed decimals per quantity: channels and `t` `0.000`, pixels `0`.
     fn format(self, value: f64) -> String {
         match self {
-            Self::Saturation => format!("{value:.2}"),
             _ => format!("{value:.3}"),
         }
     }
@@ -238,7 +237,8 @@ impl ColorPage {
                         .look(look.as_ref())
                         .size(radix::SliderSize::One)
                         .range(min..max)
-                        .step(0.01)
+                        // One step per displayed decimal (0.000), so dragging moves in fine increments.
+                        .step(0.001)
                         .value(value as f64)
                         .on_value_changed(cx, move |this: &mut Self, _, value, cx| {
                             this.set_value(parameter, value as f64);
