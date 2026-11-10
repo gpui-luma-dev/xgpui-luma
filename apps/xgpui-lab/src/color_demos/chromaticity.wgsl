@@ -11,6 +11,24 @@ struct Parameters {
     overlays: f32,
     hatch: f32,
     uv: f32,
+    grid_r: f32,
+    grid_g: f32,
+    grid_b: f32,
+    locus_r: f32,
+    locus_g: f32,
+    locus_b: f32,
+    reference_r: f32,
+    reference_g: f32,
+    reference_b: f32,
+    reference_halo_r: f32,
+    reference_halo_g: f32,
+    reference_halo_b: f32,
+    subject_r: f32,
+    subject_g: f32,
+    subject_b: f32,
+    subject_halo_r: f32,
+    subject_halo_g: f32,
+    subject_halo_b: f32,
 }
 fn project(xy: vec2<f32>, uv: f32) -> vec2<f32> {
     if uv < 0.5 { return xy; }
@@ -75,6 +93,10 @@ fn over(base: vec4<f32>, rgb: vec3<f32>, coverage: f32) -> vec4<f32> {
     let premultiplied = rgb * coverage + base.rgb * base.a * (1.0 - coverage);
     return vec4(premultiplied / max(alpha, 0.000001), alpha);
 }
+// A 2 px cross over a 4 px halo, so a marker reads on any fill or background.
+fn marker(base: vec4<f32>, distance: f32, rgb: vec3<f32>, halo: vec3<f32>, aa: f32) -> vec4<f32> {
+    return over(over(base, halo, stroke_coverage(distance, 4.0, aa)), rgb, stroke_coverage(distance, 2.0, aa));
+}
 fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
     let extent = select(vec2(0.8, 0.9), vec2(0.65), p.uv > 0.5);
     let scale = max(1.0, min((input.size.x - 48.0) / extent.x, (input.size.y - 48.0) / extent.y));
@@ -106,20 +128,21 @@ fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
         let plot_distance = max(abs(coordinate.x - extent.x * 0.5) - extent.x * 0.5, abs(coordinate.y - extent.y * 0.5) - extent.y * 0.5) * scale;
         let plot_coverage = 1.0 - smoothstep(-0.5 * aa, 0.5 * aa, plot_distance);
         let grid = abs(coordinate / vec2(0.1) - round(coordinate / vec2(0.1))) * vec2(0.1) * scale;
-        color = over(color, vec3(51.0, 65.0, 85.0) / 255.0,
+        color = over(color, vec3(p.grid_r, p.grid_g, p.grid_b),
             stroke_coverage(min(grid.x, grid.y), 1.0, aa) * plot_coverage);
-        color = over(color, vec3(168.0, 180.0, 196.0) / 255.0, stroke_coverage(abs(distance), 1.5, aa));
+        color = over(color, vec3(p.locus_r, p.locus_g, p.locus_b), stroke_coverage(abs(distance), 1.5, aa));
         for (var i = 0u; i < 4u; i++) {
             color = over(color, OUTLINE_COLORS[i], stroke_coverage(triangle_distance(coordinate, i, p.uv) * scale, 2.0, aa));
         }
         let white_coordinate = project(vec2(0.3127, 0.3290), p.uv);
         let white = vec2(left + white_coordinate.x * scale, bottom - white_coordinate.y * scale);
-        color = over(color, vec3(1.0), stroke_coverage(cross_distance(input.position, white), 2.0, aa));
+        color = marker(color, cross_distance(input.position, white), vec3(p.reference_r, p.reference_g, p.reference_b),
+            vec3(p.reference_halo_r, p.reference_halo_g, p.reference_halo_b), aa);
         if p.source_visible > 0.5 {
             let source_coordinate = project(vec2(p.source_x, p.source_y), p.uv);
             let selected = vec2(left + source_coordinate.x * scale, bottom - source_coordinate.y * scale);
-            color = over(color, vec3(1.0, 223.0 / 255.0, 98.0 / 255.0),
-                stroke_coverage(cross_distance(input.position, selected), 2.0, aa));
+            color = marker(color, cross_distance(input.position, selected), vec3(p.subject_r, p.subject_g, p.subject_b),
+                vec3(p.subject_halo_r, p.subject_halo_g, p.subject_halo_b), aa);
         }
     }
     // Preserve rounded enclosure clipping while leaving empty regions transparent.

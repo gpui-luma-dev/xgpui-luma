@@ -17,6 +17,25 @@ pub(super) struct Parameters {
     pub overlays: f32,
     pub hatch: f32,
     pub uv: f32,
+    // Overlay colors: chrome from the look, markers from `screen::data`.
+    pub grid_r: f32,
+    pub grid_g: f32,
+    pub grid_b: f32,
+    pub locus_r: f32,
+    pub locus_g: f32,
+    pub locus_b: f32,
+    pub reference_r: f32,
+    pub reference_g: f32,
+    pub reference_b: f32,
+    pub reference_halo_r: f32,
+    pub reference_halo_g: f32,
+    pub reference_halo_b: f32,
+    pub subject_r: f32,
+    pub subject_g: f32,
+    pub subject_b: f32,
+    pub subject_halo_r: f32,
+    pub subject_halo_g: f32,
+    pub subject_halo_b: f32,
 }
 impl ShaderInstance for Parameters {
     const FIELDS: &'static [InstanceField] = &[
@@ -30,6 +49,24 @@ impl ShaderInstance for Parameters {
         InstanceField { name: "overlays", offset: 28, components: 1 },
         InstanceField { name: "hatch", offset: 32, components: 1 },
         InstanceField { name: "uv", offset: 36, components: 1 },
+        InstanceField { name: "grid_r", offset: 40, components: 1 },
+        InstanceField { name: "grid_g", offset: 44, components: 1 },
+        InstanceField { name: "grid_b", offset: 48, components: 1 },
+        InstanceField { name: "locus_r", offset: 52, components: 1 },
+        InstanceField { name: "locus_g", offset: 56, components: 1 },
+        InstanceField { name: "locus_b", offset: 60, components: 1 },
+        InstanceField { name: "reference_r", offset: 64, components: 1 },
+        InstanceField { name: "reference_g", offset: 68, components: 1 },
+        InstanceField { name: "reference_b", offset: 72, components: 1 },
+        InstanceField { name: "reference_halo_r", offset: 76, components: 1 },
+        InstanceField { name: "reference_halo_g", offset: 80, components: 1 },
+        InstanceField { name: "reference_halo_b", offset: 84, components: 1 },
+        InstanceField { name: "subject_r", offset: 88, components: 1 },
+        InstanceField { name: "subject_g", offset: 92, components: 1 },
+        InstanceField { name: "subject_b", offset: 96, components: 1 },
+        InstanceField { name: "subject_halo_r", offset: 100, components: 1 },
+        InstanceField { name: "subject_halo_g", offset: 104, components: 1 },
+        InstanceField { name: "subject_halo_b", offset: 108, components: 1 },
     ];
 }
 
@@ -193,6 +230,7 @@ mod gpu_tests {
                         overlays: 0.,
                         hatch: 1.,
                         uv: 0.,
+                        ..bytemuck::Zeroable::zeroed()
                     };
                     let image = capture(&mut renderer, &shader, parameters, backing_scale)?;
                     let cells = model::cells(space, 0.18, mapping, &boundary)?;
@@ -238,6 +276,7 @@ mod gpu_tests {
                 overlays: 1.,
                 hatch: 1.,
                 uv: 0.,
+                ..bytemuck::Zeroable::zeroed()
             };
             let image = capture(&mut renderer, &shader, parameters, backing_scale)?;
             anyhow::ensure!(

@@ -11,7 +11,11 @@ use xgpui_shader::WindowShaderExt;
 use super::chromaticity_shader::{self, Parameters};
 use crate::{
     lab_controls::{Choice, labels},
-    theme::{ColorVizLookExt, TypographyExt},
+    screen::{
+        Hero, LabCard, LabMetrics, LabScreen, Legend, MONO_FAMILY, Mark, Param, ParametersPanel, PreviewPanel, data,
+        labeled_control, value_field_look,
+    },
+    theme::ColorVizLookExt,
 };
 use super::chromaticity_model as model;
 
@@ -130,12 +134,7 @@ impl ChromaticityLab {
                 radix::TextField::new(format!("chroma-rgb-{index}"))
                     .look(&look)
                     .surface()
-                    .look_override(|mut look| {
-                        look.typography.size = 10.;
-                        look.typography.line_height = 14.;
-                        look.font_family = "monospace".into();
-                        look
-                    })
+                    .look_override(value_field_look)
                     .full_width(true)
                     .value(format!("{:.3}", model::PATCHES[0].1[index]))
                     .validator(Arc::new(|text| parse_channel(text).is_some()))
@@ -316,8 +315,11 @@ impl ChromaticityLab {
             overlays: 1.,
             hatch: if self.hatch { 1. } else { 0. },
             uv: if self.uv { 1. } else { 0. },
-        };
+            ..bytemuck::Zeroable::zeroed()
+        }
+        .with_colors(&self.look);
         let chart_bounds = self.chart_bounds.clone();
+        let axis_color = self.look.chrome().muted_text;
         let plot = canvas(
             move |bounds, _, _| {
                 chart_bounds.set(Some(bounds));
@@ -335,11 +337,11 @@ impl ChromaticityLab {
                 let mut label = |text: String, x: f32, y: f32| {
                     let line = window.text_system().shape_line(
                         text.clone().into(),
-                        px(10.),
+                        LabMetrics::STANDARD.axis_tick,
                         &[TextRun {
                             len: text.len(),
-                            font: font("monospace"),
-                            color: rgb(0x92959c).into(),
+                            font: font(MONO_FAMILY),
+                            color: axis_color,
                             ..Default::default()
                         }],
                         None,
@@ -361,11 +363,11 @@ impl ChromaticityLab {
                 for tick in 0..=(extent[1] * 10.) as usize {
                     label(format!("{:.1}", tick as f32 / 10.), left - 24., bottom - tick as f32 * scale / 10. - 7.);
                 }
-                label(if parameters.uv > 0.5 { "u′" } else { "x" }.into(), left + extent[0] * scale + 10., bottom + 4.);
+                label(if parameters.uv > 0.5 { "u′" } else { "x" }.into(), left + extent[0] * scale + 16., bottom + 4.);
                 label(
                     if parameters.uv > 0.5 { "v′" } else { "y" }.into(),
                     left - 24.,
-                    bottom - extent[1] * scale - 16.,
+                    bottom - extent[1] * scale - 24.,
                 );
             },
         )
@@ -403,6 +405,24 @@ impl ChromaticityLab {
             .into_any_element()
     }
 }
+impl Parameters {
+    /// Overlay colors: grid, locus and the D65 marker follow the look; the source marker is data.
+    fn with_colors(mut self, look: &Look) -> Self {
+        let chrome = look.chrome();
+        let rgb = |color: Hsla| {
+            let color = Rgba::from(color);
+            [color.r, color.g, color.b]
+        };
+        [self.grid_r, self.grid_g, self.grid_b] = rgb(chrome.border);
+        [self.locus_r, self.locus_g, self.locus_b] = rgb(chrome.muted_text);
+        [self.reference_r, self.reference_g, self.reference_b] = rgb(chrome.body_text);
+        [self.reference_halo_r, self.reference_halo_g, self.reference_halo_b] = rgb(chrome.content_background);
+        [self.subject_r, self.subject_g, self.subject_b] = rgb(data::color(data::MARKER_SUBJECT));
+        [self.subject_halo_r, self.subject_halo_g, self.subject_halo_b] = rgb(data::color(data::MARKER_SUBJECT_HALO));
+        self
+    }
+}
+
 // Vary one encoded channel while retaining the other two, then preview in sRGB.
 fn channel_gradient(rgb: [f32; 3], source: usize, channel: usize) -> Arc<GradientDelegate> {
     let colors = (0..=16)
@@ -426,222 +446,138 @@ fn hex(rgb: [f64; 3]) -> String {
     let [r, g, b] = rgb.map(|v| (v.clamp(0., 1.) * 255.).round() as u8);
     format!("#{r:02X}{g:02X}{b:02X}")
 }
-impl Render for ChromaticityLab {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let chrome = self.look.chrome();
-        let typography = self.look.common_stylesheet().tokens.typography.text;
+
+const INTERACTION_NOTE: &str = "Click or drag the diagram to move the source pixel. Positions outside the source gamut are constrained to its RGB bounds. Changing source keeps the encoded RGB values and reinterprets them, so the gold cross moves while the controls stay the same. The simulated gamut sets hatching, mapping, and preview colors. Cards report source-pixel membership in each reference gamut.";
+const CIE_LOCUS_CREDIT: &str = "CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Fill colors are an sRGB preview, even on a wide-gamut window. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.";
+
+impl ChromaticityLab {
+    fn legend(&self) -> Legend {
+        let legend = model::NAMES.into_iter().enumerate().fold(Legend::new(), |legend, (index, name)| {
+            let coverage = model::coverage(model::SPACES[index], &self.boundary)
+                .map(|fraction| format!("{:.0}%", fraction * 100.))
+                .unwrap_or_else(|_| "–".into());
+            legend.item(Mark::Line(data::color(data::GAMUTS[index])), name, coverage)
+        });
+        legend
+            .note("% of visible xy area covered")
+            .marker(Mark::Cross { color: None, halo: None }, "D65 white point")
+            .marker(
+                Mark::Cross {
+                    color: Some(data::color(data::MARKER_SUBJECT)),
+                    halo: Some(data::color(data::MARKER_SUBJECT_HALO)),
+                },
+                "Source pixel",
+            )
+            .marker(Mark::Hatch, "Outside simulated gamut")
+    }
+
+    fn caption_line(&self) -> String {
         let outside = self.cells.iter().filter(|cell| cell.outside).count();
         let fraction = 100. * outside as f64 / self.cells.len().max(1) as f64;
-        let panel = || {
-            div()
-                .p_4()
-                .rounded_lg()
-                .border_1()
-                .border_color(chrome.border)
-                .bg(chrome.panel_background)
-                .flex()
-                .flex_col()
-                .gap_2()
+        format!(
+            "{} · fill Y {} · {} · sampled area outside {}: {fraction:.1}%",
+            if self.uv { "CIE 1976 u′v′" } else { "CIE 1931 xy" },
+            model::LUMINANCE[self.luminance],
+            if self.mapping == GamutMapping::Clip {
+                "clip"
+            } else {
+                "reduce chroma"
+            },
+            model::NAMES[self.simulated]
+        )
+    }
+
+    fn space_card(&self, index: usize) -> LabCard {
+        let name = model::NAMES[index];
+        let card = LabCard::new(name).mark(data::color(data::GAMUTS[index]));
+        let values = model::source_linear(self.source, self.rgb)
+            .and_then(|v| Ok(v.convert(model::SPACES[index])?.encode()?.components()));
+        let values = match values {
+            Ok(values) => values,
+            Err(error) => return card.subtitle(error.to_string()),
         };
-        let legend = div()
-            .w(px(220.))
-            .flex_shrink_0()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .children(model::NAMES.into_iter().zip(model::COLORS).zip(["34%", "46%", "45%", "64%"]).map(
-                |((name, color), area)| {
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(div().w(px(16.)).h(px(2.)).bg(rgb(color)))
-                        .child(div().flex_1().child(name))
-                        .child(div().text_color(chrome.muted_text).child(area))
-                },
-            ))
-            .child(div().text_sm().text_color(chrome.muted_text).child("% of visible xy area covered"))
-            .child(div().h(px(1.)).bg(chrome.border))
-            .child("+ D65 white point")
-            .child(div().text_color(rgb(0xffdf62)).child("+ Source pixel"))
-            .child("//// Outside simulated gamut");
-        let cards = model::NAMES
-            .into_iter()
-            .enumerate()
-            .map(|(index, name)| {
-                let values = model::source_linear(self.source, self.rgb)
-                    .and_then(|v| Ok(v.convert(model::SPACES[index])?.encode()?.components()));
-                let mut card = div()
-                    .p_3()
-                    .rounded_lg()
-                    .border_1()
-                    .border_color(chrome.border)
-                    .bg(chrome.panel_background)
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .text_size(px(12.))
-                    .line_height(px(16.))
-                    .flex_1()
-                    .min_w(px(205.));
-                match values {
-                    Ok(values) => {
-                        let inside = values.iter().all(|v| (-1e-7..=1. + 1e-7).contains(v));
-                        let preview = model::preview(self.source, self.rgb, index, GamutMapping::Clip);
-                        let mut title = div().flex().items_center().gap_2();
-                        if let Ok(color) = preview {
-                            title = title.child(div().size(px(34.)).flex_shrink_0().rounded_md().bg(swatch(color)));
-                        }
-                        let metadata = if self.source == index {
-                            "Source · D65"
-                        } else {
-                            ["IEC 61966-2-1", "P3 · D65", "γ 2.2", "ITU-R BT.2020"][index]
-                        };
-                        let label = div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_1()
-                                    .child(
-                                        div().size(px(6.)).flex_shrink_0().rounded_sm().bg(rgb(model::COLORS[index])),
-                                    )
-                                    .child(name),
-                            )
-                            .child(div().text_size(px(11.)).text_color(chrome.muted_text).child(metadata));
-                        let status_color = if inside { rgb(0x79b97c) } else { rgb(0xe6a06c) };
-                        let badge = div()
-                            .flex_shrink_0()
-                            .px_2()
-                            .rounded_full()
-                            .border_1()
-                            .border_color(status_color.opacity(0.3))
-                            .text_color(status_color)
-                            .text_size(px(10.))
-                            .line_height(px(16.))
-                            .child(if inside { "In" } else { "Out" });
-                        card = card.child(title.child(label).child(badge)).child(
-                            div()
-                                .font_family("monospace")
-                                .text_size(px(10.))
-                                .line_height(px(14.))
-                                .child(format!("R {:.3}  G {:.3}  B {:.3}", values[0], values[1], values[2])),
-                        );
-                    }
-                    Err(error) => card = card.child(error.to_string()),
-                }
-                card
-            })
-            .collect::<Vec<_>>();
-        let parameters = panel()
-            .flex_grow(1.)
-            .flex_basis(px(500.))
-            .min_w(px(400.))
-            .text_size(px(12.))
-            .line_height(px(16.))
-            .gap_2()
-            .child(div().text_size(px(12.)).font_weight(FontWeight::MEDIUM).child("Pixel parameters"))
-            .child(
-                div()
-                    .text_size(px(11.))
-                    .text_color(chrome.muted_text)
-                    .child(format!("Encoded {} values (0–1)", model::NAMES[self.source])),
+        let inside = values.iter().all(|v| (-1e-7..=1. + 1e-7).contains(v));
+        let subtitle = if self.source == index {
+            "Source · D65"
+        } else {
+            ["IEC 61966-2-1", "P3 · D65", "γ 2.2", "ITU-R BT.2020"][index]
+        };
+        let badge = radix::Badge::new(&self.look, if inside { "In" } else { "Out" }).variant(if inside {
+            radix::BadgeVariant::Soft
+        } else {
+            radix::BadgeVariant::Outline
+        });
+        card.when_some(model::preview(self.source, self.rgb, index, GamutMapping::Clip).ok(), |card, color| {
+            card.swatch_color(swatch(color))
+        })
+        .subtitle(subtitle)
+        .badge(badge)
+        .values(["R", "G", "B"].into_iter().zip(values.map(|value| format!("{value:.3}"))))
+        .debug_selector(move || format!("chromaticity-card-{name}-{}", if inside { "in" } else { "out" }))
+    }
+
+    fn pixel_parameters(&self) -> ParametersPanel {
+        ParametersPanel::new("Pixel parameters")
+            .subtitle(format!("Encoded {} values (0–1)", model::NAMES[self.source]))
+            .params(
+                ["Red", "Green", "Blue"]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, label)| Param::new(label, self.inputs[index].clone(), self.sliders[index].clone())),
             )
-            .child(div().flex().gap_2().children((0..3).map(|index| {
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .gap(px(6.))
-                    .child(["Red", "Green", "Blue"][index])
-                    .child(self.inputs[index].clone())
-                    .child(self.sliders[index].clone())
-            })))
-            .child(div().flex().flex_wrap().gap_1().children(self.presets.clone()));
-        let previews = panel()
-            .flex_grow(1.)
-            .flex_basis(px(300.))
-            .min_w(px(300.))
-            .text_size(px(12.))
-            .line_height(px(16.))
-            .gap_2()
-            .child(div().text_size(px(12.)).font_weight(FontWeight::MEDIUM).child("Pixel preview"))
-            .child(
-                div()
-                    .text_size(px(11.))
-                    .text_color(chrome.muted_text)
-                    .child("Source pixel mapped into the simulated gamut"),
-            )
-            .child(div().flex().gap(px(6.)).children(
-                [("Clip", GamutMapping::Clip), ("Reduce chroma", GamutMapping::ReduceChroma)].into_iter().map(
-                    |(label, mapping)| {
-                        let mut view = div().flex_1().flex().flex_col().gap_2();
-                        match model::preview(self.source, self.rgb, self.simulated, mapping) {
-                            Ok(color) => {
-                                view = view.child(div().w_full().h(px(64.)).rounded_md().bg(swatch(color))).child(
-                                    div()
-                                        .flex()
-                                        .flex_wrap()
-                                        .items_baseline()
-                                        .gap_1()
-                                        .text_size(px(10.))
-                                        .line_height(px(14.))
-                                        .child(div().text_color(chrome.muted_text).child(format!("{label} ·")))
-                                        .child(div().font_family("monospace").child(hex(color))),
-                                )
-                            }
-                            Err(error) => view = view.child(error.to_string()),
-                        }
-                        view
-                    },
-                ),
-            ))
-            .child(
-                div()
-                    .flex()
-                    .items_baseline()
-                    .gap_1()
-                    .text_size(px(10.))
-                    .line_height(px(14.))
-                    .child(div().text_color(chrome.muted_text).child("Source"))
-                    .child(div().flex_1().min_w_0().font_family("monospace").child(
-                        match model::source_linear(self.source, self.rgb).and_then(|v| Ok(v.to_xyz()?.components())) {
-                            Ok(xyz) => match model::xy(xyz) {
-                                Some([x, y]) => {
-                                    let d = xyz[0] + 15. * xyz[1] + 3. * xyz[2];
-                                    format!(
-                                        "x {x:.4}  y {y:.4} · u′ {:.4}  v′ {:.4} · Y {:.4}",
-                                        4. * xyz[0] / d,
-                                        9. * xyz[1] / d,
-                                        xyz[1]
-                                    )
-                                }
-                                None => "Black · chromaticity undefined".into(),
-                            },
-                            Err(error) => error.to_string(),
-                        },
-                    )),
-            );
-        div().id("chromaticity-lab-scroll").size_full().overflow_y_scroll().p_4()
-            .bg(chrome.content_background).text_color(chrome.body_text)
-            .child(div().w_full().max_w(px(1280.)).mx_auto().flex().flex_col().gap_5()
-                .child(div().text_sm().text_color(chrome.muted_text).child("xgpui-gamut / Chromaticity"))
-                .child(div().flex().flex_col().gap_1()
-                    .child(div().typography_style(typography.role.h2).child("Chromaticity & Gamut"))
-                    .child(div().w_full().typography_style(typography.scale.sm).text_color(chrome.muted_text).child("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram.")))
-                .child(div().flex().flex_wrap().items_center().gap_5().child(div().flex_1().min_w(px(400.)).child(self.chart(cx))).child(legend))
-                .child(format!("{} · fill Y {} · {} · sampled area outside {}: {fraction:.1}%", if self.uv { "CIE 1976 u′v′" } else { "CIE 1931 xy" }, model::LUMINANCE[self.luminance], if self.mapping == GamutMapping::Clip { "clip" } else { "reduce chroma" }, model::NAMES[self.simulated]))
-                .child(div().flex().flex_wrap().gap_3().children(self.choices.iter().enumerate().filter(|(i, _)| *i != 1).map(|(_, c)| c.clone())).children(self.switches.clone()))
-                .child(div().flex().flex_wrap().gap_3().children(cards))
-                .child(div().flex().flex_wrap().items_stretch().gap_4().child(parameters).child(previews))
-                .when_some(self.error.clone(), |view, error| view.child(error))
-                .child(div().text_sm().text_color(chrome.muted_text).child("Click or drag the diagram to move the source pixel. Positions outside the source gamut are constrained to its RGB bounds. Changing source keeps the encoded RGB values and reinterprets them, so the gold cross moves while the controls stay the same. The simulated gamut sets hatching, mapping, and preview colors. Cards report source-pixel membership in each reference gamut."))
-                .child(div().text_size(px(12.)).text_color(chrome.muted_text).child("CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Fill colors are an sRGB preview, even on a wide-gamut window. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.")))
+            .footer(div().flex().flex_wrap().gap_1().children(self.presets.clone()))
+    }
+
+    fn pixel_preview(&self) -> PreviewPanel {
+        let panel = PreviewPanel::new("Pixel preview").subtitle("Source pixel mapped into the simulated gamut");
+        let panel = [("Clip", GamutMapping::Clip), ("Reduce chroma", GamutMapping::ReduceChroma)].into_iter().fold(
+            panel,
+            |panel, (label, mapping)| match model::preview(self.source, self.rgb, self.simulated, mapping) {
+                Ok(color) => panel.labeled_color(swatch(color), label, hex(color)),
+                Err(_) => panel.labeled(div(), label, "—"),
+            },
+        );
+        // Undefined coordinates (black, or a failed conversion) read as dashes, not prose.
+        let xyz = model::source_linear(self.source, self.rgb).and_then(|v| Ok(v.to_xyz()?.components())).ok();
+        let fixed = |value: Option<f64>| value.map_or_else(|| "—".to_owned(), |value| format!("{value:.4}"));
+        let xy = xyz.and_then(model::xy);
+        let uv = xyz.filter(|_| xy.is_some()).map(|[x, y, z]| {
+            let d = x + 15. * y + 3. * z;
+            [4. * x / d, 9. * y / d]
+        });
+        panel.reference_values(
+            "Source",
+            [
+                ("x", fixed(xy.map(|p| p[0]))),
+                ("y", fixed(xy.map(|p| p[1]))),
+                ("u′", fixed(uv.map(|p| p[0]))),
+                ("v′", fixed(uv.map(|p| p[1]))),
+                ("Y", fixed(xyz.map(|v| v[1]))),
+            ],
+        )
+    }
+}
+
+impl Render for ChromaticityLab {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // The pixel selector stays in the model (tests drive it); presets replace it on screen.
+        let choices = self.choices.iter().enumerate().filter(|(index, _)| *index != 1);
+        let controls = choices.map(|(_, choice)| labeled_control(&self.look, choice.clone().into_element()));
+        let screen = LabScreen::new("chromaticity", self.look.clone())
+            .crumb("xgpui-gamut", "Chromaticity")
+            .title("Chromaticity & Gamut")
+            .lede("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram.")
+            .hero(Hero::with_legend(self.chart(cx), self.legend()))
+            .caption(self.caption_line());
+        controls
+            .fold(screen, LabScreen::control)
+            .control(self.switches[0].clone())
+            .control(self.switches[1].clone())
+            .notice(self.error.clone())
+            .cards((0..model::NAMES.len()).map(|index| self.space_card(index)))
+            .panels(self.pixel_parameters(), self.pixel_preview())
+            .note(INTERACTION_NOTE)
+            .credits(CIE_LOCUS_CREDIT)
     }
 }
 

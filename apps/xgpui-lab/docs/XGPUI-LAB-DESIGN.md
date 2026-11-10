@@ -168,31 +168,82 @@ from the Look:
 - **gamut outlines**: one fixed color per gamut, the same on every screen that
   plots gamuts. Define them once (for example `chromaticity.rs` `COLORS`) and
   reuse them. Check that each still reads on both gray 1 backgrounds;
-- **markers**: the reference point (D65) uses `Foreground`, with a halo of
-  `Background`. The subject point uses one fixed marker color, with the same halo.
+- **markers**: a 2 px cross over a 4 px halo, drawn the same in the diagram and
+  its legend. The reference point (D65) uses `Foreground` with a `Background`
+  halo. The subject point uses one fixed marker color (`MARKER_SUBJECT`) with a
+  fixed dark halo (`MARKER_SUBJECT_HALO`), so the light gold reads on light pages
+  and bright fills. Diagram grid and outline strokes are chrome: `Border` and
+  `MutedForeground`.
 
 Keep data colors in one module per screen family, named for what they mean
 (`GAMUT_SRGB`, `MARKER_SOURCE`), not for how they look.
 
 ## Type
 
-Type also comes from the Look:
+Type comes from the Look, through the `TextRole`s in `src/screen/metrics.rs`.
+A screen picks a role; it never sets a size, weight or font family itself.
 
-| Role | Source |
-| --- | --- |
-| Title | `lab_ui::header` (`text_3xl`, semibold) |
-| Lede, caption, fine print | `lab_ui::caption` (`text_sm`, `muted_text`) |
-| Control labels | `lab_ui::control`, which applies the Radix switch label typography |
-| Body / small / extra small | `look.typography_scale(TextSize::Base / Sm / Xs)` + `.typography_style(..)` |
+| Role | Use | Face, size, color |
+| --- | --- | --- |
+| `Title` | screen title | UI, `text_3xl`, semibold |
+| `Crumb`, `Lede`, `Caption` | breadcrumb, lede, live state, notices, notes, panel subtitles | UI, `text_sm`, `MutedForeground` |
+| `Section` | panel title | UI, `text_lg`, semibold |
+| `Name` | card name | UI, base, semibold |
+| `Label` | keys and small labels: `R`, `x`, `u′`, `Y`, `Clip`, `Source`, legend notes | UI, 12 px, `MutedForeground` |
+| `Detail` | small words: legend names | UI, 12 px, `Foreground` |
+| `Value` | measured or edited values | **mono**, 11.5 px (`VALUE_SIZE`), `Foreground` |
+| `Fine` | credits and provenance | UI, `text_xs`, `MutedForeground` |
+| Control labels | `screen::labeled_control`, which applies the Radix switch label typography | control |
 
-- Show hierarchy with size and the `Foreground` / `MutedForeground` split. Use
-  heavier weight only where the shared helpers already do (the title).
-- Numbers that line up or change live use a monospaced or tabular face.
+### UI face or mono
+
+Lab screens are technical presentations, and the face says what a piece of text is:
+
+- **UI face for words**: names, labels, keys, sentences and control text.
+- **Mono for values**: channel values, coordinates, hex, percentages in a
+  legend or table, and diagram axis ticks. Mono digits all have the same width,
+  so values don't shift sideways while they change, and they line up across rows.
+- **A value has a key**: the key in `Label` (UI, muted) and the value in
+  `Value` (mono, foreground), e.g. `R 0.797`, `x 0.2650`, `Clip #00FF00`.
+- **One size for values**: `VALUE_SIZE` (11.5 px) everywhere, whether a value
+  is shown on a card, in a legend, in a preview or in a text field. Menlo runs
+  larger and heavier than the UI face, so 11.5 px mono matches 12 px UI keys
+  optically (12 px looked loud; 11 px looked smaller than its keys). The one exception is
+  diagram axis ticks, at 10 px mono in `MutedForeground`, because they annotate
+  the plot rather than report a value.
+- **Numbers inside a sentence stay in the UI face**, e.g. the live caption
+  `fill Y 0.18 · … 67.1%`. They are part of the sentence, not a readout.
+- **One mono family**: `screen::MONO_FAMILY` (Menlo on macOS, Consolas on
+  Windows, DejaVu Sans Mono elsewhere). Never write a family name in a screen.
+  GPUI passes family names to the OS as-is, so the CSS generic `"monospace"`
+  silently falls back to the UI font.
+- **Key/value rows** go through `screen::readout(look, pairs)`, which is what
+  cards, preview captions and reference lines use.
+- Text fields that edit a value use the same mono size as the value they edit
+  (`screen::value_field_look`).
+
+Show hierarchy with size and the `Foreground` / `MutedForeground` split. Use
+heavier weight only where the roles already do (title, section, name).
+
 - Fix decimals per quantity: encoded channels `0.000`, filter factors `0.00`,
   chromaticity `0.0000`, angles `0.0°`, hex in upper case (`#DB5294`).
 - Put units on values: `16 px`, `8.00 MiB`, `1536×1024`.
 
 ## Spacing and shape
+
+### Desktop density
+
+The lab is for desktop computers, which almost always have landscape monitors.
+Vertical space is the scarce dimension, so avoid vertical scrolling that isn't needed:
+
+- **A heading and its subtitle are one unit.** Stack a title and its subtitle with
+  no gap between them; their line heights give enough separation. This applies to
+  panel headings (`ParametersPanel`, `PreviewPanel`) and card name/subtitle pairs.
+  The panel's `gap_3` separates the heading from the panel body, not the two heading lines.
+- **Spend width before height.** Prefer rows that wrap (cards, panels, parameters,
+  swatch pairs) over stacking things vertically.
+- **Don't add vertical space for decoration.** Use spacers and gaps only where
+  they separate different groups.
 
 Use the values the shared helpers already set rather than new numbers:
 

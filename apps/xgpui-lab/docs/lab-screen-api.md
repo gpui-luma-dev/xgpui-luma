@@ -1,10 +1,80 @@
 # LabScreen: proposed screen layout API
 
-Status: **draft for review**. Nothing is implemented. Names and signatures are
-proposals.
+Status: **migration steps 1–3 implemented** (`src/screen/`, Color Spaces, Chromaticity).
+Later sections are still proposals; *Implemented so far* below records where
+the code differs from them.
 
 Related: [XGPUI-LAB-DESIGN.md](XGPUI-LAB-DESIGN.md) (the rules),
 [lab-ui.md](lab-ui.md) (the current helpers and their history).
+
+## Implemented so far
+
+`src/screen/` exists and Color Spaces renders through it. Headless layout
+bounds of every Color Spaces section (crumb, header, field, caption, controls,
+each card, both panels, note) are identical before and after at 1280 and 720 px.
+`lab_ui.rs` now forwards to `screen/` for Italy and Shell Lab
+(`comparison_card` was removed; it had no other callers).
+
+Chromaticity (step 3) now renders through `LabScreen` too, and its drift is fixed:
+1240 / p6 page, `crumb()` separator, `TextRole` title and type, standard card
+and panel geometry, and the axis labels use `muted_text` instead of a literal.
+Its legend coverage now comes from `chromaticity_model::coverage` (primaries
+over the closed CIE locus): 34 / 45 / 45 / 63 %, where the old hard-coded values
+were 34 / 46 / 45 / 64 %. The status tag is a look-radix `Badge`: `Soft` for
+"In" and `Outline` for "Out", because the Radix tones are accent and gray only.
+Gamut and marker colors live in `screen/data.rs`, and `chromaticity_model::COLORS`
+re-exports them. The chart shader now takes its grid (`Border`), locus outline
+(`MutedForeground`) and D65 marker (`Foreground` on a `Background` halo) from
+the look. The gold source marker has a fixed dark halo (`MARKER_SUBJECT_HALO`),
+so light mode reads correctly. Color Spaces screenshots are still byte-identical.
+
+Differences from the proposal below:
+
+- **Metrics.** `LabMetrics::STANDARD` is a const, not `LabLookExt::lab_metrics()`,
+  because nothing in it depends on the look yet. Spacing is `Rems`, so it matches
+  GPUI's `p_6` / `gap_5` exactly. Added `header_gap`, `inline_slider_width`,
+  `param_min_width` and `wide_panel` / `narrow_panel` (`PanelWidth { grow, basis, min }`).
+  Step 3 added `card_mark`, `hero_min_width`, `legend_width` and `legend_mark_width`.
+- **Type.** `TextRole::apply(look, element)` and `screen::text(look, role, text)`
+  replace `look.text(role) -> LumaTextStyle`, because today's output uses GPUI's
+  rem-based `text_sm` / `text_lg` / `text_3xl`, and converting those to pixels
+  would change rendering when rem size isn't 16. Roles: `Crumb`, `Title`, `Lede`,
+  `Section`, `Caption` (was `Body`), `Name` (new, card name), `Label` (keys),
+  `Detail` (small words), `Value` (mono values, replacing the proposed `Mono`)
+  and `Fine` (credits). `screen::readout` renders key/value pairs,
+  `screen::value_field_look` gives value text fields the same mono size (`VALUE_SIZE`, 11.5 px), and
+  `screen::MONO_FAMILY` is the one mono family. The UI face / mono rule is in
+  [XGPUI-LAB-DESIGN.md](XGPUI-LAB-DESIGN.md#ui-face-or-mono).
+- **LabScreen.** `.control(element)` appends one item, instead of
+  `controls(iter)`, because control rows mix element types. `screen::labeled_control`
+  applies the switch label typography to a `Choice`. `.notice(..)` may be called
+  more than once. Besides the slots, `{id}-header`, `{id}-content`,
+  `{id}-panel-wide` and `{id}-panel-narrow` carry selectors. `credits` was
+  added in step 3. Not built yet: `actions`, `section`.
+- **Hero.** `Hero::full` and `Hero::with_legend`. The hero's `{id}-hero` selector sits on a wrapper
+  `div`, because a GPUI element holds one debug selector and the visual keeps its own.
+  `Legend` is built with `.item(mark, label, value)`, `.note(..)` and
+  `.marker(mark, label)`. Its marks are `Mark::Line(Hsla)`,
+  `Mark::Cross { color, halo }` (drawn like the diagram's cross; `None` means
+  foreground / background) and `Mark::Hatch` (drawn as the `////` glyph).
+  `compare` and `fixed` wait for Image Filters and Italy.
+- **LabCard.** `.swatch(impl IntoElement)` takes an element, not an `Hsla`,
+  because Color Spaces paints its swatches natively in the source space.
+  `.values(..)` takes any iterator of label/value pairs. Added
+  `.debug_selector(..)`. `LabCard` implements `FluentBuilder`, so
+  `.when(disabled, |c| c.badge(..))` works. Step 3 added `.swatch_color(..)`,
+  `.mark(..)`, and truncation of names and subtitles (the badge never shrinks).
+  `icon`, `selected`, `on_click` and `body` wait for Italy and Image Filters.
+- **Panels.** `Panel` has `Parameters` and `Preview` only. `Param::new(label, input, slider)`
+  has no range yet. `ParametersPanel::footer(..)` holds presets. `PreviewPanel`
+  takes `.swatch(element)` for one unlabeled swatch, or `.labeled(element, key, value)`
+  / `.labeled_color(color, key, value)` for swatches side by side, then
+  `.reference(key, value)` or `.reference_values(key, pairs)`. `action`, `ChainPanel` and `PanelShell` are not
+  built yet. Both panel rows use the standard wide/narrow widths, so Chromaticity's
+  old 500/300 bases are gone.
+- **Behavior change (error path only).** "Color conversion unavailable" now goes
+  through `.notice`, so it renders as a muted caption instead of body text.
+  Normal output is unchanged.
 
 ## Problem
 

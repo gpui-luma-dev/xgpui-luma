@@ -13,7 +13,8 @@ pub const PATCHES: [(&str, [f32; 3]); 7] = [
     ("Magenta", [1., 0., 1.]),
 ];
 pub const LUMINANCE: [f64; 3] = [0.05, 0.18, 0.5];
-pub const COLORS: [u32; 4] = [0x65d7ff, 0xff9a62, 0xc4a0ff, 0x91df86];
+/// Gamut outline colors live with the other lab data colors.
+pub const COLORS: [u32; 4] = crate::screen::data::GAMUTS;
 
 pub fn xy(xyz: [f64; 3]) -> Option<[f64; 2]> {
     let sum: f64 = xyz.into_iter().sum();
@@ -84,6 +85,33 @@ pub fn cells(
     }
     Ok(cells)
 }
+/// Chromaticity (xy) of the space's three primaries.
+pub fn primaries(space: RgbSpace) -> anyhow::Result<[[f64; 2]; 3]> {
+    let mut result = [[0.; 2]; 3];
+    for (channel, primary) in result.iter_mut().enumerate() {
+        let xyz = xgpui_color::LinearRgb::new(space, std::array::from_fn(|i| if i == channel { 1. } else { 0. }))?
+            .to_xyz()?
+            .components();
+        *primary = xy(xyz).ok_or_else(|| anyhow::anyhow!("invalid reference primary"))?;
+    }
+    Ok(result)
+}
+
+fn area(points: &[[f64; 2]]) -> f64 {
+    let mut previous = points[points.len() - 1];
+    let mut twice = 0.;
+    for &current in points {
+        twice += previous[0] * current[1] - current[0] * previous[1];
+        previous = current;
+    }
+    twice.abs() / 2.
+}
+
+/// Fraction of the visible xy area (the locus closed by the purple line) inside the space's triangle.
+pub fn coverage(space: RgbSpace, locus: &[[f64; 2]]) -> anyhow::Result<f64> {
+    Ok(area(&primaries(space)?) / area(locus))
+}
+
 pub fn source_xy(space: RgbSpace, rgb: [f32; 3]) -> Option<[f64; 2]> {
     let linear = EncodedRgb::new(space, rgb.map(f64::from)).ok()?.decode().ok()?;
     xy(linear.to_xyz().ok()?.components())
@@ -176,6 +204,15 @@ mod tests {
             }
             assert!(rgb_at_xy(source, xy, 0.).unwrap().iter().any(|v| *v > 0.));
             assert!(rgb_at_xy(source, [0.3, 0.], y).is_err());
+        }
+    }
+
+    #[test]
+    fn coverage_comes_from_primaries_and_locus() {
+        let boundary = locus();
+        let coverage = SPACES.map(|space| coverage(space, &boundary).unwrap());
+        for (actual, expected) in coverage.into_iter().zip([0.335, 0.455, 0.452, 0.634]) {
+            assert!((actual - expected).abs() < 0.001, "{actual} vs {expected}");
         }
     }
 
