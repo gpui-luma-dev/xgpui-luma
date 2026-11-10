@@ -23,7 +23,7 @@ mod panel;
 
 pub(crate) use card::LabCard;
 pub(crate) use hero::{ComparePane, Hero, Legend, Mark};
-pub(crate) use metrics::{LabMetrics, MONO_FAMILY, TextRole, readout, text, value_field_look};
+pub(crate) use metrics::{LabMetrics, TextRole, mono_family, readout, text, value_field_look};
 pub(crate) use panel::{ChainPanel, Panel, Param, ParametersPanel, PreviewPanel};
 
 #[derive(IntoElement)]

@@ -74,8 +74,9 @@ Differences from the proposal below:
   `Section`, `Caption` (was `Body`), `Name` (new, card name), `Label` (keys),
   `Detail` (small words), `Value` (mono values, replacing the proposed `Mono`)
   and `Fine` (credits). `screen::readout` renders key/value pairs,
-  `screen::value_field_look` gives value text fields the same mono size (`VALUE_SIZE`, 11.5 px), and
-  `screen::MONO_FAMILY` is the one mono family. The UI face / mono rule is in
+  `screen::value_field_look` gives value text fields the same mono `code` style, and
+  `screen::mono_family(look)` is the one mono family. Every role reads a look
+  typography token (`role.h2`…`h4`, `role.p`, `label`, `code`, `caption`). The UI face / mono rule is in
   [XGPUI-LAB-DESIGN.md](XGPUI-LAB-DESIGN.md#ui-face-or-mono).
 - **LabScreen.** `.control(element)` appends one item, instead of
   `controls(iter)`, because control rows mix element types. `screen::labeled_control`

@@ -1,9 +1,12 @@
 //! Every size, gap and type role a lab screen uses. Defaults are Color Spaces' values.
-use gpui::{Div, FontWeight, ParentElement, Pixels, Rems, SharedString, Styled, div, px, rems};
-use xgpui_luma::{controls::textfield::TextFieldLook, theme::LumaTextStyle};
+use gpui::{Div, ParentElement, Pixels, Rems, SharedString, Styled, div, px, rems};
+use xgpui_luma::{
+    controls::textfield::TextFieldLook,
+    theme::{LumaTextStyle, tokens::TextTokens},
+};
 use xgpui_luma_look_radix::Look;
 
-use crate::theme::{ColorVizLookExt, TextSize, TypographyExt};
+use crate::theme::{ColorVizLookExt, TypographyExt};
 
 /// Layout metrics shared by every lab screen.
 ///
@@ -69,16 +72,6 @@ impl LabMetrics {
     };
 }
 
-/// The one monospace family for values. Screens never name a font family themselves.
-/// It must be a real installed family: GPUI passes names to the OS as-is, and the
-/// generic CSS name `"monospace"` silently falls back to the UI font.
-#[cfg(target_os = "macos")]
-pub(crate) const MONO_FAMILY: &str = "Menlo";
-#[cfg(target_os = "windows")]
-pub(crate) const MONO_FAMILY: &str = "Consolas";
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-pub(crate) const MONO_FAMILY: &str = "DejaVu Sans Mono";
-
 /// Text roles. A screen picks a role; the look decides size, weight and color.
 #[derive(Clone, Copy)]
 pub(crate) enum TextRole {
@@ -103,32 +96,40 @@ pub(crate) enum TextRole {
     Fine,
 }
 
-/// Mono value size. Menlo runs larger and heavier than the UI face at the same
-/// size, so values sit a half step below the 12 px detail text they pair with.
-pub(crate) const VALUE_SIZE: f32 = 11.5;
+/// The look's text tokens: `role.h1`–`h4` and `p`, plus `body`, `label`, `caption`, `title` and `code`.
+fn tokens(look: &Look) -> TextTokens {
+    look.common_stylesheet().tokens.typography.text
+}
 
-fn detail_style(look: &Look) -> LumaTextStyle {
-    LumaTextStyle { size: 12., ..look.typography_scale(TextSize::Sm) }
+/// The look's monospace family (`font.mono`), used for every value.
+pub(crate) fn mono_family(look: &Look) -> SharedString {
+    look.common_stylesheet().tokens.typography.font.mono.family.clone().into()
 }
 
 impl TextRole {
+    /// The look token this role uses. Sizes, line heights and weights all come from the look.
+    pub fn style(self, look: &Look) -> LumaTextStyle {
+        let text = tokens(look);
+        match self {
+            Self::Title => text.role.h2,
+            Self::Section => text.role.h3,
+            Self::Name => text.role.h4,
+            Self::Crumb | Self::Lede | Self::Caption | Self::Field => text.role.p,
+            Self::Label | Self::Detail => text.label,
+            Self::Value => text.code,
+            Self::Fine => text.caption,
+        }
+    }
+
     /// Apply this role's typography and color.
     pub fn apply<E: Styled>(self, look: &Look, element: E) -> E {
-        let muted = look.chrome().muted_text;
+        let element = element.typography_style(self.style(look));
         match self {
-            Self::Crumb | Self::Lede | Self::Caption => element.text_sm().text_color(muted),
-            Self::Field => element.text_sm(),
-            Self::Title => element.text_3xl().font_weight(FontWeight::SEMIBOLD),
-            Self::Section => element.text_lg().font_weight(FontWeight::SEMIBOLD),
-            Self::Name => {
-                element.typography_style(look.typography_scale(TextSize::Base)).font_weight(FontWeight::SEMIBOLD)
+            Self::Crumb | Self::Lede | Self::Caption | Self::Label | Self::Fine => {
+                element.text_color(look.chrome().muted_text)
             }
-            Self::Label => element.text_color(muted).typography_style(detail_style(look)),
-            Self::Detail => element.typography_style(detail_style(look)),
-            Self::Value => element
-                .typography_style(LumaTextStyle { size: VALUE_SIZE, ..detail_style(look) })
-                .font_family(MONO_FAMILY),
-            Self::Fine => element.text_xs().text_color(muted),
+            Self::Value => element.font_family(mono_family(look)),
+            Self::Title | Self::Section | Self::Name | Self::Field | Self::Detail => element,
         }
     }
 }
@@ -154,9 +155,13 @@ pub(crate) fn readout<K: Into<SharedString>, V: Into<SharedString>>(
     }))
 }
 
-/// Text-field look for editing a value: the same mono 12 px as `TextRole::Value`.
-pub(crate) fn value_field_look(mut field: TextFieldLook) -> TextFieldLook {
-    field.typography = LumaTextStyle { size: VALUE_SIZE, line_height: 16., ..field.typography };
-    field.font_family = MONO_FAMILY.into();
-    field
+/// Text-field look for editing a value: the same mono `code` style as `TextRole::Value`.
+pub(crate) fn value_field_look(look: &Look) -> impl Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static {
+    let style = TextRole::Value.style(look);
+    let family = mono_family(look);
+    move |mut field| {
+        field.typography = LumaTextStyle { weight: field.typography.weight, ..style };
+        field.font_family = family.clone();
+        field
+    }
 }

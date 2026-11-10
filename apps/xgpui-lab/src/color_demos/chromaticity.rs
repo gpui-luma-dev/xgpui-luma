@@ -12,8 +12,8 @@ use super::chromaticity_shader::{self, Parameters};
 use crate::{
     lab_controls::{Choice, labels},
     screen::{
-        Hero, LabCard, LabMetrics, LabScreen, Legend, MONO_FAMILY, Mark, Param, ParametersPanel, PreviewPanel, data,
-        labeled_control, value_field_look,
+        Hero, LabCard, LabMetrics, LabScreen, Legend, Mark, Param, ParametersPanel, PreviewPanel, data,
+        labeled_control, mono_family, value_field_look,
     },
     theme::ColorVizLookExt,
 };
@@ -134,7 +134,7 @@ impl ChromaticityLab {
                 radix::TextField::new(format!("chroma-rgb-{index}"))
                     .look(&look)
                     .surface()
-                    .look_override(value_field_look)
+                    .look_override(value_field_look(&look))
                     .full_width(true)
                     .value(format!("{:.3}", model::PATCHES[0].1[index]))
                     .validator(Arc::new(|text| parse_channel(text).is_some()))
@@ -320,6 +320,7 @@ impl ChromaticityLab {
         .with_colors(&self.look);
         let chart_bounds = self.chart_bounds.clone();
         let axis_color = self.look.chrome().muted_text;
+        let axis_family = mono_family(&self.look);
         let plot = canvas(
             move |bounds, _, _| {
                 chart_bounds.set(Some(bounds));
@@ -340,7 +341,7 @@ impl ChromaticityLab {
                         LabMetrics::STANDARD.axis_tick,
                         &[TextRun {
                             len: text.len(),
-                            font: font(MONO_FAMILY),
+                            font: font(axis_family.clone()),
                             color: axis_color,
                             ..Default::default()
                         }],

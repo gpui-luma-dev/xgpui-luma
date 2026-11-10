@@ -180,21 +180,24 @@ Keep data colors in one module per screen family, named for what they mean
 
 ## Type
 
-Type comes from the Look, through the `TextRole`s in `src/screen/metrics.rs`.
-A screen picks a role; it never sets a size, weight or font family itself.
+Type comes from the Look's typography tokens
+(`look.common_stylesheet().tokens.typography`), through the `TextRole`s in
+`src/screen/metrics.rs`. A screen picks a role; it never sets a size, weight or
+font family itself. Change type in the look, or change a role's token here,
+and every screen follows.
 
-| Role | Use | Face, size, color |
-| --- | --- | --- |
-| `Title` | screen title | UI, `text_3xl`, semibold |
-| `Crumb`, `Lede`, `Caption` | breadcrumb, lede, live state, notices, notes, panel subtitles | UI, `text_sm`, `MutedForeground` |
-| `Section` | panel title | UI, `text_lg`, semibold |
-| `Name` | card name | UI, base, semibold |
-| `Field` | parameter label above its text field (`Red`, `Contrast`) | UI, `text_sm` (the panel subtitle's size), `Foreground` |
-| `Label` | keys and small labels: `R`, `x`, `u′`, `Y`, `Clip`, `Source`, legend notes | UI, 12 px, `MutedForeground` |
-| `Detail` | small words: legend names | UI, 12 px, `Foreground` |
-| `Value` | measured or edited values | **mono**, 11.5 px (`VALUE_SIZE`), `Foreground` |
-| `Fine` | credits and provenance | UI, `text_xs`, `MutedForeground` |
-| Control labels | `screen::labeled_control`, which applies the Radix switch label typography | control |
+| Role | Use | Look token (Luma default) | Color |
+| --- | --- | --- | --- |
+| `Title` | screen title | `role.h2` (28 / 36, semibold) | `Foreground` |
+| `Section` | panel title | `role.h3` (20 / 28, semibold) | `Foreground` |
+| `Name` | card name, compare-pane title | `role.h4` (16 / 22, medium) | `Foreground` |
+| `Crumb`, `Lede`, `Caption` | breadcrumb, lede, live state, notices, notes, panel subtitles | `role.p` (14 / 20) | `MutedForeground` |
+| `Field` | parameter label above its text field (`Red`, `Contrast`) | `role.p` (14 / 20), the panel subtitle's size | `Foreground` |
+| `Label` | keys and small labels: `R`, `x`, `u′`, `Y`, `Clip`, `Source`, legend notes | `label` (12.5 / 18, medium) | `MutedForeground` |
+| `Detail` | small words: legend names, chain steps | `label` (12.5 / 18, medium) | `Foreground` |
+| `Value` | measured or edited values | `code` (13 / 18) in `font.mono` | `Foreground` |
+| `Fine` | credits and provenance | `caption` (11 / 16, medium) | `MutedForeground` |
+| Control labels | `screen::labeled_control`, which applies the Radix switch label typography | control | control |
 
 ### UI face or mono
 
@@ -206,18 +209,20 @@ Lab screens are technical presentations, and the face says what a piece of text 
   so values don't shift sideways while they change, and they line up across rows.
 - **A value has a key**: the key in `Label` (UI, muted) and the value in
   `Value` (mono, foreground), e.g. `R 0.797`, `x 0.2650`, `Clip #00FF00`.
-- **One size for values**: `VALUE_SIZE` (11.5 px) everywhere, whether a value
-  is shown on a card, in a legend, in a preview or in a text field. Menlo runs
-  larger and heavier than the UI face, so 11.5 px mono matches 12 px UI keys
-  optically (12 px looked loud; 11 px looked smaller than its keys). The one exception is
-  diagram axis ticks, at 10 px mono in `MutedForeground`, because they annotate
-  the plot rather than report a value.
+- **One size for values**: the look's `code` style everywhere, whether a value
+  is shown on a card, in a legend, in a preview or in a text field. The one
+  exception is diagram axis ticks, at 10 px (`LabMetrics::axis_tick`) mono in
+  `MutedForeground`, because they annotate the plot rather than report a value.
 - **Numbers inside a sentence stay in the UI face**, e.g. the live caption
   `fill Y 0.18 · … 67.1%`. They are part of the sentence, not a readout.
-- **One mono family**: `screen::MONO_FAMILY` (Menlo on macOS, Consolas on
-  Windows, DejaVu Sans Mono elsewhere). Never write a family name in a screen.
-  GPUI passes family names to the OS as-is, so the CSS generic `"monospace"`
-  silently falls back to the UI font.
+- **One mono family**: the look's `font.mono`, through `screen::mono_family(look)`.
+  Never write a family name in a screen. GPUI passes family names to the OS
+  as-is, so a name that isn't installed (including the CSS generic
+  `"monospace"`) silently falls back to the UI font. Luma's default `Monaco`
+  exists only on macOS, so the lab bundles **IBM Plex Mono** (OFL) in
+  `assets/fonts/ibm-plex-mono/`, registers it at startup
+  (`theme::register_fonts`), and sets it as the look's `font.mono` in
+  `theme::default_look()`.
 - **Key/value rows** go through `screen::readout(look, pairs)`, which is what
   cards, preview captions and reference lines use.
 - Text fields that edit a value use the same mono size as the value they edit

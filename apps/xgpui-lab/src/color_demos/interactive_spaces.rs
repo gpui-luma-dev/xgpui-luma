@@ -97,7 +97,7 @@ impl RgbChannelControls {
             .look(look)
             .surface()
             .size(radix::TextFieldSize::Two)
-            .look_override(value_field_look)
+            .look_override(value_field_look(look))
             .placeholder(format!("{} 0–1", CHANNELS[index]))
             .value(format!("{:.3}", INITIAL[index]))
             .full_width(true)

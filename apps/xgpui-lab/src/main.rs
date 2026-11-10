@@ -186,6 +186,7 @@ fn main() {
         cx.bind_keys([KeyBinding::new("cmd-q", Quit, None)]);
         cx.set_menus([Menu::new("XGPUI Lab").items([MenuItem::action("Quit", Quit)])]);
         if let Err(error) = xgpui_luma::init(cx).and_then(|_| {
+            theme::register_fonts(cx)?;
             xgpui_luma::focus::bind_default_focus_keys(cx);
             xgpui_luma::key_handling::bind_default_control_keys(cx);
             app_shell::open(cx)
