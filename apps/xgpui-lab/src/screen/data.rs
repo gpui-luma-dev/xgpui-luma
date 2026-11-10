@@ -15,6 +15,9 @@ pub(crate) const GAMUTS: [u32; 4] = [GAMUT_SRGB, GAMUT_P3, GAMUT_ADOBE, GAMUT_RE
 pub(crate) const MARKER_SUBJECT: u32 = 0xffdf62;
 pub(crate) const MARKER_SUBJECT_HALO: u32 = 0x1c1c1c;
 
+/// Marks gradient samples that fall outside the destination gamut before mapping.
+pub(crate) const OUT_OF_GAMUT: u32 = 0xfbbf24;
+
 pub(crate) fn color(hex: u32) -> Hsla {
     rgb(hex).into()
 }

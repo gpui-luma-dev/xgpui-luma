@@ -30,6 +30,10 @@ from pathlib import Path
 # The screens that use the LabScreen design language.
 DEFAULT_PAGES = [
     "xgpui-color/Color Spaces",
+    "xgpui-color/Conversions",
+    "xgpui-color/Interpolation",
+    "xgpui-color/Gamut Mapping",
+    "xgpui-color/CPU Gradients",
     "xgpui-gamut/Chromaticity & Gamut",
     "xgpui-color/Italy Photo Comparison",
     "xgpui-media/Image Filters",

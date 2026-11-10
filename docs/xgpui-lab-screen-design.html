@@ -87,7 +87,7 @@
 <p>For anything else, take a gray step with <code>look.resolve_step(ScaleFamily::Gray, n)</code> and use it as Radix defines: 1–2 backgrounds, 3–5 component fills, 6–8 borders, 9–10 solid fills, 11 low-contrast text, 12 high-contrast text.</p>
 <ul class="notes">
 <li><strong>No literal chrome colors.</strong> If a screen needs a color that is not a role or a step, add the role to look-radix or to <code>ColorVizLookExt</code> in <code>theme.rs</code>.</li>
-<li><strong>Data colors are the exception.</strong> Swatches, slider tracks and field fills are computed from the color math. Gamut outlines use one fixed color per gamut (<code>GAMUT_SRGB</code>, <code>GAMUT_P3</code>…), the same on every screen. Markers are a 2 px cross over a 4 px halo. Keep data colors in one module per screen family, named for what they mean.</li>
+<li><strong>Data colors are the exception.</strong> Swatches, slider tracks and field fills are computed from the color math. Gamut outlines use one fixed color per gamut (<code>GAMUT_SRGB</code>, <code>GAMUT_P3</code>…), the same on every screen. Markers are a 2 px cross over a 4 px halo. The strip under a gradient bar marks samples outside the target gamut in <code>OUT_OF_GAMUT</code> amber. Keep data colors in one module per screen family, named for what they mean.</li>
 <li><strong>Badges are a free slot.</strong> A card or comparison pane places whatever badge the screen passes, usually a look-radix <code>Badge</code>. Keep the text short, and make it carry the meaning without its color.</li>
 </ul>
 </section>
