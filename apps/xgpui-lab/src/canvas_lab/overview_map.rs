@@ -23,17 +23,7 @@ impl Lab {
         let thumbnail = self.map_thumbnail.then(|| self.minimap_image.clone());
         let visible = self.camera.visible_world_bounds(self.viewport());
         let entity = cx.entity();
-        div()
-            .id("minimap")
-            .absolute()
-            .right(px(12.))
-            .bottom(px(12.))
-            .w(px(230.))
-            .h(px(170.))
-            .bg(rgb(0x172238))
-            .border_1()
-            .border_color(rgb(0x6484a8))
-            .overflow_hidden()
+        minimap::map_panel(&self.look, "minimap", "Whole canvas · click or drag · T view")
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
@@ -87,14 +77,6 @@ impl Lab {
             )
             .on_scroll(|_, _, cx| cx.stop_propagation())
             .on_pinch(|_, _, cx| cx.stop_propagation())
-            .child(
-                div()
-                    .absolute()
-                    .top(px(3.))
-                    .left(px(6.))
-                    .text_size(px(12.))
-                    .child("Whole canvas • click/drag • T: view"),
-            )
             .child(
                 canvas(
                     move |bounds, _, cx| {
@@ -164,7 +146,7 @@ fn paint(
         bounds.origin + point(px(p.x as f32), px(p.y as f32))
     };
     window.with_content_mask(Some(ContentMask { bounds }), |window| {
-        window.paint_quad(fill(bounds, rgb(0x101824)));
+        window.paint_quad(fill(bounds, rgb(palette::STAGE)));
         if let Some(thumbnail) = thumbnail
             && let Err(error) = window.paint_image(bounds, bounds, Corners::default(), thumbnail, 0, false)
         {
@@ -176,14 +158,14 @@ fn paint(
         let width = (b.x - a.x).max(px(2.));
         let height = (b.y - a.y).max(px(2.));
         let rect = Bounds::new(a, gpui::size(width, height));
-        window.paint_quad(fill(rect, rgba(0xffd47922)));
+        window.paint_quad(fill(rect, rgba(palette::MAP_VIEW_FILL)));
         for (origin, size) in [
             (a, gpui::size(width, px(1.))),
             (a, gpui::size(px(1.), height)),
             (a + point(px(0.), height - px(1.)), gpui::size(width, px(1.))),
             (a + point(width - px(1.), px(0.)), gpui::size(px(1.), height)),
         ] {
-            window.paint_quad(fill(Bounds::new(origin, size), rgb(0xffd479)));
+            window.paint_quad(fill(Bounds::new(origin, size), rgb(palette::MAP_VIEW)));
         }
     });
 }
@@ -273,7 +255,7 @@ pub(super) fn smoke_invalidation_and_modes(entity: &Entity<Lab>, window: &mut Wi
     });
     window.draw(cx).clear(cx);
     assert_ne!(entity.read(cx).overview_key, prior, "replacement scene invalidates revision-zero cache");
-    for key in ["m", "m", "t", "t", "r", "o", "f", "f", "escape"] {
+    for key in ["m", "m", "t", "t", "r", "o", "escape"] {
         entity.update(cx, |lab, _| {
             lab.map_drag = true;
             lab.drag.begin(WorldPoint::default());

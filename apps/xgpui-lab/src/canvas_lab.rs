@@ -1,23 +1,32 @@
 //! Canvas and Mandelbrot adapted from xgpui-ext-lab 74b8e4e; Luma controls and retained app lifecycle.
+//! Both pages are `LabScreen`s (see `screen.rs`) around one canvas viewport.
 mod interaction;
 mod mandelbrot;
 mod minimap;
 mod overview_map;
+mod palette;
 mod profile;
+mod screen;
 use interaction::Gesture;
 
 use gpui::{prelude::*, *};
 use std::{collections::BTreeSet, path::PathBuf, sync::Arc, time::Instant};
+use xgpui_luma_look_radix::Look;
+
+use crate::screen::TextRole;
+use crate::theme::ColorVizLookExt;
 use xgpui_canvas::{
     Camera2D, Canvas as SpatialCanvas, GridPainter, GridStyle, LevelOfDetail, Point as WorldPoint, Scene, SceneItem,
     WorldBounds,
 };
 
 pub struct Lab {
-    controls: Vec<Entity<xgpui_luma::controls::button::Button>>,
+    look: Arc<Look>,
+    controls: screen::Controls,
     active: bool,
     results: Option<PathBuf>,
-    status: String,
+    /// Sweep progress and errors, shown as a notice.
+    status: Option<String>,
     fractal: mandelbrot::Mandelbrot,
     profile: Option<profile::Profile>,
     smoke: Option<(PathBuf, usize, bool)>,
@@ -184,14 +193,14 @@ impl Render for Lab {
                     .h(px(80. * zoom))
                     .overflow_hidden()
                     .bg(rgb(if self.selected.contains(&id) {
-                        0x316eab
+                        palette::CARD_SELECTED
                     } else {
-                        0x24354b
+                        palette::CARD
                     }))
                     .border_1()
-                    .border_color(rgb(0x6484a8))
+                    .border_color(rgb(palette::CARD_EDGE))
                     .text_size(px(16. * zoom))
-                    .text_color(rgb(0xffffff))
+                    .text_color(rgb(palette::CARD_TEXT))
                     .child(div().absolute().top_0().left_0().child(format!("Card {id}"))),
             );
         }
@@ -220,7 +229,7 @@ impl Render for Lab {
                             [f32::from(this.bounds.size.width), f32::from(this.bounds.size.height)],
                             window.scale_factor(),
                         );
-                        this.status = "Canvas sweep completed; results include captures and timing JSON.".into();
+                        this.status = Some("Canvas sweep completed; results include captures and timing JSON.".into());
                         this.profile = None;
                         cx.notify();
                     } else {
@@ -233,7 +242,6 @@ impl Render for Lab {
         let entity = cx.entity();
         let marquee = self.marquee();
         let guides = self.snap_guides.clone();
-        let camera = self.camera;
         self.schedule_mandelbrot(window, cx);
         let fractal = self.fractal.enabled.then(|| self.fractal_element());
         if self.fractal.ready_for_capture()
@@ -256,94 +264,227 @@ impl Render for Lab {
                 self.minimap(cx)
             }
         });
-        div().id("canvas-lab").track_focus(&self.focus)
+        let wide = window.color_status().effective() == WindowColorMode::WideGamutSdr;
+        let viewport = self.viewport_element(entity, cards, proxies, fractal, minimap, marquee, guides, cx);
+        let drawn = screen::Drawn { cards: full_count, proxies: proxy_count, points: point_count };
+        let screen = self.screen(viewport, drawn, wide, cx);
+        // Keys act anywhere on the page, including while one of its controls has focus.
+        div()
+            .id("canvas-lab")
+            .track_focus(&self.focus)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
-                if event.keystroke.key == "space" { this.space_down = true; cx.stop_propagation(); }
+                if event.keystroke.key == "space" {
+                    this.space_down = true;
+                    cx.stop_propagation();
+                }
                 if event.keystroke.key == "g" {
-                    this.grid_style = match this.grid_style { GridStyle::Lines => GridStyle::Dots, GridStyle::Dots => GridStyle::Lines };
+                    this.grid_style = match this.grid_style {
+                        GridStyle::Lines => GridStyle::Dots,
+                        GridStyle::Dots => GridStyle::Lines,
+                    };
                     cx.notify();
                 }
-                if event.keystroke.key == "f" { this.cancel_interaction(); this.fractal.toggle(); this.show_minimap = !this.fractal.enabled; this.whole_scene_map = !this.fractal.enabled; this.camera = Camera2D::default(); this.invalidate_preview(); cx.notify(); }
-                if event.keystroke.key == "t" && !this.fractal.enabled { this.cancel_interaction(); this.whole_scene_map = !this.whole_scene_map; cx.notify(); }
-                if event.keystroke.key == "m" { this.cancel_interaction(); this.show_minimap = !this.show_minimap; cx.notify(); }
-                if event.keystroke.key == "escape" { this.cancel_interaction(); cx.notify(); }
-                if event.keystroke.key == "r" { this.reset_view(); cx.notify(); }
+                // No page-swap key: Spatial Canvas and Mandelbrot each have a navigation entry,
+                // and a key that swapped them would leave the navigation showing the wrong page.
+                if event.keystroke.key == "t" && !this.fractal.enabled {
+                    this.cancel_interaction();
+                    this.whole_scene_map = !this.whole_scene_map;
+                    cx.notify();
+                }
+                if event.keystroke.key == "m" {
+                    this.cancel_interaction();
+                    this.show_minimap = !this.show_minimap;
+                    cx.notify();
+                }
+                if event.keystroke.key == "escape" {
+                    this.cancel_interaction();
+                    cx.notify();
+                }
+                if event.keystroke.key == "r" {
+                    this.reset_view();
+                    cx.notify();
+                }
                 if event.keystroke.key == "o" {
                     this.cancel_interaction();
-                    this.camera = Camera2D::default();
-                    let viewport = this.viewport();
-                    this.camera.zoom_at(WorldPoint::new(viewport.x / 2., viewport.y / 2.), viewport, 0.01);
+                    this.overview_zoom();
                     cx.notify();
                 }
-                if event.keystroke.key == "b" { this.cancel_interaction(); this.scene = make_scene(if this.scene.len() == 10_000 { 100_000 } else { 10_000 }); this.selected.clear(); this.invalidate_preview(); cx.notify(); }
+                if event.keystroke.key == "b" {
+                    this.cancel_interaction();
+                    this.set_scene_size(if this.scene.len() == 10_000 { 100_000 } else { 10_000 });
+                    cx.notify();
+                }
             }))
             .on_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
-                if event.keystroke.key == "space" { this.space_down = false; this.drag.end(); cx.stop_propagation(); }
+                if event.keystroke.key == "space" {
+                    this.space_down = false;
+                    this.drag.end();
+                    cx.stop_propagation();
+                }
             }))
-            .relative().size_full().flex().flex_col().bg(rgb(0x101824)).text_color(rgb(0xffffff))
-            .child(div().flex_none().flex().flex_col().gap_2().p_3()
-                .child(div().flex().flex_wrap().gap_2().children(self.controls.iter().enumerate().filter(|(index,_)|if self.fractal.enabled {[0,4,6,9].contains(index)}else{*index!=6}).map(|(_,control)|control.clone())))
-                .child(self.status.clone())
-                .child(if self.fractal.enabled { "P3 Mandelbrot • Drag: pan • Scroll: zoom • F: cards • R: reset" } else { "Shift-drag: select • Drag cards: move/snap • Option: free move • Esc: cancel" })
-                .child(if self.fractal.enabled { if window.color_status().effective() == WindowColorMode::WideGamutSdr { "Display P3 wide SDR • M: preview (adds capture cost)" } else { "Mapped sRGB fallback • M: preview (adds capture cost)" } } else { "Scroll / Pinch: zoom • Background / Space-drag: pan • G: grid • R: reset • O: overview • B: 10k/100k • M: panel • T: map/view • F: Mandelbrot" })
-                .child(if self.fractal.enabled { format!("{:.1}% • {}", self.camera.zoom() * 100., self.fractal.status()) } else { format!("{:.1}% • {count}/{} visible • {full_count} elements • {proxy_count} proxies ({point_count} points) • {} selected", zoom * 100., self.scene.len(), self.selected.len()) }))
-            .child(div().id("viewport").relative().flex_1().min_h_0().w_full().overflow_hidden()
-                .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
-                    this.cancel_interaction();
-                    let delta = event.delta.pixel_delta(px(24.));
-                    this.zoom_view(event.position, (f64::from(f32::from(delta.y)) * 0.005).clamp(-1., 1.).exp());
-                    cx.stop_propagation(); cx.notify();
-                }))
-                .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
-                    this.cancel_interaction();
-                    this.zoom_view(event.position, (1. + f64::from(event.delta)).max(0.01));
-                    cx.stop_propagation(); cx.notify();
-                }))
-                .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, window, cx| {
+            .size_full()
+            .child(screen)
+            .into_any_element()
+    }
+}
+
+impl Lab {
+    /// The canvas viewport: the hero of both pages. Pointer input here pans, zooms and edits the scene.
+    #[allow(clippy::too_many_arguments)]
+    fn viewport_element(
+        &self,
+        entity: Entity<Self>,
+        cards: Vec<Stateful<Div>>,
+        proxies: Vec<(Bounds<Pixels>, bool)>,
+        fractal: Option<AnyElement>,
+        minimap: Option<AnyElement>,
+        marquee: Option<WorldBounds>,
+        guides: Vec<xgpui_canvas::AlignmentGuide>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let camera = self.camera;
+        div()
+            .id("viewport")
+            .relative()
+            .w_full()
+            .h(px(screen::CANVAS_HEIGHT))
+            .flex_shrink_0()
+            .overflow_hidden()
+            .bg(rgb(palette::STAGE))
+            .border_1()
+            .border_color(self.look.chrome().border)
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
+                this.cancel_interaction();
+                let delta = event.delta.pixel_delta(px(24.));
+                this.zoom_view(event.position, (f64::from(f32::from(delta.y)) * 0.005).clamp(-1., 1.).exp());
+                cx.stop_propagation();
+                cx.notify();
+            }))
+            .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
+                this.cancel_interaction();
+                this.zoom_view(event.position, (1. + f64::from(event.delta)).max(0.01));
+                cx.stop_propagation();
+                cx.notify();
+            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, window, cx| {
                     this.focus.focus(window, cx);
                     let hit_card = this.scene.hit_test(this.world_at(event.position)).is_some();
-                    if interaction::primary_drag_pans(this.fractal.enabled, this.space_down, event.modifiers.shift, hit_card) {
+                    if interaction::primary_drag_pans(
+                        this.fractal.enabled,
+                        this.space_down,
+                        event.modifiers.shift,
+                        hit_card,
+                    ) {
                         this.cancel_interaction();
                         if !this.fractal.enabled && !this.space_down && !hit_card {
                             this.selected.clear();
                         }
-                        this.drag.begin(WorldPoint::new(f32::from(event.position.x) as f64, f32::from(event.position.y) as f64));
+                        this.drag.begin(WorldPoint::new(
+                            f32::from(event.position.x) as f64,
+                            f32::from(event.position.y) as f64,
+                        ));
                     } else {
                         this.start_selection(event);
                     }
                     cx.notify();
-                }))
-                .on_mouse_down(MouseButton::Middle, cx.listener(|this, event: &MouseDownEvent, _, _| { this.cancel_interaction(); this.drag.begin(WorldPoint::new(f32::from(event.position.x) as f64, f32::from(event.position.y) as f64)); }))
-                .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
-                    if this.gesture.is_some() && event.pressed_button == Some(MouseButton::Left) {
-                        this.update_selection(event.position, event.modifiers.alt); cx.notify(); return;
-                    }
-                    if event.pressed_button != Some(MouseButton::Middle) && event.pressed_button != Some(MouseButton::Left) { this.drag.end(); }
-                    else if let Some(delta) = this.drag.update(WorldPoint::new(f32::from(event.position.x) as f64, f32::from(event.position.y) as f64)) {
-                        this.camera.pan_by(delta);
-                        cx.notify();
-                    }
-                }))
-                .on_mouse_up(MouseButton::Left, cx.listener(|this, event: &MouseUpEvent, _, cx| { this.finish_selection(event); cx.notify(); }))
-                .on_mouse_up_out(MouseButton::Left, cx.listener(|this, event: &MouseUpEvent, _, cx| { this.finish_selection(event); cx.notify(); }))
-                .on_mouse_up(MouseButton::Middle, cx.listener(|this, _, _, _| this.drag.end()))
-                .on_mouse_up_out(MouseButton::Middle, cx.listener(|this, _, _, _| this.drag.end()))
-                .child(SpatialCanvas::new(self.camera, &self.grid, self.grid_style).size_full()
-                .child(canvas(move |bounds, _, cx| {
-                    entity.update(cx, |this, cx| {
-                        if this.bounds != bounds { this.bounds = bounds; cx.notify(); }
-                    });
-                }, |_, _, _, _| {}).absolute().size_full())
-                .child(canvas(|_, _, _| (), move |bounds, _, window, _| {
-                    for (mut proxy, selected) in proxies {
-                        proxy.origin += bounds.origin;
-                        window.paint_quad(fill(proxy, rgb(if selected { 0x59b0ff } else { 0x6484a8 })));
-                    }
-                }).absolute().size_full())
-                .children(cards)
-                .children(fractal)
-                .child(canvas(|_, _, _| (), move |bounds, _, window, _| interaction::paint_overlay(window, bounds, camera, marquee, &guides)).absolute().size_full())))
-            .children(minimap).into_any_element()
+                }),
+            )
+            .on_mouse_down(
+                MouseButton::Middle,
+                cx.listener(|this, event: &MouseDownEvent, _, _| {
+                    this.cancel_interaction();
+                    this.drag
+                        .begin(WorldPoint::new(f32::from(event.position.x) as f64, f32::from(event.position.y) as f64));
+                }),
+            )
+            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                if this.gesture.is_some() && event.pressed_button == Some(MouseButton::Left) {
+                    this.update_selection(event.position, event.modifiers.alt);
+                    cx.notify();
+                    return;
+                }
+                if event.pressed_button != Some(MouseButton::Middle) && event.pressed_button != Some(MouseButton::Left)
+                {
+                    this.drag.end();
+                } else if let Some(delta) = this
+                    .drag
+                    .update(WorldPoint::new(f32::from(event.position.x) as f64, f32::from(event.position.y) as f64))
+                {
+                    this.camera.pan_by(delta);
+                    cx.notify();
+                }
+            }))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseUpEvent, _, cx| {
+                    this.finish_selection(event);
+                    cx.notify();
+                }),
+            )
+            .on_mouse_up_out(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseUpEvent, _, cx| {
+                    this.finish_selection(event);
+                    cx.notify();
+                }),
+            )
+            .on_mouse_up(MouseButton::Middle, cx.listener(|this, _, _, _| this.drag.end()))
+            .on_mouse_up_out(MouseButton::Middle, cx.listener(|this, _, _, _| this.drag.end()))
+            .child(
+                SpatialCanvas::new(self.camera, &self.grid, self.grid_style)
+                    .size_full()
+                    .child(
+                        canvas(
+                            move |bounds, _, cx| {
+                                entity.update(cx, |this, cx| {
+                                    if this.bounds != bounds {
+                                        this.bounds = bounds;
+                                        cx.notify();
+                                    }
+                                });
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .size_full(),
+                    )
+                    .child(
+                        canvas(
+                            |_, _, _| (),
+                            move |bounds, _, window, _| {
+                                for (mut proxy, selected) in proxies {
+                                    proxy.origin += bounds.origin;
+                                    window.paint_quad(fill(
+                                        proxy,
+                                        rgb(if selected {
+                                            palette::PROXY_SELECTED
+                                        } else {
+                                            palette::PROXY
+                                        }),
+                                    ));
+                                }
+                            },
+                        )
+                        .absolute()
+                        .size_full(),
+                    )
+                    .children(cards)
+                    .children(fractal)
+                    .child(
+                        canvas(
+                            |_, _, _| (),
+                            move |bounds, _, window, _| {
+                                interaction::paint_overlay(window, bounds, camera, marquee, &guides)
+                            },
+                        )
+                        .absolute()
+                        .size_full(),
+                    ),
+            )
+            .children(minimap)
+            .into_any_element()
     }
 }
 
@@ -389,88 +530,17 @@ fn make_scene(count: usize) -> Scene<usize> {
 }
 
 impl Lab {
-    pub fn new(look: Arc<xgpui_luma_look_radix::Look>, cx: &mut Context<Self>) -> Self {
-        use xgpui_luma::prelude::HasPresenter;
-        let controls = [
-            "Reset",
-            "10k / 100k cards",
-            "Lines / dots",
-            "Overview zoom",
-            "Show / hide map",
-            "Whole scene / view",
-            "Auto / CPU fractal",
-            "Run canvas sweep",
-            "Cancel sweep",
-            "Reveal results",
-        ]
-        .into_iter()
-        .enumerate()
-        .map(|(index, label)| {
-            xgpui_luma_look_radix::Button::new(format!("canvas-action-{index}"))
-                .look(&look)
-                .label(label)
-                .on_click(cx, move |this: &mut Self, cx| {
-                    this.cancel_interaction();
-                    match index {
-                        0 => this.reset_view(),
-                        1 => {
-                            this.scene = make_scene(if this.scene.len() == 10_000 { 100_000 } else { 10_000 });
-                            this.selected.clear();
-                            this.invalidate_preview();
-                        }
-                        2 => {
-                            this.grid_style = match this.grid_style {
-                                GridStyle::Lines => GridStyle::Dots,
-                                GridStyle::Dots => GridStyle::Lines,
-                            }
-                        }
-                        3 => {
-                            this.camera = Camera2D::default();
-                            let v = this.viewport();
-                            this.camera.zoom_at(WorldPoint::new(v.x / 2., v.y / 2.), v, 0.01);
-                        }
-                        4 => this.show_minimap = !this.show_minimap,
-                        5 => this.whole_scene_map = !this.whole_scene_map,
-                        6 => this.fractal.toggle_backend(),
-                        7 => {
-                            if this.fractal.enabled {
-                                this.status = "Select Spatial Canvas to run its camera sweep.".into();
-                            } else if this.profile.is_none() {
-                                match tempfile::Builder::new().prefix("xgpui-canvas-sweep-").tempdir() {
-                                    Ok(folder) => {
-                                        this.profile = Some(profile::Profile::new(folder.path().join("report.json")));
-                                        this.results = Some(folder.keep());
-                                        this.status =
-                                            "Running 450 frames; keep this pane visible and foreground.".into();
-                                    }
-                                    Err(error) => this.status = error.to_string(),
-                                }
-                            }
-                        }
-                        8 => {
-                            this.profile = None;
-                            this.status = "Sweep cancelled; partial captures retained.".into();
-                        }
-                        9 => {
-                            if let Some(folder) = &this.results {
-                                cx.reveal_path(folder);
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                    cx.notify();
-                })
-                .spawn(cx)
-        })
-        .collect();
+    pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
+        let controls = screen::Controls::new(&look, cx);
         let scene = make_scene(10_000);
         let overview = Arc::new(xgpui_canvas::Overview::new(&scene));
         let minimap_image = overview_map::thumbnail(&scene, &overview);
         Self {
+            look,
             controls,
             active: true,
             results: None,
-            status: "Drag background to pan; Shift-drag selects; drag cards to move and snap.".into(),
+            status: None,
             fractal: mandelbrot::Mandelbrot::new(false, None, false, None),
             preview: minimap::Preview::default(),
             overview,
@@ -499,12 +569,7 @@ impl Lab {
     pub fn activate(&mut self, fractal: bool, cx: &mut Context<Self>) {
         self.active = true;
         if self.profile.is_none() {
-            self.status = if fractal {
-                "Drag to pan; scroll or pinch to zoom. The backend refines settled views."
-            } else {
-                "Drag background to pan; Shift-drag selects; drag cards to move and snap."
-            }
-            .into();
+            self.status = None;
         }
         if self.fractal.enabled != fractal {
             self.fractal.toggle();
@@ -522,7 +587,7 @@ impl Lab {
         self.cancel_interaction();
         self.space_down = false;
         if self.profile.take().is_some() {
-            self.status = "Sweep cancelled when leaving the pane; partial captures retained.".into();
+            self.status = Some("Sweep cancelled when leaving the pane; partial captures retained.".into());
         }
         self.fractal.suspend();
     }
@@ -538,8 +603,9 @@ mod luma_tests {
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Lab::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
-        let controls = cx.update(|_, cx| page.read(cx).controls.clone());
-        controls[1].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        let (scene, reset) =
+            cx.update(|_, cx| (page.read(cx).controls.scene.clone(), page.read(cx).controls.reset.clone()));
+        cx.update(|_, cx| scene.select(1, cx));
         page.update(cx, |page, _| assert_eq!(page.scene.len(), 100_000));
         page.update(cx, |page, cx| {
             page.activate(true, cx);
@@ -548,7 +614,41 @@ mod luma_tests {
             assert!(!page.active);
             assert!(page.gesture.is_none());
         });
-        controls[0].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         page.update(cx, |page, _| assert_eq!(page.camera.zoom(), 1.));
+    }
+
+    #[::core::prelude::v1::test]
+    fn both_pages_render_as_lab_screens() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| Lab::new(crate::theme::default_look(), cx));
+        cx.run_until_parked();
+        for slot in [
+            "spatial-canvas-crumb",
+            "spatial-canvas-title",
+            "spatial-canvas-hero",
+            "spatial-canvas-caption",
+            "spatial-canvas-controls",
+            "spatial-canvas-cards",
+            "spatial-canvas-note",
+            "spatial-canvas-credits",
+        ] {
+            assert!(cx.debug_bounds(slot).is_some(), "{slot}");
+        }
+        let hero = cx.debug_bounds("spatial-canvas-hero").unwrap();
+        assert_eq!(hero.size.height, px(screen::CANVAS_HEIGHT));
+        page.update(cx, |page, cx| page.activate(true, cx));
+        cx.run_until_parked();
+        for slot in [
+            "mandelbrot-title",
+            "mandelbrot-hero",
+            "mandelbrot-caption",
+            "mandelbrot-controls",
+            "mandelbrot-cards",
+        ] {
+            assert!(cx.debug_bounds(slot).is_some(), "{slot}");
+        }
+        assert!(cx.debug_bounds("spatial-canvas-hero").is_none());
     }
 }

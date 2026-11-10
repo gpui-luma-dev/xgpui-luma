@@ -14,13 +14,13 @@ mod check;
 #[cfg(target_os = "macos")]
 mod metal;
 
-const SETTLE: Duration = Duration::from_millis(140);
-const SHARPEN_BLEND: Duration = Duration::from_millis(180);
+pub(super) const SETTLE: Duration = Duration::from_millis(140);
+pub(super) const SHARPEN_BLEND: Duration = Duration::from_millis(180);
 const OVERSCAN: f64 = 1.25;
 const MAX_REPROJECTION: f64 = 32.;
 // The GPU route is deliberately restricted to shallow views. Absolute f32
 // coordinates are not a substitute for f64/perturbation at deep zoom.
-const GPU_MAX_ZOOM: f64 = 64.;
+pub(super) const GPU_MAX_ZOOM: f64 = 64.;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct View {
@@ -323,24 +323,25 @@ impl Mandelbrot {
     pub fn ready_for_capture(&self) -> bool {
         self.refined && self.sharpening.is_none()
     }
-    pub fn status(&self) -> String {
-        if let Some(error) = &self.error {
-            return format!("Frame error: {error}");
-        }
-        let Some(view) = self.current else {
-            return "Preparing viewport".into();
-        };
-        let route = if self.gpu(view) { "Metal GPU" } else { "f64 CPU" };
-        let dimensions = self
-            .front
-            .as_ref()
-            .map(|f| format!("{}×{}", f.request.dimensions[0], f.request.dimensions[1]))
-            .unwrap_or_else(|| "starting".into());
-        format!(
-            "{route} • {dimensions} • {} iterations • {}",
-            iterations(view.zoom),
-            if self.refined { "refined" } else { "interactive" }
-        )
+    /// The last frame error, if the current view could not be rendered.
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
+    /// The route the current view renders on; `None` until the viewport is measured.
+    pub fn route(&self) -> Option<&'static str> {
+        self.current.map(|view| if self.gpu(view) { "Metal GPU" } else { "f64 CPU" })
+    }
+    /// Pixel size of the displayed frame.
+    pub fn frame_size(&self) -> Option<[u32; 2]> {
+        self.front.as_ref().map(|frame| frame.request.dimensions)
+    }
+    /// Iteration limit of the current view.
+    pub fn limit(&self) -> Option<u32> {
+        self.current.map(|view| iterations(view.zoom))
+    }
+    /// True when the CPU route is forced, by the Renderer choice or because the window is not wide SDR.
+    pub fn cpu_forced(&self) -> bool {
+        self.force_cpu
     }
     fn gpu(&self, view: View) -> bool {
         let center = (view.center.x / 300. - 0.5).abs().max((view.center.y / 300.).abs()).max(1.);
@@ -564,7 +565,7 @@ impl Lab {
         canvas(
             |_, _, _| (),
             move |bounds, _, window, _| {
-                window.paint_quad(fill(bounds, rgb(0x050810)));
+                window.paint_quad(fill(bounds, rgb(palette::FRACTAL_BACKDROP)));
                 let wide = window.color_status().effective() == WindowColorMode::WideGamutSdr;
                 window.with_content_mask(Some(ContentMask { bounds }), |window| {
                     if let Some(frame) = pending {

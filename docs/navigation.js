@@ -15,6 +15,16 @@
             {
                 "href": "control-specialization.html",
                 "label": "Create a control specialization"
+            },
+            {
+                "href": "xgpui-lab.html",
+                "label": "XGPUI Lab App",
+                "children": [
+                    {
+                        "href": "xgpui-lab-screen-design.html",
+                        "label": "Lab Screen Design"
+                    }
+                ]
             }
         ]
     },
@@ -311,13 +321,17 @@
 ];
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';
 
-    function createLink(item) {
+    function createLink(item, className) {
         const link = document.createElement('a');
         link.setAttribute('href', item.href);
         link.textContent = item.label;
+        if (className) link.className = className;
         if (item.href === currentPage) link.setAttribute('aria-current', 'page');
         return link;
     }
+
+    // An item may list child pages, shown indented under it.
+    const createLinks = item => [createLink(item), ...(item.children || []).map(child => createLink(child, 'nav-sub'))];
 
     const sidebar = document.querySelector('[data-site-sidebar]');
     if (sidebar) {
@@ -327,7 +341,7 @@
             const label = document.createElement('div');
             label.className = 'nav-label';
             label.textContent = section.title;
-            nav.append(label, ...section.items.map(createLink));
+            nav.append(label, ...section.items.flatMap(createLinks));
             return nav;
         }));
     }
@@ -345,7 +359,7 @@
             group.className = 'mobile-nav-group';
             const label = document.createElement('strong');
             label.textContent = section.title;
-            group.append(label, ...section.items.map(createLink));
+            group.append(label, ...section.items.flatMap(createLinks));
             return group;
         }));
         details.append(summary, nav);

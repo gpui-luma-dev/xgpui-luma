@@ -1,18 +1,17 @@
 //! Interactive source-space comparisons using Luma controls and xgpui-color.
 use std::sync::Arc;
-use crate::lab_ui;
+use crate::screen::{
+    Hero, LabCard, LabMetrics, LabScreen, Param, ParametersPanel, PreviewPanel, TextRole, labeled_control, text,
+    value_field_look,
+};
 use super::source_field::{self, Coordinates, FieldSettings, NAMES, rgba, hex};
 use super::hv_field_shader::{NativeColors, Parameters};
 
-use gpui::{
-    App, Context, Div, Entity, FontWeight, IntoElement, Render, Rgba, SharedString, Subscription, Window, div,
-    prelude::*, px, canvas,
-};
+use gpui::{App, Context, Div, Entity, IntoElement, Render, Rgba, Subscription, Window, div, prelude::*, px, canvas};
 use xgpui_luma::{
     controls::{slider::Slider, switch::Switch, textfield::TextField},
-    infra::ElementExt,
+    infra::{ElementExt, icon::lucide_icon},
     prelude::HasPresenter,
-    hstack, vstack,
 };
 use xgpui_luma_color::{
     color_field::{ColorFieldBackgroundPainter, ColorFieldEvent, ColorFieldState},
@@ -24,7 +23,7 @@ use xgpui_luma_color::{
 };
 use xgpui_luma_look_radix::{self as radix, Look};
 
-use crate::theme::{ColorVizLookExt, TextSize, TypographyExt};
+use crate::theme::ColorVizLookExt;
 
 const CHANNELS: [&str; 3] = ["Red", "Green", "Blue"];
 const INITIAL: [f64; 3] = [0.86, 0.32, 0.58];
@@ -98,6 +97,7 @@ impl RgbChannelControls {
             .look(look)
             .surface()
             .size(radix::TextFieldSize::Two)
+            .look_override(value_field_look(look))
             .placeholder(format!("{} 0–1", CHANNELS[index]))
             .value(format!("{:.3}", INITIAL[index]))
             .full_width(true)
@@ -406,67 +406,46 @@ impl InteractiveSpaces {
         }
     }
 
-    fn panel(&self) -> Div {
-        lab_ui::panel(&self.look)
-    }
-
-    fn caption(&self, text: impl Into<SharedString>) -> Div {
-        lab_ui::caption(&self.look, text)
-    }
-
-    fn card(
+    fn space_card(
         &self,
-        title: &'static str,
-        labels: [&str; 3],
+        name: &'static str,
+        labels: [&'static str; 3],
         values: [String; 3],
-        notation: String,
+        notation: &'static str,
         disabled: bool,
-    ) -> Div {
-        let title_style = self.look.typography_scale(TextSize::Base);
-        let detail_style = xgpui_luma::theme::LumaTextStyle { size: 12., ..self.look.typography_scale(TextSize::Sm) };
-        lab_ui::comparison_card(&self.look)
-            .flex_1()
-            .min_w(px(200.))
-            .flex_basis(px(200.))
-            .child(
-                hstack! {
-                    div().size(px(28.)).flex_shrink_0().rounded_sm().child(self.render_swatch(4.)),
-                    vstack! {
-                        hstack! {
-                            div().typography_style(title_style).font_weight(FontWeight::SEMIBOLD).child(title),
-                        }
-                        .items_center()
-                        .gap_2()
-                        .when(disabled, |row| row.child(xgpui_luma::infra::icon::lucide_icon(
-                            lucide_svg_static::Icon::TriangleAlert,
-                            self.look.chrome().body_text,
-                            14.,
-                        ))),
-                        self.caption(notation).typography_style(detail_style),
-                    },
-                }
-                .items_center()
-                .gap_3(),
-            )
-            .child(hstack! {}.gap_2().children(labels.into_iter().zip(values).map(|(label, value)| {
-                hstack! {
-                    self.caption(label.to_owned()).typography_style(detail_style),
-                    div().typography_style(detail_style).child(value),
-                }
-                .gap_1()
-            })))
-            .when(disabled, |card| card.opacity(0.45))
-            .debug_selector(move || format!("color-space-{title}-{}", if disabled { "disabled" } else { "enabled" }))
+    ) -> LabCard {
+        LabCard::new(name)
+            .swatch(self.render_swatch(4.))
+            .subtitle(notation)
+            .when(disabled, |card| {
+                card.badge(lucide_icon(lucide_svg_static::Icon::TriangleAlert, self.look.chrome().body_text, 14.))
+            })
+            .values(labels.into_iter().zip(values))
+            .disabled(disabled)
+            .debug_selector(move || format!("color-space-{name}-{}", if disabled { "disabled" } else { "enabled" }))
     }
-}
 
-impl InteractiveSpaces {
-    fn render_header(&self) -> Div {
-        lab_ui::header(
-            &self.look,
-            "Color Spaces",
-            "Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.",
-        )
+    fn space_cards(&self, coordinates: &Coordinates) -> [LabCard; 4] {
+        let encoded = |values: [f64; 3]| values.map(|value| format!("{value:.3}"));
+        let [l, c, h] = coordinates.oklch;
+        [
+            self.space_card(
+                "sRGB",
+                ["R", "G", "B"],
+                coordinates.srgb.map(|value| format!("{:02X}", (value.clamp(0., 1.) * 255.).round() as u8)),
+                "Hex sRGB",
+                coordinates.outside_srgb,
+            ),
+            self.space_card("Display P3", ["R", "G", "B"], encoded(coordinates.p3), "Encoded P3", false),
+            self.space_card(
+                "OKLCH",
+                ["L", "C", "H"],
+                [format!("{l:.3}"), format!("{c:.3}"), format!("{h:.1}°")],
+                "D65",
+                false,
+            ),
+            self.space_card("Rec2020", ["R", "G", "B"], encoded(coordinates.rec2020), "Encoded Rec2020", false),
+        ]
     }
 
     fn render_field(&self) -> Div {
@@ -485,88 +464,54 @@ impl InteractiveSpaces {
             .child(self.field.clone())
     }
 
-    fn render_field_controls(&self) -> Div {
-        lab_ui::control_row()
-            .child(lab_ui::control(&self.look, self.source_choice.clone().into_element()))
-            .child(self.gpu_toggle.clone())
-            .child(self.contour_toggle.clone())
-            .child(self.caption("Saturation"))
-            .child(div().w(px(200.)).child(self.saturation.clone()))
+    fn parameters(&self) -> ParametersPanel {
+        ParametersPanel::new("Color parameters")
+            .subtitle(format!("Adjust encoded {} values (0–1)", NAMES[self.field_settings.source_index()]))
+            .params(
+                self.channels
+                    .iter()
+                    .zip(CHANNELS)
+                    .map(|(channel, label)| Param::new(label, channel.input.clone(), channel.slider.clone())),
+            )
     }
 
-    fn render_comparisons(&self, coordinates: &Coordinates) -> Div {
-        hstack! {
-            self.card("sRGB", ["R", "G", "B"],
-                coordinates.srgb.map(|value| format!("{:02X}", (value.clamp(0., 1.) * 255.).round() as u8)),
-                "Hex sRGB".into(), coordinates.outside_srgb),
-            self.card("Display P3", ["R", "G", "B"],
-                coordinates.p3.map(|value| format!("{value:.3}")), "Encoded P3".into(), false),
-            self.card("OKLCH", ["L", "C", "H"], [
-                format!("{:.3}", coordinates.oklch[0]),
-                format!("{:.3}", coordinates.oklch[1]),
-                format!("{:.1}°", coordinates.oklch[2]),
-            ], "D65".into(), false),
-            self.card("Rec2020", ["R", "G", "B"],
-                coordinates.rec2020.map(|value| format!("{value:.3}")), "Encoded Rec2020".into(), false),
-        }
-        .flex_wrap()
-        .gap_4()
-    }
-
-    fn render_parameters(&self) -> Div {
-        self.panel()
-            .flex_grow(2.)
-            .flex_basis(px(440.))
-            .min_w(px(240.))
-            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Color parameters"))
-            .child(self.caption(format!("Adjust encoded {} values (0–1)", NAMES[self.field_settings.source_index()])))
-            .child(hstack! {}.flex_wrap().gap_4().children(self.channels.iter().enumerate().map(|(index, channel)| {
-                vstack! { CHANNELS[index], channel.input.clone(), channel.slider.clone() }
-                    .flex_1()
-                    .min_w(px(100.))
-                    .gap_2()
-            })))
-    }
-
-    fn render_preview(&self, srgb_reference: Rgba) -> Div {
-        self.panel()
-            .flex_1()
-            .flex_basis(px(265.))
-            .min_w(px(225.))
-            .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Color preview"))
-            .child(self.caption("The selected color"))
-            .child(div().w_full().h(px(80.)).rounded_md().child(self.render_swatch(6.)))
-            .child(self.caption(format!(
-                "sRGB reference {}",
-                hex([srgb_reference.r as f64, srgb_reference.g as f64, srgb_reference.b as f64])
-            )))
+    fn preview(&self, srgb_reference: Rgba) -> PreviewPanel {
+        PreviewPanel::new("Color preview")
+            .subtitle("The selected color")
+            .swatch(self.render_swatch(6.))
+            .reference(
+                "sRGB reference",
+                hex([srgb_reference.r as f64, srgb_reference.g as f64, srgb_reference.b as f64]),
+            )
     }
 }
 
 impl Render for InteractiveSpaces {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        self.sync_presentation(_window, _cx);
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_presentation(window, cx);
         let coordinates = Coordinates::new(self.rgb, self.field_settings.source_space());
         let preview = coordinates.as_ref().map(|color| color.srgb_reference).unwrap_or_else(|_| rgba(self.rgb));
-        let comparison = match coordinates {
-            Ok(coordinates) => self.render_comparisons(&coordinates),
-            Err(error) => div().child(format!("Color conversion unavailable: {error}")),
+        let (cards, conversion_error) = match &coordinates {
+            Ok(coordinates) => (Some(self.space_cards(coordinates)), None),
+            Err(error) => (None, Some(format!("Color conversion unavailable: {error}"))),
         };
-        let content = vstack! {}.gap_4()
-            .child(self.render_field())
-            .child(self.caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.)))
-            .child(self.render_field_controls())
-            .when_some(self.gpu_error.as_ref().or(self.presentation_error.as_ref()), |view, error| view.child(self.caption(format!("Native color rendering unavailable: {error}"))))
-            .child(comparison)
-            .child(hstack! { self.render_parameters(), self.render_preview(preview) }.flex_wrap().gap_4())
-            .child(self.caption("Changing source space preserves the selected color and converts its RGB coordinates. The field and color sliders explore the selected space; display capabilities determine the visible gamut."));
-
-        lab_ui::page("interactive-color-spaces", &self.look).child(
-            lab_ui::container()
-                .child(self.caption("xgpui-color  /  Color Spaces"))
-                .child(self.render_header())
-                .child(content),
-        )
+        let metrics = LabMetrics::STANDARD;
+        LabScreen::new("interactive-color-spaces", self.look.clone())
+            .crumb("xgpui-color", "Color Spaces")
+            .title("Color Spaces")
+            .lede("Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.")
+            .hero(Hero::full(self.render_field()))
+            .caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
+            .control(labeled_control(&self.look, self.source_choice.clone().into_element()))
+            .control(self.gpu_toggle.clone())
+            .control(self.contour_toggle.clone())
+            .control(text(&self.look, TextRole::Caption, "Saturation"))
+            .control(div().w(metrics.inline_slider_width).child(self.saturation.clone()))
+            .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| format!("Native color rendering unavailable: {error}")))
+            .notice(conversion_error)
+            .cards(cards.into_iter().flatten())
+            .panels(self.parameters(), self.preview(preview))
+            .note("Changing source space preserves the selected color and converts its RGB coordinates. The field and color sliders explore the selected space; display capabilities determine the visible gamut.")
     }
 }
 

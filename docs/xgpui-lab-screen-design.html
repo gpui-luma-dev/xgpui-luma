@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The design specification for XGPUI Lab screens: page anatomy, color, type, density, controls and components, all taken from the look-radix Look.">
+<title>Lab Screen Design · Luma SDK</title>
+<script src="theme-init.js"></script>
+<link rel="stylesheet" href="site.css">
+<!-- Prism 1.30.0: local core and Rust grammar; MIT license in vendor/prism/LICENSE. -->
+<script src="vendor/prism/prism-core.min.js" data-manual defer></script>
+<script src="vendor/prism/prism-rust.min.js" defer></script>
+<script src="navigation.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header data-site-header></header>
+<div data-site-mobile-nav></div>
+<div class="layout">
+<aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
+<main id="main">
+<div class="breadcrumb"><span>Overview</span><span aria-hidden="true">/</span><span>XGPUI Lab App</span><span aria-hidden="true">/</span><span>Lab Screen Design</span></div>
+<h1>Lab Screen Design</h1>
+<p class="intro">How an XGPUI Lab screen is laid out and styled. Lab screens are technical presentations for desktop monitors: compact, value-dense and built entirely from the Look.</p>
+<p><img style="display:block;width:100%;height:auto" src="screenshots/xgpui-lab/lab-color-spaces-light.png" width="1440" height="900" alt="The Color Spaces screen in light mode: breadcrumb, title, lede, color field hero, control row, four variant cards, and Parameters and Preview panels."></p>
+<div class="callout"><p><strong>This page is a copy and can drift.</strong> The working specification is <code>apps/xgpui-lab/docs/XGPUI-LAB-DESIGN.md</code>, and the values come from <code>src/screen/metrics.rs</code> and the Look's tokens. When they disagree with this page, the code and that file win. Update this page when you change either.</p></div>
+<div class="callout"><p><strong>Everything comes from the Look.</strong> Every chrome color, type style and control comes from the look-radix <code>Look</code> that <code>theme::default_look()</code> builds. This specification picks roles, scale steps and builders; it never defines a color of its own. The only literal colors on a lab screen are data: the colors the screen exists to show.</p></div>
+
+<section id="screen"><h2><span class="number">01</span>One screen, one <code>LabScreen</code></h2>
+<p>Every lab screen is a <code>LabScreen</code> from <code>src/screen/</code>. It has fixed slots and renders them in a fixed order, whatever order you fill them in. Leave a slot out only when the screen has nothing to put in it.</p>
+<div class="codebox"><div class="codebar"><span>Rust · Color Spaces (abridged)</span><button class="copy" aria-label="Copy a lab screen">Copy</button></div><pre><code class="language-rust">LabScreen::new("interactive-color-spaces", self.look.clone())
+    .crumb("xgpui-color", "Color Spaces")
+    .title("Color Spaces")
+    .lede("Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.")
+    .hero(Hero::full(self.render_field()))
+    .caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
+    .control(labeled_control(&amp;self.look, self.source_choice.clone().into_element()))
+    .control(self.gpu_toggle.clone())
+    .notice(self.gpu_error.as_ref().map(|error| format!("Native color rendering unavailable: {error}")))
+    .cards(cards.into_iter().flatten())
+    .panels(self.parameters(), self.preview(preview))
+    .note("Changing source space preserves the selected color and converts its RGB coordinates.")</code></pre></div>
+</section>
+
+<section id="anatomy"><h2><span class="number">02</span>Page anatomy</h2>
+<div class="codebox"><div class="codebar"><span>Slot order</span></div><pre><code> 1  Breadcrumb     crate / Screen name
+ 2  Title          Screen name
+ 3  Lede           one sentence: what you compare or explore
+ 4  Hero           the thing being studied, the largest element
+ 5  Caption        live state of the hero in one line
+ 6  Control row    selectors · switches · actions (right)
+ 7  Notices        optional warnings
+ 8  Cards          up to four equal cards: variants or status
+ 9  Panels         [ Parameters · wide ][ Preview · narrow ]
+10  Sections       extra full-width elements or panels
+11  Note           how the controls relate, one or two sentences
+12  Credits        licenses, limits, what is not measured</code></pre></div>
+<div class="event-table"><table>
+<thead><tr><th>Slot</th><th>Rule</th></tr></thead>
+<tbody>
+<tr><td>Breadcrumb · <code>.crumb(owner, screen)</code></td><td>The crate that owns the feature, then the screen name, so a reader knows which extension the demo tests.</td></tr>
+<tr><td>Title · <code>.title()</code></td><td>The screen name only.</td></tr>
+<tr><td>Lede · <code>.lede()</code></td><td>One sentence, “Compare X…” or “Explore X…”.</td></tr>
+<tr><td>Hero · <code>.hero(Hero)</code></td><td>The canvas, field, diagram or image comparison. <code>Hero::full</code>, <code>with_legend</code> (a square diagram with a legend column), <code>compare</code> (two panes side by side), <code>fixed</code> (a photo up to a maximum width) or <code>stage</code>.</td></tr>
+<tr><td>Caption · <code>.caption()</code></td><td>One line of live values separated by <code>·</code>. It replaces loose status lines such as <code>Sweep false</code>.</td></tr>
+<tr><td>Control row · <code>.control()</code>, <code>.action()</code></td><td>Selectors first, then switches. Actions such as <em>Open image…</em> and <em>Reset view</em> sit at the right.</td></tr>
+<tr><td>Cards · <code>.cards()</code>, <code>.card()</code></td><td>Equal-width <code>LabCard</code>s, each a variant being compared or a status. Use the count you have, up to four.</td></tr>
+<tr><td>Panels · <code>.panels(wide, narrow)</code></td><td>A wide Parameters panel with editable values and a narrow Preview, Chain or Details panel showing their result.</td></tr>
+<tr><td>Note, credits · <code>.note()</code>, <code>.credits()</code></td><td>Plain text on how the controls relate; data sources, licenses and what the screen does not measure.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="color"><h2><span class="number">03</span>Color</h2>
+<p>The Lab's Look is Radix with one cool neutral (<code>#5A6169</code>) seeding both the accent and gray palettes, so lab chrome has no brand accent; the subject supplies the color. Dark mode is the default. <strong>Every screen must work in light and dark.</strong></p>
+<div class="event-table"><table>
+<thead><tr><th>Use</th><th>API</th><th>Radix step</th></tr></thead>
+<tbody>
+<tr><td>Page background</td><td><code>chrome().content_background</code></td><td>gray 1</td></tr>
+<tr><td>Cards, panels</td><td><code>chrome().panel_background</code></td><td>gray 2</td></tr>
+<tr><td>Card, panel and divider borders</td><td><code>chrome().border</code></td><td>gray 6</td></tr>
+<tr><td>Titles, body text, values</td><td><code>chrome().body_text</code></td><td>gray 12</td></tr>
+<tr><td>Lede, captions, subtitles, keys</td><td><code>chrome().muted_text</code></td><td>gray 11</td></tr>
+<tr><td>Selected, hovered, pressed card</td><td><code>interaction_colors().background(selected, state)</code></td><td>gray 3 / 4 / 5</td></tr>
+<tr><td>Focus ring</td><td><code>resolve_role(SemanticRole::Focus)</code></td><td>color 8</td></tr>
+</tbody></table></div>
+<p>For anything else, take a gray step with <code>look.resolve_step(ScaleFamily::Gray, n)</code> and use it as Radix defines: 1–2 backgrounds, 3–5 component fills, 6–8 borders, 9–10 solid fills, 11 low-contrast text, 12 high-contrast text.</p>
+<ul class="notes">
+<li><strong>No literal chrome colors.</strong> If a screen needs a color that is not a role or a step, add the role to look-radix or to <code>ColorVizLookExt</code> in <code>theme.rs</code>.</li>
+<li><strong>Data colors are the exception.</strong> Swatches, slider tracks and field fills are computed from the color math. Gamut outlines use one fixed color per gamut (<code>GAMUT_SRGB</code>, <code>GAMUT_P3</code>…), the same on every screen. Markers are a 2 px cross over a 4 px halo. The strip under a gradient bar marks samples outside the target gamut in <code>OUT_OF_GAMUT</code> amber. Keep data colors in one module per screen family, named for what they mean.</li>
+<li><strong>Badges are a free slot.</strong> A card or comparison pane places whatever badge the screen passes, usually a look-radix <code>Badge</code>. Keep the text short, and make it carry the meaning without its color.</li>
+</ul>
+</section>
+
+<section id="type"><h2><span class="number">04</span>Type</h2>
+<p>Type comes from the Look's typography tokens (<code>look.common_stylesheet().tokens.typography</code>) through a <code>TextRole</code>. A screen picks a role; it never sets a size, weight or family. Change a token in the Look and every screen follows.</p>
+<div class="event-table"><table>
+<thead><tr><th>Role</th><th>Use</th><th>Token (Luma default)</th></tr></thead>
+<tbody>
+<tr><td><code>Title</code></td><td>Screen title</td><td><code>role.h2</code> · 28 / 36 semibold</td></tr>
+<tr><td><code>Section</code></td><td>Panel title</td><td><code>role.h3</code> · 20 / 28 semibold</td></tr>
+<tr><td><code>Name</code></td><td>Card name, compare-pane title</td><td><code>role.h4</code> · 16 / 22 medium</td></tr>
+<tr><td><code>Crumb</code>, <code>Lede</code>, <code>Caption</code></td><td>Breadcrumb, lede, live state, notes, panel subtitles (muted)</td><td><code>role.p</code> · 14 / 20</td></tr>
+<tr><td><code>Field</code></td><td>Parameter label above its field</td><td><code>role.p</code> · 14 / 20</td></tr>
+<tr><td><code>Label</code>, <code>Detail</code></td><td>Keys and small labels (muted); legend names and chain steps</td><td><code>label</code> · 12.5 / 18 medium</td></tr>
+<tr><td><code>Value</code></td><td>Measured or edited values</td><td><code>code</code> · 13 / 18, in <code>font.mono</code></td></tr>
+<tr><td><code>Fine</code></td><td>Credits and provenance (muted)</td><td><code>caption</code> · 11 / 16 medium</td></tr>
+</tbody></table></div>
+<h3>UI face for words, mono for values</h3>
+<ul class="notes">
+<li>Names, labels, keys, sentences and control text use the UI face.</li>
+<li>Channel values, coordinates, hex, percentages in a legend and axis ticks use mono. Mono digits have equal width, so values don't shift while they change and they line up across rows.</li>
+<li>A value has a key: the key in <code>Label</code>, the value in <code>Value</code>, as in <code>R 0.797</code> or <code>Clip #00FF00</code>. Build key/value rows with <code>screen::readout(look, pairs)</code>.</li>
+<li>One size for values everywhere, including the text fields that edit them (<code>screen::value_field_look</code>). Only diagram axis ticks are smaller (10 px).</li>
+<li>Numbers inside a sentence, such as the live caption, stay in the UI face.</li>
+<li>One mono family: the Look's <code>font.mono</code>, through <code>screen::mono_family(look)</code>. The Lab bundles IBM Plex Mono (OFL) so it renders the same on every platform. Never write a family name in a screen: a name that is not installed, including <code>"monospace"</code>, silently falls back to the UI font.</li>
+<li>Fix decimals per quantity (channels <code>0.000</code>, factors <code>0.00</code>, chromaticity <code>0.0000</code>, angles <code>0.0°</code>), write hex in upper case, and put units on values (<code>16 px</code>, <code>1536×1024</code>).</li>
+</ul>
+</section>
+
+<section id="density"><h2><span class="number">05</span>Desktop density</h2>
+<p>The Lab runs on desktop computers with landscape monitors, so vertical space is the scarce dimension. Avoid vertical scrolling that isn't needed.</p>
+<ul class="notes">
+<li><strong>A heading and its subtitle are one unit.</strong> Stack a panel title and its subtitle, or a card name and its subtitle, with no gap; their line heights separate them.</li>
+<li><strong>Spend width before height.</strong> Cards, panels and parameters wrap into rows rather than stacking.</li>
+<li><strong>No decorative vertical space.</strong> Gaps separate different groups, nothing else.</li>
+</ul>
+<p>Sizes come from <code>LabMetrics::STANDARD</code> in <code>src/screen/metrics.rs</code>, never from new numbers in a screen.</p>
+<div class="event-table"><table>
+<thead><tr><th>Thing</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Content column</td><td>max width 1240 px, centered; padding 1.5 rem; 1.25 rem between parts</td></tr>
+<tr><td>Header (crumb, title, lede)</td><td>0.5 rem between lines</td></tr>
+<tr><td>Control row</td><td>wraps; 0.75 rem gap</td></tr>
+<tr><td>Cards</td><td>equal width, at least 200 px; 28 px swatch or 32 px icon</td></tr>
+<tr><td>Card and panel surface</td><td><code>panel_background</code>, 1 px <code>border</code>, <code>rounded_lg</code>, <code>gap_3</code></td></tr>
+<tr><td>Panels</td><td>wide: grows 2×, basis 440 px, min 240 px · narrow: grows 1×, basis 265 px, min 225 px</td></tr>
+<tr><td>Hero</td><td>at least 400 px; legend column 220 px</td></tr>
+<tr><td>Parameters</td><td>up to three columns; each at least 100 px</td></tr>
+<tr><td>Settings form</td><td>labels 104 px; groups at least 200 px</td></tr>
+<tr><td>Control radius, height, focus ring</td><td>the Look's metrics, through the builders</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="controls"><h2><span class="number">06</span>Controls</h2>
+<p>Use look-radix builders with <code>.look(look)</code>. Don't draw controls with raw <code>div</code> styling.</p>
+<div class="event-table"><table>
+<thead><tr><th>Need</th><th>Builder</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Pick one of several</td><td><code>lab_controls::Choice</code> (Radix <code>Selector</code>)</td><td>Label to the left, in the control row</td></tr>
+<tr><td>Boolean that changes the hero</td><td>Radix <code>Switch</code></td><td>Never a text boolean like <code>Sweep false</code></td></tr>
+<tr><td>Action</td><td>Radix <code>Button</code>, <code>icon_button</code></td><td>Right end of the control row, or a panel heading when it acts on that panel only</td></tr>
+<tr><td>Numeric value</td><td>Radix <code>TextField</code> + <code>Slider</code></td><td>Kept in sync; the field uses the value's mono size</td></tr>
+<tr><td>Color channel</td><td><code>xgpui_luma_color::color_slider</code></td><td>The track shows the channel's real color sweep</td></tr>
+<tr><td>Selectable card</td><td><code>screen::card_button</code></td><td>A ghost button with the card surface; fill from <code>interaction_colors()</code></td></tr>
+</tbody></table></div>
+</section>
+
+<section id="components"><h2><span class="number">07</span>Components</h2>
+<div class="event-table"><table>
+<thead><tr><th>Component</th><th>Rules</th></tr></thead>
+<tbody>
+<tr><td><code>LabCard</code><br>variant or status</td><td>Swatch or icon, name, optional badge; a muted subtitle; mono values. Name and subtitle stay on one line and truncate. A status icon is a plain 32 px line icon in <code>Foreground</code>, with no box, so it never reads as a button.</td></tr>
+<tr><td><code>ParametersPanel</code></td><td>Each <code>Param</code> is a label in <code>Foreground</code>, an optional muted range, a text field and a slider, in up to three columns. Mark a neutral value (1.0 for factors, 0 for rotation) so changes stand out.</td></tr>
+<tr><td><code>PreviewPanel</code></td><td>One large result swatch, or a pair, with a caption and a mono value under each. A reference line ends the panel.</td></tr>
+<tr><td><code>ChainPanel</code></td><td>An ordered pipeline as numbered rows: name left, formula or value right in mono. Active rows in <code>Foreground</code> on the selected fill; neutral rows muted. Ends with “N of M steps active”.</td></tr>
+<tr><td><code>PanelShell</code>, <code>properties</code></td><td>For diagnostics: a titled panel with an optional heading action and key/value rows (keys 140 px, top-aligned).</td></tr>
+<tr><td><code>form_groups</code></td><td>Many override selectors grouped by what they affect, as titled columns. Labels align and stay on one line. A row still on its default has a muted label; Reset sits in the panel heading and is disabled when nothing differs.</td></tr>
+<tr><td><code>ComparePane</code></td><td>Two panes side by side, each headed <code>Name · subtitle · badge</code>, drawing the same source at the same size on a gray 3 stage.</td></tr>
+<tr><td>Diagram and <code>Legend</code></td><td>Grid on gray 4–6, ticks and axis names in gray 11, outline in gray 11–12. Series use their data colors; the selected series gets a heavier stroke, not a new color. The legend explains the markers.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="writing"><h2><span class="number">08</span>Writing</h2>
+<ul class="notes">
+<li>Name things the way the reader knows them (<em>Upload</em>, <em>Sample</em>, <em>Tint</em>), not by internal type names.</li>
+<li>Status reads <code>Thing · value · value</code>, not <code>Thing: value, Flag false</code>.</li>
+<li>The fine print states limits plainly: what is a preview, what is simulated, what is not measured.</li>
+<li>No emoji and no exclamation marks in UI text.</li>
+</ul>
+</section>
+
+<section id="checklist"><h2><span class="number">09</span>Review checklist</h2>
+<ul class="notes">
+<li>The screen is a <code>LabScreen</code>, so its parts follow the anatomy order.</li>
+<li>No chrome color is a literal; data colors live in one named module and gamut colors match the other screens.</li>
+<li>The screen reads correctly in light and dark mode.</li>
+<li>Snapshots before and after the change compare as expected (<a href="xgpui-lab.html#snapshots">regression snapshots</a>).</li>
+<li>Controls are look-radix builders; no boolean is shown as text.</li>
+<li>The hero is the largest element, and the caption under it shows live values.</li>
+<li>Cards are equal width, and no name, subtitle or badge wraps.</li>
+<li>Values are mono, with fixed decimals and units.</li>
+<li>The fine print credits external data and names what is not measured.</li>
+</ul>
+<p class="small">The full working specification, with reference screens and mockups, is <code>apps/xgpui-lab/docs/XGPUI-LAB-DESIGN.md</code>. It is the source of truth; this page summarizes it and is updated by hand.</p>
+</section>
+<footer data-site-footer></footer></main>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#screen">One screen, one LabScreen</a><a href="#anatomy">Page anatomy</a><a href="#color">Color</a><a href="#type">Type</a><a href="#density">Desktop density</a><a href="#controls">Controls</a><a href="#components">Components</a><a href="#writing">Writing</a><a href="#checklist">Review checklist</a></nav>
+</div>
+</body>
+</html>

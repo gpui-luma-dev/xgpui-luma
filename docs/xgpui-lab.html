@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="XGPUI Lab: the desktop app that exercises the xgpui extension crates with Luma controls, and how to start it on a page or capture snapshots.">
+<title>XGPUI Lab App · Luma SDK</title>
+<script src="theme-init.js"></script>
+<link rel="stylesheet" href="site.css">
+<script src="navigation.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header data-site-header></header>
+<div data-site-mobile-nav></div>
+<div class="layout">
+<aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
+<main id="main">
+<div class="breadcrumb"><span>Overview</span><span aria-hidden="true">/</span><span>XGPUI Lab App</span></div>
+<h1>XGPUI Lab</h1>
+<p class="intro">A desktop app for testing the xgpui extension crates, with demos, diagnostics and benchmarks, built from Luma controls.</p>
+<p><img style="display:block;width:100%;height:auto" src="screenshots/xgpui-lab/lab-color-spaces.png" width="1440" height="900" alt="XGPUI Lab in dark mode showing the Color Spaces screen, with the Lab Explorer sidebar on the left."></p>
+
+<section id="what"><h2>What it does</h2>
+<p>XGPUI Lab is one window with a sidebar explorer. Each page tests one feature of an xgpui extension crate on the real GPU path. The page's breadcrumb names the crate it tests. The chrome is a look-radix <code>Look</code>, so the Lab also exercises the Luma SDK controls it is built from.</p>
+<div class="event-table"><table>
+<thead><tr><th>Explorer section</th><th>What it covers</th></tr></thead>
+<tbody>
+<tr><td>Gradients, Compositions, Color &amp; Gamut</td><td>Luma color controls: gradient, mesh and freeform builders, pickers, wheels, harmonies and color stops.</td></tr>
+<tr><td><code>xgpui-color</code></td><td>Color spaces, conversions, interpolation, gamut mapping, CPU gradients and a photo comparison.</td></tr>
+<tr><td><code>xgpui-gamut</code></td><td>Wide-gamut fills and gradients, chromaticity diagrams, gamut mapping and presentation (Display P3).</td></tr>
+<tr><td><code>xgpui-media</code></td><td>Images, textures and mipmaps, image filters, float and P3 surfaces, tiled canvas, photo viewer, video frames and resource limits.</td></tr>
+<tr><td><code>xgpui-parley</code></td><td>Text shaping, line layout, paragraphs, a text field, font fallback, rasterization and scrolling.</td></tr>
+<tr><td><code>xgpui-shader</code></td><td>Gradient and WGSL paints, mesh editor, Shadertoy and Shader Depot samples, instancing, typography, brushes, layer effects, shadows and borders.</td></tr>
+<tr><td><code>xgpui-svg</code>, <code>xgpui-canvas</code></td><td>SVG rendering, scaling, path effects and caching; a spatial canvas and Mandelbrot.</td></tr>
+<tr><td><code>xgpui-shell</code></td><td>Client-frame window chrome and the desktop preferences the shell reads.</td></tr>
+<tr><td>Benchmarks</td><td>Each crate's section ends with a Benchmarks page. Standalone benchmarks run in a separate worker process.</td></tr>
+</tbody></table></div>
+<p class="small">Run <code>xgpui-lab --list-pages</code> for the full, current list. Screens built with <code>LabScreen</code> follow the <a href="xgpui-lab-screen-design.html">Lab Screen Design</a> specification.</p>
+</section>
+
+<section id="run"><h2><span class="number">01</span>Run it</h2>
+<div class="codebox"><div class="codebar"><span>Shell · start the Lab</span><button class="copy" aria-label="Copy start the Lab">Copy</button></div><pre><code>cargo run -p xgpui-lab</code></pre></div>
+<p>With no options, the Lab opens on the Gradients page in dark mode, at 1440×880.</p>
+<p class="small">The options below are copied from <code>apps/xgpui-lab/docs/launching.md</code> and <code>src/launch.rs</code> by hand, so this page can fall behind. When they disagree, <code>xgpui-lab --list-pages</code>, the code and that file are correct.</p>
+</section>
+
+<section id="open"><h2><span class="number">02</span>Start on a page</h2>
+<p>When you are working on one page, start the Lab on it. The page opens exactly as if you had clicked it: its section is expanded and the page is selected in the sidebar.</p>
+<div class="codebox"><div class="codebar"><span>Shell · launch options</span><button class="copy" aria-label="Copy launch options">Copy</button></div><pre><code>cargo run -p xgpui-lab -- --open "xgpui-media/Image Filters"
+cargo run -p xgpui-lab -- --open Typography --theme light --size 1280x900
+cargo run -p xgpui-lab -- --open "Shell Lab" --hide-nav
+cargo run -p xgpui-lab -- --list-pages</code></pre></div>
+<div class="event-table"><table>
+<thead><tr><th>Option</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--open PAGE</code></td><td>Starts on <code>PAGE</code>: <code>section/page</code> as <code>--list-pages</code> prints it, or the page name alone when it is unique. Matching ignores case. A name used in two sections, such as <code>Gamut Mapping</code>, is an error that lists both full names.</td></tr>
+<tr><td><code>--theme light|dark</code></td><td>Starts in that theme.</td></tr>
+<tr><td><code>--size WIDTHxHEIGHT</code></td><td>Window size in logical pixels; at least 720x480. Default 1440x880.</td></tr>
+<tr><td><code>--hide-nav</code></td><td>Starts with the navigation panel closed. The titlebar's sidebar button reopens it at its normal width.</td></tr>
+<tr><td><code>--list-pages</code></td><td>Prints every page as <code>section/page</code> and exits.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="capture"><h2><span class="number">03</span>Capture a page</h2>
+<p><code>--capture</code> opens the normal Lab window on the page, waits for it to settle, saves the window's rendered frame as a PNG and quits. The image is exactly what you would see, titlebar and sidebar included, at the display's scale (2× on Retina).</p>
+<div class="codebox"><div class="codebar"><span>Shell · capture one page</span><button class="copy" aria-label="Copy capture one page">Copy</button></div><pre><code>cargo run -p xgpui-lab -- --open "Color Spaces" --size 1440x900 --capture /tmp/color-spaces.png</code></pre></div>
+<div class="event-table"><table>
+<thead><tr><th>Option</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--capture PNG</code></td><td>Saves the window after it settles, then quits. Requires <code>--open</code>.</td></tr>
+<tr><td><code>--settle MS</code></td><td>How long to wait before the capture, in milliseconds. Default 3000.</td></tr>
+</tbody></table></div>
+<p><img style="display:block;width:100%;height:auto" src="screenshots/xgpui-lab/lab-color-spaces-hide-nav.png" width="1440" height="900" alt="Color Spaces captured with --hide-nav: the page fills the window and only the icon rail remains."></p>
+<p class="small">Above: <code>--open "Color Spaces" --hide-nav</code>.</p>
+</section>
+
+<section id="snapshots"><h2><span class="number">04</span>Regression snapshots</h2>
+<p><code>apps/xgpui-lab/scripts/lab_snapshots.py</code> builds the Lab once, captures pages in dark and light, and compares two runs. Take one set before a change and one after.</p>
+<div class="codebox"><div class="codebar"><span>Shell · before and after</span><button class="copy" aria-label="Copy before and after">Copy</button></div><pre><code>python3 apps/xgpui-lab/scripts/lab_snapshots.py capture target/lab-snapshots/before
+# change code
+python3 apps/xgpui-lab/scripts/lab_snapshots.py capture target/lab-snapshots/after
+python3 apps/xgpui-lab/scripts/lab_snapshots.py compare target/lab-snapshots/before target/lab-snapshots/after</code></pre></div>
+<ul class="notes">
+<li><strong>capture</strong> takes the <code>LabScreen</code> pages by default. Use <code>--page</code> (repeatable), <code>--theme</code>, <code>--size</code>, <code>--settle</code> and <code>--hide-nav</code> to change what it takes.</li>
+<li><strong>compare</strong> prints <code>same</code>, <code>CHANGED</code> or <code>MISSING</code> for each snapshot and exits non-zero when anything differs, so it can gate a check. With ImageMagick installed it also counts the differing pixels and writes highlighted diffs to <code>after/diff/</code>.</li>
+<li>Captures are deterministic: two runs with no code change produce byte-identical PNGs, so a <code>CHANGED</code> result is a real change.</li>
+</ul>
+<div class="callout"><p><strong>Compare like with like.</strong> Use the same size, theme and <code>--hide-nav</code> setting for both runs. Animated pages (waves, video, sweeps) differ from run to run; leave them out. Each capture opens a real window.</p></div>
+</section>
+
+<section id="other"><h2>Other modes</h2>
+<div class="event-table"><table>
+<thead><tr><th>Option</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--text-system=parley</code></td><td>Runs the whole Lab on the Parley text system, which the Parley Text Field page needs.</td></tr>
+<tr><td><code>--media-benchmark</code>, <code>--gamut-benchmark</code>, <code>--parley-benchmark</code>, <code>--shader-benchmark</code>, <code>--svg-benchmark</code></td><td>Run a crate's benchmark suite from the command line, then exit.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="source"><h2>Where things live</h2>
+<p class="small">Paths are relative to <code>apps/xgpui-lab/</code>.</p>
+<div class="event-table"><table>
+<thead><tr><th>Path</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td><code>src/app.rs</code></td><td>The explorer: sections, pages and routes.</td></tr>
+<tr><td><code>src/launch.rs</code></td><td>Launch options and <code>--capture</code>.</td></tr>
+<tr><td><code>src/screen/</code></td><td><code>LabScreen</code> and its parts: hero, cards, panels, text roles, metrics.</td></tr>
+<tr><td><code>src/theme.rs</code></td><td>The Lab's look-radix <code>Look</code> and the bundled IBM Plex Mono.</td></tr>
+<tr><td><code>scripts/lab_snapshots.py</code></td><td>Snapshot capture and compare.</td></tr>
+<tr><td><code>docs/</code></td><td>Design document, <code>LabScreen</code> API notes and mockups.</td></tr>
+</tbody></table></div>
+</section>
+<footer data-site-footer></footer></main>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#what">What it does</a><a href="#run">Run it</a><a href="#open">Start on a page</a><a href="#capture">Capture a page</a><a href="#snapshots">Regression snapshots</a><a href="#other">Other modes</a><a href="#source">Where things live</a></nav>
+</div>
+</body>
+</html>

@@ -5,9 +5,23 @@ use xgpui_luma_look_radix::{Accent, CustomColors, Gray, SemanticRole};
 use xgpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography, ThemeMode};
 use gpui::{Styled, px};
 
+/// Monospace family bundled with the lab (`assets/fonts/ibm-plex-mono`, OFL).
+/// Bundled so values render the same on every platform.
+pub(crate) const MONO_FAMILY: &str = "IBM Plex Mono";
+const IBM_PLEX_MONO: &[u8] = include_bytes!("../assets/fonts/ibm-plex-mono/IBMPlexMono-IBMPlexMonoRegular.ttf");
+
+/// Register the lab's bundled fonts with GPUI. Call once at startup, before any window opens.
+pub(crate) fn register_fonts(cx: &mut gpui::App) -> anyhow::Result<()> {
+    cx.text_system().add_fonts(vec![std::borrow::Cow::Borrowed(IBM_PLEX_MONO)])
+}
+
 /// Custom Radix accent and neutral palette used at startup.
 pub(crate) fn default_look() -> Arc<Look> {
     let look = Look::built_in();
+    // The theme's mono token is the lab's one monospace family; text roles read it from here.
+    let mut stylesheet = look.common_stylesheet();
+    stylesheet.tokens.typography.font.mono.family = MONO_FAMILY.into();
+    look.set_common_stylesheet(stylesheet);
     look.set_palettes(Accent::Gray, Gray::Sand);
     let seed = xgpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
     for mode in [ThemeMode::Light, ThemeMode::Dark] {

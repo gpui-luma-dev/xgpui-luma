@@ -57,3 +57,4 @@ pre .token.attribute,pre .token.annotation{color:var(--syntax-type)}
 .look-badges--inline{display:inline-flex;margin:0 0 0 8px;vertical-align:middle}
 .source-list .look-badge{color:var(--look-badge-fg);text-decoration:none}
 .source-list .look-badge:hover{text-decoration:underline}
+.sidebar a.nav-sub{padding-left:26px;font-size:13px}

@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{prelude::*, AnyElement, Render, Window, MouseButton, MouseMoveEvent, div, img, px};
+use gpui::{prelude::*, AnyElement, App, Render, Window, MouseButton, MouseMoveEvent, div, img, px};
 use xgpui_media::image_view;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use xgpui_media::video_frame;
@@ -45,6 +45,9 @@ impl Render for MediaPage {
         self.poll();
         if self.job.is_some() || self.waiting > 0 || !self.burst_jobs.is_empty() || !self.burst_images.is_empty() {
             window.request_animation_frame();
+        }
+        if self.active_tab == "Image Filters" {
+            return self.render_image_filters(cx).into_any_element();
         }
         let actions: &[Action] = match self.active_tab.as_ref() {
             "Video Frames" => &[
@@ -250,68 +253,16 @@ impl Render for MediaPage {
 impl MediaPage {
     fn comparison(&self, cx: &mut Context<Self>) -> AnyElement {
         let mut root = div().flex().flex_wrap().gap_4();
-        let Some(fixtures) = &self.fixtures else {
+        if self.fixtures.is_none() {
             return root.into_any_element();
-        };
-        let sample = &fixtures.samples[self.selected];
-        let width = 360.;
-        let height = 260.;
-        let zoom = self.values[0]
-            * if self.sweep && !cx.reduce_motion() {
-                1. + 0.1 * (self.started.elapsed().as_secs_f32() * 0.9).sin()
-            } else {
-                1.
-            };
-        let fit = (width / sample.width as f32).min(height / sample.height as f32) * zoom;
-        let w = sample.width as f32 * fit;
-        let h = sample.height as f32 * fit;
-        let x = (width - w) * 0.5 + self.values[1];
-        let y = (height - h) * 0.5 + self.values[2];
+        }
         let placements: &[bool] = if self.active_tab == "Images" {
             &[true]
         } else {
             &[false, true]
         };
         for &native in placements {
-            let mut viewport = self.camera_viewport(usize::from(native), width, height, cx);
-            if native || self.mode == 1 {
-                if let Some(image) = &self.image {
-                    let filter = if self.active_tab == "Image Filters" {
-                        self.filter()
-                    } else {
-                        ImageFilter::new()
-                    };
-                    let view = image_view(image.clone());
-                    let view = if native && self.mode == 1 {
-                        match self.adjustments(xgpui_media::pipeline::ImagePrimaries::Srgb) {
-                            Ok(adjustments) => view.adjustments(adjustments),
-                            Err(_) => view,
-                        }
-                    } else {
-                        view.filter(filter)
-                    };
-                    viewport = viewport.child(
-                        view.absolute()
-                            .left(px(x))
-                            .top(px(y))
-                            .w(px(w))
-                            .h(px(h))
-                            .rounded(px(self.values[4]))
-                            .opacity(self.values[3]),
-                    );
-                }
-            } else {
-                viewport = viewport.child(
-                    img(sample.path.clone())
-                        .absolute()
-                        .left(px(x))
-                        .top(px(y))
-                        .w(px(w))
-                        .h(px(h))
-                        .rounded(px(self.values[4]))
-                        .opacity(self.values[3]),
-                );
-            }
+            let viewport = self.compare_view(native, 360., 260., false, cx);
             root = root.child(
                 div()
                     .flex()
@@ -332,6 +283,77 @@ impl MediaPage {
             );
         }
         root.into_any_element()
+    }
+
+    /// Display scale of the current sample in a `width` × `height` viewport (fit × zoom, with sweep).
+    pub(super) fn display_scale(&self, width: f32, height: f32, cx: &App) -> Option<f32> {
+        let sample = &self.fixtures.as_ref()?.samples[self.selected];
+        let zoom = self.values[0]
+            * if self.sweep && !cx.reduce_motion() {
+                1. + 0.1 * (self.started.elapsed().as_secs_f32() * 0.9).sin()
+            } else {
+                1.
+            };
+        Some((width / sample.width as f32).min(height / sample.height as f32) * zoom)
+    }
+
+    /// One comparison viewport: the GPUI image atlas (`native == false`) or the media texture.
+    pub(super) fn compare_view(
+        &self,
+        native: bool,
+        width: f32,
+        height: f32,
+        fill: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let mut viewport = self.camera_viewport(usize::from(native), width, height, fill, cx);
+        let (Some(fixtures), Some(fit)) = (&self.fixtures, self.display_scale(width, height, cx)) else {
+            return viewport;
+        };
+        let sample = &fixtures.samples[self.selected];
+        let w = sample.width as f32 * fit;
+        let h = sample.height as f32 * fit;
+        let x = (width - w) * 0.5 + self.values[1];
+        let y = (height - h) * 0.5 + self.values[2];
+        if native || self.mode == 1 {
+            if let Some(image) = &self.image {
+                let filter = if self.active_tab == "Image Filters" {
+                    self.filter()
+                } else {
+                    ImageFilter::new()
+                };
+                let view = image_view(image.clone());
+                let view = if native && self.mode == 1 {
+                    match self.adjustments(xgpui_media::pipeline::ImagePrimaries::Srgb) {
+                        Ok(adjustments) => view.adjustments(adjustments),
+                        Err(_) => view,
+                    }
+                } else {
+                    view.filter(filter)
+                };
+                viewport = viewport.child(
+                    view.absolute()
+                        .left(px(x))
+                        .top(px(y))
+                        .w(px(w))
+                        .h(px(h))
+                        .rounded(px(self.values[4]))
+                        .opacity(self.values[3]),
+                );
+            }
+        } else {
+            viewport = viewport.child(
+                img(sample.path.clone())
+                    .absolute()
+                    .left(px(x))
+                    .top(px(y))
+                    .w(px(w))
+                    .h(px(h))
+                    .rounded(px(self.values[4]))
+                    .opacity(self.values[3]),
+            );
+        }
+        viewport
     }
 
     fn video_view(&mut self, window: &mut Window) -> AnyElement {

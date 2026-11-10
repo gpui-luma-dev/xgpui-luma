@@ -34,7 +34,11 @@ fn open_configured_shell_window(
     cx: &mut App,
     fixed_size: bool,
 ) -> anyhow::Result<(WindowHandle<ShellWindow>, Entity<XgpuiLabApp>)> {
-    let bounds = Bounds::centered(None, size(px(1440.0), px(880.0)), cx);
+    let window_size = cx
+        .try_global::<crate::launch::LaunchOptions>()
+        .and_then(|launch| launch.size)
+        .unwrap_or(size(px(1440.0), px(880.0)));
+    let bounds = Bounds::centered(None, window_size, cx);
     let mut content = None;
     let window = cx.open_shell_window_with_titlebar(
         WindowOptions {

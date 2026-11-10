@@ -4,12 +4,13 @@ mod video_source;
 mod views;
 mod advanced;
 mod tiled;
+mod filters_screen;
 pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{AppContext, Context, Entity, SharedString, Point, Pixels, Bounds};
 use xgpui_luma::{
-    controls::{button::Button, slider::Slider},
+    controls::{button::Button, slider::Slider, switch::Switch, textfield::TextField},
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
@@ -73,7 +74,38 @@ impl Parameter {
             Self::Hue => ("Hue rotation", 0., 360., 0.),
         }
     }
+    /// Accepted range as shown next to a parameter label.
+    fn range_label(self) -> &'static str {
+        match self {
+            Self::Radius => "0–64 px",
+            Self::Hue => "0–360°",
+            Self::Opacity => "0–1",
+            _ => "0–2",
+        }
+    }
+    /// Fixed decimals per quantity: factors `0.00`, pixels `0`, angles `0.0`.
+    fn format(self, value: f32) -> String {
+        match self {
+            Self::Radius => format!("{value:.0}"),
+            Self::Hue => format!("{value:.1}"),
+            _ => format!("{value:.2}"),
+        }
+    }
+    fn parse(self, text: &str) -> Option<f32> {
+        let (_, min, max, _) = self.config();
+        text.trim().parse::<f32>().ok().filter(|value| value.is_finite() && (min..=max).contains(value))
+    }
 }
+
+/// Image Filters parameters with a value field, in screen order.
+const FILTER_FIELDS: [Parameter; 6] = [
+    Parameter::Opacity,
+    Parameter::Radius,
+    Parameter::Brightness,
+    Parameter::Contrast,
+    Parameter::Saturation,
+    Parameter::Hue,
+];
 
 pub struct MediaPage {
     look: Arc<Look>,
@@ -111,6 +143,8 @@ pub struct MediaPage {
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
+    filter_fields: Vec<(Parameter, TextField)>,
+    sweep_switch: Switch,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     video: Option<video_source::Demo>,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -292,12 +326,55 @@ impl MediaPage {
                     )
                     .on_value_changed(cx, move |this: &mut Self, _, value, cx| {
                         this.values[parameter as usize] = value;
+                        this.sync_field(parameter, cx);
                         cx.notify();
                     })
                     .spawn(cx),
             )
         })
         .to_vec();
+        // Each value field is declared with its callbacks: a valid edit moves the value and its
+        // slider; leaving the field rewrites it in the parameter's fixed format.
+        let filter_fields = FILTER_FIELDS
+            .map(|parameter| {
+                let (_, _, _, value) = parameter.config();
+                let field = radix::TextField::new(format!("media-field-{parameter:?}"))
+                    .look(look.as_ref())
+                    .surface()
+                    .look_override(crate::screen::value_field_look(&look))
+                    .full_width(true)
+                    .value(parameter.format(value))
+                    .select_all_on_tab_focus(true)
+                    .validator(Arc::new(move |text| parameter.parse(text).is_some()))
+                    .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                        if let Some(value) = parameter.parse(text) {
+                            this.values[parameter as usize] = value;
+                            if let Some((_, slider)) = this.sliders.iter().find(|(id, _)| *id == parameter) {
+                                slider.update(cx, |slider, cx| slider.set_value(value, cx));
+                            }
+                            cx.notify();
+                        }
+                    })
+                    .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
+                        if !focused {
+                            this.sync_field(parameter, cx);
+                        }
+                    })
+                    .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
+                    .spawn(cx);
+                (parameter, field)
+            })
+            .to_vec();
+        let sweep_switch = radix::Switch::new("media-sweep")
+            .look(look.as_ref())
+            .label("Sweep zoom")
+            .checked(false)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.sweep = on;
+                this.started = Instant::now();
+                cx.notify();
+            })
+            .spawn(cx);
         let benchmarks = cx.new(|cx| benchmarks::Benchmarks::new(look.clone(), cx));
         let mut page = Self {
             look,
@@ -335,6 +412,8 @@ impl MediaPage {
             buttons,
             choices: Vec::new(),
             sliders,
+            filter_fields,
+            sweep_switch,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             video: None,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -385,6 +464,7 @@ impl MediaPage {
             for (parameter, slider) in &self.sliders {
                 slider.update(cx, |slider, cx| slider.set_value(self.values[*parameter as usize], cx));
             }
+            self.sync_fields(cx);
         }
         self.mode = match tab.as_ref() {
             "Linear Adjustments" => 1,
@@ -567,6 +647,7 @@ impl MediaPage {
                         slider.update(cx, |slider, cx| slider.set_value(parameter.config().3, cx));
                     }
                 }
+                self.sync_fields(cx);
             }
             Action::Start => {
                 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -604,6 +685,17 @@ impl MediaPage {
             }
         }
         cx.notify();
+    }
+    fn sync_field(&self, parameter: Parameter, cx: &mut gpui::App) {
+        if let Some((_, field)) = self.filter_fields.iter().find(|(id, _)| *id == parameter) {
+            let text = parameter.format(self.values[parameter as usize]);
+            field.update(cx, |field, cx| field.set_value(text, cx));
+        }
+    }
+    fn sync_fields(&self, cx: &mut gpui::App) {
+        for parameter in FILTER_FIELDS {
+            self.sync_field(parameter, cx);
+        }
     }
     fn filter(&self) -> ImageFilter {
         ImageFilter::new()
@@ -703,6 +795,49 @@ mod tests {
         page.update(cx, |page, _| {
             assert_eq!(page.values[7], 1.);
             page.stop_video();
+        });
+    }
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn image_filters_screen_syncs_fields_sliders_and_chain() {
+        use super::{Action, Parameter};
+        use xgpui_luma::controls::textfield::TextFieldEvent;
+        let mut app = gpui::TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(crate::theme::default_look(), cx));
+        page.update(cx, |page, cx| {
+            page.fixtures = Some(Fixtures::new(None).unwrap());
+            page.activate("Image Filters".into(), cx);
+        });
+        cx.run_until_parked();
+        for slot in ["image-filters-crumb", "image-filters-hero", "image-filters-controls", "image-filters-cards", "image-filters-panels"] {
+            assert!(cx.debug_bounds(slot).is_some(), "{slot} is rendered");
+        }
+        let field = |page: &MediaPage, parameter| page.filter_fields.iter().find(|(id, _)| *id == parameter).unwrap().1.clone();
+        let contrast = cx.update(|_, cx| field(page.read(cx), Parameter::Contrast));
+        for (text, expected) in [("1.5", 1.5), ("3", 1.5), ("nan", 1.5)] {
+            contrast.update(cx, |field, cx| {
+                field.set_value(text, cx);
+                cx.emit(TextFieldEvent::Change { value: text.into() });
+            });
+            cx.run_until_parked();
+            cx.update(|_, cx| assert_eq!(page.read(cx).values[Parameter::Contrast as usize], expected));
+        }
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            let active: Vec<_> = page.filter_steps().into_iter().filter(|step| step.2).map(|step| step.0).collect();
+            assert_eq!(active, ["Contrast", "Corner mask"]);
+        });
+        let hue = cx.update(|_, cx| page.read(cx).sliders.iter().find(|(id, _)| *id == Parameter::Hue).unwrap().1.clone());
+        hue.update(cx, |slider, cx| slider.set_thumb_position(slider.primary_thumb_id(), 0.25, cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(field(page.read(cx), Parameter::Hue).read(cx).value(), "90.0"));
+        page.update(cx, |page, cx| page.action(Action::Filters, cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert_eq!(field(page, Parameter::Contrast).read(cx).value(), "1.00");
+            assert_eq!(field(page, Parameter::Hue).read(cx).value(), "0.0");
         });
     }
     #[cfg(feature = "test-support")]
