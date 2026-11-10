@@ -7,6 +7,8 @@ license = "Apache-2.0"
 publish = false
 
 [features]
+# Optional Waves wgpu producer outside Linux (Linux enables it by target).
+waves-wgpu = ["dep:gpui-wgpu", "xgpui-shader/wgpu"]
 # Opt-in app-side Metal/wgpu parity validation for the Grid sample.
 grid-wgpu = ["dep:gpui-wgpu", "xgpui-shader/wgpu"]
 # Headless exposition and event-log tests; does not launch XGPUI Lab.
@@ -19,6 +21,7 @@ xgpui-shell = "0.2.0"
 clap = { version = "4", features = ["derive"] }
 xgpui-canvas = { version = "0.3.3", features = ["gpui"] }
 log = "0.4"
+naga = { version = "30.0.1", features = ["wgsl-in", "hlsl-out"] }
 gpui-wgpu = { package = "xgpui-wgpu", version = "2.2.0", features = ["test-support"], optional = true }
 libc = "0.2"
 bytemuck = { version = "1", features = ["derive"] }
@@ -50,6 +53,7 @@ tiny-skia = "0.11"
 tracing = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+gpui-wgpu = { package = "xgpui-wgpu", version = "2.2.0" }
 # Gradient and mesh paints use the wgpu backend on Linux.
 xgpui-shader = { version = "0.4.3", features = ["wgpu"] }
 gtk = { version = "0.18" }
@@ -65,4 +69,4 @@ gpui-apple = { package = "xgpui-apple", version = "4.0.1", features = ["test-sup
 
 [target.'cfg(target_os = "windows")'.dependencies]
 gpui-windows = { package = "xgpui-windows", version = "2.1.1" }
-windows = { version = "0.62", features = ["Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi_Common"] }
+windows = { version = "0.62", features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi_Common"] }
