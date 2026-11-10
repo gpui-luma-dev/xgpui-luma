@@ -1,5 +1,10 @@
 # Shared lab presentation
 
+> **History.** `src/lab_ui.rs` has been removed. Every screen that used it
+> (Color Spaces, Italy, Shell Lab) now uses `LabScreen` in `src/screen/`; see
+> [lab-screen-api.md](lab-screen-api.md) and [XGPUI-LAB-DESIGN.md](XGPUI-LAB-DESIGN.md).
+> The notes below record how the original helpers were extracted and verified.
+
 Color Spaces is the reference for lab presentation, originally reviewed at
 `ed58794d72b3aae73e8fdddb9df5cb84e4656c59` (issue #29). Issue #33 applies
 these patterns to Italy Photo Comparison. The reusable implementation is

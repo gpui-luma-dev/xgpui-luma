@@ -6,7 +6,10 @@ use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma_look_radix::Look;
 use crate::{
     lab_controls::{Choice, labels},
-    lab_ui,
+    screen::{
+        self, FormRow, Hero, LabScreen, PanelShell, TextRole, form_group, form_groups, labeled_control, properties,
+        readout,
+    },
     theme::ColorVizLookExt,
 };
 
@@ -30,6 +33,12 @@ enum Setting {
     MiddleClick,
     RightClick,
 }
+/// Desktop-preference overrides, grouped by what they affect. Index 0 of each is "System".
+const OVERRIDE_GROUPS: [(&str, &[Setting]); 3] = [
+    ("Accessibility", &[Setting::Contrast, Setting::Accent, Setting::Motion]),
+    ("Text", &[Setting::Scale, Setting::Typography]),
+    ("Titlebar actions", &[Setting::DoubleClick, Setting::MiddleClick, Setting::RightClick]),
+];
 const SETTINGS: [Setting; 14] = [
     Setting::State,
     Setting::Appearance,
@@ -58,8 +67,8 @@ impl Setting {
             Self::Contrast => ("Contrast", &["System", "Normal", "High contrast"]),
             Self::Accent => ("Focus accent", &["System", "Blue", "Orange", "Black"]),
             Self::Scale => ("Logical scale", &["System", "100%", "125%", "150%", "200%"]),
-            Self::Typography => ("Title typography", &["System", "System UI 14px", "Large bold 24px", "Georgia 18px"]),
-            Self::Motion => ("Reduced motion", &["System", "Normal", "Reduce"]),
+            Self::Typography => ("Title font", &["System", "System UI 14px", "Large bold 24px", "Georgia 18px"]),
+            Self::Motion => ("Reduce motion", &["System", "Normal", "Reduce"]),
             Self::DoubleClick => ("Double click", &["System", "Maximize / restore", "Minimize", "Menu", "None"]),
             Self::MiddleClick => ("Middle click", &["System", "Maximize / restore", "Minimize", "Menu", "None"]),
             Self::RightClick => ("Right click", &["System", "Maximize / restore", "Minimize", "Menu", "None"]),
@@ -95,6 +104,7 @@ impl ShellPage {
                     move |page: &mut Self, index, cx| {
                         page.values[setting as usize] = index;
                         page.sync_preview_controls(cx);
+                        page.sync_reset(cx);
                         page.record(format!("{}: {} (preview only)", label, options[index]));
                         cx.notify();
                     },
@@ -104,13 +114,16 @@ impl ShellPage {
             .collect();
         let reset = xgpui_luma_look_radix::Button::new("shell-reset")
             .look(&look)
-            .content(|_, _| "Reset preview to desktop defaults")
+            .outline()
+            .enabled(false)
+            .content(|_, _| "Reset to desktop defaults")
             .on_click(cx, |page: &mut Self, cx| {
                 page.values = Self::defaults();
                 for (setting, choice) in &page.choices {
                     choice.sync(labels(setting.spec().1), page.values[*setting as usize], cx);
                 }
                 page.sync_preview_controls(cx);
+                page.sync_reset(cx);
                 page.record("Reset preview to desktop defaults");
                 cx.notify();
             })
@@ -162,6 +175,11 @@ impl ShellPage {
                 choice.selector.update(cx, |selector, cx| selector.set_enabled(visible_chrome, cx));
             }
         }
+    }
+    /// Reset is available only when something differs from the desktop defaults.
+    fn sync_reset(&self, cx: &mut App) {
+        let changed = self.values != Self::defaults();
+        self.reset.update(cx, |button, cx| button.set_enabled(changed, cx));
     }
     fn defaults() -> [usize; 14] {
         let mut values = [0; 14];
@@ -264,13 +282,12 @@ impl ShellPage {
         };
         preview
     }
-    fn rows(&self, preview: bool) -> Div {
-        lab_ui::control_row().children(
-            self.choices
-                .iter()
-                .filter(|(setting, _)| ((*setting as usize) < Setting::Contrast as usize) == preview)
-                .map(|(_, choice)| choice.clone()),
-        )
+    /// The preview's own settings (`preview == true`) or the desktop-preference overrides.
+    fn choices_for(&self, preview: bool) -> impl Iterator<Item = Div> + '_ {
+        self.choices
+            .iter()
+            .filter(move |(setting, _)| ((*setting as usize) < Setting::Contrast as usize) == preview)
+            .map(|(_, choice)| labeled_control(&self.look, choice.clone().into_element()))
     }
     fn observe_window(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.observing_window {
@@ -298,10 +315,32 @@ impl ShellPage {
             let _ = weak.update(app, |_, cx| cx.notify());
         }));
     }
-    fn inspector(&self, window: &Window, cx: &App) -> Div {
+    fn overrides(&self) -> PanelShell {
+        let overridden = |setting: &Setting| self.values[*setting as usize] != 0;
+        let total: usize = OVERRIDE_GROUPS.iter().map(|(_, settings)| settings.len()).sum();
+        let count = OVERRIDE_GROUPS.iter().flat_map(|(_, settings)| settings.iter()).filter(|s| overridden(s)).count();
+        let subtitle = match count {
+            0 => format!("All {total} follow the desktop"),
+            n => format!("{n} of {total} overridden · the rest follow the desktop"),
+        };
+        let groups = OVERRIDE_GROUPS.iter().map(|(title, settings)| {
+            let rows = settings.iter().filter_map(|setting| {
+                let choice = &self.choices.iter().find(|(id, _)| id == setting)?.1;
+                Some(FormRow::new(choice.label(), choice.selector.clone(), overridden(setting)))
+            });
+            form_group(&self.look, *title, rows)
+        });
+        PanelShell::new("Preview overrides")
+            .subtitle(subtitle)
+            .action(self.reset.clone())
+            .child(form_groups(groups))
+    }
+
+    fn inspector(&self, window: &Window, cx: &App) -> PanelShell {
         let resolved = self.options().resolved_preferences(&cx.desktop_preferences());
         let look = resolved.resolved_look(self.appearance(window), self.values[Setting::Active as usize] == 1);
-        let swatches = lab_ui::control_row().children(
+        // Swatches show the resolved frame colors: data colors, each with its hex readout.
+        let swatches = div().flex().flex_wrap().items_center().gap_3().children(
             [
                 ("Header", look.colors.header),
                 ("Text", look.colors.text),
@@ -315,53 +354,102 @@ impl ShellPage {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child(div().size(px(18.)).bg(rgb(color)).border_1().border_color(self.look.chrome().border))
-                    .child(format!("{label} #{color:06X}"))
+                    .child(
+                        div()
+                            .size(px(14.))
+                            .rounded_sm()
+                            .bg(rgb(color))
+                            .border_1()
+                            .border_color(self.look.chrome().border),
+                    )
+                    .child(readout(&self.look, [(label, format!("#{color:06X}"))]))
             }),
         );
-        lab_ui::panel(&self.look)
-            .child(heading("Resolved client-frame look"))
+        PanelShell::new("Resolved client-frame look")
             .child(swatches)
-            .child(property("Title font", format!("{} · {:.1}px · weight {}", look.typography.font.family, look.typography.size, look.typography.font.weight)))
-            .child(property("Geometry", format!("Header {:.1}px · button {:.1}px · logical scale {:.0}%", look.titlebar_height, look.button_size, resolved.text_scale * 100.)))
-            .child(property("Titlebar actions", format!("Double {:?} · middle {:?} · right {:?}", resolved.double_click_action, resolved.middle_click_action, resolved.right_click_action)))
-            .child(property("Reduced motion", format!("{} (policy; frame has no animation)", look.reduced_motion)))
-            .child(lab_ui::caption(&self.look, "Requested font may be substituted. Logical text scale is separate from device DPI. Native controls and compositor decorations remain platform-owned."))
+            .child(properties(
+                &self.look,
+                [
+                    (
+                        "Title font",
+                        format!(
+                            "{} · {:.1}px · weight {}",
+                            look.typography.font.family, look.typography.size, look.typography.font.weight
+                        ),
+                    ),
+                    (
+                        "Geometry",
+                        format!(
+                            "header {:.1}px · button {:.1}px · scale {:.0}%",
+                            look.titlebar_height,
+                            look.button_size,
+                            resolved.text_scale * 100.
+                        ),
+                    ),
+                    (
+                        "Titlebar actions",
+                        format!(
+                            "double {:?} · middle {:?} · right {:?}",
+                            resolved.double_click_action, resolved.middle_click_action, resolved.right_click_action
+                        ),
+                    ),
+                    ("Reduced motion", format!("{} (policy; frame has no animation)", look.reduced_motion)),
+                ],
+            ))
+            .footer("Requested font may be substituted. Logical text scale is separate from device DPI. Native controls and compositor decorations remain platform-owned.")
     }
-    fn readings(&self, window: &Window, cx: &App) -> Div {
+
+    fn readings(&self, window: &Window, cx: &App) -> PanelShell {
         let desktop = cx.desktop_preferences();
         let linux = matches!(cx.platform_info().os, OperatingSystem::Linux | OperatingSystem::FreeBsd);
-        lab_ui::panel(&self.look).child(heading("Platform preferences — actual readings"))
-            .child(lab_ui::caption(&self.look, if linux {
+        PanelShell::new("Platform preferences — actual readings")
+            .subtitle(if linux {
                 "Linux portal preferences with optional GNOME/KDE fallbacks. Not reported can mean unavailable, unsupported or pending."
             } else {
                 "Desktop preference detection is currently Linux-only. Missing readings here are not native OS defaults; preview values may be fallbacks."
-            }))
-            .child(property("Platform", format!("{:?}", cx.platform_info())))
-            .child(property("Appearance", format!("{:?}", window.appearance())))
-            .child(property("Button layout", format!("{:?}", cx.button_layout())))
-            .child(property("Accent", detected(desktop.accent_color)))
-            .child(property("High contrast", detected(desktop.high_contrast)))
-            .child(property("Reduced motion", detected(desktop.reduced_motion)))
-            .child(property("Font", detected(desktop.font)))
-            .child(property("Text scale", detected(desktop.text_scale)))
-            .child(property("Titlebar actions", format!("double {} · middle {} · right {}", detected(desktop.titlebar_double_click), detected(desktop.titlebar_middle_click), detected(desktop.titlebar_right_click))))
-            .child(property("Decorations", format!("{:?}", window.window_decorations())))
-            .child(property("Window state", format!("Active {} · maximized {} · fullscreen {} · resizable {}", window.is_window_active(), window.is_maximized(), window.is_fullscreen(), window.is_resizable())))
-            .child(property("Capabilities", format!("{:?}", window.window_controls())))
-            .child(property("Device scale", format!("{:.2}×", window.scale_factor())))
+            })
+            .child(properties(
+                &self.look,
+                [
+                    ("Platform", format!("{:?}", cx.platform_info())),
+                    ("Appearance", format!("{:?}", window.appearance())),
+                    ("Button layout", format!("{:?}", cx.button_layout())),
+                    ("Accent", detected(desktop.accent_color)),
+                    ("High contrast", detected(desktop.high_contrast)),
+                    ("Reduced motion", detected(desktop.reduced_motion)),
+                    ("Font", detected(desktop.font)),
+                    ("Text scale", detected(desktop.text_scale)),
+                    (
+                        "Titlebar actions",
+                        format!(
+                            "double {} · middle {} · right {}",
+                            detected(desktop.titlebar_double_click),
+                            detected(desktop.titlebar_middle_click),
+                            detected(desktop.titlebar_right_click)
+                        ),
+                    ),
+                    ("Decorations", format!("{:?}", window.window_decorations())),
+                    (
+                        "Window state",
+                        format!(
+                            "active {} · maximized {} · fullscreen {} · resizable {}",
+                            window.is_window_active(),
+                            window.is_maximized(),
+                            window.is_fullscreen(),
+                            window.is_resizable()
+                        ),
+                    ),
+                    ("Capabilities", format!("{:?}", window.window_controls())),
+                    ("Device scale", format!("{:.2}×", window.scale_factor())),
+                ],
+            ))
     }
-}
-fn heading(text: &'static str) -> Div {
-    div().text_lg().font_weight(FontWeight::SEMIBOLD).child(text)
-}
-fn property(label: &'static str, value: String) -> Div {
-    div()
-        .flex()
-        .flex_wrap()
-        .gap_2()
-        .child(div().font_weight(FontWeight::MEDIUM).child(label))
-        .child(value)
+
+    fn events(&self) -> PanelShell {
+        self.events.iter().rev().fold(PanelShell::new("Recent events"), |panel, event| {
+            panel.child(screen::text(&self.look, TextRole::Caption, event.clone()))
+        })
+    }
 }
 fn detected<T: std::fmt::Debug>(value: Option<T>) -> String {
     value.map(|v| format!("{v:?}")).unwrap_or_else(|| "not reported".into())
@@ -371,42 +459,39 @@ impl Render for ShellPage {
         self.observe_window(window, cx);
         let resolved = self.options().resolved_preferences(&cx.desktop_preferences());
         let look = resolved.resolved_look(self.appearance(window), self.values[Setting::Active as usize] == 1);
-        let mut content = lab_ui::container().child(lab_ui::header(
-            &self.look,
-            if self.active_page == "Desktop Preferences" {
-                "Desktop Preferences"
-            } else {
-                "Shell Lab"
-            },
-            "Desktop-aware window chrome, preferences and client-frame diagnostics.",
-        ));
-        if self.active_page == "Desktop Preferences" {
-            content = content.child(self.readings(window, cx));
-        } else {
-            content = content
-                .child(lab_ui::panel(&self.look)
-                    .child(heading("Real test windows"))
-                    .child(property("This window", if window.is_resizable() { "Resizable" } else { "Fixed-size (resizing disabled)" }.into()))
-                    .child(lab_ui::control_row().children(self.new_windows.clone()))
-                    .child(lab_ui::caption(&self.look, "Each button opens a separate Lab on this page with its own theme and preview state. Close a test window with its native traffic lights; no restart is needed.")))
-                .child(lab_ui::caption(&self.look, "Simulation only: frame buttons, dragging and resizing never operate the Lab window. Preview overrides do not change desktop settings or the host titlebar."))
-                .child(self.rows(true))
-                .child(div().id("shell-client-frame-preview").debug_selector(|| "shell-client-frame-preview".into())
-                    .w_full().h(px(look.titlebar_height + 150.)).flex_shrink_0().child(self.preview(window)));
-            content = content.child(
-                lab_ui::panel(&self.look)
-                    .child(heading("Preview overrides"))
-                    .child(self.rows(false))
-                    .child(self.reset.clone()),
-            );
-            content = content.child(self.inspector(window, cx));
+        let desktop = self.active_page == "Desktop Preferences";
+        let title = if desktop { "Desktop Preferences" } else { "Shell Lab" };
+        let screen = LabScreen::new("shell-lab", self.look.clone())
+            .crumb("xgpui-shell", title)
+            .title(title)
+            .lede("Desktop-aware window chrome, preferences and client-frame diagnostics.");
+        if desktop {
+            return screen.panels(self.readings(window, cx), self.events());
         }
-        content = content.child(
-            lab_ui::panel(&self.look)
-                .child(heading("Recent events"))
-                .children(self.events.iter().rev().map(|event| lab_ui::caption(&self.look, event.clone()))),
+        let preview = div()
+            .id("shell-client-frame-preview")
+            .debug_selector(|| "shell-client-frame-preview".into())
+            .w_full()
+            .h(px(look.titlebar_height + 150.))
+            .flex_shrink_0()
+            .child(self.preview(window));
+        let this_window = if window.is_resizable() {
+            "resizable"
+        } else {
+            "fixed-size (resizing disabled)"
+        };
+        let screen = screen.hero(Hero::full(preview)).caption(
+            "Simulation only: frame buttons, dragging and resizing never operate the Lab window. Preview overrides do not change desktop settings or the host titlebar.",
         );
-        lab_ui::page("shell-lab-page", &self.look).child(content)
+        let screen = self.choices_for(true).fold(screen, LabScreen::control);
+        self.new_windows
+            .iter()
+            .fold(screen, |screen, button| screen.action(button.clone()))
+            .panels(self.overrides(), self.inspector(window, cx))
+            .section_panel(self.events())
+            .note(format!(
+                "This window is {this_window}. Each new-window button opens a separate Lab on this page with its own theme and preview state. Close a test window with its native traffic lights; no restart is needed."
+            ))
     }
 }
 

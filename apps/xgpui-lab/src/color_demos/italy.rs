@@ -9,7 +9,7 @@ use xgpui_luma_look_radix::Look;
 use xgpui_media::{ImageJob, LoadStatus, MediaImage, MediaLimits, MediaLoader, UploadStatus};
 use crate::{
     lab_controls::{Choice, labels},
-    lab_ui,
+    screen::{self, Hero, LabMetrics, LabScreen, TextRole, labeled_control},
     theme::ColorVizLookExt,
 };
 use super::italy_model as model;
@@ -60,11 +60,13 @@ impl ItalyLab {
             selected: AtomicUsize::new(1),
             native: AtomicBool::new(false),
         });
+        let metrics = LabMetrics::STANDARD;
         let thumbnails = NAMES
             .iter()
             .enumerate()
             .map(|(index, &label)| {
                 let state = thumbnail_state.clone();
+                let text_look = look.clone();
                 let geometry = xgpui_luma_look_radix::button_look_for::<()>(
                     &look,
                     xgpui_luma_look_radix::ButtonVariant::Ghost,
@@ -82,8 +84,8 @@ impl ItalyLab {
                     .content(move |_, _| {
                         let image = state.images.read().unwrap_or_else(|error| error.into_inner())[index].clone();
                         let mut preview = div()
-                            .w(px(174.))
-                            .h(px(116.))
+                            .w(metrics.photo_thumbnail.width)
+                            .h(metrics.photo_thumbnail.height)
                             .flex_shrink_0()
                             .overflow_hidden()
                             .debug_selector(move || format!("italy-thumb-image-{index}"));
@@ -108,11 +110,11 @@ impl ItalyLab {
                         div()
                             .flex()
                             .flex_col()
-                            .w(px(174.))
+                            .w(metrics.photo_thumbnail.width)
                             .flex_shrink_0()
                             .gap_3()
                             .child(preview)
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(label))
+                            .child(screen::text(&text_look, TextRole::Name, label))
                     })
                     .on_click(cx, move |this: &mut Self, cx| this.select_photo(index, cx))
                     .spawn(cx);
@@ -128,8 +130,8 @@ impl ItalyLab {
                 .with_modifier(move |row, model| {
                     let colors = paint_look.interaction_colors();
                     let selected = state.selected.load(Ordering::Relaxed) == index;
-                    lab_ui::comparison_surface(row, &paint_look)
-                        .w(px(200.))
+                    screen::card_surface(row, &paint_look)
+                        .w(metrics.photo_card_width)
                         .max_w_full()
                         .min_w_0()
                         .debug_selector(move || format!("italy-thumb-{index}"))
@@ -245,7 +247,6 @@ impl Render for ItalyLab {
         let mut photo = div()
             .debug_selector(|| "italy-selected-photo".into())
             .w_full()
-            .max_w(px(600.))
             .aspect_ratio(1.5)
             .flex_shrink_0()
             .bg(chrome.panel_background);
@@ -271,26 +272,28 @@ impl Render for ItalyLab {
                     .unwrap_or_else(|| "Loading Italy photograph…".to_owned()),
             );
         }
-        lab_ui::page("italy-lab-scroll", &self.look).child(
-            lab_ui::container()
-                .child(lab_ui::caption(&self.look, "xgpui-color  /  Italy Photo Comparison"))
-                .child(lab_ui::header(&self.look, "Italy Photo Comparison",
-                    "Compare native Display P3 and sRGB with the same photograph."))
-                .child(div().flex().flex_col().gap_4()
-                    .child(div().flex().flex_col().w_full().max_w(px(600.)).mx_auto().gap_2()
-                        .child(photo)
-                        .child(lab_ui::caption(&self.look, format!("{} · {} · 600 × 400 · Effective window mode: {:?}", NAMES[self.selected],
-                        if native { "Native Display P3" } else { "sRGB preview" }, window.color_status().effective())).debug_selector(|| "italy-photo-description".into())))
-                    .child(lab_ui::control_row().justify_center().child(lab_ui::control(&self.look, self.presentation.clone().into_element())))
-                    .when(!self.preview && !native, |view| view.child(lab_ui::caption(&self.look,
-                        "Wide-gamut output is unavailable on this window; showing the sRGB fallback.")))
-                    .child(div().flex().flex_wrap().justify_center().gap_4().children(self.thumbnails.clone()))
-                    .when_some(self.error.clone(), |view, error| view.child(lab_ui::caption(&self.look, error)))
-                    .child(lab_ui::caption(&self.look,
-                        "Look at the orange and red umbrellas. Visible differences depend on display capability."))
-                    .child(lab_ui::caption(&self.look,
-                        "Italy images courtesy of WebKit’s Wide Gamut demo (webkit.org/blog-files/color-gamut/). Prepared 600 × 400 linear-P3 fixtures use the original embedded profiles. The highlighted version contains WebKit’s diagnostic markings. This is not display calibration."))),
-        )
+        let state = format!(
+            "{} · {} · 600 × 400 · Effective window mode: {:?}",
+            NAMES[self.selected],
+            if native { "Native Display P3" } else { "sRGB preview" },
+            window.color_status().effective()
+        );
+        let fallback = (!self.preview && !native)
+            .then_some("Wide-gamut output is unavailable on this window; showing the sRGB fallback.");
+        // Photo selection is through the cards (Luma buttons), so they go in a section, centered under the photo.
+        let cards = div().flex().flex_wrap().justify_center().gap_4().children(self.thumbnails.clone());
+        LabScreen::new("italy-lab", self.look.clone())
+            .crumb("xgpui-color", "Italy Photo Comparison")
+            .title("Italy Photo Comparison")
+            .lede("Compare native Display P3 and sRGB with the same photograph.")
+            .hero(Hero::fixed(photo, px(600.)))
+            .caption(state)
+            .control(labeled_control(&self.look, self.presentation.clone().into_element()))
+            .notice(fallback)
+            .notice(self.error.clone())
+            .section(cards)
+            .note("Look at the orange and red umbrellas. Visible differences depend on display capability.")
+            .credits("Italy images courtesy of WebKit’s Wide Gamut demo (webkit.org/blog-files/color-gamut/). Prepared 600 × 400 linear-P3 fixtures use the original embedded profiles. The highlighted version contains WebKit’s diagnostic markings. This is not display calibration.")
     }
 }
 
@@ -335,6 +338,10 @@ mod tests {
                 cx.run_until_parked();
                 let photo = cx.debug_bounds("italy-selected-photo").unwrap();
                 assert!((photo.size.width.as_f32() / photo.size.height.as_f32() - 1.5).abs() < 0.01);
+                // A fixed hero keeps its caption in the centered photo column.
+                let caption = cx.debug_bounds("italy-lab-caption").unwrap();
+                assert!(caption.left() >= photo.left() && caption.right() <= photo.right());
+                assert!(caption.top() >= photo.bottom());
                 assert!(photo.size.width <= gpui::px(600.));
                 assert!((photo.center().x.as_f32() - width / 2.).abs() < 1.);
                 let previews = ["italy-thumb-image-0", "italy-thumb-image-1", "italy-thumb-image-2"]

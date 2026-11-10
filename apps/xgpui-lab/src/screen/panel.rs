@@ -13,6 +13,7 @@ pub(crate) enum Panel {
     Parameters(ParametersPanel),
     Preview(PreviewPanel),
     Chain(ChainPanel),
+    Custom(PanelShell),
 }
 
 impl Panel {
@@ -21,6 +22,7 @@ impl Panel {
             Self::Parameters(panel) => panel.render(look, metrics),
             Self::Preview(panel) => panel.render(look, metrics),
             Self::Chain(panel) => panel.render(look),
+            Self::Custom(panel) => panel.render(look),
         }
     }
 }
@@ -309,4 +311,120 @@ impl From<ChainPanel> for Panel {
     fn from(panel: ChainPanel) -> Self {
         Self::Chain(panel)
     }
+}
+
+/// A panel with the standard heading and a free body, for content no other panel covers.
+pub(crate) struct PanelShell {
+    title: SharedString,
+    subtitle: Option<SharedString>,
+    action: Option<AnyElement>,
+    body: Vec<AnyElement>,
+    footer: Option<SharedString>,
+}
+
+impl FluentBuilder for PanelShell {}
+
+impl PanelShell {
+    pub fn new(title: impl Into<SharedString>) -> Self {
+        Self { title: title.into(), subtitle: None, action: None, body: Vec::new(), footer: None }
+    }
+
+    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+        self.subtitle = Some(text.into());
+        self
+    }
+
+    /// A control at the right of the heading.
+    pub fn action(mut self, element: impl IntoElement) -> Self {
+        self.action = Some(element.into_any_element());
+        self
+    }
+
+    /// Append to the body; call repeatedly.
+    pub fn child(mut self, element: impl IntoElement) -> Self {
+        self.body.push(element.into_any_element());
+        self
+    }
+
+    /// A muted closing line.
+    pub fn footer(mut self, text: impl Into<SharedString>) -> Self {
+        self.footer = Some(text.into());
+        self
+    }
+
+    fn render(self, look: &Look) -> Div {
+        shell(look, self.title, self.subtitle, self.action)
+            .children(self.body)
+            .children(self.footer.map(|footer| text(look, TextRole::Caption, footer)))
+    }
+}
+
+impl From<PanelShell> for Panel {
+    fn from(panel: PanelShell) -> Self {
+        Self::Custom(panel)
+    }
+}
+
+/// A properties list: keys in `Label` in a fixed column, values in `Value` (mono), wrapping.
+pub(crate) fn properties<K: Into<SharedString>, V: Into<SharedString>>(
+    look: &Look,
+    rows: impl IntoIterator<Item = (K, V)>,
+) -> Div {
+    let key_width = LabMetrics::STANDARD.property_key_width;
+    div().flex().flex_col().gap_1().children(rows.into_iter().map(|(key, value)| {
+        // Keys align with a value's first line, also when the value wraps.
+        div()
+            .flex()
+            .items_start()
+            .gap_3()
+            .child(text(look, TextRole::Label, key).w(key_width).flex_shrink_0())
+            .child(text(look, TextRole::Value, value).flex_1().min_w_0())
+    }))
+}
+
+/// One row of a form group: a label, its control, and whether the row is set (e.g. overridden).
+pub(crate) struct FormRow {
+    label: SharedString,
+    control: AnyElement,
+    set: bool,
+}
+
+impl FormRow {
+    pub fn new(label: impl Into<SharedString>, control: impl IntoElement, set: bool) -> Self {
+        Self { label: label.into(), control: control.into_any_element(), set }
+    }
+}
+
+/// A titled column of labeled controls with aligned labels. Rows that are not `set` (still
+/// following a default) show a muted label; set rows show it in foreground.
+/// Groups placed in one wrapping row read as a compact form.
+pub(crate) fn form_group(look: &Look, title: impl Into<SharedString>, rows: impl IntoIterator<Item = FormRow>) -> Div {
+    let metrics = LabMetrics::STANDARD;
+    let chrome = look.chrome();
+    vstack! {}
+        .flex_1()
+        .flex_basis(px(0.))
+        .min_w(metrics.form_group_min_width)
+        .gap_2()
+        .child(text(look, TextRole::Label, title))
+        .children(rows.into_iter().map(|row| {
+            let color = if row.set { chrome.body_text } else { chrome.muted_text };
+            div()
+                .flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    text(look, TextRole::Field, row.label)
+                        .w(metrics.form_label_width)
+                        .flex_shrink_0()
+                        .whitespace_nowrap()
+                        .text_color(color),
+                )
+                .child(row.control)
+        }))
+}
+
+/// Form groups side by side, wrapping below each other when narrow.
+pub(crate) fn form_groups(groups: impl IntoIterator<Item = Div>) -> Div {
+    div().flex().flex_wrap().gap(LabMetrics::STANDARD.section_gap).children(groups)
 }

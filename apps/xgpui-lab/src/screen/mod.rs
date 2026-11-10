@@ -2,7 +2,7 @@
 //! they go and how they look. See `docs/lab-screen-api.md`.
 //!
 //! Slot order is fixed by [`LabScreen`], not by call order:
-//! crumb, title, lede, hero, caption, controls, notices, cards, panels, note, credits.
+//! crumb, title, lede, hero, caption, controls, notices, cards, panels, sections, note, credits.
 //! Empty slots render nothing. Each slot carries the debug selector `"{id}-{slot}"`.
 use std::sync::Arc;
 
@@ -10,6 +10,7 @@ use gpui::{
     AnyElement, App, Div, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Stateful,
     StatefulInteractiveElement, Styled, Window, div,
 };
+use gpui::prelude::FluentBuilder;
 use xgpui_luma::hstack;
 use xgpui_luma_look_radix::Look;
 
@@ -24,7 +25,14 @@ mod panel;
 pub(crate) use card::LabCard;
 pub(crate) use hero::{ComparePane, Hero, Legend, Mark};
 pub(crate) use metrics::{LabMetrics, TextRole, mono_family, readout, text, value_field_look};
-pub(crate) use panel::{ChainPanel, Panel, Param, ParametersPanel, PreviewPanel};
+pub(crate) use panel::{
+    ChainPanel, FormRow, Panel, PanelShell, Param, ParametersPanel, PreviewPanel, form_group, form_groups, properties,
+};
+
+enum Section {
+    Element(AnyElement),
+    Panel(Panel),
+}
 
 #[derive(IntoElement)]
 pub(crate) struct LabScreen {
@@ -40,6 +48,7 @@ pub(crate) struct LabScreen {
     notices: Vec<SharedString>,
     cards: Vec<LabCard>,
     panels: Option<(Panel, Panel)>,
+    sections: Vec<Section>,
     note: Option<SharedString>,
     credits: Option<SharedString>,
 }
@@ -59,6 +68,7 @@ impl LabScreen {
             notices: Vec::new(),
             cards: Vec::new(),
             panels: None,
+            sections: Vec::new(),
             note: None,
             credits: None,
         }
@@ -120,6 +130,18 @@ impl LabScreen {
         self
     }
 
+    /// A full-width section after the panels, for content no slot covers (e.g. Italy's photo cards).
+    pub fn section(mut self, element: impl IntoElement) -> Self {
+        self.sections.push(Section::Element(element.into_any_element()));
+        self
+    }
+
+    /// A full-width panel after the panels, e.g. a log or a long readout.
+    pub fn section_panel(mut self, panel: impl Into<Panel>) -> Self {
+        self.sections.push(Section::Panel(panel.into()));
+        self
+    }
+
     /// Closing explanation at the end of the content.
     pub fn note(mut self, text: impl Into<SharedString>) -> Self {
         self.note = Some(text.into());
@@ -148,14 +170,21 @@ impl RenderOnce for LabScreen {
             .then(|| slot(div().flex().flex_col().gap(metrics.header_gap), "header").children(title).children(lede));
 
         let mut content: Vec<Div> = Vec::new();
-        content.extend(self.hero.map(|hero| slot(hero.render(look, &metrics), "hero")));
-        content.extend(self.caption.map(|text| caption(text, "caption")));
+        // A fixed hero is a centered column: its caption sits under the visual and the control row centers.
+        let centered = matches!(self.hero, Some(Hero::Fixed { .. }));
+        let mut live = self.caption.map(|text| caption(text, "caption"));
+        if let Some(hero) = self.hero {
+            let attached = if centered { live.take() } else { None };
+            content.push(slot(hero.render(look, &metrics, attached), "hero"));
+        }
+        content.extend(live);
         if !self.controls.is_empty() || !self.actions.is_empty() {
             // Actions stay together at the right end; the spacer pushes them there and lets the row wrap.
             let actions = (!self.actions.is_empty())
                 .then(|| div().flex().items_center().gap(metrics.control_gap).children(self.actions));
             let spacer = actions.is_some().then(|| div().flex_1());
-            content.push(slot(control_row(), "controls").children(self.controls).children(spacer).children(actions));
+            let row = control_row().when(centered, |row| row.justify_center());
+            content.push(slot(row, "controls").children(self.controls).children(spacer).children(actions));
         }
         content.extend(self.notices.into_iter().map(|text| caption(text, "notice")));
         if !self.cards.is_empty() {
@@ -171,6 +200,10 @@ impl RenderOnce for LabScreen {
             let narrow = sized(narrow.render(look, &metrics).flex_1(), metrics.narrow_panel, "panel-narrow");
             content.push(slot(hstack! { wide, narrow }.flex_wrap().gap(metrics.section_gap), "panels"));
         }
+        content.extend(self.sections.into_iter().map(|section| match section {
+            Section::Element(element) => slot(div(), "section").child(element),
+            Section::Panel(panel) => slot(panel.render(look, &metrics), "section"),
+        }));
         content.extend(self.note.map(|text| caption(text, "note")));
         content.extend(self.credits.map(|text| slot(metrics::text(look, TextRole::Fine, text), "credits")));
         let content = (!content.is_empty())
@@ -180,7 +213,7 @@ impl RenderOnce for LabScreen {
     }
 }
 
-// Page chrome shared with the screens that still use `lab_ui`.
+// Page chrome. `card_surface` and `control_row` are also used directly, e.g. by Italy's photo cards.
 
 /// Scrolling page with the look's content background and body text.
 pub(crate) fn page(id: &'static str, look: &Look) -> Stateful<Div> {

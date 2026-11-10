@@ -52,6 +52,11 @@ impl Choice {
         Self { selector, label: label.to_owned().into(), labels }
     }
 
+    /// The label, for layouts that place it apart from the selector (e.g. `screen::form_group`).
+    pub fn label(&self) -> SharedString {
+        self.label.clone()
+    }
+
     pub fn sync(&self, options: Vec<String>, selected: usize, cx: &mut gpui::App) {
         let changed = *self.labels.borrow() != options;
         if changed {

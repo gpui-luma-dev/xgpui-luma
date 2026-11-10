@@ -1,7 +1,7 @@
 //! The screen's main visualization.
 //!
-//! `Fixed` (Italy) is added with the screen that needs it; see `docs/lab-screen-api.md`.
-use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, SharedString, Styled, div, px};
+//! See `docs/lab-screen-api.md`.
+use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, SharedString, Styled, div, px};
 use xgpui_luma_look_radix::Look;
 
 use super::{LabMetrics, TextRole, text};
@@ -14,6 +14,9 @@ pub(crate) enum Hero {
     WithLegend { visual: AnyElement, legend: Legend },
     /// Two panes side by side, each with its own heading; they wrap below each other when narrow.
     Compare(ComparePane, ComparePane),
+    /// A visual that owns its geometry, centered at up to `max_width`. Italy photo.
+    /// The screen's caption sits under it and the control row centers.
+    Fixed { visual: AnyElement, max_width: Pixels },
 }
 
 impl Hero {
@@ -25,12 +28,20 @@ impl Hero {
         Self::WithLegend { visual: visual.into_any_element(), legend }
     }
 
+    pub fn fixed(visual: impl IntoElement, max_width: Pixels) -> Self {
+        Self::Fixed { visual: visual.into_any_element(), max_width }
+    }
+
     pub fn compare(left: ComparePane, right: ComparePane) -> Self {
         Self::Compare(left, right)
     }
 
-    pub(super) fn render(self, look: &Look, metrics: &LabMetrics) -> Div {
+    /// `caption` is placed under a fixed visual; the other heroes leave it to the screen.
+    pub(super) fn render(self, look: &Look, metrics: &LabMetrics, caption: Option<Div>) -> Div {
         match self {
+            Self::Fixed { visual, max_width } => {
+                div().flex().flex_col().w_full().max_w(max_width).mx_auto().gap_2().child(visual).children(caption)
+            }
             Self::Full(visual) => div().flex().flex_col().w_full().flex_shrink_0().child(visual),
             Self::WithLegend { visual, legend } => div()
                 .flex()

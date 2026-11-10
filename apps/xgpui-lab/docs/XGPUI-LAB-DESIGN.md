@@ -33,13 +33,14 @@ Don't use it for benchmark harnesses, headless tools, or the shell chrome.
 
 ## Reference screens
 
-Paths are relative to `apps/xgpui-lab/`. [lab-ui.md](lab-ui.md) records how the shared helpers were extracted from Color Spaces (issues #29 and #33) and how they were verified; this document is the rule set for new and restyled screens.
+Paths are relative to `apps/xgpui-lab/`. Screens are built with `LabScreen` in `src/screen/` ([lab-screen-api.md](lab-screen-api.md)); [lab-ui.md](lab-ui.md) records the history of the earlier `lab_ui` helpers. This document is the rule set for new and restyled screens.
 
 | Screen | Breadcrumb | Reference image | Implementation | State |
 | --- | --- | --- | --- | --- |
 | Color Spaces | `xgpui-color / Color Spaces` | [mockups/color-spaces-reference.webp](mockups/color-spaces-reference.webp) | [`src/color_demos/interactive_spaces.rs`](../src/color_demos/interactive_spaces.rs) | **Source of the design.** Copy it when in doubt. |
 | Chromaticity & Gamut | `xgpui-gamut / Chromaticity` | [mockups/chromaticity-mockup.png](mockups/chromaticity-mockup.png) | [`src/color_demos/chromaticity.rs`](../src/color_demos/chromaticity.rs), hosted by [`src/color_gamut_page.rs`](../src/color_gamut_page.rs) | follows the design (`LabScreen`) |
-| Italy Photo Comparison | — | — | [`src/color_demos/`](../src/color_demos/) | follows the design. Photo variant: 3:2 photo, 200 px selectable photo cards (see [lab-ui.md](lab-ui.md#supported-variations)) |
+| Italy Photo Comparison | `xgpui-color / Italy Photo Comparison` | — | [`src/color_demos/italy.rs`](../src/color_demos/italy.rs) | follows the design (`LabScreen`). Photo variant: `Hero::fixed` 3:2 photo up to 600 px with its caption under it and the control row centered; 200 px selectable photo cards in a section (see [lab-ui.md](lab-ui.md#supported-variations)) |
+| Shell Lab, Desktop Preferences | `xgpui-shell / …` | — | [`src/shell_lab.rs`](../src/shell_lab.rs) | follows the design (`LabScreen`). Diagnostics variant: `PanelShell` panels and `properties` lists |
 | Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab/filters_screen.rs`](../src/media_lab/filters_screen.rs) (state in [`src/media_lab.rs`](../src/media_lab.rs)) | follows the design (`LabScreen`). The mockup's "linear light" and "skipped steps" text is wrong for `ImageFilter`; the screen says what the code does |
 
 Shared building blocks already exist. Use them before you write new ones:
@@ -47,13 +48,13 @@ Shared building blocks already exist. Use them before you write new ones:
 | File | Provides |
 | --- | --- |
 | [`src/theme.rs`](../src/theme.rs) | `default_look()`, `ColorVizLookExt` (`chrome()`, `interaction_colors()`, `typography_scale()`), `TypographyExt`, `icon_button()` |
-| [`src/lab_ui.rs`](../src/lab_ui.rs) | `page`, `container`, `header`, `caption`, `control_row`, `control`, `panel`, `comparison_card`, `comparison_surface` |
+| [`src/screen/`](../src/screen/) | `LabScreen` (slots), `Hero`, `LabCard`, panels (`ParametersPanel`, `PreviewPanel`, `ChainPanel`, `PanelShell`), `TextRole`, `readout`, `properties`, `LabMetrics`, `data` colors |
 | [`src/lab_controls.rs`](../src/lab_controls.rs) | `Choice`, a labeled Radix `Selector` with stable numeric IDs |
 
 ## Page anatomy
 
-Every lab screen is one vertical scroll column (`lab_ui::page` →
-`lab_ui::container`), with the parts in this order. Leave out a part only if
+Every lab screen is one `LabScreen`: a vertical scroll column with the parts in
+this order. The type fixes the order, whatever order the slots are filled in. Leave out a part only if
 the screen has nothing to put in it. Don't reorder them.
 
 ```
@@ -73,21 +74,20 @@ the screen has nothing to put in it. Don't reorder them.
 
 1. **Breadcrumb**: the crate that owns the feature, then ` / `, then the screen
    name. This tells a reader which extension the demo tests.
-2. **Title**: the screen name only (`lab_ui::header`).
-3. **Lede**: one sentence in the form "Compare X…" or "Explore X…" (the
-   `header` subtitle).
+2. **Title**: the screen name only (`.title(..)`).
+3. **Lede**: one sentence in the form "Compare X…" or "Explore X…" (`.lede(..)`).
 4. **Hero visual**: the canvas, field, diagram or image comparison. It is the
    largest element. Two-way comparisons go side by side, each with its own
    header. A square diagram can have a narrow legend column to its right.
 5. **Caption line**: one line of `caption` text separated by ` · `, restating
    what the hero shows with live values. It replaces loose status lines such as
    `Sweep false · Adjustment animation false`.
-6. **Control row** (`lab_ui::control_row`): selectors first, then switches, then
+6. **Control row** (`.control(..)`, `.action(..)`): selectors first, then switches, then
    actions such as *Open image…*, *Reload* and *Reset view* pushed to the right.
-7. **Card row**: equal-width cards (`comparison_card`). Each is a variant being
+7. **Card row**: equal-width cards (`LabCard`). Each is a variant being
    compared (sRGB / Display P3 / OKLCH / Rec2020) or a status (Image mode /
    Upload / Sample / Tint). If you have fewer than four, use the count you have.
-8. **Panels** (`lab_ui::panel`): a wide *Parameters* panel with editable values
+8. **Panels** (`.panels(wide, narrow)`): a wide *Parameters* panel with editable values
    and a narrow *Preview* (or *Chain*, *Details*) panel that shows their result.
 9. **Note**: plain `caption` text on how the controls and the hero relate.
 10. **Fine print**: data sources and licenses (for example the CIE locus credit),
@@ -297,6 +297,22 @@ Use the look-radix builders, passing `.look(look)`. Don't draw controls by hand.
 - Name and subtitle stay on one line. Truncate rather than wrap.
 - Selected, hovered and pressed fills come from `interaction_colors().background(selected, state)`.
 
+### Settings form
+
+For many selectors that each override a default (Shell Lab's *Preview overrides*),
+don't wrap label/selector pairs into one long row. Use `screen::form_groups` of
+`screen::form_group`s:
+
+- **Group by what the settings affect**, as titled columns (*Accessibility*,
+  *Text*, *Titlebar actions*), side by side, wrapping when narrow.
+- **Align**: labels in one column (`form_label_width`), selectors in the next.
+  Labels stay on one line, so prefer short platform wording (*Reduce motion*).
+- **Show state**: a row still on its default has a muted label, and an
+  overridden row has a foreground label. The panel subtitle counts the overrides
+  ("2 of 8 overridden · the rest follow the desktop").
+- **Reset** sits in the panel heading as an outline button, disabled when nothing
+  differs from the defaults.
+
 ### Parameter
 
 A label in `Foreground`, an optional range in `MutedForeground`, a `TextField`,
@@ -357,7 +373,7 @@ change that needs its own review.
 
 Before you call a screen done, check that:
 
-- [ ] the parts follow the order in *Page anatomy*, using the `lab_ui` helpers;
+- [ ] the screen is a `LabScreen`, so the parts follow the order in *Page anatomy*;
 - [ ] no chrome color is a literal: everything is `chrome()`, `interaction_colors()`, `resolve_role` or `resolve_step`;
 - [ ] data colors live in one named module, and gamut colors match the other screens;
 - [ ] the screen looks right in **both** light and dark mode;

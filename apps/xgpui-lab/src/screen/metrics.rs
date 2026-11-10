@@ -35,6 +35,14 @@ pub(crate) struct LabMetrics {
     pub inline_slider_width: Pixels,
     pub param_min_width: Pixels,
     pub preview_height: Pixels,
+    /// Photo-card variant (Italy): card width and its 3:2 thumbnail.
+    pub photo_card_width: Pixels,
+    pub photo_thumbnail: gpui::Size<Pixels>,
+    /// Label column and minimum width of a form group.
+    pub form_label_width: Pixels,
+    pub form_group_min_width: Pixels,
+    /// Key column of a properties list.
+    pub property_key_width: Pixels,
     /// Diagram axis tick labels (mono, muted).
     pub axis_tick: Pixels,
     pub wide_panel: PanelWidth,
@@ -67,6 +75,11 @@ impl LabMetrics {
         param_min_width: px(100.),
         preview_height: px(80.),
         axis_tick: px(10.),
+        photo_card_width: px(200.),
+        photo_thumbnail: gpui::Size { width: px(174.), height: px(116.) },
+        property_key_width: px(140.),
+        form_label_width: px(104.),
+        form_group_min_width: px(200.),
         wide_panel: PanelWidth { grow: 2., basis: px(440.), min: px(240.) },
         narrow_panel: PanelWidth { grow: 1., basis: px(265.), min: px(225.) },
     };

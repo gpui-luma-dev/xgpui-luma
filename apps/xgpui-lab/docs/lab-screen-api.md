@@ -1,6 +1,6 @@
 # LabScreen: proposed screen layout API
 
-Status: **migration steps 1–3 and 5 implemented** (`src/screen/`, Color Spaces, Chromaticity, Image Filters). Italy (step 4) is next.
+Status: **migration complete** (steps 1–6): Color Spaces, Chromaticity, Italy, Image Filters and Shell Lab render through `src/screen/`, and `lab_ui.rs` is removed. Other lab pages are out of scope until they are prepared.
 Later sections are still proposals; *Implemented so far* below records where
 the code differs from them.
 
@@ -12,8 +12,8 @@ Related: [XGPUI-LAB-DESIGN.md](XGPUI-LAB-DESIGN.md) (the rules),
 `src/screen/` exists and Color Spaces renders through it. Headless layout
 bounds of every Color Spaces section (crumb, header, field, caption, controls,
 each card, both panels, note) are identical before and after at 1280 and 720 px.
-`lab_ui.rs` now forwards to `screen/` for Italy and Shell Lab
-(`comparison_card` was removed; it had no other callers).
+During the migration `lab_ui.rs` forwarded to `screen/` for Italy and Shell Lab;
+it was removed once they migrated.
 
 Chromaticity (step 3) now renders through `LabScreen` too, and its drift is fixed:
 1240 / p6 page, `crumb()` separator, `TextRole` title and type, standard card
@@ -59,6 +59,23 @@ Where it differs from the mockup:
 - Badges sit right after the card name (the `LabCard` rule), not at the far right.
 - Slider tracks are the plain Radix slider. The mockup's gradient tracks and
   identity ticks are not built yet.
+
+Italy (step 4) and Shell Lab render through `LabScreen` too. They added:
+
+- `Hero::fixed(visual, max_width)`. The visual is centered at up to `max_width`,
+  the screen's caption sits under it in the same column, and the control row
+  centers. Italy's 600 px 3:2 photo uses it.
+- `LabScreen::section(element)` and `.section_panel(panel)`: full-width sections
+  after the panels. Italy's photo cards stay Luma buttons, so they go in a
+  section rather than through `LabCard`. Shell Lab's *Recent events* is a section panel.
+- `PanelShell`: a panel with the standard heading, an optional action and footer,
+  and a free body (`.child(..)`).
+- `screen::properties(look, rows)`: a key column in `Label` with values in mono
+  `Value`. Keys align with the first line of a wrapping value.
+- `LabMetrics::photo_card_width`, `photo_thumbnail` and `property_key_width`.
+- `screen::form_group(look, title, rows)` with `FormRow::new(label, control, set)`,
+  and `form_groups(..)` to lay groups side by side: a settings form with aligned
+  labels, muted until a row is set. `Choice::label()` exposes a selector's label for it.
 
 Differences from the proposal below:
 
