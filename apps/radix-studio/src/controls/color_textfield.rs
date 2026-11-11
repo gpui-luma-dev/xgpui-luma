@@ -305,7 +305,7 @@ fn embedded_textfield(
         .look_override(|mut field| {
             field.background = gpui::transparent_black();
             field.border = gpui::transparent_black();
-            field.focus_border = None;
+            field.focus_border = gpui::transparent_black();
             field.shadow = None;
             field.padding_x = 0.0;
             field.padding_y = 0.0;

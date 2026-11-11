@@ -83,6 +83,7 @@ impl ButtonTemplate<ToggleData> for NeumorphicPowerToggleTemplate {
         let content_model = button_content_context(
             model,
             ButtonFamilyLook {
+                focus_border: gpui::transparent_black(),
                 background,
                 foreground: icon_color,
                 muted_foreground: icon_color,

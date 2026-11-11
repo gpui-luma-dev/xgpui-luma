@@ -90,6 +90,7 @@ pub(crate) struct Rule {
     background: Option<Color>,
     foreground: Option<Color>,
     border: Option<Color>,
+    focus_border: Option<Color>,
     #[serde(default)]
     background_delta: f32,
 }
@@ -169,6 +170,7 @@ impl Recipes {
                     background: Some(Color::Transparent),
                     foreground: Some(Color::Semantic(SemanticRole::Foreground)),
                     border: Some(Color::None),
+                    focus_border: Some(Color::None),
                     ..Default::default()
                 },
                 Rule {
@@ -307,12 +309,13 @@ impl Recipes {
                     classic_edge: true,
                     ..Default::default()
                 },
-                Rule { focused: Some(true), border: Some(Color::Semantic(SemanticRole::Focus)), ..Default::default() },
+                Rule { focus_border: Some(Color::Semantic(SemanticRole::Focus)), ..Default::default() },
                 Rule {
                     variants: vec!["page".into()],
                     background: Some(Color::Transparent),
                     foreground: Some(Color::Semantic(SemanticRole::MutedForeground)),
                     border: Some(Color::None),
+                    focus_border: Some(Color::None),
                     ..Default::default()
                 },
                 Rule {
@@ -341,6 +344,7 @@ impl Recipes {
                     variants: vec!["ghost_quiet".into()],
                     background: Some(Color::Transparent),
                     border: Some(Color::None),
+                    focus_border: Some(Color::None),
                     ..Default::default()
                 },
             ],
@@ -432,6 +436,7 @@ fn variant_name(variant: ButtonVariant) -> &'static str {
     }
 }
 pub(crate) struct Colors {
+    pub focus_border: Hsla,
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Option<Hsla>,
@@ -452,7 +457,8 @@ pub(crate) fn resolve(
     };
     let selected = matches!(role, ButtonFamilyRole::Toggle { selected: true });
     let transparent = gpui::transparent_black();
-    let mut colors = Colors { background: transparent, foreground: transparent, border: None };
+    let mut colors =
+        Colors { focus_border: transparent, background: transparent, foreground: transparent, border: None };
     for rule in &recipes.rules {
         if (!rule.variants.is_empty() && !rule.variants.iter().any(|v| v == variant_name(variant)))
             || rule.selected.is_some_and(|v| v != selected)
@@ -490,6 +496,9 @@ pub(crate) fn resolve(
         }
         if let Some(color) = &rule.foreground {
             colors.foreground = resolve(color, colors.background).unwrap_or(transparent);
+        }
+        if let Some(color) = &rule.focus_border {
+            colors.focus_border = resolve(color, colors.background).unwrap_or(transparent);
         }
         if let Some(color) = &rule.border {
             colors.border = resolve(color, colors.background);
@@ -534,8 +543,7 @@ mod tests {
         let step = |n| tone.step(look, n);
 
         // Page / selected chrome stay on semantic roles (app chrome, not Radix color prop).
-        // Border stays None in every state: the SDK paints a focus ring from `look.border`,
-        // so any opaque edge on the selected pill becomes a ring when focused.
+        // Face borders and focus paint are independent, including Page chrome.
         let (mut background, mut foreground, mut border) = if page {
             if selected {
                 match look.mode() {
@@ -639,16 +647,17 @@ mod tests {
             border = Some(shift_lightness(background, look.classic_params().border_delta));
         }
 
-        if state.focused && !state.disabled && !quiet && !page {
-            border = Some(look.resolve_role(SemanticRole::Focus).hsla());
-        }
-
         if quiet {
             background = transparent();
             border = None;
         }
 
         ButtonFamilyPalette {
+            focus_border: if quiet || page {
+                gpui::transparent_black()
+            } else {
+                look.resolve_role(SemanticRole::Focus).hsla()
+            },
             background,
             foreground,
             muted_foreground: foreground,
@@ -752,8 +761,8 @@ mod tests {
                             let old = legacy_palette(&look, variant, paint, role, state);
                             let new = resolve(&look, variant, paint, role, state);
                             assert_eq!(
-                                (new.background, new.foreground, new.border),
-                                (old.background, old.foreground, old.border),
+                                (new.background, new.foreground, new.border, new.focus_border),
+                                (old.background, old.foreground, old.border, old.focus_border),
                                 "{mode:?} {variant:?} {paint:?} {selected} {state:?}"
                             );
                         }

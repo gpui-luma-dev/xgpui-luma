@@ -7,6 +7,8 @@ use crate::controls::textfield::TextFieldState;
 
 #[derive(Clone, Debug)]
 pub struct TextFieldPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Hsla,
@@ -32,7 +34,8 @@ pub struct TextFieldLook {
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Hsla,
-    pub focus_border: Option<Hsla>,
+    /// Independent focus paint; transparency does not remove focus space.
+    pub focus_border: Hsla,
     pub placeholder: Hsla,
     pub icon: Hsla,
     pub selection_background: Hsla,
@@ -122,6 +125,11 @@ impl TextFieldTheme for DefaultTextFieldTheme {
             };
 
         TextFieldPalette {
+            focus_border: if state.invalid {
+                gpui::transparent_black()
+            } else {
+                palette.focus.ring
+            },
             background,
             foreground,
             border,
@@ -202,7 +210,7 @@ pub fn compose_textfield_look(
         background: palette.background,
         foreground: palette.foreground,
         border: palette.border,
-        focus_border: None,
+        focus_border: palette.focus_border,
         placeholder: palette.placeholder,
         icon: palette.icon,
         selection_background: palette.selection_background,

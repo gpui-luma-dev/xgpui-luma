@@ -107,6 +107,7 @@ impl ButtonTemplate<bool> for NeumorphicSegmentedButtonTemplate {
         let content_model = button_content_context(
             model,
             ButtonFamilyLook {
+                focus_border: gpui::transparent_black(),
                 background,
                 foreground: text_color,
                 muted_foreground: text_color,

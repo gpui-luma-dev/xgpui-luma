@@ -71,7 +71,10 @@ impl CheckboxScale {
 
 #[derive(Clone, Debug)]
 pub struct CheckboxPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub control_background: Option<Hsla>,
+    /// Body-border paint; `None` is transparent and retains the configured border width.
     pub control_border: Option<Hsla>,
     pub indicator_background: Hsla,
     pub indicator_border: Hsla,
@@ -135,12 +138,11 @@ impl CheckboxTheme for DefaultCheckboxTheme {
         };
 
         CheckboxPalette {
+            focus_border: palette.focus.ring,
             control_background: None,
             control_border: None,
             indicator_background,
-            indicator_border: if state.focused && !state.disabled {
-                palette.focus.ring
-            } else if checked && !state.disabled {
+            indicator_border: if checked && !state.disabled {
                 indicator_background
             } else {
                 palette.form.input.border

@@ -86,15 +86,16 @@ pub fn pill_radius_metric(_catalog: &CssTokenMap, value_px: f32) -> ResolvedMetr
 
 pub fn focus_ring_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     ResolvedMetric {
-        value_px: metrics.focus.width,
+        value_px: xgpui_luma::infra::focus_adorner::FocusAdorner::new(metrics.focus).width,
         source: MetricSource::Scaffold { path: "MetricTokens.focus.width".into() },
     }
 }
 
 pub fn focus_ring_offset_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
-    let border = metrics.border_width.default;
-    let focus = metrics.focus.width;
-    derived_metric("border_width.default + focus.width", border + focus)
+    derived_metric(
+        "max(focus.gap + focus.offset, 0) + max(focus.width, 0)",
+        xgpui_luma::infra::focus_adorner::FocusAdorner::new(metrics.focus).extent(),
+    )
 }
 
 pub fn border_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {

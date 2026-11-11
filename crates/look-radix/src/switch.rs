@@ -165,7 +165,7 @@ impl SwitchTheme for SwitchThemeAdapter {
         };
         let soft_on = if high_contrast { step(6) } else { step(4) };
 
-        let (track_background, mut track_border, thumb_background, thumb_border, thumb_shadow) = if state.disabled {
+        let (track_background, track_border, thumb_background, thumb_border, thumb_shadow) = if state.disabled {
             let thumb = look.light_gray_step(2);
             (alpha(gray(3), 0.55), alpha(gray(3), 0.55), thumb, thumb, thumb_shadow(false))
         } else {
@@ -185,11 +185,8 @@ impl SwitchTheme for SwitchThemeAdapter {
             }
         };
 
-        if state.focused && !state.disabled {
-            track_border = look.resolve_role(SemanticRole::Focus).hsla();
-        }
-
         SwitchPalette {
+            focus_border: look.resolve_role(SemanticRole::Focus).hsla(),
             track_background,
             track_border,
             thumb_background,

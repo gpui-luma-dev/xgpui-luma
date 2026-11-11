@@ -10,6 +10,8 @@ use crate::theme::{
 
 #[derive(Clone, Debug)]
 pub struct PopupMenuPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub trigger_focus_border: gpui::Hsla,
     pub trigger_background: Hsla,
     pub trigger_foreground: Hsla,
     pub trigger_border: Option<Hsla>,
@@ -20,6 +22,8 @@ pub struct PopupMenuPalette {
 
 #[derive(Clone, Debug)]
 pub struct PopupMenuLook {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub trigger_focus_border: gpui::Hsla,
     pub trigger_background: Hsla,
     pub trigger_foreground: Hsla,
     pub trigger_border: Option<Hsla>,
@@ -207,6 +211,7 @@ impl PopupMenuTheme for DefaultPopupMenuTheme {
         };
 
         PopupMenuPalette {
+            trigger_focus_border: palette.focus.ring,
             trigger_background,
             trigger_foreground,
             trigger_border,
@@ -234,6 +239,7 @@ impl PopupMenuTheme for DefaultPopupMenuTheme {
 
 pub fn compose_popup_menu_look(palette: &PopupMenuPalette, scale: &StandardBoxScale) -> PopupMenuLook {
     PopupMenuLook {
+        trigger_focus_border: palette.trigger_focus_border,
         trigger_background: palette.trigger_background,
         trigger_foreground: palette.trigger_foreground,
         trigger_border: palette.trigger_border,

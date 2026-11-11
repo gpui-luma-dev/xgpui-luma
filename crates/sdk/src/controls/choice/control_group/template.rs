@@ -340,7 +340,15 @@ where
         }
     };
 
-    div().child(format!("{active_marker} {selection_marker} {}", model.item.label())).into_any_element()
+    // Glyph advances in proportional fonts must not move the label when focus or
+    // selection changes. Keep the two marker columns independent of their paint.
+    div()
+        .flex()
+        .items_center()
+        .child(div().w(gpui::rems(1.0)).flex_none().overflow_hidden().whitespace_nowrap().child(active_marker))
+        .child(div().w(gpui::rems(2.0)).flex_none().overflow_hidden().whitespace_nowrap().child(selection_marker))
+        .child(model.item.label().clone())
+        .into_any_element()
 }
 
 fn default_item_element<T>(
@@ -438,4 +446,36 @@ where
     render_control_group_item_elements_with_opacity(model, handlers, window, cx, disabled_opacity)
         .into_elements()
         .collect()
+}
+
+#[cfg(all(test, feature = "test-support"))]
+#[test]
+fn default_group_markers_keep_intrinsic_bounds_across_focus_states() {
+    use super::model::ControlGroupItem;
+    use crate::infra::state::CompositeItemState;
+    let item = ControlGroupItem::new("fallback").label("Fallback item");
+    let id = "group".into();
+    let stylesheet = crate::theme::stylesheet::CommonStylesheet::sdk_default();
+    crate::infra::focus_adorner::testing::assert_stable_layout(move |state, selected, _, _| {
+        default_item_content(&ControlGroupItemRenderModel {
+            group_id: &id,
+            stylesheet,
+            layout: ControlGroupLayout::Vertical,
+            item: &item,
+            index: 0,
+            sibling_count: 1,
+            selected,
+            selection_progress: if selected { 1.0 } else { 0.0 },
+            active: state.focused,
+            enabled: !state.disabled,
+            state: CompositeItemState {
+                active: state.focused,
+                focus_visible: state.focused,
+                selected,
+                ..Default::default()
+            },
+            selection_mode: ControlSelectionMode::Multiple,
+            foreground: None,
+        })
+    });
 }

@@ -671,7 +671,8 @@ fn tab_button_model(
         round: false,
         radius_override: Cell::new(Some(look.radius)),
         elevation: false,
-        compact: false,
+        // Tabs own their focus indicator; retain the dense item footprint.
+        compact: true,
         switch_track_width_extra: 0.0,
         switch_track_width: None,
         switch_track_height: None,
@@ -685,6 +686,7 @@ fn tab_button_model(
 
 fn tab_button_look(look: TabsItemLook, font_family: SharedString) -> ButtonFamilyLook {
     ButtonFamilyLook {
+        focus_border: gpui::transparent_black(),
         background: look.background.unwrap_or_else(|| hsla(0.0, 0.0, 0.0, 0.0)),
         foreground: look.label_color,
         muted_foreground: look.label_color,

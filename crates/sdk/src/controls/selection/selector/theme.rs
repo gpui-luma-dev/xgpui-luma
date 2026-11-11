@@ -12,6 +12,8 @@ use super::model::SelectorTriggerStyle;
 
 #[derive(Clone, Debug)]
 pub struct SelectorPalette {
+    /// Independent focus paint; transparency retains the configured focus space.
+    pub trigger_focus_border: Hsla,
     pub trigger_background: Hsla,
     pub trigger_foreground: Hsla,
     pub trigger_icon: Hsla,
@@ -35,7 +37,8 @@ pub struct SelectorLook {
     pub trigger_gap: f32,
     pub trigger_height: f32,
     pub trigger_icon_size: f32,
-    pub trigger_focus_border: Option<Hsla>,
+    /// Independent adorner paint; transparent retains focus space.
+    pub trigger_focus_border: Hsla,
     pub menu_offset_y: f32,
     pub items_panel: SelectorItemsPanelLook,
 }
@@ -144,6 +147,7 @@ impl SelectorTheme for DefaultSelectorTheme {
             (!state.disabled && state.invalid).then_some(palette.form.input.invalid_border).or(trigger_border);
 
         SelectorPalette {
+            trigger_focus_border: palette.focus.ring,
             trigger_background,
             trigger_foreground,
             trigger_icon: palette.app.muted_foreground,
@@ -179,15 +183,6 @@ impl SelectorTheme for DefaultSelectorTheme {
              gap => trigger_gap, icon_size => trigger_icon_size, font_size => trigger_typography.size,
              line_height => trigger_typography.line_height, radius => trigger_radius, menu_offset_y => menu_offset_y],
             defaults = Default::default());
-        if state.invalid && !state.disabled {
-            let invalid_border =
-                self.tokens.stylesheet.recipes.palette("selector", &self.tokens.palette).form.input.invalid_border;
-            look.trigger_border = Some(invalid_border);
-            look.trigger_focus_border = Some(invalid_border);
-        } else if state.focused && !state.disabled && palette.trigger_border.is_some() {
-            look.trigger_focus_border =
-                Some(self.tokens.stylesheet.recipes.palette("selector", &self.tokens.palette).focus.ring);
-        }
         look
     }
 
@@ -217,7 +212,7 @@ pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardB
         trigger_gap: scale.gap,
         trigger_height: scale.height,
         trigger_icon_size: scale.icon_size,
-        trigger_focus_border: None,
+        trigger_focus_border: palette.trigger_focus_border,
         menu_offset_y: scale.gap
             * crate::theme::stylesheet::CommonStylesheet::sdk_default()
                 .selector
@@ -294,7 +289,7 @@ mod tests {
             &scale,
             false,
         );
-        assert!(focused_look.trigger_focus_border.is_some());
+        assert!(focused_look.trigger_focus_border.a > 0.0);
     }
 
     #[test]
@@ -357,7 +352,8 @@ mod tests {
         );
 
         assert_eq!(look.trigger_border, Some(theme.tokens.palette.form.input.invalid_border));
-        assert_eq!(look.trigger_focus_border, look.trigger_border);
+        assert_eq!(look.trigger_border, Some(theme.tokens.palette.form.input.invalid_border));
+        assert_eq!(look.trigger_focus_border, theme.tokens.palette.focus.ring);
     }
 }
 

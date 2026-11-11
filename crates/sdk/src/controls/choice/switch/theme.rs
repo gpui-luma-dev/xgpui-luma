@@ -71,6 +71,8 @@ impl SwitchScale {
 
 #[derive(Clone, Debug)]
 pub struct SwitchPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub track_background: Hsla,
     pub track_border: Hsla,
     pub thumb_background: Hsla,
@@ -124,9 +126,7 @@ impl SwitchTheme for DefaultSwitchTheme {
             palette.form.input.background
         };
 
-        let track_border = if state.focused && !state.disabled {
-            palette.focus.ring
-        } else if on && !state.disabled {
+        let track_border = if on && !state.disabled {
             track_background
         } else {
             palette.border.default
@@ -142,6 +142,7 @@ impl SwitchTheme for DefaultSwitchTheme {
         };
 
         SwitchPalette {
+            focus_border: palette.focus.ring,
             track_background,
             track_border,
             thumb_background,

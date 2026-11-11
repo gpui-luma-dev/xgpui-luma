@@ -18,6 +18,8 @@ pub enum ButtonFamilyRole {
 
 #[derive(Clone, Debug)]
 pub struct ButtonFamilyPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub background: Hsla,
     pub foreground: Hsla,
     pub muted_foreground: Hsla,
@@ -29,6 +31,8 @@ pub struct ButtonFamilyPalette {
 
 #[derive(Clone, Debug)]
 pub struct ButtonFamilyLook {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub background: Hsla,
     pub foreground: Hsla,
     pub muted_foreground: Hsla,
@@ -119,11 +123,7 @@ fn native_button_palette(tokens: &ThemeTokens, role: ButtonFamilyRole, state: In
         _ => (palette.surface.subtle.background, palette.app.foreground, palette.border.default),
     };
 
-    let border = if state.focused && !state.disabled {
-        palette.focus.ring
-    } else {
-        default_border
-    };
+    let border = default_border;
 
     let foreground = if state.disabled {
         palette.state.disabled.foreground
@@ -139,6 +139,7 @@ fn native_button_palette(tokens: &ThemeTokens, role: ButtonFamilyRole, state: In
     };
 
     ButtonFamilyPalette {
+        focus_border: palette.focus.ring,
         background,
         foreground,
         muted_foreground: palette.app.muted_foreground,
@@ -148,9 +149,9 @@ fn native_button_palette(tokens: &ThemeTokens, role: ButtonFamilyRole, state: In
     }
 }
 
-/// Resolves the border color used for layout and focus-ring placement.
+/// Normalizes absent face-border paint to transparent.
 ///
-/// Absent borders are treated as transparent (borderless).
+/// Face-border paint never determines focus geometry or focus color.
 pub fn button_family_effective_border(border: Option<Hsla>) -> Hsla {
     border.unwrap_or_else(|| gpui::hsla(0.0, 0.0, 0.0, 0.0))
 }
@@ -162,6 +163,7 @@ pub fn compose_button_family_look(
     pill_radius: f32,
 ) -> ButtonFamilyLook {
     ButtonFamilyLook {
+        focus_border: palette.focus_border,
         background: palette.background,
         foreground: palette.foreground,
         muted_foreground: palette.muted_foreground,

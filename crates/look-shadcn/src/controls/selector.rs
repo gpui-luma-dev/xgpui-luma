@@ -36,6 +36,7 @@ pub fn selector_palette(
     let icon = ctx.catalog().color("muted-foreground").unwrap_or(button.foreground);
 
     SelectorPalette {
+        trigger_focus_border: button.focus_border,
         trigger_background: button.background,
         trigger_foreground: button.foreground,
         trigger_icon: icon,
@@ -81,7 +82,7 @@ pub fn selector_look(
         trigger_gap: geometry.gap.value_px,
         trigger_height: geometry.height.value_px,
         trigger_icon_size: geometry.icon_size.value_px,
-        trigger_focus_border: None,
+        trigger_focus_border: crate::focus::focus_ring_or_fallback(&mode.catalog),
         menu_offset_y: geometry.menu_offset_y.value_px,
         items_panel: selector_items_panel_look(mode, theme_mode, size),
     }
@@ -100,9 +101,7 @@ pub fn selector_look_with_visual_state(
     let mut look = selector_look(mode, theme_mode, trigger_style, state, size, scale, without_elevation);
     if visual_state.invalid && !visual_state.interaction.disabled {
         look.trigger_border = Some(mode.palette.destructive_background);
-        look.trigger_focus_border = Some(mode.palette.destructive_background);
-    } else if visual_state.interaction.focused && !visual_state.interaction.disabled && look.trigger_border.is_some() {
-        look.trigger_focus_border = crate::focus::focus_ring_color(&mode.catalog).ok();
+        look.trigger_focus_border = mode.palette.destructive_background;
     }
     look
 }
