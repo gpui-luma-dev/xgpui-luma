@@ -344,17 +344,8 @@ pub(crate) fn resolve_button_palette_with_stylesheet(
         matches!(role, ButtonFamilyRole::Toggle { selected: true }) && style != ShadcnButtonStyle::ContentOnly;
 
     let resolver = LookResolver::new(ctx.catalog(), theme_mode, "button_resolver").with_stylesheet(stylesheet);
-    let mut colors = resolve_button_colors_with_stylesheet(&resolver, stylesheet, style, layer, theme_mode, selected)
+    let colors = resolve_button_colors_with_stylesheet(&resolver, stylesheet, style, layer, theme_mode, selected)
         .unwrap_or_else(|_| ButtonColorPalette::fallback());
-    if (matches!(role, ButtonFamilyRole::Toggle { .. }) || style != ShadcnButtonStyle::ContentOnly)
-        && ctx.state.focused
-        && !ctx.state.disabled
-    {
-        if let Ok(focus_border) = resolver.resolve_decl("ring") {
-            colors.border = Some(focus_border);
-        }
-    }
-
     colors
 }
 
@@ -379,6 +370,13 @@ pub fn button_palette(
     );
 
     ButtonFamilyPalette {
+        focus_border: if !matches!(role, ButtonFamilyRole::Toggle { .. })
+            && effective_button_style(style, role) == ShadcnButtonStyle::ContentOnly
+        {
+            gpui::transparent_black()
+        } else {
+            crate::focus::focus_ring_or_fallback(ctx.catalog())
+        },
         background,
         foreground,
         muted_foreground: ctx.palette().app_muted_foreground,
@@ -415,6 +413,147 @@ mod tests {
     use crate::controls::toggle::toggle_look;
     use crate::mode::ShadcnModeTokens;
     use xgpui_luma::theme::ThemeMode;
+
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn all_button_styles_keep_control_and_sibling_bounds_across_states() {
+        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+        use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
+        use gpui::IntoElement;
+        use std::sync::Arc;
+        for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
+            for style in [
+                ShadcnButtonStyle::Primary,
+                ShadcnButtonStyle::Secondary,
+                ShadcnButtonStyle::Outline,
+                ShadcnButtonStyle::Ghost,
+                ShadcnButtonStyle::ContentOnly,
+            ] {
+                for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+                    for compact in [false, true] {
+                        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), theme_mode).unwrap();
+                        let template = DefaultButtonTemplate::new(
+                            xgpui_luma::controls::button_family::default_button_family_theme(),
+                        );
+                        assert_stable_layout(move |state, selected, window, cx| {
+                            let look = button_look(
+                                &mode,
+                                theme_mode,
+                                style,
+                                ButtonFamilyRole::Toggle { selected },
+                                size,
+                                state,
+                            );
+                            let model = ButtonRenderModel::<()> {
+                                state,
+                                size,
+                                compact,
+                                look: Some(Arc::new(move |_| look.clone())),
+                                ..Default::default()
+                            };
+                            template.render(&model, window, cx).into_any_element()
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn text_and_popup_focus_geometry_is_stable() {
+        use xgpui_luma::infra::focus_adorner::testing::*;
+        for mode in [ThemeMode::Light, ThemeMode::Dark] {
+            let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
+            look.set_mode(mode);
+            for theme in [
+                look.textfield_theme(),
+                look.input_textfield_theme(),
+                look.surface_textfield_theme(),
+                look.primary_textfield_theme(),
+            ] {
+                assert_textfield_layout(theme);
+            }
+            for theme in [
+                look.textarea_theme(),
+                look.input_textarea_theme(),
+                look.surface_textarea_theme(),
+                look.primary_textarea_theme(),
+            ] {
+                assert_textarea_layout(theme);
+            }
+            assert_selector_layout(look.selector_theme());
+            assert_popup_layout(look.popup_menu_theme());
+        }
+    }
+
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn choice_focus_geometry_is_stable_across_styles() {
+        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+        use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
+        use gpui::IntoElement;
+        for mode in [ThemeMode::Light, ThemeMode::Dark] {
+            let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
+            look.set_mode(mode);
+            for style in [
+                ShadcnButtonStyle::Primary,
+                ShadcnButtonStyle::Secondary,
+                ShadcnButtonStyle::Outline,
+                ShadcnButtonStyle::Ghost,
+                ShadcnButtonStyle::ContentOnly,
+            ] {
+                let template = xgpui_luma::controls::checkbox::ThemedCheckboxTemplate::new(
+                    super::super::templates::checkbox_theme_with_style(look.clone(), style),
+                );
+                assert_stable_layout(move |state, selected, window, cx| {
+                    template
+                        .render(
+                            &ButtonRenderModel {
+                                data: xgpui_luma::controls::checkbox::CheckboxData::new(selected),
+                                state,
+                                ..Default::default()
+                            },
+                            window,
+                            cx,
+                        )
+                        .into_any_element()
+                });
+                let template = xgpui_luma::controls::radio_button::ThemedRadioButtonTemplate::new(
+                    super::super::templates::radio_button_theme_with_style(look.clone(), style),
+                );
+                assert_stable_layout(move |state, selected, window, cx| {
+                    template
+                        .render(
+                            &ButtonRenderModel {
+                                data: xgpui_luma::controls::radio_button::RadioButtonData::new(selected),
+                                state,
+                                ..Default::default()
+                            },
+                            window,
+                            cx,
+                        )
+                        .into_any_element()
+                });
+                let template = xgpui_luma::controls::switch::ThemedSwitchTemplate::new(
+                    super::super::templates::switch_theme_with_style(look.clone(), style),
+                );
+                assert_stable_layout(move |state, selected, window, cx| {
+                    template
+                        .render(
+                            &ButtonRenderModel {
+                                data: xgpui_luma::controls::switch::SwitchData::new(selected),
+                                state,
+                                ..Default::default()
+                            },
+                            window,
+                            cx,
+                        )
+                        .into_any_element()
+                });
+            }
+        }
+    }
 
     fn retro_arcade_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -466,7 +605,7 @@ mod tests {
     }
 
     #[test]
-    fn focused_button_uses_ring_border() {
+    fn focused_button_uses_independent_ring_paint() {
         let catalog = retro_arcade_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let focused = button_look(
@@ -478,7 +617,7 @@ mod tests {
             InteractionState { focused: true, ..InteractionState::default() },
         );
 
-        assert_eq!(focused.border, Some(catalog.color("ring").expect("ring")));
+        assert_eq!(focused.focus_border, catalog.color("ring").expect("ring"));
     }
 
     #[test]
@@ -1189,14 +1328,8 @@ pub fn resolve_button_metrics_with_stylesheet(
             value_px: metrics.border_width.default,
             source: crate::MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
         },
-        focus_ring_width: crate::ResolvedMetric {
-            value_px: metrics.focus.width,
-            source: crate::MetricSource::Scaffold { path: "MetricTokens.focus.width".into() },
-        },
-        focus_ring_offset: focus_ring_offset_metric(
-            xgpui_luma::controls::button_family::button_family_effective_border(look.border),
-            metrics,
-        ),
+        focus_ring_width: crate::tables::metrics::helpers::focus_ring_width_metric(metrics),
+        focus_ring_offset: crate::tables::metrics::helpers::focus_ring_offset_metric(metrics),
     };
     let (geometry, _) = crate::controls::button::resolve_family_geometry(
         &ctx,
@@ -1235,20 +1368,4 @@ pub fn resolve_button_metrics_with_stylesheet(
     }
     table.gap = shared(geometry.gap, table.gap);
     table
-}
-
-fn focus_ring_offset_metric(border: gpui::Hsla, metrics: &xgpui_luma::theme::MetricTokens) -> crate::ResolvedMetric {
-    let border_width = metrics.border_width.default;
-    let focus = metrics.focus.width;
-    if border.a <= 0.0 {
-        crate::ResolvedMetric {
-            value_px: 0.0,
-            source: crate::MetricSource::Derived { note: "inset · borderless".into() },
-        }
-    } else {
-        crate::ResolvedMetric {
-            value_px: border_width + focus,
-            source: crate::MetricSource::Derived { note: "border_width.default + focus.width".into() },
-        }
-    }
 }

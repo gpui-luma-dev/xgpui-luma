@@ -8,6 +8,8 @@ use crate::controls::textfield::apply_control_size_typography;
 
 #[derive(Clone, Debug)]
 pub struct TextAreaPalette {
+    /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
+    pub focus_border: gpui::Hsla,
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Hsla,
@@ -32,7 +34,8 @@ pub struct TextAreaLook {
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Hsla,
-    pub focus_border: Option<Hsla>,
+    /// Independent focus paint; transparency does not remove focus space.
+    pub focus_border: Hsla,
     pub placeholder: Hsla,
     pub selection_background: Hsla,
     pub selection_foreground: Hsla,
@@ -117,6 +120,11 @@ impl TextAreaTheme for DefaultTextAreaTheme {
             };
 
         TextAreaPalette {
+            focus_border: if state.invalid {
+                gpui::transparent_black()
+            } else {
+                palette.focus.ring
+            },
             background,
             foreground,
             border,
@@ -174,7 +182,7 @@ pub fn compose_textarea_look(palette: &TextAreaPalette, scale: &StandardBoxScale
         background: palette.background,
         foreground: palette.foreground,
         border: palette.border,
-        focus_border: None,
+        focus_border: palette.focus_border,
         placeholder: palette.placeholder,
         selection_background: palette.selection_background,
         selection_foreground: palette.selection_foreground,

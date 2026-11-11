@@ -284,3 +284,6 @@ mod button_recipes;
 
 #[cfg(test)]
 mod navigation_tests;
+
+#[cfg(all(test, feature = "test-support"))]
+mod focus_tests;

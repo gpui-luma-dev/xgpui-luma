@@ -7,7 +7,6 @@ use crate::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyRole, ButtonFamilyTheme, button_family_effective_border, compose_button_family_look,
     default_button_family_theme,
 };
-use crate::theme::InteractionState;
 
 use crate::infra::template::{Modifier, TemplateWithModifiers};
 use crate::theme::StandardBoxScale;
@@ -39,50 +38,8 @@ fn resolve_look<D>(
     resolve_theme_look(theme, model, scale)
 }
 
-fn clone_model_with_state<D: Clone>(model: &ButtonRenderModel<D>, state: InteractionState) -> ButtonRenderModel<D> {
-    ButtonRenderModel {
-        id: model.id.clone(),
-        data: model.data.clone(),
-        content: model.content.clone(),
-        icon: model.icon.clone(),
-        role: model.role,
-        size: model.size,
-        state,
-        round: model.round,
-        radius_override: std::cell::Cell::new(model.radius_override.get()),
-        elevation: model.elevation,
-        compact: model.compact,
-        switch_track_width_extra: model.switch_track_width_extra,
-        switch_track_width: model.switch_track_width,
-        switch_track_height: model.switch_track_height,
-        switch_thumb_size: model.switch_thumb_size,
-        switch_orientation: model.switch_orientation,
-        switch_track_content: model.switch_track_content.clone(),
-        switch_thumb_content: model.switch_thumb_content.clone(),
-        look: model.look.clone(),
-    }
-}
-
 fn presenter_model<D: Clone>(model: &ButtonRenderModel<D>, look: &ButtonFamilyLook) -> ButtonContentContext<D> {
     button_content_context(model, look.clone())
-}
-
-fn resolve_probe_look<D: Clone>(
-    theme: &Arc<dyn ButtonFamilyTheme>,
-    model: &ButtonRenderModel<D>,
-    scale: &StandardBoxScale,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    if let Some(resolve) = &model.look {
-        return resolve(&clone_model_with_state(model, state));
-    }
-
-    if let Some(look) = theme.resolve_look(model.role, model.size, state, scale, theme.metrics().radius.pill) {
-        return look;
-    }
-
-    let palette = theme.resolve(model.role, model.size, state);
-    compose_button_family_look(&palette, model.role, scale, theme.metrics().radius.pill)
 }
 
 pub trait ButtonTemplate<D = ()>: Send + Sync {
@@ -173,23 +130,9 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
         let mut look = resolve_look(&self.theme, model, &scale);
         let presenter_model = presenter_model(model, &look);
         let focused = model.state.focused && !model.state.disabled;
-        let control_look = if focused {
-            resolve_probe_look(&self.theme, model, &scale, InteractionState { focused: false, ..model.state })
-        } else {
-            look.clone()
-        };
-        let border = button_family_effective_border(control_look.border);
-        let focus_border = button_family_effective_border(look.border);
-        let focus_metrics = self.theme.metrics().focus;
-        let focus_ring_extent = if focus_border.a > 0.0 {
-            focus_metrics.gap + focus_metrics.width.max(0.0)
-        } else {
-            0.0
-        };
-        // Reserve focus geometry for normal buttons in every state so focus paint
-        // cannot change the measured bounds. Compact buttons keep their dense
-        // footprint and paint the ring inside that footprint when focused.
-        let focus_extent = if model.compact { 0.0 } else { focus_ring_extent };
+        let border = button_family_effective_border(look.border);
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_extent = if model.compact { 0.0 } else { focus.extent() };
 
         let mut control = div()
             .id((model.id.clone(), 0usize))
@@ -205,9 +148,7 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
             .font_weight(look.typography.weight)
             .h(px(look.height));
 
-        if border.a > 0.0 {
-            control = control.border(px(self.theme.metrics().border_width.default)).border_color(border);
-        }
+        control = control.border(px(self.theme.metrics().border_width.default)).border_color(border);
 
         let square_icon_toggle = matches!(model.role, ButtonFamilyRole::Toggle { .. })
             && !model.round
@@ -292,20 +233,7 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
             root.child(adorned)
         };
 
-        if focused && focus_ring_extent > 0.0 {
-            let ring_inset = (oversize_extent - focus_ring_extent).max(0.0);
-            root = root.child(
-                div()
-                    .absolute()
-                    .top(px(ring_inset))
-                    .right(px(ring_inset))
-                    .bottom(px(ring_inset))
-                    .left(px(ring_inset))
-                    .border(px(focus_metrics.width))
-                    .border_color(focus_border)
-                    .rounded(px(radius + focus_metrics.gap + focus_metrics.width)),
-            );
-        }
+        root = root.child(focus.overlay(look.focus_border, focused, radius, model.compact));
 
         if model.state.disabled {
             root = root.opacity(self.theme.metrics().disabled_opacity);
@@ -329,6 +257,7 @@ mod tests {
 
     fn lime_look() -> ButtonFamilyLook {
         ButtonFamilyLook {
+            focus_border: gpui::transparent_black(),
             background: Hsla { h: 120.0, s: 1.0, l: 0.5, a: 1.0 },
             foreground: Hsla { h: 0.0, s: 0.0, l: 1.0, a: 1.0 },
             muted_foreground: Hsla { h: 0.0, s: 0.0, l: 0.7, a: 1.0 },
@@ -381,6 +310,7 @@ mod tests {
     #[test]
     fn compose_button_family_look_uses_box_scale_geometry() {
         let palette = ButtonFamilyPalette {
+            focus_border: gpui::transparent_black(),
             background: Hsla::default(),
             foreground: Hsla::default(),
             muted_foreground: Hsla::default(),

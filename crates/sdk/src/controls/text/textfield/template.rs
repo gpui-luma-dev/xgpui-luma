@@ -180,50 +180,16 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         &self,
         model: &TextFieldRenderModel<'_>,
         handlers: TextFieldTemplateHandlers,
-        window: &mut Window,
+        _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
         let mut look = model.look.clone();
-        if look.focus_border.is_none() && model.enabled && !model.state.invalid {
-            let scale_factor = window.scale_factor();
-            let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
-            let base_state = TextFieldState { focused: false, focus_visible: false, ..model.state };
-            let base_look = self.theme.resolve_look(base_state, model.enabled, model.size, &scale);
-            let focus_state = TextFieldState { focused: true, focus_visible: true, ..model.state };
-            let focus_look = self.theme.resolve_look(focus_state, model.enabled, model.size, &scale);
-            look.border = base_look.border;
-            look.focus_border = Some(focus_look.border);
-        }
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let chars = model.value.chars().collect::<Vec<_>>();
         let cursor = model.state.cursor.min(chars.len());
         let selection = model.state.selection_range();
-        let caret_height = look.typography.size + look.caret_height_extra;
 
-        let mut text_viewport = if show_placeholder {
-            div()
-                .min_w(px(0.0))
-                .flex_1()
-                .flex()
-                .items_center()
-                .overflow_hidden()
-                .text_color(look.placeholder)
-                .text_size(px(look.typography.size))
-                .line_height(px(look.typography.line_height))
-                .font_family(look.font_family.clone())
-                .font_weight(look.typography.weight)
-                .child(
-                    div()
-                        .h(px(caret_height))
-                        .flex()
-                        .items_center()
-                        .text_size(px(look.typography.size))
-                        .line_height(px(look.typography.line_height))
-                        .font_family(look.font_family.clone())
-                        .font_weight(look.typography.weight)
-                        .child(model.placeholder.clone()),
-                )
-        } else {
+        let editor_viewport = {
             let value = model.value.clone();
             let marked_range = model.marked_range.clone();
             let horizontal_scroll = model.horizontal_scroll;
@@ -305,6 +271,18 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
             )
         };
 
+        // Keep intrinsic placeholder measurement independent of focus. The editor
+        // paints over the same viewport instead of replacing its layout subtree.
+        let mut text_viewport = div()
+            .relative()
+            .min_w(px(0.0))
+            .flex_1()
+            .h(px(look.typography.line_height))
+            .overflow_hidden()
+            .text_color(look.placeholder)
+            .child(div().opacity(if show_placeholder { 1.0 } else { 0.0 }).child(model.placeholder.clone()))
+            .child(editor_viewport.absolute().inset_0());
+
         if let Some(icon) = model.prefix_icon {
             text_viewport = div()
                 .min_w(px(0.0))
@@ -319,12 +297,8 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         // Always fill the focus-ring root so a stretched ring cannot leave a content-sized
         // entry box centered inside it (e.g. fixed-width hosts without full_width).
         let focused = model.state.focused && model.state.focus_visible && model.enabled;
-        let focus_border = look.focus_border.unwrap_or(look.border);
-        let focus_extent = if look.focus_border.is_some() {
-            self.theme.metrics().focus.gap + look.border_width.max(0.0)
-        } else {
-            0.0
-        };
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_extent = focus.extent();
 
         let mut control = div()
             .id("control")
@@ -380,19 +354,7 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
             })
             .on_drag_move(handlers.drag_move);
 
-        if focused {
-            root = root.child(
-                div()
-                    .absolute()
-                    .top(px(0.0))
-                    .right(px(0.0))
-                    .bottom(px(0.0))
-                    .left(px(0.0))
-                    .border(px(look.border_width))
-                    .border_color(focus_border)
-                    .rounded(px(look.radius + self.theme.metrics().focus.gap + look.border_width)),
-            );
-        }
+        root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
         self.apply_modifiers(root, model)
     }

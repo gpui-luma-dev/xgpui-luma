@@ -187,9 +187,7 @@ pub fn resolve_switch_palette(
         .unwrap_or_else(|_| SwitchColorTable::fallback());
 
     let track_background = colors.track_background;
-    let track_border = if state.focused && !state.disabled {
-        resolver.resolve_decl("ring").unwrap_or_else(|_| ResolvedColor::fallback_foreground())
-    } else if on && !state.disabled {
+    let track_border = if on && !state.disabled {
         track_background.clone()
     } else {
         resolver.resolve_decl("border").unwrap_or_else(|_| ResolvedColor::fallback_foreground())
@@ -234,6 +232,11 @@ pub fn switch_look(
     let layer = state.layer();
     let colors = resolve_switch_palette(mode, theme_mode, style, on, state);
     SwitchPalette {
+        focus_border: if style == ShadcnButtonStyle::ContentOnly {
+            gpui::transparent_black()
+        } else {
+            crate::focus::focus_ring_or_fallback(&mode.catalog)
+        },
         track_background: colors.track_background.hsla(),
         track_border: colors.track_border.hsla(),
         thumb_background: colors.thumb_background.hsla(),

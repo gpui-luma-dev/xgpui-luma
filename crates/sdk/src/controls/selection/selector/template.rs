@@ -229,7 +229,7 @@ where
         } = handlers;
         let scale_factor = window.scale_factor();
         let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
-        let look = self.theme.resolve_visual_look(
+        let mut look = self.theme.resolve_visual_look(
             model.trigger_style,
             model.visual_state,
             model.size,
@@ -239,51 +239,23 @@ where
         let focused = model.visual_state.interaction.focused
             && !model.visual_state.interaction.disabled
             && !model.visual_state.invalid;
-        let mut control_look = if focused {
-            self.theme.resolve_visual_look(
-                model.trigger_style,
-                super::theme::SelectorVisualState {
-                    interaction: crate::theme::InteractionState { focused: false, ..model.visual_state.interaction },
-                    ..model.visual_state
-                },
-                model.size,
-                &scale,
-                model.without_elevation,
-            )
-        } else {
-            look.clone()
-        };
-        let focus_look = self.theme.resolve_visual_look(
-            model.trigger_style,
-            super::theme::SelectorVisualState {
-                interaction: crate::theme::InteractionState { focused: true, ..model.visual_state.interaction },
-                ..model.visual_state
-            },
-            model.size,
-            &scale,
-            model.without_elevation,
-        );
         let trigger_icon_size = snap_to_pixel(look.trigger_icon_size, scale_factor);
-        let border = button_family_effective_border(control_look.trigger_border);
-        let focus_border = focus_look.trigger_focus_border;
-        let focus_metrics = self.theme.metrics().focus;
-        let focus_extent = focus_border
-            .filter(|border| border.a > 0.0)
-            .map(|_| focus_metrics.gap + focus_metrics.width.max(0.0))
-            .unwrap_or(0.0);
-        let trigger_content = render_item_content(model, &control_look, cx);
+        let border = button_family_effective_border(look.trigger_border);
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_extent = focus.extent();
+        let trigger_content = render_item_content(model, &look, cx);
         let mut trigger = div()
             .id("trigger")
             .flex()
             .items_center()
             .justify_between()
-            .gap(px(control_look.trigger_gap))
-            .px(px(control_look.trigger_padding_x))
-            .py(px(control_look.trigger_padding_y))
-            .h(px(control_look.trigger_height))
+            .gap(px(look.trigger_gap))
+            .px(px(look.trigger_padding_x))
+            .py(px(look.trigger_padding_y))
+            .h(px(look.trigger_height))
             .w_full()
-            .bg(control_look.trigger_background)
-            .rounded(px(control_look.trigger_radius))
+            .bg(look.trigger_background)
+            .rounded(px(look.trigger_radius))
             .cursor_pointer()
             .relative()
             .on_prepaint(move |bounds, window, cx| {
@@ -298,36 +270,24 @@ where
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(control_look.trigger_gap))
+                    .gap(px(look.trigger_gap))
                     .min_w(px(0.0))
                     .flex_1()
-                    .text_color(control_look.trigger_foreground)
-                    .text_size(px(control_look.trigger_typography.size))
-                    .line_height(px(control_look.trigger_typography.line_height))
-                    .font_weight(control_look.trigger_typography.weight)
+                    .text_color(look.trigger_foreground)
+                    .text_size(px(look.trigger_typography.size))
+                    .line_height(px(look.trigger_typography.line_height))
+                    .font_weight(look.trigger_typography.weight)
                     .child(trigger_content),
             )
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .flex_shrink_0()
-                    .text_color(control_look.trigger_icon)
-                    .child(crate::infra::icon::render_icon_source(
-                        &model.icons.trigger,
-                        control_look.trigger_icon,
-                        trigger_icon_size,
-                    )),
-            );
+            .child(div().flex().items_center().justify_center().flex_shrink_0().text_color(look.trigger_icon).child(
+                crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
+            ));
 
-        if border.a > 0.0 {
-            trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
-        }
+        trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
 
         if !model.state.disabled
             && !model.without_elevation
-            && let Some(shadows) = control_look.trigger_shadow.take().filter(|shadows| !shadows.is_empty())
+            && let Some(shadows) = look.trigger_shadow.take().filter(|shadows| !shadows.is_empty())
         {
             trigger = trigger.shadow(shadows);
         }
@@ -340,19 +300,7 @@ where
             root = root.child(trigger);
         }
 
-        if focused && let Some(focus_border) = focus_border {
-            root = root.child(
-                div()
-                    .absolute()
-                    .top_0()
-                    .right_0()
-                    .bottom_0()
-                    .left_0()
-                    .border(px(focus_metrics.width))
-                    .border_color(focus_border)
-                    .rounded(px(look.trigger_radius + focus_metrics.gap + focus_metrics.width)),
-            );
-        }
+        root = root.child(focus.overlay(look.trigger_focus_border, focused, look.trigger_radius, false));
 
         if model.presence.should_paint() {
             let mut popup_metrics = resolve_selector_popup_metrics(

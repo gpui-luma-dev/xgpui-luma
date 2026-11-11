@@ -628,10 +628,7 @@ fn validator_marks_the_field_invalid_and_drops_its_focus_ring() {
     let mut f = Fixture::with("123", move |builder| builder.validator(digits));
     assert!(!f.read(|field| field.is_invalid()));
     // A visible ring is any opaque ring color; an invalid field's ring is transparent.
-    let ring = |f: &mut Fixture| {
-        f.visual
-            .update(|window, cx| f.field.read(cx).look(window).focus_border.is_some_and(|ring| ring.a > 0.0))
-    };
+    let ring = |f: &mut Fixture| f.visual.update(|window, cx| f.field.read(cx).look(window).focus_border.a > 0.0);
     assert!(ring(&mut f), "a valid, enabled field has a focus ring");
     f.visual.simulate_input("x");
     f.draw();

@@ -490,16 +490,9 @@ impl ParleyTextField {
             look.padding_y = look.helper_geometry.compact_textfield_padding_y;
             look.min_height = look.helper_geometry.compact_textfield_height;
         }
-        // An invalid or disabled field keeps its resting border and shows no focus
-        // ring, but the ring's room stays reserved (a transparent ring), so the
-        // field does not change size with its state. The SDK text field leaves the
-        // ring out instead, which shrinks the field when disabled or invalid.
-        look.focus_border = Some(if self.enabled && !self.invalid {
-            let focus_state = TextFieldState { focused: true, focus_visible: true, ..state };
-            self.theme.resolve_look(focus_state, true, self.size, &scale).border
-        } else {
-            gpui::transparent_black()
-        });
+        if !self.enabled || self.invalid {
+            look.focus_border = gpui::transparent_black();
+        }
         match &self.look_override {
             Some(look_override) => look_override(look),
             None => look,
@@ -1299,13 +1292,8 @@ impl Render for ParleyTextField {
         let look = self.look(window);
         let enabled = self.enabled;
         let focused = self.focused;
-        // As the template: room for the focus ring whenever a ring color is set,
-        // which `look` always does.
-        let focus_gap = if look.focus_border.is_some() {
-            self.theme.metrics().focus.gap + look.border_width.max(0.0)
-        } else {
-            0.0
-        };
+        let adorner = xgpui_luma::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_gap = adorner.extent();
         let show_placeholder = self.value.is_empty() && !focused;
         let entity = cx.entity();
         let focus = self.focus.clone();
@@ -1454,16 +1442,7 @@ impl Render for ParleyTextField {
             .on_mouse_down(MouseButton::Left, cx.listener(Self::mouse_down))
             .on_scroll(cx.listener(Self::scroll_wheel))
             .child(control)
-            .when(focused, |root| {
-                root.child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .border(px(look.border_width))
-                        .border_color(look.focus_border.unwrap_or(look.border))
-                        .rounded(px(look.radius + focus_gap)),
-                )
-            })
+            .child(adorner.overlay(look.focus_border, focused && enabled, look.radius, false))
             .into_any_element()
     }
 }

@@ -67,8 +67,10 @@ pub struct FocusMetricTokens {
     /// Visual gap between a control and its focus ring, in pixels.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
     pub gap: f32,
+    /// Focus-ring stroke width, independent of the control's face border.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
     pub width: f32,
+    /// Additional outward displacement, added to `gap` and clamped at zero.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
     pub offset: f32,
 }

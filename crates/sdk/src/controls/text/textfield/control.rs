@@ -299,17 +299,8 @@ impl TextFieldControl {
     }
 
     fn resolved_look(&self, window: &Window, cx: &mut Context<Self>) -> TextFieldLook {
-        let base_state = TextFieldState { focused: false, focus_visible: false, ..self.state };
         let mut look = self.model.template.resolve_look_with_scale(
-            base_state,
-            self.model.enabled,
-            self.model.size,
-            window.scale_factor(),
-            cx,
-        );
-        let focus_state = TextFieldState { focused: true, focus_visible: true, ..self.state };
-        let mut focus_look = self.model.template.resolve_look_with_scale(
-            focus_state,
+            self.state,
             self.model.enabled,
             self.model.size,
             window.scale_factor(),
@@ -322,10 +313,6 @@ impl TextFieldControl {
         }
         if let Some(override_fn) = &self.model.look_override {
             look = override_fn(look);
-            focus_look = override_fn(focus_look);
-        }
-        if self.model.enabled && !self.state.invalid {
-            look.focus_border = Some(focus_look.border);
         }
         look
     }

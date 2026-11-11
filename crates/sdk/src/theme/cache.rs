@@ -80,7 +80,7 @@ struct ThemeMetricsKey {
     spacing: [u32; 7],
     radius: [u32; 6],
     border_width: [u32; 3],
-    focus: [u32; 2],
+    focus: [u32; 3],
     control_sm: [u32; 6],
     control_md: [u32; 6],
     control_lg: [u32; 6],
@@ -111,7 +111,7 @@ impl From<&MetricTokens> for ThemeMetricsKey {
                 metrics.border_width.default.to_bits(),
                 metrics.border_width.strong.to_bits(),
             ],
-            focus: [metrics.focus.width.to_bits(), metrics.focus.offset.to_bits()],
+            focus: [metrics.focus.gap.to_bits(), metrics.focus.width.to_bits(), metrics.focus.offset.to_bits()],
             control_sm: control_metric_key(metrics.control.sm),
             control_md: control_metric_key(metrics.control.md),
             control_lg: control_metric_key(metrics.control.lg),
@@ -135,6 +135,14 @@ mod tests {
     use super::{CacheEntryKey, LayoutCacheKey, LumaLayoutCacheRegistry, ThemeMetricsKey};
     use crate::theme::{ControlSize, MetricTokens};
     use std::any::TypeId;
+
+    #[test]
+    fn focus_gap_participates_in_the_metrics_signature() {
+        let mut metrics = MetricTokens::default();
+        let initial = ThemeMetricsKey::from(&metrics);
+        metrics.focus.gap += 1.0;
+        assert_ne!(ThemeMetricsKey::from(&metrics), initial);
+    }
 
     #[test]
     fn registry_returns_cached_value_for_same_metric_signature() {

@@ -350,7 +350,7 @@ impl<D: Clone + 'static> ButtonBuilder<D> {
         self
     }
 
-    /// Dense embedding: no elevation and no focus-ring layout reserve until focused.
+    /// Dense embedding: no elevation; the focus ring paints inside the fixed footprint.
     pub fn compact(mut self) -> Self {
         self.model.compact = true;
         self.model.elevation = false;

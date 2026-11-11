@@ -196,7 +196,11 @@ pub trait ShadcnElementExt: Styled + Sized {
         })
     }
 
-    /// Draws focus ring using active ring color (matches ring-ring focus styles).
+    /// Colors an existing border on focus using the active ring token.
+    ///
+    /// This low-level helper does not create an adorner or reserve space. Keep the
+    /// border width constant in every state. SDK controls use `FocusAdorner` for
+    /// independent focus paint and geometry.
     fn focus_ring_cn(self) -> Self
     where
         Self: InteractiveElement,

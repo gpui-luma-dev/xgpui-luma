@@ -371,6 +371,7 @@ fn lerp_toggle_palette(off: &ButtonFamilyPalette, on: &ButtonFamilyPalette, prog
     let t = progress.clamp(0.0, 1.0);
     let settled = if t >= 0.5 { on } else { off };
     ButtonFamilyPalette {
+        focus_border: lerp_hsla(off.focus_border, on.focus_border, t),
         background: lerp_hsla(off.background, on.background, t),
         foreground: lerp_hsla(off.foreground, on.foreground, t),
         muted_foreground: lerp_hsla(off.muted_foreground, on.muted_foreground, t),

@@ -99,6 +99,7 @@ fn textfield_state_from(state: TextAreaState) -> TextFieldState {
 
 fn textarea_from_textfield(textfield: xgpui_luma::controls::textfield::TextFieldPalette) -> TextAreaPalette {
     TextAreaPalette {
+        focus_border: textfield.focus_border,
         background: textfield.background,
         foreground: textfield.foreground,
         border: textfield.border,

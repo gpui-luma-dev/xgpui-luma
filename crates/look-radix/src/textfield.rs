@@ -88,7 +88,7 @@ struct TextFieldThemeAdapter {
 
 impl TextFieldTheme for TextFieldThemeAdapter {
     fn resolve(&self, state: TextFieldState, enabled: bool) -> TextFieldPalette {
-        resolve_text_chrome_palette(&self.look, self.variant, state.hovered, state.focused, state.invalid, enabled)
+        resolve_text_chrome_palette(&self.look, self.variant, state.hovered, state.invalid, enabled)
     }
 
     fn metrics(&self) -> MetricTokens {
@@ -154,7 +154,6 @@ pub(crate) fn resolve_text_chrome_palette(
     look: &Look,
     variant: TextFieldVariant,
     hovered: bool,
-    focused: bool,
     invalid: bool,
     enabled: bool,
 ) -> TextFieldPalette {
@@ -168,6 +167,11 @@ pub(crate) fn resolve_text_chrome_palette(
 
     if !enabled {
         return TextFieldPalette {
+            focus_border: if invalid {
+                gpui::transparent_black()
+            } else {
+                look.resolve_role(SemanticRole::Focus).hsla()
+            },
             background: match variant {
                 TextFieldVariant::Soft => alpha(gray(3), 0.55),
                 TextFieldVariant::Classic | TextFieldVariant::Surface => surface,
@@ -195,13 +199,6 @@ pub(crate) fn resolve_text_chrome_palette(
             TextFieldVariant::Classic | TextFieldVariant::Surface => surface,
         };
         (bg, look.resolve_role(SemanticRole::Destructive).hsla(), None)
-    } else if focused {
-        let bg = match variant {
-            TextFieldVariant::Soft => accent(3),
-            TextFieldVariant::Classic | TextFieldVariant::Surface => surface,
-        };
-        let focus = look.resolve_role(SemanticRole::Focus).hsla();
-        (bg, focus, None)
     } else {
         match variant {
             TextFieldVariant::Surface => {
@@ -220,6 +217,11 @@ pub(crate) fn resolve_text_chrome_palette(
     };
 
     TextFieldPalette {
+        focus_border: if invalid {
+            gpui::transparent_black()
+        } else {
+            look.resolve_role(SemanticRole::Focus).hsla()
+        },
         background,
         foreground,
         border,
@@ -291,12 +293,13 @@ mod tests {
     }
 
     #[test]
-    fn focused_border_uses_focus_role() {
+    fn focus_adorner_uses_focus_role_without_replacing_face_border() {
         let look = Look::built_in();
         let theme = textfield_theme(&look);
         let palette = theme.resolve(TextFieldState { focused: true, focus_visible: true, ..Default::default() }, true);
         let expected = look.resolve_role(SemanticRole::Focus).hsla();
-        assert_eq!(palette.border.l, expected.l);
+        assert_eq!(palette.focus_border, expected);
+        assert_eq!(palette.border, theme.resolve(TextFieldState::default(), true).border);
     }
 
     #[test]

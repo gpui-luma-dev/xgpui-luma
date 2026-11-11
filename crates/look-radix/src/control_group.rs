@@ -95,8 +95,10 @@ fn item_template<T: ControlGroupItemLike + 'static>(
             }
             None => div().child(item.item.label().clone()).into_any_element(),
         };
+        let radius = if icon { metrics.radius.pill } else { scale.radius };
         div()
             .id((item.item.id().clone(), 0usize))
+            .relative()
             .h(px(palette.height))
             .min_h(px(palette.height))
             .flex()
@@ -104,7 +106,7 @@ fn item_template<T: ControlGroupItemLike + 'static>(
             .justify_center()
             .px(px(if icon { 0.0 } else { palette.padding_x }))
             .when(icon, |row| row.w(px(palette.height)).min_w(px(palette.height)).max_w(px(palette.height)))
-            .rounded(px(if icon { metrics.radius.pill } else { scale.radius }))
+            .rounded(px(radius))
             .bg(palette.background)
             .text_color(palette.foreground)
             .font_family(palette.font_family)
@@ -112,13 +114,15 @@ fn item_template<T: ControlGroupItemLike + 'static>(
             .line_height(px(palette.typography.line_height))
             .font_weight(palette.typography.weight)
             .border_1()
-            .border_color(if item.state.focus_visible && !item.state.disabled {
-                look.resolve_role(SemanticRole::Focus).hsla()
-            } else {
-                palette.border.unwrap_or(gpui::transparent_black())
-            })
+            .border_color(palette.border.unwrap_or_else(gpui::transparent_black))
             .when(!item.state.disabled, |row| row.cursor_pointer())
             .child(content)
+            .child(xgpui_luma::infra::focus_adorner::FocusAdorner::new(metrics.focus).overlay(
+                palette.focus_border,
+                item.state.focus_visible && !item.state.disabled,
+                radius,
+                true,
+            ))
     })
 }
 /// Radix toggle row; SDK item-content overrides are retained inside this chrome.

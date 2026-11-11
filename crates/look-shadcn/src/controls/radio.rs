@@ -77,7 +77,8 @@ pub fn resolve_radio_colors_with_stylesheet(
     })
 }
 
-/// Effective colors after style normalization, interaction policy, focus, and fallbacks.
+/// Face colors after style normalization, interaction policy, and fallbacks.
+/// Focus-adorner paint is resolved independently in the control palette.
 #[derive(Clone, Debug)]
 pub struct RadioResolvedColors {
     pub indicator_background: ResolvedColor,
@@ -167,6 +168,11 @@ pub(crate) fn radio_button_look_with_stylesheet(
     let colors = resolve_radio_palette_with_stylesheet(ctx, stylesheet, style, selected);
 
     RadioButtonPalette {
+        focus_border: if style == ShadcnButtonStyle::ContentOnly {
+            gpui::transparent_black()
+        } else {
+            crate::focus::focus_ring_or_fallback(ctx.catalog())
+        },
         control_background: None,
         control_border: None,
         indicator_background: colors.indicator_background.hsla(),

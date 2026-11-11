@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{
     Anchor, AnyElement, App, Bounds, ClickEvent, Div, MouseButton, MouseDownEvent, MouseUpEvent, Pixels, Point, Size,
-    Stateful, Window, anchored, deferred, div, point, px, prelude::*, transparent_black,
+    Stateful, Window, anchored, deferred, div, point, px, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -171,28 +171,9 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
         };
         let mut look = self.theme.resolve_look(model.trigger_style, metrics, state, scale_factor, _cx);
         let focused = model.state.focused && !model.state.disabled;
-        let control_look = if focused {
-            self.theme.resolve_look(
-                model.trigger_style,
-                metrics,
-                InteractionState { focused: false, ..state },
-                scale_factor,
-                _cx,
-            )
-        } else {
-            look.clone()
-        };
-        let border = button_family_effective_border(control_look.trigger_border);
-        let focus_border = button_family_effective_border(look.trigger_border);
-        let focus_metrics = self.theme.metrics().focus;
-        // Reserve the focus ring geometry in every state. Painting it only when focused
-        // would change the control's outer bounds and shift surrounding layout.
-        let focus_extent = if focus_border.a > 0.0 {
-            focus_metrics.gap + focus_metrics.width.max(0.0)
-        } else {
-            0.0
-        };
-        let focus_ring_color = if focused { focus_border } else { transparent_black() };
+        let border = button_family_effective_border(look.trigger_border);
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_extent = focus.extent();
         let trigger_model = PopupMenuTriggerModel {
             id: model.id.clone(),
             label: model.label.clone(),
@@ -219,9 +200,9 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             .on_mouse_down(MouseButton::Left, trigger_mouse_down)
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
-            .bg(control_look.trigger_background)
-            .text_color(control_look.trigger_foreground)
-            .rounded(px(control_look.trigger_radius));
+            .bg(look.trigger_background)
+            .text_color(look.trigger_foreground)
+            .rounded(px(look.trigger_radius));
 
         if model.split {
             let primary_look =
@@ -247,12 +228,12 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .flex_1()
                 .min_w(px(0.0))
                 .items_center()
-                .px(px(control_look.trigger_padding_x))
-                .py(px(control_look.trigger_padding_y))
+                .px(px(look.trigger_padding_x))
+                .py(px(look.trigger_padding_y))
                 .text_color(primary_look.trigger_foreground)
-                .text_size(px(control_look.trigger_typography.size))
-                .line_height(px(control_look.trigger_typography.line_height))
-                .font_weight(control_look.trigger_typography.weight)
+                .text_size(px(look.trigger_typography.size))
+                .line_height(px(look.trigger_typography.line_height))
+                .font_weight(look.trigger_typography.weight)
                 .on_click(action_click)
                 .child(face)
                 .when_some(model.end_icon, |face, icon| {
@@ -314,13 +295,13 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                     div()
                         .h_full()
                         .border_l(px(self.theme.metrics().border_width.default))
-                        .border_color(control_look.trigger_foreground)
+                        .border_color(look.trigger_foreground)
                         .child(secondary),
                 );
         } else if model.icon_only {
             let icon_face = model
                 .icon
-                .map(|icon| render_lucide_icon(icon, control_look.trigger_foreground, look.trigger_icon_size))
+                .map(|icon| render_lucide_icon(icon, look.trigger_foreground, look.trigger_icon_size))
                 .unwrap_or(face);
             trigger = trigger
                 .justify_center()
@@ -361,7 +342,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             trigger = trigger.w_full();
         }
 
-        if border.a > 0.0 && !model.split {
+        if !model.split {
             trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
         }
 
@@ -393,20 +374,11 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
 
         let oversize_extent = focus_extent;
         if oversize_extent > 0.0 {
-            root = root.p(px(oversize_extent)).child(trigger).child(
-                div()
-                    .absolute()
-                    .top(px(0.0))
-                    .right(px(0.0))
-                    .bottom(px(0.0))
-                    .left(px(0.0))
-                    .border(px(focus_metrics.width))
-                    .border_color(focus_ring_color)
-                    .rounded(px(look.trigger_radius + focus_metrics.gap + focus_metrics.width)),
-            );
+            root = root.p(px(oversize_extent)).child(trigger);
         } else {
             root = root.child(trigger);
         }
+        root = root.child(focus.overlay(look.trigger_focus_border, focused, look.trigger_radius, false));
 
         if model.presence.should_paint() {
             let placement = resolve_popup_menu_placement(

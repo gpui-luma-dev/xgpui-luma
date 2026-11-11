@@ -170,6 +170,7 @@ pub fn toggle_palette(
         crate::tables::typography::resolve_control_typography_with_stylesheet(ctx.tokens, stylesheet, size, true);
 
     ButtonFamilyPalette {
+        focus_border: super::button::button_palette(ctx, stylesheet, style, role, size).focus_border,
         background,
         foreground,
         muted_foreground: ctx.palette().app_muted_foreground,
@@ -258,7 +259,7 @@ mod tests {
     }
 
     #[test]
-    fn focused_toggle_uses_ring_border() {
+    fn focused_toggle_uses_independent_ring_paint() {
         let catalog = retro_arcade_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let focused = toggle_look(
@@ -270,7 +271,7 @@ mod tests {
             InteractionState { focused: true, ..InteractionState::default() },
         );
 
-        assert_eq!(focused.border, Some(catalog.color("ring").expect("ring")));
+        assert_eq!(focused.focus_border, catalog.color("ring").expect("ring"));
     }
 
     #[test]
