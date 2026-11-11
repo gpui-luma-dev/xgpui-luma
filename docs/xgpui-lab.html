@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="site.css">
 <script src="navigation.js" defer></script>
 <script src="site.js" defer></script>
+<script src="image-carousel.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -20,7 +21,16 @@
 <div class="breadcrumb"><span>Overview</span><span aria-hidden="true">/</span><span>XGPUI Lab App</span></div>
 <h1>XGPUI Lab</h1>
 <p class="intro">A desktop app for testing the xgpui extension crates, with demos, diagnostics and benchmarks, built from Luma controls.</p>
-<p><img style="display:block;width:100%;height:auto" src="screenshots/xgpui-lab/lab-color-spaces.png" width="1440" height="900" alt="XGPUI Lab in dark mode showing the Color Spaces screen, with the Lab Explorer sidebar on the left."></p>
+<div data-image-carousel role="group" aria-roledescription="carousel" aria-label="XGPUI Lab screenshots">
+<div class="image-carousel-track">
+<figure><img src="screenshots/xgpui-lab/1-lab-gradients-freeform.png" width="3624" height="2924" alt="XGPUI Lab: Freeform gradient editor." decoding="async"></figure>
+<figure><img src="screenshots/xgpui-lab/2-lab-canvas-spatial.png" width="3624" height="2924" alt="XGPUI Lab: Spatial canvas." loading="lazy" decoding="async"></figure>
+<figure><img src="screenshots/xgpui-lab/3-color-color-spaces.png" width="3624" height="2924" alt="XGPUI Lab: Color spaces." loading="lazy" decoding="async"></figure>
+<figure><img src="screenshots/xgpui-lab/4-gamut-chromaticity.png" width="3624" height="2924" alt="XGPUI Lab: Chromaticity and gamut." loading="lazy" decoding="async"></figure>
+<figure><img src="screenshots/xgpui-lab/5-lab-shader-typography.png" width="3624" height="2924" alt="XGPUI Lab: Shader typography." loading="lazy" decoding="async"></figure>
+<figure><img src="screenshots/xgpui-lab/6-lab-shell-shelllab.png" width="3624" height="2924" alt="XGPUI Lab: Shell Lab." loading="lazy" decoding="async"></figure>
+</div>
+</div>
 
 <section id="what"><h2>What it does</h2>
 <p>XGPUI Lab is one window with a sidebar explorer. Each page tests one feature of an xgpui extension crate on the real GPU path. The page's breadcrumb names the crate it tests. The chrome is a look-radix <code>Look</code>, so the Lab also exercises the Luma SDK controls it is built from.</p>
@@ -42,7 +52,7 @@
 
 <section id="run"><h2><span class="number">01</span>Run it</h2>
 <div class="codebox"><div class="codebar"><span>Shell · start the Lab</span><button class="copy" aria-label="Copy start the Lab">Copy</button></div><pre><code>cargo run -p xgpui-lab</code></pre></div>
-<p>With no options, the Lab opens on the Gradients page in dark mode, at 1440×880.</p>
+<p>With no options, the Lab opens on the Gradients page in dark mode, at 1700×1350.</p>
 <p class="small">The options below are copied from <code>apps/xgpui-lab/docs/launching.md</code> and <code>src/launch.rs</code> by hand, so this page can fall behind. When they disagree, <code>xgpui-lab --list-pages</code>, the code and that file are correct.</p>
 </section>
 
@@ -57,7 +67,7 @@ cargo run -p xgpui-lab -- --list-pages</code></pre></div>
 <tbody>
 <tr><td><code>--open PAGE</code></td><td>Starts on <code>PAGE</code>: <code>section/page</code> as <code>--list-pages</code> prints it, or the page name alone when it is unique. Matching ignores case. A name used in two sections, such as <code>Gamut Mapping</code>, is an error that lists both full names.</td></tr>
 <tr><td><code>--theme light|dark</code></td><td>Starts in that theme.</td></tr>
-<tr><td><code>--size WIDTHxHEIGHT</code></td><td>Window size in logical pixels; at least 720x480. Default 1440x880.</td></tr>
+<tr><td><code>--size WIDTHxHEIGHT</code></td><td>Window size in logical pixels; at least 720x480. Default 1700x1350.</td></tr>
 <tr><td><code>--hide-nav</code></td><td>Starts with the navigation panel closed. The titlebar's sidebar button reopens it at its normal width.</td></tr>
 <tr><td><code>--list-pages</code></td><td>Prints every page as <code>section/page</code> and exits.</td></tr>
 </tbody></table></div>

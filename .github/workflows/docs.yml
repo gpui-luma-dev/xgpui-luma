@@ -14,7 +14,7 @@ concurrency:
 jobs:
   check:
     name: Browser checks
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -32,12 +32,17 @@ jobs:
       - name: Check documentation JavaScript
         run: |
           node --check docs/site.js
+          node --check docs/image-carousel.js
+          node --check docs/navigation.js
+          node --check docs/theme-init.js
           node --check docs/examples/embed.js
+      - name: Check documentation images
+        run: python3 -B scripts/check_site_images.py
 
   build:
     name: Build deployment runtime
     needs: check
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -81,7 +86,7 @@ jobs:
           path: docs/
 
   deploy:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
