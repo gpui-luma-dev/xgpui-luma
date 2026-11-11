@@ -399,6 +399,34 @@ period_ms = 0
     }
 
     #[test]
+    fn in_out_cubic_stylesheet_round_trips_and_reaches_runtime() {
+        let sheet = CommonStylesheet::parse(
+            r#"
+[common.motion.switch.state]
+kind = "timed"
+duration_ms = 1000
+easing = "in_out_cubic"
+"#,
+        )
+        .unwrap();
+        let spec = sheet.motion.switch.state.as_ref().unwrap();
+        let encoded = toml::to_string(spec).unwrap();
+        assert!(encoded.contains("in_out_cubic"));
+        assert_eq!(toml::from_str::<TransitionSpec>(&encoded).unwrap(), *spec);
+        let transition = sheet.motion_defaults().switch.state;
+        assert_eq!(
+            transition.description(),
+            crate::motion::TransitionDescription::Timed {
+                duration: Duration::from_secs(1),
+                easing: Easing::InOutCubic,
+            }
+        );
+        let sample = transition.start(MotionState::default(), 1.0).sample(Duration::from_millis(250));
+        assert_eq!(sample.state, MotionState { value: 0.0625, velocity: 0.75 });
+        assert!(!sample.complete);
+    }
+
+    #[test]
     fn invalid_motion_is_rejected_at_parse_time() {
         for source in [
             "[common.motion.unknown.state]\nkind = 'instant'",
