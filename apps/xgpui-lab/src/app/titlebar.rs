@@ -37,7 +37,7 @@ fn open_configured_shell_window(
     let window_size = cx
         .try_global::<crate::launch::LaunchOptions>()
         .and_then(|launch| launch.size)
-        .unwrap_or(size(px(1440.0), px(880.0)));
+        .unwrap_or(size(px(1700.0), px(1350.0)));
     let bounds = Bounds::centered(None, window_size, cx);
     let mut content = None;
     let window = cx.open_shell_window_with_titlebar(

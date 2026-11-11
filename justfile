@@ -128,14 +128,15 @@ fmt-check:
 # --- Documentation / Supporting Checks ---
 
 # Build and package the embedded WASM demos (profile: release or dev).
-docs-build:
+pages-build:
     sh apps/docs-embed/build.sh "{{ profile }}"
 
 # Compile the control documentation examples using the Python/Rust checker.
-docs-check: _control-docs-check
+pages-check: _control-docs-check
+    {{ python }} -B scripts/check_site_images.py
 
 # Serve the documentation locally without opening a browser.
-docs-serve port="8766":
+pages-serve port="8766":
     {{ python }} -m http.server "$1" --bind 127.0.0.1 --directory docs
 
 # Test repository and embedded-demo Python helpers.
@@ -161,7 +162,7 @@ publish-crates *args:
 ci: fmt-check scripts-check workspace-clippy sdk-test sdk-doc-test _control-docs-check
 
 # Check a PR without launching apps or building deployment artifacts.
-pre-pr: ci workflows-check docs-check wasm-check
+pre-pr: ci workflows-check pages-check wasm-check
     git diff --check
 
 # Verify crates.io candidates without uploading.
@@ -169,11 +170,11 @@ preflight-release:
     cargo run --locked -p luma-release --bin luma-release -- --mode dry-run
 
 # Build and verify the release Pages artifact locally; never deploy or open a browser.
-preflight-pages: _preflight-source-check fmt-check scripts-check workflows-check docs-check wasm-check
+preflight-pages: _preflight-source-check fmt-check scripts-check workflows-check pages-check wasm-check
     just --justfile "{{ justfile() }}" _wasm-bindgen-check
     sh apps/docs-embed/build.sh release
     {{ python }} -B apps/docs-embed/package_runtime.py --check
-    test -s docs/CNAME
+    test -s docs/index.html
     git diff --check
     @echo "Pages pre-flight passed. Deployment remains a separate action."
 
