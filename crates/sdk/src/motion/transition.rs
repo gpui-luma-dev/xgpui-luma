@@ -127,7 +127,7 @@ impl Transition {
     }
 }
 
-/// Existing cubic behavior plus linear interpolation. Further curves can be
+/// Built-in easing curves for timed transitions. Further curves can be
 /// supplied through a custom definition without changing controls.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -135,6 +135,8 @@ pub enum Easing {
     Linear,
     #[default]
     OutCubic,
+    /// Cubic acceleration followed by cubic deceleration, with zero endpoint velocity.
+    InOutCubic,
 }
 
 #[derive(Debug)]
@@ -173,6 +175,8 @@ impl RunningMotion for TimedRun {
         let (factor, derivative) = match self.easing {
             Easing::Linear => (t, 1.0),
             Easing::OutCubic => (super::ease_out_cubic(t), 3.0 * (1.0 - t).powi(2)),
+            Easing::InOutCubic if t < 0.5 => (4.0 * t.powi(3), 12.0 * t.powi(2)),
+            Easing::InOutCubic => (1.0 - 4.0 * (1.0 - t).powi(3), 12.0 * (1.0 - t).powi(2)),
         };
         let distance = self.target - self.from;
         MotionSample {
@@ -317,6 +321,46 @@ mod tests {
         assert!(!halfway.complete);
         assert_eq!(run.sample(Duration::from_secs(1)), settled(1.0));
         assert_eq!(run.sample(Duration::from_secs(20)), settled(1.0));
+    }
+
+    #[test]
+    fn in_out_cubic_samples_values_velocity_and_exact_completion() {
+        // Non-unit duration and a descending range exercise velocity scaling.
+        let transition = Transition::timed(Duration::from_secs(2), Easing::InOutCubic);
+        let run = transition.start(MotionState { value: 10.0, velocity: 99.0 }, 2.0);
+        for (ms, value, velocity) in [(0, 10.0, 0.0), (500, 9.5, -3.0), (1000, 6.0, -12.0), (1500, 2.5, -3.0)] {
+            let sample = run.sample(Duration::from_millis(ms));
+            assert_eq!(sample.state, MotionState { value, velocity });
+            assert!(!sample.complete);
+        }
+        assert_eq!(run.sample(Duration::from_secs(2)), settled(2.0));
+        assert_eq!(run.sample(Duration::from_secs(3)), settled(2.0));
+        assert_eq!(
+            Transition::timed(Duration::ZERO, Easing::InOutCubic)
+                .start(MotionState::default(), 2.0)
+                .sample(Duration::ZERO),
+            settled(2.0)
+        );
+    }
+
+    #[test]
+    fn in_out_cubic_is_finite_monotone_and_has_a_continuous_derivative() {
+        let run = Transition::timed(Duration::from_secs(1), Easing::InOutCubic).start(MotionState::default(), 1.0);
+        let mut previous = 0.0;
+        for ms in 0..=1000 {
+            let state = run.sample(Duration::from_millis(ms)).state;
+            assert!(state.value.is_finite() && state.velocity.is_finite());
+            assert!((previous..=1.0).contains(&state.value));
+            assert!(state.velocity >= 0.0);
+            previous = state.value;
+        }
+        // Compare analytic velocity with a central difference, including the join.
+        for ms in [250, 499, 500, 501, 750] {
+            let before = run.sample(Duration::from_micros(ms * 1000 - 100)).state.value;
+            let after = run.sample(Duration::from_micros(ms * 1000 + 100)).state.value;
+            let velocity = run.sample(Duration::from_millis(ms)).state.velocity;
+            assert!(((after - before) / 0.0002 - velocity).abs() < 0.002);
+        }
     }
 
     #[test]

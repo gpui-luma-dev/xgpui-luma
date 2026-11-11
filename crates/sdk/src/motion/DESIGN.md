@@ -173,9 +173,10 @@ explicit role replaces the complete transition. Resolve SDK defaults, typed styl
 then instance motion edits. Disabling motion is final policy.
 The existing control snapshot lifetime is unchanged.
 
-Timed definitions require integer `u32` milliseconds and `linear` or `out_cubic`
-easing. Spring parameters must be positive and finite. Instant definitions have
-no parameters. Unknown fields, roles, kinds, and invalid parameters fail parsing.
+Timed definitions require integer `u32` milliseconds and `linear`, `out_cubic`, or
+`in_out_cubic` easing. `InOutCubic` accelerates over the first half and decelerates
+over the second, with zero velocity at both endpoints. Spring parameters must be
+positive and finite. Instant definitions have no parameters. Unknown fields, roles, kinds, and invalid parameters fail parsing.
 Custom implementations remain a Rust extension through `Transition::custom`.
 `Transition::description()` reports the full built-in configuration or `Custom`.
 
