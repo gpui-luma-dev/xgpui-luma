@@ -1,6 +1,5 @@
 name: Check and deploy documentation site
 
-# Disabled: manual dispatch only; every job is also gated off below.
 on:
   workflow_dispatch:
 
@@ -8,15 +7,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: docs-${{ github.ref }}
-  # Replace obsolete PR checks; allow a production deployment to finish.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: docs-pages
+  # Allow a manually requested production deployment to finish.
+  cancel-in-progress: false
 
 jobs:
   check:
     name: Browser checks
-    # Previous condition: if: github.event_name == 'pull_request'
-    if: ${{ false }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,8 +36,8 @@ jobs:
 
   build:
     name: Build deployment runtime
-    # Previous condition: if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    if: ${{ false }}
+    needs: check
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -72,7 +70,7 @@ jobs:
       - name: Verify deployment includes browser runtime
         run: |
           python3 -B apps/docs-embed/package_runtime.py --check
-          test -s docs/CNAME
+          test -s docs/index.html
       - uses: actions/upload-artifact@v6
         with:
           name: docs-site
@@ -83,8 +81,7 @@ jobs:
           path: docs/
 
   deploy:
-    # Previous condition: if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    if: ${{ false }}
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/page-deloy'
     needs: build
     runs-on: ubuntu-latest
     permissions:
