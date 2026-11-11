@@ -123,11 +123,8 @@ impl Render for TextArea {
         let scale = StandardBoxScale::compute(control_size, &self.model.theme.metrics(), scale_factor);
         let mut look = self.resolved_look(&scale);
         let focused = self.state.focused && self.state.focus_visible && self.model.enabled;
-        let focus_extent = if look.focus_border.is_some() {
-            self.model.theme.metrics().focus.gap + look.border_width.max(0.0)
-        } else {
-            0.0
-        };
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.model.theme.metrics().focus);
+        let focus_extent = focus.extent();
         let show_scrollbar = self.is_scrollable();
         if !show_scrollbar && self.scrollbar.read(cx).focus_handle(cx).is_focused(window) {
             if self.model.enabled {
@@ -231,19 +228,7 @@ impl Render for TextArea {
             root = root.w_full();
         }
 
-        if focused {
-            root = root.child(
-                div()
-                    .absolute()
-                    .top(px(0.0))
-                    .right(px(0.0))
-                    .bottom(px(0.0))
-                    .left(px(0.0))
-                    .border(px(look.border_width))
-                    .border_color(look.focus_border.unwrap_or(look.border))
-                    .rounded(px(look.radius + self.model.theme.metrics().focus.gap + look.border_width)),
-            );
-        }
+        root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
         root.track_focus(&self.focus_handle)
             .tab_stop(self.model.enabled)

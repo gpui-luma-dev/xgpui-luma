@@ -74,10 +74,6 @@ impl PopupMenuTheme for PopupMenuThemeAdapter {
             InteractionLayer::Default => {}
         }
 
-        if state.focused && !state.disabled {
-            border = Some(step(8));
-        }
-
         let geometry = self.look.common_stylesheet().popup_menu.resolve_geometry(
             "",
             xgpui_luma::theme::stylesheet::PopupMenuGeometry {
@@ -87,6 +83,7 @@ impl PopupMenuTheme for PopupMenuThemeAdapter {
             },
         );
         PopupMenuPalette {
+            trigger_focus_border: step(8),
             trigger_background: background,
             trigger_foreground: foreground,
             trigger_border: border,

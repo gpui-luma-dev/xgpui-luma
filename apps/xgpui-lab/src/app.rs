@@ -184,7 +184,9 @@ impl Route {
         let spec = spec.trim();
         // Section names contain no '/', but page names may ("Float / P3"), so split at the first one.
         let (section, page) = match spec.split_once('/') {
-            Some((section, page)) if SECTIONS.iter().any(|(_, label, _)| label.eq_ignore_ascii_case(section.trim())) => {
+            Some((section, page))
+                if SECTIONS.iter().any(|(_, label, _)| label.eq_ignore_ascii_case(section.trim())) =>
+            {
                 (Some(section.trim()), page.trim())
             }
             _ => (None, spec),
@@ -204,7 +206,10 @@ impl Route {
             [] => Err(format!("no lab page matches \"{spec}\"; run with --list-pages")),
             many => Err(format!(
                 "\"{spec}\" matches several pages; use one of: {}",
-                many.iter().map(|(route, section)| format!("{section}/{}", route.page)).collect::<Vec<_>>().join(", ")
+                many.iter()
+                    .map(|(route, section)| format!("{section}/{}", route.page))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             )),
         }
     }
@@ -406,7 +411,8 @@ impl XgpuiLabApp {
                 cx.notify();
             }
             // `--hide-nav`: hiding needs the measured width, which the first size event brings.
-            if matches!(event, ResizablePanelsEvent::SizesChanged { .. }) && std::mem::take(&mut this.hide_nav_pending) {
+            if matches!(event, ResizablePanelsEvent::SizesChanged { .. }) && std::mem::take(&mut this.hide_nav_pending)
+            {
                 this.panels.update(cx, |panels, cx| panels.hide_panel(0, PanelHideMode::Completely, cx));
             }
         });
@@ -846,6 +852,31 @@ mod tests {
     fn closed_separator_has_a_fixed_position_after_the_navigation_controls() {
         assert_eq!(titlebar_compartment_width(px(0.0), px(80.0)), CLOSED_TITLEBAR_WIDTH);
         assert_eq!(titlebar_compartment_width(px(0.0), px(92.0)), CLOSED_TITLEBAR_WIDTH);
+    }
+
+    #[test]
+    fn explorer_focus_does_not_move_following_accordion_sections() {
+        use gpui::Focusable;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
+        let (view, cx) = app.add_window_view(XgpuiLabApp::new);
+        cx.run_until_parked();
+        let bounds = cx.debug_bounds("accordion-trigger-Compositions").unwrap();
+        let button = cx.update(|_, cx| {
+            view.read(cx)
+                .navigation
+                .iter()
+                .find(|entry| entry.workspace == Workspace::Gradients && entry.page == "gradients")
+                .unwrap()
+                .button
+                .clone()
+        });
+        cx.update(|window, cx| button.read(cx).focus_handle(cx).focus(window, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.debug_bounds("accordion-trigger-Compositions").unwrap(), bounds);
+        cx.update(|window, cx| window.blur(cx));
+        cx.run_until_parked();
+        assert_eq!(cx.debug_bounds("accordion-trigger-Compositions").unwrap(), bounds);
     }
 
     #[test]

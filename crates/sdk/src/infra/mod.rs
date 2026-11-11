@@ -7,6 +7,7 @@ pub mod attachments;
 pub mod element_ext;
 pub mod drag_drop;
 pub mod field_label;
+pub mod focus_adorner;
 pub mod icon;
 pub mod lock;
 pub(crate) mod interaction;

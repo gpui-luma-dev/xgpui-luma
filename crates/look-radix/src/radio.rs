@@ -171,35 +171,29 @@ impl RadioButtonTheme for RadioThemeAdapter {
         };
         let soft_dot = if high_contrast { step(12) } else { step(11) };
 
-        let (indicator_background, mut indicator_border, dot_color, indicator_shadow) =
-            match (layer, self.variant, checked) {
-                (InteractionLayer::Disabled, RadioVariant::Classic, _) => {
-                    (alpha(gray(3), 0.45), gray(6), gray(8), Some(resting_shadow(gray(5), alpha(gray(3), 0.4))))
-                }
-                (InteractionLayer::Disabled, RadioVariant::Soft, _) => {
-                    (alpha(gray(3), 0.45), alpha(surface, 0.0), gray(8), None)
-                }
-                (InteractionLayer::Disabled, RadioVariant::Surface, _) => {
-                    (alpha(gray(3), 0.45), gray(6), gray(8), None)
-                }
-                // Soft: accent-a4 face always; dot only matters when checked (template fades it).
-                (_, RadioVariant::Soft, _) => (step(4), step(4), soft_dot, None),
-                (_, RadioVariant::Surface, false) => (surface, gray(7), gray(11), None),
-                (_, RadioVariant::Surface, true) => (filled, filled, surface_dot, None),
-                (_, RadioVariant::Classic, false) => {
-                    (surface, gray(7), gray(11), Some(resting_shadow(gray(5), alpha(gray(2), 0.5))))
-                }
-                (_, RadioVariant::Classic, true) => (
-                    filled,
-                    filled,
-                    surface_dot,
-                    Some(checked_shadow(alpha(surface_dot, 0.35), alpha(gpui::black(), 0.28))),
-                ),
-            };
-
-        if state.focused && !state.disabled {
-            indicator_border = look.resolve_role(SemanticRole::Focus).hsla();
-        }
+        let (indicator_background, indicator_border, dot_color, indicator_shadow) = match (layer, self.variant, checked)
+        {
+            (InteractionLayer::Disabled, RadioVariant::Classic, _) => {
+                (alpha(gray(3), 0.45), gray(6), gray(8), Some(resting_shadow(gray(5), alpha(gray(3), 0.4))))
+            }
+            (InteractionLayer::Disabled, RadioVariant::Soft, _) => {
+                (alpha(gray(3), 0.45), alpha(surface, 0.0), gray(8), None)
+            }
+            (InteractionLayer::Disabled, RadioVariant::Surface, _) => (alpha(gray(3), 0.45), gray(6), gray(8), None),
+            // Soft: accent-a4 face always; dot only matters when checked (template fades it).
+            (_, RadioVariant::Soft, _) => (step(4), step(4), soft_dot, None),
+            (_, RadioVariant::Surface, false) => (surface, gray(7), gray(11), None),
+            (_, RadioVariant::Surface, true) => (filled, filled, surface_dot, None),
+            (_, RadioVariant::Classic, false) => {
+                (surface, gray(7), gray(11), Some(resting_shadow(gray(5), alpha(gray(2), 0.5))))
+            }
+            (_, RadioVariant::Classic, true) => (
+                filled,
+                filled,
+                surface_dot,
+                Some(checked_shadow(alpha(surface_dot, 0.35), alpha(gpui::black(), 0.28))),
+            ),
+        };
 
         let label_color = if state.disabled {
             look.resolve_role(SemanticRole::MutedForeground).hsla()
@@ -208,6 +202,7 @@ impl RadioButtonTheme for RadioThemeAdapter {
         };
 
         RadioButtonPalette {
+            focus_border: look.resolve_role(SemanticRole::Focus).hsla(),
             control_background: None,
             control_border: None,
             indicator_background,

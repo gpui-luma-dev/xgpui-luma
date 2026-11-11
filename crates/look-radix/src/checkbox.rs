@@ -209,7 +209,7 @@ impl CheckboxTheme for CheckboxThemeAdapter {
 
         let soft_check = if high_contrast { step(12) } else { step(11) };
 
-        let (indicator_background, mut indicator_border, checkmark_color, indicator_shadow) =
+        let (indicator_background, indicator_border, checkmark_color, indicator_shadow) =
             match (layer, self.variant, checked) {
                 (InteractionLayer::Disabled, CheckboxVariant::Classic, _) => {
                     (alpha(surface, 0.0), gray(6), gray(8), Some(resting_shadow(gray(5), alpha(gray(3), 0.4))))
@@ -232,10 +232,6 @@ impl CheckboxTheme for CheckboxThemeAdapter {
                 }
             };
 
-        if state.focused && !state.disabled {
-            indicator_border = look.resolve_role(SemanticRole::Focus).hsla();
-        }
-
         let label_color = if state.disabled {
             look.resolve_role(SemanticRole::MutedForeground).hsla()
         } else {
@@ -243,6 +239,7 @@ impl CheckboxTheme for CheckboxThemeAdapter {
         };
 
         CheckboxPalette {
+            focus_border: look.resolve_role(SemanticRole::Focus).hsla(),
             control_background: None,
             control_border: None,
             indicator_background,

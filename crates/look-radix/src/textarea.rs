@@ -55,9 +55,9 @@ struct TextAreaThemeAdapter {
 
 impl TextAreaTheme for TextAreaThemeAdapter {
     fn resolve(&self, state: TextAreaState, enabled: bool) -> TextAreaPalette {
-        let field =
-            resolve_text_chrome_palette(&self.look, self.variant, state.hovered, state.focused, state.invalid, enabled);
+        let field = resolve_text_chrome_palette(&self.look, self.variant, state.hovered, state.invalid, enabled);
         TextAreaPalette {
+            focus_border: field.focus_border,
             background: field.background,
             foreground: field.foreground,
             border: field.border,

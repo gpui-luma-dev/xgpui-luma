@@ -71,7 +71,8 @@ pub fn resolve_checkbox_colors_with_stylesheet(
     })
 }
 
-/// Effective colors after style normalization, interaction policy, focus, and fallbacks.
+/// Face colors after style normalization, interaction policy, and fallbacks.
+/// Focus-adorner paint is resolved independently in the control palette.
 #[derive(Clone, Debug)]
 pub struct CheckboxResolvedColors {
     pub indicator_background: ResolvedColor,
@@ -166,6 +167,11 @@ pub(crate) fn checkbox_look_with_stylesheet(
     let colors = resolve_checkbox_palette_with_stylesheet(ctx, stylesheet, style, checked);
 
     CheckboxPalette {
+        focus_border: if style == ShadcnButtonStyle::ContentOnly {
+            gpui::transparent_black()
+        } else {
+            crate::focus::focus_ring_or_fallback(ctx.catalog())
+        },
         control_background: None,
         control_border: None,
         indicator_background: colors.indicator_background.hsla(),

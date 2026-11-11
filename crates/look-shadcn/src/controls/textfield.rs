@@ -136,11 +136,6 @@ pub fn resolve_textfield_palette(
     let resolver = LookResolver::new(catalog, ctx.theme_mode, "textfield").with_stylesheet(mode.stylesheet());
     let mut colors = resolve_textfield_colors(&resolver, style, enabled, state.invalid, ctx.theme_mode)
         .unwrap_or_else(|_| TextFieldColorTable::fallback());
-    if state.focused && state.focus_visible && !state.invalid && enabled {
-        if let Ok(focus_border) = resolver.resolve_decl("ring") {
-            colors.border = focus_border;
-        }
-    }
     if style == ShadcnTextFieldStyle::Input
         && theme_mode == ThemeMode::Dark
         && enabled
@@ -223,6 +218,11 @@ pub(crate) fn textfield_palette_base_for_size(
     apply_textfield_control_size_typography(&mut text_style, mode, size);
 
     TextFieldPalette {
+        focus_border: if state.invalid {
+            gpui::transparent_black()
+        } else {
+            crate::focus::focus_ring_or_fallback(&mode.catalog)
+        },
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),

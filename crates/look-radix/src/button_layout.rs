@@ -200,6 +200,7 @@ fn button_box_height(size: ButtonSize) -> f32 {
 /// Applies Radix size/radius geometry onto a resolved color palette.
 pub fn apply_button_box(palette: &ButtonFamilyPalette, role: ButtonFamilyRole, box_: ButtonBox) -> ButtonFamilyLook {
     ButtonFamilyLook {
+        focus_border: palette.focus_border,
         background: palette.background,
         foreground: palette.foreground,
         muted_foreground: palette.muted_foreground,

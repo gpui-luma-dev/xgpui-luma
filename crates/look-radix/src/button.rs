@@ -174,6 +174,7 @@ fn resolve_button_palette(
     let stylesheet = look.stylesheet_snapshot();
     let tokens = &stylesheet.tokens.typography;
     ButtonFamilyPalette {
+        focus_border: colors.focus_border,
         background: colors.background,
         foreground: colors.foreground,
         muted_foreground: colors.foreground,
@@ -560,7 +561,8 @@ mod tests {
         );
         let hovered = theme.resolve(role, ControlSize::Md, InteractionState { hovered: true, ..Default::default() });
 
-        assert!(resting.border.is_none(), "opaque page borders become SDK focus rings");
+        assert!(resting.border.is_none(), "Page face is borderless");
+        assert_eq!(resting.focus_border.a, 0.0, "Page explicitly suppresses focus paint");
         assert_eq!(focused.border, resting.border);
         assert_eq!(focused.background, resting.background);
         assert_eq!(pressed.background, resting.background);

@@ -277,15 +277,9 @@ impl TextArea {
     }
 
     fn resolved_look(&self, scale: &StandardBoxScale) -> crate::controls::textarea::TextAreaLook {
-        let base_state = TextAreaState { focused: false, focus_visible: false, ..self.state };
-        let mut look = self.model.theme.resolve_look(base_state, self.model.enabled, self.model.size, scale);
-        let focus_state = TextAreaState { focused: true, focus_visible: true, ..self.state };
-        let focus_look = self.model.theme.resolve_look(focus_state, self.model.enabled, self.model.size, scale);
+        let mut look = self.model.theme.resolve_look(self.state, self.model.enabled, self.model.size, scale);
         if let Some(override_fn) = &self.model.look_override {
             look = override_fn(look);
-            look.focus_border = Some(override_fn(focus_look).border);
-        } else if self.model.enabled && !self.state.invalid {
-            look.focus_border = Some(focus_look.border);
         }
         look
     }

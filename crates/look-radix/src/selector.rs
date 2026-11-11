@@ -34,6 +34,7 @@ impl SelectorTheme for SelectorThemeAdapter {
             state,
         );
         SelectorPalette {
+            trigger_focus_border: palette.trigger_focus_border,
             trigger_background: palette.trigger_background,
             trigger_foreground: palette.trigger_foreground,
             trigger_icon: palette.trigger_foreground,

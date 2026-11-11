@@ -5,7 +5,7 @@ use gpui::{
     prelude::*,
 };
 
-use super::{TextAreaDrag, TextAreaRenderModel, TextAreaState};
+use super::{TextAreaDrag, TextAreaRenderModel};
 use crate::controls::textarea::{TextAreaTheme, default_textarea_theme};
 use crate::theme::StandardBoxScale;
 
@@ -143,13 +143,7 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         let scale_factor = window.scale_factor();
         let size = model.size;
         let scale = StandardBoxScale::compute(size, &self.theme.metrics(), scale_factor);
-        let base_state = TextAreaState { focused: false, focus_visible: false, ..model.state };
-        let mut look = self.theme.resolve_look(base_state, model.enabled, size, &scale);
-        if model.enabled && !model.state.invalid {
-            let focus_state = TextAreaState { focused: true, focus_visible: true, ..model.state };
-            let focus_look = self.theme.resolve_look(focus_state, model.enabled, size, &scale);
-            look.focus_border = Some(focus_look.border);
-        }
+        let mut look = self.theme.resolve_look(model.state, model.enabled, size, &scale);
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let selection = model.state.selection_range();
         let cursor = model.state.cursor.min(model.value.chars().count());
@@ -270,11 +264,8 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         }
 
         let focused = model.state.focused && model.state.focus_visible && model.enabled;
-        let focus_extent = if look.focus_border.is_some() {
-            self.theme.metrics().focus.gap + look.border_width.max(0.0)
-        } else {
-            0.0
-        };
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_extent = focus.extent();
         let adorned = div().id("adorned").relative().child(control);
         let mut root = div().id(model.id.clone()).relative();
         if focus_extent > 0.0 {
@@ -287,19 +278,7 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
             root = root.w_full();
         }
 
-        if focused {
-            root = root.child(
-                div()
-                    .absolute()
-                    .top(px(0.0))
-                    .right(px(0.0))
-                    .bottom(px(0.0))
-                    .left(px(0.0))
-                    .border(px(look.border_width))
-                    .border_color(look.focus_border.unwrap_or(look.border))
-                    .rounded(px(look.radius + self.theme.metrics().focus.gap + look.border_width)),
-            );
-        }
+        root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
         self.apply_modifiers(root, model)
             .on_hover(handlers.hover)

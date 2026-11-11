@@ -53,6 +53,7 @@ pub fn popup_menu_palette(
     };
 
     PopupMenuPalette {
+        trigger_focus_border: button.focus_border,
         trigger_background: button.background,
         trigger_foreground: button.foreground,
         trigger_border: button.border,

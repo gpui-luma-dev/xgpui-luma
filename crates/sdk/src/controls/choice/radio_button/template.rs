@@ -62,28 +62,12 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
         let progress = model.data.progress.clamp(0.0, 1.0);
         let selected = model.data.selected;
         let focused = model.state.focused && !model.state.disabled;
-        let control_state = if focused {
-            crate::theme::InteractionState { focused: false, ..model.state }
-        } else {
-            model.state
-        };
-        let off_palette = self.theme.resolve(false, control_state, model.size);
-        let on_palette = self.theme.resolve(true, control_state, model.size);
+        let off_palette = self.theme.resolve(false, model.state, model.size);
+        let on_palette = self.theme.resolve(true, model.state, model.size);
         let palette = lerp_radio_palette(&off_palette, &on_palette, progress);
         let mut settled_palette = if selected { on_palette } else { off_palette };
-        let focus_state = crate::theme::InteractionState { focused: true, ..model.state };
-        let focus_palette = if selected {
-            self.theme.resolve(true, focus_state, model.size)
-        } else {
-            self.theme.resolve(false, focus_state, model.size)
-        };
-        let focus_metrics = self.theme.metrics().focus;
-        let focus_ring_extent = if focus_palette.indicator_border.a > 0.0 {
-            focus_metrics.gap + focus_metrics.width.max(0.0)
-        } else {
-            0.0
-        };
-
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
+        let focus_ring_extent = focus.extent();
         let scale_factor = window.scale_factor();
         let scale = self.theme.scale(model.size, scale_factor);
 
@@ -124,19 +108,7 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
                 .size(px(scale.indicator_size + (focus_ring_extent * 2.0)))
                 .child(indicator);
 
-            if focused {
-                slot = slot.child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .right_0()
-                        .bottom_0()
-                        .left_0()
-                        .border(px(focus_metrics.width))
-                        .border_color(focus_palette.indicator_border)
-                        .rounded(px(scale.indicator_size + focus_metrics.gap + focus_metrics.width)),
-                );
-            }
+            slot = slot.child(focus.overlay(settled_palette.focus_border, focused, scale.indicator_size, false));
 
             slot.into_any_element()
         } else {
@@ -144,6 +116,7 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
         };
 
         let content_look = ButtonFamilyLook {
+            focus_border: gpui::transparent_black(),
             background: settled_palette.control_background.unwrap_or_else(|| hsla(0.0, 0.0, 0.0, 0.0)),
             foreground: settled_palette.label_color,
             muted_foreground: settled_palette.label_color,

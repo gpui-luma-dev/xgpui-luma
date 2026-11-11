@@ -661,9 +661,12 @@ fn render_item_row(
         row = row.bg(background);
     }
 
-    if let Some(focus_border) = look.focus_border {
-        row = row.border(px(theme.metrics().border_width.default)).border_color(focus_border);
-    }
+    row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
+        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        !interaction.disabled,
+        look.radius,
+        true,
+    ));
 
     if state.enabled {
         row = row.cursor_pointer();
@@ -774,9 +777,12 @@ fn render_collapsed_rail_node(
         row = row.bg(background);
     }
 
-    if let Some(focus_border) = look.focus_border {
-        row = row.border(px(theme.metrics().border_width.default)).border_color(focus_border);
-    }
+    row = row.relative().child(crate::infra::focus_adorner::FocusAdorner::new(theme.metrics().focus).overlay(
+        look.focus_border.unwrap_or_else(gpui::transparent_black),
+        !interaction.disabled,
+        look.radius,
+        true,
+    ));
 
     if state.enabled {
         row = row.cursor_pointer();
@@ -887,4 +893,85 @@ fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla, size: f32) -> AnyElem
         .text_color(color)
         .child(crate::infra::icon::lucide_icon(icon, color, size))
         .into_any_element()
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod focus_tests {
+    use super::*;
+
+    #[test]
+    fn sidebar_rows_keep_bounds_when_the_focus_border_appears() {
+        for collapsed in [false, true] {
+            for has_children in [false, true] {
+                let theme = default_sidebar_theme();
+                crate::infra::focus_adorner::testing::assert_stable_layout(move |interaction, selected, _, cx| {
+                    let id: SharedString = "node".into();
+                    let state = super::super::NavNodeState {
+                        id: id.clone(),
+                        depth: 0,
+                        sidebar_collapsed: collapsed,
+                        index: 0,
+                        sibling_count: 1,
+                        selected,
+                        hovered: interaction.hovered,
+                        pressed: interaction.pressed,
+                        focused: interaction.focused,
+                        expanded: false,
+                        enabled: !interaction.disabled,
+                    };
+                    let handlers = RowHandlers {
+                        bounds: None,
+                        hover: None,
+                        mouse_down: None,
+                        mouse_up: None,
+                        mouse_up_out: None,
+                        click: None,
+                    };
+                    if collapsed {
+                        render_collapsed_rail_node(
+                            RenderedNavNode {
+                                drop_layout: None,
+                                drag_drop: None,
+                                tooltip: None,
+                                id,
+                                kind: NavNodeKind::Item,
+                                label: Some("Node".into()),
+                                icon: Some(LucideIcon::Folder),
+                                state,
+                                custom_element: None,
+                                focus_handle: None,
+                                has_children,
+                                expansion_progress: 0.,
+                                children_height_px: 0.,
+                                children: Vec::new(),
+                            },
+                            handlers,
+                            &theme,
+                            &DisclosureIcons::default(),
+                            cx,
+                        )
+                    } else {
+                        render_item_row(
+                            RowRenderInput {
+                                tooltip: None,
+                                id,
+                                kind: NavNodeKind::Item,
+                                label: Some("Node".into()),
+                                icon: None,
+                                state,
+                                custom_element: None,
+                                focus_handle: None,
+                                has_children,
+                                expansion_progress: 0.,
+                                disclosure_icons: DisclosureIcons::default(),
+                            },
+                            handlers,
+                            &theme,
+                            cx,
+                        )
+                    }
+                });
+            }
+        }
+    }
 }
