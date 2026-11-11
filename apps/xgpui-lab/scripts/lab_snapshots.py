@@ -35,6 +35,7 @@ DEFAULT_PAGES = [
     "xgpui-color/Gamut Mapping",
     "xgpui-color/CPU Gradients",
     "xgpui-gamut/Chromaticity & Gamut",
+    "xgpui-gamut/Wide Color Fills",
     "xgpui-color/Italy Photo Comparison",
     "xgpui-media/Image Filters",
     "xgpui-shell/Shell Lab",

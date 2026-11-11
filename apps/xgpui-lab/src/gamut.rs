@@ -1,5 +1,6 @@
 pub(crate) mod reference;
 mod labs;
+mod fills;
 mod compositing_checks;
 pub(crate) mod benchmarks;
 
@@ -26,29 +27,24 @@ struct Sample {
 }
 
 fn samples() -> anyhow::Result<Vec<Sample>> {
-    [
-        ("P3 Red", [1.0, 0.0, 0.0]),
-        ("P3 Green", [0.0, 1.0, 0.0]),
-        ("P3 Orange", [1.0, 0.25, 0.0]),
-        ("P3 Magenta", [1.0, 0.0, 1.0]),
-    ]
-    .into_iter()
-    .map(|(label, components)| {
-        let linear = LinearRgb::new(RgbSpace::DisplayP3, components)?;
-        let clipped = linear.convert(RgbSpace::Srgb)?.components().map(|v| v.clamp(0.0, 1.0));
-        let [r, g, b] = LinearRgb::new(RgbSpace::Srgb, clipped)?.encode()?.components();
-        Ok(Sample {
-            label,
-            wide: Arc::new(WideColor::linear_p3([
-                components[0] as f32,
-                components[1] as f32,
-                components[2] as f32,
-                1.0,
-            ])?),
-            srgb: Rgba { r: r as f32, g: g as f32, b: b as f32, a: 1.0 },
+    fills::FILL_SAMPLES
+        .into_iter()
+        .map(|(label, components)| {
+            let linear = LinearRgb::new(RgbSpace::DisplayP3, components)?;
+            let clipped = linear.convert(RgbSpace::Srgb)?.components().map(|v| v.clamp(0.0, 1.0));
+            let [r, g, b] = LinearRgb::new(RgbSpace::Srgb, clipped)?.encode()?.components();
+            Ok(Sample {
+                label,
+                wide: Arc::new(WideColor::linear_p3([
+                    components[0] as f32,
+                    components[1] as f32,
+                    components[2] as f32,
+                    1.0,
+                ])?),
+                srgb: Rgba { r: r as f32, g: g as f32, b: b as f32, a: 1.0 },
+            })
         })
-    })
-    .collect()
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -285,6 +281,9 @@ impl Render for GamutPage {
                 }
             })
         });
+        if self.active_tab == "Wide Color Fills" {
+            return self.fills_screen(wide, display, &fallback, window).into_any_element();
+        }
         div()
             .id("xgpui-gamut-status")
             .size_full()
@@ -308,58 +307,7 @@ impl Render for GamutPage {
             .child(format!("Backend support: {} · Display: {display}", status.supports_wide_gamut_sdr()))
             .child(format!("Fallback: {fallback}"))
             .child("Status reports negotiated presentation, not measured display fidelity.")
-            .when(self.active_tab == "Wide Color Fills", |page| match &self.samples {
-                Err(error) => page.child(format!("Samples unavailable: {error}")),
-                Ok(samples) => page
-                    .child(if wide {
-                        "Linear Display P3 compared with clipped sRGB"
-                    } else {
-                        "sRGB fallback previews — native P3 output unavailable"
-                    })
-                    .children(samples.iter().map(|sample| {
-                        let color = sample.wide.clone();
-                        let p3 = div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(if wide { "Display P3" } else { "P3 → sRGB fallback" })
-                            .child(div().h(px(64.0)).w_full().when(!wide, |swatch| swatch.bg(sample.srgb)).when(
-                                wide,
-                                |swatch| {
-                                    swatch.child(
-                                        canvas(
-                                            |_, _, _| (),
-                                            move |bounds, _, window, _| {
-                                                window.paint_custom(
-                                                    CustomGeometry::RoundedRect {
-                                                        bounds,
-                                                        corner_radii: Default::default(),
-                                                    },
-                                                    color.clone(),
-                                                );
-                                            },
-                                        )
-                                        .size_full(),
-                                    )
-                                },
-                            ));
-                        div().flex().flex_col().gap_2().child(sample.label).child(
-                            div().flex().gap_4().child(p3).child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child("Clipped sRGB")
-                                    .child(div().h(px(64.0)).w_full().bg(sample.srgb)),
-                            ),
-                        )
-                    })),
-            })
-            .when(self.active_tab != "Wide Color Fills", |page| page.child(self.lab_content(wide, window, cx)))
+            .child(self.lab_content(wide, window, cx))
             .into_any_element()
     }
 }
@@ -394,6 +342,32 @@ mod tests {
                 cx.notify();
             });
             cx.run_until_parked();
+            if tab == "Wide Color Fills" {
+                for slot in [
+                    "gamut-fills-crumb",
+                    "gamut-fills-header",
+                    "gamut-fills-hero",
+                    "gamut-fills-caption",
+                    "gamut-fills-section",
+                    "gamut-fills-note",
+                    "gamut-fills-credits",
+                ] {
+                    assert!(cx.debug_bounds(slot).is_some(), "{slot} is rendered");
+                }
+                for selector in [
+                    "gamut-fills-p3-0",
+                    "gamut-fills-p3-1",
+                    "gamut-fills-p3-2",
+                    "gamut-fills-p3-3",
+                    "gamut-fills-srgb-0",
+                    "gamut-fills-srgb-1",
+                    "gamut-fills-srgb-2",
+                    "gamut-fills-srgb-3",
+                ] {
+                    let bounds = cx.debug_bounds(selector).expect("visible swatch");
+                    assert!(bounds.size.width > px(0.) && bounds.size.height == px(64.));
+                }
+            }
         }
         let buttons = cx.update(|_, cx| page.read(cx).controls.clone());
         for (action, button) in buttons {
