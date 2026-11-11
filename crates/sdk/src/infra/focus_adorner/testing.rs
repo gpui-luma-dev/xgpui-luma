@@ -58,86 +58,95 @@ where
 pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfield::TextFieldTheme>) {
     use crate::controls::textfield::*;
     use crate::theme::{ControlSize, StandardBoxScale};
-    let template = ThemedTextFieldTemplate::new(theme.clone());
-    assert_stable_layout(move |state, _, window, cx| {
-        let id = "input".into();
-        let empty = "".into();
-        let enabled = !state.disabled;
-        let state = TextFieldState {
-            hovered: state.hovered,
-            focused: state.focused,
-            focus_visible: state.focused,
-            invalid: state.invalid,
-            ..Default::default()
-        };
-        let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), window.scale_factor());
-        let model = TextFieldRenderModel {
-            id: &id,
-            placeholder: &empty,
-            value: &empty,
-            prefix_icon: None,
-            size: ControlSize::Md,
-            enabled,
-            full_width: false,
-            state,
-            marked_range: None,
-            caret_visible: false,
-            horizontal_scroll: 0.,
-            character_offsets: vec![0.],
-            look: theme.resolve_look(state, enabled, ControlSize::Md, &scale),
-        };
-        let handlers = TextFieldTemplateHandlers {
-            hover: Box::new(|_, _, _| {}),
-            mouse_down: Box::new(|_, _, _| {}),
-            mouse_move: Box::new(|_, _, _| {}),
-            mouse_up: Box::new(|_, _, _| {}),
-            mouse_up_out: Box::new(|_, _, _| {}),
-            click: Box::new(|_, _, _| {}),
-            key_down: Box::new(|_, _, _| {}),
-            drag_move: Box::new(|_, _, _| {}),
-        };
-        template.render(&model, handlers, window, cx).into_any_element()
-    });
+    for placeholder in ["", "A nonempty placeholder"] {
+        for full_width in [false, true] {
+            let template = ThemedTextFieldTemplate::new(theme.clone());
+            let theme = theme.clone();
+            assert_stable_layout(move |state, _, window, cx| {
+                let id = "input".into();
+                let empty = "".into();
+                let enabled = !state.disabled;
+                let state = TextFieldState {
+                    hovered: state.hovered,
+                    focused: state.focused,
+                    focus_visible: state.focused,
+                    invalid: state.invalid,
+                    ..Default::default()
+                };
+                let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), window.scale_factor());
+                let model = TextFieldRenderModel {
+                    id: &id,
+                    placeholder: &placeholder.into(),
+                    value: &empty,
+                    prefix_icon: None,
+                    size: ControlSize::Md,
+                    enabled,
+                    full_width,
+                    state,
+                    marked_range: None,
+                    caret_visible: false,
+                    horizontal_scroll: 0.,
+                    character_offsets: vec![0.],
+                    look: theme.resolve_look(state, enabled, ControlSize::Md, &scale),
+                };
+                let handlers = TextFieldTemplateHandlers {
+                    hover: Box::new(|_, _, _| {}),
+                    mouse_down: Box::new(|_, _, _| {}),
+                    mouse_move: Box::new(|_, _, _| {}),
+                    mouse_up: Box::new(|_, _, _| {}),
+                    mouse_up_out: Box::new(|_, _, _| {}),
+                    click: Box::new(|_, _, _| {}),
+                    key_down: Box::new(|_, _, _| {}),
+                    drag_move: Box::new(|_, _, _| {}),
+                };
+                template.render(&model, handlers, window, cx).into_any_element()
+            });
+        }
+    }
 }
 
 pub fn assert_textarea_layout(theme: std::sync::Arc<dyn crate::controls::textarea::TextAreaTheme>) {
     use crate::controls::textarea::*;
     use crate::theme::ControlSize;
-    let template = ThemedTextAreaTemplate::new(theme);
-    assert_stable_layout(move |state, _, window, cx| {
-        let id = "area".into();
-        let empty = "".into();
-        let model = TextAreaRenderModel {
-            id: &id,
-            placeholder: &empty,
-            value: &empty,
-            enabled: !state.disabled,
-            full_width: false,
-            size: ControlSize::Md,
-            rows: 3,
-            state: TextAreaState {
-                hovered: state.hovered,
-                focused: state.focused,
-                focus_visible: state.focused,
-                invalid: state.invalid,
-                ..Default::default()
-            },
-            caret_visible: false,
-            vertical_scroll: 0.,
-            line_metrics: Vec::new(),
-        };
-        let handlers = TextAreaTemplateHandlers {
-            hover: Box::new(|_, _, _| {}),
-            mouse_down: Box::new(|_, _, _| {}),
-            mouse_move: Box::new(|_, _, _| {}),
-            mouse_up: Box::new(|_, _, _| {}),
-            mouse_up_out: Box::new(|_, _, _| {}),
-            click: Box::new(|_, _, _| {}),
-            key_down: Box::new(|_, _, _| {}),
-            drag_move: Box::new(|_, _, _| {}),
-        };
-        template.render(&model, handlers, window, cx).into_any_element()
-    });
+    for placeholder in ["", "A nonempty placeholder"] {
+        for full_width in [false, true] {
+            let template = ThemedTextAreaTemplate::new(theme.clone());
+            assert_stable_layout(move |state, _, window, cx| {
+                let id = "area".into();
+                let empty = "".into();
+                let model = TextAreaRenderModel {
+                    id: &id,
+                    placeholder: &placeholder.into(),
+                    value: &empty,
+                    enabled: !state.disabled,
+                    full_width,
+                    size: ControlSize::Md,
+                    rows: 3,
+                    state: TextAreaState {
+                        hovered: state.hovered,
+                        focused: state.focused,
+                        focus_visible: state.focused,
+                        invalid: state.invalid,
+                        ..Default::default()
+                    },
+                    caret_visible: false,
+                    vertical_scroll: 0.,
+                    line_metrics: Vec::new(),
+                };
+                let handlers = TextAreaTemplateHandlers {
+                    hover: Box::new(|_, _, _| {}),
+                    mouse_down: Box::new(|_, _, _| {}),
+                    mouse_move: Box::new(|_, _, _| {}),
+                    mouse_up: Box::new(|_, _, _| {}),
+                    mouse_up_out: Box::new(|_, _, _| {}),
+                    click: Box::new(|_, _, _| {}),
+                    key_down: Box::new(|_, _, _| {}),
+                    drag_move: Box::new(|_, _, _| {}),
+                };
+                template.render(&model, handlers, window, cx).into_any_element()
+            });
+        }
+    }
 }
 
 pub fn assert_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {

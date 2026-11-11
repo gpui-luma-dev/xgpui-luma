@@ -166,9 +166,10 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
             control = control.bg(background);
         }
 
-        if let Some(border) = palette.control_border {
-            control = control.border(px(self.theme.metrics().border_width.default)).border_color(border);
-        }
+        // Optional paint must not add/remove a layout border when focus changes.
+        control = control
+            .border(px(self.theme.metrics().border_width.default))
+            .border_color(palette.control_border.unwrap_or_else(gpui::transparent_black));
 
         let mut root = self.apply_modifiers(control, model);
 

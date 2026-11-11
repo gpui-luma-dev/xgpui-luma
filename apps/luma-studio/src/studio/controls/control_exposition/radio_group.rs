@@ -47,7 +47,6 @@ const DELIVERY_DAY_TEXT_SIZE: f32 = 16.0;
 const DELIVERY_DAY_LINE_HEIGHT: f32 = 22.0;
 const DELIVERY_DATE_TEXT_SIZE: f32 = 14.0;
 const DELIVERY_DATE_LINE_HEIGHT: f32 = 20.0;
-const DELIVERY_SELECTED_BORDER_WIDTH: f32 = 0.0;
 const DELIVERY_FOCUS_BORDER_WIDTH: f32 = 2.0;
 const DELIVERY_DISABLED_OPACITY: f32 = 0.56;
 
@@ -493,7 +492,8 @@ fn delivery_window_card(
         theme.muted_foreground
     };
 
-    let mut card = div()
+    let card = div()
+        .relative()
         .flex()
         .flex_col()
         .items_center()
@@ -523,11 +523,14 @@ fn delivery_window_card(
                 .child(date.clone()),
         );
 
-    if state.active {
-        card = card.border(px(DELIVERY_FOCUS_BORDER_WIDTH)).border_color(theme.focus_ring);
-    } else if selected {
-        card = card.border(px(DELIVERY_SELECTED_BORDER_WIDTH));
-    }
+    let card = card.child(
+        xgpui_luma::infra::focus_adorner::FocusAdorner::new(xgpui_luma::theme::FocusMetricTokens {
+            gap: 0.0,
+            width: DELIVERY_FOCUS_BORDER_WIDTH,
+            offset: 0.0,
+        })
+        .overlay(theme.focus_ring, state.active && !state.disabled, DELIVERY_CARD_RADIUS, true),
+    );
 
     if !state.disabled {
         card.cursor_pointer()
@@ -613,4 +616,25 @@ fn format_radio_group_event(source: &str, event: &RadioGroupEvent) -> Option<Str
         }
         _ => None,
     }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+#[test]
+fn delivery_window_focus_keeps_intrinsic_card_bounds() {
+    let item = DeliveryWindowItem::new("long", "A long delivery window label", "May 15");
+    let theme = DeliveryWindowTheme::resolve(&ShadcnLook::built_in());
+    xgpui_luma::infra::focus_adorner::testing::assert_stable_layout(move |state, selected, _, _| {
+        delivery_window_card(
+            &item,
+            selected,
+            xgpui_luma::infra::state::CompositeItemState {
+                active: state.focused,
+                disabled: state.disabled,
+                selected,
+                ..Default::default()
+            },
+            &theme,
+        )
+        .into_any_element()
+    });
 }

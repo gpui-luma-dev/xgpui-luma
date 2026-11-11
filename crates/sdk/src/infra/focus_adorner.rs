@@ -149,3 +149,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod regression_tests;

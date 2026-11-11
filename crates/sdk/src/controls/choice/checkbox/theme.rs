@@ -74,6 +74,7 @@ pub struct CheckboxPalette {
     /// Independent focus-adorner paint. Transparent paint retains the configured geometry.
     pub focus_border: gpui::Hsla,
     pub control_background: Option<Hsla>,
+    /// Body-border paint; `None` is transparent and retains the configured border width.
     pub control_border: Option<Hsla>,
     pub indicator_background: Hsla,
     pub indicator_border: Hsla,

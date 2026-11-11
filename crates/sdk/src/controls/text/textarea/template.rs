@@ -151,15 +151,7 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         let row_height = look.typography.line_height;
         let viewport_height = row_height * model.rows.max(1) as f32;
 
-        let text_viewport = if show_placeholder {
-            div()
-                .min_w(px(TEXTAREA_MIN_WIDTH))
-                .w_full()
-                .h(px(viewport_height))
-                .overflow_hidden()
-                .text_color(look.placeholder)
-                .child(model.placeholder.clone())
-        } else {
+        let editor_viewport = {
             let mut lines = div().relative().top(px(-model.vertical_scroll)).flex().flex_col();
 
             for line in &model.line_metrics {
@@ -235,6 +227,18 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
 
             div().min_w(px(TEXTAREA_MIN_WIDTH)).w_full().h(px(viewport_height)).overflow_hidden().child(lines)
         };
+
+        // Placeholder visibility changes paint only, including for intrinsic-width
+        // templates. Both empty and populated editors retain the same sizing anchor.
+        let text_viewport = div()
+            .relative()
+            .min_w(px(TEXTAREA_MIN_WIDTH))
+            .w_full()
+            .h(px(viewport_height))
+            .overflow_hidden()
+            .text_color(look.placeholder)
+            .child(div().opacity(if show_placeholder { 1.0 } else { 0.0 }).child(model.placeholder.clone()))
+            .child(editor_viewport.absolute().inset_0());
 
         let mut control = div()
             .id("control")

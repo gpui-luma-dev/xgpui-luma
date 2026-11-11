@@ -188,32 +188,8 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         let chars = model.value.chars().collect::<Vec<_>>();
         let cursor = model.state.cursor.min(chars.len());
         let selection = model.state.selection_range();
-        let caret_height = look.typography.size + look.caret_height_extra;
 
-        let mut text_viewport = if show_placeholder {
-            div()
-                .min_w(px(0.0))
-                .flex_1()
-                .flex()
-                .items_center()
-                .overflow_hidden()
-                .text_color(look.placeholder)
-                .text_size(px(look.typography.size))
-                .line_height(px(look.typography.line_height))
-                .font_family(look.font_family.clone())
-                .font_weight(look.typography.weight)
-                .child(
-                    div()
-                        .h(px(caret_height))
-                        .flex()
-                        .items_center()
-                        .text_size(px(look.typography.size))
-                        .line_height(px(look.typography.line_height))
-                        .font_family(look.font_family.clone())
-                        .font_weight(look.typography.weight)
-                        .child(model.placeholder.clone()),
-                )
-        } else {
+        let editor_viewport = {
             let value = model.value.clone();
             let marked_range = model.marked_range.clone();
             let horizontal_scroll = model.horizontal_scroll;
@@ -294,6 +270,18 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
                 .size_full(),
             )
         };
+
+        // Keep intrinsic placeholder measurement independent of focus. The editor
+        // paints over the same viewport instead of replacing its layout subtree.
+        let mut text_viewport = div()
+            .relative()
+            .min_w(px(0.0))
+            .flex_1()
+            .h(px(look.typography.line_height))
+            .overflow_hidden()
+            .text_color(look.placeholder)
+            .child(div().opacity(if show_placeholder { 1.0 } else { 0.0 }).child(model.placeholder.clone()))
+            .child(editor_viewport.absolute().inset_0());
 
         if let Some(icon) = model.prefix_icon {
             text_viewport = div()
