@@ -84,6 +84,7 @@ pub fn format_transition(transition: &Transition) -> String {
         TransitionDescription::Timed { duration, easing } => match easing {
             Easing::Linear => format!("{} ms · linear", duration.as_millis()),
             Easing::OutCubic => format!("{} ms · ease-out", duration.as_millis()),
+            Easing::InOutCubic => format!("{} ms · ease-in-out", duration.as_millis()),
         },
         TransitionDescription::Spring { stiffness, damping } => format!("spring · {stiffness} / {damping}"),
         TransitionDescription::Instant => "instant".into(),
@@ -703,6 +704,10 @@ mod tests {
         assert_eq!(
             format_transition(&Transition::timed(Duration::from_millis(180), Easing::OutCubic)),
             "180 ms · ease-out"
+        );
+        assert_eq!(
+            format_transition(&Transition::timed(Duration::from_millis(180), Easing::InOutCubic)),
+            "180 ms · ease-in-out"
         );
         assert_eq!(format_transition(&Transition::spring(300.0, 28.0)), "spring · 300 / 28");
         assert_eq!(format_period(Duration::from_millis(900)), "period · 900 ms");

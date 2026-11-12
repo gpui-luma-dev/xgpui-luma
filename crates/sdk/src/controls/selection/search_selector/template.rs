@@ -176,10 +176,18 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
                     .items_center()
                     .justify_between()
                     .gap(px(trigger_look.trigger_gap))
-                    .child(div().min_w(px(0.0)).truncate().text_color(label_color).child(model.trigger_label))
+                    .child(
+                        div()
+                            .debug_selector(|| "search-selector-label".into())
+                            .min_w(px(0.0))
+                            .truncate()
+                            .text_color(label_color)
+                            .child(model.trigger_label),
+                    )
                     .child(
                         div()
                             .id("icon")
+                            .debug_selector(|| "search-selector-icon".into())
                             .w(px(model.geometry.search_icon_width))
                             .flex()
                             .items_center()
@@ -193,9 +201,9 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
                     ),
             );
 
-        if border.a > 0.0 {
-            trigger = trigger.border(px(model.geometry.border_width)).border_color(border);
-        }
+        // Border visibility changes paint only; invalid/disabled ghost triggers
+        // must retain the same label and icon geometry.
+        trigger = trigger.border(px(model.geometry.border_width)).border_color(border);
 
         let has_elevation = trigger_look.trigger_shadow.as_ref().is_some_and(|shadows| !shadows.is_empty());
         if model.enabled
@@ -476,6 +484,14 @@ impl SearchSelectorItemsTemplate for ModifiedSearchSelectorItemsTemplate {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn trigger_content_stays_put_across_interaction_states() {
+        crate::infra::focus_adorner::testing::assert_search_selector_layout(
+            crate::controls::selector::default_selector_theme(),
+        );
+    }
 
     #[test]
     fn items_template_with_modifier_wraps_template() {

@@ -483,6 +483,7 @@ mod tests {
                 assert_textarea_layout(theme);
             }
             assert_selector_layout(look.selector_theme());
+            assert_search_selector_layout(look.selector_theme());
             assert_popup_layout(look.popup_menu_theme());
         }
     }
