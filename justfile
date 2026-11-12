@@ -3,10 +3,13 @@ set shell := ["bash", "-cu"]
 set windows-shell := ["bash.exe", "-cu"]
 set positional-arguments
 
-# App launches and explicit builds default to release; checks/tests use Cargo defaults.
+# Explicit builds and profiling default to release; app launches default to debug.
+# App recipes consume --release for Cargo; other arguments go to the app.
 profile := "release"
 python := if os() == "windows" { "python" } else { "python3" }
 run-options := "--locked --profile " + profile
+# Parse app recipe arguments once, preserving quoting and an explicit -- escape.
+app-run := 'build_args=(--profile dev); app_args=(--); parse_options=true; for arg in "$@"; do if $parse_options && [[ "$arg" == --release ]]; then build_args=(--release); elif $parse_options && [[ "$arg" == -- ]]; then parse_options=false; else app_args+=("$arg"); fi; done; cargo run --locked "${build_args[@]}"'
 lib-packages := "-p xgpui-luma -p xgpui-luma-color -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-luma-plot"
 
 # List development commands without launching an app.
@@ -17,41 +20,41 @@ default:
 
 # Run Luma Studio; accepts a theme and --light/--dark.
 app-studio *args:
-    cargo run {{ run-options }} -p luma-studio -- "$@"
+    {{ app-run }} -p luma-studio "${app_args[@]}"
 
 # Run Radix Studio.
 app-radix *args:
-    cargo run {{ run-options }} -p luma-radix-studio -- "$@"
+    {{ app-run }} -p luma-radix-studio "${app_args[@]}"
 
 # Run Plot Viz.
 app-plot *args:
-    cargo run {{ run-options }} -p luma-plot-viz -- "$@"
+    {{ app-run }} -p luma-plot-viz "${app_args[@]}"
 
 # Run the Neumorphic Demo.
 app-neumorphic *args:
-    cargo run {{ run-options }} -p luma-neumorphic-demo -- "$@"
+    {{ app-run }} -p luma-neumorphic-demo "${app_args[@]}"
 
 # Run Luma Studio with panic backtraces enabled.
 app-studio-backtrace *args:
-    RUST_BACKTRACE=1 cargo run {{ run-options }} -p luma-studio -- "$@"
+    export RUST_BACKTRACE=1; {{ app-run }} -p luma-studio "${app_args[@]}"
 
 # --- Shells (optional theme; defaults to default) ---
 
 # Run the detached shell.
 shell-detached *args:
-    cargo run {{ run-options }} -p luma-shell-detached -- "$@"
+    {{ app-run }} -p luma-shell-detached "${app_args[@]}"
 
 # Run the split-titlebar shell.
 shell-split-titlebar *args:
-    cargo run {{ run-options }} -p luma-shell-split-titlebar -- "$@"
+    {{ app-run }} -p luma-shell-split-titlebar "${app_args[@]}"
 
 # Run the VS Code-style shell.
 shell-vscode *args:
-    cargo run {{ run-options }} -p luma-shell-vscode -- "$@"
+    {{ app-run }} -p luma-shell-vscode "${app_args[@]}"
 
 # Run the 2026 shell.
 shell-2026 *args:
-    cargo run {{ run-options }} -p luma-shell-2026 -- "$@"
+    {{ app-run }} -p luma-shell-2026 "${app_args[@]}"
 
 # --- Profiling ---
 
@@ -218,7 +221,7 @@ _control-docs-check:
 
 # Run XGPUI Lab.
 app-lab *args:
-    cargo run {{ run-options }} -p xgpui-lab -- "$@"
+    {{ app-run }} -p xgpui-lab "${app_args[@]}"
 
 # Build the lab without launching it.
 lab-build:
@@ -236,11 +239,11 @@ lab-clippy:
 
 # Open the standalone Parley window on the text field tabs.
 lab-parley-field *args:
-    cargo run {{ run-options }} -p xgpui-lab -- --native-text-backend=parley --text-field "$@"
+    set -- --native-text-backend=parley --text-field "$@"; {{ app-run }} -p xgpui-lab "${app_args[@]}"
 
 # Run the whole lab on the Parley text system (xgpui-parley › Text Field).
 lab-parley *args:
-    cargo run {{ run-options }} -p xgpui-lab -- --text-system=parley "$@"
+    set -- --text-system=parley "$@"; {{ app-run }} -p xgpui-lab "${app_args[@]}"
 
 # Run the Parley text field headless tests; extra args filter or pass through.
 lab-parley-test *args:
@@ -251,7 +254,7 @@ lab-parley-perf:
     cargo test --release --locked -p xgpui-lab --features test-support --bin xgpui-lab measure_ -- --ignored --nocapture
 
 lab-chromaticity *args:
-    cargo run {{ run-options }} -p xgpui-lab --bin chromaticity-lab -- "$@"
+    {{ app-run }} -p xgpui-lab --bin chromaticity-lab "${app_args[@]}"
 
 lab-coverage-report:
     {{ python }} apps/xgpui-lab/scripts/render_objc2_coverage.py
