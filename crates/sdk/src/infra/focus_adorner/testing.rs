@@ -6,6 +6,15 @@ pub fn assert_stable_layout<F>(render: F)
 where
     F: Fn(InteractionState, bool, &mut Window, &mut App) -> AnyElement + 'static,
 {
+    assert_stable_layout_with_content(render, &[]);
+}
+
+/// Check outer bounds, following siblings, and named internal content bounds.
+/// Selectors must identify content that remains mounted in every tested state.
+pub fn assert_stable_layout_with_content<F>(render: F, content: &'static [&'static str])
+where
+    F: Fn(InteractionState, bool, &mut Window, &mut App) -> AnyElement + 'static,
+{
     struct Harness<F> {
         render: F,
         bits: u8,
@@ -42,6 +51,10 @@ where
         cx.run_until_parked();
         let target = cx.debug_bounds("focus-target").expect("target rendered");
         let following = cx.debug_bounds("following-row").expect("following row rendered");
+        let content_bounds: Vec<_> = content
+            .iter()
+            .map(|selector| (*selector, cx.debug_bounds(selector).expect("content rendered")))
+            .collect();
         // End at the original state too: visible -> transparent must also be stable.
         for bits in (1..64).chain([0]) {
             view.update(cx, |view, cx| {
@@ -51,6 +64,13 @@ where
             cx.run_until_parked();
             assert_eq!(cx.debug_bounds("focus-target").unwrap(), target, "control changed at state {bits}");
             assert_eq!(cx.debug_bounds("following-row").unwrap(), following, "sibling moved at state {bits}");
+            for (selector, baseline) in &content_bounds {
+                assert_eq!(
+                    cx.debug_bounds(selector).expect("content rendered"),
+                    *baseline,
+                    "{selector} moved at state {bits}, scale {scale_factor}"
+                );
+            }
         }
     }
 }
@@ -248,6 +268,64 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
                 };
                 template.render(&model, handlers, window, cx).into_any_element()
             });
+        }
+    }
+}
+
+/// SearchSelector uses its own trigger template rather than Selector's template.
+/// Exercise both styles, all sizes, and label/icon positions independently.
+pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {
+    use crate::controls::search_selector::*;
+    use crate::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
+    use crate::theme::{ControlSize, StandardBoxScale};
+    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+        for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
+            let theme = theme.clone();
+            assert_stable_layout_with_content(
+                move |state, selected, window, cx| {
+                    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
+                    let trigger_look = theme.resolve_visual_look(
+                        style,
+                        SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
+                        size,
+                        &scale,
+                        true,
+                    );
+                    let model = SearchSelectorRenderModel {
+                        icons: Default::default(),
+                        geometry: SearchSelectorStylesheet::native_default()
+                            .resolve_geometry(size.stylesheet_key(), Default::default()),
+                        id: "stable-search-selector".into(),
+                        trigger_label: "Choose a value".into(),
+                        trigger_label_is_placeholder: !selected,
+                        trigger_state: crate::controls::textfield::TextFieldState {
+                            hovered: state.hovered,
+                            focused: state.focused,
+                            focus_visible: state.focused,
+                            invalid: state.invalid,
+                            ..Default::default()
+                        },
+                        trigger_look,
+                        trigger_typography_override: None,
+                        enabled: !state.disabled,
+                        size,
+                        full_width: true,
+                        minimum_trigger_width: px(0.),
+                        status_label: "".into(),
+                        status_detail: "".into(),
+                        status_color: gpui::transparent_black(),
+                        muted_text_color: gpui::transparent_black(),
+                        popup_content: None,
+                        presence: Default::default(),
+                        disclosure_progress: 0.,
+                    };
+                    div()
+                        .w(px(300.))
+                        .child(default_search_selector_template().render(model, Default::default(), window, cx))
+                        .into_any_element()
+                },
+                &["search-selector-label", "search-selector-icon"],
+            );
         }
     }
 }
