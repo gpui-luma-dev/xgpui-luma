@@ -170,12 +170,16 @@ jobs:
           fi
 
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists; uploading assets"
+            is_draft=$(gh release view "${TAG}" --json isDraft --jq '.isDraft')
+            echo "Release ${TAG} already exists; preserving its reviewed notes and uploading assets"
             gh release upload "${TAG}" \
               "dist/xgpui-luma-${TAG}.tar.gz" \
               "dist/xgpui-luma-${TAG}.tar.gz.sha256" \
               dist/manifest.json \
               --clobber
+            if [[ "${is_draft}" == true ]]; then
+              gh release edit "${TAG}" --verify-tag --draft=false ${flags[@]+"${flags[@]}"}
+            fi
           else
             gh release create "${TAG}" \
               --verify-tag \
