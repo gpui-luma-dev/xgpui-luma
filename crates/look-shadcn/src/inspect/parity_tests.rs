@@ -67,8 +67,16 @@ fn focused_checkbox_provenance_and_hover_policy_match_paint() {
     let inspect =
         |state| inspect_checkbox_color_palette(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, true, state);
     let focused = inspect(InteractionState { focused: true, ..Default::default() });
-    assert!(matches!(focused.indicator_border.source, ColorSource::CssVar { ref token } if token == "ring"));
-    assert_eq!(focused.indicator_border.value, mode.catalog.color("ring").unwrap());
+    assert!(matches!(focused.indicator_border.source, ColorSource::CssVar { ref token } if token == "primary"));
+    assert_eq!(focused.indicator_border.value, mode.catalog.color("primary").unwrap());
+    let painted = paint::checkbox_look(
+        &mode,
+        ShadcnButtonStyle::Primary,
+        true,
+        InteractionState { focused: true, ..Default::default() },
+        ControlSize::Md,
+    );
+    assert_eq!(painted.focus_border, mode.catalog.color("ring").unwrap());
     let hovered = inspect(InteractionState { hovered: true, ..Default::default() });
     assert_eq!(hovered.indicator_background.value, inspect(InteractionState::default()).indicator_background.value);
 }

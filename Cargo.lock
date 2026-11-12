@@ -7145,9 +7145,9 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xgpui"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60e5df7c19897ca83e91a031c15712341da2783d497c296b660f89bd8d2cf5be"
+checksum = "5bbd727b2ad4e0e38a42b9fcf680378b7ac3e49bafeedfd32d507414add773b1"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -7215,9 +7215,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-apple"
-version = "4.0.1"
+version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ade6622a7913ce07d4ec546dd0492000d2572398ada4dbf2ea322b2d0cac1db"
+checksum = "34c0783804bc0dbcf17d957ab8555a37fa30697deb3d5d2fd008d7104532f2ec"
 dependencies = [
  "anyhow",
  "async-task",
@@ -7256,9 +7256,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-canvas"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "baf5d43cb7eb2af64f637f277f6210e14ea4c144a0b9118cd433599d43e8e87b"
+checksum = "e1dcc9d5a062686bd70a1770b0b5da9924be7eb3131056951070c79581605042"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7268,18 +7268,18 @@ dependencies = [
 
 [[package]]
 name = "xgpui-color"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a43f01744ea407184c63d1f38438f56da106d4b9300f4f5c3051e6bd41d14e83"
+checksum = "c4d498c2f002a7f79e453364c93bfcc1bba504a26b3179dd0c621abd77f9db64"
 dependencies = [
  "moxcms",
 ]
 
 [[package]]
 name = "xgpui-gamut"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e15215150d82abf15a146855db2988c738a50248ec1ed4d35e04b1ae16fd6f2"
+checksum = "ff2777dc67319a80a6cc6f9c84ed22c89eb23d174f586e8d5959f5f1d7e77826"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7365,9 +7365,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-linux"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2511f26055bcc12df04444eb0d5e9d7aac1e46b75ec7f266ddaf2465c671ed16"
+checksum = "7055e457ac52f19da1139471ecfe9df29bc764f7dd0c80565ccd6292911a2631"
 dependencies = [
  "accesskit",
  "accesskit_unix",
@@ -7471,9 +7471,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macos"
-version = "4.0.1"
+version = "4.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d51aa0f61fd954cfa899c84eed25240e5aa6fef0fd2e7568e088df3bf814a680"
+checksum = "190ce079b2c00fe3bacf03ac99aaf50ae101a5f1972e3d91336dba093ff93309"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -7512,9 +7512,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macros"
-version = "1.0.2"
+version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ff32624c56426ae63e0534f732c36b31cb3d9ef1ce1e32222dfd32ae10e2c40"
+checksum = "dc005b8fbf72b867b7a38c19fc9897b3cdedf98b6df5f2d216249eddcbbafa52"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -7524,9 +7524,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-media"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b4ad17b3e72a03cc248c2add70d9497c9cf26e5e46abd4d15529ad4e41921e6"
+checksum = "2d8c47b5b67f835ca172353ac77ba5b4aa01b4799ec84c32fa0b2859ec817025"
 dependencies = [
  "anyhow",
  "half",
@@ -7543,9 +7543,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-parley"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e9d7105d5bba5cf7fda71f5d7a281601f97a8f002004454f2b7314e342877f7"
+checksum = "e8627fddb4e900f7d9412ad9cfc73d57b6c0de83bd72a6e9bad62e5c03a9053c"
 dependencies = [
  "anyhow",
  "parley",
@@ -7556,9 +7556,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-platform"
-version = "2.0.3"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0fc40eb1e823b19732a0eeb4d2923fad468a1d7d84fd85d63368e7a494c9e3"
+checksum = "5b48346acad7b57249245ba50c58a280947223c26c54e8a337cc3fe523d38237"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -7573,9 +7573,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-shader"
-version = "0.4.3"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c73a2df63d74ee182a726dfe3cdec91076d85a5d8dace26df45a5930d1cef48"
+checksum = "c1ca780a2209769a77a185cd4f30a0dbde05ada9c41cc790b4f8b6dc96c307d7"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7606,9 +7606,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-svg"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "315562ee13af0ec49f741d03191cf9e0e68e0ea655ec0d3e9614d440e7ccc68b"
+checksum = "cc6883edf8cd39d566fd2890dbbae7ccab37dd4cb717e49a56ba2766b56942e4"
 dependencies = [
  "anyhow",
  "web-time",
@@ -7617,9 +7617,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-web"
-version = "2.0.3"
+version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3770fdbdf0e9787896b130b55b05f02bd77fef939a3423d8b5bdcb2095ba7ce"
+checksum = "c824466f902d606d0def54d56a2a452463aa481e070a6f05b47e32183db736d2"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -7647,9 +7647,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-wgpu"
-version = "2.2.0"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aeae54968c3475ed6ef194fdf797d662743bd745ce285cf957a4e20ec95dcbda"
+checksum = "2d72968d78fc1a8ccfc59ae6faddfc637361362a5532fd447c81bc91efbbafbe"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7676,9 +7676,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-windows"
-version = "2.1.1"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc0dac08ca6a69feeee999498731908f11aa16a8c500144c6913962a667e6f41"
+checksum = "8901a8668ade40e9b9c236231fd7c2528720d577aca15929fc82388c4175bf2a"
 dependencies = [
  "accesskit",
  "accesskit_windows",

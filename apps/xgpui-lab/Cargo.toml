@@ -19,23 +19,23 @@ portable-app = []
 [dependencies]
 xgpui-shell = "0.2.0"
 clap = { version = "4", features = ["derive"] }
-xgpui-canvas = { version = "0.3.3", features = ["gpui"] }
+xgpui-canvas = { version = "0.3.4", features = ["gpui"] }
 log = "0.4"
 naga = { version = "30.0.1", features = ["wgsl-in", "hlsl-out"] }
-gpui-wgpu = { package = "xgpui-wgpu", version = "2.2.0", features = ["test-support"], optional = true }
+gpui-wgpu = { package = "xgpui-wgpu", version = "2.3.0", features = ["test-support"], optional = true }
 libc = "0.2"
 bytemuck = { version = "1", features = ["derive"] }
 sysinfo = { version = "=0.31.4", default-features = false, features = ["system"] }
-xgpui-parley = { version = "0.5.0", features = ["system-fonts"] }
+xgpui-parley = { version = "0.5.1", features = ["system-fonts"] }
 parley = { version = "=0.12.0", default-features = false, features = ["std", "complex-scripts"] }
 skrifa = "=0.44.0"
 unicode-segmentation = "1"
-xgpui-media = { version = "0.5.3" }
-xgpui-svg = { version = "0.3.3" }
+xgpui-media = { version = "0.5.4" }
+xgpui-svg = { version = "0.3.4" }
 tempfile = "3"
-xgpui-color = { version = "0.3.1", features = ["icc"] }
-xgpui-shader = { version = "0.4.3", features = ["portable-shaders"] }
-xgpui-gamut = { version = "0.3.3", features = ["instanced"] }
+xgpui-color = { version = "0.3.2", features = ["icc"] }
+xgpui-shader = { version = "0.4.4", features = ["portable-shaders"] }
+xgpui-gamut = { version = "0.3.4", features = ["instanced"] }
 anyhow = "1"
 serde_json = "1"
 sha2 = "0.10"
@@ -53,9 +53,9 @@ tiny-skia = "0.11"
 tracing = "0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gpui-wgpu = { package = "xgpui-wgpu", version = "2.2.0" }
+gpui-wgpu = { package = "xgpui-wgpu", version = "2.3.0" }
 # Gradient and mesh paints use the wgpu backend on Linux.
-xgpui-shader = { version = "0.4.3", features = ["wgpu"] }
+xgpui-shader = { version = "0.4.4", features = ["wgpu"] }
 gtk = { version = "0.18" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -65,8 +65,8 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString"] }
 objc2-core-foundation = "0.3.2"
 objc2-core-video = "0.3.2"
-gpui-apple = { package = "xgpui-apple", version = "4.0.1", features = ["test-support"] }
+gpui-apple = { package = "xgpui-apple", version = "4.1.0", features = ["test-support"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-gpui-windows = { package = "xgpui-windows", version = "2.1.1" }
+gpui-windows = { package = "xgpui-windows", version = "2.2.0" }
 windows = { version = "0.62", features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi_Common"] }

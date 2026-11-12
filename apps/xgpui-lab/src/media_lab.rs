@@ -810,10 +810,17 @@ mod tests {
             page.activate("Image Filters".into(), cx);
         });
         cx.run_until_parked();
-        for slot in ["image-filters-crumb", "image-filters-hero", "image-filters-controls", "image-filters-cards", "image-filters-panels"] {
+        for slot in [
+            "image-filters-crumb",
+            "image-filters-hero",
+            "image-filters-controls",
+            "image-filters-cards",
+            "image-filters-panels",
+        ] {
             assert!(cx.debug_bounds(slot).is_some(), "{slot} is rendered");
         }
-        let field = |page: &MediaPage, parameter| page.filter_fields.iter().find(|(id, _)| *id == parameter).unwrap().1.clone();
+        let field =
+            |page: &MediaPage, parameter| page.filter_fields.iter().find(|(id, _)| *id == parameter).unwrap().1.clone();
         let contrast = cx.update(|_, cx| field(page.read(cx), Parameter::Contrast));
         for (text, expected) in [("1.5", 1.5), ("3", 1.5), ("nan", 1.5)] {
             contrast.update(cx, |field, cx| {
@@ -828,7 +835,8 @@ mod tests {
             let active: Vec<_> = page.filter_steps().into_iter().filter(|step| step.2).map(|step| step.0).collect();
             assert_eq!(active, ["Contrast", "Corner mask"]);
         });
-        let hue = cx.update(|_, cx| page.read(cx).sliders.iter().find(|(id, _)| *id == Parameter::Hue).unwrap().1.clone());
+        let hue =
+            cx.update(|_, cx| page.read(cx).sliders.iter().find(|(id, _)| *id == Parameter::Hue).unwrap().1.clone());
         hue.update(cx, |slider, cx| slider.set_thumb_position(slider.primary_thumb_id(), 0.25, cx));
         cx.run_until_parked();
         cx.update(|_, cx| assert_eq!(field(page.read(cx), Parameter::Hue).read(cx).value(), "90.0"));
