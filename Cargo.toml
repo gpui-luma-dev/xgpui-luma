@@ -34,7 +34,7 @@ version = "1.0.2"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/gpui-luma-dev/xgpui-luma"
-homepage = "https://gpui-luma.dev"
+homepage = "https://xgpui-luma.dev"
 publish = false
 
 [workspace.dependencies]
