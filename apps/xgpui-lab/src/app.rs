@@ -102,7 +102,7 @@ const SECTIONS: &[Section] = &[
             ("Wide Gradients", "Wide Gradients"),
             ("Chromaticity & Gamut", "Chromaticity & Gamut"),
             ("Gamut Mapping", "Gamut Mapping"),
-            ("Presentation", "Presentation"),
+            ("Overlays", "Overlays"),
             ("Benchmarks", "Benchmarks"),
         ],
     ),

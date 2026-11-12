@@ -43,7 +43,7 @@ impl Case {
             return current.clone();
         }
         Settings {
-            tab: "Presentation".into(),
+            tab: "Overlays".into(),
             route: match self {
                 Self::Instanced => 1,
                 Self::Gradient => 2,
@@ -64,21 +64,21 @@ pub(super) struct Settings {
     overlay: bool,
     half_opacity: bool,
     reverse: bool,
-    dark: bool,
+    background: Background,
     route: usize,
     wide: bool,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            tab: "Presentation".into(),
+            tab: "Overlays".into(),
             preset: 1,
             policy: GamutMapping::Clip,
             translucent: false,
             overlay: true,
             half_opacity: false,
             reverse: false,
-            dark: true,
+            background: Background::Dark,
             route: 0,
             wide: true,
         }
@@ -94,7 +94,7 @@ impl Settings {
             overlay: page.overlay,
             half_opacity: page.half_opacity,
             reverse: page.reverse,
-            dark: page.dark,
+            background: page.background,
             route: page.route,
             wide: page.requested_wide,
         }
@@ -108,7 +108,7 @@ impl Settings {
         page.overlay = self.overlay;
         page.half_opacity = self.half_opacity;
         page.reverse = self.reverse;
-        page.dark = self.dark;
+        page.background = self.background;
         page.route = self.route;
         page.requested_wide = self.wide;
         for (action, switch) in &page.switches {
@@ -197,7 +197,7 @@ fn capture(case: Case, current: &Settings, look: Arc<Look>, cx: &mut App) -> Res
                 "tab": settings.tab.as_ref(), "route": (["texture", "instanced", "gradient"][settings.route]),
                 "settings": { "palette": reference::PRESETS[settings.preset], "mapping": format!("{:?}", settings.policy),
                     "transparency": settings.translucent, "overlays": settings.overlay, "half_opacity": settings.half_opacity,
-                    "reverse": settings.reverse, "dark_background": settings.dark },
+                    "reverse": settings.reverse, "dark_background": settings.background == Background::Dark, "background": settings.background.label() },
                 "requested": format!("{mode:?}"), "accepted": format!("{:?}", status.requested()),
                 "effective": format!("{:?}", status.effective()), "display_wide_gamut": status.display_wide_gamut(),
                 "supports_wide_gamut_sdr": status.supports_wide_gamut_sdr(), "fallback": format!("{:?}", status.fallback()),
@@ -362,7 +362,7 @@ impl Render for Benchmarks {
             .child("Gamut benchmarks")
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
             .child("Measures CPU layout/paint and render + readback. PNG encoding and file writes are excluded. These are not GPU execution timings.")
-            .child("Wide cases use the Presentation scene. Current lab controls captures the last Gamut tab and its settings. PNG previews are clipped sRGB; presentation negotiation is recorded separately.")
+            .child("Wide cases use the Overlays scene. Current lab controls captures the last Gamut tab and its settings. PNG previews are clipped sRGB; presentation negotiation is recorded separately.")
             .child(self.status.clone())
             .when_some(self.output.as_ref(), |root, output| root.child(format!("Results: {}", output.display())).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
@@ -441,7 +441,7 @@ mod tests {
             (Case::Sdr, 0, false),
         ] {
             let settings = case.settings(&current);
-            assert_eq!(settings.tab.as_ref(), "Presentation");
+            assert_eq!(settings.tab.as_ref(), "Overlays");
             assert_eq!(settings.route, route);
             assert_eq!(settings.wide, wide);
         }
