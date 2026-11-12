@@ -11,8 +11,32 @@ pub(super) const FILL_SAMPLES: [(&str, [f64; 3]); 4] = [
 ];
 
 impl GamutPage {
-    pub(super) fn fills_screen(&self, wide: bool, display: &str, fallback: &str, window: &Window) -> LabScreen {
+    pub(super) fn presentation_panel(&self, display: &str, fallback: &str, window: &Window) -> PanelShell {
         let status = window.color_status();
+        PanelShell::new("Window presentation")
+            .subtitle("Negotiated output, not measured display fidelity")
+            .child(properties(
+                &self.look,
+                [
+                    (
+                        "Intent",
+                        if self.requested_wide {
+                            "P3 (WideGamutSdr)"
+                        } else {
+                            "sRGB (Default)"
+                        }
+                        .into(),
+                    ),
+                    ("Accepted", format!("{:?}", status.requested())),
+                    ("Effective", format!("{:?}", status.effective())),
+                    ("Backend support", status.supports_wide_gamut_sdr().to_string()),
+                    ("Display", display.to_owned()),
+                    ("Fallback", fallback.to_owned()),
+                ],
+            ))
+    }
+
+    pub(super) fn fills_screen(&self, wide: bool, display: &str, fallback: &str, window: &Window) -> LabScreen {
         let screen = LabScreen::new("gamut-fills", self.look.clone())
             .crumb("xgpui-gamut", "Wide Color Fills")
             .title("Wide Color Fills")
@@ -22,18 +46,7 @@ impl GamutPage {
             } else {
                 "4 colors · sRGB fallback previews · native P3 output unavailable"
             })
-            .section_panel(
-                PanelShell::new("Window presentation")
-                    .subtitle("Negotiated output, not measured display fidelity")
-                    .child(properties(&self.look, [
-                        ("Intent", if self.requested_wide { "P3 (WideGamutSdr)" } else { "sRGB (Default)" }.into()),
-                        ("Accepted", format!("{:?}", status.requested())),
-                        ("Effective", format!("{:?}", status.effective())),
-                        ("Backend support", status.supports_wide_gamut_sdr().to_string()),
-                        ("Display", display.to_owned()),
-                        ("Fallback", fallback.to_owned()),
-                    ])),
-            )
+            .section_panel(self.presentation_panel(display, fallback, window))
             .note("Both columns start from the same linear Display P3 samples. The sRGB references clip each converted linear channel to 0–1 before encoding.")
             .credits("Native P3 colors require a wide-gamut window and display. In fallback mode both columns show the same clipped sRGB previews; screenshots do not measure display fidelity.");
         match &self.samples {

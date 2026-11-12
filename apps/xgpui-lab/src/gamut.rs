@@ -1,6 +1,7 @@
 pub(crate) mod reference;
 mod labs;
 mod fills;
+mod palette;
 mod compositing_checks;
 pub(crate) mod benchmarks;
 
@@ -60,6 +61,31 @@ enum Action {
     Route,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Background {
+    Dark,
+    Light,
+    Transparent,
+}
+
+impl Background {
+    fn next(self) -> Self {
+        match self {
+            Self::Dark => Self::Light,
+            Self::Light => Self::Transparent,
+            Self::Transparent => Self::Dark,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Dark => "Dark",
+            Self::Light => "Light",
+            Self::Transparent => "Transparent",
+        }
+    }
+}
+
 pub struct GamutPage {
     look: Arc<Look>,
     p3_error: Option<String>,
@@ -71,7 +97,7 @@ pub struct GamutPage {
     overlay: bool,
     half_opacity: bool,
     reverse: bool,
-    dark: bool,
+    background: Background,
     painter: anyhow::Result<WidePainter>,
     window_handle: Option<gpui::AnyWindowHandle>,
     requested_wide: bool,
@@ -198,7 +224,7 @@ impl GamutPage {
                             Action::Overlay => this.overlay = !this.overlay,
                             Action::Opacity => this.half_opacity = !this.half_opacity,
                             Action::Order => this.reverse = !this.reverse,
-                            Action::Background => this.dark = !this.dark,
+                            Action::Background => this.background = this.background.next(),
                             Action::Presentation => {
                                 if let Some(handle) = this.window_handle {
                                     let next_wide = !this.requested_wide;
@@ -238,7 +264,7 @@ impl GamutPage {
             overlay: true,
             half_opacity: false,
             reverse: false,
-            dark: true,
+            background: Background::Dark,
             painter: WidePainter::new(),
             window_handle: None,
             requested_wide: true,
@@ -284,31 +310,7 @@ impl Render for GamutPage {
         if self.active_tab == "Wide Color Fills" {
             return self.fills_screen(wide, display, &fallback, window).into_any_element();
         }
-        div()
-            .id("xgpui-gamut-status")
-            .size_full()
-            .overflow_y_scroll()
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .text_color(self.look.chrome().body_text)
-            .child("Window presentation")
-            .child(format!(
-                "Intent: {} · Accepted: {:?} · Effective: {:?}",
-                if self.requested_wide {
-                    "P3 (WideGamutSdr)"
-                } else {
-                    "sRGB (Default)"
-                },
-                status.requested(),
-                status.effective()
-            ))
-            .child(format!("Backend support: {} · Display: {display}", status.supports_wide_gamut_sdr()))
-            .child(format!("Fallback: {fallback}"))
-            .child("Status reports negotiated presentation, not measured display fidelity.")
-            .child(self.lab_content(wide, window, cx))
-            .into_any_element()
+        self.lab_screen(wide, display, &fallback, window, cx).into_any_element()
     }
 }
 
@@ -336,12 +338,26 @@ mod tests {
         app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (page, cx) = app
             .add_window_view(|_, cx| GamutPage::new(crate::theme::default_look(), Some("headless backend".into()), cx));
-        for tab in ["Wide Color Fills", "Wide Gradients", "Gamut Mapping", "Presentation"] {
+        for tab in ["Wide Color Fills", "Wide Gradients", "Gamut Mapping", "Overlays"] {
             page.update(cx, |page, cx| {
                 page.active_tab = tab.into();
                 cx.notify();
             });
             cx.run_until_parked();
+            let (hero, controls, diagnostics) = match tab {
+                "Wide Gradients" => ("gamut-gradients-hero", "gamut-gradients-controls", "gamut-gradients-section"),
+                "Gamut Mapping" => ("gamut-mapping-hero", "gamut-mapping-controls", "gamut-mapping-section"),
+                "Overlays" => ("gamut-overlays-hero", "gamut-overlays-controls", "gamut-overlays-section"),
+                _ => ("gamut-fills-hero", "gamut-fills-caption", "gamut-fills-section"),
+            };
+            for selector in [hero, controls, diagnostics] {
+                assert!(cx.debug_bounds(selector).is_some(), "{selector} is rendered");
+            }
+            if tab == "Overlays" {
+                let scene = cx.debug_bounds("gamut-overlays-scene").expect("overlay scene");
+                let hero = cx.debug_bounds("gamut-overlays-hero").expect("overlay hero");
+                assert_eq!(scene.size.width, hero.size.width, "scene fills the content width");
+            }
             if tab == "Wide Color Fills" {
                 for slot in [
                     "gamut-fills-crumb",
@@ -376,6 +392,14 @@ mod tests {
                 cx.run_until_parked();
             }
         }
+        let background = cx.update(|_, cx| {
+            page.read(cx).controls.iter().find(|(action, _)| *action == Action::Background).unwrap().1.clone()
+        });
+        for expected in [Background::Transparent, Background::Dark, Background::Light] {
+            background.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.run_until_parked();
+            cx.update(|_, cx| assert_eq!(page.read(cx).background, expected));
+        }
         let choices = cx.update(|_, cx| page.read(cx).choices.clone());
         for (action, choice) in choices {
             cx.update(|_, cx| choice.select(if action == Action::Preset { 2 } else { 1 }, cx));
@@ -395,7 +419,8 @@ mod tests {
             assert_eq!(page.preset, 2);
             assert_eq!(page.policy, GamutMapping::ReduceChroma);
             assert!(page.translucent && page.half_opacity && page.reverse);
-            assert!(!page.overlay && !page.dark);
+            assert!(!page.overlay);
+            assert_eq!(page.background, Background::Light);
         });
     }
 }
