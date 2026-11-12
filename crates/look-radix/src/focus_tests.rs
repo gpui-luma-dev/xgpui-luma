@@ -100,6 +100,7 @@ fn text_and_popup_triggers_keep_their_focus_space() {
             assert_textarea_layout(textarea_theme_with(&look, variant));
         }
         assert_selector_layout(selector_theme(&look));
+        assert_search_selector_layout(selector_theme(&look));
         assert_popup_layout(popup_menu_theme(&look, PopupMenuVariant::Solid, Tone::Accent));
     }
 }
