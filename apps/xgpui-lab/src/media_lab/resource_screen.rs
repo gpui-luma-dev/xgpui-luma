@@ -11,14 +11,16 @@ impl MediaPage {
         let lab = &self.resources;
         // As in the original stress() panel, every request keeps a numbered chip
         // while only snapshots still holding a source show an image preview.
-        let chips = div().flex().flex_wrap().gap_2().children(lab.burst.iter().enumerate().map(|(index, slot)| {
+        let chips = div().flex().flex_wrap().gap_1().children(lab.burst.iter().enumerate().map(|(index, slot)| {
             card_surface(div(), &self.look)
                 .flex()
                 .flex_col()
                 .items_center()
                 .justify_center()
-                .w(px(88.))
-                .min_h(px(80.))
+                .w(px(68.))
+                .min_h(px(60.))
+                .p_1()
+                .gap_1()
                 .debug_selector(move || format!("media-resource-result-{index}"))
                 .child(text(&self.look, TextRole::Value, format!("{:02}", index + 1)))
                 .child(radix::Badge::new(&self.look, slot.phase.label()).variant(

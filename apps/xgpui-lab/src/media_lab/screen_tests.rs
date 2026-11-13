@@ -119,10 +119,14 @@ fn resource_controls_match_upstream_and_keep_twelve_status_chips() {
                 slot.phase = Phase::Retired;
             }
         });
-        for width in [1280., 720.] {
+        for width in [1280., 1024., 720.] {
             cx.simulate_resize(size(px(width), px(1800.)));
             cx.run_until_parked();
-            assert!(cx.debug_bounds("media-resource-result-11").is_some(), "completed chips remain visible");
+            let first = cx.debug_bounds("media-resource-result-0").unwrap();
+            let last = cx.debug_bounds("media-resource-result-11").expect("completed chips remain visible");
+            if width >= 1024. {
+                assert_eq!(first.top(), last.top(), "all twelve chips fit one row at {width} px");
+            }
         }
         for (action, expected_label) in [(Action::Jobs, "Uploads / frame"), (Action::Budget, "Bytes / frame")] {
             let choice = cx.update(|_, cx| page.read(cx).choice(action).unwrap());
