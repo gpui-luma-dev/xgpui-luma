@@ -67,6 +67,15 @@ impl Progress {
             row["outcome"] = json!("running");
         }
     }
+    pub(crate) fn running_budget(&self, id: &str, zoom: f64, budget: usize) {
+        if let Ok(mut s) = self.state.lock()
+            && let Some(row) = s.completed.iter_mut().find(|r| {
+                r["id"] == id && r["zoom"].as_f64() == Some(zoom) && r["budget_bytes"].as_u64() == Some(budget as u64)
+            })
+        {
+            row["outcome"] = json!("running");
+        }
+    }
     pub(crate) fn completed(&self, mut report: Value) {
         if report.get("outcome").is_none() {
             report["outcome"] = json!(if report.get("error").is_some() {
@@ -76,15 +85,17 @@ impl Progress {
             });
         }
         if let Ok(mut s) = self.state.lock() {
-            if let Some(row) = s
-                .completed
-                .iter_mut()
-                .find(|r| r["id"] == report["id"] && r["zoom"].as_f64() == report["zoom"].as_f64())
-            {
-                if report.get("job").is_none()
-                    && let Some(job) = row.get("job")
-                {
-                    report["job"] = job.clone();
+            if let Some(row) = s.completed.iter_mut().find(|r| {
+                r["id"] == report["id"]
+                    && r["zoom"].as_f64() == report["zoom"].as_f64()
+                    && r["budget_bytes"].as_u64() == report["budget_bytes"].as_u64()
+            }) {
+                for key in ["job", "display_name"] {
+                    if report.get(key).is_none()
+                        && let Some(value) = row.get(key)
+                    {
+                        report[key] = value.clone();
+                    }
                 }
                 *row = report;
             } else {
@@ -127,6 +138,22 @@ impl Progress {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn different_budgets_update_distinct_preplanned_rows() {
+        let p = Progress::default();
+        p.plan(crate::svg_lab::benchmarks::planned_cases(4.));
+        p.running_budget("AJ_Digital_Camera", 4., 32 * xgpui_svg::MIB);
+        let rows = p.snapshot().1;
+        assert_eq!(rows[0]["outcome"], "pending");
+        assert_eq!(rows[1]["outcome"], "running");
+        p.completed(
+            json!({"id":"AJ_Digital_Camera","zoom":4,"budget_bytes":32*xgpui_svg::MIB,"raster":{"median_ms":1.2}}),
+        );
+        let rows = p.snapshot().1;
+        assert_eq!(rows.len(), 8);
+        assert_eq!(rows[0]["outcome"], "pending");
+        assert_eq!(rows[1]["outcome"], "completed");
+    }
     #[::core::prelude::v1::test]
     fn planned_rows_keep_order_through_execution_failure_and_cancellation() {
         let p = Progress::default();

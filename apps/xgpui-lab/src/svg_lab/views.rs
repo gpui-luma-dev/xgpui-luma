@@ -297,6 +297,6 @@ impl SvgPage {
                 Err(error) => view = view.child(format!("Benchmark failed: {error}")),
             }
         }
-        view.child(self.bench_table.clone()).into_any_element()
+        view.child(crate::benchmarks::svg_table::view(self.bench_table.clone())).into_any_element()
     }
 }

@@ -6,10 +6,13 @@ const THUMBNAIL_PAPER: u32 = 0xffffff;
 pub(crate) struct Row {
     thumbnail: Option<Arc<RenderImage>>,
     name: String,
+    source: String,
     zoom: String,
+    budget: String,
     parse: String,
     raster: String,
     pixels: String,
+    capped: String,
     memory: String,
     outcome: String,
 }
@@ -25,14 +28,24 @@ pub(crate) fn rows(results: &[Value]) -> Vec<Row> {
                 .into_iter()
                 .map(|c| Row {
                     thumbnail: None,
-                    name: c["id"].as_str().or(result["label"].as_str()).unwrap_or("SVG").into(),
+                    name: c["display_name"]
+                        .as_str()
+                        .or(c["id"].as_str())
+                        .or(result["label"].as_str())
+                        .unwrap_or("SVG")
+                        .into(),
+                    source: c["id"].as_str().or(result["label"].as_str()).unwrap_or("SVG").into(),
                     zoom: c["zoom"].as_f64().map_or_else(|| "—".into(), |n| format!("{n:.2}×")),
+                    budget: c["budget_bytes"]
+                        .as_u64()
+                        .map_or_else(|| "—".into(), |bytes| format!("{} MiB", bytes / (xgpui_svg::MIB as u64))),
                     parse: ms(c.get("parse_ms").unwrap_or(&c["parse"]["median_ms"])),
                     raster: ms(c.get("raster_ms").unwrap_or(&c["raster"]["median_ms"])),
                     pixels: match (c["pixel_width"].as_u64(), c["pixel_height"].as_u64()) {
                         (Some(w), Some(h)) => format!("{w}×{h}"),
                         _ => "—".into(),
                     },
+                    capped: c["resolution_limited"].as_bool().map_or("—", |v| if v { "yes" } else { "no" }).into(),
                     memory: c["sampled_process_rss_peak_bytes"]
                         .as_f64()
                         .map_or_else(|| "—".into(), |n| format!("{:.1}", n / 1048576.)),
@@ -58,7 +71,7 @@ pub(crate) fn with_thumbnails(mut rows: Vec<Row>, images: &Thumbnails) -> Vec<Ro
         if row.thumbnail.is_some() && !matches!(row.outcome.as_str(), "pending" | "running") {
             continue;
         }
-        row.thumbnail = images.get(&row.name).cloned();
+        row.thumbnail = images.get(&row.source).cloned();
     }
     rows
 }
@@ -71,16 +84,25 @@ pub(crate) fn with_image(mut rows: Vec<Row>, image: Option<Arc<RenderImage>>) ->
 pub(crate) fn samples(zoom: f32) -> Vec<Value> {
     (1..=5).map(|n| json!({"id":format!("Sample {n}"),"zoom":zoom,"outcome":"pending"})).collect()
 }
-pub(super) fn plan(jobs: &[Job]) -> Vec<Value> {
+pub(super) fn plan(jobs: &[Job], zoom: f32) -> Vec<Value> {
     jobs.iter()
         .flat_map(|job| match job {
-            Job::SvgCorpus => crate::svg_lab::benchmarks::planned_cases(),
+            Job::SvgCorpus => crate::svg_lab::benchmarks::planned_cases(zoom),
             Job::SvgBuiltin | Job::SvgSelected => {
-                vec![json!({"id":job.label(),"job":job.id(),"zoom":4,"outcome":"pending"})]
+                crate::svg_lab::benchmarks::COMPARISON_BUDGETS.map(|budget|json!({"id":job.label(),"job":job.id(),"zoom":zoom,"budget_bytes":budget,"outcome":"pending"})).to_vec()
             }
             _ => vec![],
         })
         .collect()
+}
+pub(crate) fn view(table: Table<Row>) -> impl IntoElement {
+    div()
+        .id("svg-comparison-table-scroll")
+        .debug_selector(|| "svg-comparison-table-scroll".into())
+        .w_full()
+        .min_w_0()
+        .overflow_x_scroll()
+        .child(div().w_full().min_w(px(1040.)).child(table))
 }
 pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> {
     radix::table_builder::<Row>(look, "svg-benchmark-results")
@@ -99,10 +121,12 @@ pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> 
                 .when(r.thumbnail.is_none(), |cell| cell.child("—"))
         })
         .column_fill("Artwork", |r| r.name.clone())
+        .column_fixed("Budget", 88., |r| r.budget.clone())
         .column_fixed("Zoom", 72., |r| r.zoom.clone())
         .column_fixed("Parse ms", 90., |r| r.parse.clone())
         .column_fixed("Raster ms", 90., |r| r.raster.clone())
         .column_fixed("Pixels", 110., |r| r.pixels.clone())
+        .column_fixed("Capped", 72., |r| r.capped.clone())
         .column_fixed("RSS MiB", 90., |r| r.memory.clone())
         .column_fixed("Status", 100., |r| r.outcome.clone())
         .finish()
@@ -116,13 +140,13 @@ mod tests {
     fn pending_cases_have_small_cached_previews_shared_across_zoom_rows() {
         let images = crate::svg_lab::benchmarks::thumbnails(None, None);
         assert_eq!(images.len(), 5, "four corpus artworks and the built-in scene");
-        let planned = rows(&plan(&[Job::SvgCorpus]));
+        let planned = rows(&plan(&[Job::SvgCorpus], 4.));
         let previewed = with_thumbnails(planned, &images);
-        assert_eq!(previewed.len(), 16);
-        for group in previewed.chunks(4) {
+        assert_eq!(previewed.len(), 8);
+        for group in previewed.chunks(2) {
             let image = group[0].thumbnail.as_ref().expect("corpus preview");
             let size = image.size(0);
-            assert!(i32::from(size.width) <= 96 && i32::from(size.height) <= 96);
+            assert!(i32::from(size.width) <= 360 && i32::from(size.height) <= 360);
             assert!(image.as_bytes(0).unwrap().as_chunks::<4>().0.iter().any(|p| p[3] > 0));
             for row in group {
                 assert_eq!(row.outcome, "pending");
@@ -143,13 +167,13 @@ mod tests {
     }
     #[::core::prelude::v1::test]
     fn corpus_and_run_all_have_a_complete_pending_schedule() {
-        let corpus = plan(&[Job::SvgCorpus]);
-        assert_eq!(corpus.len(), 16);
+        let corpus = plan(&[Job::SvgCorpus], 4.);
+        assert_eq!(corpus.len(), 8);
         assert!(corpus.iter().all(|r| r["outcome"] == "pending"));
         let identities: std::collections::HashSet<_> =
-            corpus.iter().map(|r| (r["id"].as_str().unwrap(), r["zoom"].as_u64().unwrap())).collect();
-        assert_eq!(identities.len(), 16);
-        assert_eq!(plan(&Suite::Svg.jobs()).len(), 18);
+            corpus.iter().map(|r| (r["id"].as_str().unwrap(), r["budget_bytes"].as_u64().unwrap())).collect();
+        assert_eq!(identities.len(), 8);
+        assert_eq!(plan(&Suite::Svg.jobs(), 4.).len(), 12);
         assert!(rows(&corpus).iter().all(|row| row.outcome == "pending" && row.raster == "—"));
     }
     #[::core::prelude::v1::test]

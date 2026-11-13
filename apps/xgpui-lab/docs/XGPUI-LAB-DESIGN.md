@@ -66,6 +66,16 @@ Paths are relative to `apps/xgpui-lab/`. Screens are built with `LabScreen` in `
 | Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab/filters_screen.rs`](../src/media_lab/filters_screen.rs) (state in [`src/media_lab.rs`](../src/media_lab.rs)) | follows the design (`LabScreen`). The mockup's "linear light" and "skipped steps" text is wrong for `ImageFilter`; the screen says what the code does |
 | Spatial Canvas, Mandelbrot | `xgpui-canvas / …` | — | [`src/canvas_lab/screen.rs`](../src/canvas_lab/screen.rs) (one `Lab` in [`src/canvas_lab.rs`](../src/canvas_lab.rs) hosts both) | follows the design (`LabScreen`). Canvas variant: `Hero::full` interactive viewport, 560 px tall, that owns scroll and pinch; the map or preview floats in its bottom-right corner on `panel_background`. The scene and fractal keep their own dark data colors in both themes ([`src/canvas_lab/palette.rs`](../src/canvas_lab/palette.rs)) |
 
+The SVG benchmark comparison remains a benchmark harness outside the `LabScreen` layout contract.
+Its 16/32 MiB budgets, zoom choices (1×/4×/16×), separate parse samples and retained-tree raster repeats
+follow the original [policy runner](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/bench/policy_run.py)
+and [CPU benchmark](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/src/benchmark.rs).
+The larger artwork cards follow the original [gallery](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/src/gallery.rs).
+Each interactive run compares all four bundled SVGs at both budgets at the chosen zoom and 2× density;
+an added file joins that same matrix. A native graph plots median raster milliseconds against budget,
+one series per artwork. The table retains actual output pixels, capping and pending/final states.
+Stop, previews and results stay in memory; source files are not exported automatically.
+
 Shared building blocks already exist. Use them before you write new ones:
 
 | File | Provides |

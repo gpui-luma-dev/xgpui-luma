@@ -2,6 +2,7 @@
 pub(crate) mod memory;
 pub(crate) mod progress;
 pub(crate) mod svg_table;
+mod svg_chart;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
 use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
@@ -267,8 +268,9 @@ pub struct Page {
     corpus: Option<PathBuf>,
     cancel: Arc<AtomicBool>,
     busy: bool,
-    svg_budget: usize,
-    svg_budget_choice: crate::lab_controls::Choice,
+    svg_zoom: f32,
+    svg_cases: Vec<Value>,
+    svg_zoom_choice: crate::lab_controls::Choice,
     status: String,
     output: Option<PathBuf>,
     results: Vec<Value>,
@@ -284,8 +286,15 @@ impl Drop for Page {
 }
 impl Page {
     pub fn new(suite: Suite, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let buttons = std::iter::once((None, "Run all"))
-            .chain(suite.jobs().into_iter().map(|job| (Some(job), job.label())))
+        let actions = if suite == Suite::Svg {
+            vec![(None, "Run comparison")]
+        } else {
+            std::iter::once((None, "Run all"))
+                .chain(suite.jobs().into_iter().map(|job| (Some(job), job.label())))
+                .collect()
+        };
+        let buttons = actions
+            .into_iter()
             .enumerate()
             .map(|(index, (job, label))| {
                 radix::Button::new(format!("bench-{suite:?}-{index}"))
@@ -322,28 +331,33 @@ impl Page {
                     .label(if directory {
                         "Override corpus folder…"
                     } else {
-                        "Choose SVG file…"
+                        "Add SVG…"
                     })
                     .on_click(cx, move |this: &mut Self, cx| this.choose(directory, cx))
                     .spawn(cx)
             })
             .collect();
-        let svg_budget_choice = crate::lab_controls::Choice::new(
-            "svg-benchmark-budget",
-            "Raster budget",
+        let svg_zoom_choice = crate::lab_controls::Choice::new(
+            "svg-comparison-zoom",
+            "Zoom",
             &look,
-            crate::lab_controls::labels(&["4 MiB", "16 MiB", "64 MiB", "256 MiB"]),
-            0,
+            crate::lab_controls::labels(&["1×", "4×", "16×"]),
+            1,
             cx,
             |this: &mut Self, index, cx| {
-                this.svg_budget = [4, 16, 64, 256][index] * xgpui_svg::MIB;
-                cx.notify();
+                this.svg_zoom = [1., 4., 16.][index];
+                this.reset_comparison(cx);
             },
         );
+        let svg_cases = if suite == Suite::Svg {
+            svg_table::plan(&[Job::SvgCorpus], 4.)
+        } else {
+            vec![]
+        };
         let svg_table = svg_table::build(&look, cx);
         if suite == Suite::Svg {
             svg_table.update(cx, |table, cx| {
-                let _ = table.set_items(svg_table::rows(&svg_table::plan(&suite.jobs())), cx);
+                let _ = table.set_items(svg_table::rows(&svg_cases), cx);
             });
         }
         let mut page = Self {
@@ -360,8 +374,9 @@ impl Page {
             corpus: None,
             cancel: Arc::new(AtomicBool::new(false)),
             busy: false,
-            svg_budget: 4 * xgpui_svg::MIB,
-            svg_budget_choice,
+            svg_zoom: 4.,
+            svg_zoom_choice,
+            svg_cases,
             status: if suite == Suite::Svg {
                 "Choose a workload. Results stay in memory; interactive runs write no files."
             } else {
@@ -373,9 +388,45 @@ impl Page {
             quit_on_finish: false,
         };
         if suite == Suite::Svg {
+            page.reset_comparison(cx);
             page.load_thumbnails(cx);
         }
         page
+    }
+    fn comparison_jobs(&self) -> Vec<Job> {
+        let mut jobs = vec![Job::SvgCorpus];
+        if self.selected.is_some() {
+            jobs.push(Job::SvgSelected);
+        }
+        jobs
+    }
+    fn comparison_plan(&self, jobs: &[Job]) -> Vec<Value> {
+        let mut plan = svg_table::plan(jobs, self.svg_zoom);
+        if let Some(name) = self.selected.as_deref().and_then(Path::file_name) {
+            for row in &mut plan {
+                if row["id"] == "Selected SVG" {
+                    row["display_name"] = json!(name.to_string_lossy());
+                }
+            }
+        }
+        plan
+    }
+    fn reset_comparison(&mut self, cx: &mut Context<Self>) {
+        if self.suite != Suite::Svg || self.busy {
+            return;
+        }
+        self.results.clear();
+        self.svg_cases = self.comparison_plan(&self.comparison_jobs());
+        let rows = svg_table::with_thumbnails(svg_table::rows(&self.svg_cases), &self.svg_thumbnails);
+        self.svg_table.update(cx, |table, cx| {
+            let _ = table.set_items(rows, cx);
+        });
+        self.status = format!(
+            "{} pending cases · each SVG at 16 and 32 MiB · {:.0}× zoom · 2× density",
+            self.svg_cases.len(),
+            self.svg_zoom
+        );
+        cx.notify();
     }
     fn load_thumbnails(&mut self, cx: &mut Context<Self>) {
         self.svg_thumbnails.clear();
@@ -432,6 +483,7 @@ impl Page {
                             } else {
                                 this.selected = Some(path);
                             }
+                            this.reset_comparison(cx);
                             this.load_thumbnails(cx);
                         }
                     }
@@ -481,7 +533,7 @@ impl Page {
                 },
             )
         };
-        self.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
+        self.svg_zoom_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
         for picker in &self.pickers {
             picker.update(cx, |button, cx| button.set_enabled(false, cx));
         }
@@ -500,14 +552,24 @@ impl Page {
         for button in &self.buttons {
             button.update(cx, |button, cx| button.set_enabled(false, cx));
         }
-        let jobs = job.map_or_else(|| self.suite.jobs(), |job| vec![job]);
+        let jobs = job.map_or_else(
+            || {
+                if in_memory {
+                    self.comparison_jobs()
+                } else {
+                    self.suite.jobs()
+                }
+            },
+            |job| vec![job],
+        );
         let cancel = self.cancel.clone();
         let selected = self.selected.clone();
         let corpus = self.corpus.clone();
-        let budget = self.svg_budget;
+        let zoom = self.svg_zoom;
         let progress = progress::Progress::default();
         if in_memory {
-            let plan = svg_table::plan(&jobs);
+            let plan = self.comparison_plan(&jobs);
+            self.svg_cases = plan.clone();
             self.svg_table.update(cx, |table, cx| {
                 let _ = table.set_items(svg_table::with_thumbnails(svg_table::rows(&plan), &self.svg_thumbnails), cx);
             });
@@ -532,6 +594,7 @@ impl Page {
                                 status
                             };
                             if partial != last_rows {
+                                this.svg_cases = partial.clone();
                                 let rows = svg_table::with_thumbnails(svg_table::rows(&partial), &this.svg_thumbnails);
                                 this.svg_table.update(cx, |table, cx| {
                                     let _ = table.set_items(rows, cx);
@@ -582,7 +645,7 @@ impl Page {
                                     job,
                                     selected.as_deref(),
                                     corpus.as_deref(),
-                                    budget,
+                                    zoom,
                                     &token,
                                     &worker_progress,
                                 ),
@@ -600,7 +663,8 @@ impl Page {
                             |error| json!({"label":job.label(),"outcome":"failed","error":format!("{error:#}")}),
                         ));
                         let rows = if in_memory {
-                            svg_table::rows(&progress.snapshot().1)
+                            this.svg_cases = progress.snapshot().1;
+                            svg_table::rows(&this.svg_cases)
                         } else {
                             svg_table::rows(&this.results)
                         };
@@ -630,13 +694,13 @@ impl Page {
                 });
                 if in_memory {
                     progress.settle(None, cancel.load(Ordering::Relaxed));
-                    let rows =
-                        svg_table::with_thumbnails(svg_table::rows(&progress.snapshot().1), &this.svg_thumbnails);
+                    this.svg_cases = progress.snapshot().1;
+                    let rows = svg_table::with_thumbnails(svg_table::rows(&this.svg_cases), &this.svg_thumbnails);
                     this.svg_table.update(cx, |table, cx| {
                         let _ = table.set_items(rows, cx);
                     });
                 }
-                this.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
+                this.svg_zoom_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
                 for picker in &this.pickers {
                     picker.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
@@ -679,11 +743,15 @@ impl Render for Page {
         use crate::theme::ColorVizLookExt;
         let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
-            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / selected raster budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
-            .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
-            .when(self.suite==Suite::Svg,|root|root.child(self.svg_budget_choice.clone()).child("Corpus: 16 cases, 5 measured repeats plus 2 warm-up rasters per case. Budget caps the output image; SVG filter intermediates can require more memory. Larger budgets can take minutes."))
+            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Compare each SVG at 16 and 32 MiB raster budgets. Zoom and display density stay the same across artwork. Five parse and raster samples per case, following the original SVG policy lab."})
+            .when(self.suite==Suite::Svg,|root|root
+                .child(div().flex().flex_wrap().gap_3().children(self.pickers.clone()).child(div().flex().items_center().gap_2().child(self.svg_zoom_choice.label()).child(div().w(px(96.)).child(self.svg_zoom_choice.selector.clone()))))
+                .child(self.selected.as_ref().map_or_else(||"Four bundled artworks. Add an SVG to include it in this comparison.".to_owned(),|p|format!("Added artwork: {} · included alongside the four bundled SVGs",p.display())))
+                .child(svg_chart::gallery(&self.look,&self.svg_cases,&self.svg_thumbnails,self.selected.as_deref()))
+                .child(svg_chart::render(&self.look,&self.svg_cases))
+                .child("Original policy budgets: 16 / 32 MiB. Cases run sequentially in isolated workers; large filtered SVGs can take minutes. Stop preserves completed results. Budgets limit output images, not filter intermediates or total process memory."))
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
-            .when(self.suite==Suite::Svg,|root|root.child(self.svg_table.clone()))
+            .when(self.suite==Suite::Svg,|root|root.child(svg_table::view(self.svg_table.clone())))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
@@ -770,35 +838,45 @@ fn run_svg_memory(
     job: Job,
     selected: Option<&Path>,
     corpus: Option<&Path>,
-    budget: usize,
+    zoom: f32,
     cancel: &AtomicBool,
     progress: &progress::Progress,
 ) -> Result<Value> {
-    if job != Job::SvgCorpus {
-        progress.running(job.label(), 4.);
+    if job == Job::SvgCorpus {
+        let result = crate::svg_lab::benchmarks::memory_corpus(corpus, zoom, cancel, progress);
+        if result.is_err() {
+            progress.settle(Some(job.id()), cancel.load(Ordering::Relaxed));
+        }
+        return result;
     }
-    let result = match job {
-        Job::SvgBuiltin => crate::svg_lab::benchmarks::isolated_selected(None, budget, cancel, progress),
-        Job::SvgSelected => match selected {
-            Some(path) => crate::svg_lab::benchmarks::isolated_selected(Some(path), budget, cancel, progress),
-            None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
-        },
-        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, cancel, progress),
+    let path = match job {
+        Job::SvgBuiltin => None,
+        Job::SvgSelected => Some(selected.context("Choose an SVG file first")?),
         _ => anyhow::bail!("expected SVG workload"),
     };
-    if job != Job::SvgCorpus {
-        let mut report = result.as_ref().cloned().unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
+    let mut cases = Vec::new();
+    for budget in crate::svg_lab::benchmarks::COMPARISON_BUDGETS {
+        if cancel.load(Ordering::Relaxed) {
+            break;
+        }
+        progress.case(format!("{} · {} MiB · {zoom}×", job.label(), budget / xgpui_svg::MIB));
+        progress.running_budget(job.label(), zoom as f64, budget);
+        let result = crate::svg_lab::benchmarks::isolated_selected(path, budget, zoom, cancel, progress);
+        let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
         report["id"] = json!(job.label());
-        report["zoom"] = json!(4);
         report["job"] = json!(job.id());
+        report["zoom"] = json!(zoom);
+        report["budget_bytes"] = json!(budget);
         if cancel.load(Ordering::Relaxed) {
             report["outcome"] = json!("cancelled");
         }
-        progress.completed(report);
-    } else if result.is_err() {
-        progress.settle(Some(job.id()), cancel.load(Ordering::Relaxed));
+        progress.completed(report.clone());
+        cases.push(report);
     }
-    result
+    let failed = cases.iter().filter(|r| r.get("error").is_some() && r["outcome"] != "cancelled").count();
+    Ok(
+        json!({"cases":cases,"errors":if failed==0 {vec![]}else{vec![format!("{failed} cases failed")]},"measurement":"Original SVG policy comparison: 16/32 MiB at fixed zoom and 2× density, serial isolated CPU workers. Five parse samples, then five raster repeats of a retained tree. No GPU timing."}),
+    )
 }
 
 #[cfg(test)]
@@ -819,10 +897,10 @@ mod tests {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
-        cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 18));
+        cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 8));
         page.update(cx, |page, cx| {
             page.start(Some(Job::SvgBuiltin), None, cx);
-            assert_eq!(page.svg_table.read(cx).items().len(), 1);
+            assert_eq!(page.svg_table.read(cx).items().len(), 2);
         });
         let stop = cx.update(|_, cx| page.read(cx).cancel_button.clone());
         stop.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
@@ -837,7 +915,7 @@ mod tests {
             assert!(!page.busy);
             assert!(page.output.is_none());
             assert!(page.status.starts_with("Cancelled"));
-            assert_eq!(page.svg_table.read(cx).items().len(), 1);
+            assert_eq!(page.svg_table.read(cx).items().len(), 2);
         });
         assert!(cx.debug_bounds("benchmark-run-controls").is_some(), "Stop header remains present after stopping");
     }
@@ -856,6 +934,48 @@ mod tests {
         assert!(wait_child(&mut child, &["--svg-case".into()], &AtomicBool::new(true)).is_err());
         assert!(child.try_wait().unwrap().is_some(), "worker has been reaped");
         assert!(start.elapsed() < Duration::from_secs(4));
+    }
+    #[cfg(feature = "test-support")]
+    #[::core::prelude::v1::test]
+    fn added_svg_and_zoom_are_part_of_the_pending_budget_comparison() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
+        page.update(cx, |page, cx| {
+            page.selected =
+                Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/samples/svg/AJ_Digital_Camera.svg"));
+            page.reset_comparison(cx);
+            page.load_thumbnails(cx);
+            assert_eq!(page.svg_cases.len(), 10);
+            let added: Vec<_> = page.svg_cases.iter().filter(|r| r["id"] == "Selected SVG").collect();
+            assert_eq!(added.len(), 2);
+            assert_eq!(added[0]["budget_bytes"], 16 * xgpui_svg::MIB);
+            assert_eq!(added[1]["budget_bytes"], 32 * xgpui_svg::MIB);
+        });
+        cx.run_until_parked();
+        let zoom = cx.update(|_, cx| page.read(cx).svg_zoom_choice.clone());
+        cx.update(|_, cx| zoom.select(2, cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let p = page.read(cx);
+            assert_eq!(p.svg_cases.len(), 10);
+            assert!(p.svg_cases.iter().all(|r| r["zoom"].as_f64() == Some(16.)));
+            assert!(p.svg_thumbnails.contains_key("Selected SVG"));
+        });
+        for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
+            page.update(cx, |page, cx| {
+                page.look.set_mode(mode);
+                cx.notify();
+            });
+            for width in [1280., 720.] {
+                cx.simulate_resize(size(px(width), px(3200.)));
+                cx.run_until_parked();
+                assert!(cx.debug_bounds("svg-budget-chart").unwrap().right() <= px(width));
+                assert!(cx.debug_bounds("svg-comparison-artwork").unwrap().right() <= px(width));
+                assert!(cx.debug_bounds("benchmark-run-controls").is_some());
+                assert!(cx.debug_bounds("svg-comparison-table-scroll").unwrap().right() <= px(width));
+            }
+        }
     }
     #[::core::prelude::v1::test]
     fn report_errors_are_failures_not_success() {
