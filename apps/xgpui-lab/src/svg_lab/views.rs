@@ -288,16 +288,14 @@ impl SvgPage {
         let mut view=div().flex().flex_col().gap_3().child("svg-lab CPU parse/raster observations")
             .child("Runs five bounded parse + raster samples in a background task. Times exclude GPU upload and presentation. These in-process observations are not the standalone lab's isolated-process corpus benchmark or GPU timing.");
         if self.benchmarking {
-            view = view.child(self.bench_progress.snapshot().0).child(self.bench_table.clone());
+            view = view.child(self.bench_progress.snapshot().0);
         }
         if let Some(result) = &self.bench_result {
             match result {
-                Ok(_) => {
-                    view = view.child(self.bench_table.clone());
-                }
+                Ok(_) => {}
                 Err(error) => view = view.child(format!("Benchmark failed: {error}")),
             }
         }
-        view.into_any_element()
+        view.child(self.bench_table.clone()).into_any_element()
     }
 }

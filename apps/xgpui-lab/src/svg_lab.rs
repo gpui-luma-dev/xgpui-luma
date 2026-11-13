@@ -320,6 +320,9 @@ impl SvgPage {
         })
         .to_vec();
         let bench_table = crate::benchmarks::svg_table::build(&look, cx);
+        bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(1.)), cx);
+        });
         let mut page = Self {
             bench_table,
             look: look.clone(),
@@ -526,15 +529,17 @@ impl SvgPage {
         };
         self.benchmarking = true;
         self.bench_result = None;
-        self.bench_table.update(cx, |t, cx| {
-            let _ = t.set_items(Vec::new(), cx);
-        });
         self.bench_progress = Default::default();
         let progress = self.bench_progress.clone();
+        let plan = crate::benchmarks::svg_table::samples(self.values[0]);
+        self.bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(crate::benchmarks::svg_table::rows(&plan), cx);
+        });
+        progress.plan(plan);
         progress.case("Artwork / five CPU samples");
         let ticker = progress.clone();
         cx.spawn(async move |this, cx| {
-            let mut last_count = 0;
+            let mut last_rows = Vec::new();
             loop {
                 cx.background_executor().timer(std::time::Duration::from_millis(200)).await;
                 let (_, partial) = ticker.snapshot();
@@ -543,12 +548,12 @@ impl SvgPage {
                         if !this.benchmarking || !this.bench_progress.same(&ticker) {
                             return false;
                         }
-                        if partial.len() != last_count {
+                        if partial != last_rows {
                             let rows = crate::benchmarks::svg_table::rows(&partial);
                             this.bench_table.update(cx, |t, cx| {
                                 let _ = t.set_items(rows, cx);
                             });
-                            last_count = partial.len();
+                            last_rows = partial.clone();
                         }
                         cx.notify();
                         true
@@ -570,6 +575,7 @@ impl SvgPage {
                     let mut rows = Vec::new();
                     let resolution = policy.resolution(logical, zoom, density)?;
                     for index in 0..5 {
+                        progress.running(&format!("Sample {}",index+1),zoom as f64);
                         progress.stage(format!("Parsing sample {} of 5",index+1));
                         let start = Instant::now();
                         let document = SvgDocument::parse(&renderer, &source)?;
@@ -587,10 +593,9 @@ impl SvgPage {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.benchmarking = false;
-                if let Ok(samples)=&result {
-                    let rows=crate::benchmarks::svg_table::rows(samples);
-                    this.bench_table.update(cx,|table,cx|{let _=table.set_items(rows,cx);});
-                }
+                this.bench_progress.settle(None,false);
+                let rows=crate::benchmarks::svg_table::rows(&this.bench_progress.snapshot().1);
+                this.bench_table.update(cx,|table,cx|{let _=table.set_items(rows,cx);});
                 this.bench_result = Some(result.map_err(|error| error.to_string()));
                 cx.notify();
             });

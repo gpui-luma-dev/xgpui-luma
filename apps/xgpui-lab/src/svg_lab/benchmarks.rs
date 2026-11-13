@@ -194,6 +194,13 @@ pub fn corpus(folder: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value
         "measurement": "Hash-verified source manifest, one fresh copy of this executable per document/zoom; five parse/raster repeats, zooms 1/4/8/16 at density 2, 256 MiB output budget. No runtime compilation or Python."}),
     )
 }
+/// The complete corpus schedule, available before any workers start.
+pub(crate) fn planned_cases() -> Vec<Value> {
+    SAMPLES
+        .iter()
+        .flat_map(|(id, _)| [1, 4, 8, 16].map(|zoom| json!({"id":id,"job":"corpus","zoom":zoom,"outcome":"pending"})))
+        .collect()
+}
 /// File-free interactive reports; corpus cases retain process isolation.
 pub(crate) fn memory_selected(
     path: Option<&Path>,
@@ -235,6 +242,7 @@ pub(crate) fn memory_corpus(
                 break 'cases;
             }
             progress.case(format!("Case {} of {total} · {id} · {zoom}×", cases.len() + 1));
+            progress.running(id, zoom as f64);
             let mut args = vec![
                 "--svg-budget-mib".into(),
                 (budget / MIB).to_string(),
@@ -253,6 +261,9 @@ pub(crate) fn memory_corpus(
             report["zoom"] = json!(zoom);
             report["sha256"] = item["sha256"].clone();
             report["source"] = item["url"].clone();
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                report["outcome"] = json!("cancelled");
+            }
             progress.completed(report.clone());
             cases.push(report);
         }

@@ -33,14 +33,32 @@ pub(crate) fn rows(results: &[Value]) -> Vec<Row> {
                     memory: c["sampled_process_rss_peak_bytes"]
                         .as_f64()
                         .map_or_else(|| "—".into(), |n| format!("{:.1}", n / 1048576.)),
-                    outcome: if c.get("error").is_some() {
-                        "failed"
-                    } else {
-                        c["outcome"].as_str().unwrap_or("completed")
-                    }
-                    .into(),
+                    outcome: c["outcome"]
+                        .as_str()
+                        .unwrap_or_else(|| {
+                            if c.get("error").is_some() {
+                                "failed"
+                            } else {
+                                "completed"
+                            }
+                        })
+                        .into(),
                 })
                 .collect::<Vec<_>>()
+        })
+        .collect()
+}
+pub(crate) fn samples(zoom: f32) -> Vec<Value> {
+    (1..=5).map(|n| json!({"id":format!("Sample {n}"),"zoom":zoom,"outcome":"pending"})).collect()
+}
+pub(super) fn plan(jobs: &[Job]) -> Vec<Value> {
+    jobs.iter()
+        .flat_map(|job| match job {
+            Job::SvgCorpus => crate::svg_lab::benchmarks::planned_cases(),
+            Job::SvgBuiltin | Job::SvgSelected => {
+                vec![json!({"id":job.label(),"job":job.id(),"zoom":4,"outcome":"pending"})]
+            }
+            _ => vec![],
         })
         .collect()
 }
@@ -54,7 +72,7 @@ pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> 
         .column_fixed("Raster ms", 90., |r| r.raster.clone())
         .column_fixed("Pixels", 110., |r| r.pixels.clone())
         .column_fixed("RSS MiB", 90., |r| r.memory.clone())
-        .column_fixed("Outcome", 100., |r| r.outcome.clone())
+        .column_fixed("Status", 100., |r| r.outcome.clone())
         .finish()
         .spawn(cx)
 }
@@ -62,6 +80,17 @@ pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn corpus_and_run_all_have_a_complete_pending_schedule() {
+        let corpus = plan(&[Job::SvgCorpus]);
+        assert_eq!(corpus.len(), 16);
+        assert!(corpus.iter().all(|r| r["outcome"] == "pending"));
+        let identities: std::collections::HashSet<_> =
+            corpus.iter().map(|r| (r["id"].as_str().unwrap(), r["zoom"].as_u64().unwrap())).collect();
+        assert_eq!(identities.len(), 16);
+        assert_eq!(plan(&Suite::Svg.jobs()).len(), 18);
+        assert!(rows(&corpus).iter().all(|row| row.outcome == "pending" && row.raster == "—"));
+    }
     #[::core::prelude::v1::test]
     fn tables_flatten_cases_and_keep_failures_and_missing_metrics_visible() {
         let rows = rows(&[

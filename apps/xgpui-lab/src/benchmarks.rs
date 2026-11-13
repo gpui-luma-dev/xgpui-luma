@@ -342,6 +342,11 @@ impl Page {
             },
         );
         let svg_table = svg_table::build(&look, cx);
+        if suite == Suite::Svg {
+            svg_table.update(cx, |table, cx| {
+                let _ = table.set_items(svg_table::rows(&svg_table::plan(&suite.jobs())), cx);
+            });
+        }
         Self {
             svg_table,
             suite,
@@ -451,10 +456,17 @@ impl Page {
         let budget = self.svg_budget;
         let progress = progress::Progress::default();
         if in_memory {
+            let plan = svg_table::plan(&jobs);
+            self.svg_table.update(cx, |table, cx| {
+                let _ = table.set_items(svg_table::rows(&plan), cx);
+            });
+            progress.plan(plan);
+        }
+        if in_memory {
             let progress = progress.clone();
             let token = cancel.clone();
             cx.spawn(async move |this, cx| {
-                let mut last_count = 0;
+                let mut last_rows = Vec::new();
                 loop {
                     cx.background_executor().timer(Duration::from_millis(200)).await;
                     let (status, partial) = progress.snapshot();
@@ -468,13 +480,12 @@ impl Page {
                             } else {
                                 status
                             };
-                            if partial.len() != last_count {
-                                let mut rows = svg_table::rows(&this.results);
-                                rows.extend(svg_table::rows(&partial));
+                            if partial != last_rows {
+                                let rows = svg_table::rows(&partial);
                                 this.svg_table.update(cx, |table, cx| {
                                     let _ = table.set_items(rows, cx);
                                 });
-                                last_count = partial.len();
+                                last_rows = partial.clone();
                             }
                             cx.notify();
                             true
@@ -506,7 +517,7 @@ impl Page {
                 let token = cancel.clone();
                 let selected = selected.clone();
                 let corpus = corpus.clone();
-                let progress = progress.clone();
+                let worker_progress = progress.clone();
                 let result = cx
                     .background_spawn(async move {
                         if let Some(directory) = directory {
@@ -516,7 +527,14 @@ impl Page {
                         } else {
                             Ok(decorate(
                                 job,
-                                run_svg_memory(job, selected.as_deref(), corpus.as_deref(), budget, &token, &progress),
+                                run_svg_memory(
+                                    job,
+                                    selected.as_deref(),
+                                    corpus.as_deref(),
+                                    budget,
+                                    &token,
+                                    &worker_progress,
+                                ),
                             ))
                         }
                     })
@@ -526,7 +544,11 @@ impl Page {
                         this.results.push(result.unwrap_or_else(
                             |error| json!({"label":job.label(),"outcome":"failed","error":format!("{error:#}")}),
                         ));
-                        let rows = svg_table::rows(&this.results);
+                        let rows = if in_memory {
+                            svg_table::rows(&progress.snapshot().1)
+                        } else {
+                            svg_table::rows(&this.results)
+                        };
                         this.svg_table.update(cx, |table, cx| {
                             let _ = table.set_items(rows, cx);
                         });
@@ -546,6 +568,13 @@ impl Page {
             }
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
+                if in_memory {
+                    progress.settle(None, cancel.load(Ordering::Relaxed));
+                    let rows = svg_table::rows(&progress.snapshot().1);
+                    this.svg_table.update(cx, |table, cx| {
+                        let _ = table.set_items(rows, cx);
+                    });
+                }
                 this.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
                 for picker in &this.pickers {
                     picker.update(cx, |button, cx| button.set_enabled(true, cx));
@@ -594,7 +623,7 @@ impl Render for Page {
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
             .when(self.suite==Suite::Svg,|root|root.child(self.svg_budget_choice.clone()).child("Corpus: 16 cases, 5 measured repeats plus 2 warm-up rasters per case. Budget caps the output image; SVG filter intermediates can require more memory. Larger budgets can take minutes."))
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
-            .when(self.suite==Suite::Svg && (self.busy || !self.results.is_empty()),|root|root.child(self.svg_table.clone()))
+            .when(self.suite==Suite::Svg,|root|root.child(self.svg_table.clone()))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
@@ -664,7 +693,10 @@ fn run_svg_memory(
     cancel: &AtomicBool,
     progress: &progress::Progress,
 ) -> Result<Value> {
-    match job {
+    if job != Job::SvgCorpus {
+        progress.running(job.label(), 4.);
+    }
+    let result = match job {
         Job::SvgBuiltin => crate::svg_lab::benchmarks::memory_selected(None, budget, cancel, progress),
         Job::SvgSelected => match selected {
             Some(path) => crate::svg_lab::benchmarks::memory_selected(Some(path), budget, cancel, progress),
@@ -672,7 +704,20 @@ fn run_svg_memory(
         },
         Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, cancel, progress),
         _ => anyhow::bail!("expected SVG workload"),
+    };
+    if job != Job::SvgCorpus {
+        let mut report = result.as_ref().cloned().unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
+        report["id"] = json!(job.label());
+        report["zoom"] = json!(4);
+        report["job"] = json!(job.id());
+        if cancel.load(Ordering::Relaxed) {
+            report["outcome"] = json!("cancelled");
+        }
+        progress.completed(report);
+    } else if result.is_err() {
+        progress.settle(Some(job.id()), cancel.load(Ordering::Relaxed));
     }
+    result
 }
 
 #[cfg(test)]
@@ -692,7 +737,11 @@ mod tests {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
-        page.update(cx, |page, cx| page.start(Some(Job::SvgBuiltin), None, cx));
+        cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 18));
+        page.update(cx, |page, cx| {
+            page.start(Some(Job::SvgBuiltin), None, cx);
+            assert_eq!(page.svg_table.read(cx).items().len(), 1, "schedule appears synchronously before work starts");
+        });
         cx.run_until_parked();
         cx.update(|_, cx| {
             let page = page.read(cx);

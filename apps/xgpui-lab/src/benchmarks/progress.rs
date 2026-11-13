@@ -55,9 +55,55 @@ impl Progress {
             s.stage = label;
         }
     }
-    pub(crate) fn completed(&self, report: Value) {
+    pub(crate) fn plan(&self, rows: Vec<Value>) {
         if let Ok(mut s) = self.state.lock() {
-            s.completed.push(report);
+            s.completed = rows;
+        }
+    }
+    pub(crate) fn running(&self, id: &str, zoom: f64) {
+        if let Ok(mut s) = self.state.lock()
+            && let Some(row) = s.completed.iter_mut().find(|r| r["id"] == id && r["zoom"].as_f64() == Some(zoom))
+        {
+            row["outcome"] = json!("running");
+        }
+    }
+    pub(crate) fn completed(&self, mut report: Value) {
+        if report.get("outcome").is_none() {
+            report["outcome"] = json!(if report.get("error").is_some() {
+                "failed"
+            } else {
+                "completed"
+            });
+        }
+        if let Ok(mut s) = self.state.lock() {
+            if let Some(row) = s
+                .completed
+                .iter_mut()
+                .find(|r| r["id"] == report["id"] && r["zoom"].as_f64() == report["zoom"].as_f64())
+            {
+                if report.get("job").is_none()
+                    && let Some(job) = row.get("job")
+                {
+                    report["job"] = job.clone();
+                }
+                *row = report;
+            } else {
+                s.completed.push(report);
+            }
+        }
+    }
+    pub(crate) fn settle(&self, job: Option<&str>, cancelled: bool) {
+        if let Ok(mut s) = self.state.lock() {
+            for row in &mut s.completed {
+                if job.is_some_and(|job| row["job"] != job) {
+                    continue;
+                }
+                if row["outcome"] == "running" {
+                    row["outcome"] = json!(if cancelled { "cancelled" } else { "failed" });
+                } else if row["outcome"] == "pending" {
+                    row["outcome"] = json!("skipped");
+                }
+            }
         }
     }
     pub(crate) fn snapshot(&self) -> (String, Vec<Value>) {
@@ -69,7 +115,7 @@ impl Progress {
                     s.stage,
                     s.case_started.elapsed().as_secs_f64(),
                     self.started.elapsed().as_secs_f64(),
-                    s.completed.len()
+                    s.completed.iter().filter(|r| r["outcome"] == "completed").count()
                 ),
                 s.completed.clone(),
             ),
@@ -81,6 +127,29 @@ impl Progress {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn planned_rows_keep_order_through_execution_failure_and_cancellation() {
+        let p = Progress::default();
+        let plan = crate::benchmarks::svg_table::samples(1.);
+        let ids: Vec<_> = plan.iter().map(|r| r["id"].clone()).collect();
+        p.plan(plan);
+        assert!(p.snapshot().1.iter().all(|r| r["outcome"] == "pending"));
+        p.running("Sample 1", 1.);
+        assert_eq!(p.snapshot().1[0]["outcome"], "running");
+        p.completed(json!({"id":"Sample 1","zoom":1,"parse_ms":1.2}));
+        p.running("Sample 2", 1.);
+        p.completed(json!({"id":"Sample 2","zoom":1,"error":"bad artwork"}));
+        p.running("Sample 3", 1.);
+        p.settle(None, true);
+        let rows = p.snapshot().1;
+        assert_eq!(rows.iter().map(|r| r["id"].clone()).collect::<Vec<_>>(), ids);
+        assert_eq!(rows.len(), 5);
+        assert_eq!(rows[0]["outcome"], "completed");
+        assert_eq!(rows[1]["outcome"], "failed");
+        assert_eq!(rows[2]["outcome"], "cancelled");
+        assert_eq!(rows[3]["outcome"], "skipped");
+        assert_eq!(rows[4]["outcome"], "skipped");
+    }
     #[::core::prelude::v1::test]
     fn snapshots_report_current_stage_and_partial_cases_before_completion() {
         let p = Progress::default();
