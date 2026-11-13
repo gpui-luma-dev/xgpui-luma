@@ -1,4 +1,4 @@
-//! Image Filters, laid out with `LabScreen`. The other media tabs keep their own views.
+//! Image Filters and the camera/control helpers shared by the media lab screens.
 use gpui::{prelude::*, AnyElement, Context, MouseButton, MouseMoveEvent, div};
 use lucide_svg_static::Icon;
 use xgpui_luma_look_radix::{self as radix, Badge, BadgeVariant};
@@ -42,7 +42,11 @@ impl MediaPage {
             .panels(self.filter_parameters(), self.filter_chain())
             .note(NOTE)
             .credits(CREDITS);
-        // Dragging pans both panes and may leave them, so the camera handlers wrap the whole page.
+        self.camera_screen(screen, cx)
+    }
+
+    pub(super) fn camera_screen(&self, screen: LabScreen, cx: &mut Context<Self>) -> gpui::Div {
+        // Dragging may leave the viewport, so the camera handlers wrap the whole page.
         div()
             .size_full()
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
@@ -61,7 +65,7 @@ impl MediaPage {
             .child(screen)
     }
 
-    fn comparison_hero(&self, width: f32, height: f32, scale: Option<f32>, cx: &mut Context<Self>) -> Hero {
+    pub(super) fn comparison_hero(&self, width: f32, height: f32, scale: Option<f32>, cx: &mut Context<Self>) -> Hero {
         let downscaled = scale.is_some_and(|scale| scale < 1.);
         let levels = self.image.as_ref().map_or(0, |image| image.mip_count());
         let atlas = ComparePane::new("GPUI image atlas", self.compare_view(false, width, height, true, cx))
@@ -191,14 +195,14 @@ impl MediaPage {
         })
     }
 
-    fn button(&self, action: Action) -> Option<AnyElement> {
+    pub(super) fn button(&self, action: Action) -> Option<AnyElement> {
         self.buttons
             .iter()
             .find(|(id, _)| *id == action)
             .map(|(_, button)| button.clone().into_any_element())
     }
 
-    fn choice(&self, action: Action) -> Option<crate::lab_controls::Choice> {
+    pub(super) fn choice(&self, action: Action) -> Option<crate::lab_controls::Choice> {
         self.choices.iter().find(|(id, _)| *id == action).map(|(_, choice)| choice.clone())
     }
 
@@ -209,7 +213,19 @@ impl MediaPage {
     }
 
     /// Keep the Sweep switch in step with state changed elsewhere (Reset view, drag, reduced motion).
-    fn sync_switches(&self, cx: &mut Context<Self>) {
+    pub(super) fn sync_switches(&self, cx: &mut Context<Self>) {
+        for (action, switch) in &self.state_switches {
+            let value = match action {
+                Action::Animate => self.animate,
+                Action::Wide => self.wide,
+                Action::Quality => self.full_quality,
+                Action::Pause => self.video_paused,
+                _ => false,
+            };
+            if *switch.read(cx).data() != value {
+                switch.update(cx, |switch, cx| switch.set_data(value, cx));
+            }
+        }
         if *self.sweep_switch.read(cx).data() != self.sweep {
             let sweep = self.sweep;
             self.sweep_switch.update(cx, |switch, cx| switch.set_data(sweep, cx));

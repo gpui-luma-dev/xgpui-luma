@@ -7,12 +7,17 @@ use std::time::Instant;
 use web_time::Instant;
 use xgpui_media::pipeline::*;
 use crate::theme::ColorVizLookExt;
+use crate::screen::{Hero, LabCard, LabScreen, PanelShell, labeled_control, properties};
+use xgpui_luma::infra::ElementExt;
 
 pub struct TiledDemo {
     look: Arc<xgpui_luma_look_radix::Look>,
     buttons: Vec<Entity<xgpui_luma::controls::button::Button>>,
     blur_choice: crate::lab_controls::Choice,
     render_scale: f64,
+    viewport_width: f64,
+    pressure_switch: xgpui_luma::controls::switch::Switch,
+    quality_switch: xgpui_luma::controls::switch::Switch,
     canvas: TileCanvas,
     blurs: [ImageBlur; 4],
     blur_index: usize,
@@ -50,82 +55,85 @@ impl TiledDemo {
                 cx.notify();
             },
         );
-        let buttons = [
-            "Fit",
-            "1:1",
-            "Zoom +",
-            "Zoom −",
-            "←",
-            "→",
-            "↑",
-            "↓",
-            "Replace source",
-            "Cancel / Restart",
-            "Toggle 2 MiB cache",
-            "Toggle blur quality",
-        ]
-        .into_iter()
-        .enumerate()
-        .map(|(index, label)| {
-            xgpui_luma_look_radix::Button::new(format!("tile-control-{index}"))
-                .look(look.as_ref())
-                .outline()
-                .label(label)
-                .on_click(cx, move |s: &mut Self, cx| {
-                    let scale = s.render_scale;
-                    match index {
-                        0 => {
-                            s.zoom = 0.;
-                            s.center = [6000., 3000.];
-                        }
-                        1 => s.zoom = 1.,
-                        2 => s.zoom = (scale * 2.).min(4.),
-                        3 => s.zoom = (scale / 2.).max(0.01),
-                        4 => s.pan(-300., 0., scale),
-                        5 => s.pan(300., 0., scale),
-                        6 => s.pan(0., -180., scale),
-                        7 => s.pan(0., 180., scale),
-                        8 => s.replace(),
-                        9 => {
-                            if s.paused {
-                                s.replace();
-                            } else {
-                                s.canvas.cancel();
-                                s.paused = true;
+        let buttons = ["Fit", "1:1", "Zoom +", "Zoom −", "←", "→", "↑", "↓", "Replace source", "Cancel / Restart"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, label)| {
+                xgpui_luma_look_radix::Button::new(format!("tile-control-{index}"))
+                    .look(look.as_ref())
+                    .outline()
+                    .label(label)
+                    .on_click(cx, move |s: &mut Self, cx| {
+                        let scale = s.render_scale;
+                        match index {
+                            0 => {
+                                s.zoom = 0.;
+                                s.center = [6000., 3000.];
                             }
-                        }
-                        10 => {
-                            s.pressure = !s.pressure;
-                            s.canvas = Self::make_canvas(s.generation, s.pressure);
-                            s.started = Instant::now();
-                            s.last_view = None;
-                            s.preview_ms = None;
-                            s.complete_ms = None;
-                            s.peak_cpu = 0;
-                            s.peak_gpu = 0;
-                            s.paused = false;
-                        }
-                        _ => {
-                            s.full_quality = !s.full_quality;
-                            s.blurs = [0., 4., 8., 16.].map(|r| {
-                                ImageBlur::new(px(r)).expect("bounded radius").with_quality(if s.full_quality {
-                                    LayerBlurQuality::FullResolution
+                            1 => s.zoom = 1.,
+                            2 => s.zoom = (scale * 2.).min(4.),
+                            3 => s.zoom = (scale / 2.).max(0.01),
+                            4 => s.pan(-300., 0., scale),
+                            5 => s.pan(300., 0., scale),
+                            6 => s.pan(0., -180., scale),
+                            7 => s.pan(0., 180., scale),
+                            8 => s.replace(),
+                            9 => {
+                                if s.paused {
+                                    s.replace();
                                 } else {
-                                    LayerBlurQuality::Adaptive
-                                })
-                            });
+                                    s.canvas.cancel();
+                                    s.paused = true;
+                                }
+                            }
+                            _ => {}
                         }
-                    }
-                    cx.notify();
-                })
-                .spawn(cx)
-        })
-        .collect();
+                        cx.notify();
+                    })
+                    .spawn(cx)
+            })
+            .collect();
+        let pressure_switch = xgpui_luma_look_radix::Switch::new("tile-pressure")
+            .look(look.as_ref())
+            .label("2 MiB cache")
+            .checked(false)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.pressure = on;
+                this.canvas = Self::make_canvas(this.generation, on);
+                this.started = Instant::now();
+                this.last_view = None;
+                this.preview_ms = None;
+                this.complete_ms = None;
+                this.peak_cpu = 0;
+                this.peak_gpu = 0;
+                this.paused = false;
+                cx.notify();
+            })
+            .spawn(cx);
+        let quality_switch = xgpui_luma_look_radix::Switch::new("tile-quality")
+            .look(look.as_ref())
+            .label("Full blur quality")
+            .checked(false)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.full_quality = on;
+                this.blurs = [0., 4., 8., 16.].map(|r| {
+                    ImageBlur::new(px(r)).expect("bounded radius").with_quality(if on {
+                        LayerBlurQuality::FullResolution
+                    } else {
+                        LayerBlurQuality::Adaptive
+                    })
+                });
+                cx.notify();
+            })
+            .spawn(cx);
         Self {
             look,
             buttons,
             blur_choice,
             render_scale: 1.,
+            viewport_width: 560.,
+            pressure_switch,
+            quality_switch,
             canvas: Self::make_canvas(0, false),
             blurs: [0., 4., 8., 16.].map(|r| ImageBlur::new(px(r)).unwrap()),
             blur_index: 0,
@@ -176,7 +184,7 @@ impl TiledDemo {
 }
 impl Render for TiledDemo {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut viewport = [(f32::from(window.viewport_size().width) - 140.).max(200.) as f64, 380.];
+        let mut viewport = [self.viewport_width, 380.];
         if self.blur_index > 0 {
             let side = (1020. / window.scale_factor()
                 - 2. * (16. + 8. / window.scale_factor()) * MAX_LAYER_GROUPS as f32)
@@ -222,9 +230,17 @@ impl Render for TiledDemo {
             window.request_animation_frame();
         }
         let blur = self.blurs[self.blur_index].clone();
+        let owner = cx.entity();
         let canvas = div()
             .id("tiled-viewport")
-            .w(px(viewport[0] as f32))
+            .debug_selector(|| "media-tiled-viewport".into())
+            .map(|view| {
+                if self.blur_index > 0 {
+                    view.w(px(viewport[0] as f32))
+                } else {
+                    view.w_full()
+                }
+            })
             .h(px(viewport[1] as f32))
             .flex_shrink_0()
             .bg(self.look.chrome().panel_background)
@@ -279,31 +295,117 @@ impl Render for TiledDemo {
                 )
                 .size_full(),
             );
-        let mib = |bytes: u64| bytes as f64 / (1024. * 1024.);
-        div().id("tiled-demo").size_full().overflow_y_scroll().flex().flex_col().gap_3().p_4()
-            .bg(self.look.chrome().content_background).text_color(self.look.chrome().body_text).font_family("IBM Plex Sans")
-            .child(div().text_xl().child("Progressive tiled canvas · 72 megapixels"))
-            .child("12,000 × 6,000 generated source · preview stays visible as selected tiles refine · drag to pan, wheel to zoom")
-            .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()).child(self.blur_choice.clone()))
-            .child(format!("Blur {} px · {} quality · Cache {} MiB", [0,4,8,16][self.blur_index], if self.full_quality {"full"} else {"adaptive"}, if self.pressure {2} else {16}))
-            .child("Blur runs once over assembled pages: shared tile edges, transparent outside the viewport. Blur uses a bounded preview (1024 device px including halo). Retained sRGB blur targets are additional to page budgets.")
-            .child(format!("Generation {} · {:?} · zoom {:.1}% · mip {} · ready {}/{} · cached {}",
-                self.generation,self.canvas.status(),scale*100.,stats.mip,stats.ready_pages,stats.visible_pages,stats.cached_pages))
-            .child(canvas)
-            .child(format!("Reserved CPU {:.2} MiB · GPU payload {:.2} MiB · pending transfer {:.2} MiB · jobs {}",
-                mib(stats.cpu_bytes),mib(stats.gpu_bytes),mib(stats.pending_staging_bytes),stats.active_jobs))
-            .child(format!("Upload staging {:.2} MiB · native staging pool allocated {:.2} MiB",mib(stats.upload_staging_bytes),mib(stats.staging_pool_bytes)))
-            .child(format!("Peaks CPU {:.2} / GPU {:.2} MiB · requests {} · evictions {} · cancelled {} · stale {} · failures {}",
-                mib(self.peak_cpu),mib(self.peak_gpu),stats.requests,stats.evictions,stats.cancelled_requests,stats.stale_results,stats.failures))
-            .child(format!("Generated preview CPU-ready: {} · current view submitted: {}",
-                self.preview_ms.map(|v|format!("{v:.1} ms")).unwrap_or_else(||"pending".into()),
-                self.complete_ms.map(|v|format!("{v:.1} ms")).unwrap_or_else(||"refining".into())))
-            .child(self.error.clone().unwrap_or_default())
-            .child(if cfg!(target_arch="wasm32"){
-                "Browser: one generated page per frame on the host thread; no file I/O/decoder or browser worker is measured. GPU completion retains immutable pages."
-            }else{
-                "Native: bounded provider workers and background GPU staging. Stats count payload reservations, not process RSS or driver VRAM. Old scenes remain charged until GPU completion."
+        let canvas = div()
+            .w_full()
+            .on_prepaint(move |bounds, _, cx| {
+                owner.update(cx, |this, cx| {
+                    let width = f64::from(f32::from(bounds.size.width));
+                    if this.viewport_width != width {
+                        this.viewport_width = width;
+                        cx.notify();
+                    }
+                });
             })
-            .child("Grid boundaries expose tile seams. The generated provider evaluates mip-center samples; a real asset provider must supply prefiltered pyramid data. 60 Hz remains the performance baseline.")
+            .child(canvas);
+        let mib = |bytes: u64| bytes as f64 / (1024. * 1024.);
+        let screen = LabScreen::new("media-tiled", self.look.clone())
+            .crumb("xgpui-media", "Tiled Canvas")
+            .title("Tiled Canvas")
+            .lede("Explore a large image that sharpens as you zoom in and move around.")
+            .hero(Hero::full(canvas))
+            .caption(format!(
+                "12,000×6,000 · generation {} · {:?} · zoom {:.1}% · mip {} · ready {}/{}",
+                self.generation,
+                self.canvas.status(),
+                scale * 100.,
+                stats.mip,
+                stats.ready_pages,
+                stats.visible_pages
+            ))
+            .control(labeled_control(&self.look, self.blur_choice.clone().into_element()))
+            .control(self.pressure_switch.clone())
+            .control(self.quality_switch.clone());
+        self.buttons.iter().cloned().fold(screen, LabScreen::action)
+            .notice(self.error.clone())
+            .cards([
+                LabCard::new("Pages").values([("cached", stats.cached_pages.to_string()), ("jobs", stats.active_jobs.to_string())]),
+                LabCard::new("Payload reservations").values([("CPU", format!("{:.2} MiB", mib(stats.cpu_bytes))), ("GPU", format!("{:.2} MiB", mib(stats.gpu_bytes)))]),
+                LabCard::new("Readiness").values([("preview", self.preview_ms.map_or("pending".into(), |v| format!("{v:.1} ms"))), ("view submitted", self.complete_ms.map_or("refining".into(), |v| format!("{v:.1} ms")))]),
+            ])
+            .panels(
+                PanelShell::new("Transfers and cache").child(properties(&self.look, [
+                    ("Cache budget", format!("{} MiB", if self.pressure {2} else {16})),
+                    ("Pending transfer", format!("{:.2} MiB", mib(stats.pending_staging_bytes))),
+                    ("Upload staging", format!("{:.2} MiB", mib(stats.upload_staging_bytes))),
+                    ("Staging pool", format!("{:.2} MiB", mib(stats.staging_pool_bytes))),
+                    ("Peak CPU / GPU", format!("{:.2} / {:.2} MiB", mib(self.peak_cpu), mib(self.peak_gpu))),
+                ])),
+                PanelShell::new("Provider activity").child(properties(&self.look, [
+                    ("Requests", stats.requests.to_string()), ("Evictions", stats.evictions.to_string()),
+                    ("Cancelled", stats.cancelled_requests.to_string()), ("Stale", stats.stale_results.to_string()),
+                    ("Failures", stats.failures.to_string()), ("Presentation", if self.paused {"cancelled"} else {"active"}.into()),
+                ])),
+            )
+            .note("Drag to pan; wheel or pinch to zoom. The preview stays visible while selected tiles refine. Blur runs once over assembled pages, with transparent pixels outside the viewport; retained blur targets are additional to page budgets.")
+            .credits(if cfg!(target_arch="wasm32") {
+                "Generated 72 megapixel source. Browser: one generated page per frame on the host thread. No file decoder or browser worker is measured. Grid boundaries expose seams; real assets need prefiltered pyramid data."
+            } else {
+                "Generated 72 megapixel source, with bounded provider workers and background staging. Statistics count payload reservations, not process RSS or driver VRAM. Old scenes remain charged until GPU completion. The provider samples mip centers; real assets need prefiltered pyramid data."
+            })
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use xgpui_luma::{controls::button::ButtonEvent, theme::ThemeMode};
+
+    #[::core::prelude::v1::test]
+    fn tiled_screen_fits_both_themes_and_retains_zoom_controls() {
+        for mode in [ThemeMode::Dark, ThemeMode::Light] {
+            let mut app = TestAppContext::single();
+            app.update(|cx| xgpui_luma::init(cx).unwrap());
+            let look = crate::theme::default_look();
+            look.set_mode(mode);
+            let (page, cx) = app.add_window_view(|_, cx| {
+                let mut page = TiledDemo::new(look, cx);
+                // Layout/control test: do not schedule provider work or native uploads.
+                page.canvas.cancel();
+                page.paused = true;
+                page
+            });
+            for width in [1280., 720.] {
+                cx.simulate_resize(size(px(width), px(1600.)));
+                cx.run_until_parked();
+                let hero = cx.debug_bounds("media-tiled-hero").unwrap();
+                assert!(hero.size.width <= px(width));
+                assert!(cx.debug_bounds("media-tiled-panels").is_some());
+                cx.update(|_, cx| {
+                    assert!((page.read(cx).viewport_width - f64::from(f32::from(hero.size.width))).abs() < 1.)
+                });
+            }
+            page.update(cx, |page, cx| {
+                page.blur_index = 1;
+                cx.notify();
+            });
+            cx.run_until_parked();
+            let blurred_width = cx.debug_bounds("media-tiled-viewport").unwrap().size.width;
+            page.update(cx, |page, cx| {
+                page.blur_index = 0;
+                cx.notify();
+            });
+            cx.run_until_parked();
+            let restored = cx.debug_bounds("media-tiled-viewport").unwrap();
+            assert!(restored.size.width >= blurred_width);
+            assert_eq!(restored.size.width, cx.debug_bounds("media-tiled-hero").unwrap().size.width);
+            let one_to_one = cx.update(|_, cx| page.read(cx).buttons[1].clone());
+            one_to_one.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.run_until_parked();
+            cx.update(|_, cx| assert_eq!(page.read(cx).render_scale, 1.));
+            let fit = cx.update(|_, cx| page.read(cx).buttons[0].clone());
+            fit.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.run_until_parked();
+            cx.update(|_, cx| assert!(page.read(cx).render_scale < 1.));
+        }
     }
 }
