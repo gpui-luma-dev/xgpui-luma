@@ -223,7 +223,7 @@ impl SvgPage {
         }
         page.into_any_element()
     }
-    fn diagnostics(&self) -> PanelShell {
+    pub(super) fn diagnostics(&self) -> PanelShell {
         let mut rows = vec![("Output budget", format!("{:.2} MiB", self.policy.max_output_bytes as f64 / MIB as f64))];
         if self.active_tab == "Scheduling & Cache"
             && let Ok(scheduler) = &self.scheduler
@@ -309,16 +309,28 @@ impl SvgPage {
         } else {
             &self.status
         };
-        if matches!(self.active_tab.as_ref(), "Rendering" | "Scaling")
-            && let Some(s) = status
-        {
+        if matches!(self.active_tab.as_ref(), "Rendering" | "Scaling") {
+            // Rebuilding artwork clears status until the element reports again.
+            // Keep the same rows mounted so the panel and footer do not jump.
             rows.extend([
-                ("Phase", format!("{:?}", s.phase)),
-                ("Displayed", format!("{:?}", s.displayed)),
-                ("Raster", format!("{:?} ms", s.raster_ms)),
-                ("Completed", s.completed_rasters.to_string()),
+                ("Phase", status.as_ref().map_or_else(|| "Pending".into(), |s| format!("{:?}", s.phase))),
+                (
+                    "Displayed",
+                    status.as_ref().and_then(|s| s.displayed).map_or_else(
+                        || "Pending".into(),
+                        |size| format!("{}×{} px", i32::from(size.width), i32::from(size.height)),
+                    ),
+                ),
+                (
+                    "Raster",
+                    status
+                        .as_ref()
+                        .and_then(|s| s.raster_ms)
+                        .map_or_else(|| "Pending".into(), |ms| format!("{ms:.3} ms")),
+                ),
+                ("Completed", status.as_ref().map_or(0, |s| s.completed_rasters).to_string()),
             ]);
-            if let Some(error) = &s.error {
+            if let Some(error) = status.as_ref().and_then(|s| s.error.as_ref()) {
                 rows.push(("Raster error", error.clone()));
             }
         }

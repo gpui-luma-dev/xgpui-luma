@@ -98,3 +98,63 @@ fn fields_switches_and_reset_keep_camera_and_path_models_independent() {
         assert_eq!(page.read(cx).camera.zoom, 4.);
     });
 }
+
+#[test]
+fn rendering_footer_stays_put_while_artwork_status_restarts() {
+    use gpui::{VisualTestContext, Render, Window, point, prelude::*};
+    use crate::screen::LabScreen;
+    struct Probe {
+        page: Entity<SvgPage>,
+    }
+    impl Render for Probe {
+        fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let page = self.page.read(cx);
+            LabScreen::new("svg-status-probe", page.look.clone())
+                .section_panel(page.diagnostics())
+                .note("Footer below live diagnostics")
+        }
+    }
+    for mode in [ThemeMode::Dark, ThemeMode::Light] {
+        for width in [1280., 720.] {
+            let mut app = TestAppContext::single();
+            app.update(|cx| xgpui_luma::init(cx).unwrap());
+            let look = crate::theme::default_look();
+            look.set_mode(mode);
+            let window = app.open_window(size(px(width), px(2400.)), |_, cx| SvgPage::new(look, cx));
+            let page = window.root(&mut app).unwrap();
+            let mut cx = VisualTestContext::from_window(window.into(), &app);
+            cx.run_until_parked();
+            let ready = cx.update(|_, cx| page.read(cx).rendering_status.clone().expect("mounted SVG status"));
+            // Draw only the diagnostics to observe the pending frame directly:
+            // drawing the SVG itself would immediately deliver a new status.
+            let probe = cx.update(|_, cx| cx.new(|_| Probe { page: page.clone() }));
+            let draw = |cx: &mut VisualTestContext, status: Option<SvgStatus>| {
+                page.update(cx, |page, _| page.rendering_status = status);
+                probe.update(cx, |_, cx| cx.notify());
+                cx.draw(point(px(0.), px(0.)), size(px(width), px(2400.)), |_, _| {
+                    gpui::div().size_full().child(probe.clone())
+                });
+            };
+            draw(&mut cx, Some(ready.clone()));
+            let footer = cx.debug_bounds("svg-status-probe-note").unwrap();
+            for action in [Action::Shadow, Action::Clip, Action::Shadow] {
+                page.update(&mut cx, |p, cx| {
+                    p.action(action, cx);
+                    assert!(p.rendering_status.is_none());
+                });
+                draw(&mut cx, None);
+                assert_eq!(
+                    cx.debug_bounds("svg-status-probe-note").unwrap(),
+                    footer,
+                    "pending status must retain panel height"
+                );
+                draw(&mut cx, Some(ready.clone()));
+                assert_eq!(
+                    cx.debug_bounds("svg-status-probe-note").unwrap(),
+                    footer,
+                    "reported status must retain panel height"
+                );
+            }
+        }
+    }
+}
