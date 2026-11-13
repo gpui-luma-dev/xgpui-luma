@@ -59,7 +59,7 @@ pub(super) fn gallery(
         };
         let image = div()
             .w_full()
-            .h(px(210.))
+            .h(px(105.))
             .bg(rgb(PREVIEW_PAPER))
             .overflow_hidden()
             .when_some(images.get(&s.id).cloned(), |v, image| {
@@ -70,7 +70,7 @@ pub(super) fn gallery(
             .child(image)
             .child(text(look, TextRole::Caption, "Compare 16 / 32 MiB at the same zoom"))
             .into_element()
-            .w(px(360.))
+            .w(px(180.))
             .max_w_full()
             .flex_shrink_0();
         cards = cards.child(card);
