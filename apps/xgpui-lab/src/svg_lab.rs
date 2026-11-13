@@ -5,12 +5,14 @@ mod views;
 mod camera;
 mod imports;
 mod scaling;
+mod screens;
+mod palette;
 pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{AppContext, Context, Entity, RenderImage, SharedString, size};
 use xgpui_luma::{
-    controls::{button::Button, slider::Slider},
+    controls::{button::Button, slider::Slider, switch::Switch},
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
@@ -93,6 +95,8 @@ pub struct SvgPage {
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
+    numbers: Vec<crate::screen::Number>,
+    switches: Vec<(Action, Switch)>,
     benchmarking: bool,
     bench_result: Option<Result<Vec<String>, String>>,
     density: f32,
@@ -295,7 +299,9 @@ impl SvgPage {
         })
         .to_vec();
         let mut page = Self {
-            look,
+            look: look.clone(),
+            numbers: Vec::new(),
+            switches: Vec::new(),
             active_tab: "Rendering".into(),
             asset: Self::build(false, true, cx),
             status: None,
@@ -331,6 +337,67 @@ impl SvgPage {
             gallery_columns: 3,
             eager: false,
         };
+        page.numbers = page
+            .sliders
+            .iter()
+            .map(|(parameter, slider)| {
+                let parameter = *parameter;
+                let (label, min, max, value) = parameter.config();
+                crate::screen::Number::attach(
+                    &format!("svg-number-{parameter:?}"),
+                    label,
+                    (
+                        min,
+                        max,
+                        if matches!(parameter, Parameter::Zoom | Parameter::Trim) {
+                            0.01
+                        } else {
+                            1.
+                        },
+                    ),
+                    value,
+                    slider.clone(),
+                    &look,
+                    cx,
+                    move |this: &mut Self, value, cx| {
+                        if parameter == Parameter::Zoom {
+                            this.camera.zoom_at(gpui::point(gpui::px(0.), gpui::px(0.)), value / this.camera.zoom);
+                            this.copy_camera(cx);
+                        } else {
+                            this.values[parameter as usize] = value;
+                            if matches!(parameter, Parameter::PanX | Parameter::PanY) {
+                                this.camera.pan = gpui::point(gpui::px(this.values[1]), gpui::px(this.values[2]));
+                            } else {
+                                this.animate = false;
+                            }
+                        }
+                        this.values[parameter as usize]
+                    },
+                )
+            })
+            .collect();
+        page.switches = [
+            (Action::Clip, "Clip artwork", false),
+            (Action::Shadow, "Artwork shadow", true),
+            (Action::Background, "Dark backdrop", true),
+            (Action::Animate, "Animate", false),
+            (Action::Eager, "Eager loading", false),
+        ]
+        .into_iter()
+        .map(|(action, label, on)| {
+            let switch = radix::Switch::new(format!("svg-switch-{action:?}"))
+                .look(&look)
+                .label(label)
+                .checked(on)
+                .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                    if this.switch_value(action) != on {
+                        this.action(action, cx);
+                    }
+                })
+                .spawn(cx);
+            (action, switch)
+        })
+        .collect();
         page.init_choices(cx);
         page
     }
@@ -596,3 +663,6 @@ mod tests {
         cx.run_until_parked();
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests;

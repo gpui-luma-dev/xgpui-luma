@@ -1,14 +1,14 @@
 use super::*;
 use gpui::{prelude::*, AnyElement, Bounds, ContentMask, Corners, Render, Window, canvas, div, point, px, rgb};
 use xgpui_svg::{svg_image, path_effects::PathEffect};
-use crate::theme::ColorVizLookExt;
 
 impl Render for SvgPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sync_choices(cx);
         self.density = window.scale_factor();
         self.motion_allowed = !cx.reduce_motion();
-        self.gallery_columns = ((f32::from(window.viewport_size().width) - 140.) / 232.).floor().max(1.) as usize;
+        self.gallery_columns =
+            ((f32::from(window.viewport_size().width) - 96.).min(1192.) / 232.).floor().max(1.) as usize;
         if self.animate && self.motion_allowed && self.active_tab == "Path Effects" {
             window.request_animation_frame();
         }
@@ -55,6 +55,7 @@ impl Render for SvgPage {
             "Scaling" => self.scaling(cx),
             _ => self.rendering(cx),
         };
+        let screen = self.screen(actions, parameters, result, cx);
         div()
             .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
                 if event.pressed_button != Some(gpui::MouseButton::Left) {
@@ -69,71 +70,8 @@ impl Render for SvgPage {
             }))
             .on_mouse_up(gpui::MouseButton::Left, cx.listener(|this, _, _, _| this.drag_position = None))
             .on_mouse_up_out(gpui::MouseButton::Left, cx.listener(|this, _, _, _| this.drag_position = None))
-            .id("svg-lab-scroll")
             .size_full()
-            .overflow_y_scroll()
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .text_color(self.look.chrome().body_text)
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .gap_2()
-                    .children(
-                        self.buttons
-                            .iter()
-                            .filter(|(action, _)| {
-                                actions.contains(action)
-                                    && !(matches!(action, Action::Clip | Action::Shadow)
-                                        && self.asset.as_ref().is_ok_and(|asset| asset.source.is_some()))
-                            })
-                            .map(|(action, button)| {
-                                let id = format!("svg-action-{action:?}");
-                                div().id(id.clone()).debug_selector(move || id.clone()).child(button.clone())
-                            }),
-                    )
-                    .children(
-                        self.choices
-                            .iter()
-                            .filter(|(action, _)| actions.contains(action))
-                            .map(|(_, choice)| choice.clone()),
-                    ),
-            )
-            .child(div().flex().flex_wrap().gap_4().children(
-                self.sliders.iter().filter(|(parameter, _)| parameters.contains(parameter)).map(
-                    |(parameter, slider)| {
-                        div()
-                            .w(px(190.))
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .child(format!("{}: {:.2}", parameter.config().0, self.values[*parameter as usize]))
-                            .child(slider.clone())
-                    },
-                ),
-            ))
-            .when(self.active_tab != "Rendering", |view| {
-                view.child(format!(
-                    "Output budget: {:.2} MiB · Zoom {:.2}× · Display scale {:.2}×",
-                    self.policy.max_output_bytes as f64 / MIB as f64,
-                    self.values[0],
-                    self.density
-                ))
-            })
-            .when(self.loading, |view| view.child("Loading artwork in the background…"))
-            .children(
-                self.load_error
-                    .as_ref()
-                    .map(|error| div().child(format!("Load failed; previous artwork retained: {error}"))),
-            )
-            .child(match result {
-                Ok(view) => view,
-                Err(error) => div().child(format!("SVG lab unavailable: {error:#}")).into_any_element(),
-            })
+            .child(screen)
     }
 }
 
@@ -142,12 +80,7 @@ impl SvgPage {
         let asset = self.asset.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
         let camera = camera::Camera { scene_size: asset.logical, ..Default::default() };
         let fixed = asset.fixed.size(0);
-        let mut view = div().id("svg-rendering-comparison").debug_selector(||"svg-rendering-comparison".into())
-            .flex().flex_col().gap_3()
-            .child("Rendering · raster, SVG and native path comparison")
-            .child("Fixed 1× artwork size. Compare drawing methods, clipping and shadows here; use Scaling for pan, zoom and raster quality.")
-            .child(self.source_label())
-            .child(format!("Parse {:.3} ms · Baseline raster {:.3} ms · Clip {} · Shadow {}",asset.parse_ms,asset.raster_ms,self.clipped,self.shadow));
+        let view = div().id("svg-rendering-comparison").debug_selector(|| "svg-rendering-comparison".into()).w_full();
         let mut panels = div().flex().flex_wrap().gap_4();
         for (mode, label) in [
             format!("Fixed raster · {}×{} px", i32::from(fixed.width), i32::from(fixed.height)),
@@ -157,10 +90,10 @@ impl SvgPage {
         .into_iter()
         .enumerate()
         {
-            let panel = div().w(px(320.)).h(px(260.)).flex_shrink_0().overflow_hidden().bg(rgb(if self.dark {
-                0x111827
+            let panel = div().w_full().h(px(260.)).flex_shrink_0().overflow_hidden().bg(rgb(if self.dark {
+                palette::DARK
             } else {
-                0xf1f5f9
+                palette::LIGHT
             }));
             let panel = if mode == 1 {
                 panel.child(
@@ -177,18 +110,18 @@ impl SvgPage {
             } else {
                 panel.child(self.texture_or_native(camera, mode == 2))
             };
-            panels = panels.child(div().flex_shrink_0().flex().flex_col().gap_2().child(label).child(panel));
+            panels = panels.child(
+                div()
+                    .flex_1()
+                    .min_w(px(280.))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(crate::screen::text(&self.look, crate::screen::TextRole::Name, label))
+                    .child(panel),
+            );
         }
-        view = view.child(panels);
-        if let Some(status) = &self.rendering_status {
-            view = view
-                .child(format!(
-                    "SVG {:?} · Displayed {:?} · Raster {:?} ms",
-                    status.phase, status.displayed, status.raster_ms
-                ))
-                .children(status.error.as_ref().map(|error| div().child(format!("Raster error: {error}"))));
-        }
-        Ok(view.child("Native paths approximate the built-in SVG's gradients and shadow; this compares capabilities rather than pixel equivalence.").into_any_element())
+        Ok(view.child(panels).into_any_element())
     }
 
     pub(super) fn source_label(&self) -> String {
@@ -231,8 +164,6 @@ impl SvgPage {
     fn gallery(&self, cx: &mut Context<Self>) -> anyhow::Result<AnyElement> {
         let asset = self.asset.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
         let scheduler = self.scheduler.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
-        let stats = scheduler.stats();
-        let limits = scheduler.limits();
         let columns = self.gallery_columns;
         let row_height = 210.;
         let viewport_height = 520.;
@@ -250,7 +181,11 @@ impl SvgPage {
                     let (name, doc) = &self.gallery_docs[index % self.gallery_docs.len()];
                     (name.as_str(), doc.clone())
                 };
-                let mut tile = div().w(px(220.)).flex_shrink_0().flex().flex_col().gap_1().child(name.to_string());
+                let mut tile = div().w(px(220.)).flex_shrink_0().flex().flex_col().gap_1().child(crate::screen::text(
+                    &self.look,
+                    crate::screen::TextRole::Detail,
+                    name.to_string(),
+                ));
                 if visible {
                     tile = tile.child(
                         svg_image(format!("svg-scheduled-{index}"), document)
@@ -258,7 +193,7 @@ impl SvgPage {
                             .zoom(self.values[0])
                             .policy(self.policy)
                             .scheduler(scheduler.clone())
-                            .bg(rgb(if self.dark { 0x111827 } else { 0xf1f5f9 }))
+                            .bg(rgb(if self.dark { palette::DARK } else { palette::LIGHT }))
                             .on_status_change(cx.listener(|_, _: &SvgStatus, _, cx| cx.notify())),
                     );
                 } else {
@@ -268,33 +203,48 @@ impl SvgPage {
             }
             rows.push(row);
         }
-        Ok(div().flex().flex_col().gap_3()
-            .child(format!("{} tiles · {} · {} documents · {} jobs / {} MiB pool", self.tiles, if self.eager {"eager"} else {"visible + overscan"}, self.gallery_docs.len().max(1), limits.max_jobs, limits.max_bytes/MIB))
-            .child(format!("Members {} · Active {} · Queued {} · Retained {:.2} MiB · In-flight {:.2} MiB · Peak {:.2} MiB", stats.members, stats.active_jobs, stats.queued_jobs, stats.retained_bytes as f64/MIB as f64, stats.in_flight_bytes as f64/MIB as f64, stats.peak_managed_bytes as f64/MIB as f64))
-            .child("Scroll to explore; Command-wheel or pinch to zoom. Open a folder for real artwork; outputs remain independent even when documents are shared.")
-            .child(div().id("svg-gallery-scroll").h(px(viewport_height)).flex_shrink_0().overflow_y_scroll().track_scroll(&self.gallery_scroll)
-                .on_scroll(cx.listener(|this,event:&gpui::ScrollEvent,_,cx| {
-                    if event.modifiers.platform { let delta=f32::from(event.delta.pixel_delta(px(16.)).y); this.camera.zoom_at(point(px(0.),px(0.)),(-delta*0.005).exp());this.copy_camera(cx);cx.stop_propagation(); } cx.notify();
-                }))
-                .on_pinch(cx.listener(|this,event:&gpui::PinchEvent,_,cx| {this.zoom_at(point(px(0.),px(0.)),(1.+event.delta).max(0.01),cx);cx.stop_propagation();}))
-                .children(rows))
-            .child("Budgets account for image reservations, not total RSS or driver VRAM.").into_any_element())
+        Ok(div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .id("svg-gallery-scroll")
+                    .h(px(viewport_height))
+                    .flex_shrink_0()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.gallery_scroll)
+                    .on_scroll(cx.listener(|this, event: &gpui::ScrollEvent, _, cx| {
+                        if event.modifiers.platform {
+                            let delta = f32::from(event.delta.pixel_delta(px(16.)).y);
+                            this.camera.zoom_at(point(px(0.), px(0.)), (-delta * 0.005).exp());
+                            this.copy_camera(cx);
+                            cx.stop_propagation();
+                        }
+                        cx.notify();
+                    }))
+                    .on_pinch(cx.listener(|this, event: &gpui::PinchEvent, _, cx| {
+                        this.zoom_at(point(px(0.), px(0.)), (1. + event.delta).max(0.01), cx);
+                        cx.stop_propagation();
+                    }))
+                    .children(rows),
+            )
+            .into_any_element())
     }
 
     fn path_view(&self) -> anyhow::Result<AnyElement> {
         let paths = self.paths.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
-        let mut view = div().flex().flex_col().gap_3().child(format!(
-            "media-lab path effects · Trim {:.0}% · Dash pattern {} · Phase {:.0}",
-            self.effective_trim() * 100.,
-            self.dash,
-            self.effective_phase()
-        ));
+        let mut view = div().w_full().flex().flex_col().gap_4();
         for (index, path) in paths.iter().enumerate() {
             view = view
-                .child(format!(
-                    "{} · Measured length {:.2}px",
-                    ["Open Bézier curve", "Closed heart", "Multiple contours"][index],
-                    f32::from(path.length())
+                .child(crate::screen::text(
+                    &self.look,
+                    crate::screen::TextRole::Name,
+                    format!(
+                        "{} · Measured length {:.2}px",
+                        ["Open Bézier curve", "Closed heart", "Multiple contours"][index],
+                        f32::from(path.length())
+                    ),
                 ))
                 .child(
                     div().flex().flex_wrap().gap_3().children(
@@ -308,19 +258,19 @@ impl SvgPage {
                         ]
                         .into_iter()
                         .map(|(label, effect)| {
-                            div().w(px(300.)).flex().flex_col().gap_2().child(label).child(paths::panel(
-                                &self.look,
-                                path,
-                                effect,
-                                self.values[5],
-                                0x70ddc6,
-                                170.,
-                            ))
+                            div()
+                                .flex_1()
+                                .min_w(px(240.))
+                                .flex()
+                                .flex_col()
+                                .gap_2()
+                                .child(crate::screen::text(&self.look, crate::screen::TextRole::Label, label))
+                                .child(paths::panel(&self.look, path, effect, self.values[5], palette::PATH, 170.))
                         }),
                     ),
                 );
         }
-        Ok(view.child("Measurement is retained; trim and dash are applied before native stroke tessellation. Trim uses total length across contours; dash phase restarts per retained contour.").into_any_element())
+        Ok(view.into_any_element())
     }
 
     fn benchmark_view(&self) -> AnyElement {

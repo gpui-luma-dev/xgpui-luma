@@ -61,7 +61,7 @@ impl SvgPage {
         let owner = cx.entity();
         gpui::div()
             .id(format!("svg-viewport-{index}"))
-            .w(px(320.))
+            .w_full()
             .h(px(260.))
             .flex_shrink_0()
             .overflow_hidden()
