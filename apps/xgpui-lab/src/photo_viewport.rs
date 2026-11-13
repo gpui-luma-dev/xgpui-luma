@@ -1,5 +1,7 @@
 //! One retained photo, ordinary controls, and sampling-only GPU adjustments.
 use crate::theme::ColorVizLookExt;
+use crate::screen::{Hero, LabCard, LabScreen, PanelShell, properties};
+use xgpui_luma::infra::ElementExt;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
 use xgpui_luma::prelude::HasPresenter;
@@ -14,6 +16,8 @@ const SOURCE_BYTES: usize = 128 * MIB;
 pub struct PhotoViewport {
     look: Arc<Look>,
     buttons: Vec<Entity<xgpui_luma::controls::button::Button>>,
+    wide_switch: xgpui_luma::controls::switch::Switch,
+    viewport_width: f64,
     source: Option<Arc<RasterSource>>,
     canvas: Option<TileCanvas>,
     loading: Option<Task<()>>,
@@ -90,7 +94,7 @@ fn make_canvas(source: Arc<RasterSource>) -> Result<TileCanvas> {
 }
 impl PhotoViewport {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let buttons = ["Open photo…", "Fit", "1:1", "Exposure −", "Exposure +", "sRGB / P3"]
+        let buttons = ["Open photo…", "Fit", "1:1", "Exposure −", "Exposure +"]
             .into_iter()
             .enumerate()
             .map(|(index, label)| {
@@ -118,9 +122,20 @@ impl PhotoViewport {
                     .spawn(cx)
             })
             .collect();
+        let wide_switch = xgpui_luma_look_radix::Switch::new("photo-wide")
+            .look(look.as_ref())
+            .label("Wide output")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.wide = on;
+                cx.notify();
+            })
+            .spawn(cx);
         let mut this = Self {
             look,
             buttons,
+            wide_switch,
+            viewport_width: 560.,
             source: None,
             canvas: None,
             loading: None,
@@ -227,10 +242,8 @@ impl PhotoViewport {
 impl Render for PhotoViewport {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.device_scale = window.scale_factor() as f64;
-        let viewport = [
-            (f32::from(window.viewport_size().width) - 160.).max(240.) as f64,
-            (f32::from(window.viewport_size().height) - 220.).max(180.) as f64,
-        ];
+        let viewport =
+            [self.viewport_width, (f32::from(window.viewport_size().height) - 340.).clamp(180., 560.) as f64];
         let mut status = if self.loading.is_some() {
             "Loading photo…".into()
         } else {
@@ -286,14 +299,28 @@ impl Render for PhotoViewport {
                 .expect("P3 adjustments"),
             ),
         };
+        if *self.wide_switch.read(cx).data() != self.wide {
+            let wide = self.wide;
+            self.wide_switch.update(cx, |switch, cx| switch.set_data(wide, cx));
+        }
         let scale = self.scale;
+        let owner = cx.entity();
         let canvas = div()
             .id("photo-viewport")
-            .w(px(viewport[0] as f32))
+            .w_full()
+            .on_prepaint(move |bounds, _, cx| {
+                owner.update(cx, |this, cx| {
+                    let width = f64::from(f32::from(bounds.size.width));
+                    if this.viewport_width != width {
+                        this.viewport_width = width;
+                        cx.notify();
+                    }
+                });
+            })
             .h(px(viewport[1] as f32))
             .overflow_hidden()
             .cursor_crosshair()
-            .bg(rgb(0x17191c))
+            .bg(self.look.chrome().panel_background)
             .on_scroll(cx.listener(move |this, event: &ScrollEvent, _, cx| {
                 this.zoom = (scale
                     * (f64::from(f32::from(event.delta.pixel_delta(px(24.)).y)) * 0.002).clamp(-1., 1.).exp())
@@ -320,6 +347,7 @@ impl Render for PhotoViewport {
                 }
             }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, _| this.drag = None))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, _| this.drag = None))
             .child(
                 gpui::canvas(
                     |_, _, _| (),
@@ -339,23 +367,41 @@ impl Render for PhotoViewport {
                 )
                 .size_full(),
             );
-        div()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .p_4()
-            .text_color(self.look.chrome().body_text)
-            .child(div().flex().gap_2().children(self.buttons.iter().cloned()))
-            .child(status)
-            .child(if paint.wide {
-                "Display P3"
-            } else if self.wide && !wide_available {
-                "sRGB preview — wide output unavailable"
-            } else {
-                "sRGB preview"
-            })
-            .children(self.error.clone().map(|error| div().child(error)))
-            .child(canvas)
+        let output = if paint.wide {
+            "native Display P3"
+        } else if self.wide && !wide_available {
+            "sRGB preview · wide output unavailable"
+        } else {
+            "sRGB preview"
+        };
+        let screen = LabScreen::new("media-photo", self.look.clone())
+            .crumb("xgpui-media", "Photo Viewer")
+            .title("Photo Viewer")
+            .lede("Explore a photo in detail and adjust its brightness without loading it again.")
+            .hero(Hero::full(canvas))
+            .caption(format!("{status} · {output}"))
+            .control(self.wide_switch.clone());
+        let screen = self.buttons.iter().cloned().fold(screen, LabScreen::action);
+        let source = self.source.as_ref();
+        let stats = self.canvas.as_ref().map(|canvas| canvas.stats());
+        screen.notice(self.error.clone())
+            .cards([
+                LabCard::new("Photo").subtitle(self.name.clone()).values([("size", source.map_or("—".into(), |source| format!("{}×{}", source.image().width(), source.image().height())))]),
+                LabCard::new("View").values([("physical scale", format!("{:.1}%", self.scale * self.device_scale * 100.)), ("exposure", format!("{:+.2} EV", self.exposure))]),
+            ])
+            .panels(
+                PanelShell::new("Retained source").child(properties(&self.look, [
+                    ("Source payload", source.map_or("—".into(), |source| format!("{:.2} MiB", source.source_bytes() as f64 / MIB as f64))),
+                    ("Page GPU payload", stats.as_ref().map_or("—".into(), |stats| format!("{:.2} MiB", stats.gpu_bytes as f64 / MIB as f64))),
+                    ("Ready pages", stats.as_ref().map_or("—".into(), |stats| format!("{}/{}", stats.ready_pages, stats.visible_pages))),
+                ])),
+                PanelShell::new("Presentation").child(properties(&self.look, [
+                    ("Output", output.to_string()), ("Device scale", format!("{:.2}×", self.device_scale)),
+                    ("Center", format!("{:.0}, {:.0} px", self.center[0], self.center[1])),
+                ])),
+            )
+            .note("Drag to pan and wheel to zoom. Fit shows the whole photo; 1:1 maps each source pixel to one physical display pixel. Exposure changes sampling without decoding or uploading the source again.")
+            .credits("Built-in Italy reference photo credited to WebKit (webkit.org/blog-files/color-gamut/), separate from the application code license. Imported 8-bit images use supported RGB matrix/TRC ICC profiles, or sRGB when untagged. Payload statistics do not measure process RSS or driver VRAM.")
     }
 }
 
@@ -449,4 +495,68 @@ pub fn run_check(cx: &mut App, output: PathBuf) -> Result<()> {
         match result { Ok(()) => { cx.update(|cx| cx.quit()); }, Err(error) => { eprintln!("Photo check: {error:#}"); std::process::exit(1); } }
     }).detach();
     Ok(())
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests {
+    use super::*;
+    use xgpui_luma::{
+        controls::{button::ButtonEvent, switch::SwitchEvent},
+        theme::ThemeMode,
+    };
+
+    #[::core::prelude::v1::test]
+    fn photo_screen_resizes_and_controls_reuse_the_retained_source() {
+        for mode in [ThemeMode::Dark, ThemeMode::Light] {
+            let mut app = TestAppContext::single();
+            app.update(|cx| xgpui_luma::init(cx).unwrap());
+            let look = crate::theme::default_look();
+            look.set_mode(mode);
+            let (page, cx) = app.add_window_view(|_, cx| {
+                let mut photo = PhotoViewport::new(look, cx);
+                photo.loading = None;
+                photo.source = Some(Arc::new(
+                    RasterSource::new(
+                        image::RgbaImage::from_pixel(8, 8, image::Rgba([64, 128, 192, 255])),
+                        ImageColor::SRGB,
+                        256,
+                    )
+                    .unwrap(),
+                ));
+                photo.name = "Test photo".into();
+                photo.recenter();
+                photo
+            });
+            for width in [1280., 720.] {
+                cx.simulate_resize(size(px(width), px(1400.)));
+                cx.run_until_parked();
+                let hero = cx.debug_bounds("media-photo-hero").unwrap();
+                assert!(hero.size.width <= px(width));
+                assert!(cx.debug_bounds("media-photo-panels").is_some());
+            }
+            let (source, brighter, one_to_one, wide) = cx.update(|_, cx| {
+                let page = page.read(cx);
+                (
+                    page.source.clone().unwrap(),
+                    page.buttons[4].clone(),
+                    page.buttons[2].clone(),
+                    page.wide_switch.clone(),
+                )
+            });
+            brighter.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            one_to_one.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            wide.update(cx, |switch, cx| {
+                switch.set_data(false, cx);
+                cx.emit(SwitchEvent::Change { on: false });
+            });
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                let page = page.read(cx);
+                assert!(Arc::ptr_eq(&source, page.source.as_ref().unwrap()));
+                assert_eq!(page.exposure, 0.25);
+                assert_eq!(page.zoom, 1. / page.device_scale);
+                assert!(!page.wide);
+            });
+        }
+    }
 }

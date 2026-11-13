@@ -136,3 +136,9 @@ controls, path caches, scrub/navigation lifecycle and app-owned diagnostics.
 The Pastel Waves section of apps/xgpui-ext-lab/paint-lab/README.md is preserved
 at the same e0a7833b6e6ae234eb6c19d2988c085e9524daeb revision, including
 its procedural visual-reference attribution.
+
+Resource Limits restores the upload stress model, frame policy, persistent slot
+states and preview retirement from xgpui/apps/xgpui-ext-lab/media-lab/src/model.rs
+and ui.rs, with cadence reporting reconciled against ui_perf.rs, at revision
+778c123a50f6d18043f8bd246b61de482816fcdd (Apache-2.0). Presentation uses the
+shared LabScreen layout and Radix SDK controls; navigation releases inactive jobs.
