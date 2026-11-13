@@ -2,17 +2,18 @@
 use gpui::{prelude::*, *};
 use std::{sync::Arc, time::Instant, rc::Rc, cell::RefCell};
 use xgpui_luma::{
-    controls::{button::Button, slider::Slider},
+    controls::{button::Button, slider::Slider, switch::Switch},
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::{
-    theme::ColorVizLookExt,
     lab_controls::{Choice, labels},
 };
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, Noise, painted};
 
 mod renderers;
+use crate::shader::numeric::Number;
+use crate::screen::{Hero, LabScreen, PanelShell, ParametersPanel, labeled_control, properties};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Renderer {
@@ -50,6 +51,8 @@ pub struct PastelWaves {
     buttons: Vec<Entity<Button>>,
     play_label: &'static str,
     scrub: Slider,
+    phase_number: Number,
+    switches: Vec<Switch>,
     renderer_choice: Choice,
     grain_choice: Choice,
     renderer: Renderer,
@@ -109,6 +112,7 @@ impl PastelWaves {
                             1 => this.direction = -this.direction,
                             _ => {
                                 this.phase = 0.;
+                                this.phase_number.sync(0., cx);
                                 this.direction = 1.;
                                 this.grain = true;
                                 this.playing = false;
@@ -137,8 +141,49 @@ impl PastelWaves {
                 cx.notify();
             })
             .spawn(cx);
+        let phase_number = Number::attach(
+            "waves-phase",
+            "Ribbon phase (radians)",
+            (0., std::f32::consts::PI, 0.001),
+            0.,
+            scrub.clone(),
+            &look,
+            cx,
+            |this: &mut Self, value, _| {
+                this.phase = value;
+                this.playing = false;
+                this.fps = 0.;
+                value
+            },
+        );
+        let switches = [("Animate", false), ("Grain", true)]
+            .into_iter()
+            .enumerate()
+            .map(|(i, (label, checked))| {
+                radix::Switch::new(format!("waves-switch-{i}"))
+                    .look(&look)
+                    .label(label)
+                    .checked(checked)
+                    .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                        if i == 0 {
+                            this.playing = on;
+                            this.frame_interval = 1. / 60.;
+                            this.fps_since = Instant::now();
+                            this.fps_frames = 0;
+                            this.fps = 0.;
+                            this.updated = Instant::now();
+                        } else {
+                            this.grain = on;
+                        }
+                        cx.notify();
+                    })
+                    .spawn(cx)
+            })
+            .collect();
         Self {
             look,
+            phase_number,
+            switches,
             scene: Rc::new(RefCell::new(WaveScene::new(true))),
             buttons,
             play_label: "Animate",
@@ -218,67 +263,57 @@ impl Render for PastelWaves {
             self.play_label = play_label;
             self.buttons[0].update(cx, |button, cx| button.set_label(play_label, cx));
         }
-        let chrome = self.look.chrome();
-        div()
-            .id("pastel-waves-pane")
-            .overflow_y_scroll()
-            .p_6()
-            .gap_4()
-            .bg(chrome.panel_background)
-            .text_color(chrome.body_text)
-            .size_full()
-            .flex()
-            .flex_col()
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(div().flex().flex_wrap().gap_2().children(self.buttons.iter().cloned()).child(self.renderer_choice.clone()).child(self.grain_choice.clone()))
-                    .child(
-                        div()
-                            .flex()
-                            .gap_3()
-                            .items_center()
-                            .child("Scrub ribbon motion")
-                            .child(div().w(px(260.)).child(self.scrub.clone())),
-                    )
-                    .child(format!(
-                        "Pastel Waves · {} · grain {} · phase {:.2}",
-                        if cx.reduce_motion() {
-                            "reduced motion"
-                        } else if self.playing {
-                            "playing"
-                        } else {
-                            "paused"
-                        },
-                        self.grain,
-                        self.phase
-                    ))
-                    .child(format!("Frame {} · render {:.1} FPS · {} · requested {} · effective {}", self.frames, if self.playing && !cx.reduce_motion() { self.fps } else { 0. }, if self.direction > 0. { "forward" } else { "reverse" }, self.renderer.label(), self.status.lock().ok().and_then(|status| status.effective).map_or("pending", Renderer::label)))
-                    .child("Render FPS measures view calls, not presented FPS. CPU draw/readback timings are available in --waves-check; GPU time is unmeasured.")
-                    .children(self.status.lock().ok().and_then(|status| status.error.clone()).map(|error| format!("Renderer error: {error}"))),
+        self.phase_number.observe(self.phase, cx);
+        for (switch, on) in self.switches.iter().zip([self.playing, self.grain]) {
+            if *switch.read(cx).data() != on {
+                switch.update(cx, |switch, cx| switch.set_data(on, cx));
+            }
+        }
+        let status = self.status.lock().ok().map(|status| status.clone()).unwrap_or_default();
+        let visual = div().relative().w_full().aspect_ratio(16. / 9.).flex_shrink_0().overflow_hidden().child(
+            composition(
+                std::f32::consts::PI * 0.5 * (1. - self.phase.cos()),
+                self.grain,
+                self.scene.clone(),
+                self.renderer,
+                self.status.clone(),
             )
-            .child(
-                div()
-                    .relative()
-                    .w(px(900.))
-                    .max_w_full()
-                    .aspect_ratio(16. / 9.)
-                    .flex_shrink_0()
-                    .overflow_hidden()
-                    .child(
-                        composition(
-                            std::f32::consts::PI * 0.5 * (1. - self.phase.cos()),
-                            self.grain,
-                            self.scene.clone(),
-                            self.renderer,
-                            self.status.clone(),
-                        )
-                        .absolute()
-                        .size_full(),
-                    ),
-            )
+            .absolute()
+            .size_full(),
+        );
+        let mut screen = LabScreen::new("shader-waves", self.look.clone())
+            .crumb("xgpui-shader", "Pastel Waves")
+            .title("Pastel Waves")
+            .lede("Explore translucent ribbons as they fold, overlap and move through a soft color field.")
+            .hero(Hero::fixed(visual, px(900.)))
+            .caption(format!(
+                "{} · phase {:.3} · {} · grain {}",
+                if cx.reduce_motion() {
+                    "Reduced motion"
+                } else if self.playing {
+                    "Playing"
+                } else {
+                    "Paused"
+                },
+                self.phase,
+                if self.direction > 0. { "forward" } else { "reverse" },
+                if self.grain { "on" } else { "off" }
+            ))
+            .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()));
+        for switch in &self.switches {
+            screen = screen.control(switch.clone());
+        }
+        for button in self.buttons.iter().skip(1) {
+            screen = screen.action(button.clone());
+        }
+        screen.notice(status.error.map(|error| format!("Renderer error: {error}")))
+            .panels(ParametersPanel::new("Ribbon motion").subtitle("Scrubbing pauses motion.").params([self.phase_number.param()]),
+                PanelShell::new("Renderer / live").child(properties(&self.look, [
+                    ("Requested", self.renderer.label().to_string()), ("Effective", status.effective.map_or("pending", Renderer::label).into()),
+                    ("Render calls", self.frames.to_string()), ("Render FPS", format!("{:.1}", if self.playing && !cx.reduce_motion() {self.fps} else {0.})),
+                ])))
+            .note("Reverse changes the direction; Reset restores phase and grain while keeping the selected renderer. Leaving the page stops playback. Failed native or WGSL rendering falls back to the retained paths.")
+            .credits("Upstream silk-ribbon composition and renderer assets are credited in NOTICE and docs/pastel-waves.md. Render FPS counts view calls, not presented frames. The source's timing caps, cosine easing, grain, renderer fallback and retained material caches are preserved; GPU execution time is unmeasured.")
     }
 }
 
@@ -771,6 +806,56 @@ mod tests {
                 Some(selected_renderer.index().to_string().as_str())
             );
         });
+    }
+    #[::core::prelude::v1::test]
+    fn waves_screen_resizes_and_numeric_scrub_keeps_endpoint_and_renderer() {
+        use xgpui_luma::{
+            controls::{textfield::TextFieldEvent, switch::SwitchEvent},
+            theme::ThemeMode,
+        };
+        for mode in [ThemeMode::Dark, ThemeMode::Light] {
+            let mut app = TestAppContext::single();
+            app.update(|cx| xgpui_luma::init(cx).unwrap());
+            let look = crate::theme::default_look();
+            look.set_mode(mode);
+            let (page, cx) = app.add_window_view(|_, cx| PastelWaves::new(look, cx));
+            for width in [1280., 720.] {
+                cx.simulate_resize(size(px(width), px(1800.)));
+                cx.run_until_parked();
+                let hero = cx.debug_bounds("shader-waves-hero").unwrap();
+                assert!(hero.right() <= px(width));
+                assert!(cx.debug_bounds("shader-waves-panels").is_some());
+            }
+            let (field, grain, reset, renderer) = cx.update(|_, cx| {
+                let page = page.read(cx);
+                (page.phase_number.field.clone(), page.switches[1].clone(), page.buttons[2].clone(), page.renderer)
+            });
+            let end = std::f32::consts::PI.to_string();
+            field.update(cx, |field, cx| {
+                field.set_value(end.clone(), cx);
+                cx.emit(TextFieldEvent::Change { value: end.clone() });
+            });
+            field.update(cx, |_, cx| cx.emit(TextFieldEvent::Submit { value: end.clone() }));
+            grain.update(cx, |switch, cx| {
+                switch.set_data(false, cx);
+                cx.emit(SwitchEvent::Change { on: false });
+            });
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                let page = page.read(cx);
+                assert_eq!(page.phase, std::f32::consts::PI);
+                assert!(!page.playing && !page.grain);
+                assert!(field.read(cx).value().parse::<f32>().unwrap() <= std::f32::consts::PI);
+            });
+            reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                let page = page.read(cx);
+                assert_eq!(page.renderer, renderer);
+                assert_eq!(field.read(cx).value(), "0.000");
+                assert!(*grain.read(cx).data());
+            });
+        }
     }
 }
 

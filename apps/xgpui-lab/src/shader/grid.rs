@@ -1,6 +1,8 @@
 //! App-only import of Christian Helgeson's Grid Shader (BSD-3-Clause).
 //! Copyright 2019 WebGPU Samples Contributors; see licenses/ShaderDepot-BSD-3-Clause.txt.
 use super::*;
+use super::numeric::Number;
+use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, properties};
 use xgpui_shader::{
     shader_paint,
     instanced::{InstanceField, ShaderInstance},
@@ -112,6 +114,8 @@ pub struct GridPane {
     programs: anyhow::Result<GridPrograms>,
     settings: Settings,
     sliders: Vec<Slider>,
+    numbers: Vec<Number>,
+    pulse_switch: Switch,
     buttons: Vec<Entity<Button>>,
     active: bool,
     time: f32,
@@ -160,8 +164,20 @@ impl GridPane {
                     .spawn(cx)
             })
             .collect();
-        let pane = Self {
-            look,
+        let pulse_switch = radix::Switch::new("grid-pulse")
+            .look(&look)
+            .label("Pulse width")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.settings.pulse = on;
+                this.last = Instant::now();
+                cx.notify();
+            })
+            .spawn(cx);
+        let mut pane = Self {
+            look: look.clone(),
+            numbers: Vec::new(),
+            pulse_switch,
             programs: GridPrograms::new(),
             settings: Settings::default(),
             sliders,
@@ -170,12 +186,36 @@ impl GridPane {
             time: 0.,
             last: Instant::now(),
         };
+        pane.numbers = pane
+            .sliders
+            .iter()
+            .enumerate()
+            .map(|(i, slider)| {
+                let (label, min, max, step) = CONTROLS[i];
+                Number::attach(
+                    &format!("grid-{i}"),
+                    label,
+                    (min, max, step),
+                    pane.settings.values()[i],
+                    slider.clone(),
+                    &look,
+                    cx,
+                    move |this: &mut Self, value, _| {
+                        this.settings.edit(i, value);
+                        this.settings.values()[i]
+                    },
+                )
+            })
+            .collect();
         pane.sync(cx);
         pane
     }
     fn sync(&self, cx: &mut Context<Self>) {
         for (slider, value) in self.sliders.iter().zip(self.settings.values()) {
             slider.update(cx, |slider, cx| slider.set_value(value, cx));
+        }
+        for (number, value) in self.numbers.iter().zip(self.settings.values()) {
+            number.sync(value, cx);
         }
     }
     pub fn activate(&mut self) {
@@ -188,58 +228,61 @@ impl GridPane {
         self.active = false;
         self.settings.pulse = false;
     }
-    fn preview(&self, p: GridInstance) -> anyhow::Result<AnyElement> {
+    fn preview(&self, p: GridInstance) -> anyhow::Result<Hero> {
         let programs = self.programs.as_ref().map_err(|e| anyhow::anyhow!("{e:#}"))?;
         let paint = programs.paint(p)?;
         let typed = programs.instanced.clone();
-        Ok(div()
-            .flex()
-            .flex_wrap()
-            .gap_4()
-            .child(
-                div()
-                    .flex_1()
-                    .min_w(px(280.))
-                    .child("Shader paint · declarative paint")
-                    .child(painted().w_full().h(px(280.)).bg_paint(paint)),
+        Ok(Hero::compare(
+            ComparePane::new("Shader paint", painted().w_full().h(px(280.)).bg_paint(paint))
+                .subtitle("Declarative paint"),
+            ComparePane::new(
+                "Instanced shader",
+                canvas(
+                    |_, _, _| (),
+                    move |bounds, _, window, _| {
+                        if let Err(e) = window.paint_custom_shader(bounds, &typed, p) {
+                            tracing::error!("Grid: {e:#}");
+                        }
+                    },
+                )
+                .w_full()
+                .h(px(280.)),
             )
-            .child(
-                div().flex_1().min_w(px(280.)).child("Instanced shader · typed main-pass instance").child(
-                    canvas(
-                        |_, _, _| (),
-                        move |bounds, _, window, _| {
-                            if let Err(e) = window.paint_custom_shader(bounds, &typed, p) {
-                                tracing::error!("Grid: {e:#}");
-                            }
-                        },
-                    )
-                    .w_full()
-                    .h(px(280.)),
-                ),
-            )
-            .into_any_element())
+            .subtitle("Typed main-pass instance"),
+        ))
     }
 }
 impl Render for GridPane {
-    fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let now = Instant::now();
+        if cx.reduce_motion() {
+            self.settings.pulse = false;
+        }
         if self.active && self.settings.pulse {
             self.time += now.duration_since(self.last).as_secs_f32().min(0.1);
             window.request_animation_frame();
         }
         self.last = now;
+        for (number, value) in self.numbers.iter().zip(self.settings.values()) {
+            number.observe(value, cx);
+        }
+        if *self.pulse_switch.read(cx).data() != self.settings.pulse {
+            let pulse = self.settings.pulse;
+            self.pulse_switch.update(cx, |switch, cx| switch.set_data(pulse, cx));
+        }
         let p = self.settings.frame(self.time);
-        div().id("shader-depot-grid").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4()
-            .text_color(self.look.chrome().body_text)
-            .child("Shader Depot: Grid · Christian Helgeson")
-            .child(div().flex().gap_2().children(self.buttons.iter().cloned()))
-            .child(format!("Pulse {} · effective line width {:.2} · 16-byte instance", if self.settings.pulse { "on" } else { "off" }, p.line_width))
-            .child(div().flex().flex_wrap().gap_4().children(self.sliders.iter().enumerate().map(|(i, slider)| {
-                div().w(px(180.)).flex().flex_col().gap_2()
-                    .child(format!("{}: {:.1}", CONTROLS[i].0, self.settings.values()[i])).child(slider.clone())
-            })))
-            .child(match self.preview(p) { Ok(view) => view, Err(e) => div().child(format!("Grid shader error: {e:#}")).into_any_element() })
-            .child("Adapted from WGSL Shader Depot · Copyright 2019 WebGPU Samples Contributors · BSD-3-Clause (licenses/ShaderDepot-BSD-3-Clause.txt)")
+        let screen = LabScreen::new("shader-grid", self.look.clone()).crumb("xgpui-shader", "Shader Depot: Grid").title("Shader Depot: Grid")
+            .lede("Compare the same pulsing grid drawn through two shader interfaces.")
+            .caption(format!("{} · effective line width {:.2} · {:.0} cells · 16-byte instance", if self.settings.pulse {"Pulsing"} else {"Static"}, p.line_width, p.grid_dimensions))
+            .control(self.pulse_switch.clone()).action(self.buttons[1].clone()).action(self.buttons[2].clone())
+            .panels(ParametersPanel::new("Grid parameters").params(self.numbers.iter().map(Number::param)),
+                PanelShell::new("Rendering").child(properties(&self.look, [("Comparison", "Same grid parameters and phase"), ("Pulse", "Cosine interpolation of line width"), ("Instance", "Four scalar inputs / 16 bytes")])))
+            .note("Pulse moves between Line width and Pulse width. Editing the grid updates both previews; Reset restores the original settings. Leaving the page stops the pulse.")
+            .credits("Adapted from Christian Helgeson's WGSL Shader Depot. Copyright 2019 WebGPU Samples Contributors; BSD-3-Clause, licenses/ShaderDepot-BSD-3-Clause.txt. No GPU timing is measured.");
+        match self.preview(p) {
+            Ok(hero) => screen.hero(hero),
+            Err(e) => screen.notice(Some(format!("Grid shader error: {e:#}"))),
+        }
     }
 }
 
@@ -299,6 +342,35 @@ mod tests {
             pane.suspend();
             assert!(!pane.active);
             assert!(!pane.settings.pulse, "leaving stops pulse playback");
+        });
+    }
+    #[cfg(feature = "test-support")]
+    #[::core::prelude::v1::test]
+    fn numeric_fields_round_grid_dimensions_and_reset_the_pulse_switch() {
+        use xgpui_luma::controls::{textfield::TextFieldEvent, switch::SwitchEvent, button::ButtonEvent};
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| GridPane::new(crate::theme::default_look(), cx));
+        let field = cx.update(|_, cx| page.read(cx).numbers[0].field.clone());
+        field.update(cx, |field, cx| {
+            field.set_value("12.8", cx);
+            cx.emit(TextFieldEvent::Change { value: "12.8".into() });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(page.read(cx).settings.grid.grid_dimensions, 13.));
+        field.update(cx, |_, cx| cx.emit(TextFieldEvent::Submit { value: "12.8".into() }));
+        cx.update(|_, cx| assert_eq!(field.read(cx).value(), "13.0"));
+        let pulse = cx.update(|_, cx| page.read(cx).pulse_switch.clone());
+        pulse.update(cx, |switch, cx| {
+            switch.set_data(false, cx);
+            cx.emit(SwitchEvent::Change { on: false });
+        });
+        let reset = cx.update(|_, cx| page.read(cx).buttons[1].clone());
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert_eq!(field.read(cx).value(), "10.0");
+            assert!(*pulse.read(cx).data());
         });
     }
 }

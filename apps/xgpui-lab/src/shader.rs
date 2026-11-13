@@ -3,6 +3,11 @@ mod editor;
 pub(crate) mod grid;
 pub(crate) mod seascape;
 mod views;
+mod core_screens;
+pub(crate) mod numeric;
+mod palette;
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests;
 mod typography;
 mod gallery;
 mod mesh;
@@ -14,7 +19,7 @@ pub(crate) mod benchmarks;
 use std::{sync::Arc, time::Instant};
 use gpui::{prelude::*, *};
 use xgpui_luma::{
-    controls::{button::Button, slider::Slider},
+    controls::{button::Button, slider::Slider, switch::Switch, textfield::TextField},
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
@@ -44,13 +49,10 @@ impl Effect {
 }
 
 fn gradient_stops() -> Vec<GradientStop> {
-    vec![
-        GradientStop::new(0., [1., 0.12, 0.18, 1.]),
-        GradientStop::new(0.25, [1., 0.7, 0.12, 1.]),
-        GradientStop::new(0.5, [0.25, 0.25, 1., 1.]),
-        GradientStop::new(0.75, [0.05, 0.85, 0.75, 1.]),
-        GradientStop::new(1., [1., 0.12, 0.18, 1.]),
-    ]
+    palette::GRADIENT_STOPS
+        .into_iter()
+        .map(|(offset, color)| GradientStop::new(offset, color))
+        .collect()
 }
 
 fn initial_mesh() -> anyhow::Result<Vec<ControlPoint>> {
@@ -160,6 +162,7 @@ pub struct ShaderPage {
     grid_pane: Entity<grid::GridPane>,
     sea_pane: Entity<seascape::SeaPane>,
     gallery_buttons: Vec<(&'static str, Entity<Button>)>,
+    gallery_switches: Vec<(&'static str, Switch)>,
     gallery_choices: Vec<(&'static str, crate::lab_controls::Choice)>,
     gallery_labels: std::cell::RefCell<std::collections::HashMap<&'static str, String>>,
     freeform_step: u8,
@@ -180,6 +183,8 @@ pub struct ShaderPage {
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
+    fields: Vec<(Parameter, TextField)>,
+    core_switches: Vec<(Action, Switch)>,
     animated: bool,
     time: f32,
     last_frame: Instant,
@@ -259,6 +264,7 @@ impl ShaderPage {
             _ => unreachable!("action has no selector"),
         }
         self.sync_sliders(cx);
+        self.sync_fields_except(None, cx);
         cx.notify();
     }
 
@@ -311,7 +317,10 @@ impl ShaderPage {
                 .size(radix::SliderSize::One)
                 .range(min..max)
                 .step(if parameter == Parameter::Angle { 1. } else { 0.01 })
-                .on_value_changed(cx, move |this: &mut Self, _, value, cx| this.edit(parameter, value, cx))
+                .on_value_changed(cx, move |this: &mut Self, _, value, cx| {
+                    this.edit(parameter, value, cx);
+                    this.sync_field(parameter, cx);
+                })
                 .spawn(cx);
             (parameter, slider)
         })
@@ -415,6 +424,28 @@ impl ShaderPage {
                 ),
             ),
         ];
+        let gallery_switches = [
+            ("path-route", "Direct paths", true),
+            ("backdrop-toggle", "Backdrop blur", true),
+            ("layer-blur-quality", "Full blur quality", false),
+        ]
+        .map(|(id, label, checked)| {
+            let switch = radix::Switch::new(format!("gallery-switch-{id}"))
+                .look(&look)
+                .label(label)
+                .checked(checked)
+                .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                    match id {
+                        "path-route" => this.direct_paths = on,
+                        "backdrop-toggle" => this.backdrop_disabled = !on,
+                        _ => this.layer_blur_full_resolution = on,
+                    }
+                    cx.notify();
+                })
+                .spawn(cx);
+            (id, switch)
+        })
+        .to_vec();
         let mesh_pane = cx.new(|cx| mesh::MeshPane::new(look.clone(), cx));
         let sea_pane = cx.new(|cx| seascape::SeaPane::new(look.clone(), cx));
         let grid_pane = cx.new(|cx| grid::GridPane::new(look.clone(), cx));
@@ -425,6 +456,7 @@ impl ShaderPage {
             grid_pane,
             sea_pane,
             gallery_buttons,
+            gallery_switches,
             gallery_choices,
             gallery_labels: Default::default(),
             freeform_step: 0,
@@ -447,6 +479,8 @@ impl ShaderPage {
             buttons,
             choices: Vec::new(),
             sliders,
+            fields: Vec::new(),
+            core_switches: Vec::new(),
             animated: false,
             time: 0.,
             last_frame: Instant::now(),
@@ -459,7 +493,9 @@ impl ShaderPage {
             shader_alpha: 1.,
         };
         page.init_choices(cx);
+        page.init_core_controls(cx);
         page.sync_sliders(cx);
+        page.sync_fields_except(None, cx);
         page
     }
 
@@ -480,6 +516,7 @@ impl ShaderPage {
         self.animated = false;
         self.last_frame = Instant::now();
         self.sync_sliders(cx);
+        self.sync_fields_except(None, cx);
         cx.notify();
     }
 
@@ -499,8 +536,19 @@ impl ShaderPage {
     }
 
     fn gallery_button(&self, id: &'static str, label: impl Into<String>, cx: &mut Context<Self>) -> gpui::AnyElement {
+        if let Some((_, switch)) = self.gallery_switches.iter().find(|(key, _)| *key == id) {
+            let on = match id {
+                "path-route" => self.direct_paths,
+                "backdrop-toggle" => !self.backdrop_disabled,
+                _ => self.layer_blur_full_resolution,
+            };
+            if *switch.read(cx).data() != on {
+                switch.update(cx, |switch, cx| switch.set_data(on, cx));
+            }
+            return switch.clone().into_any_element();
+        }
         if let Some((_, choice)) = self.gallery_choices.iter().find(|(key, _)| *key == id) {
-            return choice.clone().into_any_element();
+            return crate::screen::labeled_control(&self.look, choice.clone().into_element()).into_any_element();
         }
         let button = self.gallery_buttons.iter().find(|(key, _)| *key == id).unwrap().1.clone();
         let label = label.into();
@@ -577,6 +625,7 @@ impl ShaderPage {
             }
         }
         self.sync_sliders(cx);
+        self.sync_fields_except(None, cx);
         cx.notify();
     }
 
@@ -617,6 +666,7 @@ impl ShaderPage {
             }
         }
         self.sync_sliders(cx);
+        self.sync_fields_except(Some(parameter), cx);
         cx.notify();
     }
 

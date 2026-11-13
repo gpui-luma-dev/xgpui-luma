@@ -1,4 +1,6 @@
 use super::*;
+use super::{numeric::Number, palette};
+use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, TextRole, properties, text};
 use gpui::{prelude::*, *};
 use xgpui_shader::{
     instanced::{AnimatedBorder, AnimatedBorderStyle, ShadowPainter, ShadowStop, ShadowStyle},
@@ -37,25 +39,19 @@ impl ShadowDemo {
         div().child(
             painted()
                 .rounded(px(999.))
-                .bg(rgb(0xffffff))
+                .bg(rgb(palette::BORDER_SURFACE))
                 .animated_border(self.border.layer(AnimatedBorderStyle::default(), phase).expect("border frame"))
                 .px_6()
                 .py_3()
-                .text_color(rgb(0x10151f))
                 .child(buttons[2].clone()),
         )
     }
     fn style(&self) -> ShadowStyle {
         ShadowStyle {
             stops: if self.gradient {
-                vec![
-                    ShadowStop::new(0., [0.98, 0.16, 0.45, 0.85]),
-                    ShadowStop::new(0.35, [0.55, 0.25, 1., 0.8]),
-                    ShadowStop::new(0.7, [0.05, 0.6, 1., 0.8]),
-                    ShadowStop::new(1., [0.1, 0.85, 0.65, 0.75]),
-                ]
+                palette::SHADOW_STOPS.into_iter().map(|(offset, color)| ShadowStop::new(offset, color)).collect()
             } else {
-                vec![ShadowStop::new(0., [0., 0., 0., 0.6])]
+                vec![ShadowStop::new(0., palette::SHADOW_SOLID)]
             },
             angle: 90.,
             offset: point(px(self.offset * 0.35), px(self.offset)),
@@ -66,11 +62,11 @@ impl ShadowDemo {
         }
     }
     /// Both cards are real styled elements; no canvas or manual shadow paint calls.
-    pub fn render(&self, opacity: f32, buttons: &[Entity<Button>]) -> Stateful<Div> {
+    pub fn render(&self, opacity: f32, buttons: &[Entity<Button>], look: &Look) -> Stateful<Div> {
         let native_color = if self.gradient {
-            rgba(0x7160d9b3)
+            rgba(palette::SHADOW_NATIVE_GRADIENT)
         } else {
-            rgba(0x00000099)
+            rgba(palette::SHADOW_NATIVE_SOLID)
         };
         let native = BoxShadow {
             color: native_color.into(),
@@ -88,7 +84,7 @@ impl ShadowDemo {
             .max_w(px(240.))
             .h(px(160.))
             .rounded(px(16.))
-            .bg(rgb(0xf8fafd))
+            .bg(rgb(palette::SHADOW_CARD))
             .shadow(vec![native])
             .opacity(card_opacity)
             .overflow_hidden()
@@ -96,16 +92,16 @@ impl ShadowDemo {
             .flex()
             .flex_col()
             .justify_between()
-            .text_color(rgb(0x22304a))
-            .child(div().child("Standard GPUI"))
-            .child(div().text_sm().child("A normal styled div"))
+            .text_color(look.chrome().body_text)
+            .child(text(look, TextRole::Name, "Standard GPUI"))
+            .child(text(look, TextRole::Caption, "A normal styled div"))
             .child(native_button);
         let helper_card = painted()
             .w_full()
             .max_w(px(240.))
             .h(px(160.))
             .rounded(px(16.))
-            .bg(rgb(0xf8fafd))
+            .bg(rgb(palette::SHADOW_CARD))
             .shadow_paint(layer)
             .opacity(card_opacity)
             .overflow_hidden()
@@ -113,27 +109,34 @@ impl ShadowDemo {
             .flex()
             .flex_col()
             .justify_between()
-            .text_color(rgb(0x22304a))
-            .child(div().child("Extension helper"))
-            .child(div().text_sm().child("painted().shadow_paint(layer)"))
+            .text_color(look.chrome().body_text)
+            .child(text(look, TextRole::Name, "Extension helper"))
+            .child(text(look, TextRole::Caption, "painted().shadow_paint(layer)"))
             .child(helper_button);
         div()
             .id("shadow-helper-demo")
             .w_full()
             .flex_1()
-            .min_h(px(180.))
+            .min_h(px(280.))
             .overflow_hidden()
-            .bg(rgb(0xe6ebf3))
+            .bg(rgb(palette::SHADOW_STAGE))
             .opacity(opacity)
             .flex()
+            .flex_wrap()
+            .gap_y_8()
+            .py_8()
             .items_center()
-            .child(div().w_1_2().px_8().flex().justify_center().child(native_card))
-            .child(div().w_1_2().px_8().flex().justify_center().child(helper_card))
+            .child(div().flex_1().min_w(px(240.)).px_6().flex().justify_center().child(native_card))
+            .child(div().flex_1().min_w(px(240.)).px_6().flex().justify_center().child(helper_card))
     }
 }
 
 pub(super) struct ShadowPane {
+    look: Arc<Look>,
+    sample_look: Arc<Look>,
     shadow: ShadowDemo,
+    numbers: Vec<Number>,
+    switches: Vec<Switch>,
     pub borders: bool,
     pub animated: bool,
     phase: f32,
@@ -144,7 +147,7 @@ pub(super) struct ShadowPane {
 }
 impl ShadowPane {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let light = xgpui_luma_look_radix::Look::built_in();
+        let light = Arc::new(xgpui_luma_look_radix::Look::built_in());
         light.set_mode(xgpui_luma::theme::ThemeMode::Light);
         let buttons = [
             "Native child",
@@ -159,7 +162,7 @@ impl ShadowPane {
         .enumerate()
         .map(|(id, label)| {
             radix::Button::new(format!("shadow-{id}"))
-                .look(if id < 3 { &light } else { look.as_ref() })
+                .look(if id < 3 { light.as_ref() } else { look.as_ref() })
                 .outline()
                 .label(label)
                 .on_click(cx, move |this: &mut Self, cx| {
@@ -199,7 +202,34 @@ impl ShadowPane {
                     .spawn(cx)
             })
             .collect();
-        Self {
+        let switches = [("Animate", false), ("Gradient shadow", true), ("Inset", false), ("50% card opacity", false)]
+            .into_iter()
+            .enumerate()
+            .map(|(i, (label, checked))| {
+                radix::Switch::new(format!("shadow-switch-{i}"))
+                    .look(&look)
+                    .label(label)
+                    .checked(checked)
+                    .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                        match i {
+                            0 => {
+                                this.animated = on;
+                                this.last = Instant::now();
+                            }
+                            1 => this.shadow.gradient = on,
+                            2 => this.shadow.inset = on,
+                            _ => this.shadow.card_dim = on,
+                        }
+                        cx.notify();
+                    })
+                    .spawn(cx)
+            })
+            .collect();
+        let mut pane = Self {
+            look: look.clone(),
+            sample_look: light,
+            numbers: Vec::new(),
+            switches,
             shadow: ShadowDemo::new(),
             borders: false,
             animated: false,
@@ -208,7 +238,39 @@ impl ShadowPane {
             buttons,
             sliders,
             last_clicks: usize::MAX,
-        }
+        };
+        pane.numbers = pane
+            .sliders
+            .iter()
+            .enumerate()
+            .map(|(i, slider)| {
+                let (label, min, max, value) = [
+                    ("Blur (px)", 0., 64., 24.),
+                    ("Spread (px)", -12., 24., 0.),
+                    ("Falloff", 0.5, 4., 1.),
+                    ("Offset (px)", 0., 24., 12.),
+                ][i];
+                Number::attach(
+                    &format!("shadow-{i}"),
+                    label,
+                    (min, max, 0.5),
+                    value,
+                    slider.clone(),
+                    &look,
+                    cx,
+                    move |this: &mut Self, value, _| {
+                        match i {
+                            0 => this.shadow.blur = value,
+                            1 => this.shadow.spread = value,
+                            2 => this.shadow.falloff = value,
+                            _ => this.shadow.offset = value,
+                        };
+                        value
+                    },
+                )
+            })
+            .collect();
+        pane
     }
 }
 impl Render for ShadowPane {
@@ -225,24 +287,109 @@ impl Render for ShadowPane {
                 button.update(cx, |button, cx| button.set_label(format!("Child clicks: {}", self.shadow.clicks), cx));
             }
         }
-        let mut root = div().id("shadow-pane-scroll").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4();
-        if self.borders {
-            root=root.child("Soft animated borders · orbiting highlights")
-                .child(self.buttons[3].clone())
-                .child(format!("Animation {} · phase {:.2}",self.animated&&!cx.reduce_motion(),self.phase))
-                .child(div().p_8().bg(rgb(0xf8f9fb)).child(self.shadow.border_button(self.phase,&self.buttons)))
-                .child("The decorated button is a Luma control. Click to verify child interaction; reduced motion freezes animation.");
-        } else {
-            root=root.child("Gradient shadows · native versus extension helper")
-                .child(div().flex().gap_3().children(self.buttons.iter().skip(4).cloned()))
-                .child(div().flex().flex_wrap().gap_4().children(self.sliders.iter().enumerate().map(|(id,slider)| {
-                    let (label,value)=match id {0=>("Blur",self.shadow.blur),1=>("Spread",self.shadow.spread),2=>("Falloff",self.shadow.falloff),_=>("Offset",self.shadow.offset)};
-                    div().w(px(190.)).flex().flex_col().gap_2().child(format!("{label}: {value:.1}")).child(slider.clone())
-                })))
-                .child(format!("Gradient {} · Inset {} · Card opacity {}",self.shadow.gradient,self.shadow.inset,if self.shadow.card_dim {0.5}else{1.}))
-                .child(self.shadow.render(1.,&self.buttons))
-                .child("Click either Luma child button. The same blur, spread, offset and inset parameters feed the native and extension cards; extension falloff and gradient stops are additional capabilities.");
+        if cx.reduce_motion() {
+            self.animated = false;
         }
-        root
+        for (number, value) in
+            self.numbers
+                .iter()
+                .zip([self.shadow.blur, self.shadow.spread, self.shadow.falloff, self.shadow.offset])
+        {
+            number.observe(value, cx);
+        }
+        for (switch, on) in
+            self.switches
+                .iter()
+                .zip([self.animated, self.shadow.gradient, self.shadow.inset, self.shadow.card_dim])
+        {
+            if *switch.read(cx).data() != on {
+                switch.update(cx, |switch, cx| switch.set_data(on, cx));
+            }
+        }
+        if self.borders {
+            LabScreen::new("shader-borders", self.look.clone()).crumb("xgpui-shader", "Borders").title("Borders")
+                .lede("Explore moving highlights around an ordinary interactive button.")
+                .hero(Hero::stage(ComparePane::new("Animated border", div().w_full().min_h(px(280.)).p_8().flex().items_center().justify_center().bg(rgb(palette::BORDER_STAGE)).child(self.shadow.border_button(self.phase, &self.buttons)))))
+                .caption(format!("{} · phase {:.2} · child clicks {}", if self.animated {"Animating"} else {"Paused"}, self.phase, self.shadow.clicks))
+                .control(self.switches[0].clone())
+                .panels(PanelShell::new("Motion").child(properties(&self.look, [("Period", "2.5 s"), ("Highlights", "Soft blue and orange"), ("Interaction", "Retained Luma button")])), PanelShell::new("Child interaction").child(properties(&self.look, [("Clicks", self.shadow.clicks.to_string())])))
+                .note("Click the decorated button to verify child interaction. Pausing retains the phase; reduced motion freezes automatic animation.")
+                .credits("Adapted from xgpui shader-examples/shadows.rs. The fixed light reference surface reveals the border signal in both themes. This page does not measure GPU time.")
+        } else {
+            let mut screen = LabScreen::new("shader-shadows", self.look.clone())
+                .crumb("xgpui-shader", "Shadows")
+                .title("Shadows")
+                .lede("Compare a standard shadow with a gradient shadow around the same card.")
+                .hero(Hero::full(self.shadow.render(1., &self.buttons, &self.sample_look)))
+                .caption(format!(
+                    "{} · {} · blur {:.1} px · spread {:.1} px · offset {:.1} px · card opacity {} · child clicks {}",
+                    if self.shadow.gradient { "Gradient" } else { "Solid" },
+                    if self.shadow.inset { "inset" } else { "outset" },
+                    self.shadow.blur,
+                    self.shadow.spread,
+                    self.shadow.offset,
+                    if self.shadow.card_dim { "50%" } else { "100%" },
+                    self.shadow.clicks
+                ));
+            for switch in self.switches.iter().skip(1) {
+                screen = screen.control(switch.clone());
+            }
+            screen.panels(ParametersPanel::new("Shadow parameters").params(self.numbers.iter().map(Number::param)),
+                PanelShell::new("Comparison").child(properties(&self.look, [("Shared", "Blur, spread, offset and inset"), ("Extension", "Falloff and gradient stops"), ("Interaction", "Both child buttons are Luma controls")])))
+                .note("Click either child button. Both cards receive the same geometric settings; extension falloff and gradient stops add capabilities beyond the native shadow.")
+                .credits("Adapted from xgpui shader-examples/shadows.rs. Fixed light reference surfaces and shadow colors are preserved in both themes. Analytic softness differs from CSS blur; no GPU timing is measured.")
+        }
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use xgpui_luma::controls::{button::ButtonEvent, switch::SwitchEvent, textfield::TextFieldEvent};
+    #[::core::prelude::v1::test]
+    fn shadow_numeric_controls_and_children_remain_live_in_both_views() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| ShadowPane::new(crate::theme::default_look(), cx));
+        let blur = cx.update(|_, cx| page.read(cx).numbers[0].field.clone());
+        blur.update(cx, |field, cx| {
+            field.set_value("40", cx);
+            cx.emit(TextFieldEvent::Change { value: "40".into() });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(page.read(cx).shadow.style().blur_radius, px(40.)));
+        blur.update(cx, |field, cx| {
+            field.set_value("1000", cx);
+            cx.emit(TextFieldEvent::Change { value: "1000".into() });
+        });
+        cx.update(|_, cx| assert_eq!(page.read(cx).shadow.blur, 40.));
+        for index in [0, 1] {
+            let button = cx.update(|_, cx| page.read(cx).buttons[index].clone());
+            button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        }
+        let gradient = cx.update(|_, cx| page.read(cx).switches[1].clone());
+        gradient.update(cx, |switch, cx| {
+            switch.set_data(false, cx);
+            cx.emit(SwitchEvent::Change { on: false });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert_eq!(page.shadow.clicks, 2);
+            assert_eq!(page.shadow.style().stops.len(), 1);
+        });
+        page.update(cx, |page, cx| {
+            page.borders = true;
+            page.phase = 1.25;
+            cx.notify();
+        });
+        let generate = cx.update(|_, cx| page.read(cx).buttons[2].clone());
+        generate.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("shader-borders-hero").is_some());
+        cx.update(|_, cx| {
+            assert_eq!(page.read(cx).shadow.clicks, 3);
+            assert_eq!(page.read(cx).phase, 1.25);
+        });
     }
 }
