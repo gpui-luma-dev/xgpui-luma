@@ -90,7 +90,7 @@ impl SvgPage {
         .into_iter()
         .enumerate()
         {
-            let panel = div().w_full().h(px(260.)).flex_shrink_0().overflow_hidden().bg(self.backdrop.color());
+            let panel = div().size_full().overflow_hidden().bg(self.backdrop.color());
             let panel = if mode == 1 {
                 panel.child(
                     svg_image("svg-rendering-progressive", asset.document.clone())
@@ -106,6 +106,18 @@ impl SvgPage {
             } else {
                 panel.child(self.texture_or_native(camera, mode == 2))
             };
+            let panel = radix::Card::new(&self.look)
+                .style_override(|style| {
+                    style.padding = 1.;
+                    style.radius = 0.;
+                    style.background = None;
+                })
+                .child(panel)
+                .into_element()
+                .w_full()
+                .aspect_ratio(1.)
+                .flex_shrink_0()
+                .overflow_hidden();
             panels = panels.child(
                 div()
                     .flex_1()
