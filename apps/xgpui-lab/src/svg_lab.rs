@@ -75,6 +75,21 @@ impl Parameter {
         }
     }
 }
+#[derive(Clone, Copy)]
+enum Backdrop {
+    Dark,
+    White,
+    Transparent,
+}
+impl Backdrop {
+    fn color(self) -> gpui::Hsla {
+        match self {
+            Self::Dark => gpui::rgb(palette::DARK).into(),
+            Self::White => gpui::rgb(palette::WHITE).into(),
+            Self::Transparent => gpui::rgba(0).into(),
+        }
+    }
+}
 pub struct SvgPage {
     look: Arc<Look>,
     active_tab: SharedString,
@@ -88,7 +103,7 @@ pub struct SvgPage {
     tiles: usize,
     clipped: bool,
     shadow: bool,
-    dark: bool,
+    backdrop: Backdrop,
     dash: usize,
     values: [f32; 6],
     paths: anyhow::Result<Vec<MeasuredPath>>,
@@ -125,6 +140,7 @@ impl SvgPage {
             Action::Pool,
             Action::Tiles,
             Action::Dash,
+            Action::Background,
         ]
         .into_iter()
         .map(|action| {
@@ -150,6 +166,9 @@ impl SvgPage {
     }
     fn choice_options(&self, action: Action) -> (&'static str, Vec<String>, usize) {
         match action {
+            Action::Background => {
+                ("Backdrop", crate::lab_controls::labels(&["Dark", "White", "Transparent"]), self.backdrop as usize)
+            }
             Action::ScalingBudget => (
                 "Scaling budget",
                 crate::lab_controls::labels(&["256 KiB", "1 MiB", "4 MiB", "16 MiB", "32 MiB"]),
@@ -199,6 +218,7 @@ impl SvgPage {
     }
     fn select_choice(&mut self, action: Action, index: usize, cx: &mut Context<Self>) {
         match action {
+            Action::Background => self.backdrop = [Backdrop::Dark, Backdrop::White, Backdrop::Transparent][index],
             Action::ScalingBudget => {
                 self.policy.max_output_bytes = [MIB / 4, MIB, 4 * MIB, 16 * MIB, 32 * MIB][index];
             }
@@ -246,7 +266,6 @@ impl SvgPage {
             (Action::Animate, "Animate / Pause paths"),
             (Action::Clip, "Toggle SVG clipping"),
             (Action::Shadow, "Toggle SVG shadow"),
-            (Action::Background, "Toggle backdrop"),
             (Action::Reset, "Reset view"),
             (Action::Benchmark, "Run 5 CPU samples"),
         ]
@@ -313,7 +332,7 @@ impl SvgPage {
             tiles: 24,
             clipped: false,
             shadow: true,
-            dark: true,
+            backdrop: Backdrop::Dark,
             dash: 1,
             values: [1., 0., 0., 0.68, 0., 4.],
             paths: paths::samples(),
@@ -379,7 +398,6 @@ impl SvgPage {
         page.switches = [
             (Action::Clip, "Clip artwork", false),
             (Action::Shadow, "Artwork shadow", true),
-            (Action::Background, "Dark backdrop", true),
             (Action::Animate, "Animate", false),
             (Action::Eager, "Eager loading", false),
         ]
@@ -423,7 +441,8 @@ impl SvgPage {
             | Action::Jobs
             | Action::Pool
             | Action::Tiles
-            | Action::Dash => unreachable!("selector setting"),
+            | Action::Dash
+            | Action::Background => unreachable!("selector setting"),
             Action::Zoom1 | Action::Zoom2 | Action::Zoom4 | Action::Zoom8 | Action::Zoom16 | Action::DevicePixels => {
                 let zoom = match action {
                     Action::Zoom2 => 2.,
@@ -473,7 +492,6 @@ impl SvgPage {
                 self.status = None;
                 self.rendering_status = None;
             }
-            Action::Background => self.dark = !self.dark,
             Action::Reset => {
                 if self.active_tab == "Path Effects" {
                     self.animate = false;

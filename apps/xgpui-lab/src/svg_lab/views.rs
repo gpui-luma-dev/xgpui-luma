@@ -1,5 +1,5 @@
 use super::*;
-use gpui::{prelude::*, AnyElement, Bounds, ContentMask, Corners, Render, Window, canvas, div, point, px, rgb};
+use gpui::{prelude::*, AnyElement, Bounds, ContentMask, Corners, Render, Window, canvas, div, point, px};
 use xgpui_svg::{svg_image, path_effects::PathEffect};
 
 impl Render for SvgPage {
@@ -90,11 +90,7 @@ impl SvgPage {
         .into_iter()
         .enumerate()
         {
-            let panel = div().w_full().h(px(260.)).flex_shrink_0().overflow_hidden().bg(rgb(if self.dark {
-                palette::DARK
-            } else {
-                palette::LIGHT
-            }));
+            let panel = div().w_full().h(px(260.)).flex_shrink_0().overflow_hidden().bg(self.backdrop.color());
             let panel = if mode == 1 {
                 panel.child(
                     svg_image("svg-rendering-progressive", asset.document.clone())
@@ -193,7 +189,7 @@ impl SvgPage {
                             .zoom(self.values[0])
                             .policy(self.policy)
                             .scheduler(scheduler.clone())
-                            .bg(rgb(if self.dark { palette::DARK } else { palette::LIGHT }))
+                            .bg(self.backdrop.color())
                             .on_status_change(cx.listener(|_, _: &SvgStatus, _, cx| cx.notify())),
                     );
                 } else {
@@ -265,7 +261,10 @@ impl SvgPage {
                                 .flex_col()
                                 .gap_2()
                                 .child(crate::screen::text(&self.look, crate::screen::TextRole::Label, label))
-                                .child(paths::panel(&self.look, path, effect, self.values[5], palette::PATH, 170.))
+                                .child(
+                                    paths::panel(&self.look, path, effect, self.values[5], palette::PATH, 170.)
+                                        .bg(self.backdrop.color()),
+                                )
                         }),
                     ),
                 );

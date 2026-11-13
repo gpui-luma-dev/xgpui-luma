@@ -9,7 +9,6 @@ impl SvgPage {
         match action {
             Action::Clip => self.clipped,
             Action::Shadow => self.shadow,
-            Action::Background => self.dark,
             Action::Animate => self.animate,
             Action::Eager => self.eager,
             _ => false,

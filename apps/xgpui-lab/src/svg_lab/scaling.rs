@@ -1,6 +1,6 @@
 //! Dedicated texture magnification versus zoom-aware SVG rasterization probe.
 use super::*;
-use gpui::{prelude::*, AnyElement, div, rgb};
+use gpui::{prelude::*, AnyElement, div};
 use xgpui_svg::svg_image;
 use crate::screen::{text, TextRole};
 impl SvgPage {
@@ -8,7 +8,7 @@ impl SvgPage {
         let asset = self.asset.as_ref().map_err(|e| anyhow::anyhow!("{e:#}"))?;
         self.policy.resolution(asset.logical, self.camera.zoom, self.density)?;
         let baseline = asset.fixed.size(0);
-        let backdrop = rgb(if self.dark { palette::DARK } else { palette::LIGHT });
+        let backdrop = self.backdrop.color();
         let fixed = self.viewport(0, cx).bg(backdrop).child(self.texture_or_native(self.camera, false));
         let sharp = self.viewport(1, cx).bg(backdrop).child(
             svg_image("svg-scaling-progressive", asset.document.clone())
