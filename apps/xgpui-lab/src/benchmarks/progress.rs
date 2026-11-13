@@ -6,6 +6,7 @@ pub(crate) struct Progress {
     state: Arc<Mutex<State>>,
     started: Instant,
     worker: bool,
+    slot: Option<usize>,
 }
 #[derive(Clone)]
 struct State {
@@ -13,6 +14,7 @@ struct State {
     stage: String,
     case_started: Instant,
     completed: Vec<Value>,
+    workers: std::collections::BTreeMap<usize, (String, String, Instant)>,
 }
 impl Default for Progress {
     fn default() -> Self {
@@ -22,9 +24,11 @@ impl Default for Progress {
                 stage: String::new(),
                 case_started: Instant::now(),
                 completed: vec![],
+                workers: Default::default(),
             })),
             started: Instant::now(),
             worker: false,
+            slot: None,
         }
     }
 }
@@ -39,9 +43,24 @@ impl Progress {
     pub(crate) fn worker() -> Self {
         Self { worker: true, ..Default::default() }
     }
+    pub(crate) fn fork(&self, slot: usize) -> Self {
+        Self { slot: Some(slot), ..self.clone() }
+    }
+    pub(crate) fn idle(&self) {
+        if let Some(slot) = self.slot
+            && let Ok(mut s) = self.state.lock()
+        {
+            s.workers.remove(&slot);
+        }
+    }
     pub(crate) fn case(&self, label: impl Into<String>) {
         if let Ok(mut s) = self.state.lock() {
-            s.case = label.into();
+            let label = label.into();
+            if let Some(slot) = self.slot {
+                s.workers.insert(slot, (label, "Starting".into(), Instant::now()));
+                return;
+            }
+            s.case = label;
             s.stage = "Starting".into();
             s.case_started = Instant::now();
         }
@@ -52,7 +71,13 @@ impl Progress {
             eprintln!("XGPUI_SVG_PROGRESS {label}");
         }
         if let Ok(mut s) = self.state.lock() {
-            s.stage = label;
+            if let Some(slot) = self.slot
+                && let Some(worker) = s.workers.get_mut(&slot)
+            {
+                worker.1 = label;
+            } else {
+                s.stage = label;
+            }
         }
     }
     pub(crate) fn plan(&self, rows: Vec<Value>) {
@@ -108,17 +133,27 @@ impl Progress {
     }
     pub(crate) fn snapshot(&self) -> (String, Vec<Value>) {
         match self.state.lock() {
-            Ok(s) => (
-                format!(
-                    "{} · {} · case {:.1}s · total {:.1}s · {} completed",
-                    s.case,
-                    s.stage,
-                    s.case_started.elapsed().as_secs_f64(),
-                    self.started.elapsed().as_secs_f64(),
-                    s.completed.iter().filter(|r| r["outcome"] == "completed").count()
-                ),
-                s.completed.clone(),
-            ),
+            Ok(s) => {
+                let active = if s.workers.is_empty() {
+                    format!("{} · {} · case {:.1}s", s.case, s.stage, s.case_started.elapsed().as_secs_f64())
+                } else {
+                    s.workers
+                        .iter()
+                        .map(|(index, (case, stage, started))| {
+                            format!("Worker {}: {case} · {stage} · {:.1}s", index + 1, started.elapsed().as_secs_f64())
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" | ")
+                };
+                (
+                    format!(
+                        "{active} · total {:.1}s · {} completed",
+                        self.started.elapsed().as_secs_f64(),
+                        s.completed.iter().filter(|r| r["outcome"] == "completed").count()
+                    ),
+                    s.completed.clone(),
+                )
+            }
             Err(_) => ("Progress unavailable".into(), vec![]),
         }
     }
@@ -127,6 +162,23 @@ impl Progress {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn parallel_worker_stages_do_not_overwrite_one_another() {
+        let p = Progress::default();
+        let first = p.fork(0);
+        let second = p.fork(1);
+        first.case("camera / 1×");
+        second.case("grapes / 4×");
+        first.stage("Parsing sample 2 of 5");
+        second.stage("Rasterizing sample 1 of 5");
+        let text = p.snapshot().0;
+        assert!(text.contains("Worker 1: camera / 1× · Parsing sample 2 of 5"));
+        assert!(text.contains("Worker 2: grapes / 4× · Rasterizing sample 1 of 5"));
+        first.idle();
+        let text = p.snapshot().0;
+        assert!(!text.contains("Worker 1:"));
+        assert!(text.contains("Worker 2:"));
+    }
     #[::core::prelude::v1::test]
     fn planned_rows_keep_order_through_execution_failure_and_cancellation() {
         let p = Progress::default();

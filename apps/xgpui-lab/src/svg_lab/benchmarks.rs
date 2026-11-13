@@ -242,6 +242,7 @@ pub(crate) fn memory_selected(
 pub(crate) fn memory_corpus(
     folder: Option<&Path>,
     budget: usize,
+    workers: usize,
     cancel: &AtomicBool,
     progress: &Progress,
 ) -> Result<Value> {
@@ -258,43 +259,42 @@ pub(crate) fn memory_corpus(
         };
         verify_hash(&bytes, item["sha256"].as_str().context("manifest hash")?)?;
     }
-    let mut cases = Vec::new();
-    'cases: for item in manifest {
-        let id = item["id"].as_str().context("manifest id")?;
-        for zoom in [1, 4, 8, 16] {
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                break 'cases;
-            }
-            progress.case(format!("Case {} of {total} · {id} · {zoom}×", cases.len() + 1));
-            progress.running(id, zoom as f64);
-            let mut args = vec![
-                "--svg-budget-mib".into(),
-                (budget / MIB).to_string(),
-                "--svg-case".into(),
-                folder.map_or_else(|| id.to_owned(), |f| f.join(format!("{id}.svg")).display().to_string()),
-                "--zoom".into(),
-                zoom.to_string(),
-                "--svg-report-stdout".into(),
-            ];
-            if folder.is_none() {
-                args.push("--svg-bundled".into());
-            }
-            let result = crate::benchmarks::memory::run(&args, cancel, progress);
-            let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
-            report["id"] = json!(id);
-            report["zoom"] = json!(zoom);
-            report["sha256"] = item["sha256"].clone();
-            report["source"] = item["url"].clone();
-            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                report["outcome"] = json!("cancelled");
-            }
-            progress.completed(report.clone());
-            cases.push(report);
+    let tasks: Vec<_> = manifest.into_iter().flat_map(|item| [1, 4, 8, 16].map(|zoom| (item.clone(), zoom))).collect();
+    let cases = crate::benchmarks::pool::run(&tasks, workers, cancel, |worker, index, (item, zoom)| {
+        let id = item["id"].as_str().unwrap_or("SVG");
+        let worker_progress = progress.fork(worker);
+        worker_progress.case(format!("Case {} of {total} · {id} · {zoom}×", index + 1));
+        worker_progress.running(id, *zoom as f64);
+        let mut args = vec![
+            "--svg-budget-mib".into(),
+            (budget / MIB).to_string(),
+            "--svg-case".into(),
+            folder.map_or_else(|| id.to_owned(), |f| f.join(format!("{id}.svg")).display().to_string()),
+            "--zoom".into(),
+            zoom.to_string(),
+            "--svg-report-stdout".into(),
+        ];
+        if folder.is_none() {
+            args.push("--svg-bundled".into());
         }
-    }
+        let result = crate::benchmarks::memory::run(&args, cancel, &worker_progress);
+        let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
+        report["id"] = json!(id);
+        report["zoom"] = json!(zoom);
+        report["sha256"] = item["sha256"].clone();
+        report["source"] = item["url"].clone();
+        report["execution"] = json!(if workers == 2 { "parallel" } else { "sequential" });
+        report["workers"] = json!(workers);
+        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+            report["outcome"] = json!("cancelled");
+        }
+        worker_progress.completed(report.clone());
+        worker_progress.idle();
+        report
+    })?;
     let failed = cases.iter().filter(|c| c.get("error").is_some()).count();
     Ok(
-        json!({"cases":cases,"errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
+        json!({"cases":cases,"workers":workers,"execution":if workers==2 {"parallel"}else{"sequential"},"errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
         "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and the selected output budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
     )
 }
@@ -344,7 +344,7 @@ mod tests {
     }
     #[::core::prelude::v1::test]
     fn cancelled_memory_corpus_does_not_start_workers_or_materialize_inputs() {
-        assert!(memory_corpus(None, 16 * MIB, &AtomicBool::new(true), &Progress::default()).is_err());
+        assert!(memory_corpus(None, 16 * MIB, 1, &AtomicBool::new(true), &Progress::default()).is_err());
     }
     #[::core::prelude::v1::test]
     fn cancelled_svg_does_not_parse_or_write_a_preview() {
