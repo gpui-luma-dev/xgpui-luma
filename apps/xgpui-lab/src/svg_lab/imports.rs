@@ -62,7 +62,7 @@ impl SvgPage {
         gpui::div()
             .id(format!("svg-viewport-{index}"))
             .w_full()
-            .h(px(260.))
+            .h(px(520.))
             .flex_shrink_0()
             .overflow_hidden()
             .cursor_crosshair()
