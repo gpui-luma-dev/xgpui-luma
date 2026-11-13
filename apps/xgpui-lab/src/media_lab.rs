@@ -5,6 +5,13 @@ mod views;
 mod advanced;
 mod tiled;
 mod filters_screen;
+mod image_screens;
+mod adjustment_screens;
+mod resource_screen;
+mod palette;
+mod video_screen;
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests;
 pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
@@ -80,6 +87,11 @@ impl Parameter {
             Self::Radius => "0–64 px",
             Self::Hue => "0–360°",
             Self::Opacity => "0–1",
+            Self::Zoom => "0.1–4×",
+            Self::PanX => "−300–300 px",
+            Self::PanY => "−200–200 px",
+            Self::Exposure => "−2–2 EV",
+            Self::Vignette => "0–0.8",
             _ => "0–2",
         }
     }
@@ -96,6 +108,22 @@ impl Parameter {
         text.trim().parse::<f32>().ok().filter(|value| value.is_finite() && (min..=max).contains(value))
     }
 }
+
+const ALL_FIELDS: [Parameter; 13] = [
+    Parameter::Zoom,
+    Parameter::PanX,
+    Parameter::PanY,
+    Parameter::Opacity,
+    Parameter::Radius,
+    Parameter::Brightness,
+    Parameter::Contrast,
+    Parameter::Saturation,
+    Parameter::Hue,
+    Parameter::Exposure,
+    Parameter::LinearContrast,
+    Parameter::LinearSaturation,
+    Parameter::Vignette,
+];
 
 /// Image Filters parameters with a value field, in screen order.
 const FILTER_FIELDS: [Parameter; 6] = [
@@ -145,6 +173,7 @@ pub struct MediaPage {
     sliders: Vec<(Parameter, Slider)>,
     filter_fields: Vec<(Parameter, TextField)>,
     sweep_switch: Switch,
+    state_switches: Vec<(Action, Switch)>,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
     video: Option<video_source::Demo>,
     #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -335,7 +364,7 @@ impl MediaPage {
         .to_vec();
         // Each value field is declared with its callbacks: a valid edit moves the value and its
         // slider; leaving the field rewrites it in the parameter's fixed format.
-        let filter_fields = FILTER_FIELDS
+        let filter_fields = ALL_FIELDS
             .map(|parameter| {
                 let (_, _, _, value) = parameter.config();
                 let field = radix::TextField::new(format!("media-field-{parameter:?}"))
@@ -375,6 +404,40 @@ impl MediaPage {
                 cx.notify();
             })
             .spawn(cx);
+        let state_switches = [
+            (Action::Animate, "Animate adjustments", false),
+            (Action::Wide, "Wide output", true),
+            (Action::Quality, "Full blur quality", false),
+            (Action::Pause, "Pause video", false),
+        ]
+        .map(|(action, label, checked)| {
+            let switch = radix::Switch::new(format!("media-switch-{action:?}"))
+                .look(look.as_ref())
+                .label(label)
+                .checked(checked)
+                .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                    match action {
+                        Action::Animate => {
+                            this.animate = on;
+                            this.started = Instant::now();
+                        }
+                        Action::Wide => this.wide = on,
+                        Action::Quality => this.full_quality = on,
+                        Action::Pause => {
+                            this.video_paused = on;
+                            #[cfg(any(target_os = "macos", target_os = "windows"))]
+                            if let Some(video) = &this.video {
+                                video.stream.set_playing(!on);
+                            }
+                        }
+                        _ => {}
+                    }
+                    cx.notify();
+                })
+                .spawn(cx);
+            (action, switch)
+        })
+        .to_vec();
         let benchmarks = cx.new(|cx| benchmarks::Benchmarks::new(look.clone(), cx));
         let mut page = Self {
             look,
@@ -414,6 +477,7 @@ impl MediaPage {
             sliders,
             filter_fields,
             sweep_switch,
+            state_switches,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             video: None,
             #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -693,7 +757,7 @@ impl MediaPage {
         }
     }
     fn sync_fields(&self, cx: &mut gpui::App) {
-        for parameter in FILTER_FIELDS {
+        for parameter in ALL_FIELDS {
             self.sync_field(parameter, cx);
         }
     }
