@@ -1,5 +1,6 @@
 //! Embedded Parley, Shader and SVG workloads. Isolated jobs launch only this executable.
 pub(crate) mod memory;
+pub(crate) mod progress;
 pub(crate) mod svg_table;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
@@ -266,6 +267,8 @@ pub struct Page {
     corpus: Option<PathBuf>,
     cancel: Arc<AtomicBool>,
     busy: bool,
+    svg_budget: usize,
+    svg_budget_choice: crate::lab_controls::Choice,
     status: String,
     output: Option<PathBuf>,
     results: Vec<Value>,
@@ -326,6 +329,18 @@ impl Page {
                     .spawn(cx)
             })
             .collect();
+        let svg_budget_choice = crate::lab_controls::Choice::new(
+            "svg-benchmark-budget",
+            "Raster budget",
+            &look,
+            crate::lab_controls::labels(&["4 MiB", "16 MiB", "64 MiB", "256 MiB"]),
+            0,
+            cx,
+            |this: &mut Self, index, cx| {
+                this.svg_budget = [4, 16, 64, 256][index] * xgpui_svg::MIB;
+                cx.notify();
+            },
+        );
         let svg_table = svg_table::build(&look, cx);
         Self {
             svg_table,
@@ -339,6 +354,8 @@ impl Page {
             corpus: None,
             cancel: Arc::new(AtomicBool::new(false)),
             busy: false,
+            svg_budget: 4 * xgpui_svg::MIB,
+            svg_budget_choice,
             status: if suite == Suite::Svg {
                 "Choose a workload. Results stay in memory; interactive runs write no files."
             } else {
@@ -412,7 +429,12 @@ impl Page {
                 },
             )
         };
+        self.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
+        for picker in &self.pickers {
+            picker.update(cx, |button, cx| button.set_enabled(false, cx));
+        }
         self.busy = true;
+        self.status = "Preparing benchmark…".into();
         self.results.clear();
         self.svg_table.update(cx, |table, cx| {
             let _ = table.set_items(Vec::new(), cx);
@@ -426,6 +448,45 @@ impl Page {
         let cancel = self.cancel.clone();
         let selected = self.selected.clone();
         let corpus = self.corpus.clone();
+        let budget = self.svg_budget;
+        let progress = progress::Progress::default();
+        if in_memory {
+            let progress = progress.clone();
+            let token = cancel.clone();
+            cx.spawn(async move |this, cx| {
+                let mut last_count = 0;
+                loop {
+                    cx.background_executor().timer(Duration::from_millis(200)).await;
+                    let (status, partial) = progress.snapshot();
+                    let keep_running = this
+                        .update(cx, |this, cx| {
+                            if !this.busy || !Arc::ptr_eq(&this.cancel, &token) {
+                                return false;
+                            }
+                            this.status = if token.load(Ordering::Relaxed) {
+                                format!("Cancelling · {status}")
+                            } else {
+                                status
+                            };
+                            if partial.len() != last_count {
+                                let mut rows = svg_table::rows(&this.results);
+                                rows.extend(svg_table::rows(&partial));
+                                this.svg_table.update(cx, |table, cx| {
+                                    let _ = table.set_items(rows, cx);
+                                });
+                                last_count = partial.len();
+                            }
+                            cx.notify();
+                            true
+                        })
+                        .unwrap_or(false);
+                    if !keep_running {
+                        break;
+                    }
+                }
+            })
+            .detach();
+        }
         cx.spawn(async move |this, cx| {
             for job in jobs {
                 if cancel.load(Ordering::Relaxed) {
@@ -440,10 +501,12 @@ impl Page {
                 {
                     return;
                 }
+                progress.case(job.label());
                 let directory = output.as_ref().map(|output| output.join(job.id()));
                 let token = cancel.clone();
                 let selected = selected.clone();
                 let corpus = corpus.clone();
+                let progress = progress.clone();
                 let result = cx
                     .background_spawn(async move {
                         if let Some(directory) = directory {
@@ -451,7 +514,10 @@ impl Page {
                             std::fs::create_dir_all(&directory)?;
                             record(job, result, &directory)
                         } else {
-                            Ok(decorate(job, run_svg_memory(job, selected.as_deref(), corpus.as_deref(), &token)))
+                            Ok(decorate(
+                                job,
+                                run_svg_memory(job, selected.as_deref(), corpus.as_deref(), budget, &token, &progress),
+                            ))
                         }
                     })
                     .await;
@@ -480,6 +546,10 @@ impl Page {
             }
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
+                this.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
+                for picker in &this.pickers {
+                    picker.update(cx, |button, cx| button.set_enabled(true, cx));
+                }
                 if let Some(output) = &output
                     && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
                 {
@@ -488,12 +558,13 @@ impl Page {
                 let failed = this.results.iter().filter(|result| result["outcome"] == "failed").count();
                 let unavailable = this.results.iter().filter(|result| result["outcome"] == "unavailable").count();
                 this.status = format!(
-                    "{}: {} workloads, {failed} failures, {unavailable} unavailable.",
+                    "{} in {:.1}s: {} workloads, {failed} failures, {unavailable} unavailable.",
                     if cancel.load(Ordering::Relaxed) {
                         "Cancelled"
                     } else {
                         "Finished"
                     },
+                    progress.elapsed(),
                     this.results.len()
                 );
                 for button in &this.buttons {
@@ -519,10 +590,11 @@ impl Render for Page {
         div().id("embedded-benchmarks").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(format!("{:?} benchmarks · {} build",self.suite,profile()))
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()).when(self.busy,|row|row.child(self.cancel_button.clone())))
-            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / 16 MiB budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
+            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / selected raster budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
+            .when(self.suite==Suite::Svg,|root|root.child(self.svg_budget_choice.clone()).child("Corpus: 16 cases, 5 measured repeats plus 2 warm-up rasters per case. Budget caps the output image; SVG filter intermediates can require more memory. Larger budgets can take minutes."))
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
-            .when(self.suite==Suite::Svg && !self.results.is_empty(),|root|root.child(self.svg_table.clone()))
+            .when(self.suite==Suite::Svg && (self.busy || !self.results.is_empty()),|root|root.child(self.svg_table.clone()))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
@@ -584,14 +656,21 @@ pub fn run_cli(args: &[String], suite: Suite, flag: &str) -> Result<()> {
     });
     Ok(())
 }
-fn run_svg_memory(job: Job, selected: Option<&Path>, corpus: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+fn run_svg_memory(
+    job: Job,
+    selected: Option<&Path>,
+    corpus: Option<&Path>,
+    budget: usize,
+    cancel: &AtomicBool,
+    progress: &progress::Progress,
+) -> Result<Value> {
     match job {
-        Job::SvgBuiltin => crate::svg_lab::benchmarks::memory_selected(None, cancel),
+        Job::SvgBuiltin => crate::svg_lab::benchmarks::memory_selected(None, budget, cancel, progress),
         Job::SvgSelected => match selected {
-            Some(path) => crate::svg_lab::benchmarks::memory_selected(Some(path), cancel),
+            Some(path) => crate::svg_lab::benchmarks::memory_selected(Some(path), budget, cancel, progress),
             None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
         },
-        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, cancel),
+        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, cancel, progress),
         _ => anyhow::bail!("expected SVG workload"),
     }
 }
@@ -618,6 +697,9 @@ mod tests {
         cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(!page.busy);
+            assert_eq!(page.svg_budget, 4 * xgpui_svg::MIB);
+            assert_eq!(page.results[0]["budget_bytes"], 4 * xgpui_svg::MIB);
+            assert!(page.status.starts_with("Finished in "));
             assert!(page.output.is_none());
             assert_eq!(page.results.len(), 1);
             assert_eq!(page.results[0]["outcome"], "completed");

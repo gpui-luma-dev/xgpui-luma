@@ -113,6 +113,7 @@ pub struct SvgPage {
     numbers: Vec<crate::screen::Number>,
     switches: Vec<(Action, Switch)>,
     benchmarking: bool,
+    bench_progress: crate::benchmarks::progress::Progress,
     bench_result: Option<Result<Vec<serde_json::Value>, String>>,
     bench_table: xgpui_luma::controls::table::Table<crate::benchmarks::svg_table::Row>,
     density: f32,
@@ -343,6 +344,7 @@ impl SvgPage {
             choices: Vec::new(),
             sliders,
             benchmarking: false,
+            bench_progress: Default::default(),
             bench_result: None,
             density: 1.,
             camera: Default::default(),
@@ -523,6 +525,41 @@ impl SvgPage {
             Err(_) => return,
         };
         self.benchmarking = true;
+        self.bench_result = None;
+        self.bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(Vec::new(), cx);
+        });
+        self.bench_progress = Default::default();
+        let progress = self.bench_progress.clone();
+        progress.case("Artwork / five CPU samples");
+        let ticker = progress.clone();
+        cx.spawn(async move |this, cx| {
+            let mut last_count = 0;
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_millis(200)).await;
+                let (_, partial) = ticker.snapshot();
+                let keep = this
+                    .update(cx, |this, cx| {
+                        if !this.benchmarking || !this.bench_progress.same(&ticker) {
+                            return false;
+                        }
+                        if partial.len() != last_count {
+                            let rows = crate::benchmarks::svg_table::rows(&partial);
+                            this.bench_table.update(cx, |t, cx| {
+                                let _ = t.set_items(rows, cx);
+                            });
+                            last_count = partial.len();
+                        }
+                        cx.notify();
+                        true
+                    })
+                    .unwrap_or(false);
+                if !keep {
+                    break;
+                }
+            }
+        })
+        .detach();
         let policy = self.policy;
         let logical = self.camera.scene_size;
         let zoom = self.values[0];
@@ -533,13 +570,17 @@ impl SvgPage {
                     let mut rows = Vec::new();
                     let resolution = policy.resolution(logical, zoom, density)?;
                     for index in 0..5 {
+                        progress.stage(format!("Parsing sample {} of 5",index+1));
                         let start = Instant::now();
                         let document = SvgDocument::parse(&renderer, &source)?;
                         let parse = start.elapsed().as_secs_f64() * 1000.;
+                        progress.stage(format!("Rasterizing sample {} of 5 · {}×{} px",index+1,i32::from(resolution.output.width),i32::from(resolution.output.height)));
                         let raster = document.rasterize(&renderer, resolution.output, policy.max_output_bytes)?;
-                        rows.push(serde_json::json!({"id":format!("Sample {}",index+1),"zoom":zoom,
+                        let report=serde_json::json!({"id":format!("Sample {}",index+1),"zoom":zoom,
                             "parse_ms":parse,"raster_ms":raster.ms,
-                            "pixel_width":i32::from(resolution.output.width),"pixel_height":i32::from(resolution.output.height)}));
+                            "pixel_width":i32::from(resolution.output.width),"pixel_height":i32::from(resolution.output.height)});
+                        progress.completed(report.clone());
+                        rows.push(report);
                     }
                     Ok::<_, anyhow::Error>(rows)
                 })

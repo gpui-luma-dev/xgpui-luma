@@ -10,6 +10,7 @@ use std::{
     time::Instant,
 };
 use xgpui_svg::{SvgDocument, RasterPolicy, MIB};
+use crate::benchmarks::progress::Progress;
 
 pub const MANIFEST: &str = include_str!("corpus.json");
 fn stats(samples: &[f64]) -> Value {
@@ -42,13 +43,23 @@ fn save(image: &RenderImage, output: &Path) -> Result<()> {
     Ok(())
 }
 pub fn measure(bytes: &[u8], zoom: f32, budget: usize, output: &Path, cancel: &AtomicBool) -> Result<Value> {
-    measure_report(bytes, zoom, budget, Some(output), cancel)
+    measure_report(bytes, zoom, budget, Some(output), cancel, None)
 }
-fn measure_report(bytes: &[u8], zoom: f32, budget: usize, output: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+fn measure_report(
+    bytes: &[u8],
+    zoom: f32,
+    budget: usize,
+    output: Option<&Path>,
+    cancel: &AtomicBool,
+    progress: Option<&Progress>,
+) -> Result<Value> {
     ensure!(zoom.is_finite() && (0.25..=16.).contains(&zoom), "zoom must be 0.25..=16");
     crate::benchmarks::check_cancel(cancel)?;
     let rss_before = rss();
     let renderer = SvgRenderer::new(Arc::new(()));
+    if let Some(p) = progress {
+        p.stage("Parsing artwork / first use");
+    }
     let start = Instant::now();
     let document = SvgDocument::parse(&renderer, bytes)?;
     let first_parse = start.elapsed().as_secs_f64() * 1000.;
@@ -56,21 +67,47 @@ fn measure_report(bytes: &[u8], zoom: f32, budget: usize, output: Option<&Path>,
     let policy = RasterPolicy { max_output_bytes: budget, ..Default::default() };
     let resolution = policy.resolution(logical, zoom, 2.)?;
     let base_size = policy.resolution(logical, 1., 1.)?.output;
+    if let Some(p) = progress {
+        p.stage("Rasterizing baseline / warm-up 1 of 2");
+    }
     let base = document.rasterize(&renderer, base_size, budget)?;
+    if let Some(p) = progress {
+        p.stage(format!(
+            "Rasterizing {}×{} px / warm-up 2 of 2 · {:.1} MiB{}",
+            i32::from(resolution.output.width),
+            i32::from(resolution.output.height),
+            xgpui_svg::image_bytes(resolution.output) as f64 / MIB as f64,
+            if resolution.limited() { " · capped" } else { "" }
+        ));
+    }
     let mut previous = document.rasterize(&renderer, resolution.output, budget)?;
     let first_raster = previous.ms;
     let mut parse = Vec::new();
     let mut raster = Vec::new();
     let mut sampled_rss_peak = rss_before;
-    for _ in 0..5 {
+    for sample in 0..5 {
         crate::benchmarks::check_cancel(cancel)?;
+        if let Some(p) = progress {
+            p.stage(format!("Parsing sample {} of 5", sample + 1));
+        }
         let start = Instant::now();
         let fresh = SvgDocument::parse(&renderer, bytes)?;
         parse.push(start.elapsed().as_secs_f64() * 1000.);
+        if let Some(p) = progress {
+            p.stage(format!(
+                "Rasterizing sample {} of 5 · {}×{} px",
+                sample + 1,
+                i32::from(resolution.output.width),
+                i32::from(resolution.output.height)
+            ));
+        }
         let next = fresh.rasterize(&renderer, resolution.output, budget)?;
         raster.push(next.ms);
         sampled_rss_peak = sampled_rss_peak.into_iter().chain(rss()).max();
         previous = next;
+    }
+    if let Some(p) = progress {
+        p.stage("Finishing pixel coverage / report");
     }
     let pixels = previous.image.as_bytes(0).context("missing SVG pixels")?;
     let visible = pixels.as_chunks::<4>().0.iter().filter(|pixel| pixel[3] != 0).count();
@@ -158,16 +195,28 @@ pub fn corpus(folder: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value
     )
 }
 /// File-free interactive reports; corpus cases retain process isolation.
-pub(crate) fn memory_selected(path: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+pub(crate) fn memory_selected(
+    path: Option<&Path>,
+    budget: usize,
+    cancel: &AtomicBool,
+    progress: &Progress,
+) -> Result<Value> {
     crate::benchmarks::check_cancel(cancel)?;
     let bytes = match path {
         Some(path) => read(path)?,
         None => super::scene::svg(false, true).into_bytes(),
     };
-    measure_report(&bytes, 4., 16 * MIB, None, cancel)
+    measure_report(&bytes, 4., budget, None, cancel, Some(progress))
 }
-pub(crate) fn memory_corpus(folder: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+pub(crate) fn memory_corpus(
+    folder: Option<&Path>,
+    budget: usize,
+    cancel: &AtomicBool,
+    progress: &Progress,
+) -> Result<Value> {
     let manifest: Vec<Value> = serde_json::from_str(MANIFEST)?;
+    progress.stage("Validating corpus hashes");
+    let total = manifest.len() * 4;
     for item in &manifest {
         crate::benchmarks::check_cancel(cancel)?;
         let id = item["id"].as_str().context("manifest id")?;
@@ -185,7 +234,10 @@ pub(crate) fn memory_corpus(folder: Option<&Path>, cancel: &AtomicBool) -> Resul
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 break 'cases;
             }
+            progress.case(format!("Case {} of {total} · {id} · {zoom}×", cases.len() + 1));
             let mut args = vec![
+                "--svg-budget-mib".into(),
+                (budget / MIB).to_string(),
                 "--svg-case".into(),
                 folder.map_or_else(|| id.to_owned(), |f| f.join(format!("{id}.svg")).display().to_string()),
                 "--zoom".into(),
@@ -195,19 +247,20 @@ pub(crate) fn memory_corpus(folder: Option<&Path>, cancel: &AtomicBool) -> Resul
             if folder.is_none() {
                 args.push("--svg-bundled".into());
             }
-            let result = crate::benchmarks::memory::run(&args, cancel);
+            let result = crate::benchmarks::memory::run(&args, cancel, progress);
             let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
             report["id"] = json!(id);
             report["zoom"] = json!(zoom);
             report["sha256"] = item["sha256"].clone();
             report["source"] = item["url"].clone();
+            progress.completed(report.clone());
             cases.push(report);
         }
     }
     let failed = cases.iter().filter(|c| c.get("error").is_some()).count();
     Ok(
         json!({"cases":cases,"errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
-        "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and 256 MiB budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
+        "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and the selected output budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
     )
 }
 pub fn run_case_cli(args: &[String]) -> Result<()> {
@@ -219,7 +272,10 @@ pub fn run_case_cli(args: &[String]) -> Result<()> {
         read(Path::new(source))?
     };
     if args.iter().any(|a| a == "--svg-report-stdout") {
-        let report = measure_report(&bytes, zoom, 256 * MIB, None, &AtomicBool::new(false))?;
+        let budget: usize = crate::benchmarks::argument(args, "--svg-budget-mib").unwrap_or("256").parse()?;
+        ensure!((1..=256).contains(&budget), "SVG budget must be 1..=256 MiB");
+        let report =
+            measure_report(&bytes, zoom, budget * MIB, None, &AtomicBool::new(false), Some(&Progress::worker()))?;
         use std::io::Write;
         serde_json::to_writer(std::io::stdout().lock(), &report)?;
         std::io::stdout().flush()?;
@@ -253,7 +309,7 @@ mod tests {
     }
     #[::core::prelude::v1::test]
     fn cancelled_memory_corpus_does_not_start_workers_or_materialize_inputs() {
-        assert!(memory_corpus(None, &AtomicBool::new(true)).is_err());
+        assert!(memory_corpus(None, 16 * MIB, &AtomicBool::new(true), &Progress::default()).is_err());
     }
     #[::core::prelude::v1::test]
     fn cancelled_svg_does_not_parse_or_write_a_preview() {
