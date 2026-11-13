@@ -6,6 +6,8 @@ mod raster;
 pub(crate) mod native;
 mod workload;
 mod line;
+mod screens;
+mod palette;
 pub(crate) mod text_field;
 
 use std::{rc::Rc, sync::Arc};
@@ -72,6 +74,7 @@ pub struct ParleyPage {
     scroll_report: Option<Result<String>>,
     buttons: Vec<Entity<Button>>,
     sliders: Vec<Slider>,
+    numbers: Vec<crate::screen::Number>,
     font_size: f32,
     raster_scale: f32,
     rows: Option<Result<Vec<Row>>>,
@@ -96,13 +99,19 @@ impl ParleyPage {
         let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, true, cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
-                "Shell native backend".into(),
+                if cx.has_global::<ParleyTextSystemActive>() {
+                    "Shell Parley backend"
+                } else {
+                    "Shell native backend"
+                }
+                .into(),
                 workload::corpus(5000),
                 samples::samples().unwrap().remove(2).font,
                 0,
                 false,
             );
             page.init_controls(look.clone(), cx);
+            page.embedded = true;
             page
         });
         let buttons = [
@@ -178,7 +187,8 @@ impl ParleyPage {
                 .spawn(cx)
             })
             .collect();
-        Self {
+        let mut page = Self {
+            numbers: Vec::new(),
             active_tab: "Text Shaping".into(),
             look,
             engine,
@@ -196,10 +206,39 @@ impl ParleyPage {
             rows: None,
             report: None,
             measuring: false,
-        }
+        };
+        page.numbers = page
+            .sliders
+            .iter()
+            .enumerate()
+            .map(|(i, slider)| {
+                crate::screen::Number::attach(
+                    &format!("parley-{i}"),
+                    if i == 0 { "Font size (px)" } else { "Raster scale" },
+                    if i == 0 { (12., 64., 1.) } else { (1., 4., 0.25) },
+                    if i == 0 { 28. } else { 2. },
+                    slider.clone(),
+                    &page.look,
+                    cx,
+                    move |this: &mut Self, value, _| {
+                        if i == 0 {
+                            this.font_size = value;
+                        } else {
+                            this.raster_scale = value;
+                        }
+                        this.rows = None;
+                        value
+                    },
+                )
+            })
+            .collect();
+        page
     }
     pub fn suspend(&mut self, cx: &mut Context<Self>) {
-        self.scroll.update(cx, |scroll, _| scroll.suspend());
+        self.scroll.update(cx, |scroll, cx| {
+            scroll.suspend();
+            cx.notify();
+        });
     }
     pub fn activate(&mut self, tab: SharedString, cx: &mut Context<Self>) {
         self.suspend(cx);
@@ -329,23 +368,24 @@ impl Drop for ParleyPage {
 impl Render for ParleyPage {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         if self.active_tab == "Scrolling" {
-            return div()
-                .size_full()
-                .flex()
-                .flex_col()
-                .gap_3()
-                .child(div().flex().gap_3().children(self.buttons.iter().skip(2).cloned()))
-                .children(self.scroll_report.as_ref().map(|report| {
-                    div().child(match report {
-                        Ok(text) => text.clone(),
-                        Err(error) => format!("Scroll CPU diagnostic: {error:#}"),
-                    })
-                }))
-                .child(div().flex_1().min_h_0().child(self.scroll.clone()))
-                .into_any_element();
+            let report = self.scroll_report.as_ref().map(|report| match report {
+                Ok(text) => text.clone(),
+                Err(error) => format!("Scroll CPU diagnostic: {error:#}"),
+            });
+            self.scroll.update(_cx, |scroll, cx| {
+                if scroll.lab_actions.len() != 3 || scroll.lab_report != report {
+                    scroll.lab_actions = self.buttons.iter().skip(2).cloned().collect();
+                    scroll.lab_report = report;
+                    cx.notify();
+                }
+            });
+            return div().size_full().child(self.scroll.clone()).into_any_element();
         }
         if self.active_tab == "Line Layout" {
-            return div().size_full().children(self.line.clone()).into_any_element();
+            return match &self.line {
+                Some(page) => div().size_full().child(page.clone()).into_any_element(),
+                None => self.backend_error("parley-line", "Line Layout").into_any_element(),
+            };
         }
         if self.active_tab == "Text Field" {
             return div().size_full().child(self.text_field.clone()).into_any_element();
@@ -353,111 +393,14 @@ impl Render for ParleyPage {
         if self.active_tab == "Paragraphs" {
             return match &self.paragraph {
                 Some(page) => div().size_full().child(page.clone()).into_any_element(),
-                None => div()
-                    .p_4()
-                    .child(format!("Parley initialization failed: {:?}", self.engine.as_ref().err()))
-                    .into_any_element(),
+                None => self.backend_error("parley-paragraph", "Paragraphs").into_any_element(),
             };
         }
         self.children.retain_mut(|child| child.try_wait().ok().flatten().is_none());
         if self.rows.is_none() {
             self.rows = Some(self.make_rows());
         }
-        let mut root = div()
-            .id("parley-lab-scroll")
-            .size_full()
-            .overflow_y_scroll()
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .text_color(self.look.chrome().body_text)
-            .child(div().flex().flex_wrap().gap_3().children(self.buttons.iter().take(4).cloned()))
-            .children(
-                self.child_error.as_ref().map(|error| div().child(format!("Native atlas window failed: {error}"))),
-            )
-            .child(
-                div().flex().gap_4().children(
-                    self.sliders
-                        .iter()
-                        .enumerate()
-                        .filter(|(index, _)| *index == 0 || self.active_tab == "Rasterization")
-                        .map(|(index, slider)| {
-                            div()
-                                .w(px(230.))
-                                .flex()
-                                .flex_col()
-                                .gap_2()
-                                .child(if index == 0 {
-                                    format!("Font size: {:.0}px", self.font_size)
-                                } else {
-                                    format!("Raster scale: {:.2}×", self.raster_scale)
-                                })
-                                .child(slider.clone())
-                        }),
-                ),
-            )
-            .child("Parley shaping and outline rasterization · isolated backend · text-lab font fixtures")
-            .when(self.measuring, |root| root.child("Running CPU diagnostics…"));
-        match self.rows.as_ref().unwrap() {
-            Err(error) => root = root.child(format!("Text lab unavailable: {error:#}")),
-            Ok(rows) => {
-                for (index, row) in rows.iter().enumerate() {
-                    if self.active_tab == "Fonts & Fallback" && index < 2 {
-                        continue;
-                    }
-                    let mut panel = div().flex_shrink_0().flex().flex_col().gap_2().child(row.label.clone());
-                    if self.active_tab == "Text Shaping" {
-                        panel = panel
-                            .child(format!("Source: {}", row.text))
-                            .child(format!("Width {:.2}px · {} resolved faces", row.width - 4., row.faces))
-                            .child(row.details.clone());
-                    } else if self.active_tab == "Fonts & Fallback" {
-                        panel = panel
-                            .child(format!(
-                                "Requested {} · weight {} · fallback {:?}",
-                                row.font.family, row.font.weight.0, row.font.fallbacks
-                            ))
-                            .child(format!("Resolved {} face(s) · {}", row.faces, row.details))
-                            .child(
-                                div()
-                                    .bg(rgb(0xffffff))
-                                    .p_3()
-                                    .child(img(row.image.clone()).w(px(row.width)).h(px(row.height))),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(self.font_size))
-                                    .font(row.font.clone())
-                                    .child(format!("Native reference: {}", row.text)),
-                            );
-                    } else {
-                        let pixels = row.image.size(0);
-                        let coverage = row
-                            .image
-                            .as_bytes(0)
-                            .unwrap()
-                            .as_chunks::<4>()
-                            .0
-                            .iter()
-                            .filter(|pixel| pixel[3] > 0)
-                            .count();
-                        panel=panel.child(div().bg(rgb(0xffffff)).p_3().child(img(row.image.clone()).w(px(row.width)).h(px(row.height))))
-                            .child(format!("CPU mask composite {}×{} device px · {} covered pixels · {} bytes",i32::from(pixels.width),i32::from(pixels.height),coverage,row.image.as_bytes(0).unwrap().len()))
-                            .child("CPU mask inspection. Open the Parley atlas window above to exercise the real GPUI glyph atlas, native paragraph paint and selection.");
-                    }
-                    if let Some(Ok(report)) = &self.report {
-                        let t = &report[index];
-                        panel=panel.child(format!("28px diagnostic · layout first/warm {:.1}/{:.2} µs · CPU raster first/warm {:.1}/{:.1} µs · width {:.2}px · {} faces · {} unique glyphs",t.layout_first,t.layout_warm,t.raster_first,t.raster_warm,t.width,t.faces,t.glyphs));
-                    }
-                    root = root.child(panel);
-                }
-            }
-        }
-        if let Some(Err(error)) = &self.report {
-            root = root.child(format!("Diagnostic failed: {error:#}"));
-        }
-        root.child("CPU diagnostics: 20 warm iterations, median; exact GPUI layout cache hits and direct glyph rebuilds. Excludes frame/GPU timing. Native rows use the shell's existing backend.").into_any_element()
+        self.row_screen(_cx).into_any_element()
     }
 }
 
@@ -501,3 +444,6 @@ mod tests {
         });
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests;

@@ -5,12 +5,14 @@ mod views;
 mod camera;
 mod imports;
 mod scaling;
+mod screens;
+mod palette;
 pub(crate) mod benchmarks;
 
 use std::{sync::Arc, time::Instant};
 use gpui::{AppContext, Context, Entity, RenderImage, SharedString, size};
 use xgpui_luma::{
-    controls::{button::Button, slider::Slider},
+    controls::{button::Button, slider::Slider, switch::Switch},
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
@@ -73,6 +75,21 @@ impl Parameter {
         }
     }
 }
+#[derive(Clone, Copy)]
+enum Backdrop {
+    Dark,
+    White,
+    Transparent,
+}
+impl Backdrop {
+    fn color(self) -> gpui::Hsla {
+        match self {
+            Self::Dark => gpui::rgb(palette::DARK).into(),
+            Self::White => gpui::rgb(palette::WHITE).into(),
+            Self::Transparent => gpui::rgba(0).into(),
+        }
+    }
+}
 pub struct SvgPage {
     look: Arc<Look>,
     active_tab: SharedString,
@@ -86,15 +103,20 @@ pub struct SvgPage {
     tiles: usize,
     clipped: bool,
     shadow: bool,
-    dark: bool,
+    backdrop: Backdrop,
     dash: usize,
     values: [f32; 6],
     paths: anyhow::Result<Vec<MeasuredPath>>,
     buttons: Vec<(Action, Entity<Button>)>,
     choices: Vec<(Action, crate::lab_controls::Choice)>,
     sliders: Vec<(Parameter, Slider)>,
+    numbers: Vec<crate::screen::Number>,
+    switches: Vec<(Action, Switch)>,
     benchmarking: bool,
-    bench_result: Option<Result<Vec<String>, String>>,
+    bench_progress: crate::benchmarks::progress::Progress,
+    bench_result: Option<Result<Vec<serde_json::Value>, String>>,
+    bench_table: xgpui_luma::controls::table::Table<crate::benchmarks::svg_table::Row>,
+    bench_thumbnail: Option<Arc<RenderImage>>,
     density: f32,
     camera: camera::Camera,
     panel_bounds: [gpui::Bounds<gpui::Pixels>; 3],
@@ -121,6 +143,7 @@ impl SvgPage {
             Action::Pool,
             Action::Tiles,
             Action::Dash,
+            Action::Background,
         ]
         .into_iter()
         .map(|action| {
@@ -146,6 +169,9 @@ impl SvgPage {
     }
     fn choice_options(&self, action: Action) -> (&'static str, Vec<String>, usize) {
         match action {
+            Action::Background => {
+                ("Backdrop", crate::lab_controls::labels(&["Dark", "White", "Transparent"]), self.backdrop as usize)
+            }
             Action::ScalingBudget => (
                 "Scaling budget",
                 crate::lab_controls::labels(&["256 KiB", "1 MiB", "4 MiB", "16 MiB", "32 MiB"]),
@@ -195,6 +221,7 @@ impl SvgPage {
     }
     fn select_choice(&mut self, action: Action, index: usize, cx: &mut Context<Self>) {
         match action {
+            Action::Background => self.backdrop = [Backdrop::Dark, Backdrop::White, Backdrop::Transparent][index],
             Action::ScalingBudget => {
                 self.policy.max_output_bytes = [MIB / 4, MIB, 4 * MIB, 16 * MIB, 32 * MIB][index];
             }
@@ -242,7 +269,6 @@ impl SvgPage {
             (Action::Animate, "Animate / Pause paths"),
             (Action::Clip, "Toggle SVG clipping"),
             (Action::Shadow, "Toggle SVG shadow"),
-            (Action::Background, "Toggle backdrop"),
             (Action::Reset, "Reset view"),
             (Action::Benchmark, "Run 5 CPU samples"),
         ]
@@ -294,10 +320,26 @@ impl SvgPage {
             )
         })
         .to_vec();
+        let asset = Self::build(false, true, cx);
+        let bench_thumbnail = asset.as_ref().ok().map(|asset| asset.fixed.clone());
+        let bench_table = crate::benchmarks::svg_table::build(&look, cx);
+        bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(
+                crate::benchmarks::svg_table::with_image(
+                    crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(1.)),
+                    bench_thumbnail.clone(),
+                ),
+                cx,
+            );
+        });
         let mut page = Self {
-            look,
+            bench_table,
+            bench_thumbnail,
+            look: look.clone(),
+            numbers: Vec::new(),
+            switches: Vec::new(),
             active_tab: "Rendering".into(),
-            asset: Self::build(false, true, cx),
+            asset,
             status: None,
             rendering_status: None,
             policy: Default::default(),
@@ -307,7 +349,7 @@ impl SvgPage {
             tiles: 24,
             clipped: false,
             shadow: true,
-            dark: true,
+            backdrop: Backdrop::Dark,
             dash: 1,
             values: [1., 0., 0., 0.68, 0., 4.],
             paths: paths::samples(),
@@ -315,6 +357,7 @@ impl SvgPage {
             choices: Vec::new(),
             sliders,
             benchmarking: false,
+            bench_progress: Default::default(),
             bench_result: None,
             density: 1.,
             camera: Default::default(),
@@ -331,6 +374,66 @@ impl SvgPage {
             gallery_columns: 3,
             eager: false,
         };
+        page.numbers = page
+            .sliders
+            .iter()
+            .map(|(parameter, slider)| {
+                let parameter = *parameter;
+                let (label, min, max, value) = parameter.config();
+                crate::screen::Number::attach(
+                    &format!("svg-number-{parameter:?}"),
+                    label,
+                    (
+                        min,
+                        max,
+                        if matches!(parameter, Parameter::Zoom | Parameter::Trim) {
+                            0.01
+                        } else {
+                            1.
+                        },
+                    ),
+                    value,
+                    slider.clone(),
+                    &look,
+                    cx,
+                    move |this: &mut Self, value, cx| {
+                        if parameter == Parameter::Zoom {
+                            this.camera.zoom_at(gpui::point(gpui::px(0.), gpui::px(0.)), value / this.camera.zoom);
+                            this.copy_camera(cx);
+                        } else {
+                            this.values[parameter as usize] = value;
+                            if matches!(parameter, Parameter::PanX | Parameter::PanY) {
+                                this.camera.pan = gpui::point(gpui::px(this.values[1]), gpui::px(this.values[2]));
+                            } else {
+                                this.animate = false;
+                            }
+                        }
+                        this.values[parameter as usize]
+                    },
+                )
+            })
+            .collect();
+        page.switches = [
+            (Action::Clip, "Clip artwork", false),
+            (Action::Shadow, "Artwork shadow", true),
+            (Action::Animate, "Animate", false),
+            (Action::Eager, "Eager loading", false),
+        ]
+        .into_iter()
+        .map(|(action, label, on)| {
+            let switch = radix::Switch::new(format!("svg-switch-{action:?}"))
+                .look(&look)
+                .label(label)
+                .checked(on)
+                .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                    if this.switch_value(action) != on {
+                        this.action(action, cx);
+                    }
+                })
+                .spawn(cx);
+            (action, switch)
+        })
+        .collect();
         page.init_choices(cx);
         page
     }
@@ -356,7 +459,8 @@ impl SvgPage {
             | Action::Jobs
             | Action::Pool
             | Action::Tiles
-            | Action::Dash => unreachable!("selector setting"),
+            | Action::Dash
+            | Action::Background => unreachable!("selector setting"),
             Action::Zoom1 | Action::Zoom2 | Action::Zoom4 | Action::Zoom8 | Action::Zoom16 | Action::DevicePixels => {
                 let zoom = match action {
                     Action::Zoom2 => 2.,
@@ -406,7 +510,6 @@ impl SvgPage {
                 self.status = None;
                 self.rendering_status = None;
             }
-            Action::Background => self.dark = !self.dark,
             Action::Reset => {
                 if self.active_tab == "Path Effects" {
                     self.animate = false;
@@ -425,6 +528,28 @@ impl SvgPage {
         }
         cx.notify();
     }
+    fn sync_bench_thumbnail(&mut self, cx: &mut Context<Self>) {
+        if self.benchmarking || self.bench_result.is_some() {
+            return;
+        }
+        let image = self.asset.as_ref().ok().map(|asset| asset.fixed.clone());
+        let same = match (&image, &self.bench_thumbnail) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        if same {
+            return;
+        }
+        self.bench_thumbnail = image.clone();
+        let rows = crate::benchmarks::svg_table::with_image(
+            crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(self.values[0])),
+            image,
+        );
+        self.bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(rows, cx);
+        });
+    }
     fn benchmark(&mut self, cx: &mut Context<Self>) {
         if self.benchmarking {
             return;
@@ -435,6 +560,53 @@ impl SvgPage {
             Err(_) => return,
         };
         self.benchmarking = true;
+        self.bench_result = None;
+        self.bench_thumbnail = self.asset.as_ref().ok().map(|asset| asset.fixed.clone());
+        self.bench_progress = Default::default();
+        let progress = self.bench_progress.clone();
+        let plan = crate::benchmarks::svg_table::samples(self.values[0]);
+        self.bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(
+                crate::benchmarks::svg_table::with_image(
+                    crate::benchmarks::svg_table::rows(&plan),
+                    self.bench_thumbnail.clone(),
+                ),
+                cx,
+            );
+        });
+        progress.plan(plan);
+        progress.case("Artwork / five CPU samples");
+        let ticker = progress.clone();
+        cx.spawn(async move |this, cx| {
+            let mut last_rows = Vec::new();
+            loop {
+                cx.background_executor().timer(std::time::Duration::from_millis(200)).await;
+                let (_, partial) = ticker.snapshot();
+                let keep = this
+                    .update(cx, |this, cx| {
+                        if !this.benchmarking || !this.bench_progress.same(&ticker) {
+                            return false;
+                        }
+                        if partial != last_rows {
+                            let rows = crate::benchmarks::svg_table::with_image(
+                                crate::benchmarks::svg_table::rows(&partial),
+                                this.bench_thumbnail.clone(),
+                            );
+                            this.bench_table.update(cx, |t, cx| {
+                                let _ = t.set_items(rows, cx);
+                            });
+                            last_rows = partial.clone();
+                        }
+                        cx.notify();
+                        true
+                    })
+                    .unwrap_or(false);
+                if !keep {
+                    break;
+                }
+            }
+        })
+        .detach();
         let policy = self.policy;
         let logical = self.camera.scene_size;
         let zoom = self.values[0];
@@ -445,24 +617,27 @@ impl SvgPage {
                     let mut rows = Vec::new();
                     let resolution = policy.resolution(logical, zoom, density)?;
                     for index in 0..5 {
+                        progress.running(&format!("Sample {}",index+1),zoom as f64);
+                        progress.stage(format!("Parsing sample {} of 5",index+1));
                         let start = Instant::now();
                         let document = SvgDocument::parse(&renderer, &source)?;
                         let parse = start.elapsed().as_secs_f64() * 1000.;
+                        progress.stage(format!("Rasterizing sample {} of 5 · {}×{} px",index+1,i32::from(resolution.output.width),i32::from(resolution.output.height)));
                         let raster = document.rasterize(&renderer, resolution.output, policy.max_output_bytes)?;
-                        rows.push(format!(
-                            "Sample {} · Parse {:.3} ms · Raster {:.3} ms · {}×{} output",
-                            index + 1,
-                            parse,
-                            raster.ms,
-                            i32::from(resolution.output.width),
-                            i32::from(resolution.output.height)
-                        ));
+                        let report=serde_json::json!({"id":format!("Sample {}",index+1),"zoom":zoom,
+                            "parse_ms":parse,"raster_ms":raster.ms,
+                            "pixel_width":i32::from(resolution.output.width),"pixel_height":i32::from(resolution.output.height)});
+                        progress.completed(report.clone());
+                        rows.push(report);
                     }
                     Ok::<_, anyhow::Error>(rows)
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.benchmarking = false;
+                this.bench_progress.settle(None,false);
+                let rows=crate::benchmarks::svg_table::with_image(crate::benchmarks::svg_table::rows(&this.bench_progress.snapshot().1),this.bench_thumbnail.clone());
+                this.bench_table.update(cx,|table,cx|{let _=table.set_items(rows,cx);});
                 this.bench_result = Some(result.map_err(|error| error.to_string()));
                 cx.notify();
             });
@@ -596,3 +771,6 @@ mod tests {
         cx.run_until_parked();
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod screen_tests;

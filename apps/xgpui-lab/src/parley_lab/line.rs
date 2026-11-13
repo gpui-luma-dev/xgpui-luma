@@ -1,11 +1,14 @@
 //! Read-only line-breaking and hit-test probe, separate from the paragraph editor.
 use super::*;
+use crate::screen::{Hero, LabScreen, PanelShell, ParametersPanel, Number, properties, labeled_control};
 struct Snapshot {
     key: (usize, u32, u32, u32),
     layout: Arc<dyn PlatformParagraphLayout>,
     image: Arc<RenderImage>,
 }
 pub(super) struct LinePage {
+    look: Arc<Look>,
+    numbers: Vec<Number>,
     engine: Rc<Engine>,
     sample: usize,
     width: f32,
@@ -70,7 +73,9 @@ impl LinePage {
                     .spawn(cx)
             })
             .collect();
-        Self {
+        let mut page = Self {
+            look,
+            numbers: Vec::new(),
             engine,
             sample: 0,
             width: 320.,
@@ -81,7 +86,33 @@ impl LinePage {
             snapshot: None,
             bounds: Default::default(),
             hit: None,
-        }
+        };
+        page.numbers = page
+            .sliders
+            .iter()
+            .enumerate()
+            .map(|(i, slider)| {
+                Number::attach(
+                    &format!("line-{i}"),
+                    if i == 0 { "Wrap width (px)" } else { "Font size (px)" },
+                    if i == 0 { (120., 720., 1.) } else { (12., 48., 1.) },
+                    if i == 0 { 320. } else { 24. },
+                    slider.clone(),
+                    &page.look,
+                    cx,
+                    move |this: &mut Self, value, _| {
+                        if i == 0 {
+                            this.width = value;
+                        } else {
+                            this.size = value;
+                        }
+                        this.hit = None;
+                        value
+                    },
+                )
+            })
+            .collect();
+        page
     }
     fn prepare(&mut self, scale: f32) -> Result<()> {
         let key = (self.sample, self.width.to_bits(), self.size.to_bits(), scale.to_bits());
@@ -115,23 +146,105 @@ impl Render for LinePage {
             }
         }
         let height = layout.size().height;
-        let mut root=div().id("line-layout-probe").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4()
-            .child("Line layout · wrapping, hard breaks, BiDi geometry and hit testing")
-            .child(div().flex().gap_3().children(self.buttons.clone()).child(self.sample_choice.clone()))
-            .child(div().flex().gap_4().children(self.sliders.iter().enumerate().map(|(id,slider)|div().w(px(240.)).flex().flex_col().gap_2().child(if id==0 {format!("Wrap width {:.0}px",self.width)}else{format!("Font size {:.0}px",self.size)}).child(slider.clone()))))
-            .child(paragraph::TEXTS[self.sample].0)
-            .child(format!("{} visual baseline rows · {:.1}px height · {} resolved runs",rows.len(),f32::from(height),layout.runs().len()))
-            .child("Move the pointer over the read-only surface to inspect a cluster boundary. Resizing reflows the retained source; editing and IME live in Paragraphs.")
-            .child(div().id("line-hit-surface").w(px(self.width)).h(height).flex_shrink_0().bg(rgb(0xffffff))
-                .on_mouse_move(cx.listener(|this,event:&MouseMoveEvent,_,cx|{this.hit=this.snapshot.as_ref().and_then(|snapshot|snapshot.layout.hit_test(event.position-this.bounds.origin).ok());cx.notify();}))
-                .child(canvas(move |bounds,_,cx|{owner.update(cx,|this,_|this.bounds=bounds);},move |bounds,_,window,_| {
-                    let _=window.paint_image(bounds,bounds,Corners::default(),image.clone(),0,false);
-                    if let Some(hit)=hit && let Ok(caret)=layout.caret_bounds(hit) {window.paint_quad(fill(Bounds::new(bounds.origin+caret.origin,caret.size),rgb(0xdc2626)));}
-                }).size_full()))
-            .child(format!("Hit: {:?}",self.hit));
+        let run_count = layout.runs().len();
+        self.numbers[0].observe(self.width, cx);
+        self.numbers[1].observe(self.size, cx);
+        let surface = div().id("line-surface-scroll").w_full().overflow_x_scroll().child(
+            div()
+                .id("line-hit-surface")
+                .w(px(self.width))
+                .h(height)
+                .flex_shrink_0()
+                .bg(rgb(palette::PAPER))
+                .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                    this.hit = this
+                        .snapshot
+                        .as_ref()
+                        .and_then(|snapshot| snapshot.layout.hit_test(event.position - this.bounds.origin).ok());
+                    cx.notify();
+                }))
+                .child(
+                    canvas(
+                        move |bounds, _, cx| {
+                            owner.update(cx, |this, _| this.bounds = bounds);
+                        },
+                        move |bounds, _, window, _| {
+                            let _ = window.paint_image(bounds, bounds, Corners::default(), image.clone(), 0, false);
+                            if let Some(hit) = hit
+                                && let Ok(caret) = layout.caret_bounds(hit)
+                            {
+                                window.paint_quad(fill(
+                                    Bounds::new(bounds.origin + caret.origin, caret.size),
+                                    rgb(palette::CARET),
+                                ));
+                            }
+                        },
+                    )
+                    .size_full(),
+                ),
+        );
+        let mut details = PanelShell::new("Line geometry").child(properties(
+            &self.look,
+            [
+                ("Visual rows", rows.len().to_string()),
+                ("Height", format!("{:.1} px", f32::from(height))),
+                ("Resolved runs", run_count.to_string()),
+                ("Hit", format!("{:?}", self.hit)),
+            ],
+        ));
         for (y, bytes) in rows {
-            root = root.child(format!("y={:.1}px · source byte boundaries {:?}", f32::from_bits(y), bytes));
+            details = details.child(crate::screen::text(
+                &self.look,
+                crate::screen::TextRole::Value,
+                format!("y={:.1} px · byte boundaries {:?}", f32::from_bits(y), bytes),
+            ));
+        }
+        let mut root = LabScreen::new("parley-line", self.look.clone()).crumb("xgpui-parley", "Line Layout").title("Line Layout")
+            .lede("Explore how text wraps and how the pointer finds a character boundary.")
+            .hero(Hero::full(surface)).caption(format!("{} · {:.0} px wrap · {:.0} px text", paragraph::TEXTS[self.sample].0, self.width, self.size))
+            .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
+            .panels(ParametersPanel::new("Layout parameters").params(self.numbers.iter().map(|n|n.param())), details)
+            .note("Move the pointer over the text to inspect cluster boundaries. Width changes reflow the retained source; editing and IME are available in Paragraphs.")
+            .credits("Read-only CPU raster preview from the isolated Parley backend. Paper and caret colors are fixed inspection data.");
+        for button in &self.buttons {
+            root = root.action(button.clone());
         }
         root.into_any_element()
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use xgpui_luma::controls::{button::ButtonEvent, textfield::TextFieldEvent};
+    #[::core::prelude::v1::test]
+    fn numeric_width_reflows_source_and_reset_restores_geometry() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) =
+            app.add_window_view(|_, cx| LinePage::new(Engine::new().unwrap(), crate::theme::default_look(), cx));
+        let (field, initial_height) = cx.update(|_, cx| {
+            let p = page.read(cx);
+            (p.numbers[0].field.clone(), p.snapshot.as_ref().unwrap().layout.size().height)
+        });
+        field.update(cx, |f, cx| {
+            f.set_value("600", cx);
+            cx.emit(TextFieldEvent::Change { value: "600".into() });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let p = page.read(cx);
+            assert_eq!(p.width, 600.);
+            let layout = &p.snapshot.as_ref().unwrap().layout;
+            assert_eq!(layout.source(), paragraph::TEXTS[0].1);
+            assert!(layout.size().height < initial_height);
+        });
+        let reset = cx.update(|_, cx| page.read(cx).buttons[0].clone());
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert_eq!(field.read(cx).value(), "320.0");
+            assert_eq!(page.read(cx).snapshot.as_ref().unwrap().layout.size().height, initial_height);
+        });
     }
 }
