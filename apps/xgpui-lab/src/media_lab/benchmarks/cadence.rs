@@ -49,6 +49,7 @@ impl Run {
             .err()
             .map(|error| error.to_string())
             .or_else(|| page.error.clone())
+            .or_else(|| page.resources.error())
             .or_else(|| (self.started.elapsed().as_secs() > 90).then(|| "cadence run timed out".into()));
         if let Some(error) = error {
             self.finish(page, vec![error]);
@@ -57,7 +58,14 @@ impl Run {
         let now = Instant::now();
         let dt = self.previous.replace(now).map(|previous| now.duration_since(previous).as_secs_f64() * 1000.);
         match self.stage {
-            0 if page.image.as_ref().is_some_and(|image| image.upload_status() == UploadStatus::Ready) => {
+            0 if page
+                .resources
+                .primary
+                .image
+                .as_ref()
+                .is_some_and(|image| image.upload_status() == UploadStatus::Ready)
+                && page.resources.settle_frames == 0 =>
+            {
                 self.stage = 1;
                 self.previous = None;
             }
@@ -66,8 +74,7 @@ impl Run {
                     self.baseline.0.push(dt);
                 }
                 if self.baseline.0.len() >= 180 {
-                    page.completed = 0;
-                    page.waiting = 12;
+                    page.resources.start_burst();
                     self.stage = 2;
                 }
             }
@@ -75,10 +82,9 @@ impl Run {
                 if let Some(dt) = dt {
                     self.burst.0.push(dt);
                 }
-                if page.waiting == 0
-                    && page.burst_jobs.is_empty()
-                    && page.burst_images.is_empty()
-                    && page.completed == 12
+                if !page.resources.pending()
+                    && page.resources.settle_frames == 0
+                    && page.resources.submitted() == super::super::resource_model::BURST_SIZE
                 {
                     self.stage = 3;
                 }
@@ -101,10 +107,10 @@ impl Run {
         page.sweep = false;
         *self.completion.borrow_mut() = Some(Ok(json!({
             "schema_version": 1, "profile": super::profile(), "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
-            "description": "Visible embedded Resource Limits lab with zoom sweep: warm primary, 180 baseline intervals, 12 fresh decode/mip/upload snapshots, 180 cached intervals. Render-start cadence includes UI, driver and scheduling, not GPU/presentation timing. Generated fixtures precede measurement. Burst previews retire after host submission; cached phase returns to baseline geometry. No intervals discarded.",
-            "source_size": self.source_size, "decode_workers": page.job_limit, "staging_budget_bytes": ([32,64,128][page.budget_index] * MIB),
+            "description": "Visible embedded Resource Limits lab with zoom sweep: warm primary, 180 baseline intervals, 12 fresh decode/mip/upload snapshots, 180 cached intervals. Render-start cadence includes UI, driver and scheduling, not GPU/presentation timing. Generated fixtures precede measurement. Older submitted previews retire to make room for waiting work; cached phase retains the final previews. No intervals discarded.",
+            "source_size": self.source_size, "frame_upload_limit": page.resources.count_limit, "frame_byte_limit": page.resources.byte_limit,
             "baseline": self.baseline.report(), "burst": self.burst.report(), "cached": self.cached.report(),
-            "completed_sources": page.completed, "errors": errors
+            "completed_sources": page.resources.submitted(), "errors": errors
         })));
     }
 }

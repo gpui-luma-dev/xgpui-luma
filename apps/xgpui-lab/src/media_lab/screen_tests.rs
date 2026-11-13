@@ -89,3 +89,59 @@ fn linear_fields_switches_and_reset_keep_retained_tab_values_in_sync() {
         assert!(!*page.state_switches.iter().find(|(id, _)| *id == Action::Animate).unwrap().1.read(cx).data());
     });
 }
+
+#[test]
+fn resource_controls_match_upstream_and_keep_twelve_status_chips() {
+    use super::resource_model::{Phase, Slot};
+    for mode in [ThemeMode::Dark, ThemeMode::Light] {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let look = crate::theme::default_look();
+        look.set_mode(mode);
+        let (page, cx) = app.add_window_view(|_, cx| MediaPage::new(look, cx));
+        page.update(cx, |page, cx| {
+            page.activate("Resource Limits".into(), cx);
+            // Exercise the view/control contract without native uploads here;
+            // resource_model's offscreen regression covers the real pipeline.
+            page.error = Some("Fixture unavailable".into());
+        });
+        let burst =
+            cx.update(|_, cx| page.read(cx).buttons.iter().find(|(id, _)| *id == Action::Burst).unwrap().1.clone());
+        burst.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("media-resource-result-0").is_some());
+        assert!(cx.debug_bounds("media-resource-result-11").is_some());
+        page.update(cx, |page, _| {
+            assert_eq!(page.resources.count_limit, 1);
+            assert_eq!(page.resources.byte_limit, 16 * MIB);
+            assert_eq!(page.resources.burst.len(), 12);
+            for slot in &mut page.resources.burst {
+                slot.phase = Phase::Retired;
+            }
+        });
+        for width in [1280., 720.] {
+            cx.simulate_resize(size(px(width), px(1800.)));
+            cx.run_until_parked();
+            assert!(cx.debug_bounds("media-resource-result-11").is_some(), "completed chips remain visible");
+        }
+        for (action, expected_label) in [(Action::Jobs, "Uploads / frame"), (Action::Budget, "Bytes / frame")] {
+            let choice = cx.update(|_, cx| page.read(cx).choice(action).unwrap());
+            assert_eq!(choice.label().as_ref(), expected_label);
+            cx.update(|_, cx| choice.select(2, cx));
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                assert!(
+                    page.read(cx).resources.burst.is_empty(),
+                    "policy changes reload, without silently starting another burst"
+                )
+            });
+        }
+        page.update(cx, |page, cx| {
+            assert_eq!(page.resources.count_limit, 4);
+            assert_eq!(page.resources.byte_limit, 64 * MIB);
+            page.resources.burst.push(Slot::waiting());
+            page.activate("Images".into(), cx);
+            assert!(page.resources.burst.is_empty(), "leaving the page releases pending source reservations");
+        });
+    }
+}

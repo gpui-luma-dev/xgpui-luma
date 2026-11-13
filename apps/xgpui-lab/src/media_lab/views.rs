@@ -40,7 +40,7 @@ impl Render for MediaPage {
             self.ensure_fixtures(cx);
         }
         self.poll();
-        if self.job.is_some() || self.waiting > 0 || !self.burst_jobs.is_empty() || !self.burst_images.is_empty() {
+        if self.job.is_some() || (self.active_tab == "Resource Limits" && self.resources.needs_redraw()) {
             window.request_animation_frame();
         }
         if self.active_tab == "Image Filters" {

@@ -8,6 +8,7 @@ mod filters_screen;
 mod image_screens;
 mod adjustment_screens;
 mod resource_screen;
+mod resource_model;
 mod palette;
 mod video_screen;
 #[cfg(all(test, feature = "test-support"))]
@@ -145,12 +146,7 @@ pub struct MediaPage {
     job: Option<ImageJob>,
     image: Option<MediaImage>,
     selected: usize,
-    job_limit: usize,
-    budget_index: usize,
-    waiting: usize,
-    burst_jobs: Vec<ImageJob>,
-    burst_images: Vec<MediaImage>,
-    completed: usize,
+    resources: resource_model::ResourceLab,
     values: [f32; 13],
     drag: Option<(Point<Pixels>, [f32; 2])>,
     bounds: [Bounds<Pixels>; 2],
@@ -223,13 +219,15 @@ impl MediaPage {
                 self.selected,
             ),
             Action::Jobs => (
-                "Job limit",
+                "Uploads / frame",
                 crate::lab_controls::labels(&["1", "2", "4"]),
-                [1, 2, 4].iter().position(|&n| n == self.job_limit).unwrap_or(1),
+                resource_model::COUNTS.iter().position(|&n| n == self.resources.count_limit).unwrap_or(0),
             ),
-            Action::Budget => {
-                ("Byte budget", crate::lab_controls::labels(&["32 MiB", "64 MiB", "128 MiB"]), self.budget_index)
-            }
+            Action::Budget => (
+                "Bytes / frame",
+                crate::lab_controls::labels(&["16 MiB", "32 MiB", "64 MiB"]),
+                resource_model::BYTES.iter().position(|&n| n == self.resources.byte_limit).unwrap_or(0),
+            ),
             Action::Tint => ("Tint", crate::lab_controls::labels(&["Identity", "Warm", "Cool"]), self.tint_index),
             Action::Format => (
                 "Video format",
@@ -264,12 +262,10 @@ impl MediaPage {
                 self.reload();
             }
             Action::Jobs => {
-                self.job_limit = [1, 2, 4][index];
-                self.reset_loader();
+                self.resources.policy(resource_model::COUNTS[index], self.resources.byte_limit);
             }
             Action::Budget => {
-                self.budget_index = index;
-                self.reset_loader();
+                self.resources.policy(self.resources.count_limit, resource_model::BYTES[index]);
             }
             Action::Tint => {
                 self.tint_index = index;
@@ -449,12 +445,7 @@ impl MediaPage {
             job: None,
             image: None,
             selected: 0,
-            job_limit: 2,
-            budget_index: 1,
-            waiting: 0,
-            burst_jobs: vec![],
-            burst_images: vec![],
-            completed: 0,
+            resources: resource_model::ResourceLab::new(),
             values: [1., 0., 0., 1., 16., 1., 1., 1., 0., 0., 1., 1., 0.],
             drag: None,
             bounds: [Bounds::default(); 2],
@@ -490,16 +481,6 @@ impl MediaPage {
         page.init_choices(cx);
         page
     }
-    fn reset_loader(&mut self) {
-        self.job = None;
-        self.image = None;
-        self.burst_jobs.clear();
-        self.burst_images.clear();
-        self.waiting = 0;
-        self.completed = 0;
-        self.loader = Self::loader(self.job_limit, [32, 64, 128][self.budget_index] * MIB);
-        self.reload();
-    }
     fn loader(jobs: usize, bytes: usize) -> anyhow::Result<MediaLoader> {
         MediaLoader::with_upload_limits(
             MediaLimits {
@@ -520,6 +501,9 @@ impl MediaPage {
             self.video_stopped = false;
         }
         if self.active_tab != tab {
+            if self.active_tab == "Resource Limits" {
+                self.resources.reload();
+            }
             self.tab_values.insert(self.active_tab.clone(), self.values);
             self.values =
                 self.tab_values.get(&tab).copied().unwrap_or([1., 0., 0., 1., 16., 1., 1., 1., 0., 0., 1., 1., 0.]);
@@ -543,6 +527,9 @@ impl MediaPage {
             let look = self.look.clone();
             self.tiled = Some(cx.new(|cx| tiled::TiledDemo::new(look, cx)));
         }
+        if tab == "Resource Limits" && self.active_tab != tab {
+            self.resources.reload();
+        }
         self.active_tab = tab;
         cx.notify();
     }
@@ -557,9 +544,7 @@ impl MediaPage {
         self.drag = None;
         self.sweep = false;
         self.animate = false;
-        self.waiting = 0;
-        self.burst_jobs.clear();
-        self.burst_images.clear();
+        self.resources.reload();
     }
     fn has_video(&self) -> bool {
         #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -600,6 +585,11 @@ impl MediaPage {
         .detach();
     }
     fn reload(&mut self) {
+        if self.active_tab == "Resource Limits" {
+            self.resources.reload();
+            self.error = None;
+            return;
+        }
         self.job = None;
         self.image = None;
         self.error = None;
@@ -620,42 +610,13 @@ impl MediaPage {
                 self.job = None;
             }
         }
-        let mut pending = Vec::new();
-        for mut job in self.burst_jobs.drain(..) {
-            if let Some(image) = job.try_take() {
-                self.burst_images.push(image);
-            } else if let LoadStatus::Failed(error) = job.status() {
-                self.error = Some(error);
-                self.completed += 1;
-            } else {
-                pending.push(job);
-            }
-        }
-        self.burst_jobs = pending;
-        self.burst_images.retain(|image| match image.upload_status() {
-            UploadStatus::Ready => {
-                self.completed += 1;
-                false
-            }
-            UploadStatus::Failed(error) => {
-                self.error = Some(error);
-                self.completed += 1;
-                false
-            }
-            _ => true,
-        });
-        if let (Some(fixtures), Ok(loader)) = (&self.fixtures, &self.loader) {
-            while self.waiting > 0 {
-                match loader.load(fixtures.samples[self.selected].path.clone()) {
-                    Ok(job) => {
-                        self.burst_jobs.push(job);
-                        self.waiting -= 1;
-                    }
-                    Err(_) => break,
-                }
-            }
+        if self.active_tab == "Resource Limits"
+            && let Some(fixtures) = &self.fixtures
+        {
+            self.resources.poll(&fixtures.samples[self.selected].path);
         }
     }
+
     fn action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
             Action::Blur | Action::Sample | Action::Jobs | Action::Budget | Action::Tint | Action::Format => {
@@ -680,7 +641,7 @@ impl MediaPage {
                 self.error = None;
                 self.reload();
             }
-            Action::Burst => self.waiting += 12,
+            Action::Burst => self.resources.start_burst(),
             Action::Reset | Action::Filters => {
                 if action == Action::Reset {
                     self.sweep = false;
@@ -795,8 +756,8 @@ mod tests {
         }
         page.update(cx, |page, cx| {
             assert_eq!(page.selected, 2);
-            assert_eq!(page.job_limit, 4);
-            assert_eq!(page.budget_index, 2);
+            assert_eq!(page.resources.count_limit, 4);
+            assert_eq!(page.resources.byte_limit, 64 * MIB);
             assert_eq!(page.tint_index, 2);
             assert_eq!(page.blur_index, 3);
             page.action(Action::Filters, cx);
