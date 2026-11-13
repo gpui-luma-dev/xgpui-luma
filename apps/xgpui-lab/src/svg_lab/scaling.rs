@@ -30,7 +30,19 @@ impl SvgPage {
                 .gap_2()
                 .child(text(&self.look, TextRole::Name, name.to_string()))
                 .child(text(&self.look, TextRole::Caption, detail))
-                .child(visual)
+                .child(
+                    radix::Card::new(&self.look)
+                        .style_override(|style| {
+                            style.padding = 1.;
+                            style.radius = 0.;
+                            style.background = None;
+                        })
+                        .child(visual)
+                        .into_element()
+                        .w_full()
+                        .flex_shrink_0()
+                        .overflow_hidden(),
+                )
         };
         Ok(div()
             .id("svg-scaling-comparison")
