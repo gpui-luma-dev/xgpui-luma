@@ -8,8 +8,9 @@ Published dependencies remain xgpui 3.1.0, shader 0.4.3, apple 4.0.1 and wgpu 2.
 ## Rendering and app integration
 
 The SDK/Radix Renderer selector directly selects native, WGSL or paths.
-Grain has a separate Off/On Radix selector; Animate/Pause, Reverse and Reset
-use Radix buttons, and phase scrubbing uses the Radix slider. Defaults follow
+Animate and Grain use Radix switches; Reverse and Reset use Radix buttons.
+Phase scrubbing pairs a Radix slider with a synchronized numeric field in the
+`LabScreen` parameter panel. Defaults follow
 upstream: native on macOS, WGSL elsewhere. Native means Metal on macOS, D3D11
 on Windows and wgpu on Linux. The paths implementation keeps Luma's retained
 brush/material and paused-geometry caches. Reset preserves the chosen renderer.

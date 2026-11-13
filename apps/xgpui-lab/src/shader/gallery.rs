@@ -1,34 +1,35 @@
 //! Fixed main-pass brush examples, independent of the legacy paint editor.
 use gpui::{prelude::*, *};
+use super::{palette::gallery as data, ShaderPage};
+use xgpui_luma_look_radix::Look;
+use crate::{
+    screen::{Hero, ComparePane, LabScreen, PanelShell, TextRole, text},
+};
+fn stops(values: &[(f32, [f32; 4])]) -> Vec<BrushStop> {
+    values.iter().map(|(offset, color)| BrushStop::new(*offset, *color)).collect()
+}
+
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, LayerEffect, Noise, painted};
 
 pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
-    let stops = vec![
-        BrushStop::new(0., [0.1, 0.3, 1., 1.]),
-        BrushStop::new(0.5, [0.7, 0.2, 0.9, 0.65]),
-        BrushStop::new(1., [1., 0.5, 0.1, 1.]),
-    ];
+    let look = &lab.look;
+    let colors = stops(&data::BRUSH_STOPS);
     let brushes = [
-        ("Solid", Brush::solid([0.15, 0.3, 0.75, 1.]).unwrap()),
-        ("Linear", Brush::linear(60., stops.clone()).unwrap()),
-        ("Radial", Brush::radial([0.4, 0.4], [0.65, 0.8], stops).unwrap()),
+        ("Solid", Brush::solid(data::SOLID_BLUE).unwrap()),
+        ("Linear", Brush::linear(60., colors.clone()).unwrap()),
+        ("Radial", Brush::radial([0.4, 0.4], [0.65, 0.8], colors).unwrap()),
     ];
-    let ring = Brush::linear(90., vec![BrushStop::new(0., [1., 1., 1., 0.15]), BrushStop::new(1., [1., 1., 1., 0.9])])
-        .unwrap();
-    let material =
-        Brush::linear(120., vec![BrushStop::new(0., [0.12, 0.2, 0.4, 1.]), BrushStop::new(1., [0.55, 0.25, 0.65, 1.])])
-            .unwrap();
-    let typography =
-        Brush::linear(90., vec![BrushStop::new(0., [0.05, 0.3, 1., 1.]), BrushStop::new(1., [1., 0.18, 0.02, 1.])])
-            .unwrap();
-    let freeform = Brush::freeform(vec![
-        BrushPoint::new([0.15, 0.2], [1., 0.05, 0.08, 1.]),
-        BrushPoint::new([0.85, 0.2], [0.05, 0.3, 1., 1.]),
-        BrushPoint::new([0.5, 0.85], [0.05, 0.9, 0.25, 1.]),
-    ])
+    let ring = Brush::linear(90., stops(&data::RING_STOPS)).unwrap();
+    let material = Brush::linear(120., stops(&data::MATERIAL_STOPS)).unwrap();
+    let typography = Brush::linear(90., stops(&data::TYPE_STOPS)).unwrap();
+    let freeform = Brush::freeform(
+        data::FREEFORM_POINTS
+            .into_iter()
+            .map(|(position, color)| BrushPoint::new(position, color))
+            .collect(),
+    )
     .unwrap();
-    let mesh =
-        Brush::mesh([[0.05, 0.3, 1., 1.], [1., 0.18, 0.02, 1.], [0.9, 0.05, 0.7, 1.], [0., 0.8, 0.7, 1.]]).unwrap();
+    let mesh = Brush::mesh(data::MESH_COLORS).unwrap();
     let point_count = [4, 8, 16][lab.freeform_step as usize];
     let expanded = Brush::freeform(expanded_demo_points(point_count)).unwrap();
     let spatial = [
@@ -58,37 +59,40 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
         ("Soft light", BlendMode::SoftLight),
         ("Linear burn", BlendMode::LinearBurn),
     ];
-    div()
+    let hero = div().flex().flex_wrap().gap_4().children(brushes.into_iter().map(|(label, brush)| {
+        div()
+            .flex_1()
+            .min_w(px(200.))
+            .flex()
+            .flex_col()
+            .gap_2()
+            .child(text(look, TextRole::Name, label))
+            .child(
+                painted()
+                    .w_full()
+                    .h(px(200.))
+                    .rounded(px(24.))
+                    .border_2()
+                    .bg_brush(brush)
+                    .border_brush(ring.clone()),
+            )
+    }));
+    let body = div()
         .w_full()
         .flex()
         .flex_col()
         .gap_3()
-        .child(worley_demo())
-        .child(blue_noise_demo())
+        .child(worley_demo(look))
+        .child(blue_noise_demo(look))
         .child(path_brush_demo(lab, cx))
-        .child(path_batch_demo(lab.direct_paths))
-        .child("Main-pass brushes · solid, linear, radial")
-        .child(div().flex().flex_wrap().gap_4().children(brushes.into_iter().map(|(label, brush)| {
-            painted()
-                .w(px(208.))
-                .h(px(120.))
-                .rounded(px(24.))
-                .border_2()
-                .bg_brush(brush)
-                .border_brush(ring.clone())
-                .flex()
-                .items_center()
-                .justify_center()
-                .child(label)
-        })))
-        .child("Spatial brushes · backgrounds, borders, and glyphs")
-        .child(lab.gallery_button("freeform-points", format!("Larger freeform: {point_count} points"), cx))
+        .child(path_batch_demo(lab.direct_paths, look))
+        .child(text(look, TextRole::Name, "Spatial brushes · backgrounds, borders, and glyphs"))
         .child(div().flex().flex_wrap().gap_4().children(spatial.into_iter().map(|(label, brush)| {
             div()
                 .flex()
                 .flex_col()
                 .gap_3()
-                .child(label)
+                .child(text(look, TextRole::Detail, label))
                 .child(painted().w(px(320.)).h(px(160.)).rounded(px(24.)).bg_brush(brush.clone()))
                 .child(
                     painted()
@@ -100,38 +104,37 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child("One continuous border field"),
+                        .child(text(look, TextRole::Name, "One continuous border field")),
                 )
                 .child(
                     painted()
                         .w(px(320.))
                         .min_h(px(96.))
-                        .text_size(px(36.))
-                        .font_weight(FontWeight::BOLD)
+                        .map(|view| TextRole::Title.apply(look, view))
                         .text_brush(brush)
                         .child("Spatial color across glyphs"),
                 )
         })))
-        .child("Brush-painted text · one continuous field across glyphs")
+        .child(text(look, TextRole::Name, "Brush-painted text · one continuous field across glyphs"))
         .child(
             painted()
                 .w(px(640.))
+                .max_w_full()
                 .min_h(px(104.))
-                .text_size(px(40.))
-                .font_weight(FontWeight::BOLD)
+                .map(|view| TextRole::Title.apply(look, view))
                 .text_brush(typography.clone())
                 .child("Electric blue to vivid orange · wrapped typography"),
         )
         .child(
             painted()
                 .w(px(640.))
+                .max_w_full()
                 .min_h(px(72.))
-                .text_size(px(30.))
-                .font_weight(FontWeight::BOLD)
+                .map(|view| TextRole::Title.apply(look, view))
                 .text_brush(typography.clone().with_noise(Noise::simplex(0.08, 3, 0.6), BlendMode::Overlay).unwrap())
                 .child("Textured glyphs · native emoji ✨"),
         )
-        .child("Procedural brushes · modulation of the same linear gradient")
+        .child(text(look, TextRole::Name, "Procedural brushes · modulation of the same linear gradient"))
         .child(div().flex().flex_wrap().gap_4().children(procedural.into_iter().map(|(label, noise)| {
             painted()
                 .w(px(208.))
@@ -141,9 +144,9 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(label)
+                .child(text(look, TextRole::Detail, label))
         })))
-        .child("Brush-local blends · same Simplex signal and strength")
+        .child(text(look, TextRole::Name, "Brush-local blends · same Simplex signal and strength"))
         .child(div().flex().flex_wrap().gap_4().children(modes.into_iter().map(|(label, mode)| {
             painted()
                 .w(px(160.))
@@ -153,11 +156,21 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(label)
-        })))
+                .child(text(look, TextRole::Detail, label))
+        })));
+    LabScreen::new("shader-brushes", lab.look.clone()).crumb("xgpui-shader", "Brushes").title("Brushes")
+        .lede("Compare color fields and textures across surfaces, borders, shapes and letters.")
+        .hero(Hero::full(hero))
+        .caption(format!("Solid, linear and radial · freeform {} points · {} paths", point_count, if lab.direct_paths {"direct"} else {"native"}))
+        .control(lab.gallery_button("freeform-points", "Freeform points", cx))
+        .control(lab.gallery_button("path-route", "Direct paths", cx))
+        .section_panel(PanelShell::new("Brush comparisons").child(body))
+        .note("Freeform points changes the larger spatial field. Direct paths uses prepared brush geometry; the native route paints the same paths through GPUI coverage. The noisy samples deliberately exaggerate grain to make it visible.")
+        .credits("Adapted from xgpui paint-lab/brushes.rs. The blue-noise preview enlarges the exact bundled 16×16 shader rank tile, not a regenerated seed. Path batching labels describe the planned workload, not measured GPU submissions.")
 }
 
-fn backdrop_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+fn backdrop_demo(lab: &super::ShaderPage, _cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+    let look = &lab.look;
     let changed = lab.backdrop_changed;
     let moved = lab.backdrop_moved;
     let disabled = lab.backdrop_disabled;
@@ -165,17 +178,12 @@ fn backdrop_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -
         .flex()
         .flex_col()
         .gap_2()
-        .child("Backdrop blur · interactive visual check")
-        .child(
-            div()
-                .flex()
-                .flex_wrap()
-                .gap_2()
-                .child(lab.gallery_button("backdrop-source", "Swap stripe colors", cx))
-                .child(lab.gallery_button("backdrop-foreground", "Move white marker", cx))
-                .child(lab.gallery_button("backdrop-toggle", if disabled { "Blur: off" } else { "Blur: on" }, cx)),
-        )
-        .child("Swap: the frosted panel must change color. Move: the marker stays sharp. Toggle blur to compare.")
+        .child(text(look, TextRole::Name, "Backdrop blur · interactive visual check"))
+        .child(text(
+            look,
+            TextRole::Name,
+            "Swap: the frosted panel must change color. Move: the marker stays sharp. Toggle blur to compare.",
+        ))
         .child(
             div()
                 .relative()
@@ -187,10 +195,10 @@ fn backdrop_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -
                         move |bounds, (), window, _| {
                             for i in 0..45 {
                                 let color = match (changed, i % 2 == 0) {
-                                    (false, true) => rgb(0x165dff),
-                                    (false, false) => rgb(0xff6408),
-                                    (true, true) => rgb(0xff0020),
-                                    (true, false) => rgb(0xffff00),
+                                    (false, true) => rgb(data::BACKDROP_STRIPES[0][0]),
+                                    (false, false) => rgb(data::BACKDROP_STRIPES[0][1]),
+                                    (true, true) => rgb(data::BACKDROP_STRIPES[1][0]),
+                                    (true, false) => rgb(data::BACKDROP_STRIPES[1][1]),
                                 };
                                 window.paint_quad(fill(
                                     Bounds::new(
@@ -214,16 +222,20 @@ fn backdrop_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -
                         .h(px(112.))
                         .rounded(px(16.))
                         .backdrop_blur(xgpui_shader::BackdropBlur::new(px(if disabled { 0. } else { 16. })).unwrap())
-                        .bg(gpui::rgba(0xffffff24))
+                        .bg(gpui::rgba(data::FROST_FILL))
                         .border_1()
-                        .border_color(gpui::rgba(0xffffff90))
+                        .border_color(gpui::rgba(data::FROST_BORDER))
                         .flex()
                         .flex_col()
                         .items_center()
                         .justify_center()
                         .text_color(white())
-                        .child(div().font_weight(FontWeight::BOLD).text_size(px(22.)).child("Frosted backdrop"))
-                        .child("Foreground stays sharp"),
+                        .child(div().map(|view| TextRole::Name.apply(look, view)).child(text(
+                            look,
+                            TextRole::Name,
+                            "Frosted backdrop",
+                        )))
+                        .child(text(look, TextRole::Name, "Foreground stays sharp")),
                 )
                 .child(
                     div()
@@ -237,20 +249,38 @@ fn backdrop_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -
         )
 }
 
-fn group_opacity_demo() -> impl IntoElement {
+fn group_opacity_demo(look: &Look) -> impl IntoElement {
     let shapes = || {
         div()
             .relative()
             .w(px(176.))
             .h(px(112.))
-            .child(div().absolute().left(px(16.)).top(px(16.)).w(px(96.)).h(px(72.)).rounded(px(12.)).bg(rgb(0xff3808)))
-            .child(div().absolute().left(px(64.)).top(px(32.)).w(px(96.)).h(px(64.)).rounded(px(12.)).bg(rgb(0x164dff)))
+            .child(
+                div()
+                    .absolute()
+                    .left(px(16.))
+                    .top(px(16.))
+                    .w(px(96.))
+                    .h(px(72.))
+                    .rounded(px(12.))
+                    .bg(rgb(data::OPACITY_SHAPES[0])),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .left(px(64.))
+                    .top(px(32.))
+                    .w(px(96.))
+                    .h(px(64.))
+                    .rounded(px(12.))
+                    .bg(rgb(data::OPACITY_SHAPES[1])),
+            )
     };
     div()
         .flex()
         .flex_col()
         .gap_2()
-        .child("Group opacity · compare the overlap")
+        .child(text(look, TextRole::Name, "Group opacity · compare the overlap"))
         .child(
             div()
                 .flex()
@@ -261,25 +291,35 @@ fn group_opacity_demo() -> impl IntoElement {
                         .flex()
                         .flex_col()
                         .gap_2()
-                        .child("Ordinary opacity: 50% per shape")
+                        .child(text(look, TextRole::Name, "Ordinary opacity: 50% per shape"))
                         .child(div().w(px(176.)).h(px(112.)).bg(white()).child(div().opacity(0.5).child(shapes()))),
                 )
                 .child(
-                    div().flex().flex_col().gap_2().child("Layer effect: 50% after overlap").child(
-                        div().w(px(176.)).h(px(112.)).bg(white()).child(
-                            painted()
-                                .w(px(176.))
-                                .h(px(112.))
-                                .layer_effect(LayerEffect::opacity(0.5).unwrap())
-                                .child(shapes()),
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(text(look, TextRole::Name, "Layer effect: 50% after overlap"))
+                        .child(
+                            div().w(px(176.)).h(px(112.)).bg(white()).child(
+                                painted()
+                                    .w(px(176.))
+                                    .h(px(112.))
+                                    .layer_effect(LayerEffect::opacity(0.5).unwrap())
+                                    .child(shapes()),
+                            ),
                         ),
-                    ),
                 ),
         )
-        .child(div().text_size(px(12.)).child("The blue shape fully covers red before the captured group fades."))
+        .child(div().map(|view| TextRole::Fine.apply(look, view)).child(text(
+            look,
+            TextRole::Name,
+            "The blue shape fully covers red before the captured group fades.",
+        )))
 }
 
-fn group_filter_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+fn group_filter_demo(lab: &super::ShaderPage, _cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+    let look = &lab.look;
     let modes = [
         ("Normal", BlendMode::Normal),
         ("Multiply", BlendMode::Multiply),
@@ -307,11 +347,16 @@ fn group_filter_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage
             .relative()
             .w(px(176.))
             .h(px(112.))
-            .bg(rgb(0x213c54))
-            .children(
-                continuous_background
-                    .then(|| div().absolute().left(px(-64.)).top(px(-64.)).w(px(304.)).h(px(240.)).bg(rgb(0x213c54))),
-            )
+            .bg(rgb(data::FILTER_BACKGROUND))
+            .children(continuous_background.then(|| {
+                div()
+                    .absolute()
+                    .left(px(-64.))
+                    .top(px(-64.))
+                    .w(px(304.))
+                    .h(px(240.))
+                    .bg(rgb(data::FILTER_BACKGROUND))
+            }))
             .child(
                 div()
                     .absolute()
@@ -320,7 +365,7 @@ fn group_filter_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage
                     .w(px(100.))
                     .h(px(76.))
                     .rounded(px(12.))
-                    .bg(rgb(0xe86a47)),
+                    .bg(rgb(data::FILTER_SHAPES[0])),
             )
             .child(
                 div()
@@ -330,90 +375,104 @@ fn group_filter_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage
                     .w(px(100.))
                     .h(px(68.))
                     .rounded(px(12.))
-                    .bg(rgb(0x4f87c5)),
+                    .bg(rgb(data::FILTER_SHAPES[1])),
             )
             .child(
                 div()
                     .absolute()
                     .left(px(18.))
                     .top(px(42.))
-                    .text_color(rgb(0xffdf28))
-                    .text_size(px(20.))
-                    .font_weight(FontWeight::BOLD)
-                    .child("Color + text"),
+                    .text_color(rgb(data::FILTER_GLYPHS))
+                    .map(|view| TextRole::Name.apply(look, view))
+                    .child(text(look, TextRole::Name, "Color + text")),
             )
     };
-    div().flex().flex_col().gap_2().child("Captured color filters · the whole card and text").child(
-        div()
-            .flex()
-            .flex_wrap()
-            .gap_4()
-            .child(div().flex().flex_col().gap_2().child("Original · saturation 1").child(sample(false)))
-            .child(
-                div().flex().flex_col().gap_2().child("Grayscale · saturation 0").child(
-                    painted()
-                        .w(px(176.))
-                        .h(px(112.))
-                        .layer_effect(LayerEffect::grayscale(1.).unwrap())
+    div()
+        .flex()
+        .flex_col()
+        .gap_2()
+        .child(text(look, TextRole::Name, "Captured color filters · the whole card and text"))
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .gap_4()
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(text(look, TextRole::Name, "Original · saturation 1"))
                         .child(sample(false)),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(text(look, TextRole::Name, "Grayscale · saturation 0"))
+                        .child(
+                            painted()
+                                .w(px(176.))
+                                .h(px(112.))
+                                .layer_effect(LayerEffect::grayscale(1.).unwrap())
+                                .child(sample(false)),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(text(look, TextRole::Caption, label))
+                        .child(painted().w(px(176.)).h(px(112.)).layer_effect(effect).child(sample(false))),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_2()
+                        .child(text(look, TextRole::Caption, format!("Blend: {blend_label}")))
+                        .child(text(look, TextRole::Caption, format!("Subtree blur: {blur_radius}px")))
+                        .child(
+                            div()
+                                .relative()
+                                .w(px(176.))
+                                .h(px(112.))
+                                .bg(rgb(data::BLEND_BACKDROP[0]))
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left(px(88.))
+                                        .top_0()
+                                        .w(px(88.))
+                                        .h_full()
+                                        .bg(rgb(data::BLEND_BACKDROP[1])),
+                                )
+                                .child(
+                                    painted()
+                                        .relative()
+                                        .w(px(176.))
+                                        .h(px(112.))
+                                        .layer_effect(
+                                            LayerEffect::blend(blend_mode)
+                                                .unwrap()
+                                                .with_blur(px(blur_radius))
+                                                .unwrap()
+                                                .with_blur_quality(blur_quality),
+                                        )
+                                        .child(sample(true)),
+                                ),
+                        ),
                 ),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(lab.gallery_button("layer-filter-cycle", label, cx))
-                    .child(painted().w(px(176.)).h(px(112.)).layer_effect(effect).child(sample(false))),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(lab.gallery_button("layer-blend-cycle", format!("Blend: {blend_label}"), cx))
-                    .child(lab.gallery_button("layer-blur-cycle", format!("Subtree blur: {blur_radius}px"), cx))
-                    .child(lab.gallery_button(
-                        "layer-blur-quality",
-                        if lab.layer_blur_full_resolution {
-                            "Blur: Full resolution"
-                        } else {
-                            "Blur: Adaptive"
-                        },
-                        cx,
-                    ))
-                    .child(
-                        div()
-                            .relative()
-                            .w(px(176.))
-                            .h(px(112.))
-                            .bg(rgb(0xf4cc68))
-                            .child(div().absolute().left(px(88.)).top_0().w(px(88.)).h_full().bg(rgb(0x349dba)))
-                            .child(
-                                painted()
-                                    .relative()
-                                    .w(px(176.))
-                                    .h(px(112.))
-                                    .layer_effect(
-                                        LayerEffect::blend(blend_mode)
-                                            .unwrap()
-                                            .with_blur(px(blur_radius))
-                                            .unwrap()
-                                            .with_blur_quality(blur_quality),
-                                    )
-                                    .child(sample(true)),
-                            ),
-                    ),
-            ),
-    )
+        )
 }
 
-fn path_brush_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+fn path_brush_demo(lab: &super::ShaderPage, _cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
+    let look = &lab.look;
     let direct = lab.direct_paths;
-    let gradient =
-        Brush::linear(65., vec![BrushStop::new(0., [0.05, 0.3, 1., 1.]), BrushStop::new(1., [1., 0.22, 0.02, 1.])])
-            .unwrap();
-    let mesh = Brush::mesh([[1., 0.1, 0., 1.], [0., 0.8, 1., 1.], [0.4, 0., 1., 1.], [1., 0.7, 0., 1.]])
+    let gradient = Brush::linear(65., stops(&data::PATH_STOPS)).unwrap();
+    let mesh = Brush::mesh(data::PATH_MESH)
         .unwrap()
         .with_noise(Noise::simplex(0.07, 2, 0.4), BlendMode::Overlay)
         .unwrap();
@@ -421,16 +480,7 @@ fn path_brush_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>)
         .flex()
         .flex_col()
         .gap_2()
-        .child("Vector brushes · curved fill, a hole, and a stroked path")
-        .child(lab.gallery_button(
-            "path-route",
-            if direct {
-                "Paths: Direct · switch to native"
-            } else {
-                "Paths: Native · switch to direct"
-            },
-            cx,
-        ))
+        .child(text(look, TextRole::Name, "Vector brushes · curved fill, a hole, and a stroked path"))
         .child(div().flex().flex_wrap().gap_4().children([(false, gradient), (true, mesh)].into_iter().map(
             |(stroke, brush)| {
                 let mut p = if stroke {
@@ -487,34 +537,34 @@ fn path_brush_demo(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>)
 
 /// Keep the normal, subtle material beside an intentionally exaggerated signal.
 /// Enlarged cells read the exact asset embedded in the GPU shader, not a new seed.
-fn blue_noise_demo() -> impl IntoElement {
-    let gradient = Brush::linear(
-        90.,
-        vec![BrushStop::new(0., [0.25, 0.25, 0.25, 1.]), BrushStop::new(1., [0.75, 0.75, 0.75, 1.])],
-    )
-    .unwrap();
+fn blue_noise_demo(look: &Look) -> impl IntoElement {
+    let gradient = Brush::linear(90., stops(&data::NOISE_RAMP)).unwrap();
     let swatches = [
         ("No noise", gradient.clone()),
         ("Visible grain · strength 0.6", gradient.with_noise(Noise::dither(0.6), BlendMode::Overlay).unwrap()),
         (
             "Noise only · strength 1.0",
-            Brush::solid([0.5, 0.5, 0.5, 1.]).unwrap().with_noise(Noise::dither(1.), BlendMode::Normal).unwrap(),
+            Brush::solid(data::NOISE_BASE).unwrap().with_noise(Noise::dither(1.), BlendMode::Normal).unwrap(),
         ),
     ];
     div()
         .flex()
         .flex_col()
         .gap_3()
-        .child("Blue-noise visual check · exaggerated for visibility")
+        .child(text(look, TextRole::Name, "Blue-noise visual check · exaggerated for visibility"))
         .child(div().flex().flex_wrap().gap_4().children(swatches.into_iter().map(|(label, brush)| {
             div()
                 .flex()
                 .flex_col()
                 .gap_2()
-                .child(label)
+                .child(text(look, TextRole::Detail, label))
                 .child(painted().w(px(200.)).h(px(144.)).bg_brush(brush))
         })))
-        .child("Below: one 16×16 tile enlarged 8×. The actual shader uses one sample per physical pixel.")
+        .child(text(
+            look,
+            TextRole::Name,
+            "Below: one 16×16 tile enlarged 8×. The actual shader uses one sample per physical pixel.",
+        ))
         .child(div().flex().flex_wrap().gap_4().children([false, true].into_iter().map(|threshold| {
             div()
                 .flex()
@@ -552,37 +602,34 @@ fn blue_noise_demo() -> impl IntoElement {
         })))
 }
 
-fn worley_demo() -> impl IntoElement {
+fn worley_demo(look: &Look) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
         .gap_2()
-        .child("Worley cellular noise · same features, different distance")
-        .child("F1 measures the closest point; F2 measures the second closest. Both use the same scale and seed.")
+        .child(text(look, TextRole::Name, "Worley cellular noise · same features, different distance"))
+        .child(text(
+            look,
+            TextRole::Name,
+            "F1 measures the closest point; F2 measures the second closest. Both use the same scale and seed.",
+        ))
         .child(
             div().flex().flex_wrap().gap_4().children(
                 [("F1 · closest", Noise::worley(0.035, 1.)), ("F2 · second closest", Noise::worley_f2(0.035, 1.))]
                     .into_iter()
                     .map(|(label, noise)| {
-                        div().flex().flex_col().gap_2().child(label).child(painted().w(px(288.)).h(px(176.)).bg_brush(
-                            Brush::solid([0.5, 0.5, 0.5, 1.]).unwrap().with_noise(noise, BlendMode::Normal).unwrap(),
-                        ))
+                        div().flex().flex_col().gap_2().child(text(look, TextRole::Detail, label)).child(
+                            painted().w(px(288.)).h(px(176.)).bg_brush(
+                                Brush::solid(data::NOISE_BASE).unwrap().with_noise(noise, BlendMode::Normal).unwrap(),
+                            ),
+                        )
                     }),
             ),
         )
 }
 
 fn expanded_demo_points(count: usize) -> Vec<BrushPoint> {
-    let colors = [
-        [1., 0.03, 0.08, 1.],
-        [1., 0.5, 0., 1.],
-        [1., 0.95, 0., 1.],
-        [0.05, 1., 0.2, 1.],
-        [0., 0.9, 1., 1.],
-        [0.05, 0.2, 1., 1.],
-        [0.65, 0.05, 1., 1.],
-        [1., 0., 0.65, 1.],
-    ];
+    let colors = data::EXPANDED_COLORS;
     (0..count)
         .map(|i| {
             let position = if count == 8 {
@@ -600,10 +647,8 @@ fn expanded_demo_points(count: usize) -> Vec<BrushPoint> {
         .collect()
 }
 
-fn path_batch_demo(direct: bool) -> impl IntoElement {
-    let brush =
-        Brush::linear(45., vec![BrushStop::new(0., [0., 0.8, 1., 0.8]), BrushStop::new(1., [1., 0.1, 0.6, 0.8])])
-            .unwrap();
+fn path_batch_demo(direct: bool, look: &Look) -> impl IntoElement {
+    let brush = Brush::linear(45., stops(&data::BATCH_STOPS)).unwrap();
     let mut path = PathBuilder::fill();
     path.move_to(point(px(4.), px(4.)));
     path.cubic_bezier_to(point(px(40.), px(36.)), point(px(48.), px(0.)), point(px(0.), px(44.)));
@@ -615,7 +660,7 @@ fn path_batch_demo(direct: bool) -> impl IntoElement {
         .flex()
         .flex_col()
         .gap_2()
-        .child("Path batching · 24 separate curved shapes")
+        .child(text(look, TextRole::Name, "Path batching · 24 separate curved shapes"))
         .child(if direct {
             "Direct: 24 shapes · 0 coverage passes"
         } else {
@@ -645,12 +690,39 @@ fn path_batch_demo(direct: bool) -> impl IntoElement {
         )
 }
 
-pub fn layers(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> impl IntoElement {
-    div()
-        .flex()
-        .flex_col()
-        .gap_6()
-        .child(backdrop_demo(lab, cx))
-        .child(group_filter_demo(lab, cx))
-        .child(group_opacity_demo())
+pub fn layers(lab: &ShaderPage, cx: &mut Context<ShaderPage>) -> impl IntoElement {
+    let look = &lab.look;
+    let mut screen = LabScreen::new("shader-layers", lab.look.clone())
+        .crumb("xgpui-shader", "Layer Effects")
+        .title("Layer Effects")
+        .lede("Compare effects on a group of shapes with effects applied to each shape separately.")
+        .hero(Hero::stage(ComparePane::new("Captured color filters", group_filter_demo(lab, cx))))
+        .caption(format!(
+            "{} · {} blend · {} px subtree blur · {} quality",
+            ["Invert 100%", "Invert 50%", "Saturation 2"][lab.layer_filter_step],
+            ["Normal", "Multiply", "Screen", "Overlay", "Color dodge", "Soft light", "Linear burn"]
+                [lab.layer_blend_step],
+            [0, 4, 8, 16][lab.layer_blur_step],
+            if lab.layer_blur_full_resolution {
+                "full"
+            } else {
+                "adaptive"
+            }
+        ));
+    for id in [
+        "layer-filter-cycle",
+        "layer-blend-cycle",
+        "layer-blur-cycle",
+        "layer-blur-quality",
+        "backdrop-toggle",
+    ] {
+        screen = screen.control(lab.gallery_button(id, "", cx));
+    }
+    for (id, label) in [("backdrop-source", "Swap stripe colors"), ("backdrop-foreground", "Move marker")] {
+        screen = screen.action(lab.gallery_button(id, label, cx));
+    }
+    screen.section_panel(PanelShell::new("Backdrop blur").child(backdrop_demo(lab,cx)))
+        .section_panel(PanelShell::new("Group opacity").child(group_opacity_demo(look)))
+        .note("The filter and blur controls act on the captured card and its text. Backdrop blur samples only the stripes behind the frosted panel; moving the foreground marker leaves it sharp. Compare the overlap before and after group opacity.")
+        .credits("Adapted from xgpui paint-lab/brushes.rs. The original sample geometry, blend modes, blur radii and adaptive/full-resolution quality settings are retained. Captured effects use bounded SDR targets; no GPU timing is measured.")
 }

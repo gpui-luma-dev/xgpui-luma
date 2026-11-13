@@ -17,28 +17,22 @@ impl Render for ShaderPage {
             return div().p_4().child("Preparing SDR presentation for captured effects…").into_any_element();
         }
         if self.active_tab == "Brushes" {
-            return div()
-                .id("brush-gallery-scroll")
-                .size_full()
-                .overflow_y_scroll()
-                .p_4()
-                .child(gallery::gallery(self, _cx))
-                .into_any_element();
+            return gallery::gallery(self, _cx).into_any_element();
         }
         if self.active_tab == "Layer Effects" {
-            return div()
-                .id("layer-gallery-scroll")
-                .size_full()
-                .overflow_y_scroll()
-                .p_4()
-                .child(gallery::layers(self, _cx))
-                .into_any_element();
+            return gallery::layers(self, _cx).into_any_element();
         }
         if self.active_tab == "Mesh Editor" {
             return div().size_full().child(self.mesh_pane.clone()).into_any_element();
         }
         if matches!(self.active_tab.as_ref(), "Shadows" | "Borders") {
-            self.shadow_pane.update(_cx, |page, _| page.borders = self.active_tab == "Borders");
+            self.shadow_pane.update(_cx, |page, cx| {
+                let borders = self.active_tab == "Borders";
+                if page.borders != borders {
+                    page.borders = borders;
+                    cx.notify();
+                }
+            });
             return div().size_full().child(self.shadow_pane.clone()).into_any_element();
         }
         if self.active_tab == "Typography" {

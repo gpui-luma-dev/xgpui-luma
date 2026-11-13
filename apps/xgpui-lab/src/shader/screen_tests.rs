@@ -170,3 +170,148 @@ fn instancing_choices_and_wgsl_fields_keep_their_source_workloads() {
     cx.run_until_parked();
     cx.update(|_, cx| assert_eq!(alpha.read(cx).value(), "0.250"));
 }
+
+#[test]
+fn remaining_shader_screens_render_in_both_themes_and_fit_narrow_windows() {
+    for mode in [ThemeMode::Dark, ThemeMode::Light] {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let look = crate::theme::default_look();
+        look.set_mode(mode);
+        let (page, cx) = app.add_window_view(|_, cx| ShaderPage::new(look, cx));
+        for (tab, slots) in [
+            (
+                "Mesh Editor",
+                [
+                    "shader-mesh-crumb",
+                    "shader-mesh-header",
+                    "shader-mesh-hero",
+                    "shader-mesh-caption",
+                    "shader-mesh-controls",
+                ],
+            ),
+            (
+                "Shader Depot: Grid",
+                [
+                    "shader-grid-crumb",
+                    "shader-grid-header",
+                    "shader-grid-hero",
+                    "shader-grid-caption",
+                    "shader-grid-controls",
+                ],
+            ),
+            (
+                "Shadertoy: Seascape",
+                [
+                    "shader-seascape-crumb",
+                    "shader-seascape-header",
+                    "shader-seascape-hero",
+                    "shader-seascape-caption",
+                    "shader-seascape-controls",
+                ],
+            ),
+            (
+                "Brushes",
+                [
+                    "shader-brushes-crumb",
+                    "shader-brushes-header",
+                    "shader-brushes-hero",
+                    "shader-brushes-caption",
+                    "shader-brushes-controls",
+                ],
+            ),
+            (
+                "Layer Effects",
+                [
+                    "shader-layers-crumb",
+                    "shader-layers-header",
+                    "shader-layers-hero",
+                    "shader-layers-caption",
+                    "shader-layers-controls",
+                ],
+            ),
+            (
+                "Shadows",
+                [
+                    "shader-shadows-crumb",
+                    "shader-shadows-header",
+                    "shader-shadows-hero",
+                    "shader-shadows-caption",
+                    "shader-shadows-controls",
+                ],
+            ),
+            (
+                "Borders",
+                [
+                    "shader-borders-crumb",
+                    "shader-borders-header",
+                    "shader-borders-hero",
+                    "shader-borders-caption",
+                    "shader-borders-controls",
+                ],
+            ),
+        ] {
+            page.update(cx, |page, cx| page.activate(tab.into(), cx));
+            for width in [1280., 720.] {
+                cx.simulate_resize(size(px(width), px(2200.)));
+                cx.run_until_parked();
+                let bounds = slots.map(|slot| cx.debug_bounds(slot).unwrap_or_else(|| panic!("{tab}: {slot}")));
+                assert!(bounds.windows(2).all(|pair| pair[0].top() < pair[1].top()), "{tab}: slot order");
+                for bounds in bounds {
+                    assert!(bounds.right() <= px(width), "{tab}: slot fits {width} px");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn gallery_controls_preserve_all_source_routes_and_layer_settings() {
+    let mut app = TestAppContext::single();
+    app.update(|cx| xgpui_luma::init(cx).unwrap());
+    let (page, cx) = app.add_window_view(|_, cx| ShaderPage::new(crate::theme::default_look(), cx));
+    page.update(cx, |page, cx| page.activate("Brushes".into(), cx));
+    let freeform = cx.update(|_, cx| {
+        page.read(cx).gallery_choices.iter().find(|(id, _)| *id == "freeform-points").unwrap().1.clone()
+    });
+    cx.update(|_, cx| freeform.select(2, cx));
+    let route =
+        cx.update(|_, cx| page.read(cx).gallery_switches.iter().find(|(id, _)| *id == "path-route").unwrap().1.clone());
+    route.update(cx, |switch, cx| {
+        switch.set_data(false, cx);
+        cx.emit(SwitchEvent::Change { on: false });
+    });
+    cx.run_until_parked();
+    cx.update(|_, cx| {
+        assert_eq!(page.read(cx).freeform_step, 2);
+        assert!(!page.read(cx).direct_paths);
+    });
+    page.update(cx, |page, cx| page.activate("Layer Effects".into(), cx));
+    for (id, selected) in [("layer-filter-cycle", 2), ("layer-blend-cycle", 6), ("layer-blur-cycle", 3)] {
+        let choice =
+            cx.update(|_, cx| page.read(cx).gallery_choices.iter().find(|(key, _)| *key == id).unwrap().1.clone());
+        cx.update(|_, cx| choice.select(selected, cx));
+    }
+    for (id, on) in [("backdrop-toggle", false), ("layer-blur-quality", true)] {
+        let switch =
+            cx.update(|_, cx| page.read(cx).gallery_switches.iter().find(|(key, _)| *key == id).unwrap().1.clone());
+        switch.update(cx, |switch, cx| {
+            switch.set_data(on, cx);
+            cx.emit(SwitchEvent::Change { on });
+        });
+    }
+    for id in ["backdrop-source", "backdrop-foreground"] {
+        let button =
+            cx.update(|_, cx| page.read(cx).gallery_buttons.iter().find(|(key, _)| *key == id).unwrap().1.clone());
+        button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+    }
+    cx.run_until_parked();
+    cx.update(|_, cx| {
+        let page = page.read(cx);
+        assert_eq!((page.layer_filter_step, page.layer_blend_step, page.layer_blur_step), (2, 6, 3));
+        assert!(
+            page.backdrop_disabled && page.layer_blur_full_resolution && page.backdrop_changed && page.backdrop_moved
+        );
+        assert!(!page.direct_paths);
+    });
+}
