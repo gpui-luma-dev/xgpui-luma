@@ -52,6 +52,10 @@ DEFAULT_PAGES = [
     "xgpui-shell/Shell Lab",
     "xgpui-shell/Desktop Preferences",
     "xgpui-shader/Typography",
+    "xgpui-shader/Gradients",
+    "xgpui-shader/Gradient Paints",
+    "xgpui-shader/WGSL Paints",
+    "xgpui-shader/Instancing",
     "xgpui-canvas/Spatial Canvas",
     "xgpui-canvas/Mandelbrot",
 ]
