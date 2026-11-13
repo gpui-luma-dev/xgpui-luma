@@ -1,6 +1,6 @@
 //! Luma owner for the original direct/legacy Hermite editor model.
 use super::*;
-use super::numeric::Number;
+use crate::screen::Number;
 use crate::screen::{
     ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, TextRole, labeled_control, properties, text,
 };

@@ -1,6 +1,6 @@
 //! App-side host for TDM's Seascape. The adapted WGSL retains CC BY-NC-SA 3.0.
 use super::*;
-use super::numeric::Number;
+use crate::screen::Number;
 use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, properties};
 use xgpui_shader::{
     shader_paint,

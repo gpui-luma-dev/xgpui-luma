@@ -1,5 +1,6 @@
 use super::*;
-use super::{numeric::Number, palette};
+use super::palette;
+use crate::screen::Number;
 use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, TextRole, properties, text};
 use gpui::{prelude::*, *};
 use xgpui_shader::{

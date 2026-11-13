@@ -21,6 +21,8 @@ mod card_button;
 pub(crate) mod data;
 mod hero;
 mod metrics;
+mod numeric;
+pub(crate) use numeric::Number;
 mod panel;
 
 pub(crate) use card::LabCard;

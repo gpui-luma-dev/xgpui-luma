@@ -4,7 +4,6 @@ pub(crate) mod grid;
 pub(crate) mod seascape;
 mod views;
 mod core_screens;
-pub(crate) mod numeric;
 mod palette;
 #[cfg(all(test, feature = "test-support"))]
 mod screen_tests;
