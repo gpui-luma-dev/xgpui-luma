@@ -144,66 +144,9 @@ const SAMPLES: &[(&str, &[u8])] = &[
     ("metal", include_bytes!("../../assets/samples/svg/metal.svg").as_slice()),
     ("dragon", include_bytes!("../../assets/samples/svg/dragon.svg").as_slice()),
 ];
-/// Materialize embedded repository fixtures for isolated case processes.
-pub fn bundled_corpus(output: &Path, cancel: &AtomicBool) -> Result<Value> {
-    let inputs = output.join("inputs");
-    std::fs::create_dir_all(&inputs)?;
-    for (id, bytes) in SAMPLES {
-        crate::benchmarks::check_cancel(cancel)?;
-        std::fs::write(inputs.join(format!("{id}.svg")), bytes)?;
-    }
-    corpus(&inputs, output, cancel)
-}
 fn verify_hash(bytes: &[u8], expected: &str) -> Result<()> {
     ensure!(format!("{:x}", Sha256::digest(bytes)) == expected, "corpus SHA-256 mismatch");
     Ok(())
-}
-pub fn corpus(folder: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value> {
-    let manifest: Vec<Value> = serde_json::from_str(MANIFEST)?;
-    // Validate all supplied documents before starting any timed case.
-    for item in &manifest {
-        crate::benchmarks::check_cancel(cancel)?;
-        let path = folder.join(format!("{}.svg", item["id"].as_str().context("manifest id")?));
-        verify_hash(
-            &read(&path).with_context(|| format!("Corpus file {}", path.display()))?,
-            item["sha256"].as_str().context("manifest hash")?,
-        )
-        .with_context(|| format!("Corpus file {}", path.display()))?;
-    }
-    let mut cases = Vec::new();
-    for item in manifest {
-        let id = item["id"].as_str().context("manifest id")?;
-        let source = folder.join(format!("{id}.svg"));
-        for zoom in [1, 4, 8, 16] {
-            crate::benchmarks::check_cancel(cancel)?;
-            let directory = output.join(format!("{id}-{zoom}x"));
-            std::fs::create_dir_all(&directory)?;
-            let args = vec![
-                "--svg-case".to_owned(),
-                source.display().to_string(),
-                "--zoom".into(),
-                zoom.to_string(),
-                "--output".into(),
-                directory.display().to_string(),
-            ];
-            let result = crate::benchmarks::run_self(&args, &directory, cancel);
-            cases.push(match result {
-                Ok(mut report) => {
-                    report["id"] = json!(id);
-                    report["sha256"] = item["sha256"].clone();
-                    report["source"] = item["url"].clone();
-                    report
-                }
-                Err(error) => json!({"id": id, "zoom": zoom, "error": format!("{error:#}")}),
-            });
-            std::fs::write(output.join("raw.json"), serde_json::to_vec_pretty(&json!({"cases": cases}))?)?;
-        }
-    }
-    let failures = cases.iter().filter(|case| case.get("error").is_some()).count();
-    Ok(
-        json!({"cases": cases, "errors": if failures == 0 { vec![] } else { vec![format!("{failures} corpus cases failed")] },
-        "measurement": "Hash-verified source manifest, one fresh copy of this executable per document/zoom; five parse/raster repeats, zooms 1/4/8/16 at density 2, 256 MiB output budget. No runtime compilation or Python."}),
-    )
 }
 /// Reference previews prepared outside benchmark timing and retained in memory.
 pub(crate) fn thumbnails(selected: Option<&Path>, folder: Option<&Path>) -> crate::benchmarks::svg_table::Thumbnails {
@@ -286,6 +229,7 @@ pub(crate) fn memory_corpus(
     let manifest: Vec<Value> = serde_json::from_str(MANIFEST)?;
     progress.stage("Validating corpus hashes");
     let total = manifest.len() * zooms.len() * budgets.len();
+    let mut sizes = std::collections::HashMap::new();
     for item in &manifest {
         crate::benchmarks::check_cancel(cancel)?;
         let id = item["id"].as_str().context("manifest id")?;
@@ -295,6 +239,7 @@ pub(crate) fn memory_corpus(
             SAMPLES.iter().find(|(name, _)| *name == id).context("missing bundled SVG")?.1.to_vec()
         };
         verify_hash(&bytes, item["sha256"].as_str().context("manifest hash")?)?;
+        sizes.insert(id.to_owned(), bytes.len());
     }
     let tasks: Vec<_> = manifest
         .into_iter()
@@ -334,6 +279,10 @@ pub(crate) fn memory_corpus(
         report["budget_bytes"] = json!(budget);
         report["sha256"] = item["sha256"].clone();
         report["source"] = item["url"].clone();
+        report["coverage"] = item["coverage"].clone();
+        if let Some(bytes) = sizes.get(id) {
+            report["input_bytes"] = json!(bytes);
+        }
         report["execution"] = json!("sequential");
         report["workers"] = json!(1);
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {

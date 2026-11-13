@@ -219,10 +219,14 @@ fn run_job(
             Some(path) => crate::svg_lab::benchmarks::selected(path, output, cancel),
             None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
         },
-        Job::SvgCorpus => match corpus {
-            Some(path) => crate::svg_lab::benchmarks::corpus(path, output, cancel),
-            None => crate::svg_lab::benchmarks::bundled_corpus(output, cancel),
-        },
+        // The same sweep the page runs, so a saved report.json replays with `--svg-results`.
+        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(
+            corpus,
+            &crate::svg_lab::benchmarks::SWEEP_ZOOMS,
+            &crate::svg_lab::benchmarks::COMPARISON_BUDGETS,
+            cancel,
+            &progress::Progress::default(),
+        ),
     }
 }
 fn decorate(job: Job, result: Result<Value>) -> Value {

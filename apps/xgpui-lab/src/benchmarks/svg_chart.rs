@@ -153,7 +153,7 @@ fn decade_scale(cases: &[Case]) -> (f64, NumericScale) {
     (floor, scale)
 }
 
-/// Bars with an orange top edge where the budget capped the output; the plot crate has no outlined bars.
+/// Bars with a red top edge where the budget capped the output; the plot crate has no outlined bars.
 /// `capped` holds (series id, x) pairs.
 fn capped_bars(
     capped: HashSet<(String, u64)>,
@@ -233,7 +233,7 @@ fn raster_facet(look: &Look, index: usize, art: &Artwork, cases: &[Case], budget
     for (id, fill) in bars {
         chart = chart.bar(BarLayer::new(id.clone()).baseline(floor)).bar_style(id, BarPresentation::new(fill));
     }
-    // Capped bars get an orange top edge; the plot crate has no outlined bars.
+    // Capped bars get a red top edge; the plot crate has no outlined bars.
     let chart = chart.bar_template(capped_bars(capped));
     // One tooltip per zoom group with both budgets, whichever bar is hovered.
     let (name, groups) = (art.name.clone(), Arc::new(groups));

@@ -114,7 +114,7 @@ fn graph(
         .action(view)
         .child(svg_chart::raster(look, cases, artworks, budgets, merged));
     let output = PanelShell::new("Output size")
-        .subtitle("Megapixels rendered at each zoom, averaged over the artwork. Orange points are capped.")
+        .subtitle("Megapixels rendered at each zoom, averaged over the artwork. Red points are capped.")
         .child(svg_chart::output(look, cases, budgets));
     let cost = PanelShell::new("Cost per megapixel")
         .subtitle("Raster ms per output megapixel, from each artwork’s largest uncapped case. Higher means more complex artwork.")

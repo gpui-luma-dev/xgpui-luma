@@ -22,7 +22,7 @@ pub(crate) const OUT_OF_GAMUT: u32 = 0xfbbf24;
 pub(crate) const SERIES: [u32; 6] = [0x3984d6, 0xd17b32, 0x35a779, 0xa16acb, 0xd45068, 0x79923d];
 
 /// Marks measurements whose output the raster budget capped.
-pub(crate) const CAPPED: u32 = 0xf08a4b;
+pub(crate) const CAPPED: u32 = 0xff3b30;
 
 pub(crate) fn series(index: usize) -> Hsla {
     color(SERIES[index % SERIES.len()])
