@@ -202,6 +202,9 @@ impl SvgPage {
                 diagnostics,
             );
         }
+        if title == "Scaling" {
+            page = page.equal_panel_widths();
+        }
         if self.loading {
             page = page.notice(Some("Loading artwork in the background…"));
         }
