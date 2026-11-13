@@ -1,6 +1,5 @@
 //! Embedded Parley, Shader and SVG workloads. Isolated jobs launch only this executable.
 pub(crate) mod memory;
-pub(crate) mod pool;
 pub(crate) mod progress;
 pub(crate) mod svg_table;
 use anyhow::{Context as _, Result, ensure};
@@ -269,8 +268,6 @@ pub struct Page {
     cancel: Arc<AtomicBool>,
     busy: bool,
     svg_budget: usize,
-    svg_workers: usize,
-    svg_execution_choice: crate::lab_controls::Choice,
     svg_budget_choice: crate::lab_controls::Choice,
     status: String,
     output: Option<PathBuf>,
@@ -343,18 +340,6 @@ impl Page {
                 cx.notify();
             },
         );
-        let svg_execution_choice = crate::lab_controls::Choice::new(
-            "svg-benchmark-execution",
-            "Execution",
-            &look,
-            crate::lab_controls::labels(&["Sequential", "Parallel"]),
-            0,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.svg_workers = [1, 2][index];
-                cx.notify();
-            },
-        );
         let svg_table = svg_table::build(&look, cx);
         if suite == Suite::Svg {
             svg_table.update(cx, |table, cx| {
@@ -376,8 +361,6 @@ impl Page {
             cancel: Arc::new(AtomicBool::new(false)),
             busy: false,
             svg_budget: 4 * xgpui_svg::MIB,
-            svg_workers: 1,
-            svg_execution_choice,
             svg_budget_choice,
             status: if suite == Suite::Svg {
                 "Choose a workload. Results stay in memory; interactive runs write no files."
@@ -499,7 +482,6 @@ impl Page {
             )
         };
         self.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
-        self.svg_execution_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
         for picker in &self.pickers {
             picker.update(cx, |button, cx| button.set_enabled(false, cx));
         }
@@ -523,7 +505,6 @@ impl Page {
         let selected = self.selected.clone();
         let corpus = self.corpus.clone();
         let budget = self.svg_budget;
-        let workers = self.svg_workers;
         let progress = progress::Progress::default();
         if in_memory {
             let plan = svg_table::plan(&jobs);
@@ -602,7 +583,6 @@ impl Page {
                                     selected.as_deref(),
                                     corpus.as_deref(),
                                     budget,
-                                    workers,
                                     &token,
                                     &worker_progress,
                                 ),
@@ -657,7 +637,6 @@ impl Page {
                     });
                 }
                 this.svg_budget_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
-                this.svg_execution_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
                 for picker in &this.pickers {
                     picker.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
@@ -678,13 +657,6 @@ impl Page {
                     progress.elapsed(),
                     this.results.len()
                 );
-                if this.suite == Suite::Svg {
-                    this.status.push_str(if workers == 2 {
-                        " Parallel · up to 2 corpus workers."
-                    } else {
-                        " Sequential · 1 worker."
-                    });
-                }
                 for button in &this.buttons {
                     button.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
@@ -709,10 +681,7 @@ impl Render for Page {
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
             .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / selected raster budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
-            .when(self.suite==Suite::Svg,|root|root.child(div().flex().flex_wrap().items_center().gap_3()
-                .child(div().flex().items_center().gap_2().child(self.svg_execution_choice.label()).child(div().w(px(128.)).child(self.svg_execution_choice.selector.clone())))
-                .child(self.svg_budget_choice.clone()))
-                .child("Sequential uses one worker. Parallel runs two independent corpus cases at once; contention affects timing and memory. Each case’s repeated samples remain sequential.").child("Corpus: 16 cases, 5 measured repeats plus 2 warm-up rasters per case. Budget caps the output image; SVG filter intermediates can require more memory. Larger budgets can take minutes."))
+            .when(self.suite==Suite::Svg,|root|root.child(self.svg_budget_choice.clone()).child("Corpus: 16 cases, 5 measured repeats plus 2 warm-up rasters per case. Budget caps the output image; SVG filter intermediates can require more memory. Larger budgets can take minutes."))
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
             .when(self.suite==Suite::Svg,|root|root.child(self.svg_table.clone()))
             .children(self.results.iter().map(|result|{
@@ -802,7 +771,6 @@ fn run_svg_memory(
     selected: Option<&Path>,
     corpus: Option<&Path>,
     budget: usize,
-    workers: usize,
     cancel: &AtomicBool,
     progress: &progress::Progress,
 ) -> Result<Value> {
@@ -815,7 +783,7 @@ fn run_svg_memory(
             Some(path) => crate::svg_lab::benchmarks::isolated_selected(Some(path), budget, cancel, progress),
             None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
         },
-        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, workers, cancel, progress),
+        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, cancel, progress),
         _ => anyhow::bail!("expected SVG workload"),
     };
     if job != Job::SvgCorpus {
@@ -875,35 +843,19 @@ mod tests {
     }
     #[cfg(unix)]
     #[::core::prelude::v1::test]
-    fn stop_terminates_both_active_process_groups_and_never_starts_queued_cases() {
+    fn stop_terminates_and_reaps_the_active_worker_process() {
         use std::os::unix::process::CommandExt;
-        let cancel = AtomicBool::new(false);
-        let (sender, receiver) = std::sync::mpsc::channel();
-        std::thread::scope(|scope| {
-            let cancel = &cancel;
-            scope.spawn(move || {
-                receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-                receiver.recv_timeout(Duration::from_secs(5)).unwrap();
-                cancel.store(true, Ordering::Relaxed);
-            });
-            let reports = pool::run(&[0, 1, 2, 3], 2, cancel, |_, _, index| {
-                let mut child = Command::new("/bin/sleep")
-                    .arg("60")
-                    .stdout(Stdio::null())
-                    .stderr(Stdio::null())
-                    .process_group(0)
-                    .spawn()
-                    .unwrap();
-                sender.send(child.id()).unwrap();
-                let start = Instant::now();
-                assert!(wait_child(&mut child, &["--svg-case".into()], cancel).is_err());
-                assert!(child.try_wait().unwrap().is_some(), "child has been reaped");
-                assert!(start.elapsed() < Duration::from_secs(4));
-                *index
-            })
+        let mut child = Command::new("/bin/sleep")
+            .arg("60")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .process_group(0)
+            .spawn()
             .unwrap();
-            assert_eq!(reports, vec![0, 1], "queued cases must not start after Stop");
-        });
+        let start = Instant::now();
+        assert!(wait_child(&mut child, &["--svg-case".into()], &AtomicBool::new(true)).is_err());
+        assert!(child.try_wait().unwrap().is_some(), "worker has been reaped");
+        assert!(start.elapsed() < Duration::from_secs(4));
     }
     #[::core::prelude::v1::test]
     fn report_errors_are_failures_not_success() {
