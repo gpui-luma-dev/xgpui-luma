@@ -113,7 +113,8 @@ pub struct SvgPage {
     numbers: Vec<crate::screen::Number>,
     switches: Vec<(Action, Switch)>,
     benchmarking: bool,
-    bench_result: Option<Result<Vec<String>, String>>,
+    bench_result: Option<Result<Vec<serde_json::Value>, String>>,
+    bench_table: xgpui_luma::controls::table::Table<crate::benchmarks::svg_table::Row>,
     density: f32,
     camera: camera::Camera,
     panel_bounds: [gpui::Bounds<gpui::Pixels>; 3],
@@ -317,7 +318,9 @@ impl SvgPage {
             )
         })
         .to_vec();
+        let bench_table = crate::benchmarks::svg_table::build(&look, cx);
         let mut page = Self {
+            bench_table,
             look: look.clone(),
             numbers: Vec::new(),
             switches: Vec::new(),
@@ -534,20 +537,19 @@ impl SvgPage {
                         let document = SvgDocument::parse(&renderer, &source)?;
                         let parse = start.elapsed().as_secs_f64() * 1000.;
                         let raster = document.rasterize(&renderer, resolution.output, policy.max_output_bytes)?;
-                        rows.push(format!(
-                            "Sample {} · Parse {:.3} ms · Raster {:.3} ms · {}×{} output",
-                            index + 1,
-                            parse,
-                            raster.ms,
-                            i32::from(resolution.output.width),
-                            i32::from(resolution.output.height)
-                        ));
+                        rows.push(serde_json::json!({"id":format!("Sample {}",index+1),"zoom":zoom,
+                            "parse_ms":parse,"raster_ms":raster.ms,
+                            "pixel_width":i32::from(resolution.output.width),"pixel_height":i32::from(resolution.output.height)}));
                     }
                     Ok::<_, anyhow::Error>(rows)
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.benchmarking = false;
+                if let Ok(samples)=&result {
+                    let rows=crate::benchmarks::svg_table::rows(samples);
+                    this.bench_table.update(cx,|table,cx|{let _=table.set_items(rows,cx);});
+                }
                 this.bench_result = Some(result.map_err(|error| error.to_string()));
                 cx.notify();
             });

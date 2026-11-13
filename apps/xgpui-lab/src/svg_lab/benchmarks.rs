@@ -42,6 +42,9 @@ fn save(image: &RenderImage, output: &Path) -> Result<()> {
     Ok(())
 }
 pub fn measure(bytes: &[u8], zoom: f32, budget: usize, output: &Path, cancel: &AtomicBool) -> Result<Value> {
+    measure_report(bytes, zoom, budget, Some(output), cancel)
+}
+fn measure_report(bytes: &[u8], zoom: f32, budget: usize, output: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
     ensure!(zoom.is_finite() && (0.25..=16.).contains(&zoom), "zoom must be 0.25..=16");
     crate::benchmarks::check_cancel(cancel)?;
     let rss_before = rss();
@@ -71,7 +74,9 @@ pub fn measure(bytes: &[u8], zoom: f32, budget: usize, output: &Path, cancel: &A
     }
     let pixels = previous.image.as_bytes(0).context("missing SVG pixels")?;
     let visible = pixels.as_chunks::<4>().0.iter().filter(|pixel| pixel[3] != 0).count();
-    save(&previous.image, &output.join("capture.png"))?;
+    if let Some(output) = output {
+        save(&previous.image, &output.join("capture.png"))?;
+    }
     Ok(json!({"input_bytes": bytes.len(), "zoom": zoom, "density": 2, "budget_bytes": budget,
         "parse_first_ms": first_parse, "parse": stats(&parse), "raster_first_ms": first_raster, "raster": stats(&raster),
         "pixel_width": resolution.output.width.0, "pixel_height": resolution.output.height.0, "resolution_limited": resolution.limited(),
@@ -152,16 +157,81 @@ pub fn corpus(folder: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value
         "measurement": "Hash-verified source manifest, one fresh copy of this executable per document/zoom; five parse/raster repeats, zooms 1/4/8/16 at density 2, 256 MiB output budget. No runtime compilation or Python."}),
     )
 }
+/// File-free interactive reports; corpus cases retain process isolation.
+pub(crate) fn memory_selected(path: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+    crate::benchmarks::check_cancel(cancel)?;
+    let bytes = match path {
+        Some(path) => read(path)?,
+        None => super::scene::svg(false, true).into_bytes(),
+    };
+    measure_report(&bytes, 4., 16 * MIB, None, cancel)
+}
+pub(crate) fn memory_corpus(folder: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+    let manifest: Vec<Value> = serde_json::from_str(MANIFEST)?;
+    for item in &manifest {
+        crate::benchmarks::check_cancel(cancel)?;
+        let id = item["id"].as_str().context("manifest id")?;
+        let bytes = if let Some(folder) = folder {
+            read(&folder.join(format!("{id}.svg")))?
+        } else {
+            SAMPLES.iter().find(|(name, _)| *name == id).context("missing bundled SVG")?.1.to_vec()
+        };
+        verify_hash(&bytes, item["sha256"].as_str().context("manifest hash")?)?;
+    }
+    let mut cases = Vec::new();
+    'cases: for item in manifest {
+        let id = item["id"].as_str().context("manifest id")?;
+        for zoom in [1, 4, 8, 16] {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                break 'cases;
+            }
+            let mut args = vec![
+                "--svg-case".into(),
+                folder.map_or_else(|| id.to_owned(), |f| f.join(format!("{id}.svg")).display().to_string()),
+                "--zoom".into(),
+                zoom.to_string(),
+                "--svg-report-stdout".into(),
+            ];
+            if folder.is_none() {
+                args.push("--svg-bundled".into());
+            }
+            let result = crate::benchmarks::memory::run(&args, cancel);
+            let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
+            report["id"] = json!(id);
+            report["zoom"] = json!(zoom);
+            report["sha256"] = item["sha256"].clone();
+            report["source"] = item["url"].clone();
+            cases.push(report);
+        }
+    }
+    let failed = cases.iter().filter(|c| c.get("error").is_some()).count();
+    Ok(
+        json!({"cases":cases,"errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
+        "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and 256 MiB budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
+    )
+}
 pub fn run_case_cli(args: &[String]) -> Result<()> {
     let source = crate::benchmarks::argument(args, "--svg-case").context("SVG path required")?;
-    let output = crate::benchmarks::argument(args, "--output").context("output directory required")?;
     let zoom = crate::benchmarks::argument(args, "--zoom").unwrap_or("4").parse()?;
-    let output = Path::new(output);
-    std::fs::create_dir_all(output)?;
-    let result = measure(&read(Path::new(source))?, zoom, 256 * MIB, output, &AtomicBool::new(false))?;
-    std::fs::write(output.join("report.json"), serde_json::to_vec_pretty(&result)?)?;
+    let bytes = if args.iter().any(|a| a == "--svg-bundled") {
+        SAMPLES.iter().find(|(id, _)| *id == source).context("unknown bundled SVG")?.1.to_vec()
+    } else {
+        read(Path::new(source))?
+    };
+    if args.iter().any(|a| a == "--svg-report-stdout") {
+        let report = measure_report(&bytes, zoom, 256 * MIB, None, &AtomicBool::new(false))?;
+        use std::io::Write;
+        serde_json::to_writer(std::io::stdout().lock(), &report)?;
+        std::io::stdout().flush()?;
+    } else {
+        let output = Path::new(crate::benchmarks::argument(args, "--output").context("output directory required")?);
+        std::fs::create_dir_all(output)?;
+        let report = measure(&bytes, zoom, 256 * MIB, output, &AtomicBool::new(false))?;
+        std::fs::write(output.join("report.json"), serde_json::to_vec_pretty(&report)?)?;
+    }
     Ok(())
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,6 +250,10 @@ mod tests {
         let hash = format!("{:x}", Sha256::digest(b"fixture"));
         assert!(verify_hash(b"fixture", &hash).is_ok());
         assert!(verify_hash(b"changed", &hash).is_err());
+    }
+    #[::core::prelude::v1::test]
+    fn cancelled_memory_corpus_does_not_start_workers_or_materialize_inputs() {
+        assert!(memory_corpus(None, &AtomicBool::new(true)).is_err());
     }
     #[::core::prelude::v1::test]
     fn cancelled_svg_does_not_parse_or_write_a_preview() {

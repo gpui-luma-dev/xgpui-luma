@@ -292,8 +292,8 @@ impl SvgPage {
         }
         if let Some(result) = &self.bench_result {
             match result {
-                Ok(rows) => {
-                    view = view.children(rows.iter().cloned().map(|row| div().child(row)));
+                Ok(_) => {
+                    view = view.child(self.bench_table.clone());
                 }
                 Err(error) => view = view.child(format!("Benchmark failed: {error}")),
             }

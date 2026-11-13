@@ -1,4 +1,6 @@
 //! Embedded Parley, Shader and SVG workloads. Isolated jobs launch only this executable.
+pub(crate) mod memory;
+pub(crate) mod svg_table;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
 use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
@@ -39,6 +41,30 @@ pub(crate) fn run_self(args: &[String], output: &Path, cancel: &AtomicBool) -> R
         command.process_group(0);
     }
     let mut child = command.spawn().context("starting this app's isolated benchmark")?;
+    let status = wait_child(&mut child, args, cancel)?;
+    ensure!(
+        status.success(),
+        "isolated benchmark exited {status}; inspect {}",
+        output.join("stderr.log").display()
+    );
+    let report: Value = serde_json::from_slice(
+        &std::fs::read(output.join("report.json")).context("benchmark did not produce report.json")?,
+    )?;
+    validate_report(&report)?;
+    Ok(report)
+}
+fn validate_report(report: &Value) -> Result<()> {
+    ensure!(
+        !report.get("errors").and_then(Value::as_array).is_some_and(|e| !e.is_empty()),
+        "isolated benchmark reported errors"
+    );
+    Ok(())
+}
+fn wait_child(
+    child: &mut std::process::Child,
+    args: &[String],
+    cancel: &AtomicBool,
+) -> Result<std::process::ExitStatus> {
     let started = Instant::now();
     let timeout = if args.iter().any(|arg| arg == "--dense-producer-worker") {
         Duration::from_secs(15)
@@ -51,19 +77,7 @@ pub(crate) fn run_self(args: &[String], output: &Path, cancel: &AtomicBool) -> R
     };
     loop {
         if let Some(status) = child.try_wait()? {
-            ensure!(
-                status.success(),
-                "isolated benchmark exited {status}; inspect {}",
-                output.join("stderr.log").display()
-            );
-            let report: Value = serde_json::from_slice(
-                &std::fs::read(output.join("report.json")).context("benchmark did not produce report.json")?,
-            )?;
-            ensure!(
-                !report.get("errors").and_then(Value::as_array).is_some_and(|errors| !errors.is_empty()),
-                "isolated benchmark reported errors"
-            );
-            return Ok(report);
+            return Ok(status);
         }
         if cancel.load(Ordering::Relaxed) || started.elapsed() > timeout {
             #[cfg(unix)]
@@ -206,7 +220,7 @@ fn run_job(
         },
     }
 }
-fn record(job: Job, result: Result<Value>, output: &Path) -> Result<Value> {
+fn decorate(job: Job, result: Result<Value>) -> Value {
     let mut report = result.unwrap_or_else(|error| json!({"error":format!("{error:#}")}));
     report["job"] = json!(job.id());
     report["label"] = json!(job.label());
@@ -220,6 +234,10 @@ fn record(job: Job, result: Result<Value>, output: &Path) -> Result<Value> {
     } else if report.get("outcome").is_none() {
         report["outcome"] = json!("completed");
     }
+    report
+}
+fn record(job: Job, result: Result<Value>, output: &Path) -> Result<Value> {
+    let mut report = decorate(job, result);
     let mut previews = std::fs::read_dir(output)?
         .filter_map(|entry| entry.ok().map(|entry| entry.path()))
         .filter(|path| path.extension().is_some_and(|ext| ext == "png"))
@@ -251,6 +269,7 @@ pub struct Page {
     status: String,
     output: Option<PathBuf>,
     results: Vec<Value>,
+    svg_table: xgpui_luma::controls::table::Table<svg_table::Row>,
     quit_on_finish: bool,
 }
 impl Drop for Page {
@@ -307,7 +326,9 @@ impl Page {
                     .spawn(cx)
             })
             .collect();
+        let svg_table = svg_table::build(&look, cx);
         Self {
+            svg_table,
             suite,
             look,
             buttons,
@@ -318,7 +339,12 @@ impl Page {
             corpus: None,
             cancel: Arc::new(AtomicBool::new(false)),
             busy: false,
-            status: "Choose a workload. Reports and captures use the embedded application code.".into(),
+            status: if suite == Suite::Svg {
+                "Choose a workload. Results stay in memory; interactive runs write no files."
+            } else {
+                "Choose a workload. Reports and captures use the embedded application code."
+            }
+            .into(),
             output: None,
             results: Vec::new(),
             quit_on_finish: false,
@@ -368,19 +394,30 @@ impl Page {
             cx.notify();
             return;
         }
-        let output = match output
-            .map_or_else(|| tempfile::Builder::new().prefix("xgpui-benchmarks-").tempdir().map(|dir| dir.keep()), Ok)
-        {
-            Ok(output) => output,
-            Err(error) => {
-                self.status = format!("Cannot create results: {error}");
-                cx.notify();
-                return;
-            }
+        let in_memory = self.suite == Suite::Svg && output.is_none();
+        let output = if in_memory {
+            None
+        } else {
+            Some(
+                match output.map_or_else(
+                    || tempfile::Builder::new().prefix("xgpui-benchmarks-").tempdir().map(|dir| dir.keep()),
+                    Ok,
+                ) {
+                    Ok(output) => output,
+                    Err(error) => {
+                        self.status = format!("Cannot create results: {error}");
+                        cx.notify();
+                        return;
+                    }
+                },
+            )
         };
         self.busy = true;
         self.results.clear();
-        self.output = Some(output.clone());
+        self.svg_table.update(cx, |table, cx| {
+            let _ = table.set_items(Vec::new(), cx);
+        });
+        self.output = output.clone();
         self.cancel = Arc::new(AtomicBool::new(false));
         for button in &self.buttons {
             button.update(cx, |button, cx| button.set_enabled(false, cx));
@@ -403,15 +440,19 @@ impl Page {
                 {
                     return;
                 }
-                let directory = output.join(job.id());
+                let directory = output.as_ref().map(|output| output.join(job.id()));
                 let token = cancel.clone();
                 let selected = selected.clone();
                 let corpus = corpus.clone();
                 let result = cx
                     .background_spawn(async move {
-                        let result = run_job(job, &directory, selected.as_deref(), corpus.as_deref(), &token);
-                        std::fs::create_dir_all(&directory)?;
-                        record(job, result, &directory)
+                        if let Some(directory) = directory {
+                            let result = run_job(job, &directory, selected.as_deref(), corpus.as_deref(), &token);
+                            std::fs::create_dir_all(&directory)?;
+                            record(job, result, &directory)
+                        } else {
+                            Ok(decorate(job, run_svg_memory(job, selected.as_deref(), corpus.as_deref(), &token)))
+                        }
                     })
                     .await;
                 if this
@@ -419,7 +460,13 @@ impl Page {
                         this.results.push(result.unwrap_or_else(
                             |error| json!({"label":job.label(),"outcome":"failed","error":format!("{error:#}")}),
                         ));
-                        if let Err(error) = summary(&output, &this.results, cancel.load(Ordering::Relaxed)) {
+                        let rows = svg_table::rows(&this.results);
+                        this.svg_table.update(cx, |table, cx| {
+                            let _ = table.set_items(rows, cx);
+                        });
+                        if let Some(output) = &output
+                            && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
+                        {
                             this.results
                                 .push(json!({"outcome":"failed","error":format!("Cannot save results: {error:#}")}));
                             cancel.store(true, Ordering::Relaxed);
@@ -433,7 +480,9 @@ impl Page {
             }
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
-                if let Err(error) = summary(&output, &this.results, cancel.load(Ordering::Relaxed)) {
+                if let Some(output) = &output
+                    && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
+                {
                     this.results.push(json!({"outcome":"failed","error":format!("Cannot save summary: {error:#}")}));
                 }
                 let failed = this.results.iter().filter(|result| result["outcome"] == "failed").count();
@@ -473,6 +522,7 @@ impl Render for Page {
             .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / 16 MiB budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
+            .when(self.suite==Suite::Svg && !self.results.is_empty(),|root|root.child(self.svg_table.clone()))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
@@ -534,6 +584,18 @@ pub fn run_cli(args: &[String], suite: Suite, flag: &str) -> Result<()> {
     });
     Ok(())
 }
+fn run_svg_memory(job: Job, selected: Option<&Path>, corpus: Option<&Path>, cancel: &AtomicBool) -> Result<Value> {
+    match job {
+        Job::SvgBuiltin => crate::svg_lab::benchmarks::memory_selected(None, cancel),
+        Job::SvgSelected => match selected {
+            Some(path) => crate::svg_lab::benchmarks::memory_selected(Some(path), cancel),
+            None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
+        },
+        Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, cancel),
+        _ => anyhow::bail!("expected SVG workload"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -544,6 +606,25 @@ mod tests {
         summary(dir.path(), &[], true).unwrap();
         let report: Value = serde_json::from_slice(&std::fs::read(dir.path().join("report.json")).unwrap()).unwrap();
         assert_eq!(report["cancelled"], true);
+    }
+    #[cfg(feature = "test-support")]
+    #[::core::prelude::v1::test]
+    fn interactive_svg_run_keeps_numeric_results_in_memory() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
+        page.update(cx, |page, cx| page.start(Some(Job::SvgBuiltin), None, cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert!(!page.busy);
+            assert!(page.output.is_none());
+            assert_eq!(page.results.len(), 1);
+            assert_eq!(page.results[0]["outcome"], "completed");
+            assert!(page.results[0].get("previews").is_none());
+            assert!(page.results[0]["raster"]["median_ms"].as_f64().is_some());
+            assert_eq!(page.svg_table.read(cx).items().len(), 1);
+        });
     }
     #[::core::prelude::v1::test]
     fn report_errors_are_failures_not_success() {
