@@ -1,5 +1,7 @@
 //! App-side host for TDM's Seascape. The adapted WGSL retains CC BY-NC-SA 3.0.
 use super::*;
+use super::numeric::Number;
+use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, properties};
 use xgpui_shader::{
     shader_paint,
     instanced::{InstanceField, ShaderInstance},
@@ -124,6 +126,8 @@ pub struct SeaPane {
     programs: anyhow::Result<SeaPrograms>,
     parameters: SeaInstance,
     sliders: Vec<Slider>,
+    numbers: Vec<Number>,
+    switches: Vec<Switch>,
     buttons: Vec<Entity<Button>>,
     active: bool,
     animated: bool,
@@ -180,8 +184,33 @@ impl SeaPane {
                     .spawn(cx)
             })
             .collect();
-        let pane = Self {
-            look,
+        let switches = ["Animate", "Compare rendering models", "Detailed normals"]
+            .into_iter()
+            .enumerate()
+            .map(|(i, label)| {
+                radix::Switch::new(format!("seascape-switch-{i}"))
+                    .look(&look)
+                    .label(label)
+                    .checked(i == 2)
+                    .on_value_changed(cx, move |this: &mut Self, on, cx| {
+                        match i {
+                            0 => {
+                                this.animated = on;
+                                this.last = Instant::now();
+                                this.sync(cx);
+                            }
+                            1 => this.compare = on,
+                            _ => this.parameters.detail = if on { 1. } else { 0. },
+                        }
+                        cx.notify();
+                    })
+                    .spawn(cx)
+            })
+            .collect();
+        let mut pane = Self {
+            look: look.clone(),
+            numbers: Vec::new(),
+            switches,
             programs: SeaPrograms::new(),
             parameters: SeaInstance::default(),
             sliders,
@@ -191,12 +220,40 @@ impl SeaPane {
             compare: false,
             last: Instant::now(),
         };
+        pane.numbers = pane
+            .sliders
+            .iter()
+            .take(7)
+            .enumerate()
+            .map(|(i, slider)| {
+                let (label, min, max, step) = CONTROLS[i];
+                Number::attach(
+                    &format!("seascape-{i}"),
+                    label,
+                    (min, max, step),
+                    pane.parameters.values()[i],
+                    slider.clone(),
+                    &look,
+                    cx,
+                    move |this: &mut Self, value, _| {
+                        this.parameters.edit(i, value);
+                        if i == 0 {
+                            this.animated = false;
+                        }
+                        this.parameters.values()[i]
+                    },
+                )
+            })
+            .collect();
         pane.sync(cx);
         pane
     }
     fn sync(&self, cx: &mut Context<Self>) {
         for (slider, value) in self.sliders.iter().zip(self.parameters.values()) {
             slider.update(cx, |slider, cx| slider.set_value(value, cx));
+        }
+        for (number, value) in self.numbers.iter().zip(self.parameters.values()) {
+            number.sync(value, cx);
         }
     }
     pub fn activate(&mut self) {
@@ -209,62 +266,81 @@ impl SeaPane {
         self.active = false;
         self.animated = false;
     }
-    fn preview(&self) -> anyhow::Result<AnyElement> {
+    fn preview(&self) -> anyhow::Result<Hero> {
         let programs = self.programs.as_ref().map_err(|e| anyhow::anyhow!("{e:#}"))?;
         let typed = programs.instanced.clone();
         let p = self.parameters;
-        let mut view = div().flex().flex_wrap().gap_4();
-        if self.compare {
-            view = view.child(
-                div()
-                    .flex_1()
-                    .min_w(px(300.))
-                    .child("Shader paint · expanded bounded loops")
-                    .child(painted().w_full().h(px(300.)).bg_paint(programs.paint(p)?)),
-            );
-        }
-        Ok(view
-            .child(
-                div()
-                    .flex_1()
-                    .min_w(px(300.))
-                    .child("Instanced shader · native WGSL loops · 32-byte instance")
-                    .child(
-                        canvas(
-                            |_, _, _| (),
-                            move |bounds, _, window, _| {
-                                if let Err(e) = window.paint_custom_shader(bounds, &typed, p) {
-                                    tracing::error!("Seascape: {e:#}");
-                                }
-                            },
-                        )
-                        .w_full()
-                        .h(px(300.)),
-                    ),
+        let native = ComparePane::new(
+            "Instanced shader",
+            canvas(
+                |_, _, _| (),
+                move |bounds, _, window, _| {
+                    if let Err(e) = window.paint_custom_shader(bounds, &typed, p) {
+                        tracing::error!("Seascape: {e:#}");
+                    }
+                },
             )
-            .into_any_element())
+            .w_full()
+            .h(px(300.)),
+        )
+        .subtitle("Native WGSL loops · 32-byte instance");
+        Ok(if self.compare {
+            Hero::compare(
+                ComparePane::new("Shader paint", painted().w_full().h(px(300.)).bg_paint(programs.paint(p)?))
+                    .subtitle("Expanded bounded loops"),
+                native,
+            )
+        } else {
+            Hero::stage(native)
+        })
     }
 }
 impl Render for SeaPane {
-    fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let now = Instant::now();
+        if cx.reduce_motion() {
+            self.animated = false;
+        }
         if self.active && self.animated {
             self.parameters.time += now.duration_since(self.last).as_secs_f32().min(0.1);
             window.request_animation_frame();
         }
         self.last = now;
-        div().id("shadertoy-seascape").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4()
-            .text_color(self.look.chrome().body_text)
-            .child("Shadertoy: Seascape · Alexander Alekseev (TDM)")
-            .child(div().flex().flex_wrap().gap_2().children(self.buttons.iter().cloned()))
-            .child(format!("{} · time {:.2}s · 32 trace steps · 3 geometry / {} normal octaves", if self.animated { "Animating" } else { "Paused" }, self.parameters.time, if self.parameters.detail > 0.5 { 5 } else { 3 }))
-            .child(div().flex().flex_wrap().gap_4().children(self.sliders.iter().enumerate().map(|(i, slider)| {
-                div().w(px(180.)).flex().flex_col().gap_2().child(format!("{}: {:.2}", CONTROLS[i].0, self.parameters.values()[i])).child(slider.clone())
-            })))
-            .child(match self.preview() { Ok(view) => view, Err(e) => div().child(format!("Seascape shader error: {e:#}")).into_any_element() })
-            .child("Seascape © 2014 Alexander Alekseev / TDM · WGSL adaptation · CC BY-NC-SA 3.0 (noncommercial, share alike)")
+        for (number, value) in self.numbers.iter().zip(self.parameters.values()) {
+            number.observe(value, cx);
+        }
+        for (switch, on) in self.switches.iter().zip([self.animated, self.compare, self.parameters.detail > 0.5]) {
+            if *switch.read(cx).data() != on {
+                switch.update(cx, |switch, cx| switch.set_data(on, cx));
+            }
+        }
+        let mut screen = LabScreen::new("shader-seascape", self.look.clone())
+            .crumb("xgpui-shader", "Shadertoy: Seascape")
+            .title("Shadertoy: Seascape")
+            .lede("Explore a moving ocean and compare two ways to draw the same waves.")
+            .caption(format!(
+                "{} · time {:.2} s · 32 trace steps · 3 geometry / {} normal octaves",
+                if self.animated { "Animating" } else { "Paused" },
+                self.parameters.time,
+                if self.parameters.detail > 0.5 { 5 } else { 3 }
+            ));
+        for switch in &self.switches {
+            screen = screen.control(switch.clone());
+        }
+        for button in self.buttons.iter().skip(2) {
+            screen = screen.action(button.clone());
+        }
+        let screen = screen.panels(ParametersPanel::new("Ocean parameters").subtitle("Scrubbing time pauses animation.").params(self.numbers.iter().map(Number::param)),
+            PanelShell::new("Rendering models").child(properties(&self.look, [("Instanced", "Native bounded WGSL loops"), ("Shader paint", "Expanded constant-bound loops"), ("Comparison", "Same time, camera and wave inputs")])))
+            .note("Compare rendering models adds the shader-paint preview beside the typed shader. Detailed normals use five octaves instead of three. Leaving the page pauses motion.")
+            .credits("Seascape © 2014 Alexander Alekseev / TDM. WGSL adaptation under CC BY-NC-SA 3.0: noncommercial, share alike. Original work and license are linked in the controls.");
+        match self.preview() {
+            Ok(hero) => screen.hero(hero),
+            Err(e) => screen.notice(Some(format!("Seascape shader error: {e:#}"))),
+        }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,6 +390,59 @@ mod tests {
             pane.suspend();
             assert!(!pane.active);
             assert!(!pane.animated);
+        });
+    }
+    #[cfg(feature = "test-support")]
+    #[::core::prelude::v1::test]
+    fn numeric_scrubbing_pauses_and_switches_follow_the_original_reset() {
+        use xgpui_luma::controls::{textfield::TextFieldEvent, switch::SwitchEvent, button::ButtonEvent};
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| SeaPane::new(crate::theme::default_look(), cx));
+        let (time, animate, compare, detail) = cx.update(|_, cx| {
+            let page = page.read(cx);
+            (
+                page.numbers[0].field.clone(),
+                page.switches[0].clone(),
+                page.switches[1].clone(),
+                page.switches[2].clone(),
+            )
+        });
+        animate.update(cx, |switch, cx| {
+            switch.set_data(true, cx);
+            cx.emit(SwitchEvent::Change { on: true });
+        });
+        time.update(cx, |field, cx| {
+            field.set_value("12.5", cx);
+            cx.emit(TextFieldEvent::Change { value: "12.5".into() });
+        });
+        for switch in [&compare, &detail] {
+            switch.update(cx, |switch, cx| {
+                switch.set_data(false, cx);
+                cx.emit(SwitchEvent::Change { on: false });
+            });
+        }
+        compare.update(cx, |switch, cx| {
+            switch.set_data(true, cx);
+            cx.emit(SwitchEvent::Change { on: true });
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert_eq!(page.parameters.time, 12.5);
+            assert!(!page.animated);
+            assert!(!*animate.read(cx).data());
+            assert!(page.compare);
+            assert_eq!(page.parameters.detail, 0.);
+        });
+        let reset = cx.update(|_, cx| page.read(cx).buttons[2].clone());
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert_eq!(page.parameters.values(), SeaInstance::default().values());
+            assert!(page.compare, "upstream reset preserves comparison mode");
+            assert!(*detail.read(cx).data());
         });
     }
 }

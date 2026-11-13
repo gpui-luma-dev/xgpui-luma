@@ -1,5 +1,6 @@
 use super::*;
 use xgpui_shader::{painted, Paint, WindowPaintExt, WindowShaderExt};
+use crate::screen::{ComparePane, Hero, TextRole, text};
 
 impl Render for ShaderPage {
     fn render(&mut self, window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
@@ -16,151 +17,44 @@ impl Render for ShaderPage {
             return div().p_4().child("Preparing SDR presentation for captured effects…").into_any_element();
         }
         if self.active_tab == "Brushes" {
-            return div()
-                .id("brush-gallery-scroll")
-                .size_full()
-                .overflow_y_scroll()
-                .p_4()
-                .child(gallery::gallery(self, _cx))
-                .into_any_element();
+            return gallery::gallery(self, _cx).into_any_element();
         }
         if self.active_tab == "Layer Effects" {
-            return div()
-                .id("layer-gallery-scroll")
-                .size_full()
-                .overflow_y_scroll()
-                .p_4()
-                .child(gallery::layers(self, _cx))
-                .into_any_element();
+            return gallery::layers(self, _cx).into_any_element();
         }
         if self.active_tab == "Mesh Editor" {
             return div().size_full().child(self.mesh_pane.clone()).into_any_element();
         }
         if matches!(self.active_tab.as_ref(), "Shadows" | "Borders") {
-            self.shadow_pane.update(_cx, |page, _| page.borders = self.active_tab == "Borders");
+            self.shadow_pane.update(_cx, |page, cx| {
+                let borders = self.active_tab == "Borders";
+                if page.borders != borders {
+                    page.borders = borders;
+                    cx.notify();
+                }
+            });
             return div().size_full().child(self.shadow_pane.clone()).into_any_element();
         }
         if self.active_tab == "Typography" {
             return div().size_full().child(self.typography.clone()).into_any_element();
         }
         let now = Instant::now();
+        if self.animated && _cx.reduce_motion() {
+            self.freeze();
+            self.sync_sliders(_cx);
+            self.sync_fields_except(None, _cx);
+        }
         if self.animated {
             self.time += now.duration_since(self.last_frame).as_secs_f32().min(0.1);
             window.request_animation_frame();
         }
         self.last_frame = now;
-        let actions: &[Action] = match self.active_tab.as_ref() {
-            "Mesh Editor" => &[Action::Point, Action::Reset, Action::Opacity, Action::Clip],
-            "WGSL Paints" => &[Action::Animate, Action::Opacity, Action::Clip],
-            "Instancing" => &[Action::Mode, Action::Count, Action::Animate, Action::Opacity, Action::Clip],
-            _ => &[
-                Action::Effect,
-                Action::Stop,
-                Action::Add,
-                Action::Duplicate,
-                Action::Remove,
-                Action::Reset,
-                Action::Animate,
-                Action::Opacity,
-                Action::Clip,
-                Action::Native,
-            ],
-        };
-        let parameters: &[Parameter] = match self.active_tab.as_ref() {
-            "Mesh Editor" => &[
-                Parameter::X,
-                Parameter::Y,
-                Parameter::MeshRed,
-                Parameter::MeshGreen,
-                Parameter::MeshBlue,
-                Parameter::U,
-                Parameter::V,
-            ],
-            "WGSL Paints" => &[Parameter::Progress, Parameter::ShaderAlpha],
-            "Instancing" => &[],
-            _ => &[
-                Parameter::Angle,
-                Parameter::CenterX,
-                Parameter::CenterY,
-                Parameter::RadiusX,
-                Parameter::RadiusY,
-                Parameter::Offset,
-                Parameter::Red,
-                Parameter::Green,
-                Parameter::Blue,
-                Parameter::Alpha,
-            ],
-        };
-        let preview = match self.active_tab.as_ref() {
-            "WGSL Paints" => self.wgsl(),
-            "Instancing" => self.instances(),
-            "Gradient Paints" => self.coverage(true),
-            "Mesh Editor" => self.coverage(false),
-            _ => self.gradients(),
-        };
-        div()
-            .id("shader-page-scroll")
-            .size_full()
-            .overflow_y_scroll()
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .text_color(self.look.chrome().body_text)
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .gap_2()
-                    .children(
-                        self.buttons
-                            .iter()
-                            .filter(|(action, _)| {
-                                actions.contains(action)
-                                    && !(self.active_tab == "Instancing"
-                                        && ((*action == Action::Count && self.mode != 1)
-                                            || (*action == Action::Clip && self.mode != 2)))
-                            })
-                            .map(|(_, button)| button.clone()),
-                    )
-                    .children(
-                        self.choices
-                            .iter()
-                            .filter(|(action, _)| {
-                                actions.contains(action)
-                                    && !(*action == Action::Count && self.active_tab == "Instancing" && self.mode != 1)
-                            })
-                            .map(|(_, choice)| choice.clone()),
-                    ),
-            )
-            .child(self.status())
-            .child(
-                div().flex().flex_wrap().gap_4().children(
-                    self.sliders
-                        .iter()
-                        .filter(|(parameter, _)| parameters.contains(parameter) && self.parameter_visible(*parameter))
-                        .map(|(parameter, slider)| {
-                            div()
-                                .w(px(180.))
-                                .flex()
-                                .flex_col()
-                                .gap_2()
-                                .child(format!("{}: {:.2}", parameter.config().0, self.value(*parameter)))
-                                .child(slider.clone())
-                        }),
-                ),
-            )
-            .child(match preview {
-                Ok(view) => view,
-                Err(error) => div().child(format!("Shader lab unavailable: {error:#}")).into_any_element(),
-            })
-            .into_any_element()
+        self.render_core(_cx).into_any_element()
     }
 }
 
 impl ShaderPage {
-    fn parameter_visible(&self, parameter: Parameter) -> bool {
+    pub(super) fn parameter_visible(&self, parameter: Parameter) -> bool {
         let effect = Self::EFFECTS[self.effect_index];
         match parameter {
             Parameter::Angle => effect != Effect::Radial,
@@ -170,86 +64,30 @@ impl ShaderPage {
         }
     }
 
-    fn status(&self) -> String {
-        let state = format!(
-            "{} · Opacity {} · Clipping {}",
-            if self.animated { "Animating" } else { "Paused" },
-            if self.half_opacity { "50%" } else { "100%" },
-            self.clipped
-        );
-        match self.active_tab.as_ref() {
-            "Mesh Editor" => format!("paint-lab · 3×3 Hermite mesh · Point {} of 9 · {state}", self.selected_point + 1),
-            "WGSL Paints" => format!("paint-lab portable wash + shader-examples minimal WGSL · {state}"),
-            "Instancing" => format!(
-                "shader-examples · {} · {} instances · {state}",
-                ["Glow", "Particles", "Composition"][self.mode],
-                if self.mode == 0 {
-                    100
-                } else if self.mode == 1 {
-                    [100, 1000, 5000, 10000][self.count_index]
-                } else {
-                    3
-                }
-            ),
-            _ => {
-                let s = &self.settings[self.effect_index];
-                format!(
-                    "paint-lab · {} · Stop {} of {} · Native coverage {} · {state}",
-                    Self::EFFECTS[self.effect_index].label(),
-                    s.selected + 1,
-                    s.stops.len(),
-                    self.native
-                )
-            }
-        }
-    }
-
-    fn gradients(&self) -> anyhow::Result<AnyElement> {
-        let settings = &self.settings[self.effect_index];
+    pub(super) fn gradients(&self) -> anyhow::Result<AnyElement> {
         let paint = if self.native {
             Paint::Native(white().into())
         } else {
             self.producer()?.into()
         };
         Ok(div()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .child("Analytic gradient producer · linear, radial, conic and diamond")
+            .id("analytic-preview")
+            .w_full()
+            .h(px(280.))
+            .overflow_hidden()
+            .opacity(if self.half_opacity { 0.5 } else { 1. })
             .child(
-                div()
-                    .id("analytic-preview")
+                painted()
                     .w_full()
                     .h(px(280.))
-                    .overflow_hidden()
-                    .opacity(if self.half_opacity { 0.5 } else { 1. })
-                    .child(
-                        painted()
-                            .w(px(640.))
-                            .h(px(280.))
-                            .rounded_2xl()
-                            .bg_paint(paint)
-                            .when(self.clipped, |view| view.ml(px(-120.))),
-                    ),
+                    .rounded_2xl()
+                    .bg_paint(paint)
+                    .when(self.clipped, |view| view.ml(px(-120.))),
             )
-            .child(div().flex().gap_2().children(settings.stops.iter().enumerate().map(|(index, stop)| {
-                let [r, g, b, a] = stop.color;
-                div()
-                    .flex_1()
-                    .h(px(56.))
-                    .bg(Rgba { r, g, b, a })
-                    .border_2()
-                    .border_color(if index == settings.selected {
-                        white()
-                    } else {
-                        transparent_black()
-                    })
-                    .child(format!("{:.2}", stop.offset))
-            })))
             .into_any_element())
     }
 
-    fn coverage(&self, brushes: bool) -> anyhow::Result<AnyElement> {
+    pub(super) fn coverage(&self, brushes: bool) -> anyhow::Result<AnyElement> {
         let producer = self.producer()?;
         let paint = if self.native && brushes {
             Paint::Native(white().into())
@@ -261,13 +99,12 @@ impl ShaderPage {
             let mut tile = painted().w(px(280.)).h(px(210.));
             match index {
                 0 => {
-                    tile = tile
-                        .rounded_3xl()
-                        .bg_paint(paint.clone())
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child("Normal GPUI children")
+                    tile =
+                        tile.rounded_3xl().bg_paint(paint.clone()).flex().items_center().justify_center().child(text(
+                            &self.look,
+                            TextRole::Detail,
+                            "Normal GPUI children",
+                        ))
                 }
                 1 => tile = tile.rounded_3xl().border_8().border_dashed().border_paint(paint.clone()),
                 _ => {
@@ -286,7 +123,7 @@ impl ShaderPage {
                 }
             }
             cards = cards.child(
-                div().flex().flex_col().gap_2().child(label).child(
+                div().flex().flex_col().gap_2().child(text(&self.look, TextRole::Name, label)).child(
                     div()
                         .id(format!("shader-coverage-{index}"))
                         .w(px(if self.clipped { 200. } else { 280. }))
@@ -301,66 +138,52 @@ impl ShaderPage {
         Ok(view.into_any_element())
     }
 
-    fn wgsl(&self) -> anyhow::Result<AnyElement> {
+    pub(super) fn wgsl(&self) -> anyhow::Result<Hero> {
         let programs = self.programs.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
         let wash = programs.wash.paint(
             xgpui_shader::shader_paint::ShaderParameters::new()
                 .float("progress", self.progress + if self.animated { 0.25 * self.time.sin() } else { 0. })
-                .vec3("tint", [0.95, 0.15, 0.35])
+                .vec3("tint", super::palette::WASH_TINT)
                 .float("alpha", self.shader_alpha),
         )?;
         let program = programs.minimal.clone();
         let phase = self.time * 2.;
         let alpha = self.shader_alpha;
-        Ok(div()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .child("Portable WGSL wash · reflected progress, tint and alpha parameters")
-            .child(
-                div()
-                    .w_full()
-                    .h(px(180.))
-                    .overflow_hidden()
-                    .opacity(if self.half_opacity { 0.5 } else { 1. })
-                    .child(
-                        painted()
-                            .w(px(640.))
-                            .h(px(180.))
-                            .rounded_2xl()
-                            .bg_paint(wash)
-                            .when(self.clipped, |view| view.ml(px(-120.))),
-                    ),
+        let viewport =
+            || div().w_full().h(px(240.)).overflow_hidden().opacity(if self.half_opacity { 0.5 } else { 1. });
+        let wash = viewport().child(
+            painted()
+                .w_full()
+                .h(px(240.))
+                .rounded_2xl()
+                .bg_paint(wash)
+                .when(self.clipped, |view| view.ml(px(-120.))),
+        );
+        let typed = viewport().child(
+            canvas(
+                |_, _, _| (),
+                move |bounds, _, window, _| {
+                    let [r, g, b] = super::palette::MINIMAL_TINT;
+                    if let Err(error) = window.paint_custom_shader(
+                        bounds,
+                        &program,
+                        EffectInstance { color: [r, g, b, alpha], effect: [12., phase, 1., 0.] },
+                    ) {
+                        eprintln!("Minimal shader paint failed: {error:#}");
+                    }
+                },
             )
-            .child("Minimal typed fragment shader · shader-examples/minimal.wgsl")
-            .child(
-                div()
-                    .w_full()
-                    .h(px(180.))
-                    .overflow_hidden()
-                    .opacity(if self.half_opacity { 0.5 } else { 1. })
-                    .child(
-                        canvas(
-                            |_, _, _| (),
-                            move |bounds, _, window, _| {
-                                if let Err(error) = window.paint_custom_shader(
-                                    bounds,
-                                    &program,
-                                    EffectInstance { color: [0.25, 0.65, 1., alpha], effect: [12., phase, 1., 0.] },
-                                ) {
-                                    eprintln!("Minimal shader paint failed: {error:#}");
-                                }
-                            },
-                        )
-                        .w(px(640.))
-                        .h(px(180.))
-                        .when(self.clipped, |view| view.ml(px(-120.))),
-                    ),
-            )
-            .into_any_element())
+            .w_full()
+            .h(px(240.))
+            .when(self.clipped, |view| view.ml(px(-120.))),
+        );
+        Ok(Hero::compare(
+            ComparePane::new("Portable wash", wash).subtitle("Reflected WGSL inputs"),
+            ComparePane::new("Typed fragment", typed).subtitle("Minimal shader"),
+        ))
     }
 
-    fn instances(&self) -> anyhow::Result<AnyElement> {
+    pub(super) fn instances(&self) -> anyhow::Result<AnyElement> {
         let programs = self.programs.as_ref().map_err(|error| anyhow::anyhow!("{error:#}"))?;
         let program = match self.mode {
             0 => programs.glow.clone(),
@@ -368,19 +191,13 @@ impl ShaderPage {
             _ => programs.rounded.clone(),
         };
         let mode = self.mode;
-        let count = if mode == 0 {
-            100
-        } else {
-            [100, 1000, 5000, 10000][self.count_index]
-        };
+        let count = self.instance_count();
         let time = self.time;
         let clipped = self.clipped;
         Ok(div()
             .flex()
             .flex_col()
             .gap_3()
-            .child("Typed main-pass instances · native draws preserve GPUI clipping, opacity and order")
-            .child("Instance counts describe the workload. Use a GPU capture to measure submissions or GPU time.")
             .child(
                 div()
                     .w_full()
@@ -431,11 +248,11 @@ fn paint_instances(
         let (x, y, w, h, tint) = if mode == 0 {
             let w = width / 10.;
             let h = height / 10.;
-            ((i % 10) as f32 * w, (i / 10) as f32 * h, w, h, [0.3 + 0.2 * (fi * 0.3).sin(), 0.55, 1., 1.])
+            ((i % 10) as f32 * w, (i / 10) as f32 * h, w, h, super::palette::instance_tint(fi, false))
         } else {
             let x = ((random(i as u32) + t * 0.025) % 1.) * width;
             let y = ((random((i as u32).wrapping_add(123456)) - t * 0.06).rem_euclid(1.)) * height;
-            (x - 6., y - 6., 12., 12., [0.4 + 0.4 * (fi * 0.7).sin(), 0.65, 1., 0.8])
+            (x - 6., y - 6., 12., 12., super::palette::instance_tint(fi, true))
         };
         window.paint_custom_shader(
             Bounds::new(bounds.origin + point(px(x), px(y)), size(px(w), px(h))),
@@ -483,15 +300,31 @@ fn paint_composition(
             size(clip.size.width * w, clip.size.height * h),
         )
     };
-    window.paint_quad(fill(clip, rgb(0x1c2b46)));
+    window.paint_quad(fill(clip, rgb(super::palette::COMPOSITION_BACKGROUND)));
     window.with_content_mask(clipped.then_some(ContentMask { bounds: clip }), |window| -> anyhow::Result<()> {
         let effect = |color| EffectInstance { color, effect: [12., 0., 1., 0.] };
-        window.paint_custom_shader(geometry(0.04, 0.12, 0.56, 0.76), program, effect([1., 0.2, 0.3, 0.65]))?;
-        window.paint_quad(fill(geometry(0.36, -0.12, 0.025, 1.40), rgb(0xffdf80)));
-        window.paint_custom_shader(geometry(0.30, 0.25, 0.56, 0.96), program, effect([0.15, 0.9, 0.55, 0.65]))?;
-        window.paint_custom_shader(geometry(0.56, -0.10, 0.64, 0.90), program, effect([0.3, 0.5, 1., 0.65]))?;
+        window.paint_custom_shader(
+            geometry(0.04, 0.12, 0.56, 0.76),
+            program,
+            effect(super::palette::COMPOSITION_SHAPES[0]),
+        )?;
+        window.paint_quad(fill(geometry(0.36, -0.12, 0.025, 1.40), rgb(super::palette::COMPOSITION_DIVIDER)));
+        window.paint_custom_shader(
+            geometry(0.30, 0.25, 0.56, 0.96),
+            program,
+            effect(super::palette::COMPOSITION_SHAPES[1]),
+        )?;
+        window.paint_custom_shader(
+            geometry(0.56, -0.10, 0.64, 0.90),
+            program,
+            effect(super::palette::COMPOSITION_SHAPES[2]),
+        )?;
         Ok(())
     })?;
-    window.paint_quad(fill(clip, transparent_black()).border_widths(px(2.)).border_color(rgb(0x67e8f9)));
+    window.paint_quad(
+        fill(clip, transparent_black())
+            .border_widths(px(2.))
+            .border_color(rgb(super::palette::COMPOSITION_CLIP)),
+    );
     Ok(())
 }
