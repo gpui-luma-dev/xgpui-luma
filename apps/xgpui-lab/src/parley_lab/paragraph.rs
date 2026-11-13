@@ -3,6 +3,8 @@
 mod input;
 
 use anyhow::{Result, ensure};
+use crate::screen::{Hero, LabScreen, PanelShell, properties, labeled_control, text as label_text, TextRole};
+use super::palette;
 use gpui::{
     App, Bounds, Context, ElementInputHandler, FocusHandle, Focusable, Font, FontFallbacks, FontRun, KeyDownEvent,
     MouseButton, MouseDownEvent, MouseMoveEvent, ParagraphPosition, Pixels, PlatformParagraphLayout, Point, Render,
@@ -268,7 +270,6 @@ impl Focusable for ParagraphLab {
 }
 impl Render for ParagraphLab {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        use crate::theme::ColorVizLookExt;
         let label = TEXTS[self.sample].0;
         let text = self.content.clone();
         let width = self.width(window);
@@ -302,41 +303,24 @@ impl Render for ParagraphLab {
         }
         let native_atlas = self.native_atlas;
         let raster = self.raster.as_ref().map(|(_, _, _, image)| image.clone());
-        let mut root = div()
-            .id("paragraph-lab")
-            .size_full()
-            .overflow_y_scroll()
-            .bg(self.look.chrome().panel_background)
-            .text_color(self.look.chrome().body_text)
-            .font_family("IBM Plex Sans")
-            .text_size(px(13.0))
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_3()
-            .track_focus(&self.focus)
-            .on_key_down(cx.listener(Self::key))
-            .child(div().text_size(px(24.0)).child(if self.line_mode {
-                "Line layout & reflow"
-            } else {
-                "Parley paragraphs"
-            }))
-            .child("Click/drag to select. Left/Right move visually; Shift extends selection.")
-            .child("Type or use IME; Enter adds a line break. Clipboard shortcuts and grapheme deletion.")
-            .child(div().flex().gap_3().children(self.buttons.clone()).child(self.sample_choice.clone()))
-            .child(format!("{label} | width {:.0}px", f32::from(width)))
-            .child(format!(
-                "Seed: {}",
-                self.timings.get(self.sample).map_or_else(|| "not measured yet".to_owned(), Timing::label)
-            ))
-            .child("Run CPU diagnostics on Text Shaping to refresh seed timings.")
-            .child("CPU: first layout / warm cache hit / new-width reflow median. Shared backend state.")
-            .child(format!(
-                "Anchor {} {:?} | caret {} {:?}",
-                self.anchor.byte_index, self.anchor.affinity, self.caret.byte_index, self.caret.affinity
-            ));
+        let mut root = LabScreen::new("parley-paragraph", self.look.clone())
+            .crumb("xgpui-parley", "Paragraphs").title("Paragraphs")
+            .lede("Explore editing, selection and mixed-direction text as a paragraph reflows.")
+            .caption(format!("{label} · {:.0} px wrap · {} bytes · {}", f32::from(width), self.content.len(), if native_atlas {"native glyph atlas"} else {"CPU raster preview"}))
+            .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
+            .panels(PanelShell::new("Selection / live").child(properties(&self.look, [
+                ("Anchor",format!("{} {:?}",self.anchor.byte_index,self.anchor.affinity)),
+                ("Caret",format!("{} {:?}",self.caret.byte_index,self.caret.affinity)),
+                ("Composition",format!("{:?}", self.marked)),
+            ])),PanelShell::new("CPU seed timings").child(label_text(&self.look,TextRole::Value,
+                self.timings.get(self.sample).map_or_else(|| "Not measured yet".to_owned(), Timing::label))))
+            .note("Click or drag to select; Left/Right move visually and Shift extends selection. Type or use IME; Enter adds a line break. Clipboard shortcuts and grapheme deletion use the retained paragraph model.")
+            .credits("Run CPU diagnostics on Text Shaping to refresh seed timings: first layout, warm cache hit and new-width reflow median. Backend state is shared; these are not frame or GPU measurements.");
+        for button in &self.buttons {
+            root = root.action(button.clone());
+        }
         if let Some(error) = &self.raster_error {
-            root = root.child(format!("Raster preview unavailable: {error}"));
+            root = root.notice(Some(format!("Raster preview unavailable: {error}")));
         }
         match layout {
             Ok(layout) => {
@@ -350,18 +334,26 @@ impl Render for ParagraphLab {
                             lines.entry(f32::from(rect.top()).to_bits()).or_insert(Vec::new()).push(byte_index);
                         }
                     }
-                    root = root.child(format!(
-                        "{} visual lines · {:.1} × {:.1}px · {} resolved runs",
-                        lines.len(),
-                        f32::from(width),
-                        f32::from(height),
-                        layout.runs().len()
+                    root = root.section(label_text(
+                        &self.look,
+                        TextRole::Value,
+                        format!(
+                            "{} visual lines · {:.1} × {:.1}px · {} resolved runs",
+                            lines.len(),
+                            f32::from(width),
+                            f32::from(height),
+                            layout.runs().len()
+                        ),
                     ));
                     for (y, clusters) in lines {
-                        root = root.child(format!(
-                            "Baseline row at y={:.1}px · logical byte boundaries {:?}",
-                            f32::from_bits(y),
-                            clusters
+                        root = root.section(label_text(
+                            &self.look,
+                            TextRole::Value,
+                            format!(
+                                "Baseline row at y={:.1}px · logical byte boundaries {:?}",
+                                f32::from_bits(y),
+                                clusters
+                            ),
                         ));
                     }
                 }
@@ -372,11 +364,11 @@ impl Render for ParagraphLab {
                 let reveal = self.reveal_caret;
                 let anchor = self.anchor;
                 let caret = self.caret;
-                root = root.child(
+                root = root.hero(Hero::full(
                     div()
                         .id("paragraph-surface")
                         .p_3()
-                        .bg(rgb(0xffffff))
+                        .bg(rgb(palette::PAPER))
                         .flex_none()
                         .on_mouse_down(
                             MouseButton::Left,
@@ -426,7 +418,7 @@ impl Render for ParagraphLab {
                                         for rect in rects {
                                             window.paint_quad(fill(
                                                 Bounds::new(bounds.origin + rect.origin, rect.size),
-                                                rgb(0xbdd7ff),
+                                                rgb(palette::SELECTION),
                                             ));
                                         }
                                     }
@@ -434,7 +426,7 @@ impl Render for ParagraphLab {
                                         if let Err(error) = gpui::paint_paragraph(
                                             layout.as_ref(),
                                             bounds.origin,
-                                            |_| rgb(0x111827).into(),
+                                            |_| rgb(palette::INK).into(),
                                             window,
                                         ) {
                                             eprintln!("Paragraph glyph atlas: {error:#}");
@@ -462,7 +454,7 @@ impl Render for ParagraphLab {
                                                             + gpui::point(rect.left(), rect.bottom() - px(1.0)),
                                                         gpui::size(rect.size.width, px(1.0)),
                                                     ),
-                                                    rgb(0x2563eb),
+                                                    rgb(palette::MARKED),
                                                 ));
                                             }
                                         }
@@ -470,7 +462,7 @@ impl Render for ParagraphLab {
                                     if let Ok(rect) = layout.caret_bounds(caret) {
                                         window.paint_quad(fill(
                                             Bounds::new(bounds.origin + rect.origin, rect.size),
-                                            rgb(0xdc2626),
+                                            rgb(palette::CARET),
                                         ));
                                     }
                                 },
@@ -478,14 +470,19 @@ impl Render for ParagraphLab {
                             .w(width)
                             .h(height),
                         ),
-                );
+                ));
             }
             Err(error) => {
                 self.geometry = None;
-                root = root.child(format!("Paragraph unavailable: {error:#}"));
+                root = root.notice(Some(format!("Paragraph unavailable: {error:#}")));
             }
         }
-        root
+        div()
+            .id("paragraph-lab")
+            .size_full()
+            .track_focus(&self.focus)
+            .on_key_down(cx.listener(Self::key))
+            .child(root)
     }
 }
 
