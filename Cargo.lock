@@ -7353,6 +7353,7 @@ dependencies = [
  "xgpui-luma",
  "xgpui-luma-color",
  "xgpui-luma-look-radix",
+ "xgpui-luma-plot",
  "xgpui-media",
  "xgpui-parley",
  "xgpui-platform",

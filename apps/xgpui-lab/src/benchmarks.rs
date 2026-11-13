@@ -2,7 +2,10 @@
 pub(crate) mod memory;
 pub(crate) mod progress;
 pub(crate) mod svg_table;
+mod svg_badge;
 mod svg_chart;
+mod svg_model;
+mod svg_screen;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
 use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
@@ -263,14 +266,22 @@ pub struct Page {
     buttons: Vec<Entity<Button>>,
     cancel_button: Entity<Button>,
     reveal: Entity<Button>,
-    pickers: Vec<Entity<Button>>,
     selected: Option<PathBuf>,
     corpus: Option<PathBuf>,
     cancel: Arc<AtomicBool>,
     busy: bool,
-    svg_zoom: f32,
+    svg_zooms: Vec<f32>,
+    svg_budgets: Vec<usize>,
     svg_cases: Vec<Value>,
-    svg_zoom_choice: crate::lab_controls::Choice,
+    svg_zoom_choice: crate::lab_controls::Segmented,
+    /// Facets (one raster chart per artwork) or one merged chart.
+    svg_raster_view: crate::lab_controls::Segmented,
+    svg_raster_merged: bool,
+    svg_budget_choice: crate::lab_controls::Segmented,
+    svg_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
+    svg_tab: svg_screen::Tab,
+    svg_progress_bar: xgpui_luma::controls::progress::Progress,
+    svg_started: Option<Instant>,
     status: String,
     output: Option<PathBuf>,
     results: Vec<Value>,
@@ -287,7 +298,7 @@ impl Drop for Page {
 impl Page {
     pub fn new(suite: Suite, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let actions = if suite == Suite::Svg {
-            vec![(None, "Run comparison")]
+            vec![(None, "Run benchmark")]
         } else {
             std::iter::once((None, "Run all"))
                 .chain(suite.jobs().into_iter().map(|job| (Some(job), job.label())))
@@ -322,35 +333,60 @@ impl Page {
                 }
             })
             .spawn(cx);
-        let pickers = [false, true]
-            .into_iter()
-            .map(|directory| {
-                radix::Button::new(format!("bench-picker-{directory}"))
-                    .look(&look)
-                    .outline()
-                    .label(if directory {
-                        "Override corpus folder…"
-                    } else {
-                        "Add SVG…"
-                    })
-                    .on_click(cx, move |this: &mut Self, cx| this.choose(directory, cx))
-                    .spawn(cx)
-            })
-            .collect();
-        let svg_zoom_choice = crate::lab_controls::Choice::new(
+        let svg_raster_view = crate::lab_controls::Segmented::new(
+            "svg-raster-view",
+            "View",
+            &look,
+            &["Facets", "Merged"],
+            0,
+            cx,
+            |this: &mut Self, index, cx| {
+                this.svg_raster_merged = index == 1;
+                cx.notify();
+            },
+        );
+        let svg_zoom_choice = crate::lab_controls::Segmented::new(
             "svg-comparison-zoom",
             "Zoom",
             &look,
-            crate::lab_controls::labels(&["1×", "4×", "16×"]),
-            1,
+            &svg_screen::ZOOM_LABELS,
+            0,
             cx,
             |this: &mut Self, index, cx| {
-                this.svg_zoom = [1., 4., 16.][index];
+                this.svg_zooms = svg_screen::zooms(index);
                 this.reset_comparison(cx);
             },
         );
+        let svg_budget_choice = crate::lab_controls::Segmented::new(
+            "svg-comparison-budget",
+            "Budget",
+            &look,
+            &svg_screen::BUDGET_LABELS,
+            2,
+            cx,
+            |this: &mut Self, index, cx| {
+                this.svg_budgets = svg_screen::budgets(index);
+                this.reset_comparison(cx);
+            },
+        );
+        let svg_tabs = radix::Tabs::new("svg-benchmark-tabs")
+            .look(&look)
+            .line()
+            .items(
+                svg_screen::Tab::ALL
+                    .iter()
+                    .map(|(_, id, label)| xgpui_luma::controls::tabs::TabsItem::new(*id).label(*label)),
+            )
+            .active(svg_screen::Tab::ALL[0].1)
+            .on_value_changed(cx, |this: &mut Self, id, _, cx| {
+                this.svg_tab = svg_screen::Tab::from_id(id);
+                cx.notify();
+            })
+            .spawn(cx);
+        let svg_progress_bar = radix::Progress::new("svg-benchmark-progress").look(&look).value(0.).spawn(cx);
+        let (svg_zooms, svg_budgets) = (svg_screen::zooms(0), svg_screen::budgets(2));
         let svg_cases = if suite == Suite::Svg {
-            svg_table::plan(&[Job::SvgCorpus], 4.)
+            svg_table::plan(&[Job::SvgCorpus], &svg_zooms, &svg_budgets)
         } else {
             vec![]
         };
@@ -369,16 +405,23 @@ impl Page {
             buttons,
             cancel_button,
             reveal,
-            pickers,
             selected: None,
             corpus: None,
             cancel: Arc::new(AtomicBool::new(false)),
             busy: false,
-            svg_zoom: 4.,
+            svg_zooms,
+            svg_budgets,
             svg_zoom_choice,
+            svg_budget_choice,
+            svg_tabs,
+            svg_tab: svg_screen::Tab::Graph,
+            svg_raster_view,
+            svg_raster_merged: false,
+            svg_progress_bar,
+            svg_started: None,
             svg_cases,
             status: if suite == Suite::Svg {
-                "Choose a workload. Results stay in memory; interactive runs write no files."
+                ""
             } else {
                 "Choose a workload. Reports and captures use the embedded application code."
             }
@@ -390,6 +433,18 @@ impl Page {
         if suite == Suite::Svg {
             page.reset_comparison(cx);
             page.load_thumbnails(cx);
+            let args: Vec<String> = std::env::args().collect();
+            if let Some(source) = argument(&args, "--svg-results") {
+                page.replay(source, cx);
+            }
+            if argument(&args, "--svg-view") == Some("merged") {
+                page.svg_raster_merged = true;
+                page.svg_raster_view.group.update(cx, |group, cx| group.set_selected("1", cx));
+            }
+            if argument(&args, "--svg-tab") == Some("table") {
+                page.svg_tab = svg_screen::Tab::Table;
+                page.svg_tabs.update(cx, |tabs, cx| tabs.set_active("table", cx));
+            }
         }
         page
     }
@@ -401,15 +456,50 @@ impl Page {
         jobs
     }
     fn comparison_plan(&self, jobs: &[Job]) -> Vec<Value> {
-        let mut plan = svg_table::plan(jobs, self.svg_zoom);
-        if let Some(name) = self.selected.as_deref().and_then(Path::file_name) {
+        let mut plan = svg_table::plan(jobs, &self.svg_zooms, &self.svg_budgets);
+        if let Some(path) = self.selected.as_deref()
+            && let Some(name) = path.file_name()
+        {
+            let bytes = std::fs::metadata(path).ok().map(|meta| meta.len());
             for row in &mut plan {
                 if row["id"] == "Selected SVG" {
                     row["display_name"] = json!(name.to_string_lossy());
+                    row["coverage"] = json!("added artwork");
+                    if let Some(bytes) = bytes {
+                        row["input_bytes"] = json!(bytes);
+                    }
                 }
             }
         }
         plan
+    }
+    /// Show saved results instead of the empty plan: `sample` for made-up data, or a run's `report.json`.
+    fn replay(&mut self, source: &str, cx: &mut Context<Self>) {
+        let loaded = if source == "sample" {
+            Ok(svg_model::sample_cases())
+        } else {
+            std::fs::read(source).map_err(anyhow::Error::from).and_then(|bytes| {
+                let report: Value = serde_json::from_slice(&bytes)?;
+                let reports = report["cases"].as_array().or(report.as_array()).context("no cases in report")?;
+                Ok(svg_table::flatten(reports))
+            })
+        };
+        match loaded {
+            Ok(cases) => {
+                self.status = if source == "sample" {
+                    format!("Showing {} made-up sample cases, not measurements.", cases.len())
+                } else {
+                    format!("Showing {} saved cases from {source}.", cases.len())
+                };
+                self.svg_cases = cases;
+                let rows = svg_table::with_thumbnails(svg_table::rows(&self.svg_cases), &self.svg_thumbnails);
+                self.svg_table.update(cx, |table, cx| {
+                    let _ = table.set_items(rows, cx);
+                });
+            }
+            Err(error) => self.status = format!("Cannot load {source}: {error:#}"),
+        }
+        cx.notify();
     }
     fn reset_comparison(&mut self, cx: &mut Context<Self>) {
         if self.suite != Suite::Svg || self.busy {
@@ -421,11 +511,7 @@ impl Page {
         self.svg_table.update(cx, |table, cx| {
             let _ = table.set_items(rows, cx);
         });
-        self.status = format!(
-            "{} pending cases · each SVG at 16 and 32 MiB · {:.0}× zoom · 2× density",
-            self.svg_cases.len(),
-            self.svg_zoom
-        );
+        self.status.clear();
         cx.notify();
     }
     fn load_thumbnails(&mut self, cx: &mut Context<Self>) {
@@ -453,43 +539,6 @@ impl Page {
                 this.svg_table.update(cx, |table, cx| {
                     let _ = table.set_items(rows, cx);
                 });
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-    fn choose(&mut self, directory: bool, cx: &mut Context<Self>) {
-        let picker = cx.prompt_for_paths(PathPromptOptions {
-            files: !directory,
-            directories: directory,
-            multiple: false,
-            prompt: Some(
-                if directory {
-                    "Choose matching SVG corpus"
-                } else {
-                    "Choose SVG artwork"
-                }
-                .into(),
-            ),
-        });
-        cx.spawn(async move |this, cx| {
-            let selected = picker.await;
-            let _ = this.update(cx, |this, cx| {
-                match selected {
-                    Ok(Ok(Some(paths))) => {
-                        if let Some(path) = paths.into_iter().next() {
-                            if directory {
-                                this.corpus = Some(path);
-                            } else {
-                                this.selected = Some(path);
-                            }
-                            this.reset_comparison(cx);
-                            this.load_thumbnails(cx);
-                        }
-                    }
-                    Ok(Ok(None)) => {}
-                    _ => this.status = "File selection failed; previous selection retained.".into(),
-                }
                 cx.notify();
             });
         })
@@ -533,10 +582,10 @@ impl Page {
                 },
             )
         };
-        self.svg_zoom_choice.selector.update(cx, |selector, cx| selector.set_enabled(false, cx));
-        for picker in &self.pickers {
-            picker.update(cx, |button, cx| button.set_enabled(false, cx));
+        for choice in [&self.svg_zoom_choice, &self.svg_budget_choice] {
+            choice.set_enabled(false, cx);
         }
+        self.svg_started = Some(Instant::now());
         self.busy = true;
         self.cancel_button.update(cx, |button, cx| {
             button.set_label("Stop", cx);
@@ -565,7 +614,7 @@ impl Page {
         let cancel = self.cancel.clone();
         let selected = self.selected.clone();
         let corpus = self.corpus.clone();
-        let zoom = self.svg_zoom;
+        let (zooms, budgets) = (self.svg_zooms.clone(), self.svg_budgets.clone());
         let progress = progress::Progress::default();
         if in_memory {
             let plan = self.comparison_plan(&jobs);
@@ -582,7 +631,8 @@ impl Page {
                 let mut last_rows = Vec::new();
                 loop {
                     cx.background_executor().timer(Duration::from_millis(200)).await;
-                    let (status, partial) = progress.snapshot();
+                    let (_, partial) = progress.snapshot();
+                    let status = progress.headline();
                     let keep_running = this
                         .update(cx, |this, cx| {
                             if !this.busy || !Arc::ptr_eq(&this.cancel, &token) {
@@ -632,6 +682,7 @@ impl Page {
                 let selected = selected.clone();
                 let corpus = corpus.clone();
                 let worker_progress = progress.clone();
+                let (zooms, budgets) = (zooms.clone(), budgets.clone());
                 let result = cx
                     .background_spawn(async move {
                         if let Some(directory) = directory {
@@ -645,7 +696,8 @@ impl Page {
                                     job,
                                     selected.as_deref(),
                                     corpus.as_deref(),
-                                    zoom,
+                                    &zooms,
+                                    &budgets,
                                     &token,
                                     &worker_progress,
                                 ),
@@ -700,9 +752,8 @@ impl Page {
                         let _ = table.set_items(rows, cx);
                     });
                 }
-                this.svg_zoom_choice.selector.update(cx, |selector, cx| selector.set_enabled(true, cx));
-                for picker in &this.pickers {
-                    picker.update(cx, |button, cx| button.set_enabled(true, cx));
+                for choice in [&this.svg_zoom_choice, &this.svg_budget_choice] {
+                    choice.set_enabled(true, cx);
                 }
                 if let Some(output) = &output
                     && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
@@ -711,16 +762,27 @@ impl Page {
                 }
                 let failed = this.results.iter().filter(|result| result["outcome"] == "failed").count();
                 let unavailable = this.results.iter().filter(|result| result["outcome"] == "unavailable").count();
-                this.status = format!(
-                    "{} in {:.1}s: {} workloads, {failed} failures, {unavailable} unavailable.",
-                    if cancel.load(Ordering::Relaxed) {
-                        "Cancelled"
-                    } else {
-                        "Finished"
-                    },
-                    progress.elapsed(),
-                    this.results.len()
-                );
+                let verb = if cancel.load(Ordering::Relaxed) {
+                    "Cancelled"
+                } else {
+                    "Finished"
+                };
+                this.status = if in_memory {
+                    let cases = svg_model::cases(&this.svg_cases);
+                    let measured = cases.iter().filter(|case| case.measure.is_some()).count();
+                    let failed = cases.iter().filter(|case| case.outcome == svg_model::Outcome::Failed).count();
+                    format!(
+                        "{verb} in {:.1}s: {measured} of {} cases measured, {failed} failed.",
+                        progress.elapsed(),
+                        cases.len()
+                    )
+                } else {
+                    format!(
+                        "{verb} in {:.1}s: {} workloads, {failed} failures, {unavailable} unavailable.",
+                        progress.elapsed(),
+                        this.results.len()
+                    )
+                };
                 for button in &this.buttons {
                     button.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
@@ -739,19 +801,15 @@ impl Page {
     }
 }
 impl Render for Page {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use crate::theme::ColorVizLookExt;
+        if self.suite == Suite::Svg {
+            return self.render_svg(cx);
+        }
         let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
-            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Compare each SVG at 16 and 32 MiB raster budgets. Zoom and display density stay the same across artwork. Five parse and raster samples per case, following the original SVG policy lab."})
-            .when(self.suite==Suite::Svg,|root|root
-                .child(div().flex().flex_wrap().gap_3().children(self.pickers.clone()).child(div().flex().items_center().gap_2().child(self.svg_zoom_choice.label()).child(div().w(px(96.)).child(self.svg_zoom_choice.selector.clone()))))
-                .child(self.selected.as_ref().map_or_else(||"Four bundled artworks. Add an SVG to include it in this comparison.".to_owned(),|p|format!("Added artwork: {} · included alongside the four bundled SVGs",p.display())))
-                .child(svg_chart::gallery(&self.look,&self.svg_cases,&self.svg_thumbnails,self.selected.as_deref()))
-                .child(svg_chart::render(&self.look,&self.svg_cases))
-                .child("Original policy budgets: 16 / 32 MiB. Cases run sequentially in isolated workers; large filtered SVGs can take minutes. Stop preserves completed results. Budgets limit output images, not filter intermediates or total process memory."))
+            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>""})
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
-            .when(self.suite==Suite::Svg,|root|root.child(svg_table::view(self.svg_table.clone())))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
@@ -780,6 +838,7 @@ impl Render for Page {
                     .child(self.cancel_button.clone()),
             )
             .child(body)
+            .into_any_element()
     }
 }
 pub fn run_cli(args: &[String], suite: Suite, flag: &str) -> Result<()> {
@@ -838,12 +897,13 @@ fn run_svg_memory(
     job: Job,
     selected: Option<&Path>,
     corpus: Option<&Path>,
-    zoom: f32,
+    zooms: &[f32],
+    budgets: &[usize],
     cancel: &AtomicBool,
     progress: &progress::Progress,
 ) -> Result<Value> {
     if job == Job::SvgCorpus {
-        let result = crate::svg_lab::benchmarks::memory_corpus(corpus, zoom, cancel, progress);
+        let result = crate::svg_lab::benchmarks::memory_corpus(corpus, zooms, budgets, cancel, progress);
         if result.is_err() {
             progress.settle(Some(job.id()), cancel.load(Ordering::Relaxed));
         }
@@ -855,11 +915,18 @@ fn run_svg_memory(
         _ => anyhow::bail!("expected SVG workload"),
     };
     let mut cases = Vec::new();
-    for budget in crate::svg_lab::benchmarks::COMPARISON_BUDGETS {
+    let total = zooms.len() * budgets.len();
+    let tasks = zooms.iter().flat_map(|zoom| budgets.iter().map(move |budget| (*zoom, *budget)));
+    for (index, (zoom, budget)) in tasks.enumerate() {
         if cancel.load(Ordering::Relaxed) {
             break;
         }
-        progress.case(format!("{} · {} MiB · {zoom}×", job.label(), budget / xgpui_svg::MIB));
+        progress.case(format!(
+            "Case {} of {total} · {} · {zoom}× · {} MiB",
+            index + 1,
+            job.label(),
+            budget / xgpui_svg::MIB
+        ));
         progress.running_budget(job.label(), zoom as f64, budget);
         let result = crate::svg_lab::benchmarks::isolated_selected(path, budget, zoom, cancel, progress);
         let mut report = result.unwrap_or_else(|e| json!({"error":format!("{e:#}")}));
@@ -875,7 +942,7 @@ fn run_svg_memory(
     }
     let failed = cases.iter().filter(|r| r.get("error").is_some() && r["outcome"] != "cancelled").count();
     Ok(
-        json!({"cases":cases,"errors":if failed==0 {vec![]}else{vec![format!("{failed} cases failed")]},"measurement":"Original SVG policy comparison: 16/32 MiB at fixed zoom and 2× density, serial isolated CPU workers. Five parse samples, then five raster repeats of a retained tree. No GPU timing."}),
+        json!({"cases":cases,"errors":if failed==0 {vec![]}else{vec![format!("{failed} cases failed")]},"measurement":"SVG budget and zoom comparison at 2× density, serial isolated CPU workers. Five parse samples, then five raster repeats of a retained tree. No GPU timing."}),
     )
 }
 
@@ -892,15 +959,32 @@ mod tests {
     }
     #[cfg(feature = "test-support")]
     #[::core::prelude::v1::test]
+    fn the_view_toggle_switches_between_facets_and_one_merged_chart() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
+        page.update(cx, |page, cx| page.replay("sample", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("svg-raster-facet-3").is_some(), "four facets by default");
+        assert!(cx.debug_bounds("svg-raster-merged").is_none());
+        let view = cx.update(|_, cx| page.read(cx).svg_raster_view.clone());
+        cx.update(|_, cx| view.select(1, cx));
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| page.read(cx).svg_raster_merged));
+        assert!(cx.debug_bounds("svg-raster-merged").is_some(), "one merged chart");
+        assert!(cx.debug_bounds("svg-raster-facet-0").is_none());
+    }
+    #[cfg(feature = "test-support")]
+    #[::core::prelude::v1::test]
     fn stop_button_cancels_the_run_and_retains_planned_rows_without_files() {
         use xgpui_luma::controls::button::ButtonEvent;
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
-        cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 8));
+        cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 40));
         page.update(cx, |page, cx| {
             page.start(Some(Job::SvgBuiltin), None, cx);
-            assert_eq!(page.svg_table.read(cx).items().len(), 2);
+            assert_eq!(page.svg_table.read(cx).items().len(), 10);
         });
         let stop = cx.update(|_, cx| page.read(cx).cancel_button.clone());
         stop.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
@@ -914,10 +998,13 @@ mod tests {
             let page = page.read(cx);
             assert!(!page.busy);
             assert!(page.output.is_none());
-            assert!(page.status.starts_with("Cancelled"));
-            assert_eq!(page.svg_table.read(cx).items().len(), 2);
+            assert!(page.status.starts_with("Cancelled"), "{}", page.status);
+            assert_eq!(page.svg_table.read(cx).items().len(), 10);
         });
-        assert!(cx.debug_bounds("benchmark-run-controls").is_some(), "Stop header remains present after stopping");
+        assert!(
+            cx.debug_bounds("svg-benchmarks-controls").is_some(),
+            "Stop remains in the control row after stopping"
+        );
     }
     #[cfg(unix)]
     #[::core::prelude::v1::test]
@@ -937,29 +1024,35 @@ mod tests {
     }
     #[cfg(feature = "test-support")]
     #[::core::prelude::v1::test]
-    fn added_svg_and_zoom_are_part_of_the_pending_budget_comparison() {
+    fn added_svg_budget_and_zoom_shape_the_plan_and_the_page_fits() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
         page.update(cx, |page, cx| {
-            page.selected =
-                Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/samples/svg/AJ_Digital_Camera.svg"));
+            assert_eq!(page.svg_cases.len(), 40, "4 artworks × 5 zooms × 2 budgets");
+            page.selected = Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/samples/svg/camera.svg"));
             page.reset_comparison(cx);
             page.load_thumbnails(cx);
-            assert_eq!(page.svg_cases.len(), 10);
+            assert_eq!(page.svg_cases.len(), 50);
             let added: Vec<_> = page.svg_cases.iter().filter(|r| r["id"] == "Selected SVG").collect();
-            assert_eq!(added.len(), 2);
+            assert_eq!(added.len(), 10);
             assert_eq!(added[0]["budget_bytes"], 16 * xgpui_svg::MIB);
             assert_eq!(added[1]["budget_bytes"], 32 * xgpui_svg::MIB);
+            assert!(added[0]["input_bytes"].as_u64().is_some_and(|bytes| bytes > 0));
         });
         cx.run_until_parked();
-        let zoom = cx.update(|_, cx| page.read(cx).svg_zoom_choice.clone());
-        cx.update(|_, cx| zoom.select(2, cx));
+        let (zoom, budget) = cx.update(|_, cx| {
+            let page = page.read(cx);
+            (page.svg_zoom_choice.clone(), page.svg_budget_choice.clone())
+        });
+        cx.update(|_, cx| zoom.select(3, cx));
+        cx.update(|_, cx| budget.select(0, cx));
         cx.run_until_parked();
         cx.update(|_, cx| {
             let p = page.read(cx);
-            assert_eq!(p.svg_cases.len(), 10);
+            assert_eq!(p.svg_cases.len(), 5);
             assert!(p.svg_cases.iter().all(|r| r["zoom"].as_f64() == Some(16.)));
+            assert!(p.svg_cases.iter().all(|r| r["budget_bytes"] == 16 * xgpui_svg::MIB));
             assert!(p.svg_thumbnails.contains_key("Selected SVG"));
         });
         for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
@@ -967,13 +1060,25 @@ mod tests {
                 page.look.set_mode(mode);
                 cx.notify();
             });
-            for width in [1280., 720.] {
-                cx.simulate_resize(size(px(width), px(3200.)));
-                cx.run_until_parked();
-                assert!(cx.debug_bounds("svg-budget-chart").unwrap().right() <= px(width));
-                assert!(cx.debug_bounds("svg-comparison-artwork").unwrap().right() <= px(width));
-                assert!(cx.debug_bounds("benchmark-run-controls").is_some());
-                assert!(cx.debug_bounds("svg-comparison-table-scroll").unwrap().right() <= px(width));
+            for tab in [svg_screen::Tab::Graph, svg_screen::Tab::Table] {
+                page.update(cx, |page, cx| {
+                    page.svg_tab = tab;
+                    cx.notify();
+                });
+                for width in [1280., 720.] {
+                    cx.simulate_resize(size(px(width), px(3200.)));
+                    cx.run_until_parked();
+                    let mut selectors = vec!["svg-benchmarks-controls", "svg-artwork-card-0", "svg-benchmark-results"];
+                    selectors.extend(if tab == svg_screen::Tab::Graph {
+                        &["svg-raster-chart", "svg-output-chart", "svg-cost-chart", "svg-graph-row-1"][..]
+                    } else {
+                        &["svg-comparison-table-scroll"][..]
+                    });
+                    for selector in selectors {
+                        let bounds = cx.debug_bounds(selector).unwrap_or_else(|| panic!("{selector} missing"));
+                        assert!(bounds.right() <= px(width), "{selector} overflows {width}");
+                    }
+                }
             }
         }
     }

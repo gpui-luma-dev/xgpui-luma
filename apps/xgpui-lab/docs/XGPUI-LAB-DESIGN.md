@@ -39,7 +39,7 @@ Use it when you:
 - restyle a screen that still uses the older "buttons on top, status text below" layout;
 - review a screen for consistency.
 
-Don't use it for benchmark harnesses, headless tools, or the shell chrome.
+Don't use it for benchmark harnesses, headless tools, or the shell chrome. SVG Benchmarks is the one benchmark page built on `LabScreen`, because its results are the subject of the page.
 
 ## Reference screens
 
@@ -65,15 +65,15 @@ Paths are relative to `apps/xgpui-lab/`. Screens are built with `LabScreen` in `
 | Tiled Canvas, Photo Viewer | `xgpui-media / …` | — | [`src/media_lab/tiled.rs`](../src/media_lab/tiled.rs), [`src/photo_viewport.rs`](../src/photo_viewport.rs) | `LabScreen` canvas heroes that own scroll/pinch or drag, with retained source/cache diagnostics. Tiled blur stays bounded; Photo Viewer preserves physical-pixel 1:1 and native P3 negotiation. Visual snapshot review pending |
 | Image Filters | `xgpui-media / Image Filters` | [mockups/image-filters-mockup.png](mockups/image-filters-mockup.png) | [`src/media_lab/filters_screen.rs`](../src/media_lab/filters_screen.rs) (state in [`src/media_lab.rs`](../src/media_lab.rs)) | follows the design (`LabScreen`). The mockup's "linear light" and "skipped steps" text is wrong for `ImageFilter`; the screen says what the code does |
 | Spatial Canvas, Mandelbrot | `xgpui-canvas / …` | — | [`src/canvas_lab/screen.rs`](../src/canvas_lab/screen.rs) (one `Lab` in [`src/canvas_lab.rs`](../src/canvas_lab.rs) hosts both) | follows the design (`LabScreen`). Canvas variant: `Hero::full` interactive viewport, 560 px tall, that owns scroll and pinch; the map or preview floats in its bottom-right corner on `panel_background`. The scene and fractal keep their own dark data colors in both themes ([`src/canvas_lab/palette.rs`](../src/canvas_lab/palette.rs)) |
+| SVG Benchmarks | `xgpui-svg / Benchmarks` | [graph](mockups/svg-benchmarks-graph-mockup.png), [table](mockups/svg-benchmarks-table-mockup.png) | [`src/benchmarks/svg_screen.rs`](../src/benchmarks/svg_screen.rs), [`src/benchmarks/svg_chart.rs`](../src/benchmarks/svg_chart.rs), [`src/benchmarks/svg_table.rs`](../src/benchmarks/svg_table.rs) (state in [`src/benchmarks.rs`](../src/benchmarks.rs)) | `LabScreen` with artwork cards, an always-visible run panel and Graph / Table tabs. Charts use `xgpui-luma-plot`: raster time is grouped bars (zoom × budget) faceted per artwork in a 2 × 2 grid, with a View toggle to merge them into one chart; capped bars get an orange top edge through a bar template. Status badges are radix `Badge` restyled in [`svg_badge.rs`](../src/benchmarks/svg_badge.rs) until an SDK badge exists (#176). Series colors live in [`src/screen/data.rs`](../src/screen/data.rs). Budget and Zoom are `Segmented` toggle groups. `--svg-results sample` shows made-up results and `--svg-results PATH/report.json` replays a saved run, so the layout can be checked without running workers; `--svg-view merged` and `--svg-tab table` pick the view (the snapshot script passes these with `--lab-args`) |
 
-The SVG benchmark comparison remains a benchmark harness outside the `LabScreen` layout contract.
-Its 16/32 MiB budgets, zoom choices (1×/4×/16×), separate parse samples and retained-tree raster repeats
+SVG Benchmarks uses `LabScreen` with artwork cards and Graph / Table tabs (see the reference row).
+Its 16/32 MiB budgets, separate parse samples and retained-tree raster repeats
 follow the original [policy runner](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/bench/policy_run.py)
 and [CPU benchmark](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/src/benchmark.rs).
-The larger artwork cards follow the original [gallery](https://github.com/gpui-luma-dev/xgpui/blob/91b8629cf39cd52eca82e33a3835edee24454e8e/apps/xgpui-ext-lab/svg-lab/src/gallery.rs).
-Each interactive run compares all four bundled SVGs at both budgets at the chosen zoom and 2× density;
-an added file joins that same matrix. A native graph plots median raster milliseconds against budget,
-one series per artwork. The table retains actual output pixels, capping and pending/final states.
+By default a run sweeps zoom 1, 2, 4, 8 and 16× at both budgets and 2× density, 40 cases for the four
+bundled SVGs; an added file joins that same matrix. The Graph tab plots raster time against zoom, output
+size and cost per megapixel with `xgpui-luma-plot`; the Table tab lists every case grouped by artwork.
 Stop, previews and results stay in memory; source files are not exported automatically.
 
 Shared building blocks already exist. Use them before you write new ones:
@@ -82,7 +82,7 @@ Shared building blocks already exist. Use them before you write new ones:
 | --- | --- |
 | [`src/theme.rs`](../src/theme.rs) | `default_look()`, `ColorVizLookExt` (`chrome()`, `interaction_colors()`, `typography_scale()`), `TypographyExt`, `icon_button()` |
 | [`src/screen/`](../src/screen/) | `LabScreen` (slots), `Hero`, `LabCard`, panels (`ParametersPanel`, `PreviewPanel`, `ChainPanel`, `PanelShell`), `TextRole`, `readout`, `properties`, `LabMetrics`, `data` colors |
-| [`src/lab_controls.rs`](../src/lab_controls.rs) | `Choice`, a labeled Radix `Selector` with stable numeric IDs |
+| [`src/lab_controls.rs`](../src/lab_controls.rs) | `Choice`, a labeled Radix `Selector` with stable numeric IDs; `Segmented`, a labeled toggle group (radix segmented radio group) |
 
 ## Page anatomy
 
@@ -303,7 +303,7 @@ Use the look-radix builders, passing `.look(look)`. Don't draw controls by hand.
 
 | Need | Builder | Notes |
 | --- | --- | --- |
-| Pick one of several | `lab_controls::Choice` (Radix `Selector`) | Label to the left, in the control row |
+| Pick one of several | `lab_controls::Segmented` for two to five short options, `lab_controls::Choice` (Radix `Selector`) for more | Label to the left, in the control row |
 | Boolean that changes the hero | Radix `Switch` | Never show a boolean as text like `Sweep false` |
 | Action | Radix `Button` (`icon_button` for icon-only) | Right end of the control row, or in a panel header when it acts on that panel only (*Reset filters*) |
 | Numeric value | Radix `TextField` + `Slider` | Kept in sync. Typing a value outside the range doesn't move the thumb |

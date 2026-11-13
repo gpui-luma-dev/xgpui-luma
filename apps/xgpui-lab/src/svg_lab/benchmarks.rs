@@ -15,6 +15,8 @@ use crate::benchmarks::progress::Progress;
 // Original steady-policy matrix: apps/xgpui-ext-lab/svg-lab/bench/policy_run.py
 // in xgpui 91b8629cf39cd52eca82e33a3835edee24454e8e (16/32 MiB; zoom 1/4/16).
 pub(crate) const COMPARISON_BUDGETS: [usize; 2] = [16 * MIB, 32 * MIB];
+/// Zoom sweep for the in-app comparison, at display density 2.
+pub(crate) const SWEEP_ZOOMS: [f32; 5] = [1., 2., 4., 8., 16.];
 pub const MANIFEST: &str = include_str!("corpus.json");
 fn stats(samples: &[f64]) -> Value {
     let mut sorted = samples.to_vec();
@@ -125,6 +127,7 @@ fn measure_report(
     Ok(json!({"input_bytes": bytes.len(), "zoom": zoom, "density": 2, "budget_bytes": budget,
         "parse_first_ms": first_parse, "parse": stats(&parse), "raster_first_ms": first_raster, "raster": stats(&raster),
         "pixel_width": resolution.output.width.0, "pixel_height": resolution.output.height.0, "resolution_limited": resolution.limited(),
+        "requested_width": resolution.requested.width.0, "requested_height": resolution.requested.height.0,
         "visible_pixels": visible, "output_bytes": pixels.len(), "base_bytes": base.image.as_bytes(0).context("base pixels")?.len(),
         "rss_start_bytes": rss_before, "sampled_process_rss_peak_bytes": sampled_rss_peak,
         "measurement": "CPU parse/raster samples; base and previous zoom retained during replacement. PNG encoding excluded. RSS covers the whole process; not GPU memory or per-document allocation.", "errors": []}))
@@ -136,9 +139,9 @@ pub fn selected(path: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value
     measure(&read(path)?, 4., 16 * MIB, output, cancel)
 }
 const SAMPLES: &[(&str, &[u8])] = &[
-    ("AJ_Digital_Camera", include_bytes!("../../assets/samples/svg/AJ_Digital_Camera.svg").as_slice()),
-    ("rg1024_green_grapes", include_bytes!("../../assets/samples/svg/rg1024_green_grapes.svg").as_slice()),
-    ("rg1024_metal_effect", include_bytes!("../../assets/samples/svg/rg1024_metal_effect.svg").as_slice()),
+    ("camera", include_bytes!("../../assets/samples/svg/camera.svg").as_slice()),
+    ("grapes", include_bytes!("../../assets/samples/svg/grapes.svg").as_slice()),
+    ("metal", include_bytes!("../../assets/samples/svg/metal.svg").as_slice()),
     ("dragon", include_bytes!("../../assets/samples/svg/dragon.svg").as_slice()),
 ];
 /// Materialize embedded repository fixtures for isolated case processes.
@@ -226,13 +229,28 @@ pub(crate) fn thumbnails(selected: Option<&Path>, folder: Option<&Path>) -> crat
     }
     images
 }
-/// The complete corpus schedule, available before any workers start.
-pub(crate) fn planned_cases(zoom: f32) -> Vec<Value> {
+/// One pending row per zoom and budget for one artwork, in run order.
+pub(crate) fn planned_rows(base: Value, zooms: &[f32], budgets: &[usize]) -> Vec<Value> {
+    zooms
+        .iter()
+        .flat_map(|zoom| budgets.iter().map(move |budget| (zoom, budget)))
+        .map(|(zoom, budget)| {
+            let mut row = base.clone();
+            row["zoom"] = json!(zoom);
+            row["budget_bytes"] = json!(budget);
+            row["outcome"] = json!("pending");
+            row
+        })
+        .collect()
+}
+/// The complete corpus schedule, available before any workers start: artwork, then zoom, then budget.
+pub(crate) fn planned_cases(zooms: &[f32], budgets: &[usize]) -> Vec<Value> {
+    let manifest: Vec<Value> = serde_json::from_str(MANIFEST).unwrap_or_default();
     SAMPLES
         .iter()
-        .flat_map(|(id, _)| {
-            COMPARISON_BUDGETS
-                .map(|budget| json!({"id":id,"job":"corpus","zoom":zoom,"budget_bytes":budget,"outcome":"pending"}))
+        .flat_map(|(id, bytes)| {
+            let coverage = manifest.iter().find(|item| item["id"] == *id).and_then(|item| item["coverage"].as_str());
+            planned_rows(json!({"id":id,"job":"corpus","input_bytes":bytes.len(),"coverage":coverage}), zooms, budgets)
         })
         .collect()
 }
@@ -260,13 +278,14 @@ pub(crate) fn isolated_selected(
 }
 pub(crate) fn memory_corpus(
     folder: Option<&Path>,
-    zoom: f32,
+    zooms: &[f32],
+    budgets: &[usize],
     cancel: &AtomicBool,
     progress: &Progress,
 ) -> Result<Value> {
     let manifest: Vec<Value> = serde_json::from_str(MANIFEST)?;
     progress.stage("Validating corpus hashes");
-    let total = manifest.len() * COMPARISON_BUDGETS.len();
+    let total = manifest.len() * zooms.len() * budgets.len();
     for item in &manifest {
         crate::benchmarks::check_cancel(cancel)?;
         let id = item["id"].as_str().context("manifest id")?;
@@ -279,16 +298,22 @@ pub(crate) fn memory_corpus(
     }
     let tasks: Vec<_> = manifest
         .into_iter()
-        .flat_map(|item| COMPARISON_BUDGETS.map(|budget| (item.clone(), budget)))
+        .flat_map(|item| {
+            zooms.iter().flat_map(move |zoom| {
+                let item = item.clone();
+                budgets.iter().map(move |budget| (item.clone(), *zoom, *budget))
+            })
+        })
         .collect();
     let mut cases = Vec::new();
-    for (index, (item, budget)) in tasks.iter().enumerate() {
+    for (index, (item, zoom, budget)) in tasks.iter().enumerate() {
+        let zoom = *zoom;
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
             break;
         }
         let id = item["id"].as_str().unwrap_or("SVG");
         let worker_progress = progress;
-        worker_progress.case(format!("Case {} of {total} · {id} · {} MiB · {zoom}×", index + 1, budget / MIB));
+        worker_progress.case(format!("Case {} of {total} · {id} · {zoom}× · {} MiB", index + 1, budget / MIB));
         worker_progress.running_budget(id, zoom as f64, *budget);
         let mut args = vec![
             "--svg-budget-mib".into(),
@@ -320,7 +345,7 @@ pub(crate) fn memory_corpus(
     let failed = cases.iter().filter(|c| c.get("error").is_some() && c["outcome"] != "cancelled").count();
     Ok(
         json!({"cases":cases,"workers":1,"execution":"sequential","errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
-        "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and the selected output budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
+        "measurement":"Fresh process per artwork, zoom and budget; five CPU parse/raster repeats at density 2. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
     )
 }
 pub fn run_case_cli(args: &[String]) -> Result<()> {
@@ -371,12 +396,41 @@ mod tests {
     }
     #[::core::prelude::v1::test]
     fn cancelled_memory_corpus_does_not_start_workers_or_materialize_inputs() {
-        assert!(memory_corpus(None, 4., &AtomicBool::new(true), &Progress::default()).is_err());
+        assert!(memory_corpus(None, &[4.], &COMPARISON_BUDGETS, &AtomicBool::new(true), &Progress::default()).is_err());
     }
     #[::core::prelude::v1::test]
     fn cancelled_svg_does_not_parse_or_write_a_preview() {
         let output = tempfile::tempdir().unwrap();
         assert!(builtin(output.path(), &AtomicBool::new(true)).is_err());
         assert!(!output.path().join("capture.png").exists());
+    }
+}
+
+/// One-line artwork credit for the benchmark page, from the manifest: "camera · AJ Ashton (public domain); …".
+pub(crate) fn artwork_credits() -> String {
+    let manifest: Vec<Value> = serde_json::from_str(MANIFEST).unwrap_or_default();
+    let credits: Vec<String> = manifest
+        .iter()
+        .filter_map(|item| {
+            let license = match item["license_url"].as_str()? {
+                url if url.contains("publicdomain/zero") => "CC0 1.0",
+                url if url.contains("by-sa/3.0") => "CC BY-SA 3.0",
+                url if url.contains("PublicDomain") => "public domain",
+                _ => item["license"].as_str()?,
+            };
+            Some(format!("{} · {} ({license})", item["id"].as_str()?, item["author"].as_str()?))
+        })
+        .collect();
+    format!("Artwork: {}. Unmodified; sources and licenses in assets/samples/README.md.", credits.join("; "))
+}
+
+#[cfg(test)]
+mod credit_tests {
+    #[::core::prelude::v1::test]
+    fn every_bundled_artwork_is_credited_with_its_license() {
+        let credits = super::artwork_credits();
+        assert!(credits.contains("camera · AJ Ashton (public domain)"), "{credits}");
+        assert!(credits.contains("grapes · rg1024 (CC0 1.0)"), "{credits}");
+        assert!(credits.contains("dragon · Ebaychatter0 (CC BY-SA 3.0)"), "{credits}");
     }
 }

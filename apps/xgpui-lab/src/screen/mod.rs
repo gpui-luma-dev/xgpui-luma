@@ -38,6 +38,11 @@ enum Section {
     Panel(Panel),
 }
 
+enum Notice {
+    Text(SharedString),
+    Element(AnyElement),
+}
+
 #[derive(IntoElement)]
 pub(crate) struct LabScreen {
     id: &'static str,
@@ -49,7 +54,7 @@ pub(crate) struct LabScreen {
     caption: Option<SharedString>,
     controls: Vec<AnyElement>,
     actions: Vec<AnyElement>,
-    notices: Vec<SharedString>,
+    notices: Vec<Notice>,
     cards: Vec<LabCard>,
     card_elements: Vec<AnyElement>,
     panels: Option<(Panel, Panel)>,
@@ -123,7 +128,13 @@ impl LabScreen {
 
     /// Errors and fallbacks, under the controls. `None` adds nothing; may be called repeatedly.
     pub fn notice(mut self, text: Option<impl Into<SharedString>>) -> Self {
-        self.notices.extend(text.map(Into::into));
+        self.notices.extend(text.map(|text| Notice::Text(text.into())));
+        self
+    }
+
+    /// A notice that needs more than text, e.g. run progress with a bar. Same place as text notices.
+    pub fn notice_element(mut self, element: impl IntoElement) -> Self {
+        self.notices.push(Notice::Element(element.into_any_element()));
         self
     }
 
@@ -206,7 +217,10 @@ impl RenderOnce for LabScreen {
             let row = control_row().when(centered, |row| row.justify_center());
             content.push(slot(row, "controls").children(self.controls).children(spacer).children(actions));
         }
-        content.extend(self.notices.into_iter().map(|text| caption(text, "notice")));
+        content.extend(self.notices.into_iter().map(|notice| match notice {
+            Notice::Text(text) => caption(text, "notice"),
+            Notice::Element(element) => slot(div(), "notice").child(element),
+        }));
         if !self.cards.is_empty() || !self.card_elements.is_empty() {
             let cards = self.cards.into_iter().map(|card| card.render(look, &metrics));
             // Hosted cards grow from the same basis as a `LabCard`, so the row stays even.
@@ -217,17 +231,14 @@ impl RenderOnce for LabScreen {
                 .push(slot(hstack! {}.flex_wrap().gap(metrics.section_gap), "cards").children(cards).children(hosted));
         }
         if let Some((wide, narrow)) = self.panels {
-            let sized = |panel: Div, width: metrics::PanelWidth, name| {
-                slot(panel, name).flex_grow(width.grow).flex_basis(width.basis).min_w(width.min)
-            };
             let wide_width = if self.equal_panel_widths {
                 metrics.narrow_panel
             } else {
                 metrics.wide_panel
             };
-            let wide = sized(wide.render(look, &metrics), wide_width, "panel-wide");
+            let wide = sized(slot(wide.render(look, &metrics), "panel-wide"), wide_width);
             // `flex_1` keeps the narrow panel's shrink and grow at 1, as before.
-            let narrow = sized(narrow.render(look, &metrics).flex_1(), metrics.narrow_panel, "panel-narrow");
+            let narrow = sized(slot(narrow.render(look, &metrics).flex_1(), "panel-narrow"), metrics.narrow_panel);
             content.push(slot(hstack! { wide, narrow }.flex_wrap().gap(metrics.section_gap), "panels"));
         }
         content.extend(self.sections.into_iter().map(|section| match section {
@@ -241,6 +252,27 @@ impl RenderOnce for LabScreen {
 
         page(id, look).child(container().children(crumb).children(header).children(content))
     }
+}
+
+fn sized(panel: Div, width: metrics::PanelWidth) -> Div {
+    panel.flex_grow(width.grow).flex_basis(width.basis).min_w(width.min)
+}
+
+/// Rows of panels for content inside a section (e.g. one tab of a tabbed section). Panels in a row
+/// share its width equally and wrap below the panel minimum. Each row's selector is `"{id}-row-{n}"`.
+pub(crate) fn panel_rows(id: &'static str, look: &Look, rows: Vec<Vec<Panel>>) -> Div {
+    let metrics = LabMetrics::STANDARD;
+    div()
+        .flex()
+        .flex_col()
+        .gap(metrics.section_gap)
+        .children(rows.into_iter().enumerate().map(|(n, row)| {
+            hstack! {}
+                .flex_wrap()
+                .gap(metrics.section_gap)
+                .debug_selector(move || format!("{id}-row-{n}"))
+                .children(row.into_iter().map(|panel| sized(panel.render(look, &metrics), metrics.narrow_panel)))
+        }))
 }
 
 // Page chrome. `card_surface` and `control_row` are also used directly, e.g. by Italy's photo cards.
