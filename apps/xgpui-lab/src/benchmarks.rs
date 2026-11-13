@@ -302,12 +302,9 @@ impl Page {
         let cancel_button = radix::Button::new("bench-cancel")
             .look(&look)
             .outline()
-            .label("Cancel")
-            .on_click(cx, |this: &mut Self, cx| {
-                this.cancel.store(true, Ordering::Relaxed);
-                this.status = "Cancelling…".into();
-                cx.notify();
-            })
+            .label("Stop")
+            .enabled(false)
+            .on_click(cx, |this: &mut Self, cx| this.stop(cx))
             .spawn(cx);
         let reveal = radix::Button::new("bench-reveal")
             .look(&look)
@@ -463,6 +460,17 @@ impl Page {
         })
         .detach();
     }
+    fn stop(&mut self, cx: &mut Context<Self>) {
+        if !self.busy || self.cancel.swap(true, Ordering::Relaxed) {
+            return;
+        }
+        self.status = "Stopping active workers…".into();
+        self.cancel_button.update(cx, |button, cx| {
+            button.set_label("Stopping…", cx);
+            button.set_enabled(false, cx);
+        });
+        cx.notify();
+    }
     fn start(&mut self, job: Option<Job>, output: Option<PathBuf>, cx: &mut Context<Self>) {
         if self.busy {
             return;
@@ -496,6 +504,10 @@ impl Page {
             picker.update(cx, |button, cx| button.set_enabled(false, cx));
         }
         self.busy = true;
+        self.cancel_button.update(cx, |button, cx| {
+            button.set_label("Stop", cx);
+            button.set_enabled(true, cx);
+        });
         self.status = "Preparing benchmark…".into();
         self.results.clear();
         self.svg_table.update(cx, |table, cx| {
@@ -583,7 +595,7 @@ impl Page {
                             std::fs::create_dir_all(&directory)?;
                             record(job, result, &directory)
                         } else {
-                            Ok(decorate(
+                            let mut report = decorate(
                                 job,
                                 run_svg_memory(
                                     job,
@@ -594,7 +606,11 @@ impl Page {
                                     &token,
                                     &worker_progress,
                                 ),
-                            ))
+                            );
+                            if token.load(Ordering::Relaxed) {
+                                report["outcome"] = json!("cancelled");
+                            }
+                            Ok(report)
                         }
                     })
                     .await;
@@ -628,6 +644,10 @@ impl Page {
             }
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
+                this.cancel_button.update(cx, |button, cx| {
+                    button.set_label("Stop", cx);
+                    button.set_enabled(false, cx);
+                });
                 if in_memory {
                     progress.settle(None, cancel.load(Ordering::Relaxed));
                     let rows =
@@ -685,9 +705,8 @@ impl Page {
 impl Render for Page {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         use crate::theme::ColorVizLookExt;
-        div().id("embedded-benchmarks").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
-            .child(format!("{:?} benchmarks · {} build",self.suite,profile()))
-            .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()).when(self.busy,|row|row.child(self.cancel_button.clone())))
+        let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
+            .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
             .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>"Five CPU parse/raster samples after first use. Selected SVG: 4× / density 2 / selected raster budget. Corpus: hash-verified files, four zooms, fresh application process per case. No artwork is downloaded."})
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().gap_2().children(self.pickers.clone())).child(format!("SVG: {:?} · Corpus: {}",self.selected,self.corpus.as_ref().map_or_else(|| "Bundled samples (4 files)".to_owned(), |path| path.display().to_string()))))
             .when(self.suite==Suite::Svg,|root|root.child(div().flex().flex_wrap().items_center().gap_3()
@@ -702,7 +721,28 @@ impl Render for Page {
                 if let Some(errors)=result["errors"].as_array(){for error in errors{row=row.child(error.to_string());}}
                 if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(format!("Raster median: {ms:.3} ms · {}×{} pixels",result["pixel_width"],result["pixel_height"]));}
                 if let Some(previews)=result["previews"].as_array(){for path in previews.iter().filter_map(Value::as_str){row=row.child(img(PathBuf::from(path)).max_w(px(760.)));}}row
-            }))
+            }));
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .id("benchmark-run-controls")
+                    .debug_selector(|| "benchmark-run-controls".into())
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .gap_3()
+                    .p_4()
+                    .child(crate::screen::text(
+                        &self.look,
+                        crate::screen::TextRole::Name,
+                        format!("{:?} benchmarks · {} build", self.suite, profile()),
+                    ))
+                    .child(self.cancel_button.clone()),
+            )
+            .child(body)
     }
 }
 pub fn run_cli(args: &[String], suite: Suite, flag: &str) -> Result<()> {
@@ -770,9 +810,9 @@ fn run_svg_memory(
         progress.running(job.label(), 4.);
     }
     let result = match job {
-        Job::SvgBuiltin => crate::svg_lab::benchmarks::memory_selected(None, budget, cancel, progress),
+        Job::SvgBuiltin => crate::svg_lab::benchmarks::isolated_selected(None, budget, cancel, progress),
         Job::SvgSelected => match selected {
-            Some(path) => crate::svg_lab::benchmarks::memory_selected(Some(path), budget, cancel, progress),
+            Some(path) => crate::svg_lab::benchmarks::isolated_selected(Some(path), budget, cancel, progress),
             None => Ok(json!({"outcome":"unavailable","summary":"Choose an SVG file to run this workload."})),
         },
         Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(corpus, budget, workers, cancel, progress),
@@ -806,28 +846,63 @@ mod tests {
     }
     #[cfg(feature = "test-support")]
     #[::core::prelude::v1::test]
-    fn interactive_svg_run_keeps_numeric_results_in_memory() {
+    fn stop_button_cancels_the_run_and_retains_planned_rows_without_files() {
+        use xgpui_luma::controls::button::ButtonEvent;
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| Page::new(Suite::Svg, crate::theme::default_look(), cx));
         cx.update(|_, cx| assert_eq!(page.read(cx).svg_table.read(cx).items().len(), 18));
         page.update(cx, |page, cx| {
             page.start(Some(Job::SvgBuiltin), None, cx);
-            assert_eq!(page.svg_table.read(cx).items().len(), 1, "schedule appears synchronously before work starts");
+            assert_eq!(page.svg_table.read(cx).items().len(), 1);
+        });
+        let stop = cx.update(|_, cx| page.read(cx).cancel_button.clone());
+        stop.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.update(|_, cx| {
+            let page = page.read(cx);
+            assert!(page.cancel.load(Ordering::Relaxed));
+            assert_eq!(page.status, "Stopping active workers…");
         });
         cx.run_until_parked();
         cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(!page.busy);
-            assert_eq!(page.svg_budget, 4 * xgpui_svg::MIB);
-            assert_eq!(page.results[0]["budget_bytes"], 4 * xgpui_svg::MIB);
-            assert!(page.status.starts_with("Finished in "));
             assert!(page.output.is_none());
-            assert_eq!(page.results.len(), 1);
-            assert_eq!(page.results[0]["outcome"], "completed");
-            assert!(page.results[0].get("previews").is_none());
-            assert!(page.results[0]["raster"]["median_ms"].as_f64().is_some());
+            assert!(page.status.starts_with("Cancelled"));
             assert_eq!(page.svg_table.read(cx).items().len(), 1);
+        });
+        assert!(cx.debug_bounds("benchmark-run-controls").is_some(), "Stop header remains present after stopping");
+    }
+    #[cfg(unix)]
+    #[::core::prelude::v1::test]
+    fn stop_terminates_both_active_process_groups_and_never_starts_queued_cases() {
+        use std::os::unix::process::CommandExt;
+        let cancel = AtomicBool::new(false);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::scope(|scope| {
+            let cancel = &cancel;
+            scope.spawn(move || {
+                receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+                receiver.recv_timeout(Duration::from_secs(5)).unwrap();
+                cancel.store(true, Ordering::Relaxed);
+            });
+            let reports = pool::run(&[0, 1, 2, 3], 2, cancel, |_, _, index| {
+                let mut child = Command::new("/bin/sleep")
+                    .arg("60")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .process_group(0)
+                    .spawn()
+                    .unwrap();
+                sender.send(child.id()).unwrap();
+                let start = Instant::now();
+                assert!(wait_child(&mut child, &["--svg-case".into()], cancel).is_err());
+                assert!(child.try_wait().unwrap().is_some(), "child has been reaped");
+                assert!(start.elapsed() < Duration::from_secs(4));
+                *index
+            })
+            .unwrap();
+            assert_eq!(reports, vec![0, 1], "queued cases must not start after Stop");
         });
     }
     #[::core::prelude::v1::test]

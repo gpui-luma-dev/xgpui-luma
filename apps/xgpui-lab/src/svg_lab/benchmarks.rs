@@ -226,18 +226,25 @@ pub(crate) fn planned_cases() -> Vec<Value> {
         .collect()
 }
 /// File-free interactive reports; corpus cases retain process isolation.
-pub(crate) fn memory_selected(
+pub(crate) fn isolated_selected(
     path: Option<&Path>,
     budget: usize,
     cancel: &AtomicBool,
     progress: &Progress,
 ) -> Result<Value> {
-    crate::benchmarks::check_cancel(cancel)?;
-    let bytes = match path {
-        Some(path) => read(path)?,
-        None => super::scene::svg(false, true).into_bytes(),
-    };
-    measure_report(&bytes, 4., budget, None, cancel, Some(progress))
+    let mut args = vec![
+        "--svg-case".into(),
+        path.map_or_else(|| "builtin".into(), |p| p.display().to_string()),
+        "--zoom".into(),
+        "4".into(),
+        "--svg-budget-mib".into(),
+        (budget / MIB).to_string(),
+        "--svg-report-stdout".into(),
+    ];
+    if path.is_none() {
+        args.push("--svg-builtin".into());
+    }
+    crate::benchmarks::memory::run(&args, cancel, progress)
 }
 pub(crate) fn memory_corpus(
     folder: Option<&Path>,
@@ -292,7 +299,7 @@ pub(crate) fn memory_corpus(
         worker_progress.idle();
         report
     })?;
-    let failed = cases.iter().filter(|c| c.get("error").is_some()).count();
+    let failed = cases.iter().filter(|c| c.get("error").is_some() && c["outcome"] != "cancelled").count();
     Ok(
         json!({"cases":cases,"workers":workers,"execution":if workers==2 {"parallel"}else{"sequential"},"errors":if failed==0 {vec![]} else {vec![format!("{failed} corpus cases failed")]},
         "measurement":"Fresh process per artwork/zoom, five CPU parse/raster repeats at density 2 and the selected output budget. Reports travel over pipes; no temporary files or captures are written. RSS is process-wide; timings exclude PNG encoding and GPU work."}),
@@ -301,7 +308,9 @@ pub(crate) fn memory_corpus(
 pub fn run_case_cli(args: &[String]) -> Result<()> {
     let source = crate::benchmarks::argument(args, "--svg-case").context("SVG path required")?;
     let zoom = crate::benchmarks::argument(args, "--zoom").unwrap_or("4").parse()?;
-    let bytes = if args.iter().any(|a| a == "--svg-bundled") {
+    let bytes = if args.iter().any(|a| a == "--svg-builtin") {
+        super::scene::svg(false, true).into_bytes()
+    } else if args.iter().any(|a| a == "--svg-bundled") {
         SAMPLES.iter().find(|(id, _)| *id == source).context("unknown bundled SVG")?.1.to_vec()
     } else {
         read(Path::new(source))?
