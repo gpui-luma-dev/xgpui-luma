@@ -156,7 +156,18 @@ impl SvgPage {
         }
         for (action, choice) in &self.choices {
             if actions.contains(action) {
-                page = page.control(labeled_control(&self.look, choice.clone().into_element()));
+                let control = if *action == Action::Background {
+                    // Reserve enough space for Transparent so selection never reflows the row.
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(choice.label())
+                        .child(div().w(px(160.)).flex_shrink_0().child(choice.selector.clone()))
+                } else {
+                    choice.clone().into_element()
+                };
+                page = page.control(labeled_control(&self.look, control));
             }
         }
         for (action, switch) in &self.switches {
