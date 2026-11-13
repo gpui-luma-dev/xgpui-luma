@@ -12,7 +12,7 @@ use crate::{
 use xgpui_shader::{BlendMode, Brush, BrushPoint, BrushStop, Noise, painted};
 
 mod renderers;
-use crate::shader::numeric::Number;
+use crate::screen::Number;
 use crate::screen::{Hero, LabScreen, PanelShell, ParametersPanel, labeled_control, properties};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

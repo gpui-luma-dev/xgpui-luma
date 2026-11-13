@@ -1,7 +1,7 @@
 //! App-only import of Christian Helgeson's Grid Shader (BSD-3-Clause).
 //! Copyright 2019 WebGPU Samples Contributors; see licenses/ShaderDepot-BSD-3-Clause.txt.
 use super::*;
-use super::numeric::Number;
+use crate::screen::Number;
 use crate::screen::{ComparePane, Hero, LabScreen, PanelShell, ParametersPanel, properties};
 use xgpui_shader::{
     shader_paint,

@@ -21,6 +21,8 @@ mod card_button;
 pub(crate) mod data;
 mod hero;
 mod metrics;
+mod numeric;
+pub(crate) use numeric::Number;
 mod panel;
 
 pub(crate) use card::LabCard;
@@ -51,6 +53,7 @@ pub(crate) struct LabScreen {
     cards: Vec<LabCard>,
     card_elements: Vec<AnyElement>,
     panels: Option<(Panel, Panel)>,
+    equal_panel_widths: bool,
     sections: Vec<Section>,
     note: Option<SharedString>,
     credits: Option<SharedString>,
@@ -72,6 +75,7 @@ impl LabScreen {
             cards: Vec::new(),
             card_elements: Vec::new(),
             panels: None,
+            equal_panel_widths: false,
             sections: Vec::new(),
             note: None,
             credits: None,
@@ -137,6 +141,12 @@ impl LabScreen {
     /// The two-panel row. The wide/narrow ratio comes from [`LabMetrics`].
     pub fn panels(mut self, wide: impl Into<Panel>, narrow: impl Into<Panel>) -> Self {
         self.panels = Some((wide.into(), narrow.into()));
+        self
+    }
+
+    /// Give both panels the same sizing profile, retaining responsive wrapping.
+    pub fn equal_panel_widths(mut self) -> Self {
+        self.equal_panel_widths = true;
         self
     }
 
@@ -210,7 +220,12 @@ impl RenderOnce for LabScreen {
             let sized = |panel: Div, width: metrics::PanelWidth, name| {
                 slot(panel, name).flex_grow(width.grow).flex_basis(width.basis).min_w(width.min)
             };
-            let wide = sized(wide.render(look, &metrics), metrics.wide_panel, "panel-wide");
+            let wide_width = if self.equal_panel_widths {
+                metrics.narrow_panel
+            } else {
+                metrics.wide_panel
+            };
+            let wide = sized(wide.render(look, &metrics), wide_width, "panel-wide");
             // `flex_1` keeps the narrow panel's shrink and grow at 1, as before.
             let narrow = sized(narrow.render(look, &metrics).flex_1(), metrics.narrow_panel, "panel-narrow");
             content.push(slot(hstack! { wide, narrow }.flex_wrap().gap(metrics.section_gap), "panels"));

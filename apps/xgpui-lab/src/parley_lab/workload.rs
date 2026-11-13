@@ -71,6 +71,9 @@ pub fn measure(text: Arc<TextSystem>, lines: &[SharedString], base: &Font) -> an
 
 pub struct ScrollLab {
     look: Arc<xgpui_luma_look_radix::Look>,
+    pub(super) embedded: bool,
+    pub(super) lab_actions: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
+    pub(super) lab_report: Option<String>,
     controls: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
     pending_start: bool,
     name: String,
@@ -133,6 +136,9 @@ impl ScrollLab {
         let initial_rss = rss();
         Self {
             look: crate::theme::default_look(),
+            embedded: false,
+            lab_actions: vec![],
+            lab_report: None,
             controls: vec![],
             pending_start: false,
             name,
@@ -260,6 +266,62 @@ impl Render for ScrollLab {
             let this = cx.entity();
             window.on_next_frame(move |window, cx| this.update(cx, |this, cx| this.tick(window, cx)));
         }
+        let list = uniform_list(
+            "scroll-corpus",
+            self.lines.len(),
+            cx.processor(|this, range: std::ops::Range<usize>, _, _| {
+                let font = styled_font(&this.font, this.weight);
+                range
+                    .map(|i| {
+                        this.seen[i] = true;
+                        let text = this.lines[i].clone();
+                        let mut text_runs = runs(&text, &font);
+                        if this.embedded {
+                            text_runs[0].color = this.look.chrome().body_text;
+                        }
+                        div()
+                            .h(px(this.size + 8.))
+                            .text_size(px(this.size))
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .child(StyledText::new(text).with_runs(text_runs.to_vec()))
+                    })
+                    .collect::<Vec<_>>()
+            }),
+        )
+        .track_scroll(&self.scroll)
+        .flex_1()
+        .min_h_0()
+        .on_scroll(cx.listener(|_, _, _, cx| cx.notify()));
+        if self.embedded {
+            use crate::screen::{LabScreen, Hero, PanelShell, properties, text, TextRole};
+            let mut page = LabScreen::new("parley-scroll", self.look.clone()).crumb("xgpui-parley", "Scrolling").title("Scrolling")
+                .lede("Explore a long text list that builds only the rows in view.")
+                .hero(Hero::full(div().h(px(480.)).w_full().flex().flex_col().overflow_hidden().child(list)))
+                .caption(format!("{} · {} lines · {:.0} px · weight {:.0} · {}", self.name, self.lines.len(), self.size, self.weight, if self.running {"Running"} else {"Paused"}))
+                .section_panel(PanelShell::new("Scrolling / live").child(properties(&self.look, [
+                    ("Run",format!("{} / {}",self.frame,self.limit)),
+                    ("Distinct rows", self.seen.iter().filter(|v|**v).count().to_string()),
+                    ("Process RSS",memory(self.rss_now)),
+                    ("Frame observations",Self::stats(window,self.baseline.as_ref())),
+                ])))
+                .note("Scroll manually or run the original 600-frame sequence through four font styles. Leaving this page cancels playback.")
+                .credits("Draw measures the full CPU view; submission intervals include pacing. GPU memory, GPU time and confirmed displayed FPS are not measured. RSS covers the whole process.");
+            for control in &self.controls {
+                page = page.control(control.clone());
+            }
+            for action in &self.lab_actions {
+                page = page.action(action.clone());
+            }
+            if let Some(report) = &self.lab_report {
+                page = page.section_panel(PanelShell::new("Corpus CPU diagnostics").child(text(
+                    &self.look,
+                    TextRole::Value,
+                    report.clone(),
+                )));
+            }
+            return page.into_any_element();
+        }
         let controls = div().flex().gap_3().children(self.controls.clone());
         div()
             .size_full()
@@ -288,32 +350,8 @@ impl Render for ScrollLab {
                 memory(self.rss_now)
             ))
             .child("Draw = full CPU view; submit interval includes pacing. GPU memory/time not measured.")
-            .child(
-                uniform_list(
-                    "scroll-corpus",
-                    self.lines.len(),
-                    cx.processor(|this, range: std::ops::Range<usize>, _, _| {
-                        let font = styled_font(&this.font, this.weight);
-                        range
-                            .map(|i| {
-                                this.seen[i] = true;
-                                let text = this.lines[i].clone();
-                                let text_runs = runs(&text, &font);
-                                div()
-                                    .h(px(this.size + 8.))
-                                    .text_size(px(this.size))
-                                    .whitespace_nowrap()
-                                    .overflow_hidden()
-                                    .child(StyledText::new(text).with_runs(text_runs.to_vec()))
-                            })
-                            .collect::<Vec<_>>()
-                    }),
-                )
-                .track_scroll(&self.scroll)
-                .flex_1()
-                .min_h_0()
-                .on_scroll(cx.listener(|_, _, _, cx| cx.notify())),
-            )
+            .child(list)
+            .into_any_element()
     }
 }
 

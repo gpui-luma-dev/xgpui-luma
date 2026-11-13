@@ -13,7 +13,7 @@ use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma_look_radix::{self as radix, Look};
 
 use super::{ParleyTextField, ParleyTextFieldEvent};
-use crate::theme::ColorVizLookExt;
+use crate::screen::{Hero, LabScreen, PanelShell, TextRole, properties, text};
 
 /// Index of the field that starts disabled.
 const DISABLED: usize = 1;
@@ -230,21 +230,14 @@ impl TextFieldPage {
 
 impl Render for TextFieldPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let chrome = self.look.chrome();
         if !cx.has_global::<crate::parley_lab::ParleyTextSystemActive>() {
-            return div()
-                .p_4()
-                .flex()
-                .flex_col()
-                .gap_2()
-                .text_color(chrome.body_text)
-                .child(div().text_size(px(22.0)).child("Parley text field and text area"))
-                .child(
-                    "These controls edit through GPUI's paragraph API, which needs the whole \
-                     application on the Parley text system. XGPUI Lab is running on the native one.",
-                )
-                .child("Relaunch it with --text-system=parley, for example:")
-                .child(div().font_family("JetBrains Mono").child("cargo run -p xgpui-lab -- --text-system=parley"))
+            return LabScreen::new("parley-fields", self.look.clone()).crumb("xgpui-parley", "Text Field").title("Text Field")
+                .lede("Explore editable text fields, text areas and mixed-direction input.")
+                .hero(Hero::full(div().flex().flex_col().gap_2().child(text(&self.look,TextRole::Name,"Parley backend required")).child(text(&self.look,TextRole::Caption,
+                    "These controls use GPUI’s paragraph API. Relaunch the application with the Parley text system to edit the samples."))))
+                .caption("Current application backend: native")
+                .section_panel(PanelShell::new("Launch command").child(text(&self.look,TextRole::Value,"cargo run -p xgpui-lab -- --text-system=parley")))
+                .note("The shaping, line layout and paragraph previews use an isolated Parley engine and remain available on the native backend.")
                 .into_any_element();
         }
         let screen = self.screen;
@@ -268,26 +261,27 @@ impl Render for TextFieldPage {
                 .flex()
                 .flex_col()
                 .gap_1()
-                .child(div().text_size(px(13.0)).child(label))
-                .child(div().w(px(360.0)).child(field.clone()))
-                .child(div().text_size(px(11.0)).text_color(chrome.muted_text).child(status))
+                .child(text(&self.look, TextRole::Label, label))
+                .child(div().w_full().max_w(px(600.)).child(field.clone()))
+                .child(text(&self.look, TextRole::Value, status))
         });
-        div()
-            .id("parley-text-field-page")
-            .size_full()
-            .overflow_y_scroll()
-            .p_4()
-            .flex()
-            .flex_col()
-            .gap_4()
-            .font_family("IBM Plex Sans")
-            .text_color(chrome.body_text)
-            .child(div().text_size(px(22.0)).child(screen.title()))
-            .children(self.tabs.as_ref().map(|tabs| tabs.read(cx).tab_list()))
-            .child(div().text_size(px(13.0)).child(screen.hint()))
-            .when(screen == Screen::States, |page| page.child(self.toggle.clone()))
-            .children(rows)
-            .child(div().text_size(px(12.0)).text_color(chrome.muted_text).child(self.last_event.clone()))
-            .into_any_element()
+        let mut page = LabScreen::new("parley-fields", self.look.clone())
+            .crumb("xgpui-parley", "Text Field")
+            .title("Text Field")
+            .lede("Explore editable text fields, text areas and mixed-direction input.")
+            .hero(Hero::full(div().id("parley-text-field-page").flex().flex_col().gap_4().children(rows)))
+            .caption(format!("{} · Parley application backend", screen.title()))
+            .section_panel(
+                PanelShell::new("Events / live")
+                    .child(properties(&self.look, [("Last event", self.last_event.clone())])),
+            )
+            .note(screen.hint());
+        if let Some(tabs) = &self.tabs {
+            page = page.control(tabs.read(cx).tab_list());
+        }
+        if screen == Screen::States {
+            page = page.action(self.toggle.clone());
+        }
+        page.into_any_element()
     }
 }
