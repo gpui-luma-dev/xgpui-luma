@@ -194,6 +194,30 @@ pub fn corpus(folder: &Path, output: &Path, cancel: &AtomicBool) -> Result<Value
         "measurement": "Hash-verified source manifest, one fresh copy of this executable per document/zoom; five parse/raster repeats, zooms 1/4/8/16 at density 2, 256 MiB output budget. No runtime compilation or Python."}),
     )
 }
+/// Small reference images prepared outside benchmark timing and retained in memory.
+pub(crate) fn thumbnails(selected: Option<&Path>, folder: Option<&Path>) -> crate::benchmarks::svg_table::Thumbnails {
+    let renderer = SvgRenderer::new(Arc::new(()));
+    let mut images = crate::benchmarks::svg_table::Thumbnails::new();
+    let mut preview = |name: &str, bytes: Result<Vec<u8>>| {
+        let image = bytes.and_then(|bytes| {
+            let doc = SvgDocument::parse(&renderer, &bytes)?;
+            let size = doc.fit_size(96.)?;
+            let resolution = RasterPolicy::default().resolution(size, 1., 1.)?;
+            Ok(doc.rasterize(&renderer, resolution.output, MIB)?.image)
+        });
+        if let Ok(image) = image {
+            images.insert(name.into(), image);
+        }
+    };
+    preview("Built-in SVG", Ok(super::scene::svg(false, true).into_bytes()));
+    if let Some(path) = selected {
+        preview("Selected SVG", read(path));
+    }
+    for (id, bytes) in SAMPLES {
+        preview(id, folder.map_or_else(|| Ok(bytes.to_vec()), |folder| read(&folder.join(format!("{id}.svg")))));
+    }
+    images
+}
 /// The complete corpus schedule, available before any workers start.
 pub(crate) fn planned_cases() -> Vec<Value> {
     SAMPLES

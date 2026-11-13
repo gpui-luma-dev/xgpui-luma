@@ -273,6 +273,8 @@ pub struct Page {
     output: Option<PathBuf>,
     results: Vec<Value>,
     svg_table: xgpui_luma::controls::table::Table<svg_table::Row>,
+    svg_thumbnails: svg_table::Thumbnails,
+    thumbnail_request: u64,
     quit_on_finish: bool,
 }
 impl Drop for Page {
@@ -347,7 +349,9 @@ impl Page {
                 let _ = table.set_items(svg_table::rows(&svg_table::plan(&suite.jobs())), cx);
             });
         }
-        Self {
+        let mut page = Self {
+            svg_thumbnails: Default::default(),
+            thumbnail_request: 0,
             svg_table,
             suite,
             look,
@@ -370,7 +374,41 @@ impl Page {
             output: None,
             results: Vec::new(),
             quit_on_finish: false,
+        };
+        if suite == Suite::Svg {
+            page.load_thumbnails(cx);
         }
+        page
+    }
+    fn load_thumbnails(&mut self, cx: &mut Context<Self>) {
+        self.svg_thumbnails.clear();
+        let rows = svg_table::with_thumbnails(self.svg_table.read(cx).items().to_vec(), &self.svg_thumbnails);
+        self.svg_table.update(cx, |table, cx| {
+            let _ = table.set_items(rows, cx);
+        });
+        self.thumbnail_request += 1;
+        let request = self.thumbnail_request;
+        let selected = self.selected.clone();
+        let corpus = self.corpus.clone();
+        cx.spawn(async move |this, cx| {
+            let images = cx
+                .background_spawn(async move {
+                    crate::svg_lab::benchmarks::thumbnails(selected.as_deref(), corpus.as_deref())
+                })
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if this.thumbnail_request != request {
+                    return;
+                }
+                this.svg_thumbnails = images;
+                let rows = svg_table::with_thumbnails(this.svg_table.read(cx).items().to_vec(), &this.svg_thumbnails);
+                this.svg_table.update(cx, |table, cx| {
+                    let _ = table.set_items(rows, cx);
+                });
+                cx.notify();
+            });
+        })
+        .detach();
     }
     fn choose(&mut self, directory: bool, cx: &mut Context<Self>) {
         let picker = cx.prompt_for_paths(PathPromptOptions {
@@ -397,6 +435,7 @@ impl Page {
                             } else {
                                 this.selected = Some(path);
                             }
+                            this.load_thumbnails(cx);
                         }
                     }
                     Ok(Ok(None)) => {}
@@ -458,7 +497,7 @@ impl Page {
         if in_memory {
             let plan = svg_table::plan(&jobs);
             self.svg_table.update(cx, |table, cx| {
-                let _ = table.set_items(svg_table::rows(&plan), cx);
+                let _ = table.set_items(svg_table::with_thumbnails(svg_table::rows(&plan), &self.svg_thumbnails), cx);
             });
             progress.plan(plan);
         }
@@ -481,7 +520,7 @@ impl Page {
                                 status
                             };
                             if partial != last_rows {
-                                let rows = svg_table::rows(&partial);
+                                let rows = svg_table::with_thumbnails(svg_table::rows(&partial), &this.svg_thumbnails);
                                 this.svg_table.update(cx, |table, cx| {
                                     let _ = table.set_items(rows, cx);
                                 });
@@ -549,6 +588,7 @@ impl Page {
                         } else {
                             svg_table::rows(&this.results)
                         };
+                        let rows = svg_table::with_thumbnails(rows, &this.svg_thumbnails);
                         this.svg_table.update(cx, |table, cx| {
                             let _ = table.set_items(rows, cx);
                         });
@@ -570,7 +610,8 @@ impl Page {
                 this.busy = false;
                 if in_memory {
                     progress.settle(None, cancel.load(Ordering::Relaxed));
-                    let rows = svg_table::rows(&progress.snapshot().1);
+                    let rows =
+                        svg_table::with_thumbnails(svg_table::rows(&progress.snapshot().1), &this.svg_thumbnails);
                     this.svg_table.update(cx, |table, cx| {
                         let _ = table.set_items(rows, cx);
                     });

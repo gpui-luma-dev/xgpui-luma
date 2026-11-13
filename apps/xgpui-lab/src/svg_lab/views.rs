@@ -5,6 +5,7 @@ use xgpui_svg::{svg_image, path_effects::PathEffect};
 impl Render for SvgPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sync_choices(cx);
+        self.sync_bench_thumbnail(cx);
         self.density = window.scale_factor();
         self.motion_allowed = !cx.reduce_motion();
         self.gallery_columns =

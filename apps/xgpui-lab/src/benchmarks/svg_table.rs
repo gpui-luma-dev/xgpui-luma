@@ -1,8 +1,10 @@
 //! Numeric rows for comparing artwork/zoom results without reading report files.
 use super::*;
 use xgpui_luma::controls::table::Table;
+const THUMBNAIL_PAPER: u32 = 0xffffff;
 #[derive(Clone, Debug)]
 pub(crate) struct Row {
+    thumbnail: Option<Arc<RenderImage>>,
     name: String,
     zoom: String,
     parse: String,
@@ -22,6 +24,7 @@ pub(crate) fn rows(results: &[Value]) -> Vec<Row> {
             cases
                 .into_iter()
                 .map(|c| Row {
+                    thumbnail: None,
                     name: c["id"].as_str().or(result["label"].as_str()).unwrap_or("SVG").into(),
                     zoom: c["zoom"].as_f64().map_or_else(|| "—".into(), |n| format!("{n:.2}×")),
                     parse: ms(c.get("parse_ms").unwrap_or(&c["parse"]["median_ms"])),
@@ -48,6 +51,23 @@ pub(crate) fn rows(results: &[Value]) -> Vec<Row> {
         })
         .collect()
 }
+pub(crate) type Thumbnails = std::collections::HashMap<String, Arc<RenderImage>>;
+pub(crate) fn with_thumbnails(mut rows: Vec<Row>, images: &Thumbnails) -> Vec<Row> {
+    for row in &mut rows {
+        // Completed measurements keep the artwork captured for that run.
+        if row.thumbnail.is_some() && !matches!(row.outcome.as_str(), "pending" | "running") {
+            continue;
+        }
+        row.thumbnail = images.get(&row.name).cloned();
+    }
+    rows
+}
+pub(crate) fn with_image(mut rows: Vec<Row>, image: Option<Arc<RenderImage>>) -> Vec<Row> {
+    for row in &mut rows {
+        row.thumbnail = image.clone();
+    }
+    rows
+}
 pub(crate) fn samples(zoom: f32) -> Vec<Value> {
     (1..=5).map(|n| json!({"id":format!("Sample {n}"),"zoom":zoom,"outcome":"pending"})).collect()
 }
@@ -65,7 +85,19 @@ pub(super) fn plan(jobs: &[Job]) -> Vec<Value> {
 pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> {
     radix::table_builder::<Row>(look, "svg-benchmark-results")
         .visible_rows(10)
+        .visible_row_height(68.0_f32)
         .grid_columns()
+        .column_fixed("Preview", 80., |r| {
+            div()
+                .w(px(64.))
+                .h(px(52.))
+                .overflow_hidden()
+                .when(r.thumbnail.is_some(), |cell| cell.bg(gpui::rgb(THUMBNAIL_PAPER)))
+                .when_some(r.thumbnail.clone(), |cell, image| {
+                    cell.child(img(image).size_full().object_fit(ObjectFit::Contain))
+                })
+                .when(r.thumbnail.is_none(), |cell| cell.child("—"))
+        })
         .column_fill("Artwork", |r| r.name.clone())
         .column_fixed("Zoom", 72., |r| r.zoom.clone())
         .column_fixed("Parse ms", 90., |r| r.parse.clone())
@@ -80,6 +112,35 @@ pub(crate) fn build<M: 'static>(look: &Look, cx: &mut Context<M>) -> Table<Row> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn pending_cases_have_small_cached_previews_shared_across_zoom_rows() {
+        let images = crate::svg_lab::benchmarks::thumbnails(None, None);
+        assert_eq!(images.len(), 5, "four corpus artworks and the built-in scene");
+        let planned = rows(&plan(&[Job::SvgCorpus]));
+        let previewed = with_thumbnails(planned, &images);
+        assert_eq!(previewed.len(), 16);
+        for group in previewed.chunks(4) {
+            let image = group[0].thumbnail.as_ref().expect("corpus preview");
+            let size = image.size(0);
+            assert!(i32::from(size.width) <= 96 && i32::from(size.height) <= 96);
+            assert!(image.as_bytes(0).unwrap().as_chunks::<4>().0.iter().any(|p| p[3] > 0));
+            for row in group {
+                assert_eq!(row.outcome, "pending");
+                assert!(Arc::ptr_eq(image, row.thumbnail.as_ref().unwrap()));
+            }
+        }
+        let finished =
+            with_thumbnails(rows(&[json!({"id":previewed[0].name,"zoom":1,"raster":{"median_ms":1.2}})]), &images);
+        assert!(Arc::ptr_eq(finished[0].thumbnail.as_ref().unwrap(), previewed[0].thumbnail.as_ref().unwrap()));
+        let original = finished[0].thumbnail.as_ref().unwrap().clone();
+        let mut changed = images.clone();
+        changed.insert(finished[0].name.clone(), images["Built-in SVG"].clone());
+        let retained = with_thumbnails(finished, &changed);
+        assert!(
+            Arc::ptr_eq(retained[0].thumbnail.as_ref().unwrap(), &original),
+            "changing the next input must not relabel a completed result's image"
+        );
+    }
     #[::core::prelude::v1::test]
     fn corpus_and_run_all_have_a_complete_pending_schedule() {
         let corpus = plan(&[Job::SvgCorpus]);

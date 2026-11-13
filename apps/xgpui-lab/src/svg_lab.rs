@@ -116,6 +116,7 @@ pub struct SvgPage {
     bench_progress: crate::benchmarks::progress::Progress,
     bench_result: Option<Result<Vec<serde_json::Value>, String>>,
     bench_table: xgpui_luma::controls::table::Table<crate::benchmarks::svg_table::Row>,
+    bench_thumbnail: Option<Arc<RenderImage>>,
     density: f32,
     camera: camera::Camera,
     panel_bounds: [gpui::Bounds<gpui::Pixels>; 3],
@@ -319,17 +320,26 @@ impl SvgPage {
             )
         })
         .to_vec();
+        let asset = Self::build(false, true, cx);
+        let bench_thumbnail = asset.as_ref().ok().map(|asset| asset.fixed.clone());
         let bench_table = crate::benchmarks::svg_table::build(&look, cx);
         bench_table.update(cx, |t, cx| {
-            let _ = t.set_items(crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(1.)), cx);
+            let _ = t.set_items(
+                crate::benchmarks::svg_table::with_image(
+                    crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(1.)),
+                    bench_thumbnail.clone(),
+                ),
+                cx,
+            );
         });
         let mut page = Self {
             bench_table,
+            bench_thumbnail,
             look: look.clone(),
             numbers: Vec::new(),
             switches: Vec::new(),
             active_tab: "Rendering".into(),
-            asset: Self::build(false, true, cx),
+            asset,
             status: None,
             rendering_status: None,
             policy: Default::default(),
@@ -518,6 +528,28 @@ impl SvgPage {
         }
         cx.notify();
     }
+    fn sync_bench_thumbnail(&mut self, cx: &mut Context<Self>) {
+        if self.benchmarking || self.bench_result.is_some() {
+            return;
+        }
+        let image = self.asset.as_ref().ok().map(|asset| asset.fixed.clone());
+        let same = match (&image, &self.bench_thumbnail) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        };
+        if same {
+            return;
+        }
+        self.bench_thumbnail = image.clone();
+        let rows = crate::benchmarks::svg_table::with_image(
+            crate::benchmarks::svg_table::rows(&crate::benchmarks::svg_table::samples(self.values[0])),
+            image,
+        );
+        self.bench_table.update(cx, |t, cx| {
+            let _ = t.set_items(rows, cx);
+        });
+    }
     fn benchmark(&mut self, cx: &mut Context<Self>) {
         if self.benchmarking {
             return;
@@ -529,11 +561,18 @@ impl SvgPage {
         };
         self.benchmarking = true;
         self.bench_result = None;
+        self.bench_thumbnail = self.asset.as_ref().ok().map(|asset| asset.fixed.clone());
         self.bench_progress = Default::default();
         let progress = self.bench_progress.clone();
         let plan = crate::benchmarks::svg_table::samples(self.values[0]);
         self.bench_table.update(cx, |t, cx| {
-            let _ = t.set_items(crate::benchmarks::svg_table::rows(&plan), cx);
+            let _ = t.set_items(
+                crate::benchmarks::svg_table::with_image(
+                    crate::benchmarks::svg_table::rows(&plan),
+                    self.bench_thumbnail.clone(),
+                ),
+                cx,
+            );
         });
         progress.plan(plan);
         progress.case("Artwork / five CPU samples");
@@ -549,7 +588,10 @@ impl SvgPage {
                             return false;
                         }
                         if partial != last_rows {
-                            let rows = crate::benchmarks::svg_table::rows(&partial);
+                            let rows = crate::benchmarks::svg_table::with_image(
+                                crate::benchmarks::svg_table::rows(&partial),
+                                this.bench_thumbnail.clone(),
+                            );
                             this.bench_table.update(cx, |t, cx| {
                                 let _ = t.set_items(rows, cx);
                             });
@@ -594,7 +636,7 @@ impl SvgPage {
             let _ = this.update(cx, |this, cx| {
                 this.benchmarking = false;
                 this.bench_progress.settle(None,false);
-                let rows=crate::benchmarks::svg_table::rows(&this.bench_progress.snapshot().1);
+                let rows=crate::benchmarks::svg_table::with_image(crate::benchmarks::svg_table::rows(&this.bench_progress.snapshot().1),this.bench_thumbnail.clone());
                 this.bench_table.update(cx,|table,cx|{let _=table.set_items(rows,cx);});
                 this.bench_result = Some(result.map_err(|error| error.to_string()));
                 cx.notify();
