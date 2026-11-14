@@ -1,6 +1,7 @@
 //! Presentation-only SDK template matrices for groups and navigation.
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use gpui::{AnyElement, App, Context, Entity, SharedString, Window, div, prelude::*, px};
+use xgpui_luma::controls::control_group::ControlGroupItemLike;
 use xgpui_luma::controls::{accordion, control_group as group, dock_splitter, split_view, pager, sidebar, stepper};
 use xgpui_luma::controls::{progress::ProgressDirection, scroll_container::ScrollContainer, tabs::Tabs};
 use xgpui_luma::infra::{
@@ -272,22 +273,19 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
         .collect();
     let layout = group::ControlGroupLayout::Horizontal;
     let sheet = look.common_stylesheet();
-    let item_template = radix::icon_group_item_template(look, cell.size);
     let mode = if cell.variant == 1 {
         group::ControlSelectionMode::Multiple
     } else {
         group::ControlSelectionMode::SingleAllowNone
     };
-    let glyphs = group::make_control_group_item_template(
-        |item: &group::ControlGroupItemRenderModel<'_, group::ControlGroupItem>, _, _| {
-            let glyph = match item.index {
-                0 => "B",
-                1 => "I",
-                _ => "U",
-            };
-            div().child(glyph).into_any_element()
-        },
-    );
+    let glyphs = radix::icon_group_item_template(look, cell.size, |item: &group::ControlGroupItem| {
+        let glyph = match item.id().as_ref() {
+            "0" => "B",
+            "1" => "I",
+            _ => "U",
+        };
+        div().child(glyph).into_any_element()
+    });
     let selected = |index| index == 0 || (cell.variant == 1 && index == 1);
     let selected_ids: Vec<SharedString> =
         (0..items.len()).filter(|index| selected(*index)).map(|index| index.to_string().into()).collect();
@@ -327,7 +325,7 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
         focus: focus(cell.state),
         focus_strategy: group::ControlGroupFocusStrategy::ActiveDescendant,
         item_template: Some(&glyphs),
-        item_element_template: Some(&item_template),
+        item_element_template: None,
     };
     let template = radix::icon_group_template(look);
     let control_id = format!("{id}-control");

@@ -40,7 +40,7 @@ fn toggle_template_for_variant(
     toggle_template_with_family(button_family_theme_with(look, variant, paint))
 }
 
-fn toggle_template_with_family(
+pub(crate) fn toggle_template_with_family(
     family: Arc<dyn xgpui_luma::controls::button_family::ButtonFamilyTheme>,
 ) -> Arc<dyn ButtonTemplate<ToggleData>> {
     let theme_for_mod = Arc::clone(&family);
