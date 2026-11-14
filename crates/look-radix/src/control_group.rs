@@ -266,7 +266,7 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             compact: true,
             elevation: false,
             round: false,
-            radius_override: std::cell::Cell::new(Some(0.0)),
+            radius_override: std::cell::Cell::new(Some(self.look.metrics().radius.md)),
             look: Some(Arc::new(move |_| look.clone())),
             ..Default::default()
         };

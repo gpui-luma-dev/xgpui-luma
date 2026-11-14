@@ -822,7 +822,19 @@ mod tests {
             };
             assert_eq!(color(normal), color(focused), "focus preserves the selected tint");
             let focus = Look::built_in().resolve_step(ScaleFamily::Gray, 12).hsla();
-            assert!(quads.iter().any(|q| q.bounds == focused.scale(window.scale_factor()) && q.border_color == focus));
+            let radius = px(Look::built_in().metrics().radius.md).scale(window.scale_factor());
+            let focus_quads: Vec<_> = quads
+                .iter()
+                .filter(|q| q.bounds == focused.scale(window.scale_factor()) && q.border_color == focus)
+                .collect();
+            assert!(!focus_quads.is_empty());
+            assert!(
+                focus_quads.iter().all(|quad| quad.corner_radii.top_left == radius
+                    && quad.corner_radii.top_right == radius
+                    && quad.corner_radii.bottom_left == radius
+                    && quad.corner_radii.bottom_right == radius),
+                "focus outline uses the look radius rather than square corners"
+            );
             assert!(
                 !quads.iter().any(|q| q.bounds == unselected.scale(window.scale_factor()) && q.border_color == focus)
             );
