@@ -10,13 +10,24 @@ use crate::controls::progress::{ProgressTheme, default_progress_theme};
 pub struct LinearProgressTemplate {
     theme: Arc<dyn ProgressTheme>,
     modifiers: Vec<ProgressTemplateModifier>,
+    track_radius: Option<Arc<dyn Fn(f32) -> f32 + Send + Sync>>,
 }
 
 pub type ThemedLinearProgressTemplate = LinearProgressTemplate;
 
 impl LinearProgressTemplate {
     pub fn new(theme: Arc<dyn ProgressTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: Vec::new(), track_radius: None }
+    }
+
+    /// Resolve the track and fill corner radius from the themed track height, in pixels.
+    /// Defaults to half the track height. The result is clamped to that range.
+    pub fn with_track_radius<F>(mut self, radius: F) -> Self
+    where
+        F: Fn(f32) -> f32 + Send + Sync + 'static,
+    {
+        self.track_radius = Some(Arc::new(radius));
+        self
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -40,7 +51,12 @@ impl ProgressTemplate for LinearProgressTemplate {
         let percentage = model.percentage.clamp(0.0, 1.0);
         let track_height = look.track_height;
         let thumb_size = look.thumb_size;
-        let track_radius = px(track_height / 2.0);
+        let track_radius = px(self
+            .track_radius
+            .as_ref()
+            .map_or(track_height / 2.0, |radius| radius(track_height))
+            .max(0.0)
+            .min(track_height.max(0.0) / 2.0));
         let thumb_radius = thumb_size / 2.0;
         let thumb_offset = -(thumb_size / 2.0);
 
