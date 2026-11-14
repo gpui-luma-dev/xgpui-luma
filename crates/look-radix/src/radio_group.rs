@@ -1,14 +1,13 @@
 //! Standard Radix radio groups backed by SDK selection and keyboard navigation.
 
 use std::sync::Arc;
-use gpui::{Context, SharedString, div, px, prelude::*};
-use xgpui_luma::controls::button::ButtonRenderModel;
-use xgpui_luma::controls::radio_button::RadioButtonData;
-use xgpui_luma::controls::control_group::{ControlGroupItem, ControlGroupItemLike, ControlGroupItemHandlerExt};
+use gpui::{Context, SharedString, prelude::*};
+use xgpui_luma::controls::radio_button::ThemedRadioButtonTemplate;
+use xgpui_luma::controls::control_group::{ControlGroupItem, ControlGroupItemLike};
 use xgpui_luma::controls::radio_group::{
-    RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_button_item_element_template,
+    RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_buttons_template,
 };
-use crate::{Look, Paint, RadioSize, RadioVariant, radio_template_for};
+use crate::{Look, Paint, RadioSize, RadioVariant, radio_theme_for};
 use crate::look::resolve_look;
 
 /// Standard (non-segmented) radio template.
@@ -19,43 +18,12 @@ pub fn radio_group_template<T: ControlGroupItemLike + 'static>(
     size: RadioSize,
     layout: RadioGroupLayout,
 ) -> RadioGroupTemplate<T> {
-    let template = radio_template_for(look, variant, paint, size);
-    Arc::new(move |model, handlers, window, cx| {
-        let rows = model
-            .items
-            .iter()
-            .zip(handlers.into_item_handlers())
-            .map(|(item, handlers)| {
-                let label = item.item.label().clone();
-                let button = ButtonRenderModel {
-                    id: format!("{}-{}", item.group_id, item.item.id()).into(),
-                    data: RadioButtonData::new(item.selected),
-                    content: Arc::new(move |_, _| div().child(label.clone()).into_any_element()),
-                    state: item.state.interaction_state(),
-                    size: size.control_size(),
-                    ..Default::default()
-                };
-                let selector = button.id.to_string();
-                template
-                    .render(&button, window, cx)
-                    .debug_selector(move || selector.clone())
-                    .control_group_item_handlers(handlers)
-                    .into_any_element()
-            })
-            .collect::<Vec<_>>();
-        let key = match layout {
-            RadioGroupLayout::Vertical => "vertical",
-            RadioGroupLayout::Horizontal => "horizontal",
-        };
-        let recipe = model.stylesheet.radio_group.authored_geometry(key);
-        div()
-            .id(model.id.clone())
-            .flex()
-            .gap(px(recipe.gap.unwrap_or_default()))
-            .items_start()
-            .when(layout == RadioGroupLayout::Vertical, |group| group.flex_col())
-            .children(rows)
-    })
+    let radio =
+        ThemedRadioButtonTemplate::new(radio_theme_for(look, variant, paint, size)).with_modifier(|element, model| {
+            let selector = model.id.to_string();
+            element.debug_selector(move || selector.clone())
+        });
+    radio_group_buttons_template(Arc::new(radio), layout)
 }
 
 /// Look-owned single-selection group. Events and state are owned by the SDK.
@@ -189,16 +157,9 @@ impl<T: ControlGroupItemLike + 'static> RadioGroup<T> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
-            let item = radio_group_button_item_element_template(radio_template_for(
-                &look,
-                self.variant,
-                self.paint,
-                self.size,
-            ));
             self.builder
                 .stylesheet(&look.common_stylesheet())
                 .motion_defaults(look.motion_defaults().control_group)
-                .item_element_template(item)
                 .template(radio_group_template(&look, self.variant, self.paint, self.size, self.layout))
                 .spawn(cx)
         };
@@ -211,10 +172,145 @@ impl<T: ControlGroupItemLike + 'static> RadioGroup<T> {
 pub(crate) fn native_radio_group_stylesheet() -> xgpui_luma::theme::stylesheet::RadioGroupStylesheet {
     use xgpui_luma::theme::stylesheet::*;
     RadioGroupStylesheet {
+        // The radio template already applies disabled opacity to the whole row.
+        geometry: RadioGroupGeometryStylesheet { disabled_opacity: Some(1.0), ..Default::default() },
         sizes: xgpui_luma::theme::ControlSizes::from([(
             "horizontal".into(),
             RadioGroupGeometryStylesheet { gap: Some(8.0), ..Default::default() },
         )]),
-        ..Default::default()
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use gpui::{Render, TestAppContext, Window, div, px};
+    use xgpui_luma::controls::control_group::{ControlGroupItemRenderModel, make_control_group_item_template};
+    use xgpui_luma::controls::radio_group::RadioGroup as SdkRadioGroup;
+
+    struct Harness {
+        group: SdkRadioGroup<ControlGroupItem>,
+        changes: usize,
+        focused: bool,
+    }
+    impl Render for Harness {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().size_full().child(self.group.clone())
+        }
+    }
+
+    #[test]
+    fn sdk_radio_rows_keep_selection_keyboard_callbacks_and_custom_content() {
+        for horizontal in [false, true] {
+            let mut app = TestAppContext::single();
+            let (view, cx) = app.add_window_view(|window, cx| {
+                window.activate_window();
+                xgpui_luma::focus::bind_default_focus_keys(cx);
+                xgpui_luma::key_handling::bind_default_control_keys(cx);
+                let mut builder = RadioGroup::new("radios")
+                    .items([
+                        ControlGroupItem::new("a").label("Alpha"),
+                        ControlGroupItem::new("b").label("Beta"),
+                        ControlGroupItem::new("c").label("Disabled").enabled(false),
+                    ])
+                    .selected("a")
+                    .on_value_changed(cx, |owner: &mut Harness, _, _| owner.changes += 1)
+                    .on_focus_changed(cx, |owner: &mut Harness, focused, _| owner.focused = focused);
+                if horizontal {
+                    builder = builder.horizontal();
+                }
+                Harness { group: builder.spawn(cx), changes: 0, focused: false }
+            });
+            cx.simulate_resize(gpui::size(px(600.0), px(400.0)));
+            cx.run_until_parked();
+            let a = cx.debug_bounds("radios-a").unwrap();
+            let b = cx.debug_bounds("radios-b").unwrap();
+            if horizontal {
+                assert!(b.left() > a.left());
+                assert!(
+                    f32::from(a.size.width - b.size.width).abs() <= 1.0,
+                    "horizontal rows share available width, allowing pixel rounding"
+                );
+            } else {
+                assert!(b.top() > a.top());
+            }
+            let click = |cx: &mut gpui::VisualTestContext, selector: &'static str| {
+                let bounds = cx.debug_bounds(selector).unwrap();
+                cx.simulate_click(bounds.center(), Default::default());
+                cx.run_until_parked();
+            };
+            click(cx, "radios-b");
+            click(cx, "radios-c");
+            cx.update(|_, app| {
+                let view = view.read(app);
+                assert_eq!(view.group.read(app).selected_id(app), Some("b".into()));
+                assert_eq!(view.changes, 1);
+                assert!(view.focused);
+            });
+            cx.simulate_keystrokes(if horizontal { "right" } else { "down" });
+            cx.run_until_parked();
+            cx.update(|_, app| {
+                assert_eq!(view.read(app).group.read(app).selected_id(app), Some("a".into()));
+                assert_eq!(view.read(app).changes, 2);
+            });
+            let group = cx.update(|_, app| view.read(app).group.read(app).inner_group());
+            group.update(cx, |group, cx| {
+                group.set_item_template(
+                    Some(make_control_group_item_template(
+                        |item: &ControlGroupItemRenderModel<'_, ControlGroupItem>, _, _| {
+                            let selector = format!("custom-{}", item.item.id());
+                            div()
+                                .id(item.item.id().clone())
+                                .debug_selector(move || selector.clone())
+                                .child(item.item.label().clone())
+                        },
+                    )),
+                    cx,
+                );
+            });
+            cx.run_until_parked();
+            click(cx, "custom-b");
+            cx.update(|_, app| {
+                assert_eq!(group.read(app).selected_id(), Some(&"b".into()));
+                assert_eq!(view.read(app).changes, 3);
+            });
+            group.update(cx, |group, cx| group.set_enabled(false, cx));
+            cx.run_until_parked();
+            click(cx, "custom-a");
+            cx.simulate_keystrokes("space");
+            cx.run_until_parked();
+            cx.update(|_, app| {
+                assert_eq!(group.read(app).selected_id(), Some(&"b".into()));
+                assert_eq!(view.read(app).changes, 3);
+            });
+            cx.update(|window, _| {
+                let theme = radio_theme_for(&Look::built_in(), RadioVariant::Surface, Paint::accent(), RadioSize::Two);
+                let size = RadioSize::Two.control_size();
+                let scale = theme.scale(size, window.scale_factor());
+                let mut expected = theme
+                    .resolve(false, xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() }, size)
+                    .indicator_background;
+                expected.a *= scale.disabled_opacity;
+                assert!(
+                    window.painted_quads().iter().any(|quad| {
+                        quad.background.as_solid() == Some(expected)
+                            && quad.bounds.size.width == px(scale.indicator_size).scale(window.scale_factor())
+                    }),
+                    "disabled indicator opacity is applied once"
+                );
+            });
+        }
+    }
+
+    #[test]
+    fn bound_radio_size_controls_label_typography_even_with_sdk_default_model_size() {
+        let look = Look::built_in();
+        for size in RadioSize::ALL {
+            let theme = radio_theme_for(&look, RadioVariant::Surface, Paint::accent(), size);
+            let palette = theme.resolve(false, Default::default(), xgpui_luma::theme::ControlSize::Md);
+            let expected = crate::typography::label_typography(size.control_size());
+            assert_eq!(palette.label_typography.size, expected.size);
+            assert_eq!(palette.label_typography.line_height, expected.line_height);
+        }
     }
 }
