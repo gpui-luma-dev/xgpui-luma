@@ -1,5 +1,6 @@
 mod menu_choice_template;
 mod button_item_template;
+mod choice_button_item_template;
 mod toggle_button_item_template;
 mod control;
 mod model;
@@ -14,7 +15,8 @@ pub use model::{
     ControlGroupItemLike, ControlGroupItemRenderModel, ControlGroupLayout, ControlGroupModel, ControlGroupRenderModel,
     ControlGroupStateMode, ControlSelectionMode,
 };
-pub use button_item_template::button_item_template;
+pub use button_item_template::{button_item_template, button_item_element_template};
+pub use choice_button_item_template::choice_button_item_element_template;
 pub use menu_choice_template::{
     MenuChoiceRowContentFn, configure_menu_choice_group, menu_choice_group_template,
     menu_choice_row_item_element_template,
@@ -26,7 +28,8 @@ pub use template::{
     ControlGroupItemLayout, ControlGroupItemTemplate, ControlGroupMouseDownHandler, ControlGroupMouseUpHandler,
     ControlGroupTemplate, ControlGroupTemplateHandlers, control_group_item_layout_template,
     control_group_template_with_theme, default_control_group_template, make_control_group_item_element_template,
-    make_control_group_item_template, render_control_group_item_elements, shared_control_group_template,
+    make_control_group_item_template, render_control_group_rows, render_control_group_item_elements,
+    shared_control_group_template,
 };
 pub use theme::{
     ControlGroupItemPalette, ControlGroupItemVisualContext, DefaultControlGroupTheme, ControlGroupListLook,

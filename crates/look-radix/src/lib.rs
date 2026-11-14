@@ -287,3 +287,6 @@ mod navigation_tests;
 
 #[cfg(all(test, feature = "test-support"))]
 mod focus_tests;
+
+#[cfg(all(test, feature = "test-support"))]
+mod group_tests;

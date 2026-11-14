@@ -125,6 +125,21 @@ impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
 
 impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+        self.render_with_content(model, window, cx, |context, _, cx| (model.content)(context, cx))
+    }
+}
+
+impl<D: 'static + Clone> DefaultButtonTemplate<D> {
+    /// Render shared button chrome around content that needs a window or borrowed data.
+    /// The callback receives the resolved look and runs once unless a semantic icon
+    /// is configured on the model (in which case that icon supplies the content).
+    pub fn render_with_content(
+        &self,
+        model: &ButtonRenderModel<D>,
+        window: &mut Window,
+        cx: &mut App,
+        content: impl FnOnce(&ButtonContentContext<D>, &mut Window, &mut App) -> gpui::AnyElement,
+    ) -> Stateful<Div> {
         let scale_factor = window.scale_factor();
         let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
         let mut look = resolve_look(&self.theme, model, &scale);
@@ -185,7 +200,7 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
                     .into_any_element(),
             }
         } else {
-            (model.content)(&presenter_model, cx)
+            content(&presenter_model, window, cx)
         };
         let content = if matches!(model.role, ButtonFamilyRole::Icon) || square_icon_toggle {
             div()

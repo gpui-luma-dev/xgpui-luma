@@ -2,12 +2,11 @@
 
 use std::sync::Arc;
 use gpui::{Context, SharedString, div, px, prelude::*};
-use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::radio_button::RadioButtonData;
-use xgpui_luma::controls::control_group::{ControlGroupItem, ControlGroupItemLike, ControlGroupItemHandlerExt};
-use xgpui_luma::controls::radio_group::{
-    RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_button_item_element_template,
+use xgpui_luma::controls::control_group::{
+    ControlGroupItem, ControlGroupItemLike, choice_button_item_element_template, render_control_group_rows,
 };
+use xgpui_luma::controls::radio_group::{RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate};
 use crate::{Look, Paint, RadioSize, RadioVariant, radio_template_for};
 use crate::look::resolve_look;
 
@@ -19,30 +18,13 @@ pub fn radio_group_template<T: ControlGroupItemLike + 'static>(
     size: RadioSize,
     layout: RadioGroupLayout,
 ) -> RadioGroupTemplate<T> {
-    let template = radio_template_for(look, variant, paint, size);
+    let item = choice_button_item_element_template(
+        radio_template_for(look, variant, paint, size),
+        size.control_size(),
+        RadioButtonData::new,
+    );
     Arc::new(move |model, handlers, window, cx| {
-        let rows = model
-            .items
-            .iter()
-            .zip(handlers.into_item_handlers())
-            .map(|(item, handlers)| {
-                let label = item.item.label().clone();
-                let button = ButtonRenderModel {
-                    id: format!("{}-{}", item.group_id, item.item.id()).into(),
-                    data: RadioButtonData::new(item.selected),
-                    content: Arc::new(move |_, _| div().child(label.clone()).into_any_element()),
-                    state: item.state.interaction_state(),
-                    size: size.control_size(),
-                    ..Default::default()
-                };
-                let selector = button.id.to_string();
-                template
-                    .render(&button, window, cx)
-                    .debug_selector(move || selector.clone())
-                    .control_group_item_handlers(handlers)
-                    .into_any_element()
-            })
-            .collect::<Vec<_>>();
+        let rows = render_control_group_rows(model, handlers, &item, window, cx);
         let key = match layout {
             RadioGroupLayout::Vertical => "vertical",
             RadioGroupLayout::Horizontal => "horizontal",
@@ -189,16 +171,9 @@ impl<T: ControlGroupItemLike + 'static> RadioGroup<T> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
-            let item = radio_group_button_item_element_template(radio_template_for(
-                &look,
-                self.variant,
-                self.paint,
-                self.size,
-            ));
             self.builder
                 .stylesheet(&look.common_stylesheet())
                 .motion_defaults(look.motion_defaults().control_group)
-                .item_element_template(item)
                 .template(radio_group_template(&look, self.variant, self.paint, self.size, self.layout))
                 .spawn(cx)
         };
