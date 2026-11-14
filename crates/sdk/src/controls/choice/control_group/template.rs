@@ -379,20 +379,7 @@ where
     T: ControlGroupItemLike + 'static,
 {
     let opacity = model.stylesheet.control_group.geometry.disabled_opacity.unwrap_or_default();
-    render_control_group_item_elements_with_opacity(model, handlers, window, cx, opacity, None, true)
-}
-
-/// Render intrinsic-size rows with shared handlers and item-element override precedence.
-/// The supplied fallback owns its disabled appearance; no additional opacity is applied.
-pub fn render_control_group_rows<T: ControlGroupItemLike + 'static>(
-    model: &ControlGroupRenderModel<'_, T>,
-    handlers: ControlGroupTemplateHandlers,
-    fallback: &ControlGroupItemElementTemplate<T>,
-    window: &mut Window,
-    cx: &mut App,
-) -> impl Iterator<Item = AnyElement> {
-    render_control_group_item_elements_with_opacity(model, handlers, window, cx, 1.0, Some(fallback), false)
-        .into_elements()
+    render_control_group_item_elements_with_opacity(model, handlers, window, cx, opacity)
 }
 
 fn render_control_group_item_elements_with_opacity<T>(
@@ -401,8 +388,6 @@ fn render_control_group_item_elements_with_opacity<T>(
     window: &mut Window,
     cx: &mut App,
     disabled_opacity: f32,
-    fallback: Option<&ControlGroupItemElementTemplate<T>>,
-    stretch_horizontal: bool,
 ) -> ControlGroupItemElements
 where
     T: ControlGroupItemLike + 'static,
@@ -410,7 +395,7 @@ where
     let mut items = Vec::with_capacity(model.items.len());
 
     for (item, item_handlers) in model.items.iter().zip(handlers.into_item_handlers()) {
-        let mut element = if let Some(item_element_template) = model.item_element_template.or(fallback) {
+        let mut element = if let Some(item_element_template) = model.item_element_template {
             item_element_template(item, model.item_template, window, cx)
         } else {
             default_item_element(item, model.item_template, window, cx)
@@ -419,7 +404,7 @@ where
 
         if item.enabled {
             element = element.cursor_pointer();
-        } else if model.item_element_template.or(fallback).is_none() {
+        } else if model.item_element_template.is_none() {
             element = element.opacity(disabled_opacity);
         }
 
@@ -427,7 +412,7 @@ where
             element = element.flex_none();
         }
 
-        if stretch_horizontal && model.layout == ControlGroupLayout::Horizontal {
+        if model.layout == ControlGroupLayout::Horizontal {
             element = if model.scroll_handle.is_some() {
                 element.flex_none().w_auto().h_full()
             } else {
@@ -458,7 +443,7 @@ pub(crate) fn render_control_group_items<T>(
 where
     T: ControlGroupItemLike + 'static,
 {
-    render_control_group_item_elements_with_opacity(model, handlers, window, cx, disabled_opacity, None, true)
+    render_control_group_item_elements_with_opacity(model, handlers, window, cx, disabled_opacity)
         .into_elements()
         .collect()
 }

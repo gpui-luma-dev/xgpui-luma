@@ -2,10 +2,11 @@
 
 use std::sync::Arc;
 use gpui::{Context, SharedString, div, prelude::*};
+use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::control_group::{
-    self, ControlGroupBuilder, ControlGroupItem, ControlGroupItemLike, choice_button_item_element_template,
-    render_control_group_rows, ControlGroupLayout, ControlGroupTemplate,
+    self, ControlGroupBuilder, ControlGroupItem, ControlGroupItemLike, ControlGroupItemHandlerExt, ControlGroupLayout,
+    ControlGroupTemplate,
 };
 use crate::{Look, Paint, CheckboxSize, CheckboxVariant, Radius, checkbox_template_for};
 use crate::look::resolve_look;
@@ -18,13 +19,30 @@ pub fn checkbox_group_template<T: ControlGroupItemLike + 'static>(
     size: CheckboxSize,
     radius: Radius,
 ) -> ControlGroupTemplate<T> {
-    let item = choice_button_item_element_template(
-        checkbox_template_for(look, variant, paint, size, radius),
-        size.control_size(),
-        CheckboxData::new,
-    );
+    let template = checkbox_template_for(look, variant, paint, size, radius);
     Arc::new(move |model, handlers, window, cx| {
-        let rows = render_control_group_rows(model, handlers, &item, window, cx);
+        let rows = model
+            .items
+            .iter()
+            .zip(handlers.into_item_handlers())
+            .map(|(item, handlers)| {
+                let label = item.item.label().clone();
+                let button = ButtonRenderModel {
+                    id: format!("{}-{}", item.group_id, item.item.id()).into(),
+                    data: CheckboxData::new(item.selected),
+                    content: Arc::new(move |_, _| div().child(label.clone()).into_any_element()),
+                    state: item.state.interaction_state(),
+                    size: size.control_size(),
+                    ..Default::default()
+                };
+                let selector = button.id.to_string();
+                template
+                    .render(&button, window, cx)
+                    .debug_selector(move || selector.clone())
+                    .control_group_item_handlers(handlers)
+                    .into_any_element()
+            })
+            .collect::<Vec<_>>();
         div()
             .id(model.id.clone())
             .flex()

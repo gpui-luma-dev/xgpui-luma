@@ -1,7 +1,6 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
 use std::sync::Arc;
-use gpui::{SharedString, Styled};
-use xgpui_luma::controls::button::DefaultButtonTemplate;
+use gpui::{SharedString, div, prelude::*, px};
 use xgpui_luma::controls::control_group::*;
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, compose_button_family_look};
 use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
@@ -70,19 +69,61 @@ fn item_template<T: ControlGroupItemLike + 'static>(
     icon: bool,
 ) -> ControlGroupItemElementTemplate<T> {
     let look = look.clone();
-    let template = DefaultButtonTemplate::new(crate::button_family_theme(&look, ButtonVariant::Ghost));
-    let template = button_item_element_template(template, size, icon, move |selected, state, scale| {
-        let mut palette = item_look(&look, selected, state, size, scale);
-        // Group rows retain their compact footprint; geometry remains look-owned.
-        palette.padding_y = 0.0;
-        palette.radius = if icon { look.metrics().radius.pill } else { scale.radius };
-        if icon {
-            palette.padding_x = 0.0;
-        }
-        palette
-    });
-    // Radix group recipes already resolve disabled colors, as before this adapter.
-    Arc::new(move |item, custom, window, cx| template(item, custom, window, cx).opacity(1.0))
+    Arc::new(move |item, custom, window, cx| {
+        let metrics = look.metrics();
+        let scale = StandardBoxScale::compute(size, &metrics, window.scale_factor());
+        let state = InteractionState { focused: item.state.focus_visible, ..item.state.interaction_state() };
+        let palette = item_look(&look, item.selected, state, size, &scale);
+        let content = match custom {
+            Some(custom) => {
+                let content_model = ControlGroupItemRenderModel {
+                    group_id: item.group_id,
+                    stylesheet: item.stylesheet,
+                    layout: item.layout,
+                    item: item.item,
+                    index: item.index,
+                    sibling_count: item.sibling_count,
+                    selected: item.selected,
+                    selection_progress: item.selection_progress,
+                    active: item.active,
+                    enabled: item.enabled,
+                    state: item.state,
+                    selection_mode: item.selection_mode,
+                    foreground: Some(palette.foreground),
+                };
+                custom(&content_model, window, cx)
+            }
+            None => div().child(item.item.label().clone()).into_any_element(),
+        };
+        let radius = if icon { metrics.radius.pill } else { scale.radius };
+        div()
+            .id((item.item.id().clone(), 0usize))
+            .relative()
+            .h(px(palette.height))
+            .min_h(px(palette.height))
+            .flex()
+            .items_center()
+            .justify_center()
+            .px(px(if icon { 0.0 } else { palette.padding_x }))
+            .when(icon, |row| row.w(px(palette.height)).min_w(px(palette.height)).max_w(px(palette.height)))
+            .rounded(px(radius))
+            .bg(palette.background)
+            .text_color(palette.foreground)
+            .font_family(palette.font_family)
+            .text_size(px(palette.typography.size))
+            .line_height(px(palette.typography.line_height))
+            .font_weight(palette.typography.weight)
+            .border_1()
+            .border_color(palette.border.unwrap_or_else(gpui::transparent_black))
+            .when(!item.state.disabled, |row| row.cursor_pointer())
+            .child(content)
+            .child(xgpui_luma::infra::focus_adorner::FocusAdorner::new(metrics.focus).overlay(
+                palette.focus_border,
+                item.state.focus_visible && !item.state.disabled,
+                radius,
+                true,
+            ))
+    })
 }
 /// Radix toggle row; SDK item-content overrides are retained inside this chrome.
 pub fn control_group_item_template<T: ControlGroupItemLike + 'static>(
