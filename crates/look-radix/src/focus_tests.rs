@@ -172,7 +172,7 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 InteractionState::default(),
             );
             let expected_focus = if icon {
-                look.resolve_step(ScaleFamily::Gray, 12).hsla()
+                look.resolve_role(SemanticRole::Focus).hsla()
             } else {
                 palette.focus_border
             };
@@ -195,10 +195,12 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                     if !icon {
                         assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
                     }
-                    assert!(
-                        !quads.iter().any(|q| q.border_color == focus_role),
-                        "hard-coded focus role must not bypass recipe"
-                    );
+                    if !icon {
+                        assert!(
+                            !quads.iter().any(|q| q.border_color == focus_role),
+                            "hard-coded focus role must not bypass recipe"
+                        );
+                    }
                     if expected_focus.a > 0. {
                         assert_eq!(quads.iter().any(|q| q.border_color == expected_focus), focused && !disabled);
                     }

@@ -821,7 +821,7 @@ mod tests {
                     .expect("selected face background")
             };
             assert_eq!(color(normal), color(focused), "focus preserves the selected tint");
-            let focus = Look::built_in().resolve_step(ScaleFamily::Gray, 12).hsla();
+            let focus = Look::built_in().resolve_role(SemanticRole::Focus).hsla();
             let metrics = Look::built_in().metrics();
             let width = px(metrics.focus.width);
             let radius = (px(metrics.radius.md) + width).scale(window.scale_factor());

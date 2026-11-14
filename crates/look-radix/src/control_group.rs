@@ -206,11 +206,11 @@ fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> B
         look.resolve_role(SemanticRole::Surface).hsla()
     } else if selected {
         accent(if state.pressed {
-            6
-        } else if state.hovered {
             5
-        } else {
+        } else if state.hovered {
             4
+        } else {
+            3
         })
     } else if state.pressed {
         gray(4)
@@ -227,7 +227,7 @@ fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> B
         gray(11)
     };
     palette.border = None;
-    palette.focus_border = gray(12);
+    palette.focus_border = look.resolve_role(SemanticRole::Focus).hsla();
     palette
 }
 
@@ -527,7 +527,7 @@ mod tests {
                             }
                         }
                         assert_eq!(separator_faces.len(), 2, "only adjacent items have separators");
-                        let tint = look.resolve_step(ScaleFamily::Color, 4).hsla();
+                        let tint = look.resolve_step(ScaleFamily::Color, 3).hsla();
                         assert!(
                             quads.iter().any(|quad| quad.background.as_solid().is_some_and(|color| (color.h - tint.h)
                                 .abs()
@@ -593,7 +593,7 @@ mod tests {
                             },
                             bottom_right: if last { radius } else { zero },
                         };
-                        let color = look.resolve_step(ScaleFamily::Gray, 12).hsla();
+                        let color = look.resolve_role(SemanticRole::Focus).hsla();
                         let quads = window.painted_quads();
                         let rings: Vec<_> = quads.iter().filter(|quad| quad.border_color == color).collect();
                         assert!(!rings.is_empty(), "focused item has an outline");
@@ -606,6 +606,26 @@ mod tests {
                         }
                     });
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn selected_toggle_colors_match_soft_text_fields() {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
+            let look = Look::built_in();
+            look.set_mode(mode);
+            for hovered in [false, true] {
+                let toggle = icon_group_palette(&look, true, InteractionState { hovered, ..Default::default() });
+                let field = crate::textfield::resolve_text_chrome_palette(
+                    &look,
+                    crate::TextFieldVariant::Soft,
+                    hovered,
+                    false,
+                    true,
+                );
+                assert_eq!(toggle.background, field.background);
+                assert_eq!(toggle.focus_border, field.focus_border);
             }
         }
     }
