@@ -221,7 +221,8 @@ impl Page {
             .control(labeled_control(&look, self.svg_zoom_choice.clone().into_element()))
             .control(build)
             .action(self.buttons[0].clone())
-            .action(self.cancel_button.clone());
+            .action(self.cancel_button.clone())
+            .action(self.export_button.clone());
         screen = screen.notice_element(self.run_panel(&look, &cases, estimate));
         for result in &self.results {
             if let Some(error) = result["error"].as_str() {

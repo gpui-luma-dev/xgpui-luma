@@ -4,6 +4,7 @@ pub(crate) mod progress;
 pub(crate) mod svg_table;
 mod svg_badge;
 mod svg_chart;
+mod svg_export;
 mod svg_model;
 mod svg_screen;
 use anyhow::{Context as _, Result, ensure};
@@ -262,6 +263,15 @@ fn summary(output: &Path, results: &[Value], cancelled: bool) -> Result<()> {
         output.join("report.json"),
         serde_json::to_vec_pretty(&json!({"cases":results,"cancelled":cancelled,"profile":profile()}))?,
     )?;
+    // SVG runs also get the Table's numbers as CSV.
+    let svg: Vec<Value> = results
+        .iter()
+        .filter(|result| matches!(result["job"].as_str(), Some("builtin" | "selected" | "corpus")))
+        .cloned()
+        .collect();
+    if !svg.is_empty() {
+        std::fs::write(output.join("cases.csv"), svg_export::csv(&svg_table::flatten(&svg)))?;
+    }
     Ok(())
 }
 pub struct Page {
@@ -270,6 +280,8 @@ pub struct Page {
     buttons: Vec<Entity<Button>>,
     cancel_button: Entity<Button>,
     reveal: Entity<Button>,
+    /// Saves the SVG run as report.json and CSV.
+    export_button: Entity<Button>,
     selected: Option<PathBuf>,
     corpus: Option<PathBuf>,
     cancel: Arc<AtomicBool>,
@@ -336,6 +348,12 @@ impl Page {
                     cx.reveal_path(path);
                 }
             })
+            .spawn(cx);
+        let export_button = radix::Button::new("svg-export")
+            .look(&look)
+            .outline()
+            .label("Export…")
+            .on_click(cx, |this: &mut Self, cx| this.export_svg(cx))
             .spawn(cx);
         let svg_raster_view = crate::lab_controls::Segmented::new(
             "svg-raster-view",
@@ -409,6 +427,7 @@ impl Page {
             buttons,
             cancel_button,
             reveal,
+            export_button,
             selected: None,
             corpus: None,
             cancel: Arc::new(AtomicBool::new(false)),
@@ -548,6 +567,42 @@ impl Page {
         })
         .detach();
     }
+    /// Ask where to save, then write `<name>.json` and `<name>.csv` there.
+    fn export_svg(&mut self, cx: &mut Context<Self>) {
+        if self.busy {
+            return;
+        }
+        let measured = svg_model::cases(&self.svg_cases).iter().filter(|case| case.measure.is_some()).count();
+        if measured == 0 {
+            self.status = "Nothing to export yet: run the benchmark or load a report first.".into();
+            cx.notify();
+            return;
+        }
+        let directory = std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir());
+        let path = cx.prompt_for_new_path(&directory, Some("svg-benchmark.json"));
+        let (cases, zooms, budgets) = (self.svg_cases.clone(), self.svg_zooms.clone(), self.svg_budgets.clone());
+        let count = cases.len();
+        cx.spawn(async move |this, cx| {
+            let status = match path.await {
+                Ok(Ok(Some(path))) => cx
+                    .background_spawn(async move { svg_export::write(&path, &cases, &zooms, &budgets) })
+                    .await
+                    .map(|(json, csv)| {
+                        let name = |path: &Path| path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                        format!("Exported {count} cases to {} and {}.", name(&json), name(&csv))
+                    })
+                    .unwrap_or_else(|error| format!("Export failed: {error:#}")),
+                Ok(Ok(None)) => return,
+                Ok(Err(error)) => format!("Export failed: {error:#}"),
+                Err(error) => format!("Export failed: {error}"),
+            };
+            let _ = this.update(cx, |this, cx| {
+                this.status = status;
+                cx.notify();
+            });
+        })
+        .detach();
+    }
     fn stop(&mut self, cx: &mut Context<Self>) {
         if !self.busy || self.cancel.swap(true, Ordering::Relaxed) {
             return;
@@ -602,7 +657,7 @@ impl Page {
         });
         self.output = output.clone();
         self.cancel = Arc::new(AtomicBool::new(false));
-        for button in &self.buttons {
+        for button in self.buttons.iter().chain([&self.export_button]) {
             button.update(cx, |button, cx| button.set_enabled(false, cx));
         }
         let jobs = job.map_or_else(
@@ -787,7 +842,7 @@ impl Page {
                         this.results.len()
                     )
                 };
-                for button in &this.buttons {
+                for button in this.buttons.iter().chain([&this.export_button]) {
                     button.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
                 cx.notify();
