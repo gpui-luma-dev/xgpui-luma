@@ -2,6 +2,8 @@
 pub(crate) mod memory;
 pub(crate) mod progress;
 pub(crate) mod svg_table;
+mod report_view;
+mod shader_view;
 mod svg_chart;
 use anyhow::{Context as _, Result, ensure};
 use gpui::{prelude::*, *};
@@ -753,11 +755,12 @@ impl Render for Page {
             .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
             .when(self.suite==Suite::Svg,|root|root.child(svg_table::view(self.svg_table.clone())))
             .children(self.results.iter().map(|result|{
+                if self.suite==Suite::Shader{return shader_view::card(&self.look,result);}
                 let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
                 if let Some(errors)=result["errors"].as_array(){for error in errors{row=row.child(error.to_string());}}
                 if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(format!("Raster median: {ms:.3} ms · {}×{} pixels",result["pixel_width"],result["pixel_height"]));}
-                if let Some(previews)=result["previews"].as_array(){for path in previews.iter().filter_map(Value::as_str){row=row.child(img(PathBuf::from(path)).max_w(px(760.)));}}row
+                if let Some(previews)=result["previews"].as_array(){for path in previews.iter().filter_map(Value::as_str){row=row.child(img(PathBuf::from(path)).max_w(px(760.)));}}row.into_any_element()
             }));
         div()
             .size_full()
