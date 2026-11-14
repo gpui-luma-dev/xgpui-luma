@@ -209,7 +209,7 @@ impl RadioButtonTheme for RadioThemeAdapter {
             indicator_border,
             dot_color,
             label_color,
-            label_typography: label_typography(size),
+            label_typography: label_typography(self.size_override.map(RadioSize::control_size).unwrap_or(size)),
             label_font_family: font_family(look),
             indicator_shadow,
         }
