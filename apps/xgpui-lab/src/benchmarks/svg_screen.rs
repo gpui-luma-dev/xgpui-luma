@@ -20,13 +20,20 @@ impl Tab {
 
 /// Budget choices: one budget or both, in MiB order.
 pub(super) const BUDGET_LABELS: [&str; 3] = ["16 MiB", "32 MiB", "Both"];
-pub(super) fn budgets(choice: usize) -> Vec<usize> {
+/// The default Budget choice, "Both".
+pub(super) const DEFAULT_BUDGET_CHOICE: usize = 2;
+/// The chosen budgets, plus the opt-in uncapped 256 MiB baseline when its switch is on.
+pub(super) fn budgets(choice: usize, baseline: bool) -> Vec<usize> {
     let [low, high] = crate::svg_lab::benchmarks::COMPARISON_BUDGETS;
-    match choice {
+    let mut budgets = match choice {
         0 => vec![low],
         1 => vec![high],
         _ => vec![low, high],
+    };
+    if baseline {
+        budgets.push(crate::svg_lab::benchmarks::BASELINE_BUDGET);
     }
+    budgets
 }
 /// Zoom choices: the full sweep or one zoom.
 pub(super) const ZOOM_LABELS: [&str; 4] = ["Sweep 1–16×", "1×", "4×", "16×"];
@@ -218,6 +225,7 @@ impl Page {
                  and where the raster budget caps the output.",
             )
             .control(labeled_control(&look, self.svg_budget_choice.clone().into_element()))
+            .control(self.svg_baseline_toggle.clone())
             .control(labeled_control(&look, self.svg_zoom_choice.clone().into_element()))
             .control(build)
             .action(self.buttons[0].clone())
@@ -267,7 +275,8 @@ impl Page {
             .credits(format!(
                 "Timings are CPU only and exclude PNG encoding and GPU upload. Debug builds run much slower than \
                  release; compare runs from the same build. RSS is for the whole process. Budgets limit the output \
-                 image, not filter intermediates. {}",
+                 image, not filter intermediates. The opt-in 256 MiB baseline is the worker's largest budget; output \
+                 edges still stop at 8192 px, so the largest zooms can be capped even there. {}",
                 crate::svg_lab::benchmarks::artwork_credits()
             ))
             .into_any_element()
@@ -279,8 +288,12 @@ mod tests {
     use super::*;
     #[::core::prelude::v1::test]
     fn choices_map_to_budgets_and_zooms() {
-        assert_eq!(budgets(0), vec![16 * xgpui_svg::MIB]);
-        assert_eq!(budgets(2).len(), 2);
+        assert_eq!(budgets(0, false), vec![16 * xgpui_svg::MIB]);
+        assert_eq!(budgets(DEFAULT_BUDGET_CHOICE, false).len(), 2);
+        assert_eq!(
+            budgets(DEFAULT_BUDGET_CHOICE, true),
+            vec![16 * xgpui_svg::MIB, 32 * xgpui_svg::MIB, 256 * xgpui_svg::MIB]
+        );
         assert_eq!(zooms(0), vec![1., 2., 4., 8., 16.]);
         assert_eq!(zooms(3), vec![16.]);
         assert_eq!(Tab::from_id("table"), Tab::Table);

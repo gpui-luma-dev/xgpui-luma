@@ -15,6 +15,8 @@ use crate::benchmarks::progress::Progress;
 // Original steady-policy matrix: apps/xgpui-ext-lab/svg-lab/bench/policy_run.py
 // in xgpui 91b8629cf39cd52eca82e33a3835edee24454e8e (16/32 MiB; zoom 1/4/16).
 pub(crate) const COMPARISON_BUDGETS: [usize; 2] = [16 * MIB, 32 * MIB];
+/// Opt-in uncapped baseline: the worker's largest budget (about 67 Mpx). The 8192 px edge limit still applies.
+pub(crate) const BASELINE_BUDGET: usize = 256 * MIB;
 /// Zoom sweep for the in-app comparison, at display density 2.
 pub(crate) const SWEEP_ZOOMS: [f32; 5] = [1., 2., 4., 8., 16.];
 pub const MANIFEST: &str = include_str!("corpus.json");

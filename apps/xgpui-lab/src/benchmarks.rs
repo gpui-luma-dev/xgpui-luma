@@ -224,7 +224,10 @@ fn run_job(
         Job::SvgCorpus => crate::svg_lab::benchmarks::memory_corpus(
             corpus,
             &crate::svg_lab::benchmarks::SWEEP_ZOOMS,
-            &crate::svg_lab::benchmarks::COMPARISON_BUDGETS,
+            &svg_screen::budgets(
+                svg_screen::DEFAULT_BUDGET_CHOICE,
+                baseline_flag(&std::env::args().collect::<Vec<_>>()),
+            ),
             cancel,
             &progress::Progress::default(),
         ),
@@ -256,6 +259,10 @@ fn record(job: Job, result: Result<Value>, output: &Path) -> Result<Value> {
     report["previews"] = json!(previews);
     std::fs::write(output.join("report.json"), serde_json::to_vec_pretty(&report)?)?;
     Ok(report)
+}
+/// `--svg-baseline` turns on the 256 MiB baseline for the page and the command-line runner.
+fn baseline_flag(args: &[String]) -> bool {
+    args.iter().any(|arg| arg == "--svg-baseline")
 }
 fn summary(output: &Path, results: &[Value], cancelled: bool) -> Result<()> {
     std::fs::create_dir_all(output)?;
@@ -294,6 +301,10 @@ pub struct Page {
     svg_raster_view: crate::lab_controls::Segmented,
     svg_raster_merged: bool,
     svg_budget_choice: crate::lab_controls::Segmented,
+    svg_budget_index: usize,
+    /// Adds the uncapped 256 MiB budget to the chosen ones.
+    svg_baseline: bool,
+    svg_baseline_toggle: xgpui_luma::controls::toggle::Toggle,
     svg_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     svg_tab: svg_screen::Tab,
     svg_progress_bar: xgpui_luma::controls::progress::Progress,
@@ -384,13 +395,25 @@ impl Page {
             "Budget",
             &look,
             &svg_screen::BUDGET_LABELS,
-            2,
+            svg_screen::DEFAULT_BUDGET_CHOICE,
             cx,
             |this: &mut Self, index, cx| {
-                this.svg_budgets = svg_screen::budgets(index);
+                this.svg_budget_index = index;
+                this.svg_budgets = svg_screen::budgets(index, this.svg_baseline);
                 this.reset_comparison(cx);
             },
         );
+        let svg_baseline = baseline_flag(&std::env::args().collect::<Vec<_>>());
+        let svg_baseline_toggle = radix::Toggle::new("svg-baseline")
+            .look(&look)
+            .label("256 MiB baseline")
+            .selected(svg_baseline)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.svg_baseline = on;
+                this.svg_budgets = svg_screen::budgets(this.svg_budget_index, on);
+                this.reset_comparison(cx);
+            })
+            .spawn(cx);
         let svg_tabs = radix::Tabs::new("svg-benchmark-tabs")
             .look(&look)
             .line()
@@ -406,7 +429,8 @@ impl Page {
             })
             .spawn(cx);
         let svg_progress_bar = radix::Progress::new("svg-benchmark-progress").look(&look).value(0.).spawn(cx);
-        let (svg_zooms, svg_budgets) = (svg_screen::zooms(0), svg_screen::budgets(2));
+        let (svg_zooms, svg_budgets) =
+            (svg_screen::zooms(0), svg_screen::budgets(svg_screen::DEFAULT_BUDGET_CHOICE, svg_baseline));
         let svg_cases = if suite == Suite::Svg {
             svg_table::plan(&[Job::SvgCorpus], &svg_zooms, &svg_budgets)
         } else {
@@ -436,6 +460,9 @@ impl Page {
             svg_budgets,
             svg_zoom_choice,
             svg_budget_choice,
+            svg_budget_index: svg_screen::DEFAULT_BUDGET_CHOICE,
+            svg_baseline,
+            svg_baseline_toggle,
             svg_tabs,
             svg_tab: svg_screen::Tab::Graph,
             svg_raster_view,
@@ -644,6 +671,7 @@ impl Page {
         for choice in [&self.svg_zoom_choice, &self.svg_budget_choice] {
             choice.set_enabled(false, cx);
         }
+        self.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(false, cx));
         self.svg_started = Some(Instant::now());
         self.busy = true;
         self.cancel_button.update(cx, |button, cx| {
@@ -814,6 +842,7 @@ impl Page {
                 for choice in [&this.svg_zoom_choice, &this.svg_budget_choice] {
                     choice.set_enabled(true, cx);
                 }
+                this.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(true, cx));
                 if let Some(output) = &output
                     && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
                 {
@@ -1008,6 +1037,18 @@ fn run_svg_memory(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn the_baseline_flag_adds_the_256_mib_budget_only_when_asked() {
+        let args = |list: &[&str]| list.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        assert!(!baseline_flag(&args(&["xgpui-lab"])));
+        assert!(baseline_flag(&args(&["xgpui-lab", "--svg-baseline"])));
+        // The switch adds 256 MiB to whichever Budget choice is picked.
+        let one = svg_screen::budgets(0, true);
+        assert_eq!(one, vec![16 * xgpui_svg::MIB, crate::svg_lab::benchmarks::BASELINE_BUDGET]);
+        let with = svg_screen::budgets(svg_screen::DEFAULT_BUDGET_CHOICE, true);
+        assert_eq!(with.last(), Some(&crate::svg_lab::benchmarks::BASELINE_BUDGET));
+        assert_eq!(svg_table::plan(&[Job::SvgCorpus], &crate::svg_lab::benchmarks::SWEEP_ZOOMS, &with).len(), 60);
+    }
     #[::core::prelude::v1::test]
     fn cancellation_prevents_self_launch_and_records_empty_runs() {
         let dir = tempfile::tempdir().unwrap();

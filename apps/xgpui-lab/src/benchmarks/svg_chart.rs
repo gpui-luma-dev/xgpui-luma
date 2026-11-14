@@ -26,8 +26,23 @@ use crate::{
 pub(super) const FACET_HEIGHT: f32 = 200.;
 pub(super) const MERGED_HEIGHT: f32 = 340.;
 pub(super) const SMALL_HEIGHT: f32 = 180.;
-/// Faded series for the second budget; the plot crate has no dashed strokes.
+/// The second capped budget is a faded shade of the series color; the plot crate has no dashed strokes or hatching.
 const SECOND_BUDGET_OPACITY: f32 = 0.45;
+fn shade(color: Hsla, rank: usize) -> Hsla {
+    if rank == 0 {
+        color
+    } else {
+        color.opacity(SECOND_BUDGET_OPACITY)
+    }
+}
+/// The opt-in 256 MiB baseline is drawn hollow: a series-color outline over a faint fill.
+fn is_baseline(budget: u64) -> bool {
+    budget as usize * xgpui_svg::MIB == crate::svg_lab::benchmarks::BASELINE_BUDGET
+}
+const HOLLOW_FILL_OPACITY: f32 = 0.12;
+fn hollow_swatch(color: Hsla, size: f32) -> gpui::Div {
+    swatch(color.opacity(HOLLOW_FILL_OPACITY), size).border_2().border_color(color)
+}
 
 fn text_style(look: &Look, role: TextRole, family: SharedString) -> TextPresentation {
     let style = role.style(look);
@@ -65,12 +80,9 @@ fn style(look: &Look, x_title: &str, y_title: &str) -> CartesianStyle {
     style
 }
 
-fn line(color: Hsla, primary: bool) -> LinePresentation {
-    let (color, width, radius) = if primary {
-        (color, 2., 3.5)
-    } else {
-        (color.opacity(SECOND_BUDGET_OPACITY), 1.5, 2.5)
-    };
+fn line(color: Hsla, rank: usize) -> LinePresentation {
+    let (width, radius) = if rank == 0 { (2., 3.5) } else { (1.5, 2.5) };
+    let color = shade(color, rank);
     LinePresentation {
         stroke: Stroke { color, width: px(width) },
         markers: Some(MarkerPresentation::new(color, px(radius))),
@@ -157,16 +169,21 @@ fn decade_scale(cases: &[Case]) -> (f64, NumericScale) {
 /// `capped` holds (series id, x) pairs.
 fn capped_bars(
     capped: HashSet<(String, u64)>,
+    hollow: HashMap<String, Hsla>,
 ) -> impl Fn(&BarRenderModel, &mut gpui::Window, &mut gpui::App) -> gpui::Div + 'static {
     let edge = data::color(data::CAPPED);
     move |model, _, _| {
-        let is_capped = capped.contains(&(model.series.as_str().to_owned(), model.sample.x.to_bits()));
-        div()
-            .w(model.bounds.size.width)
-            .h(model.bounds.size.height)
-            .rounded_t(px(2.))
-            .bg(model.presentation.fill)
-            .when(is_capped, |bar| bar.border_t_2().border_color(edge))
+        let series = model.series.as_str();
+        let is_capped = capped.contains(&(series.to_owned(), model.sample.x.to_bits()));
+        let bar = div().relative().w(model.bounds.size.width).h(model.bounds.size.height).rounded_t(px(2.));
+        let bar = match hollow.get(series) {
+            Some(&color) => bar.bg(color.opacity(HOLLOW_FILL_OPACITY)).border_2().border_color(color),
+            None => bar.bg(model.presentation.fill),
+        };
+        // A separate strip, so a hollow bar keeps its outline color on the other sides.
+        bar.when(is_capped, |bar| {
+            bar.child(div().absolute().top_0().left_0().right_0().h(px(2.)).rounded_t(px(2.)).bg(edge))
+        })
     }
 }
 
@@ -197,6 +214,7 @@ fn raster_facet(look: &Look, index: usize, art: &Artwork, cases: &[Case], budget
     let mut data = Dataset::new();
     let mut bars = Vec::new();
     let mut capped: HashSet<(String, u64)> = HashSet::new();
+    let mut hollow: HashMap<String, Hsla> = HashMap::new();
     let mut groups: HashMap<u64, Vec<(u64, f64, bool)>> = HashMap::new();
     for (rank, &budget) in budgets.iter().enumerate() {
         let id = format!("{budget}");
@@ -216,12 +234,10 @@ fn raster_facet(look: &Look, index: usize, art: &Artwork, cases: &[Case], budget
             .collect();
         if let Ok(next) = data.clone().with_series(Series::new(id.clone(), format!("{budget} MiB"), samples)) {
             data = next;
-            let fill = if rank == 0 {
-                color
-            } else {
-                color.opacity(SECOND_BUDGET_OPACITY)
-            };
-            bars.push((id, fill));
+            if is_baseline(budget) {
+                hollow.insert(id.clone(), color);
+            }
+            bars.push((id, shade(color, rank)));
         }
     }
     let mut chart = CartesianChartBuilder::new(data)
@@ -233,8 +249,8 @@ fn raster_facet(look: &Look, index: usize, art: &Artwork, cases: &[Case], budget
     for (id, fill) in bars {
         chart = chart.bar(BarLayer::new(id.clone()).baseline(floor)).bar_style(id, BarPresentation::new(fill));
     }
-    // Capped bars get a red top edge; the plot crate has no outlined bars.
-    let chart = chart.bar_template(capped_bars(capped));
+    // Capped bars get a red top edge and the baseline is hollow; the plot crate has no outlined bars.
+    let chart = chart.bar_template(capped_bars(capped, hollow));
     // One tooltip per zoom group with both budgets, whichever bar is hovered.
     let (name, groups) = (art.name.clone(), Arc::new(groups));
     let zooms = Arc::new(zooms);
@@ -258,6 +274,7 @@ fn raster_merged(look: &Look, cases: &[Case], artworks: &[Artwork], budgets: &[u
     let mut data = Dataset::new();
     let mut bars = Vec::new();
     let mut capped: HashSet<(String, u64)> = HashSet::new();
+    let mut hollow: HashMap<String, Hsla> = HashMap::new();
     let mut groups: HashMap<u64, Vec<(String, f64, bool)>> = HashMap::new();
     for (index, art) in artworks.iter().enumerate() {
         for (rank, &budget) in budgets.iter().enumerate() {
@@ -280,14 +297,10 @@ fn raster_merged(look: &Look, cases: &[Case], artworks: &[Artwork], budgets: &[u
             if let Ok(next) = data.clone().with_series(Series::new(id.clone(), label, samples)) {
                 data = next;
                 let color = data::series(index);
-                bars.push((
-                    id,
-                    if rank == 0 {
-                        color
-                    } else {
-                        color.opacity(SECOND_BUDGET_OPACITY)
-                    },
-                ));
+                if is_baseline(budget) {
+                    hollow.insert(id.clone(), color);
+                }
+                bars.push((id, shade(color, rank)));
             }
         }
     }
@@ -302,7 +315,7 @@ fn raster_merged(look: &Look, cases: &[Case], artworks: &[Artwork], budgets: &[u
     }
     let (groups, zooms) = (Arc::new(groups), Arc::new(zooms));
     let chart = chart
-        .bar_template(capped_bars(capped))
+        .bar_template(capped_bars(capped, hollow))
         .bar_tooltip(move |point| {
             let slot = point.sample.x;
             let zoom = zooms.get(slot as usize).copied().unwrap_or(f64::NAN);
@@ -412,7 +425,7 @@ pub(super) fn output(look: &Look, cases: &[Case], budgets: &[u64]) -> AnyElement
         }
         if let Ok(next) = data.clone().with_series(Series::new(id.clone(), format!("{budget} MiB"), samples)) {
             data = next;
-            lines.push((id, line(look.chrome().muted_text, rank == 0)));
+            lines.push((id, line(look.chrome().muted_text, rank)));
         }
     }
     let top = max_y(&data);
@@ -440,11 +453,7 @@ pub(super) fn output(look: &Look, cases: &[Case], budgets: &[u64]) -> AnyElement
     let label_x = zooms.iter().rev().nth(1).copied();
     for (budget, rank, end) in ends {
         let Some(x) = label_x else { break };
-        let color = if rank == 0 {
-            muted
-        } else {
-            muted.opacity(SECOND_BUDGET_OPACITY)
-        };
+        let color = shade(muted, rank);
         chart = chart.annotation(ChartAnnotation::new(
             Annotation::Text(Sample::new(x * 1.08, end.y)),
             AnnotationPresentation {
@@ -541,13 +550,13 @@ pub(super) fn legend(look: &Look, budgets: &[u64]) -> gpui::Div {
         .flex_wrap()
         .gap_x_4()
         .gap_y_1()
-        .children(budgets.iter().enumerate().map(|(rank, budget)| {
-            let color = if rank == 0 {
-                muted
+        .children(budgets.iter().enumerate().map(|(rank, &budget)| {
+            let mark = if is_baseline(budget) {
+                hollow_swatch(muted, 10.)
             } else {
-                muted.opacity(SECOND_BUDGET_OPACITY)
+                swatch(shade(muted, rank), 10.)
             };
-            item(swatch(color, 10.), format!("{budget} MiB"))
+            item(mark, format!("{budget} MiB"))
         }))
         .child(item(swatch(muted, 10.).border_t_2().border_color(capped), "capped".into()))
 }
