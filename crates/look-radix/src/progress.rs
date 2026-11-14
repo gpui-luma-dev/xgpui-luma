@@ -1,9 +1,7 @@
 //! Radix progress bar styling and SDK template adapter.
 use std::sync::Arc;
-use gpui::{App, BoxShadow, Div, Stateful, Window, div, point, prelude::*, px, relative};
-use xgpui_luma::controls::progress::{
-    ProgressLook, ProgressOrientation, ProgressRenderModel, ProgressTemplate, ProgressTheme,
-};
+use gpui::{BoxShadow, div, point, prelude::*, px};
+use xgpui_luma::controls::progress::{ProgressLook, ProgressTemplate, ProgressTheme, ThemedLinearProgressTemplate};
 use xgpui_luma::theme::ControlSize;
 use crate::{Look, Paint, Radius, ScaleFamily, Tone};
 
@@ -137,67 +135,32 @@ pub fn progress_theme(look: &Look) -> Arc<dyn ProgressTheme> {
 pub fn progress_theme_with(look: &Look, variant: ProgressVariant, paint: Paint) -> Arc<dyn ProgressTheme> {
     Arc::new(ProgressThemeAdapter { look: look.clone(), variant, paint })
 }
-struct RadixProgressTemplate {
-    look: Look,
-    theme: Arc<dyn ProgressTheme>,
-    variant: ProgressVariant,
-    radius: Radius,
-}
-impl ProgressTemplate for RadixProgressTemplate {
-    fn render(&self, model: &ProgressRenderModel<'_>, _window: &mut Window, _cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.size);
-        let radius = progress_radius_for_height(look.track_height, self.radius);
-        let horizontal = model.direction.orientation() == ProgressOrientation::Horizontal;
-        let (offset, extent) = if model.indeterminate {
-            (model.phase.clamp(0.0, 1.0) * 1.3 - 0.3, 0.3)
-        } else {
-            (0.0, model.percentage.clamp(0.0, 1.0))
-        };
-        // Round the track; clip the indicator so its advancing edge stays square.
-        let mut root = div().id(model.id.clone()).relative().overflow_hidden().rounded(px(radius)).bg(look.track_color);
-        let mut fill = div().absolute().bg(look.progress_color);
-        if horizontal {
-            root = root.w_full().h(px(look.track_height));
-            fill = fill.top_0().h_full().w(relative(extent));
-            fill = if model.direction.is_reversed() {
-                fill.right(relative(offset))
-            } else {
-                fill.left(relative(offset))
-            };
-        } else {
-            root = root.h_full().w(px(look.track_height));
-            fill = fill.left_0().w_full().h(relative(extent));
-            fill = if model.direction.is_reversed() {
-                fill.top(relative(offset))
-            } else {
-                fill.bottom(relative(offset))
-            };
-        }
-        root = root.child(fill);
-        if self.variant == ProgressVariant::Surface {
-            root = root.child(div().absolute().inset_0().rounded(px(radius)).shadow(vec![BoxShadow {
-                offset: point(px(0.0), px(0.0)),
-                blur_radius: px(0.0),
-                spread_radius: px(1.0),
-                color: self.look.resolve_step(ScaleFamily::Gray, 4).hsla(),
-                inset: true,
-            }]));
-        }
-        root
-    }
-}
 pub fn progress_template(
     look: &Look,
     variant: ProgressVariant,
     paint: Paint,
     radius: Radius,
 ) -> Arc<dyn ProgressTemplate> {
-    Arc::new(RadixProgressTemplate {
-        look: look.clone(),
-        theme: progress_theme_with(look, variant, paint),
-        variant,
-        radius,
-    })
+    let theme = progress_theme_with(look, variant, paint);
+    let template = ThemedLinearProgressTemplate::new(theme.clone())
+        .with_track_radius(move |height| progress_radius_for_height(height, radius));
+    if variant == ProgressVariant::Surface {
+        let look = look.clone();
+        Arc::new(template.with_modifier(move |root, model| {
+            let height = theme.resolve(model.enabled, model.size).track_height;
+            root.child(div().absolute().inset_0().rounded(px(progress_radius_for_height(height, radius))).shadow(vec![
+                BoxShadow {
+                    offset: point(px(0.0), px(0.0)),
+                    blur_radius: px(0.0),
+                    spread_radius: px(1.0),
+                    color: look.resolve_step(ScaleFamily::Gray, 4).hsla(),
+                    inset: true,
+                },
+            ]))
+        }))
+    } else {
+        Arc::new(template)
+    }
 }
 
 #[cfg(test)]
@@ -261,5 +224,97 @@ pub(crate) fn native_progress_stylesheet() -> xgpui_luma::theme::stylesheet::Pro
             })
             .collect(),
         ..Default::default()
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod render_tests {
+    use super::*;
+    use gpui::{Context, Render, TestAppContext, Window};
+    use xgpui_luma::controls::progress::{ProgressDirection, ProgressRenderModel};
+
+    struct Harness {
+        template: Arc<dyn ProgressTemplate>,
+        size: ControlSize,
+        direction: ProgressDirection,
+        percentage: f32,
+    }
+
+    impl Render for Harness {
+        fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+            let id = "progress".into();
+            let model = ProgressRenderModel {
+                id: &id,
+                range: Default::default(),
+                value: self.percentage * 100.0,
+                percentage: self.percentage,
+                size: self.size,
+                enabled: true,
+                direction: self.direction,
+                show_thumb: false,
+                indeterminate: false,
+                phase: 0.0,
+            };
+            div().size(px(100.0)).child(self.template.render(&model, window, cx))
+        }
+    }
+
+    #[test]
+    fn radix_progress_paints_rounded_fill_in_every_direction() {
+        let look = Look::built_in();
+        for variant in ProgressVariant::ALL {
+            for radius in Radius::ALL {
+                for size in ProgressSize::ALL {
+                    let size = size.control_size();
+                    for direction in [
+                        ProgressDirection::LeftToRight,
+                        ProgressDirection::RightToLeft,
+                        ProgressDirection::BottomToTop,
+                        ProgressDirection::TopToBottom,
+                    ] {
+                        for percentage in [0.0, 0.01, 0.5, 0.99, 1.0] {
+                            let mut app = TestAppContext::single();
+                            let (_, cx) = app.add_window_view(|_, _| Harness {
+                                template: progress_template(&look, variant, Paint::accent(), radius),
+                                size,
+                                direction,
+                                percentage,
+                            });
+                            cx.run_until_parked();
+                            cx.update(|window, _| {
+                                let colors = progress_theme_with(&look, variant, Paint::accent()).resolve(true, size);
+                                let quads = window.painted_quads();
+                                let track =
+                                    quads.iter().find(|q| q.background.as_solid() == Some(colors.track_color)).unwrap();
+                                let fills: Vec<_> = quads
+                                    .iter()
+                                    .filter(|q| q.background.as_solid() == Some(colors.progress_color))
+                                    .collect();
+                                if percentage == 0.0 {
+                                    assert!(fills.is_empty());
+                                } else {
+                                    assert_eq!(fills.len(), 1);
+                                    let fill = fills[0];
+                                    assert_eq!(
+                                        fill.corner_radii,
+                                        track.corner_radii.clamp_radii_for_quad_size(fill.bounds.size)
+                                    );
+                                    let expected_radius =
+                                        px(resolve_progress_radius(size, radius)).scale(window.scale_factor());
+                                    assert_eq!(track.corner_radii.top_left, expected_radius);
+                                    assert!(fill.bounds.left() >= track.bounds.left());
+                                    assert!(fill.bounds.right() <= track.bounds.right());
+                                    assert!(fill.bounds.top() >= track.bounds.top());
+                                    assert!(fill.bounds.bottom() <= track.bounds.bottom());
+                                    if percentage == 1.0 {
+                                        assert_eq!(fill.bounds, track.bounds);
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
     }
 }
