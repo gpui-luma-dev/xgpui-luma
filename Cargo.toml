@@ -112,6 +112,17 @@ opt-level = 3
 [profile.dev.package.resvg]
 opt-level = 3
 
+# resvg hands drawing to tiny-skia and parsing to usvg; optimize them too so debug SVG
+# benchmarks run near release speed (unoptimized, they were about 22x slower).
+[profile.dev.package.tiny-skia]
+opt-level = 3
+
+[profile.dev.package.tiny-skia-path]
+opt-level = 3
+
+[profile.dev.package.usvg]
+opt-level = 3
+
 [profile.dev.package.rustybuzz]
 opt-level = 3
 
