@@ -5,15 +5,71 @@ use crate::gradient_builder::color_field::ColorField;
 #[cfg(target_os = "macos")]
 use crate::gradient_builder::color_field::Output;
 use gpui::{AnyElement, IntoElement, div, prelude::*};
+
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub(in super::super) enum Renderer {
+    #[default]
+    Cpu,
+    Wgpu,
+    Metal,
+}
+impl Renderer {
+    pub(in super::super) fn from_id(id: &str) -> Option<Self> {
+        match id {
+            "cpu" => Some(Self::Cpu),
+            "wgpu" => Some(Self::Wgpu),
+            "metal" if cfg!(target_os = "macos") => Some(Self::Metal),
+            _ => None,
+        }
+    }
+    pub(in super::super) fn is_gpu(self) -> bool {
+        self != Self::Cpu
+    }
+}
+
+pub(in super::super) fn renderer_items() -> Vec<xgpui_luma::controls::selector::SelectorItem> {
+    use xgpui_luma::controls::selector::SelectorItem;
+    vec![
+        SelectorItem::new("cpu").label("CPU"),
+        SelectorItem::new("wgpu").label("wgpu interop"),
+        SelectorItem::new("metal").label("Metal (macOS)").enabled(cfg!(target_os = "macos")),
+    ]
+}
 #[derive(Default)]
 pub(in super::super) struct Cache {
+    #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+    portable: Option<gpui::Entity<super::interop::FieldView>>,
     #[cfg(target_os = "macos")]
     pipeline: Arc<crate::gradient_builder::color_field::PipelineCache>,
     #[cfg(target_os = "macos")]
     cached: Option<(ColorField, Output, Arc<crate::gradient_builder::color_field::Paint>)>,
 }
 impl Cache {
-    pub(in super::super) fn element(&mut self, field: ColorField, wide: bool) -> AnyElement {
+    pub(in super::super) fn retry(&mut self, cx: &mut gpui::Context<super::super::GradientBuilder>) {
+        #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+        if self.portable.as_ref().is_some_and(|view| view.read(cx).failed()) {
+            self.portable = None;
+        }
+        let _ = cx;
+    }
+    pub(in super::super) fn element(
+        &mut self,
+        field: ColorField,
+        wide: bool,
+        renderer: Renderer,
+        cx: &mut gpui::Context<super::super::GradientBuilder>,
+    ) -> AnyElement {
+        if renderer == Renderer::Wgpu {
+            #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+            {
+                let view = self
+                    .portable
+                    .get_or_insert_with(|| cx.new(|_| super::interop::FieldView::new(field.clone(), wide)));
+                view.update(cx, |view, cx| view.set_input(field, wide, cx));
+                return view.clone().into_any_element();
+            }
+        }
+        let _ = cx;
         #[cfg(target_os = "macos")]
         {
             use gpui::{Corners, CustomGeometry, canvas};
@@ -45,7 +101,7 @@ impl Cache {
         #[cfg(not(target_os = "macos"))]
         {
             let _ = (field, wide);
-            div().p_3().child("GPU field prototype requires native Metal; select CPU.").into_any_element()
+            div().p_3().child("Native Metal is available only on macOS.").into_any_element()
         }
     }
 }
@@ -73,7 +129,10 @@ mod tests {
         for method in ["normalized", "ordered"] {
             mixing.update(cx, |_, cx| cx.emit(SelectorEvent::Change { item_id: method.into(), label: method.into() }));
             cx.run_until_parked();
-            for id in ["gpu", "cpu"] {
+            for id in ["wgpu", "metal", "cpu"] {
+                if Renderer::from_id(id).is_none() {
+                    continue;
+                }
                 renderer.update(cx, |_, cx| cx.emit(SelectorEvent::Change { item_id: id.into(), label: id.into() }));
                 cx.run_until_parked();
                 view.update(cx, |view, cx| {
@@ -88,5 +147,19 @@ mod tests {
                 });
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod platform_tests {
+    use super::*;
+    #[test]
+    fn metal_stays_visible_but_is_disabled_off_macos() {
+        let items = renderer_items();
+        assert_eq!(items.len(), 3);
+        let metal = items.iter().find(|item| item.id() == "metal").unwrap();
+        assert_eq!(metal.is_enabled(), cfg!(target_os = "macos"));
+        assert_eq!(Renderer::from_id("metal").is_some(), metal.is_enabled());
+        assert_eq!(Renderer::from_id("wgpu"), Some(Renderer::Wgpu));
     }
 }

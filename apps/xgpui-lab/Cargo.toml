@@ -53,6 +53,9 @@ smallvec = "1"
 tiny-skia = "0.11"
 tracing = "0.1"
 
+[target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
+xgpui-gpu-interop = { version = "0.1.0", features = ["wgpu"] }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 gpui-wgpu = { package = "xgpui-wgpu", version = "2.3.0" }
 # Gradient and mesh paints use the wgpu backend on Linux.
