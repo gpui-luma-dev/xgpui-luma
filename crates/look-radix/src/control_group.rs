@@ -176,7 +176,8 @@ where
         let template = Arc::new(IconGroupToggleTemplate {
             look: look.clone(),
             size,
-            separator: item.index + 1 < item.sibling_count,
+            first: item.index == 0,
+            last: item.index + 1 == item.sibling_count,
             layout: item.layout,
         });
         let content = content.clone();
@@ -189,7 +190,8 @@ where
 struct IconGroupToggleTemplate {
     look: Look,
     size: crate::ButtonSize,
-    separator: bool,
+    first: bool,
+    last: bool,
     layout: ControlGroupLayout,
 }
 
@@ -226,6 +228,7 @@ fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> B
         gray(11)
     };
     palette.border = None;
+    palette.focus_border = gray(12);
     palette
 }
 
@@ -249,6 +252,7 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
         look.background = palette.background;
         look.foreground = palette.foreground;
         look.border = None;
+        look.focus_border = palette.focus_border;
         look.padding_y = 0.0;
         look.padding_x = ((look.height - 16.0) / 2.0).max(0.0);
         let height = look.height;
@@ -266,7 +270,10 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             look: Some(Arc::new(move |_| look.clone())),
             ..Default::default()
         };
-        let separator = self.separator;
+        let first = self.first;
+        let last = self.last;
+        let radius = px(self.look.metrics().radius.md);
+        let separator = !last;
         let vertical = self.layout == ControlGroupLayout::Vertical;
         let border = self.look.resolve_step(ScaleFamily::Gray, 6).hsla();
         DefaultButtonTemplate::<ToggleData>::new(crate::button_family_theme(&self.look, ButtonVariant::Ghost))
@@ -275,6 +282,10 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
                     .border_0()
                     .rounded_none()
                     .min_w(px(height))
+                    .when(first && !vertical, |face| face.rounded_tl(radius).rounded_bl(radius))
+                    .when(last && !vertical, |face| face.rounded_tr(radius).rounded_br(radius))
+                    .when(first && vertical, |face| face.rounded_tl(radius).rounded_tr(radius))
+                    .when(last && vertical, |face| face.rounded_bl(radius).rounded_br(radius))
                     .when(separator && !vertical, |face| face.border_r_1().border_color(border))
                     .when(separator && vertical, |face| face.border_b_1().border_color(border))
             })
@@ -463,6 +474,27 @@ mod tests {
                     );
                     cx.update(|window, _| {
                         let quads = window.painted_quads();
+                        let radius = px(look.metrics().radius.md).scale(window.scale_factor());
+                        let face = |bounds: gpui::Bounds<gpui::Pixels>| {
+                            quads
+                                .iter()
+                                .find(|quad| {
+                                    quad.bounds == bounds.scale(window.scale_factor())
+                                        && quad.background.as_solid().is_some_and(|color| color.a > 0.0)
+                                })
+                                .expect("painted toggle face")
+                        };
+                        let first = face(a).corner_radii;
+                        let middle = face(b).corner_radii;
+                        let last = face(c).corner_radii;
+                        assert_eq!(first.top_left, radius, "first face owns its outer radius");
+                        assert_eq!(last.bottom_right, radius, "last face owns its outer radius");
+                        assert_eq!(middle.top_left, px(0.0).scale(window.scale_factor()));
+                        if vertical {
+                            assert_eq!(first.bottom_left, px(0.0).scale(window.scale_factor()));
+                        } else {
+                            assert_eq!(first.top_right, px(0.0).scale(window.scale_factor()));
+                        }
                         let divider = look.resolve_step(ScaleFamily::Gray, 6).hsla();
                         let mut separator_faces = Vec::new();
                         for quad in quads.iter().filter(|quad| {

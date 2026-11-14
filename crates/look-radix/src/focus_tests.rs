@@ -171,7 +171,11 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 ControlSize::Md,
                 InteractionState::default(),
             );
-            let expected_focus = palette.focus_border;
+            let expected_focus = if icon {
+                look.resolve_step(ScaleFamily::Gray, 12).hsla()
+            } else {
+                palette.focus_border
+            };
             let expected_face = palette.border.unwrap();
             let focus_role = look.resolve_role(SemanticRole::Focus).hsla();
             let mut app = gpui::TestAppContext::single();

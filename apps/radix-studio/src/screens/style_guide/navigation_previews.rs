@@ -10,7 +10,7 @@ use xgpui_luma::infra::{
 };
 use xgpui_luma::theme::{ControlSize, InteractionState};
 use xgpui_luma::GridTrack;
-use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
+use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, ScaleFamily, SemanticRole};
 use super::{
     matrix_grid::{column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label},
     preview_handlers, states,
@@ -55,7 +55,7 @@ impl Kind {
             Self::Accordion => 170.0,
             Self::IconGroup | Self::DockSplitter | Self::SplitView => 160.0,
             Self::Pager => 300.0,
-            Self::ToggleGroup => 240.0,
+            Self::ToggleGroup => 200.0,
             _ => 220.0,
         }
     }
@@ -102,7 +102,7 @@ impl Previews {
         let labels = kind.rows();
         let width = match (kind, active.as_ref()) {
             // The largest text + icon group needs wider tracks than the state samples.
-            (Kind::ToggleGroup, "all-sizes") => 280.0,
+            (Kind::ToggleGroup, "all-sizes") => 220.0,
             _ => kind.preview_width(),
         };
         let states = states::samples();
@@ -279,14 +279,15 @@ fn composite(state: InteractionState, selected: bool) -> CompositeItemState {
     }
 }
 fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window, cx: &mut App) -> AnyElement {
-    let items: Vec<_> = ["Left", "Center", "Right"]
+    let multiple = cell.variant % 2 == 1;
+    let labels = if multiple { ["Horz", "Vert"] } else { ["Start", "End"] };
+    let items: Vec<_> = labels
         .into_iter()
         .enumerate()
         .map(|(i, label)| group::ControlGroupItem::new(i.to_string()).label(label))
         .collect();
     let layout = group::ControlGroupLayout::Horizontal;
     let sheet = look.common_stylesheet();
-    let multiple = cell.variant % 2 == 1;
     let mode = if multiple {
         group::ControlSelectionMode::Multiple
     } else {
@@ -294,22 +295,33 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
     };
     let text = cell.kind == Kind::ToggleGroup;
     let icons = !text || cell.variant >= 2;
+    let content_look = look.clone();
+    let disabled = cell.state.disabled;
     let glyphs = radix::icon_group_item_template(look, cell.size, move |item: &group::ControlGroupItem| {
-        use crate::assets::Icon;
-        let icon = match item.id().as_ref() {
-            "0" => Icon::TextAlignLeft,
-            "1" => Icon::TextAlignCenter,
-            _ => Icon::TextAlignRight,
+        use lucide_svg_static::Icon;
+        let path = match (multiple, item.id().as_ref()) {
+            (false, "0") => Icon::TextAlignStart.asset_path(),
+            (false, _) => Icon::TextAlignEnd.asset_path(),
+            (true, "0") => "assets/lucide/square-padding-horizontal.svg",
+            (true, _) => "assets/lucide/square-padding-vertical.svg",
+        };
+        let selected = item.id().as_ref() == "1" || multiple;
+        let color = if disabled {
+            content_look.resolve_step(ScaleFamily::Gray, 8).hsla()
+        } else if selected {
+            content_look.resolve_step(ScaleFamily::Color, 11).hsla()
+        } else {
+            content_look.resolve_step(ScaleFamily::Gray, 11).hsla()
         };
         div()
             .flex()
             .items_center()
             .gap(px(4.0))
-            .when(icons, |content| content.child(gpui::svg().path(icon.asset_path()).size(px(15.0))))
+            .when(icons, |content| content.child(gpui::svg().path(path).size(px(16.0)).text_color(color)))
             .when(text, |content| content.child(item.label().clone()))
             .into_any_element()
     });
-    let selected = |index| index == 2 || (multiple && index == 0);
+    let selected = |index| index == 1 || (multiple && index == 0);
     let selected_ids: Vec<SharedString> =
         (0..items.len()).filter(|index| selected(*index)).map(|index| index.to_string().into()).collect();
     let model = group::ControlGroupRenderModel {
@@ -330,7 +342,15 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
                 selection_progress: if selected(index) { 1.0 } else { 0.0 },
                 active: index == 1,
                 enabled: !cell.state.disabled,
-                state: composite(cell.state, selected(index)),
+                state: composite(
+                    InteractionState {
+                        hovered: cell.state.hovered && index == 0,
+                        pressed: cell.state.pressed && index == 1,
+                        focused: cell.state.focused && index == 1,
+                        ..cell.state
+                    },
+                    selected(index),
+                ),
                 selection_mode: mode,
                 foreground: None,
             })
@@ -713,7 +733,7 @@ mod tests {
         cx.run_until_parked();
         let icons = cx.debug_bounds("guide-icon-group-state-0-0-control").unwrap();
         let cell = cx.debug_bounds("guide-icon-group-state-0-0-cell").unwrap();
-        assert!(icons.size.width < cell.size.width * 0.7, "icon shell must hug its three hit targets");
+        assert!(icons.size.width < cell.size.width * 0.7, "icon shell must hug its two hit targets");
         assert!((icons.center().x - cell.center().x).abs() < px(1.0));
         cx.update(|_, app| {
             view.update(app, |view, cx| {
@@ -746,6 +766,12 @@ mod tests {
         let cell = cx.debug_bounds("guide-toggle-group-state-2-0-cell").unwrap();
         assert!(mixed.size.width > text.size.width, "icon + text row includes both content types");
         assert!(mixed.size.width <= cell.size.width);
+        let multiple = cx.debug_bounds("guide-toggle-group-state-3-0-control").unwrap();
+        assert!(
+            multiple.size.width <= cell.size.width,
+            "multiple content exceeds its state column: {:?}",
+            multiple.size.width
+        );
         assert!((mixed.center().x - cell.center().x).abs() < px(1.0));
         view.update(cx, |view, cx| {
             let index = Kind::ALL.iter().position(|kind| *kind == Kind::ToggleGroup).unwrap();
@@ -753,6 +779,13 @@ mod tests {
             cx.notify();
         });
         cx.run_until_parked();
+        let multiple = cx.debug_bounds("guide-toggle-group-size-3-2-control").unwrap();
+        let multiple_cell = cx.debug_bounds("guide-toggle-group-size-3-2-cell").unwrap();
+        assert!(
+            multiple.size.width <= multiple_cell.size.width,
+            "multiple content exceeds its size column: {:?}",
+            multiple.size.width
+        );
         let largest = cx.debug_bounds("guide-toggle-group-size-2-2-control").unwrap();
         let cell = cx.debug_bounds("guide-toggle-group-size-2-2-cell").unwrap();
         assert!(
@@ -761,6 +794,39 @@ mod tests {
             largest.size.width,
             cell.size.width
         );
+    }
+
+    #[test]
+    fn toggle_preview_focus_marks_only_the_active_selected_item() {
+        let mut app = TestAppContext::single();
+        let (_, cx) = app.add_window_view(|_, cx| {
+            let look = Arc::new(Look::built_in());
+            Harness { previews: Previews::new(&look, cx), look, kind: Kind::ToggleGroup }
+        });
+        cx.simulate_resize(gpui::size(px(1600.0), px(900.0)));
+        cx.run_until_parked();
+        let normal = cx.debug_bounds("guide-toggle-group-state-0-0-1").unwrap();
+        let focused = cx.debug_bounds("guide-toggle-group-state-0-2-1").unwrap();
+        let unselected = cx.debug_bounds("guide-toggle-group-state-0-2-0").unwrap();
+        cx.update(|window, _| {
+            let quads = window.painted_quads();
+            let color = |bounds: gpui::Bounds<gpui::Pixels>| {
+                quads
+                    .iter()
+                    .find(|q| {
+                        q.bounds == bounds.scale(window.scale_factor())
+                            && q.background.as_solid().is_some_and(|color| color.a > 0.0)
+                    })
+                    .and_then(|q| q.background.as_solid())
+                    .expect("selected face background")
+            };
+            assert_eq!(color(normal), color(focused), "focus preserves the selected tint");
+            let focus = Look::built_in().resolve_step(ScaleFamily::Gray, 12).hsla();
+            assert!(quads.iter().any(|q| q.bounds == focused.scale(window.scale_factor()) && q.border_color == focus));
+            assert!(
+                !quads.iter().any(|q| q.bounds == unselected.scale(window.scale_factor()) && q.border_color == focus)
+            );
+        });
     }
 
     #[test]
