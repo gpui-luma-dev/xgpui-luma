@@ -267,10 +267,10 @@ fn composite(state: InteractionState, selected: bool) -> CompositeItemState {
     }
 }
 fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window, cx: &mut App) -> AnyElement {
-    let items: Vec<_> = ["Bold", "Italic", "Underline"]
+    let items: Vec<_> = ["Left", "Center", "Right"]
         .into_iter()
         .enumerate()
-        .map(|(i, label)| group::ControlGroupItem::new(i.to_string()).label(label).enabled(i != 2))
+        .map(|(i, label)| group::ControlGroupItem::new(i.to_string()).label(label))
         .collect();
     let layout = group::ControlGroupLayout::Horizontal;
     let sheet = look.common_stylesheet();
@@ -280,14 +280,15 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
         group::ControlSelectionMode::SingleAllowNone
     };
     let glyphs = radix::icon_group_item_template(look, cell.size, |item: &group::ControlGroupItem| {
-        let glyph = match item.id().as_ref() {
-            "0" => "B",
-            "1" => "I",
-            _ => "U",
+        use crate::assets::Icon;
+        let icon = match item.id().as_ref() {
+            "0" => Icon::TextAlignLeft,
+            "1" => Icon::TextAlignCenter,
+            _ => Icon::TextAlignRight,
         };
-        div().child(glyph).into_any_element()
+        gpui::svg().path(icon.asset_path()).size(px(15.0)).into_any_element()
     });
-    let selected = |index| index == 0 || (cell.variant == 1 && index == 1);
+    let selected = |index| index == 2 || (cell.variant == 1 && index == 0);
     let selected_ids: Vec<SharedString> =
         (0..items.len()).filter(|index| selected(*index)).map(|index| index.to_string().into()).collect();
     let model = group::ControlGroupRenderModel {
@@ -307,11 +308,8 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
                 selected: selected(index),
                 selection_progress: if selected(index) { 1.0 } else { 0.0 },
                 active: index == 1,
-                enabled: !cell.state.disabled && index != 2,
-                state: composite(
-                    InteractionState { disabled: cell.state.disabled || index == 2, ..cell.state },
-                    selected(index),
-                ),
+                enabled: !cell.state.disabled,
+                state: composite(cell.state, selected(index)),
                 selection_mode: mode,
                 foreground: None,
             })

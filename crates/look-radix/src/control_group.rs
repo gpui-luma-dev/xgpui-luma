@@ -1,10 +1,14 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
 use std::sync::Arc;
-use gpui::{AnyElement, SharedString, div, prelude::*, px};
+use gpui::{AnyElement, App, BoxShadow, SharedString, Window, div, point, prelude::*, px};
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
 use xgpui_luma::controls::control_group::*;
-use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, compose_button_family_look};
+use xgpui_luma::controls::button_family::{
+    ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, compose_button_family_look,
+};
 use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
-use crate::{ButtonVariant, Look, SemanticRole};
+use crate::{ButtonVariant, Look, ScaleFamily, SemanticRole};
 
 fn item_look(
     look: &Look,
@@ -59,10 +63,30 @@ pub fn control_group_theme(look: &Look) -> Arc<dyn ControlGroupTheme> {
 pub fn control_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
     control_group_template_with_theme(control_group_theme(look))
 }
-/// SDK icon-toolbar shell, including independent `icon_group` geometry overrides.
+/// Joined Radix toggle-group shell, composed through the SDK item-layout API.
 pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
-    xgpui_luma::controls::icon_group::icon_toolbar_template(control_group_theme(look))
+    let look = look.clone();
+    let template = control_group_item_layout_template(move |items, model, _, _| {
+        div()
+            .relative()
+            .flex()
+            .items_center()
+            .overflow_hidden()
+            .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
+            .rounded(px(look.metrics().radius.md))
+            .bg(look.resolve_role(SemanticRole::Surface).hsla())
+            .shadow(vec![BoxShadow {
+                color: gpui::hsla(0.0, 0.0, 0.0, 0.2),
+                offset: point(px(0.0), px(2.0)),
+                blur_radius: px(10.0),
+                spread_radius: px(0.0),
+                inset: false,
+            }])
+            .children(items.into_elements().map(|item| div().flex_none().child(item)))
+    });
+    Arc::new(move |model, handlers, window, cx| template(model, handlers, window, cx).flex().items_start())
 }
+
 fn item_template<T: ControlGroupItemLike + 'static>(
     look: &Look,
     size: ControlSize,
@@ -132,7 +156,7 @@ pub fn control_group_item_template<T: ControlGroupItemLike + 'static>(
 }
 /// Toggle items for an icon group, composed with the SDK toggle renderer.
 /// Supply this through `ControlGroupBuilder::item_template`; content supplies only
-/// the icon, while the SDK renders the toggle chrome and selection transition.
+/// text, icons, or both; the SDK renders adjoining rectangular toggle faces.
 pub fn icon_group_item_template<T>(
     look: &Look,
     size: ControlSize,
@@ -146,9 +170,119 @@ where
         ControlSize::Md => crate::ButtonSize::Two,
         ControlSize::Lg => crate::ButtonSize::Three,
     };
-    let family = crate::button::button_family_theme_for_size(look, ButtonVariant::Ghost, crate::Paint::accent(), size);
-    animated_toggle_button_item_template(crate::toggle::toggle_template_with_family(family), true, content)
+    let look = look.clone();
+    let content = Arc::new(content);
+    make_control_group_item_template(move |item, window, cx| {
+        let template = Arc::new(IconGroupToggleTemplate {
+            look: look.clone(),
+            size,
+            separator: item.index + 1 < item.sibling_count,
+            layout: item.layout,
+        });
+        let content = content.clone();
+        animated_toggle_button_item_template(template, false, move |item| content(item))(item, window, cx)
+    })
 }
+
+// Look-owned presentation adapter: the SDK still renders every toggle face,
+// custom content, focus overlay, disabled state, and selection transition.
+struct IconGroupToggleTemplate {
+    look: Look,
+    size: crate::ButtonSize,
+    separator: bool,
+    layout: ControlGroupLayout,
+}
+
+fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> ButtonFamilyPalette {
+    let mut palette = crate::button_family_theme(look, ButtonVariant::Ghost).resolve(
+        ButtonFamilyRole::Toggle { selected },
+        ControlSize::Md,
+        state,
+    );
+    let accent = |step| look.resolve_step(ScaleFamily::Color, step).hsla();
+    let gray = |step| look.resolve_step(ScaleFamily::Gray, step).hsla();
+    palette.background = if state.disabled {
+        look.resolve_role(SemanticRole::Surface).hsla()
+    } else if selected {
+        accent(if state.pressed {
+            6
+        } else if state.hovered {
+            5
+        } else {
+            4
+        })
+    } else if state.pressed {
+        gray(4)
+    } else if state.hovered {
+        gray(3)
+    } else {
+        look.resolve_role(SemanticRole::Surface).hsla()
+    };
+    palette.foreground = if state.disabled {
+        gray(8)
+    } else if selected {
+        accent(11)
+    } else {
+        gray(11)
+    };
+    palette.border = None;
+    palette
+}
+
+impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
+    fn render(
+        &self,
+        model: &ButtonRenderModel<ToggleData>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> gpui::Stateful<gpui::Div> {
+        let off = icon_group_palette(&self.look, false, model.state);
+        let on = icon_group_palette(&self.look, true, model.state);
+        let palette = if model.data.selected { &on } else { &off };
+        let mut look = crate::button_look_for(
+            &self.look,
+            ButtonVariant::Ghost,
+            crate::Paint::accent(),
+            self.size,
+            crate::Radius::None,
+        )(model);
+        look.background = palette.background;
+        look.foreground = palette.foreground;
+        look.border = None;
+        look.padding_y = 0.0;
+        look.padding_x = ((look.height - 16.0) / 2.0).max(0.0);
+        let height = look.height;
+        let model = ButtonRenderModel {
+            id: model.id.clone(),
+            data: model.data,
+            content: model.content.clone(),
+            role: model.role,
+            size: self.size.control_size(),
+            state: model.state,
+            compact: true,
+            elevation: false,
+            round: false,
+            radius_override: std::cell::Cell::new(Some(0.0)),
+            look: Some(Arc::new(move |_| look.clone())),
+            ..Default::default()
+        };
+        let separator = self.separator;
+        let vertical = self.layout == ControlGroupLayout::Vertical;
+        let border = self.look.resolve_step(ScaleFamily::Gray, 6).hsla();
+        DefaultButtonTemplate::<ToggleData>::new(crate::button_family_theme(&self.look, ButtonVariant::Ghost))
+            .with_modifier(move |face, model| {
+                apply_toggle_progress_chrome(face, &off, &on, model.data.progress)
+                    .border_0()
+                    .rounded_none()
+                    .min_w(px(height))
+                    .when(separator && !vertical, |face| face.border_r_1().border_color(border))
+                    .when(separator && vertical, |face| face.border_b_1().border_color(border))
+            })
+            .render(&model, window, cx)
+            .debug_selector(|| model.id.to_string())
+    }
+}
+
 /// Themed SDK group builder, retaining selection, callbacks, and focus policies.
 pub fn control_group_builder<T: ControlGroupItemLike + 'static>(
     look: &Look,
@@ -168,7 +302,9 @@ pub fn icon_group_builder<T: ControlGroupItemLike + 'static>(
     look: &Look,
     id: impl Into<SharedString>,
 ) -> ControlGroupBuilder<T> {
-    xgpui_luma::controls::icon_group::icon_toolbar(id, control_group_theme(look))
+    xgpui_luma::controls::icon_group::new(id)
+        .horizontal()
+        .template(icon_group_template(look))
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().control_group)
 }
@@ -265,6 +401,96 @@ mod tests {
                 cx.simulate_keystrokes("space");
                 cx.run_until_parked();
                 cx.update(|_, app| assert_eq!(view.read(app).changes, 3));
+            }
+        }
+    }
+
+    #[test]
+    fn joined_toggle_faces_support_text_and_icons_without_gaps() {
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
+            for vertical in [false, true] {
+                for content_kind in 0..3 {
+                    let look = Look::built_in();
+                    look.set_mode(mode);
+                    let mut app = TestAppContext::single();
+                    let paint_look = look.clone();
+                    let (_, cx) = app.add_window_view(|_, cx| {
+                        let template =
+                            icon_group_item_template(&paint_look, ControlSize::Md, move |item: &ControlGroupItem| {
+                                let selector = format!("content-{}", item.id());
+                                div()
+                                    .id(item.id().clone())
+                                    .debug_selector(move || selector.clone())
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(4.0))
+                                    .when(content_kind != 1, |row| row.child(div().size(px(15.0))))
+                                    .when(content_kind != 0, |row| row.child(item.label().clone()))
+                                    .into_any_element()
+                            });
+                        let mut builder = icon_group_builder(&paint_look, "joined")
+                            .items([
+                                ControlGroupItem::new("a").label("Align left"),
+                                ControlGroupItem::new("b").label("Center"),
+                                ControlGroupItem::new("c").label("Align right"),
+                            ])
+                            .selected("b")
+                            .item_template(template);
+                        if vertical {
+                            builder = builder.vertical();
+                        }
+                        Harness { group: builder.spawn(cx), changes: 0 }
+                    });
+                    cx.simulate_mouse_move(point(px(1000.0), px(1000.0)), None, Default::default());
+                    cx.run_until_parked();
+                    let a = cx.debug_bounds("joined-a").unwrap();
+                    let b = cx.debug_bounds("joined-b").unwrap();
+                    let c = cx.debug_bounds("joined-c").unwrap();
+                    if vertical {
+                        assert_eq!(a.bottom(), b.top());
+                        assert_eq!(b.bottom(), c.top());
+                    } else {
+                        assert_eq!(a.right(), b.left());
+                        assert_eq!(b.right(), c.left());
+                    }
+                    if content_kind != 0 {
+                        assert!(a.size.width > a.size.height, "text items can grow beyond square icon targets");
+                    }
+                    let content = cx.debug_bounds("content-a").unwrap();
+                    assert!(
+                        content.left() >= a.left() && content.right() <= a.right(),
+                        "custom content fits its toggle"
+                    );
+                    cx.update(|window, _| {
+                        let quads = window.painted_quads();
+                        let divider = look.resolve_step(ScaleFamily::Gray, 6).hsla();
+                        let mut separator_faces = Vec::new();
+                        for quad in quads.iter().filter(|quad| {
+                            quad.border_color == divider
+                                && if vertical {
+                                    quad.border_widths.bottom > px(0.0).scale(window.scale_factor())
+                                } else {
+                                    quad.border_widths.right > px(0.0).scale(window.scale_factor())
+                                }
+                        }) {
+                            // GPUI splits border paint into clipped quads for each face.
+                            if !separator_faces.contains(&quad.bounds) {
+                                separator_faces.push(quad.bounds);
+                            }
+                        }
+                        assert_eq!(separator_faces.len(), 2, "only adjacent items have separators");
+                        let tint = look.resolve_step(ScaleFamily::Color, 4).hsla();
+                        assert!(
+                            quads.iter().any(|quad| quad.background.as_solid().is_some_and(|color| (color.h - tint.h)
+                                .abs()
+                                < 0.00001
+                                && (color.s - tint.s).abs() < 0.00001
+                                && (color.l - tint.l).abs() < 0.00001
+                                && color.a == tint.a)),
+                            "selection uses the Radix accent tint"
+                        );
+                    });
+                }
             }
         }
     }

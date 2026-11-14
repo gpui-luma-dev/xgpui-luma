@@ -187,11 +187,10 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 cx.run_until_parked();
                 cx.update(|window, _| {
                     let quads = window.painted_quads();
-                    let mut expected_face = expected_face;
-                    if icon && disabled {
-                        expected_face.a *= look.metrics().disabled_opacity;
+                    // Joined icon segments have separators rather than individual face borders.
+                    if !icon {
+                        assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
                     }
-                    assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
                     assert!(
                         !quads.iter().any(|q| q.border_color == focus_role),
                         "hard-coded focus role must not bypass recipe"
