@@ -317,6 +317,12 @@ pub fn page(
             textfields::tabbed(look, tabs.textfields, fg, muted, border, window, cx),
         ),
         section(
+            "Toggle Group",
+            "Single and multiple selection with text or text + icons, across states, colors, and sizes.",
+            fg, muted, border,
+            tabs.navigation.render(navigation_previews::Kind::ToggleGroup, look, window, cx),
+        ),
+        section(
             "Tooltips",
             "Standard Radix help, shortcut hints and wrapping. Static presentation previews.",
             fg, muted, border,

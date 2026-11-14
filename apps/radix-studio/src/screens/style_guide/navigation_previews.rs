@@ -19,6 +19,7 @@ use super::{
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Kind {
     IconGroup,
+    ToggleGroup,
     DockSplitter,
     SplitView,
     Accordion,
@@ -27,7 +28,7 @@ pub(super) enum Kind {
     Sidebar,
 }
 impl Kind {
-    pub(super) const ALL: [Self; 7] = [
+    pub(super) const ALL: [Self; 8] = [
         Self::IconGroup,
         Self::DockSplitter,
         Self::SplitView,
@@ -35,10 +36,12 @@ impl Kind {
         Self::Pager,
         Self::Stepper,
         Self::Sidebar,
+        Self::ToggleGroup,
     ];
     fn key(self) -> &'static str {
         match self {
             Self::IconGroup => "icon-group",
+            Self::ToggleGroup => "toggle-group",
             Self::DockSplitter => "dock-splitter",
             Self::SplitView => "split-view",
             Self::Accordion => "accordion",
@@ -52,12 +55,16 @@ impl Kind {
             Self::Accordion => 170.0,
             Self::IconGroup | Self::DockSplitter | Self::SplitView => 160.0,
             Self::Pager => 300.0,
+            Self::ToggleGroup => 240.0,
             _ => 220.0,
         }
     }
     fn rows(self) -> &'static [&'static str] {
         match self {
             Self::IconGroup => &["Single", "Multiple"],
+            Self::ToggleGroup => {
+                &["Single · Text", "Multiple · Text", "Single · Icon + text", "Multiple · Icon + text"]
+            }
             Self::DockSplitter => &["Vertical", "Horizontal"],
             Self::SplitView => &["Expanded", "Collapsed"],
             Self::Accordion => &["Collapsed", "Expanded"],
@@ -93,19 +100,24 @@ impl Previews {
             return preview_tabbed(tabs, border, pager_matrix(look, fg, muted, window, cx));
         }
         let labels = kind.rows();
-        let width = kind.preview_width();
+        let width = match (kind, active.as_ref()) {
+            // The largest text + icon group needs wider tracks than the state samples.
+            (Kind::ToggleGroup, "all-sizes") => 280.0,
+            _ => kind.preview_width(),
+        };
         let states = states::samples();
         let columns = match active.as_ref() {
             "colors" => labels.len(),
             "all-sizes" => 3,
             _ => states.len(),
         };
-        let (label_width, gap) =
-            if matches!(kind, Kind::IconGroup | Kind::Accordion | Kind::DockSplitter | Kind::SplitView) {
-                (104.0, 12.0)
-            } else {
-                (120.0, 20.0)
-            };
+        let (label_width, gap) = if kind == Kind::ToggleGroup {
+            (152.0, 12.0)
+        } else if matches!(kind, Kind::IconGroup | Kind::Accordion | Kind::DockSplitter | Kind::SplitView) {
+            (104.0, 12.0)
+        } else {
+            (120.0, 20.0)
+        };
         let mut grid =
             fixed_grid(equal_data_columns(label_width, width, columns), gap, 24.0).child(empty_corner(), 0, 0);
         match active.as_ref() {
@@ -219,7 +231,7 @@ impl Previews {
     fn sample(&self, look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElement {
         let id = SharedString::from(format!("guide-{}-{}", cell.kind.key(), cell.id));
         let content = match cell.kind {
-            Kind::IconGroup => group_sample(look, &id, &cell, window, cx),
+            Kind::IconGroup | Kind::ToggleGroup => group_sample(look, &id, &cell, window, cx),
             Kind::DockSplitter | Kind::SplitView => splitter_sample(look, &id, &cell, &self.splitter_focus, window, cx),
             Kind::Accordion => accordion_sample(look, &id, &cell, window, cx),
             Kind::Pager => pager_sample(look, &id, &cell, window, cx),
@@ -236,7 +248,7 @@ impl Previews {
         // Grid tracks align the comparison columns. Their width is not a control width:
         // a flex row measures groups intrinsically instead of block-stretching their shells.
         let cell_root = div().w_full().flex().items_center().justify_center().debug_selector(move || cell_id.clone());
-        if cell.kind == Kind::IconGroup {
+        if matches!(cell.kind, Kind::IconGroup | Kind::ToggleGroup) {
             cell_root.child(div().flex_none().flex().items_start().child(content)).into_any_element()
         } else {
             cell_root
@@ -274,21 +286,30 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
         .collect();
     let layout = group::ControlGroupLayout::Horizontal;
     let sheet = look.common_stylesheet();
-    let mode = if cell.variant == 1 {
+    let multiple = cell.variant % 2 == 1;
+    let mode = if multiple {
         group::ControlSelectionMode::Multiple
     } else {
         group::ControlSelectionMode::SingleAllowNone
     };
-    let glyphs = radix::icon_group_item_template(look, cell.size, |item: &group::ControlGroupItem| {
+    let text = cell.kind == Kind::ToggleGroup;
+    let icons = !text || cell.variant >= 2;
+    let glyphs = radix::icon_group_item_template(look, cell.size, move |item: &group::ControlGroupItem| {
         use crate::assets::Icon;
         let icon = match item.id().as_ref() {
             "0" => Icon::TextAlignLeft,
             "1" => Icon::TextAlignCenter,
             _ => Icon::TextAlignRight,
         };
-        gpui::svg().path(icon.asset_path()).size(px(15.0)).into_any_element()
+        div()
+            .flex()
+            .items_center()
+            .gap(px(4.0))
+            .when(icons, |content| content.child(gpui::svg().path(icon.asset_path()).size(px(15.0))))
+            .when(text, |content| content.child(item.label().clone()))
+            .into_any_element()
     });
-    let selected = |index| index == 2 || (cell.variant == 1 && index == 0);
+    let selected = |index| index == 2 || (multiple && index == 0);
     let selected_ids: Vec<SharedString> =
         (0..items.len()).filter(|index| selected(*index)).map(|index| index.to_string().into()).collect();
     let model = group::ControlGroupRenderModel {
@@ -711,6 +732,37 @@ mod tests {
             largest_cell.size.width
         );
     }
+    #[test]
+    fn toggle_group_text_and_icon_content_fits_the_preview_columns() {
+        let mut app = TestAppContext::single();
+        let (view, cx) = app.add_window_view(|_, cx| {
+            let look = Arc::new(Look::built_in());
+            Harness { previews: Previews::new(&look, cx), look, kind: Kind::ToggleGroup }
+        });
+        cx.simulate_resize(gpui::size(px(1600.0), px(900.0)));
+        cx.run_until_parked();
+        let text = cx.debug_bounds("guide-toggle-group-state-0-0-control").unwrap();
+        let mixed = cx.debug_bounds("guide-toggle-group-state-2-0-control").unwrap();
+        let cell = cx.debug_bounds("guide-toggle-group-state-2-0-cell").unwrap();
+        assert!(mixed.size.width > text.size.width, "icon + text row includes both content types");
+        assert!(mixed.size.width <= cell.size.width);
+        assert!((mixed.center().x - cell.center().x).abs() < px(1.0));
+        view.update(cx, |view, cx| {
+            let index = Kind::ALL.iter().position(|kind| *kind == Kind::ToggleGroup).unwrap();
+            view.previews.tabs[index].update(cx, |tabs, cx| tabs.set_active("all-sizes", cx));
+            cx.notify();
+        });
+        cx.run_until_parked();
+        let largest = cx.debug_bounds("guide-toggle-group-size-2-2-control").unwrap();
+        let cell = cx.debug_bounds("guide-toggle-group-size-2-2-cell").unwrap();
+        assert!(
+            largest.size.width <= cell.size.width,
+            "largest text + icon group must fit its column: {:?} > {:?}",
+            largest.size.width,
+            cell.size.width
+        );
+    }
+
     #[test]
     fn accordion_states_fit_in_a_compact_preview() {
         let mut app = TestAppContext::single();
