@@ -14,6 +14,10 @@ native window for each capture.
     # other pages, themes or size (see `xgpui-lab --list-pages`)
     python3 .../lab_snapshots.py capture DIR --page "xgpui-media/Image Filters" --theme dark --size 1280x900
 
+    # SVG Benchmarks with made-up results (or a saved run: --svg-results PATH/report.json)
+    # (--svg-view merged shows the one-chart raster view; --svg-tab table opens the Table tab)
+    python3 .../lab_snapshots.py capture DIR --page "xgpui-svg/Benchmarks" --lab-args "--svg-results sample --svg-tab table"
+
 `compare` reports identical, changed and missing snapshots. Byte-identical PNGs
 are identical renders. When ImageMagick's `compare` is installed it also counts
 changed pixels and writes a highlighted diff image for each changed page.
@@ -22,6 +26,7 @@ changed pixels and writes a highlighted diff image for each changed page.
 import argparse
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -75,6 +80,7 @@ DEFAULT_PAGES = [
     "xgpui-svg/Scaling",
     "xgpui-svg/Path Effects",
     "xgpui-svg/Scheduling & Cache",
+    "xgpui-svg/Benchmarks",
     "xgpui-canvas/Spatial Canvas",
     "xgpui-canvas/Mandelbrot",
 ]
@@ -104,7 +110,7 @@ def capture(args) -> int:
         for theme in args.theme or THEMES:
             png = out / slug(page, theme)
             command = [str(binary), "--open", page, "--theme", theme, "--size", args.size,
-                       "--settle", str(args.settle), "--capture", str(png)] + (["--hide-nav"] if args.hide_nav else [])
+                       "--settle", str(args.settle), "--capture", str(png)] + (["--hide-nav"] if args.hide_nav else []) + shlex.split(args.lab_args)
             try:
                 result = subprocess.run(command, cwd=REPO, capture_output=True, text=True, timeout=args.settle / 1000 + 60)
             except subprocess.TimeoutExpired:
@@ -162,6 +168,7 @@ def main() -> int:
     cap.add_argument("--size", default="1440x900", help="window size, WIDTHxHEIGHT")
     cap.add_argument("--hide-nav", action="store_true", help="capture with the navigation panel closed")
     cap.add_argument("--settle", type=int, default=4000, help="milliseconds to wait before capturing")
+    cap.add_argument("--lab-args", default="", help="extra xgpui-lab arguments, e.g. \"--svg-results sample --svg-tab table\"")
     cmp = commands.add_parser("compare", help="compare two capture directories")
     cmp.add_argument("before")
     cmp.add_argument("after")

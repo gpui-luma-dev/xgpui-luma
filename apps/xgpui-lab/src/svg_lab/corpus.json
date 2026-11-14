@@ -1,6 +1,7 @@
 [
   {
-    "id": "AJ_Digital_Camera",
+    "id": "camera",
+    "original_name": "AJ_Digital_Camera.svg",
     "url": "https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/AJ_Digital_Camera.svg",
     "coverage": "product illustration",
     "license": "Public-domain dedication (embedded RDF); Openclipart public-domain collection",
@@ -9,10 +10,11 @@
     "author": "AJ Ashton",
     "license_url": "http://web.resource.org/cc/PublicDomain",
     "attribution_source": "https://openclipart.org/share",
-    "local": "assets/samples/svg/AJ_Digital_Camera.svg"
+    "local": "assets/samples/svg/camera.svg"
   },
   {
-    "id": "rg1024_green_grapes",
+    "id": "grapes",
+    "original_name": "rg1024_green_grapes.svg",
     "url": "https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/rg1024_green_grapes.svg",
     "coverage": "organic gradients and filters",
     "license": "Openclipart public domain / CC0-1.0",
@@ -21,10 +23,11 @@
     "author": "rg1024",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
     "attribution_source": "https://openclipart.org/detail/20104/green-grapes",
-    "local": "assets/samples/svg/rg1024_green_grapes.svg"
+    "local": "assets/samples/svg/grapes.svg"
   },
   {
-    "id": "rg1024_metal_effect",
+    "id": "metal",
+    "original_name": "rg1024_metal_effect.svg",
     "url": "https://dev.w3.org/SVG/tools/svgweb/samples/svg-files/rg1024_metal_effect.svg",
     "coverage": "metallic gradients and filters",
     "license": "Openclipart public domain / CC0-1.0",
@@ -33,10 +36,11 @@
     "author": "rg1024",
     "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
     "attribution_source": "https://openclipart.org/detail/20070/metal-effect",
-    "local": "assets/samples/svg/rg1024_metal_effect.svg"
+    "local": "assets/samples/svg/metal.svg"
   },
   {
     "id": "dragon",
+    "original_name": "Dragon_clip_art.svg",
     "local": "assets/samples/svg/dragon.svg",
     "url": "https://commons.wikimedia.org/wiki/File:Dragon_clip_art.svg",
     "coverage": "Inkscape illustration already bundled with GPUI",

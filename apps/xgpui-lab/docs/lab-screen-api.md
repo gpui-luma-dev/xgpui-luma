@@ -77,6 +77,9 @@ Italy (step 4) and Shell Lab render through `LabScreen` too. They added:
 - `screen::form_group(look, title, rows)` with `FormRow::new(label, control, set)`,
   and `form_groups(..)` to lay groups side by side: a settings form with aligned
   labels, muted until a row is set. `Choice::label()` exposes a selector's label for it.
+- `screen::panel_rows(id, look, rows)`: rows of panels for use inside a section, e.g. one tab of a
+  tabbed section. Panels in a row share its width equally and wrap. Used by SVG Benchmarks: the raster
+  chart takes a row, output size and cost share the next.
 
 Typography (xgpui-shader) joins `LabScreen` too, which answers open question 1
 (the eyebrows, the display line and the 1040 px column are gone). It added:
@@ -218,6 +221,7 @@ impl LabScreen {
     pub fn controls(self, items: impl IntoIterator<Item = impl IntoElement>) -> Self;
     pub fn actions(self, items: impl IntoIterator<Item = impl IntoElement>) -> Self; // right end of control row
     pub fn notice(self, text: Option<impl Into<SharedString>>) -> Self;   // errors and fallbacks, under the controls
+    pub fn notice_element(self, element: impl IntoElement) -> Self;      // a notice with more than text, e.g. run progress
     pub fn cards(self, cards: impl IntoIterator<Item = LabCard>) -> Self;
     pub fn panels(self, wide: impl Into<Panel>, narrow: impl Into<Panel>) -> Self;
     pub fn note(self, text: impl Into<SharedString>) -> Self;

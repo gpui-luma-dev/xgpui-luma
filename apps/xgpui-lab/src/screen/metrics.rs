@@ -70,7 +70,7 @@ impl LabMetrics {
         card_min_width: px(200.),
         card_swatch: px(28.),
         card_icon: px(32.),
-        card_mark: px(6.),
+        card_mark: px(10.),
         hero_min_width: px(400.),
         legend_width: px(220.),
         legend_mark_width: px(24.),
