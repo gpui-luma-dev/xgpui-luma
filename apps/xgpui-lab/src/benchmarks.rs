@@ -304,7 +304,7 @@ pub struct Page {
     svg_budget_index: usize,
     /// Adds the uncapped 256 MiB budget to the chosen ones.
     svg_baseline: bool,
-    svg_baseline_switch: xgpui_luma::controls::switch::Switch,
+    svg_baseline_toggle: xgpui_luma::controls::toggle::Toggle,
     svg_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     svg_tab: svg_screen::Tab,
     svg_progress_bar: xgpui_luma::controls::progress::Progress,
@@ -404,10 +404,10 @@ impl Page {
             },
         );
         let svg_baseline = baseline_flag(&std::env::args().collect::<Vec<_>>());
-        let svg_baseline_switch = radix::Switch::new("svg-baseline")
+        let svg_baseline_toggle = radix::Toggle::new("svg-baseline")
             .look(&look)
             .label("256 MiB baseline")
-            .checked(svg_baseline)
+            .selected(svg_baseline)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.svg_baseline = on;
                 this.svg_budgets = svg_screen::budgets(this.svg_budget_index, on);
@@ -462,7 +462,7 @@ impl Page {
             svg_budget_choice,
             svg_budget_index: svg_screen::DEFAULT_BUDGET_CHOICE,
             svg_baseline,
-            svg_baseline_switch,
+            svg_baseline_toggle,
             svg_tabs,
             svg_tab: svg_screen::Tab::Graph,
             svg_raster_view,
@@ -671,7 +671,7 @@ impl Page {
         for choice in [&self.svg_zoom_choice, &self.svg_budget_choice] {
             choice.set_enabled(false, cx);
         }
-        self.svg_baseline_switch.update(cx, |switch, cx| switch.set_enabled(false, cx));
+        self.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(false, cx));
         self.svg_started = Some(Instant::now());
         self.busy = true;
         self.cancel_button.update(cx, |button, cx| {
@@ -842,7 +842,7 @@ impl Page {
                 for choice in [&this.svg_zoom_choice, &this.svg_budget_choice] {
                     choice.set_enabled(true, cx);
                 }
-                this.svg_baseline_switch.update(cx, |switch, cx| switch.set_enabled(true, cx));
+                this.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(true, cx));
                 if let Some(output) = &output
                     && let Err(error) = summary(output, &this.results, cancel.load(Ordering::Relaxed))
                 {

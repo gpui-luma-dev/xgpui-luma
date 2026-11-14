@@ -225,7 +225,7 @@ impl Page {
                  and where the raster budget caps the output.",
             )
             .control(labeled_control(&look, self.svg_budget_choice.clone().into_element()))
-            .control(self.svg_baseline_switch.clone())
+            .control(self.svg_baseline_toggle.clone())
             .control(labeled_control(&look, self.svg_zoom_choice.clone().into_element()))
             .control(build)
             .action(self.buttons[0].clone())
