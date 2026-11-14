@@ -50,7 +50,7 @@ impl Kind {
     fn preview_width(self) -> f32 {
         match self {
             Self::Accordion => 170.0,
-            Self::DockSplitter | Self::SplitView => 160.0,
+            Self::IconGroup | Self::DockSplitter | Self::SplitView => 160.0,
             Self::Pager => 300.0,
             _ => 220.0,
         }
@@ -100,11 +100,12 @@ impl Previews {
             "all-sizes" => 3,
             _ => states.len(),
         };
-        let (label_width, gap) = if matches!(kind, Kind::Accordion | Kind::DockSplitter | Kind::SplitView) {
-            (104.0, 12.0)
-        } else {
-            (120.0, 20.0)
-        };
+        let (label_width, gap) =
+            if matches!(kind, Kind::IconGroup | Kind::Accordion | Kind::DockSplitter | Kind::SplitView) {
+                (104.0, 12.0)
+            } else {
+                (120.0, 20.0)
+            };
         let mut grid =
             fixed_grid(equal_data_columns(label_width, width, columns), gap, 24.0).child(empty_corner(), 0, 0);
         match active.as_ref() {
