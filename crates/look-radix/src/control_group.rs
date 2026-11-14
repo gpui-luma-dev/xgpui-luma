@@ -71,7 +71,6 @@ pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> Co
             .relative()
             .flex()
             .items_center()
-            .overflow_hidden()
             .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
             .rounded(px(look.metrics().radius.md))
             .bg(look.resolve_role(SemanticRole::Surface).hsla())
@@ -252,7 +251,9 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
         look.background = palette.background;
         look.foreground = palette.foreground;
         look.border = None;
-        look.focus_border = palette.focus_border;
+        let focus_color = palette.focus_border;
+        // The shared button's uniform ring is replaced by the position-aware adorner below.
+        look.focus_border = gpui::transparent_black();
         look.padding_y = 0.0;
         look.padding_x = ((look.height - 16.0) / 2.0).max(0.0);
         let height = look.height;
@@ -276,6 +277,19 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
         let separator = !last;
         let vertical = self.layout == ControlGroupLayout::Vertical;
         let border = self.look.resolve_step(ScaleFamily::Gray, 6).hsla();
+        let focus = xgpui_luma::infra::focus_adorner::FocusAdorner::new(self.look.metrics().focus);
+        let outset = px(focus.width);
+        let focus_radius = radius + outset;
+        let outline = focus
+            .overlay(focus_color, model.state.focused && !model.state.disabled, 0.0, true)
+            .top(-outset)
+            .right(-outset)
+            .bottom(-outset)
+            .left(-outset)
+            .when(first && !vertical, |ring| ring.rounded_tl(focus_radius).rounded_bl(focus_radius))
+            .when(last && !vertical, |ring| ring.rounded_tr(focus_radius).rounded_br(focus_radius))
+            .when(first && vertical, |ring| ring.rounded_tl(focus_radius).rounded_tr(focus_radius))
+            .when(last && vertical, |ring| ring.rounded_bl(focus_radius).rounded_br(focus_radius));
         DefaultButtonTemplate::<ToggleData>::new(crate::button_family_theme(&self.look, ButtonVariant::Ghost))
             .with_modifier(move |face, model| {
                 apply_toggle_progress_chrome(face, &off, &on, model.data.progress)
@@ -290,6 +304,8 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
                     .when(separator && vertical, |face| face.border_b_1().border_color(border))
             })
             .render(&model, window, cx)
+            // Draw above neighboring faces without changing item or group bounds.
+            .child(gpui::deferred(outline))
             .debug_selector(|| model.id.to_string())
     }
 }
@@ -521,6 +537,73 @@ mod tests {
                                 && color.a == tint.a)),
                             "selection uses the Radix accent tint"
                         );
+                    });
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn focus_outlines_follow_first_middle_last_and_single_item_corners() {
+        use gpui::Focusable;
+        for vertical in [false, true] {
+            for count in 1..=3 {
+                for index in 0..count {
+                    let look = Look::built_in();
+                    let metrics = look.metrics();
+                    let mut app = TestAppContext::single();
+                    let (_, cx) = app.add_window_view(|window, cx| {
+                        window.activate_window();
+                        let id = ["a", "b", "c"][index];
+                        let mut builder = icon_group_builder(&look, "position")
+                            .items(["a", "b", "c"].into_iter().take(count).map(ControlGroupItem::new))
+                            .active(id)
+                            .selected(id)
+                            .item_template(icon_group_item_template(&look, ControlSize::Md, |_: &ControlGroupItem| {
+                                div().size(px(16.0)).into_any_element()
+                            }))
+                            .with_template_modifier(|root, _| root.m(px(8.0)));
+                        if vertical {
+                            builder = builder.vertical();
+                        }
+                        let group = builder.spawn(cx);
+                        group.read(cx).focus_handle(cx).focus(window, cx);
+                        Harness { group, changes: 0 }
+                    });
+                    cx.run_until_parked();
+                    let bounds = cx.debug_bounds(["position-a", "position-b", "position-c"][index]).unwrap();
+                    cx.update(|window, _| {
+                        let width = px(metrics.focus.width);
+                        let outer = bounds.dilate(width).scale(window.scale_factor());
+                        let radius = (px(metrics.radius.md) + width).scale(window.scale_factor());
+                        let zero = px(0.0).scale(window.scale_factor());
+                        let first = index == 0;
+                        let last = index + 1 == count;
+                        let expected = gpui::Corners {
+                            top_left: if first { radius } else { zero },
+                            top_right: if if vertical { first } else { last } {
+                                radius
+                            } else {
+                                zero
+                            },
+                            bottom_left: if if vertical { last } else { first } {
+                                radius
+                            } else {
+                                zero
+                            },
+                            bottom_right: if last { radius } else { zero },
+                        };
+                        let color = look.resolve_step(ScaleFamily::Gray, 12).hsla();
+                        let quads = window.painted_quads();
+                        let rings: Vec<_> = quads.iter().filter(|quad| quad.border_color == color).collect();
+                        assert!(!rings.is_empty(), "focused item has an outline");
+                        for ring in rings {
+                            assert_eq!(ring.bounds, outer, "outline sits outside only the focused face");
+                            assert_eq!(
+                                ring.corner_radii, expected,
+                                "count={count}, index={index}, vertical={vertical}"
+                            );
+                        }
                     });
                 }
             }

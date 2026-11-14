@@ -822,18 +822,20 @@ mod tests {
             };
             assert_eq!(color(normal), color(focused), "focus preserves the selected tint");
             let focus = Look::built_in().resolve_step(ScaleFamily::Gray, 12).hsla();
-            let radius = px(Look::built_in().metrics().radius.md).scale(window.scale_factor());
+            let metrics = Look::built_in().metrics();
+            let width = px(metrics.focus.width);
+            let radius = (px(metrics.radius.md) + width).scale(window.scale_factor());
             let focus_quads: Vec<_> = quads
                 .iter()
-                .filter(|q| q.bounds == focused.scale(window.scale_factor()) && q.border_color == focus)
+                .filter(|q| q.bounds == focused.dilate(width).scale(window.scale_factor()) && q.border_color == focus)
                 .collect();
             assert!(!focus_quads.is_empty());
             assert!(
-                focus_quads.iter().all(|quad| quad.corner_radii.top_left == radius
+                focus_quads.iter().all(|quad| quad.corner_radii.top_left == px(0.0).scale(window.scale_factor())
                     && quad.corner_radii.top_right == radius
-                    && quad.corner_radii.bottom_left == radius
+                    && quad.corner_radii.bottom_left == px(0.0).scale(window.scale_factor())
                     && quad.corner_radii.bottom_right == radius),
-                "focus outline uses the look radius rather than square corners"
+                "last item rounds only the outer focus corners"
             );
             assert!(
                 !quads.iter().any(|q| q.bounds == unselected.scale(window.scale_factor()) && q.border_color == focus)
