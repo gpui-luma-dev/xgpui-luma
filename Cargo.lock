@@ -7315,7 +7315,7 @@ dependencies = [
 
 [[package]]
 name = "xgpui-lab"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7353,6 +7353,7 @@ dependencies = [
  "xgpui-luma",
  "xgpui-luma-color",
  "xgpui-luma-look-radix",
+ "xgpui-luma-plot",
  "xgpui-media",
  "xgpui-parley",
  "xgpui-platform",

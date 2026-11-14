@@ -1,7 +1,7 @@
 [package]
 name = "xgpui-lab"
 default-run = "xgpui-lab"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 license = "Apache-2.0"
 publish = false
@@ -46,6 +46,7 @@ xgpui-luma-color = { workspace = true }
 gpui_platform = { workspace = true, features = ["font-kit", "test-support"] }
 image = "0.25"
 xgpui-luma-look-radix = { workspace = true }
+xgpui-luma-plot = { workspace = true }
 lucide-svg-static = { package = "lucide-static-svg", version = "1.45.0" }
 palette = "0.7.7"
 smallvec = "1"

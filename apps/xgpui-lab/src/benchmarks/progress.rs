@@ -90,7 +90,7 @@ impl Progress {
                     && r["zoom"].as_f64() == report["zoom"].as_f64()
                     && r["budget_bytes"].as_u64() == report["budget_bytes"].as_u64()
             }) {
-                for key in ["job", "display_name"] {
+                for key in ["job", "display_name", "coverage", "input_bytes"] {
                     if report.get(key).is_none()
                         && let Some(value) = row.get(key)
                     {
@@ -117,6 +117,14 @@ impl Progress {
             }
         }
     }
+    /// The current case and stage, for a one-line progress notice.
+    pub(crate) fn headline(&self) -> String {
+        match self.state.lock() {
+            Ok(s) if s.stage.is_empty() => s.case.clone(),
+            Ok(s) => format!("{} · {}", s.case, s.stage),
+            Err(_) => "Progress unavailable".into(),
+        }
+    }
     pub(crate) fn snapshot(&self) -> (String, Vec<Value>) {
         match self.state.lock() {
             Ok(s) => (
@@ -141,14 +149,12 @@ mod tests {
     #[::core::prelude::v1::test]
     fn different_budgets_update_distinct_preplanned_rows() {
         let p = Progress::default();
-        p.plan(crate::svg_lab::benchmarks::planned_cases(4.));
-        p.running_budget("AJ_Digital_Camera", 4., 32 * xgpui_svg::MIB);
+        p.plan(crate::svg_lab::benchmarks::planned_cases(&[4.], &crate::svg_lab::benchmarks::COMPARISON_BUDGETS));
+        p.running_budget("camera", 4., 32 * xgpui_svg::MIB);
         let rows = p.snapshot().1;
         assert_eq!(rows[0]["outcome"], "pending");
         assert_eq!(rows[1]["outcome"], "running");
-        p.completed(
-            json!({"id":"AJ_Digital_Camera","zoom":4,"budget_bytes":32*xgpui_svg::MIB,"raster":{"median_ms":1.2}}),
-        );
+        p.completed(json!({"id":"camera","zoom":4,"budget_bytes":32*xgpui_svg::MIB,"raster":{"median_ms":1.2}}));
         let rows = p.snapshot().1;
         assert_eq!(rows.len(), 8);
         assert_eq!(rows[0]["outcome"], "pending");
