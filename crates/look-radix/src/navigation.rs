@@ -56,14 +56,17 @@ pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {
 /// Notify affected control entities and owners after mutating the Look.
 ///
 /// ```no_run
-/// use gpui::Context;
-/// use xgpui_luma::controls::{control_group::ControlGroupItem, accordion::{AccordionItem, AccordionTrigger, AccordionContent}};
+/// use gpui::{Context, IntoElement, ParentElement};
+/// use xgpui_luma::controls::{control_group::{ControlGroupItem, ControlGroupItemLike}, accordion::{AccordionItem, AccordionTrigger, AccordionContent}};
 /// use xgpui_luma::theme::ControlSize;
 /// use xgpui_luma_look_radix::*;
 /// fn navigation<M: 'static>(look: &Look, cx: &mut Context<M>) {
 ///     let group = control_group_builder(look, "group", ControlSize::Md)
 ///         .items([ControlGroupItem::new("day").label("Day")]).horizontal().spawn(cx);
-///     let icons = icon_group_builder(look, "icons", ControlSize::Sm)
+///     let icons = icon_group_builder(look, "icons")
+///         .item_template(icon_group_item_template(look, ControlSize::Sm, |item: &ControlGroupItem| {
+///             gpui::div().child(item.label().clone()).into_any_element()
+///         }))
 ///         .items([ControlGroupItem::new("bold").label("B")]).multiple().spawn(cx);
 ///     let accordion = accordion_builder(look, "accordion").item(AccordionItem::new(
 ///         "account", AccordionTrigger::new("Account"), AccordionContent::new("Account preferences")

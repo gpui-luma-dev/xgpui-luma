@@ -272,8 +272,7 @@ check_look!(
     icon_group_factory_forwards_callbacks,
     crate::icon_group_builder::<xgpui_luma::controls::control_group::ControlGroupItem>(
         &crate::Look::built_in(),
-        "callbacks",
-        xgpui_luma::theme::ControlSize::Md
+        "callbacks"
     ),
     on_activate(_),
     xgpui_luma::controls::control_group::ControlGroupEvent::Activate { activated_id: "a".into() }

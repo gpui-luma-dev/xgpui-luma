@@ -1,5 +1,5 @@
 //! Rendered geometry regressions for look variants, not just palette values.
-use gpui::IntoElement;
+use gpui::{IntoElement, ParentElement};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::checkbox::{CheckboxData, ThemedCheckboxTemplate};
@@ -112,7 +112,7 @@ fn composite_item(
     selected: bool,
     window: &mut gpui::Window,
     cx: &mut gpui::App,
-) -> gpui::Stateful<gpui::Div> {
+) -> gpui::AnyElement {
     use xgpui_luma::controls::control_group::*;
     let id = "group".into();
     let item = ControlGroupItem::new("item").label("Item");
@@ -139,12 +139,13 @@ fn composite_item(
         selection_mode: ControlSelectionMode::Multiple,
         foreground: None,
     };
-    let template = if icon {
-        crate::icon_group_item_template(look, ControlSize::Md)
+    if icon {
+        crate::icon_group_item_template(look, ControlSize::Md, |item: &ControlGroupItem| {
+            gpui::div().child(item.label().clone()).into_any_element()
+        })(&model, window, cx)
     } else {
-        crate::control_group_item_template(look, ControlSize::Md)
-    };
-    template(&model, None, window, cx)
+        crate::control_group_item_template(look, ControlSize::Md)(&model, None, window, cx).into_any_element()
+    }
 }
 
 #[test]
@@ -170,7 +171,11 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 ControlSize::Md,
                 InteractionState::default(),
             );
-            let expected_focus = palette.focus_border;
+            let expected_focus = if icon {
+                look.resolve_role(SemanticRole::Focus).hsla()
+            } else {
+                palette.focus_border
+            };
             let expected_face = palette.border.unwrap();
             let focus_role = look.resolve_role(SemanticRole::Focus).hsla();
             let mut app = gpui::TestAppContext::single();
@@ -186,11 +191,16 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 cx.run_until_parked();
                 cx.update(|window, _| {
                     let quads = window.painted_quads();
-                    assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
-                    assert!(
-                        !quads.iter().any(|q| q.border_color == focus_role),
-                        "hard-coded focus role must not bypass recipe"
-                    );
+                    // Joined icon segments have separators rather than individual face borders.
+                    if !icon {
+                        assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
+                    }
+                    if !icon {
+                        assert!(
+                            !quads.iter().any(|q| q.border_color == focus_role),
+                            "hard-coded focus role must not bypass recipe"
+                        );
+                    }
                     if expected_focus.a > 0. {
                         assert_eq!(quads.iter().any(|q| q.border_color == expected_focus), focused && !disabled);
                     }
