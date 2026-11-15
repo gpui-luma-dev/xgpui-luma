@@ -2,16 +2,16 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px, rgb};
+use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::ButtonEventExt;
-use xgpui_luma::controls::button_family::default_button_family_theme;
-use xgpui_luma::controls::button::{Button, ButtonEvent, ButtonTemplate, DefaultButtonTemplate, HasPresenter};
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn as shadcn;
-use xgpui_luma_look_shadcn::ShadcnLook;
+
+use xgpui_luma::controls::button::{Button, ButtonEvent, HasPresenter};
+use crate::theme::{ColorVizLookExt, Look};
+use xgpui_luma_look_radix as radix;
+
 use lucide_svg_static::Icon as LucideIcon;
 
-use super::event_stream::ControlEventStream;
+use super::radix_event_stream::RadixEventStream as ControlEventStream;
 
 #[derive(Clone, Default)]
 struct CounterState {
@@ -19,7 +19,7 @@ struct CounterState {
 }
 
 pub struct CustomButtonControlExposition {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     modified_button: Entity<Button>,
     custom_button: Entity<Button>,
     reactive_button: Entity<Button<CounterState>>,
@@ -35,106 +35,99 @@ pub struct CustomButtonControlExposition {
 }
 
 impl CustomButtonControlExposition {
-    pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
-        let modified_button =
-            Button::new("controls-doc-custom-modified").template(modified_button_template::<()>()).spawn(cx);
-        let custom_button = Button::new("controls-doc-custom-content")
+    pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
+        let modified_button = radix::Button::new("controls-doc-custom-modified")
+            .look(&look)
+            .soft()
+            .radius(radix::Radius::Full)
+            .label("New Button")
+            .spawn(cx);
+        let custom_button = radix::Button::new("controls-doc-custom-content")
+            .look(&look)
+            .soft()
+            .radius(radix::Radius::Full)
             .content(|model, _| {
-                let color = if model.state.hovered {
-                    rgb(0x4f46e5)
-                } else {
-                    rgb(0x3730a3)
-                };
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(8.0))
-                    .child(xgpui_luma::infra::icon::lucide_icon(
-                        LucideIcon::Check,
-                        gpui::hsla(0.0, 0.0, 1.0, 1.0),
-                        16.0,
-                    ))
+                    .gap(px(8.))
+                    .child(xgpui_luma::infra::icon::lucide_icon(LucideIcon::Check, model.look.foreground, 16.))
                     .child("Custom Layout")
-                    .text_color(color)
             })
-            .template(modified_button_template::<()>())
             .spawn(cx);
-        let reactive_button = Button::new("controls-doc-custom-reactive")
+        let reactive_button = radix::Button::new("controls-doc-custom-reactive")
+            .look(&look)
+            .soft()
+            .radius(radix::Radius::Full)
             .typed(CounterState { count: 0 })
             .content(|model, _| {
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .bg(rgb(0x4f46e5))
-                            .text_color(rgb(0xffffff))
-                            .px(px(6.0))
-                            .rounded(px(4.0))
-                            .child(model.data.count.to_string()),
-                    )
+                    .gap(px(8.))
+                    .child(model.data.count.to_string())
                     .child("Reactive Counter")
             })
-            .template(modified_button_template::<CounterState>())
             .spawn(cx);
 
-        let standard_icon_only =
-            shadcn::Button::icon_button("controls-doc-custom-std-icon-only", LucideIcon::FaceGrinning)
-                .look(look.as_ref())
-                .secondary()
-                .spawn(cx);
-        let standard_text_icon = shadcn::Button::new("controls-doc-custom-std-text-icon")
+        let standard_icon_only = radix::Button::new("controls-doc-custom-std-icon-only")
+            .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+            .icon(LucideIcon::FaceGrinning)
             .look(look.as_ref())
-            .secondary()
-            .content(|_, _| {
+            .soft()
+            .spawn(cx);
+        let standard_text_icon = radix::Button::new("controls-doc-custom-std-text-icon")
+            .look(look.as_ref())
+            .soft()
+            .content(|model, _| {
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
                     .child("Label")
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
             })
             .spawn(cx);
-        let standard_icon_text = shadcn::Button::new("controls-doc-custom-std-icon-text")
+        let standard_icon_text = radix::Button::new("controls-doc-custom-std-icon-text")
             .look(look.as_ref())
-            .secondary()
-            .content(|_, _| {
+            .soft()
+            .content(|model, _| {
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
                     .child("Label")
             })
             .spawn(cx);
 
-        let prominent_icon_only =
-            shadcn::Button::icon_button("controls-doc-custom-prom-icon-only", LucideIcon::FaceGrinning)
-                .look(look.as_ref())
-                .primary()
-                .spawn(cx);
-        let prominent_text_icon = shadcn::Button::new("controls-doc-custom-prom-text-icon")
+        let prominent_icon_only = radix::Button::new("controls-doc-custom-prom-icon-only")
+            .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+            .icon(LucideIcon::FaceGrinning)
             .look(look.as_ref())
-            .primary()
-            .content(|_, _| {
+            .solid()
+            .spawn(cx);
+        let prominent_text_icon = radix::Button::new("controls-doc-custom-prom-text-icon")
+            .look(look.as_ref())
+            .solid()
+            .content(|model, _| {
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
                     .child("Label")
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
             })
             .spawn(cx);
-        let prominent_icon_text = shadcn::Button::new("controls-doc-custom-prom-icon-text")
+        let prominent_icon_text = radix::Button::new("controls-doc-custom-prom-icon-text")
             .look(look.as_ref())
-            .primary()
-            .content(|_, _| {
+            .solid()
+            .content(|model, _| {
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning))
+                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
                     .child("Label")
             })
             .spawn(cx);
@@ -196,22 +189,16 @@ impl CustomButtonControlExposition {
                 this.custom_button.update(cx, |button, cx| {
                     button.set_presenter(
                         Arc::new(move |model, _| {
-                            let color = if model.state.hovered {
-                                rgb(0x4f46e5)
-                            } else {
-                                rgb(0x3730a3)
-                            };
                             div()
                                 .flex()
                                 .items_center()
                                 .gap(px(8.0))
                                 .child(xgpui_luma::infra::icon::lucide_icon(
                                     LucideIcon::Check,
-                                    gpui::hsla(0.0, 0.0, 1.0, 1.0),
+                                    model.look.foreground,
                                     16.0,
                                 ))
                                 .child(format!("Customized {clicks}"))
-                                .text_color(color)
                                 .into_any_element()
                         }),
                         cx,
@@ -241,8 +228,21 @@ impl CustomButtonControlExposition {
         this
     }
 
-    pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
+        for button in [
+            &self.modified_button,
+            &self.custom_button,
+            &self.standard_icon_only,
+            &self.standard_text_icon,
+            &self.standard_icon_text,
+            &self.prominent_icon_only,
+            &self.prominent_text_icon,
+            &self.prominent_icon_text,
+        ] {
+            button.update(cx, |_, cx| cx.notify());
+        }
+        self.reactive_button.update(cx, |_, cx| cx.notify());
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look, cx));
         cx.notify();
     }
@@ -250,67 +250,65 @@ impl CustomButtonControlExposition {
 
 impl Render for CustomButtonControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let chrome = self.look.chrome();
+        let chrome = self.look.chrome();
 
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(18.0))
-                .child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .flex_nowrap()
-                        .items_stretch()
-                        .gap(px(16.0))
-                        .child(render_example_card(
-                            "New Button (Text)",
-                            "Button::new with a custom template.",
-                            self.modified_button.clone(),
-                            chrome,
-                        ))
-                        .child(render_example_card(
-                            "Custom Content",
-                            "Using .content() for free-form layouts.",
-                            self.custom_button.clone(),
-                            chrome,
-                        ))
-                        .child(render_example_card(
-                            "Reactive Button",
-                            "State-driven data (CounterState).",
-                            self.reactive_button.clone(),
-                            chrome,
-                        )),
-                )
-                .child(demo_section(
-                    "Standard factory layouts",
-                    chrome.muted_text,
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap(px(12.0))
-                        .child(self.standard_icon_only.clone())
-                        .child(self.standard_text_icon.clone())
-                        .child(self.standard_icon_text.clone()),
-                ))
-                .child(demo_section(
-                    "Prominent factory layouts",
-                    chrome.muted_text,
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap(px(12.0))
-                        .child(self.prominent_icon_only.clone())
-                        .child(self.prominent_text_icon.clone())
-                        .child(self.prominent_icon_text.clone()),
-                ))
-                .child(self.event_stream.clone());
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(18.0))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_nowrap()
+                    .items_stretch()
+                    .gap(px(16.0))
+                    .child(render_example_card(
+                        "New Button (Text)",
+                        "Radix soft button with full radius.",
+                        self.modified_button.clone(),
+                        chrome,
+                    ))
+                    .child(render_example_card(
+                        "Custom Content",
+                        "Using .content() for free-form layouts.",
+                        self.custom_button.clone(),
+                        chrome,
+                    ))
+                    .child(render_example_card(
+                        "Reactive Button",
+                        "State-driven data (CounterState).",
+                        self.reactive_button.clone(),
+                        chrome,
+                    )),
+            )
+            .child(demo_section(
+                "Standard factory layouts",
+                chrome.muted_text,
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(12.0))
+                    .child(self.standard_icon_only.clone())
+                    .child(self.standard_text_icon.clone())
+                    .child(self.standard_icon_text.clone()),
+            ))
+            .child(demo_section(
+                "Prominent factory layouts",
+                chrome.muted_text,
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(12.0))
+                    .child(self.prominent_icon_only.clone())
+                    .child(self.prominent_text_icon.clone())
+                    .child(self.prominent_icon_text.clone()),
+            ))
+            .child(self.event_stream.clone());
 
-            div().id("workshop-custom-button-scroll").size_full().overflow_y_scroll().p(px(16.0)).child(preview)
-        })
+        div().id("workshop-custom-button-scroll").size_full().overflow_y_scroll().p(px(16.0)).child(preview)
     }
 }
 
@@ -348,10 +346,10 @@ fn append_button_event(
     }
 }
 
-fn render_lucide_icon(icon: LucideIcon) -> AnyElement {
+fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla) -> AnyElement {
     div()
         .text_size(px(16.0))
-        .child(xgpui_luma::infra::icon::lucide_icon(icon, gpui::hsla(0.0, 0.0, 1.0, 1.0), 16.0))
+        .child(xgpui_luma::infra::icon::lucide_icon(icon, color, 16.0))
         .into_any_element()
 }
 
@@ -395,38 +393,6 @@ fn render_example_card(
         )
         .child(control)
         .into_any_element()
-}
-
-fn modified_button_template<D: Clone + 'static>() -> Arc<dyn ButtonTemplate<D>> {
-    let mut template = DefaultButtonTemplate::new(default_button_family_theme());
-
-    template = template
-        .with_modifier(|el, model| {
-            let (background, border, foreground) = if model.state.disabled {
-                (rgb(0xf3f4f6), rgb(0xe5e7eb), rgb(0x9ca3af))
-            } else if model.state.pressed {
-                (rgb(0x4338ca), rgb(0x312e81), rgb(0xffffff))
-            } else if model.state.hovered {
-                (rgb(0x6366f1), rgb(0x4f46e5), rgb(0xffffff))
-            } else if model.state.focused {
-                (rgb(0xeef2ff), rgb(0x4f46e5), rgb(0x3730a3))
-            } else {
-                (rgb(0xf5f3ff), rgb(0xc4b5fd), rgb(0x5b21b6))
-            };
-
-            model.radius_override.set(Some(999.0));
-
-            el.bg(background).border_color(border).text_color(foreground).rounded(px(999.0)).px(px(18.0))
-        })
-        .with_modifier(|el, model| {
-            if model.state.pressed {
-                el.py(px(7.0))
-            } else {
-                el.py(px(8.0))
-            }
-        });
-
-    Arc::new(template)
 }
 
 #[cfg(all(test, feature = "test-support"))]

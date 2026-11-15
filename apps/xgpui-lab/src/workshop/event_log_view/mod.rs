@@ -5,4 +5,4 @@ mod template;
 mod theme;
 
 pub use control::EventLogView;
-pub use look::{EventLogViewLookExt, shadcn_event_log_theme};
+pub use look::{EventLogViewLookExt, shadcn_event_log_theme, radix_event_log_theme};

@@ -9,21 +9,21 @@ use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::control_group::ControlGroupFocusStrategy;
 use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::controls::selector::SelectorItem;
-use xgpui_luma::controls::toolbar::{Toolbar, ToolbarEvent, ToolbarValue};
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn as shadcn;
-use xgpui_luma_look_shadcn::ShadcnLook;
+use xgpui_luma::controls::toolbar::{Toolbar, ToolbarEvent, ToolbarValue, ToolbarItem};
+use crate::theme::{ColorVizLookExt, Look};
+use xgpui_luma_look_radix as radix;
+
 use lucide_svg_static::Icon as LucideIcon;
 
-use super::event_stream::ControlEventStream;
+use super::radix_event_stream::RadixEventStream as ControlEventStream;
 
 pub struct ToolbarControlExposition {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     left_pane: Entity<ToolbarExpositionLeftPane>,
 }
 
 struct ToolbarExpositionLeftPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     toolbar: Toolbar,
     roving_focus_button: Entity<Button<()>>,
     sequential_focus_button: Entity<Button<()>>,
@@ -32,7 +32,7 @@ struct ToolbarExpositionLeftPane {
 }
 
 impl ToolbarExpositionLeftPane {
-    fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.toolbar.update(cx, |toolbar, cx| toolbar.notify_items(cx));
         self.roving_focus_button.update(cx, |_, cx| cx.notify());
@@ -44,63 +44,61 @@ impl ToolbarExpositionLeftPane {
 
 impl Render for ToolbarExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let chrome = self.look.chrome();
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_center()
-                .gap(px(16.0))
-                .child(self.toolbar.clone())
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_center()
-                        .justify_center()
-                        .gap(px(8.0))
-                        .child(self.roving_focus_button.clone())
-                        .child(self.sequential_focus_button.clone())
-                        .child(
-                            div()
-                                .text_size(px(12.0))
-                                .line_height(px(16.0))
-                                .text_color(chrome.muted_text)
-                                .child(format!("mode: {}", self.focus_mode)),
-                        ),
-                )
-                .child(self.event_stream.clone());
+        let chrome = self.look.chrome();
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(px(16.0))
+            .child(self.toolbar.clone())
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(8.0))
+                    .child(self.roving_focus_button.clone())
+                    .child(self.sequential_focus_button.clone())
+                    .child(
+                        div()
+                            .text_size(px(12.0))
+                            .line_height(px(16.0))
+                            .text_color(chrome.muted_text)
+                            .child(format!("mode: {}", self.focus_mode)),
+                    ),
+            )
+            .child(self.event_stream.clone());
 
-            div()
-                .id("controls-doc-toolbar-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+        div()
+            .id("controls-doc-toolbar-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 
 impl ToolbarControlExposition {
-    pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
-        let roving_focus_button = shadcn::Button::new("controls-doc-toolbar-focus-roving")
+    pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
+        let roving_focus_button = radix::Button::new("controls-doc-toolbar-focus-roving")
             .look(look.as_ref())
             .ghost()
             .label("Roving focus")
             .spawn(cx);
-        let sequential_focus_button = shadcn::Button::new("controls-doc-toolbar-focus-sequential")
+        let sequential_focus_button = radix::Button::new("controls-doc-toolbar-focus-sequential")
             .look(look.as_ref())
             .ghost()
             .label("Sequential focus")
             .spawn(cx);
 
-        let toolbar = shadcn::Toolbar::new("controls-doc-toolbar")
+        let toolbar = radix::Toolbar::new("controls-doc-toolbar")
             .look(look.as_ref())
-            .roving_item_focus()
-            .item(look.toolbar_menu(
+            .item(toolbar_menu(
+                &look,
                 "assistant",
                 "Assistant",
                 LucideIcon::WandSparkles,
@@ -112,7 +110,8 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("assistant-separator")
-            .item(look.toolbar_selector(
+            .item(toolbar_selector(
+                &look,
                 "style",
                 "Paragraph",
                 [
@@ -124,10 +123,11 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("style-separator")
-            .item(look.toolbar_toggle("bold", LucideIcon::Bold, cx))
-            .item(look.toolbar_toggle("italic", LucideIcon::Italic, cx))
-            .item(look.toolbar_toggle("underline", LucideIcon::Underline, cx))
-            .item(look.toolbar_label_menu(
+            .item(toolbar_toggle(&look, "bold", LucideIcon::Bold, cx))
+            .item(toolbar_toggle(&look, "italic", LucideIcon::Italic, cx))
+            .item(toolbar_toggle(&look, "underline", LucideIcon::Underline, cx))
+            .item(toolbar_label_menu(
+                &look,
                 "color",
                 "A",
                 [
@@ -138,7 +138,8 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("format-separator")
-            .item(look.toolbar_menu(
+            .item(toolbar_menu(
+                &look,
                 "alignment",
                 "Alignment",
                 LucideIcon::TextAlignStart,
@@ -151,10 +152,11 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("insert-separator")
-            .item(look.toolbar_button("link", LucideIcon::Link, cx))
-            .item(look.toolbar_button("image", LucideIcon::Image, cx))
-            .item(look.toolbar_button("video", LucideIcon::Video, cx))
-            .item(look.toolbar_menu(
+            .item(toolbar_button(&look, "link", LucideIcon::Link, cx))
+            .item(toolbar_button(&look, "image", LucideIcon::Image, cx))
+            .item(toolbar_button(&look, "video", LucideIcon::Video, cx))
+            .item(toolbar_menu(
+                &look,
                 "more",
                 "More",
                 LucideIcon::Ellipsis,
@@ -166,9 +168,11 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("code-separator")
-            .item(look.toolbar_textfield("search").placeholder("Search...").spawn(cx).on_change(|_value, _cx| {}))
-            .item(look.toolbar_button("code", LucideIcon::Code, cx))
+            .item(toolbar_search(&look, cx))
+            .item(toolbar_button(&look, "code", LucideIcon::Code, cx))
             .spawn(cx);
+
+        toolbar.update(cx, |toolbar, cx| toolbar.set_focus_strategy(ControlGroupFocusStrategy::RovingItemFocus, cx));
 
         let event_stream = cx.new(|cx| {
             ControlEventStream::new(
@@ -234,7 +238,7 @@ impl ToolbarControlExposition {
         Self { look, left_pane }
     }
 
-    pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
         cx.notify();
@@ -243,14 +247,12 @@ impl ToolbarControlExposition {
 
 impl Render for ToolbarControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            div()
-                .id("controls-doc-toolbar-exposition")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .child(self.left_pane.clone())
-        })
+        div()
+            .id("controls-doc-toolbar-exposition")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .child(self.left_pane.clone())
     }
 }
 
@@ -266,6 +268,58 @@ fn format_toolbar_event(event: &ToolbarEvent) -> Option<String> {
         }
         _ => None,
     }
+}
+
+// Compose hosted SDK controls through Radix factories so every item shares the Lab look.
+fn toolbar_menu<T: 'static>(
+    look: &Look,
+    id: &'static str,
+    label: &'static str,
+    icon: LucideIcon,
+    items: impl IntoIterator<Item = MenuItem>,
+    cx: &mut Context<T>,
+) -> ToolbarItem {
+    let menu = radix::PopupMenu::new(id).look(look).ghost().gray().icon(icon).label(label).items(items).spawn(cx);
+    ToolbarItem::menu_control(id, menu, cx).label(label)
+}
+fn toolbar_label_menu<T: 'static>(
+    look: &Look,
+    id: &'static str,
+    label: &'static str,
+    items: impl IntoIterator<Item = MenuItem>,
+    cx: &mut Context<T>,
+) -> ToolbarItem {
+    let menu = radix::PopupMenu::new(id).look(look).ghost().gray().label(label).items(items).spawn(cx);
+    ToolbarItem::menu_control(id, menu, cx).label(label)
+}
+fn toolbar_selector<T: 'static>(
+    look: &Look,
+    id: &'static str,
+    label: &'static str,
+    items: impl IntoIterator<Item = SelectorItem>,
+    selected: &'static str,
+    cx: &mut Context<T>,
+) -> ToolbarItem {
+    let selector = radix::Selector::new(id).look(look).label(label).items(items).selected_id(selected).spawn(cx);
+    ToolbarItem::selector_control(id, selector, cx).label(label)
+}
+fn toolbar_toggle<T: 'static>(look: &Look, id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
+    let toggle = radix::Toggle::new(id).look(look).gray().icon(icon).spawn(cx);
+    ToolbarItem::toggle_button(id, toggle, cx).label(id)
+}
+fn toolbar_button<T: 'static>(look: &Look, id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
+    let button = radix::Button::new(id)
+        .look(look)
+        .ghost_quiet()
+        .gray()
+        .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
+        .icon(icon)
+        .spawn(cx);
+    ToolbarItem::command_button(id, button, cx).label(id)
+}
+fn toolbar_search<T: 'static>(look: &Look, cx: &mut Context<T>) -> ToolbarItem {
+    let field = radix::TextField::new("search").look(look).placeholder("Search...").spawn(cx);
+    ToolbarItem::textfield_control("search", field, cx)
 }
 
 #[cfg(all(test, feature = "test-support"))]

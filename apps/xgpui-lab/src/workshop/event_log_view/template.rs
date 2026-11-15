@@ -3,7 +3,6 @@ use std::sync::Arc;
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, ScrollEvent, Stateful, Window, div, prelude::*, px};
 
 use xgpui_luma::controls::scroll_container::ScrollContainer;
-use xgpui_luma_look_shadcn::LumaTypographyExt;
 
 use super::model::EventLogViewRenderModel;
 use super::theme::EventLogTheme;
@@ -66,7 +65,9 @@ impl EventLogViewTemplate for ThemedEventLogViewTemplate {
                 div()
                     .w_full()
                     .font_family(look.font_family.clone())
-                    .typography_style(look.typography)
+                    .text_size(px(look.typography.size))
+                    .line_height(px(look.typography.line_height))
+                    .font_weight(look.typography.weight)
                     .text_color(text_color)
                     .child(if show_placeholder {
                         model.placeholder.to_string()

@@ -12,6 +12,7 @@ mod color_slider_revealed;
 mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
+mod radix_event_stream;
 mod event_log_view;
 
 use std::{
@@ -60,11 +61,11 @@ impl Sample {
         }
     }
 
-    fn sync_look(&self, look: Arc<ShadcnLook>, cx: &mut gpui::App) {
+    fn sync_look(&self, look: Arc<ShadcnLook>, shell_look: Arc<Look>, cx: &mut gpui::App) {
         match self {
-            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
+            Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
+            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Field(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Ring(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -189,11 +190,15 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.look.clone();
             let sample = match id {
-                "button" => Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, look)))),
-                "custom-button" => {
-                    Some(Sample::CustomButton(cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, look))))
+                "button" => {
+                    Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
                 }
-                "toolbar" => Some(Sample::Toolbar(cx.new(|cx| toolbar::ToolbarControlExposition::new(cx, look)))),
+                "custom-button" => Some(Sample::CustomButton(
+                    cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
+                )),
+                "toolbar" => Some(Sample::Toolbar(
+                    cx.new(|cx| toolbar::ToolbarControlExposition::new(cx, self.shell_look.clone())),
+                )),
                 "color-arc" => Some(Sample::Arc(cx.new(|cx| color_arc::ColorArcExpositionLeftPane::new(cx, look)))),
                 "color-field" => {
                     Some(Sample::Field(cx.new(|cx| color_field::ColorFieldExpositionLeftPane::new(cx, look))))
@@ -223,8 +228,9 @@ impl Workshop {
 
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.look.set_mode(mode);
+        self.shell_look.set_mode(mode);
         for sample in self.samples.values() {
-            sample.sync_look(self.look.clone(), cx);
+            sample.sync_look(self.look.clone(), self.shell_look.clone(), cx);
         }
         cx.notify();
     }
