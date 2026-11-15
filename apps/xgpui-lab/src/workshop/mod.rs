@@ -4,6 +4,7 @@ pub(crate) mod catalog;
 mod button;
 mod choice;
 mod collection;
+mod input;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -37,6 +38,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
     Button(Entity<button::ButtonControlExposition>),
@@ -53,6 +55,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
             Self::Button(v) => v.clone().into(),
@@ -69,6 +72,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -194,6 +198,18 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "textfield" => {
+                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::TextField, look, cx))))
+                }
+                "textarea" => {
+                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::TextArea, look, cx))))
+                }
+                "slider" => {
+                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::Slider, look, cx))))
+                }
+                "scrollbar" => {
+                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::Scrollbar, look, cx))))
+                }
                 "paging-table" => {
                     Some(Sample::Collection(cx.new(|cx| {
                         collection::CollectionSample::new(collection::CollectionKind::PagingTable, look, cx)
@@ -391,7 +407,7 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice" | "collection")
+                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input")
                             && !matches!(entry.id, "toggle-group" | "listbox")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
@@ -403,7 +419,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 19);
+            assert_eq!(view.read(cx).samples.len(), 23);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
