@@ -451,7 +451,7 @@ fn hex(rgb: [f64; 3]) -> String {
 }
 
 const INTERACTION_NOTE: &str = "Click or drag the diagram to move the source pixel. Positions outside the source gamut are constrained to its RGB bounds. Changing source keeps the encoded RGB values and reinterprets them, so the gold cross moves while the controls stay the same. The simulated gamut sets hatching, mapping, and preview colors. Cards report source-pixel membership in each reference gamut.";
-const CIE_LOCUS_CREDIT: &str = "CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Fill colors use native linear Display P3 on wide-gamut windows and an sRGB preview otherwise. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.";
+const CIE_LOCUS_CREDIT: &str = "CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Wide-gamut output is limited to Display P3, even when the source or simulated gamut is Rec.2020. Coordinates and gamut calculations remain valid beyond P3, but displayed diagram colors are clipped to P3; other windows show an sRGB preview. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.";
 
 impl ChromaticityLab {
     fn legend(&self) -> Legend {
