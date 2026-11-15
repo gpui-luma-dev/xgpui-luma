@@ -5,6 +5,7 @@ mod canvas_lab;
 mod pastel_waves;
 mod standalone_benchmarks;
 mod app;
+mod workshop;
 mod gamut_reveal;
 mod color_gamut_page;
 mod lab_controls;

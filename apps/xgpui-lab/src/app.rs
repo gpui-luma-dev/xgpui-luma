@@ -9,7 +9,10 @@ use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 use xgpui_luma::controls::{
     resizable_panels::{
         ResizablePanels, ResizablePanelSpec, ResizablePanelsEvent, ResizeHandleVisibility, ResizeCollapseBehavior,
@@ -24,11 +27,17 @@ use crate::gradient_builder::GradientBuilder;
 use crate::compositions::ColorCompositions;
 use crate::extension_pane::ExtensionPane;
 
-mod nav_accordion;
+pub(crate) mod nav_accordion;
 mod shell_style;
 mod titlebar;
 use shell_style::*;
 pub(crate) use titlebar::{open_shell, open_shell_test_window};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Destination {
+    Explorer,
+    Workshop,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Workspace {
@@ -233,6 +242,9 @@ struct NavigationEntry {
 }
 
 pub struct XgpuiLabApp {
+    destination: Rc<Cell<Destination>>,
+    workshop: Entity<crate::workshop::Workshop>,
+    rail_navigation: Entity<xgpui_luma::controls::sidebar::SidebarControl>,
     focus_scope: FocusHandle,
     look: Arc<Look>,
     nav_look: Arc<Look>,
@@ -365,6 +377,10 @@ impl XgpuiLabApp {
         };
         let accordion = make_accordion("lab-explorer", items, cx);
         let extension_accordion = make_accordion("xgpui-lab-explorer", extension_items, cx);
+        let destination = Rc::new(Cell::new(Destination::Explorer));
+        let sidebar_destination = destination.clone();
+        let workshop = cx.new(|cx| crate::workshop::Workshop::new(look.clone(), cx));
+        let workshop_sidebar = workshop.read(cx).sidebar.clone();
         let content: Rc<RefCell<gpui::AnyView>> = Rc::new(RefCell::new(gradient_builder.clone().into()));
         let content_view = content.clone();
         let sidebar_look = nav_look.clone();
@@ -379,6 +395,16 @@ impl XgpuiLabApp {
             )))
             .panel(
                 ResizablePanelSpec::new_render(move || {
+                    if sidebar_destination.get() == Destination::Workshop {
+                        return div()
+                            .id("control-workshop-scroll")
+                            .size_full()
+                            .overflow_y_scroll()
+                            .p(px(8.))
+                            .text_color(sidebar_look.chrome().body_text)
+                            .child(workshop_sidebar.clone())
+                            .into_any_element();
+                    }
                     div()
                         .id("lab-explorer-scroll")
                         .size_full()
@@ -389,6 +415,7 @@ impl XgpuiLabApp {
                         .child(accordion.clone())
                         .child(explorer_heading("XGPUI LAB EXPLORER", &sidebar_look))
                         .child(extension_accordion.clone())
+                        .into_any_element()
                 })
                 .size(INITIAL_SIDEBAR_WIDTH)
                 .min(MIN_SIDEBAR_WIDTH)
@@ -407,7 +434,7 @@ impl XgpuiLabApp {
                 .min(MIN_WORKSPACE_WIDTH),
             )
             .spawn(cx);
-        let rail = spawn_rail(&nav_look, cx);
+        let (rail, rail_navigation) = spawn_rail(&nav_look, cx);
         panels.clone().on_event(cx, |this: &mut Self, event, cx| {
             if let ResizablePanelsEvent::SizesChanged { sizes_px } = event
                 && let Some(width) = sizes_px.first()
@@ -422,6 +449,9 @@ impl XgpuiLabApp {
             }
         });
         let mut this = Self {
+            destination,
+            workshop,
+            rail_navigation,
             focus_scope,
             look,
             nav_look,
@@ -465,8 +495,29 @@ impl XgpuiLabApp {
         }
     }
 
+    fn switch_destination(&mut self, destination: Destination, cx: &mut Context<Self>) {
+        if self.destination.get() == destination {
+            return;
+        }
+        match destination {
+            Destination::Explorer => self.activate(self.active, self.active_page, cx),
+            Destination::Workshop => {
+                self.leave_active_demo(cx);
+                self.destination.set(destination);
+                *self.content.borrow_mut() = self.workshop.clone().into();
+                self.rail_navigation.update(cx, |rail, cx| rail.set_selected_id("control-workshop", cx));
+                self.panels.update(cx, |_, cx| cx.notify());
+                cx.notify();
+            }
+        }
+    }
+
     fn activate(&mut self, workspace: Workspace, page: &'static str, cx: &mut Context<Self>) {
-        self.leave_active_demo(cx);
+        if self.destination.get() == Destination::Explorer {
+            self.leave_active_demo(cx);
+        }
+        self.destination.set(Destination::Explorer);
+        self.rail_navigation.update(cx, |rail, cx| rail.set_selected_id("home", cx));
         self.active = workspace;
         self.active_page = page;
         let view: gpui::AnyView = match workspace {
@@ -502,21 +553,34 @@ impl XgpuiLabApp {
 }
 
 // Preserve shell-2026's complete destination rail and footer.
-fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<xgpui_luma::controls::frame::FrameControl> {
+fn spawn_rail(
+    look: &Look,
+    cx: &mut Context<XgpuiLabApp>,
+) -> (
+    Entity<xgpui_luma::controls::frame::FrameControl>,
+    Entity<xgpui_luma::controls::sidebar::SidebarControl>,
+) {
     use xgpui_luma::controls::sidebar::*;
     use lucide_svg_static::Icon;
     let mut menu = SidebarMenuBuilder::new("shell-2026-destinations");
     for (id, label, icon) in [
-        ("home", "Home", Icon::House),
+        ("home", "Lab Explorer", Icon::House),
+        ("control-workshop", "Control Workshop", Icon::PanelsTopLeft),
         ("history", "History", Icon::Clock),
         ("library", "Library", Icon::BookOpen),
         ("gallery", "Gallery", Icon::Image),
         ("activity", "Activity", Icon::AtSign),
         ("more", "More", Icon::Ellipsis),
     ] {
-        menu = menu.item(SidebarMenuItemBuilder::new(id, label).icon(icon).active(id == "home"));
+        menu = menu.item(SidebarMenuItemBuilder::new(id, label).icon(icon).help(label));
     }
     let navigation = xgpui_luma_look_radix::sidebar_builder(look, "shell-2026-rail")
+        .selected_id("home")
+        .on_select(cx, |app: &mut XgpuiLabApp, id, cx| match id.as_ref() {
+            "home" => app.switch_destination(Destination::Explorer, cx),
+            "control-workshop" => app.switch_destination(Destination::Workshop, cx),
+            _ => {}
+        })
         .presentation(SidebarPresentation::Icons)
         .motion_enabled(false)
         .auto_hide_scrollbar(true)
@@ -531,12 +595,13 @@ fn spawn_rail(look: &Look, cx: &mut Context<XgpuiLabApp>) -> Entity<xgpui_luma::
         )
         .spawn(cx);
     // shell-2026's transparent, square sidebar frame has an 8 px inset.
-    xgpui_luma::controls::frame::FrameBuilder::new("shell-2026-rail-frame")
+    let frame = xgpui_luma::controls::frame::FrameBuilder::new("shell-2026-rail-frame")
         .p(px(8.0))
         .bg(gpui::transparent_black())
         .rounded(px(0.0))
-        .child(navigation)
-        .spawn(cx)
+        .child(navigation.clone())
+        .spawn(cx);
+    (frame, navigation)
 }
 
 fn sync_color_control_theme(look: &Look) {
@@ -551,7 +616,10 @@ fn sync_color_control_theme(look: &Look) {
 
 impl Render for XgpuiLabApp {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        if self.active == Workspace::ColorGamut && self.color_gamut.is_none() {
+        if self.destination.get() == Destination::Explorer
+            && self.active == Workspace::ColorGamut
+            && self.color_gamut.is_none()
+        {
             let page = _cx.new(|cx| crate::color_gamut_page::Page::new(self.look.clone(), cx));
             *self.content.borrow_mut() = page.clone().into();
             self.color_gamut = Some(page);
@@ -559,10 +627,11 @@ impl Render for XgpuiLabApp {
         }
         // Captured effects currently require SDR. Save the user's negotiated
         // request once and restore it when leaving a capture-dependent view.
-        let needs_sdr = self
-            .extensions
-            .iter()
-            .any(|(workspace, pane)| *workspace == self.active && pane.read(_cx).requires_sdr(_cx));
+        let needs_sdr = self.destination.get() == Destination::Explorer
+            && self
+                .extensions
+                .iter()
+                .any(|(workspace, pane)| *workspace == self.active && pane.read(_cx).requires_sdr(_cx));
         if !self.presentation_pending && needs_sdr == self.captured_color_mode.is_none() {
             self.presentation_pending = true;
             _cx.defer_in(_window, move |this, window, cx| {
@@ -653,6 +722,72 @@ impl Render for XgpuiLabApp {
 mod tests {
     use super::*;
     use gpui::TestAppContext;
+
+    #[test]
+    fn workshop_rail_supports_keyboard_destination_switching() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
+        });
+        let (view, cx) = app.add_window_view(|window, cx| {
+            window.activate_window();
+            XgpuiLabApp::new(window, cx)
+        });
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            window.blur(cx);
+            window.focus_next(cx);
+        });
+        cx.run_until_parked();
+        cx.simulate_keystrokes("down enter");
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(view.read(cx).destination.get(), Destination::Workshop));
+        cx.simulate_keystrokes("up enter");
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(view.read(cx).destination.get(), Destination::Explorer));
+    }
+
+    #[test]
+    fn workshop_rail_switching_retains_explorer_and_shell_state() {
+        use xgpui_luma::controls::sidebar::SidebarEvent;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (view, cx) = app.add_window_view(|window, cx| {
+            window.activate_window();
+            XgpuiLabApp::new(window, cx)
+        });
+        view.update(cx, |shell, cx| shell.activate(Workspace::Compositions, "harmonies", cx));
+        cx.run_until_parked();
+        let (rail, explorer, panels, workshop) = cx.update(|_, cx| {
+            let shell = view.read(cx);
+            (
+                shell.rail_navigation.clone(),
+                shell.content.borrow().entity_id(),
+                shell.panels.clone(),
+                shell.workshop.clone(),
+            )
+        });
+        for _ in 0..3 {
+            rail.update(cx, |_, cx| cx.emit(SidebarEvent::Select { id: "control-workshop".into() }));
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                let shell = view.read(cx);
+                assert_eq!(shell.destination.get(), Destination::Workshop);
+                assert_eq!(shell.content.borrow().entity_id(), workshop.entity_id());
+                assert_eq!(shell.panels, panels);
+                assert_eq!(shell.active_page, "harmonies");
+            });
+            rail.update(cx, |_, cx| cx.emit(SidebarEvent::Select { id: "home".into() }));
+            cx.run_until_parked();
+            cx.update(|_, cx| {
+                let shell = view.read(cx);
+                assert_eq!(shell.destination.get(), Destination::Explorer);
+                assert_eq!(shell.content.borrow().entity_id(), explorer);
+                assert_eq!(shell.active_page, "harmonies");
+            });
+        }
+    }
 
     #[test]
     fn sidebar_routes_duplicate_labels_and_retains_workspaces() {
