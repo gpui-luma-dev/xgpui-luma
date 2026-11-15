@@ -16,17 +16,20 @@ pub(crate) struct Page {
 }
 impl Page {
     pub(crate) fn new(window: &mut Window, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let lab = cx.new(|_| Lab::new(window, false));
+        let lab = cx.new(|_| {
+            let mut lab = Lab::new(window, false);
+            lab.set_example(true);
+            lab
+        });
         let tabs = Tabs::new("color-gamut-example-tabs")
             .template(crate::studio_tabs::template(look.clone(), true))
             .items(vec![
-                TabsItem::new("chromaticity").label("Chromaticity & Metadata"),
                 TabsItem::new("reveal").label("Hidden Wide-Gamut Symbol"),
                 TabsItem::new("photo").label("Photo Comparison"),
             ])
             .size(ControlSize::Sm)
             .width_mode(TabsWidthMode::Uniform)
-            .active("chromaticity")
+            .active("reveal")
             .spawn(cx);
         let subscription = cx.subscribe(&tabs, |this, _, event: &TabsEvent, cx| {
             if let TabsEvent::Activate { tab_id, .. } = event {
