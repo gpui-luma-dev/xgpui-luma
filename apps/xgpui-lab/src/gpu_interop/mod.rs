@@ -567,7 +567,6 @@ impl Page {
         thumbnail: bool,
     ) -> AnyElement {
         let tracked = self.canvas_bounds.clone();
-        let boids = self.kind == Kind::Boids;
         let compare = interactive && self.compare_active;
         let (zoom, pan) = if interactive {
             (self.zoom, self.pan)
@@ -637,8 +636,7 @@ impl Page {
                 }
             },
         )
-        .when(!boids, |canvas| canvas.aspect_square())
-        .when(boids, |canvas| canvas.h(px(500.)))
+        .aspect_square()
         .when(thumbnail, |canvas| canvas.size(px(110.)))
         .when(!thumbnail, |canvas| canvas.w_full())
         .into_any_element()
@@ -756,7 +754,16 @@ impl Render for Page {
                 cx.notify();
             }));
         let hero = if self.kind == Kind::Boids {
-            Hero::stage(ComparePane::new("Flock simulation", stage))
+            Hero::full(
+                div()
+                    .w(px(600.))
+                    .max_w_full()
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(text(&self.look, TextRole::Name, "Flock simulation"))
+                    .child(card_surface(stage, &self.look)),
+            )
         } else if self.kind == Kind::Workbench {
             Hero::full(
                 div()
