@@ -5,6 +5,7 @@ mod button;
 mod choice;
 mod collection;
 mod input;
+mod menu;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -38,6 +39,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Menu(Entity<menu::MenuSample>),
     Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
@@ -55,6 +57,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Menu(v) => v.clone().into(),
             Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
@@ -72,6 +75,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -198,6 +202,10 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "context-menu" => {
+                    Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
+                }
+                "popup-menu" => Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Popup, look, cx)))),
                 "textfield" => {
                     Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::TextField, look, cx))))
                 }
@@ -291,6 +299,9 @@ impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.shell_look.chrome();
         let unavailable_reason = match self.selected {
+            "floating-menu" => Some(
+                "The SDK provides Floating Menu rendering and navigation for Context Menu and Popup Menu, but no standalone Floating Menu control.",
+            ),
             "toggle-group" => Some("The SDK does not provide a dedicated Toggle Group control."),
             "listbox" => Some(
                 "The SDK provides ListBox state and behavior, but no default visual template. A native default sample is unavailable.",
@@ -407,8 +418,8 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input")
-                            && !matches!(entry.id, "toggle-group" | "listbox")
+                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input" | "menu")
+                            && !matches!(entry.id, "toggle-group" | "listbox" | "floating-menu")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -419,7 +430,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 23);
+            assert_eq!(view.read(cx).samples.len(), 25);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
