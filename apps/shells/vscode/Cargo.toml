@@ -16,3 +16,6 @@ lucide-svg-static.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18" }
+
+[lints]
+workspace = true

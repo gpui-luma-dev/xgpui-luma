@@ -3128,7 +3128,6 @@ dependencies = [
  "xgpui-luma",
  "xgpui-luma-color",
  "xgpui-luma-look-shadcn",
- "xgpui-platform",
 ]
 
 [[package]]
