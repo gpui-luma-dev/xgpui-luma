@@ -359,13 +359,14 @@ impl Page {
             ));
         }
     }
-    fn placement(&self, surface: Option<EngineSurface>, preview: bool, interactive: bool, height: f32) -> AnyElement {
+    fn placement(
+        &self,
+        surface: Option<EngineSurface>,
+        preview: bool,
+        interactive: bool,
+        thumbnail: bool,
+    ) -> AnyElement {
         let tracked = self.canvas_bounds.clone();
-        let aspect = if self.kind == Kind::Boids {
-            4. / 3.
-        } else {
-            WIDTH as f32 / HEIGHT as f32
-        };
         let (zoom, pan) = if interactive {
             (self.zoom, self.pan)
         } else {
@@ -373,17 +374,6 @@ impl Page {
         };
         canvas(
             move |bounds, _, _| {
-                let width = bounds.size.width.as_f32();
-                let h = bounds.size.height.as_f32();
-                let w = width.min(h * aspect);
-                let h = h.min(width / aspect);
-                let bounds = Bounds::new(
-                    point(
-                        bounds.left() + px((width - w) / 2.),
-                        bounds.top() + px((bounds.size.height.as_f32() - h) / 2.),
-                    ),
-                    size(px(w), px(h)),
-                );
                 if interactive {
                     tracked.set(bounds);
                 }
@@ -412,8 +402,9 @@ impl Page {
                 }
             },
         )
-        .w_full()
-        .h(px(height))
+        .aspect_square()
+        .when(thumbnail, |canvas| canvas.size(px(110.)))
+        .when(!thumbnail, |canvas| canvas.w_full())
         .into_any_element()
     }
 }
@@ -458,8 +449,8 @@ impl Render for Page {
                 }
             });
         let title = self.kind.title();
-        let primary = self.placement(surface.clone(), false, self.kind == Kind::Workbench, 300.);
-        let preview = self.placement(surface.clone(), true, false, 300.);
+        let primary = self.placement(surface.clone(), false, self.kind == Kind::Workbench, false);
+        let preview = self.placement(surface.clone(), true, false, false);
         let stage = div()
             .id("interop-drawing")
             .child(primary)
@@ -545,7 +536,7 @@ impl Render for Page {
             for index in 1..6 {
                 screen = screen.action(self.buttons[index].clone());
             }
-            screen = screen.section(self.placement(surface, false, false, 110.)).note(format!("Drag to paint · Right-click to inspect 4×4 · Scroll to pan · Ctrl/Cmd-scroll to zoom · Zoom {:.2}×. {}", self.zoom, snapshot.inspection));
+            screen = screen.section(self.placement(surface, false, false, true)).note(format!("Drag to paint · Right-click to inspect 4×4 · Scroll to pan · Ctrl/Cmd-scroll to zoom · Zoom {:.2}×. {}", self.zoom, snapshot.inspection));
         }
         screen
     }
@@ -602,8 +593,9 @@ mod tests {
         cx.run_until_parked();
         let (runtime, received) = Runtime::recording();
         view.update(cx, |page, _| page.runtime = Some(runtime));
-        // Use the actual fitted canvas, so letterboxing and pointer mapping are exercised.
+        // Use the laid-out square canvas to exercise pointer mapping.
         let bounds = cx.update(|_, cx| view.read(cx).canvas_bounds.get());
+        assert_eq!(bounds.size.width, bounds.size.height, "the demo surface is square");
         cx.simulate_mouse_down(bounds.center(), MouseButton::Left, Default::default());
         cx.simulate_mouse_up(bounds.center(), MouseButton::Left, Default::default());
         let Command::Dab(dab, _) = received.try_recv().unwrap() else {

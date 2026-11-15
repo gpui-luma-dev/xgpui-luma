@@ -48,9 +48,9 @@ const BACKEND: (wgpu::Backends, &str) = (wgpu::Backends::VULKAN, "Vulkan");
 #[cfg(target_os = "windows")]
 const BACKEND: (wgpu::Backends, &str) = (wgpu::Backends::DX12, "D3D12");
 
-/// Slot size: the size wgpu's own boids test renders at (4:3).
+/// Square slots match the Lab preview without stretching the simulation.
 pub const WIDTH: u32 = 1024;
-pub const HEIGHT: u32 = 768;
+pub const HEIGHT: u32 = WIDTH;
 /// One window shows the surface: 3 slots, as the crate recommends.
 const SLOTS: usize = 3;
 /// How long to wait for the window to show a frame before stepping anyway,
