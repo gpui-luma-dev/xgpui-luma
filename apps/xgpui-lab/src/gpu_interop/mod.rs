@@ -636,7 +636,11 @@ impl Page {
                 }
             },
         )
-        .aspect_square()
+        .aspect_ratio(if self.kind == Kind::Boids {
+            boids::engine::ASPECT
+        } else {
+            1.
+        })
         .when(thumbnail, |canvas| canvas.size(px(110.)))
         .when(!thumbnail, |canvas| canvas.w_full())
         .into_any_element()
@@ -754,7 +758,7 @@ impl Render for Page {
                 cx.notify();
             }));
         let hero = if self.kind == Kind::Boids {
-            Hero::stage(ComparePane::new("Flock simulation", div().w(px(600.)).max_w_full().mx_auto().child(stage)))
+            Hero::stage(ComparePane::new("Flock simulation", div().w(px(1200.)).max_w_full().mx_auto().child(stage)))
         } else if self.kind == Kind::Workbench {
             Hero::full(
                 div()
@@ -813,7 +817,7 @@ impl Render for Page {
             };
             caption.push_str(&format!(" · Showing {showing}"));
         }
-        let mut screen = LabScreen::new("gpu-interop", self.look.clone()).crumb("xgpui-gpu-interop", title).title(title)
+        let mut screen = LabScreen::new("gpu-interop", self.look.clone()).full_width(self.kind == Kind::Boids).crumb("xgpui-gpu-interop", title).title(title)
             .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "Explore compute capacity, compositor pacing, and UI responsiveness. Increase the flock, compare Own thread with UI thread, then change speed or resize the window under load.", Kind::Workbench => "Paint and inspect a persistent linear-P3 GPU image. Enable Compare wide | sRGB to compare the same region inside the interactive canvas." })
             .hero(hero)
             .caption(caption)
@@ -889,12 +893,22 @@ mod tests {
                 let look = crate::theme::default_look();
                 look.set_mode(mode);
                 let (view, cx) = app.add_window_view(|_, cx| Page::new(look, page, cx));
+                if page == "Interop Boids" {
+                    cx.simulate_resize(size(px(1600.), px(1400.)));
+                }
                 cx.run_until_parked();
                 for slot in ["gpu-interop-crumb", "gpu-interop-hero"] {
                     assert!(cx.debug_bounds(slot).is_some(), "{page}: {slot}");
                 }
                 if page == "Interop Boids" {
-                    assert!(cx.debug_bounds("boids-simulation").is_some());
+                    let demo = cx.debug_bounds("boids-simulation").unwrap();
+                    let enclosing = cx.debug_bounds("gpu-interop-hero").unwrap();
+                    assert_eq!(demo.size, size(px(1200.), px(600.)));
+                    assert!(enclosing.size.width > demo.size.width);
+                    assert!(
+                        (demo.center().x - enclosing.center().x).as_f32().abs() < 1.,
+                        "demo stays centered in the full-width panel"
+                    );
                     assert!(cx.debug_bounds("interop-srgb-preview").is_none(), "Boids has no color comparison");
                 } else if page == "GPU Canvas Workbench" {
                     assert!(cx.debug_bounds("interop-srgb-preview").is_none());

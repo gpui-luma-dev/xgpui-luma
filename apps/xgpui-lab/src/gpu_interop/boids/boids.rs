@@ -5,6 +5,7 @@
 //
 // Changes from the original:
 // - The particle count is a parameter instead of a constant.
+// - A wider world and matching projection fill the 2:1 interop target without distortion.
 // - `render` records into a caller's encoder and target view instead of
 //   submitting to a swapchain frame, and can draw without stepping (used to
 //   show a new flock while paused).
@@ -32,6 +33,7 @@ pub struct Boids {
     vertices_buffer: wgpu::Buffer,
     compute_pipeline: wgpu::ComputePipeline,
     render_pipeline: wgpu::RenderPipeline,
+    render_bind_group: wgpu::BindGroup,
     work_group_count: u32,
     sim_param_buffer: wgpu::Buffer,
     particles: u32,
@@ -55,13 +57,14 @@ impl Boids {
         // buffer for simulation parameters uniform
 
         let sim_param_data = [
-            0.04f32, // deltaT
-            0.1,     // rule1Distance
-            0.025,   // rule2Distance
-            0.025,   // rule3Distance
-            0.02,    // rule1Scale
-            0.05,    // rule2Scale
-            0.005,   // rule3Scale
+            0.04f32,               // deltaT
+            0.1,                   // rule1Distance
+            0.025,                 // rule2Distance
+            0.025,                 // rule3Distance
+            0.02,                  // rule1Scale
+            0.05,                  // rule2Scale
+            0.005,                 // rule3Scale
+            super::engine::ASPECT, // horizontal world half-extent and projection aspect
         ];
         let sim_param_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Simulation Parameter Buffer"),
@@ -112,11 +115,29 @@ impl Boids {
             immediate_size: 0,
         });
 
-        // create render pipeline with empty bind group layout
+        // Both stages share the same aspect parameter without binding compute storage in the render pass.
+        let render_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Boids projection"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: wgpu::BufferSize::new(32),
+                },
+                count: None,
+            }],
+        });
+        let render_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Boids projection"),
+            layout: &render_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: sim_param_buffer.as_entire_binding() }],
+        });
 
         let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("render"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[Some(&render_bind_group_layout)],
             immediate_size: 0,
         });
 
@@ -179,7 +200,7 @@ impl Boids {
         let mut rng = WyRand(42);
         let mut unif = || rng.next_f32() * 2f32 - 1f32; // Generate a num (-1, 1)
         for particle_instance_chunk in initial_particle_data.chunks_mut(4) {
-            particle_instance_chunk[0] = unif(); // posx
+            particle_instance_chunk[0] = unif() * super::engine::ASPECT; // posx across the full world
             particle_instance_chunk[1] = unif(); // posy
             particle_instance_chunk[2] = unif() * 0.1; // velx
             particle_instance_chunk[3] = unif() * 0.1; // vely
@@ -195,7 +216,14 @@ impl Boids {
             particle_buffers.push(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some(&format!("Particle Buffer {i}")),
                 contents: &initial_particle_bytes,
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+                usage: wgpu::BufferUsages::VERTEX
+                    | wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | if cfg!(test) {
+                        wgpu::BufferUsages::COPY_SRC
+                    } else {
+                        wgpu::BufferUsages::empty()
+                    },
             }));
         }
 
@@ -226,6 +254,7 @@ impl Boids {
             vertices_buffer,
             compute_pipeline,
             render_pipeline,
+            render_bind_group,
             work_group_count,
             sim_param_buffer,
             particles,
@@ -285,6 +314,7 @@ impl Boids {
             // render pass
             let mut rpass = encoder.begin_render_pass(&render_pass_descriptor);
             rpass.set_pipeline(&self.render_pipeline);
+            rpass.set_bind_group(0, &self.render_bind_group, &[]);
             // render the most recently written particles
             rpass.set_vertex_buffer(0, self.particle_buffers[self.frame_num % 2].slice(..));
             // the three instance-local vertices
@@ -312,3 +342,7 @@ impl WyRand {
         (self.next_u64() >> 40) as f32 / (1u64 << 24) as f32
     }
 }
+
+#[cfg(test)]
+#[path = "aspect_tests.rs"]
+mod aspect_tests;
