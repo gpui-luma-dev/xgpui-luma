@@ -79,11 +79,11 @@ impl GradientBuilder {
     /// Mesh/Freeform canvas surface painted by a GPU or P3 path.
     ///
     /// `None` means the CPU raster (`preview_image_cache`) is shown instead.
-    fn point_canvas_surface(&mut self, frame_size: Size<Pixels>) -> Option<AnyElement> {
+    fn point_canvas_surface(&mut self, frame_size: Size<Pixels>, cx: &mut Context<Self>) -> Option<AnyElement> {
         match self.selected_tab {
             BuilderTab::Gradients => None,
             BuilderTab::Mesh => self.mesh_shader_surface(frame_size),
-            BuilderTab::Freeform => self.freeform_surface(),
+            BuilderTab::Freeform => self.freeform_surface(cx),
         }
     }
 
@@ -296,7 +296,7 @@ impl Render for GradientBuilder {
                     size(frame_size.width + px(MESH_HANDLE_SIZE), frame_size.height + px(MESH_HANDLE_SIZE));
                 let mesh_controls = div().child(self.render_inspector("color-viz-mesh-controls", card_bg));
                 // Built before the metrics sample so GPU/P3 prep counts as CPU prep time.
-                let canvas_surface = self.point_canvas_surface(frame_size);
+                let canvas_surface = self.point_canvas_surface(frame_size, cx);
                 let (metrics, animating) = if self.selected_tab == BuilderTab::Freeform {
                     (&mut self.freeform_metrics, self.spread_animation)
                 } else {

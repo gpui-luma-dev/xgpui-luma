@@ -330,7 +330,7 @@ impl GradientBuilder {
     }
 
     pub(super) fn uses_render_preview(&self, cx: &Context<Self>) -> bool {
-        if self.selected_tab == BuilderTab::Freeform && self.freeform_gpu {
+        if self.selected_tab == BuilderTab::Freeform && self.freeform_renderer.is_gpu() {
             return false;
         }
         if self.selected_tab == BuilderTab::Mesh && self.mesh_shader_enabled {
@@ -571,7 +571,9 @@ impl GradientBuilder {
     pub(super) fn freeform_p3_active(&self) -> bool {
         self.selected_tab == BuilderTab::Freeform
             && self.freeform_p3
-            && cfg!(target_os = "macos")
+            && (cfg!(target_os = "macos")
+                || (cfg!(target_os = "windows")
+                    && self.freeform_renderer == super::freeform::gpu_field::Renderer::Wgpu))
             && self.wide_output_available
     }
 
@@ -610,7 +612,7 @@ impl GradientBuilder {
             BuilderTab::Mesh if self.mesh_shader_enabled => {
                 Some("Native Hermite mesh · opaque colors · interpolation differs from CPU Coons")
             }
-            BuilderTab::Freeform if self.freeform_p3_active() => Some(if self.freeform_gpu {
+            BuilderTab::Freeform if self.freeform_p3_active() => Some(if self.freeform_renderer.is_gpu() {
                 "P3 GPU field"
             } else {
                 "P3 CPU field"
