@@ -15,7 +15,7 @@ use xgpui_luma_look_radix as radix;
 
 use lucide_svg_static::Icon as LucideIcon;
 
-use super::radix_event_stream::RadixEventStream as ControlEventStream;
+use super::event_stream::ControlEventStream;
 
 pub struct ToolbarControlExposition {
     look: Arc<Look>,

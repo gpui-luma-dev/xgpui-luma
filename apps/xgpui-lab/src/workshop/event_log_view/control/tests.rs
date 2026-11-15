@@ -1,7 +1,7 @@
 //! Exercise the real log inside a scrolling page; no GUI launch.
 use super::*;
 use gpui::{Entity, IntoElement, ScrollDelta, ScrollHandle, TestAppContext, VisualTestContext, div, point, prelude::*};
-use xgpui_luma_look_shadcn::ShadcnLook;
+
 use crate::workshop::event_log_view::EventLogViewLookExt;
 
 struct Page {
@@ -24,7 +24,7 @@ impl Render for Page {
 fn setup(app: &mut TestAppContext, populated: bool) -> (Entity<Page>, &mut VisualTestContext) {
     let (page, cx) = app.add_window_view(|window, cx| {
         window.activate_window();
-        let log = Arc::new(ShadcnLook::built_in()).event_log_view("test-log").rows(3).full_width(true).spawn(cx);
+        let log = crate::theme::default_look().event_log_view("test-log").rows(3).full_width(true).spawn(cx);
         if populated {
             log.update(cx, |log, cx| {
                 for i in 0..80 {

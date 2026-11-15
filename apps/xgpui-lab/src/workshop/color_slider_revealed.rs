@@ -1,5 +1,6 @@
 //! Color slider revealed exposition — styling survey for the color-slider primitive.
 
+use crate::theme::Look;
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
@@ -8,8 +9,6 @@ use xgpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
 use xgpui_luma_color::color_slider::{ColorInterpolation, ColorSliderBuilder, SliderThumbSize};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::theme::ControlSize;
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::color_exposition_common::{format_slider_event, render_demo_section, render_field_card, slider_grid_stack};
 use super::event_stream::ControlEventStream;
@@ -17,7 +16,7 @@ use super::event_stream::ControlEventStream;
 const CARD_WIDTH: f32 = 360.0;
 
 pub(super) struct ColorSliderRevealedPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     size_xsmall: Entity<SliderControl>,
     size_small: Entity<SliderControl>,
     size_medium: Entity<SliderControl>,
@@ -43,7 +42,7 @@ pub(super) struct ColorSliderRevealedPane {
 }
 
 impl ColorSliderRevealedPane {
-    pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let size_xsmall = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-size-xsmall", 180.0)
             .size(ControlSize::Sm)
             .thumb_xsmall()
@@ -177,7 +176,7 @@ impl ColorSliderRevealedPane {
         }
     }
 
-    pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for slider in self.all_sliders() {
             slider.update(cx, |_, cx| cx.notify());
@@ -214,145 +213,143 @@ impl ColorSliderRevealedPane {
 
 impl Render for ColorSliderRevealedPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let look = &self.look;
+        let look = &self.look;
 
-            let preview = div()
-                .w_full()
-                .max_w(px(1120.0))
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(28.0))
-                .child(render_demo_section(
+        let preview = div()
+            .w_full()
+            .max_w(px(1120.0))
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                look,
+                "Scale",
+                "Track sizes and default density mappings.",
+                render_field_card(
                     look,
-                    "Scale",
-                    "Track sizes and default density mappings.",
-                    render_field_card(
+                    "Sizes",
+                    "XSmall through large.",
+                    CARD_WIDTH,
+                    slider_grid_stack(
                         look,
-                        "Sizes",
-                        "XSmall through large.",
+                        [
+                            ("XSmall", self.size_xsmall.clone()),
+                            ("Small", self.size_small.clone()),
+                            ("Medium", self.size_medium.clone()),
+                            ("Large", self.size_large.clone()),
+                        ],
+                    ),
+                ),
+            ))
+            .child(render_demo_section(
+                look,
+                "Corners and Thumb Shapes",
+                "Surface radius and thumb-shape variations.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
+                        look,
+                        "Corner Radius",
+                        "Default rounded, softened, and square corners.",
                         CARD_WIDTH,
                         slider_grid_stack(
                             look,
                             [
-                                ("XSmall", self.size_xsmall.clone()),
-                                ("Small", self.size_small.clone()),
-                                ("Medium", self.size_medium.clone()),
-                                ("Large", self.size_large.clone()),
+                                ("Rounded", self.rounded_full.clone()),
+                                ("Rounded 8", self.rounded_8.clone()),
+                                ("Square", self.rounded_square.clone()),
                             ],
                         ),
-                    ),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Corners and Thumb Shapes",
-                    "Surface radius and thumb-shape variations.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Corner Radius",
-                            "Default rounded, softened, and square corners.",
-                            CARD_WIDTH,
-                            slider_grid_stack(
-                                look,
-                                [
-                                    ("Rounded", self.rounded_full.clone()),
-                                    ("Rounded 8", self.rounded_8.clone()),
-                                    ("Square", self.rounded_square.clone()),
-                                ],
-                            ),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Thumb Shapes",
-                            "Default, square, and bar thumb treatments.",
-                            CARD_WIDTH,
-                            slider_grid_stack(
-                                look,
-                                [
-                                    ("Default", self.thumb_default.clone()),
-                                    ("Square", self.thumb_square.clone()),
-                                    ("Bar", self.thumb_bar.clone()),
-                                ],
-                            ),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Edge Cases",
-                    "Edge-to-edge and interpolation variants.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Edge To Edge",
-                            "Track ends aligned to the thumb centerline.",
-                            CARD_WIDTH,
-                            slider_grid_stack(
-                                look,
-                                [
-                                    ("Default", self.edge_default.clone()),
-                                    ("Square", self.edge_square.clone()),
-                                    ("Large", self.edge_large.clone()),
-                                ],
-                            ),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Interpolation",
-                            "RGB, HSL, and Lab interpolation over the same two-color gradient.",
-                            CARD_WIDTH,
-                            slider_grid_stack(
-                                look,
-                                [
-                                    ("RGB", self.interp_rgb.clone()),
-                                    ("HSL", self.interp_hsl.clone()),
-                                    ("Lab", self.interp_lab.clone()),
-                                ],
-                            ),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Delegate Samples",
-                    "Representative delegate families from the original page.",
-                    render_field_card(
+                    ))
+                    .child(render_field_card(
                         look,
-                        "Delegates",
-                        "Hue, alpha, red-channel, and HSL saturation delegates.",
+                        "Thumb Shapes",
+                        "Default, square, and bar thumb treatments.",
                         CARD_WIDTH,
                         slider_grid_stack(
                             look,
                             [
-                                ("Hue", self.delegate_hue.clone()),
-                                ("Alpha", self.delegate_alpha.clone()),
-                                ("Red", self.delegate_red.clone()),
-                                ("Saturation", self.delegate_saturation.clone()),
+                                ("Default", self.thumb_default.clone()),
+                                ("Square", self.thumb_square.clone()),
+                                ("Bar", self.thumb_bar.clone()),
                             ],
                         ),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(render_demo_section(
+                look,
+                "Edge Cases",
+                "Edge-to-edge and interpolation variants.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
+                        look,
+                        "Edge To Edge",
+                        "Track ends aligned to the thumb centerline.",
+                        CARD_WIDTH,
+                        slider_grid_stack(
+                            look,
+                            [
+                                ("Default", self.edge_default.clone()),
+                                ("Square", self.edge_square.clone()),
+                                ("Large", self.edge_large.clone()),
+                            ],
+                        ),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Interpolation",
+                        "RGB, HSL, and Lab interpolation over the same two-color gradient.",
+                        CARD_WIDTH,
+                        slider_grid_stack(
+                            look,
+                            [
+                                ("RGB", self.interp_rgb.clone()),
+                                ("HSL", self.interp_hsl.clone()),
+                                ("Lab", self.interp_lab.clone()),
+                            ],
+                        ),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(render_demo_section(
+                look,
+                "Delegate Samples",
+                "Representative delegate families from the original page.",
+                render_field_card(
+                    look,
+                    "Delegates",
+                    "Hue, alpha, red-channel, and HSL saturation delegates.",
+                    CARD_WIDTH,
+                    slider_grid_stack(
+                        look,
+                        [
+                            ("Hue", self.delegate_hue.clone()),
+                            ("Alpha", self.delegate_alpha.clone()),
+                            ("Red", self.delegate_red.clone()),
+                            ("Saturation", self.delegate_saturation.clone()),
+                        ],
                     ),
-                ))
-                .child(self.event_stream.clone());
+                ),
+            ))
+            .child(self.event_stream.clone());
 
-            div()
-                .id("controls-doc-color-slider-revealed-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+        div()
+            .id("controls-doc-color-slider-revealed-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 

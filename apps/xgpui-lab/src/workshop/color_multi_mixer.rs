@@ -1,12 +1,11 @@
 //! Multi mixer composition exposition — per-color-space channel mixers.
 
+use crate::theme::Look;
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::slider::SliderEvent;
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::ShadcnLook;
 
 mod demo;
 
@@ -15,14 +14,14 @@ use super::color_exposition_common::{format_slider_event, render_demo_section};
 use super::event_stream::ControlEventStream;
 
 pub struct ColorMultiMixerControlExposition {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     demo: Entity<MultiMixerDemo>,
     event_stream: Entity<ControlEventStream>,
     _subscriptions: Vec<Subscription>,
 }
 
 impl ColorMultiMixerControlExposition {
-    pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let demo = cx.new(|cx| MultiMixerDemo::new(look.clone(), cx));
 
         let event_stream = cx.new(|cx| {
@@ -39,7 +38,7 @@ impl ColorMultiMixerControlExposition {
         Self { look, demo, event_stream, _subscriptions: subscriptions }
     }
 
-    pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.demo.update(cx, |demo, cx| demo.sync_look(look.clone(), cx));
         self.event_stream.update(cx, |stream, cx| stream.sync_look(self.look.clone(), cx));
@@ -49,25 +48,23 @@ impl ColorMultiMixerControlExposition {
 
 impl Render for ColorMultiMixerControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let look = &self.look;
+        let look = &self.look;
 
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(28.0))
-                .child(render_demo_section(
-                    look,
-                    "Multi Mixer",
-                    "Representative per-color-space channel mixers from the gallery inventory.",
-                    div().child(self.demo.clone()).into_any_element(),
-                ))
-                .child(self.event_stream.clone());
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                look,
+                "Multi Mixer",
+                "Representative per-color-space channel mixers from the gallery inventory.",
+                div().child(self.demo.clone()).into_any_element(),
+            ))
+            .child(self.event_stream.clone());
 
-            div().id("workshop-multi-mixer-scroll").size_full().overflow_y_scroll().p(px(16.0)).child(preview)
-        })
+        div().id("workshop-multi-mixer-scroll").size_full().overflow_y_scroll().p(px(16.0)).child(preview)
     }
 }
 

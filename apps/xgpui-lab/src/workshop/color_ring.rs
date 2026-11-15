@@ -1,5 +1,6 @@
 //! Color ring control exposition — linked HSL rings and renderer comparison.
 
+use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
@@ -14,8 +15,6 @@ use xgpui_luma_color::color_slider::ColorSpecification;
 use xgpui_luma_color::style::Size;
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::{vstack, wrappanel};
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::color_exposition_common::{detail_row, format_slider_event, render_demo_card, render_demo_section};
 use super::event_stream::ControlEventStream;
@@ -83,7 +82,7 @@ impl RingDemo {
 }
 
 pub(super) struct ColorRingExpositionLeftPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     color_ring: RingDemo,
     color_ring_vector: RingDemo,
     color_ring_raster: RingDemo,
@@ -146,7 +145,7 @@ impl ColorRingExpositionLeftPane {
         cx.notify();
     }
 
-    pub(super) fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for ring in [
             &self.color_ring,
@@ -164,100 +163,98 @@ impl ColorRingExpositionLeftPane {
 
 impl Render for ColorRingExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let look = &self.look;
-            let chrome = look.chrome();
+        let look = &self.look;
+        let chrome = look.chrome();
 
-            let interactive = wrappanel! {
-                gap=24 align=center;
-                div()
-                    .size(px(SWATCH_SIZE))
-                    .flex_shrink_0()
-                    .rounded(px(8.0))
-                    .bg(self.ring_color)
-                    .border_1()
-                    .border_color(chrome.border),
-                div()
-                    .size(px(RING_FRAME_PX))
-                    .flex_shrink_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .child(self.color_ring.slider.clone()),
-                div()
-                    .w(px(SLIDER_COLUMN_WIDTH))
-                    .flex_shrink_0()
-                    .child(vstack! {
-                        gap=16;
-                        div()
-                            .size(px(RING_MEDIUM_PX))
-                            .flex_shrink_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child(self.ring_saturation.slider.clone()),
-                        div()
-                            .size(px(RING_MEDIUM_PX))
-                            .flex_shrink_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child(self.ring_lightness.slider.clone()),
-                    }),
-                div()
-                    .w(px(READOUT_WIDTH))
-                    .flex_shrink_0()
-                    .child(vstack! {
-                        gap=8;
-                        detail_row(look, "H", format!("{:.1}°", self.ring_color.h * 360.0)),
-                        detail_row(look, "S", format!("{:.3}", self.ring_color.s)),
-                        detail_row(look, "L", format!("{:.3}", self.ring_color.l)),
-                        detail_row(look, "A", format!("{:.3}", self.ring_color.a)),
-                    }),
-            };
-
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(28.0))
-                .child(render_demo_section(
-                    look,
-                    "Interactive HSL Mixer",
-                    "Primary hue, saturation, and lightness rings linked to a shared swatch.",
-                    render_demo_card(look, WIDE_CARD, interactive),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Renderer Compare",
-                    "Vector paths vs raster pre-image for the same hue ring.",
-                    render_demo_card(
-                        look,
-                        WIDE_CARD,
-                        wrappanel! {
-                            gap=24 align=center;
-                            render_ring_variant(look, "Vector", self.color_ring_vector.slider.clone(), RING_MEDIUM_PX),
-                            render_ring_variant(look, "Raster", self.color_ring_raster.slider.clone(), RING_MEDIUM_PX),
-                        },
-                    ),
-                ))
-                .child(self.event_stream.clone());
-
+        let interactive = wrappanel! {
+            gap=24 align=center;
             div()
-                .id("controls-doc-color-ring-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+                .size(px(SWATCH_SIZE))
+                .flex_shrink_0()
+                .rounded(px(look.metrics().radius.lg))
+                .bg(self.ring_color)
+                .border_1()
+                .border_color(chrome.border),
+            div()
+                .size(px(RING_FRAME_PX))
+                .flex_shrink_0()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(self.color_ring.slider.clone()),
+            div()
+                .w(px(SLIDER_COLUMN_WIDTH))
+                .flex_shrink_0()
+                .child(vstack! {
+                    gap=16;
+                    div()
+                        .size(px(RING_MEDIUM_PX))
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(self.ring_saturation.slider.clone()),
+                    div()
+                        .size(px(RING_MEDIUM_PX))
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(self.ring_lightness.slider.clone()),
+                }),
+            div()
+                .w(px(READOUT_WIDTH))
+                .flex_shrink_0()
+                .child(vstack! {
+                    gap=8;
+                    detail_row(look, "H", format!("{:.1}°", self.ring_color.h * 360.0)),
+                    detail_row(look, "S", format!("{:.3}", self.ring_color.s)),
+                    detail_row(look, "L", format!("{:.3}", self.ring_color.l)),
+                    detail_row(look, "A", format!("{:.3}", self.ring_color.a)),
+                }),
+        };
+
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                look,
+                "Interactive HSL Mixer",
+                "Primary hue, saturation, and lightness rings linked to a shared swatch.",
+                render_demo_card(look, WIDE_CARD, interactive),
+            ))
+            .child(render_demo_section(
+                look,
+                "Renderer Compare",
+                "Vector paths vs raster pre-image for the same hue ring.",
+                render_demo_card(
+                    look,
+                    WIDE_CARD,
+                    wrappanel! {
+                        gap=24 align=center;
+                        render_ring_variant(look, "Vector", self.color_ring_vector.slider.clone(), RING_MEDIUM_PX),
+                        render_ring_variant(look, "Raster", self.color_ring_raster.slider.clone(), RING_MEDIUM_PX),
+                    },
+                ),
+            ))
+            .child(self.event_stream.clone());
+
+        div()
+            .id("controls-doc-color-ring-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 
 impl ColorRingExpositionLeftPane {
-    pub(super) fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub(super) fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let hsla_color = hsla(0.0, 1.0, 0.5, 1.0);
         let hsl = Hsl::from_hsla(hsla_color);
 
@@ -373,12 +370,12 @@ fn append_slider_event(event_stream: &Entity<ControlEventStream>, source: &str, 
 }
 
 fn render_ring_variant(
-    look: &ShadcnLook,
+    look: &Look,
     label: &'static str,
     ring: Entity<SliderControl>,
     frame_px: f32,
 ) -> impl IntoElement {
-    let label_style = look.typography_scale(xgpui_luma_look_shadcn::ShadcnTextSize::Xs);
+    let label_style = look.typography_scale(TextSize::Xs);
 
     vstack! {
         gap=8 align=center;
@@ -403,7 +400,7 @@ mod tests {
         let mut app = gpui::TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (pane, cx) =
-            app.add_window_view(|_, cx| ColorRingExpositionLeftPane::new(cx, Arc::new(ShadcnLook::built_in())));
+            app.add_window_view(|_, cx| ColorRingExpositionLeftPane::new(cx, crate::theme::default_look()));
         let hue = cx.update(|_, cx| pane.read(cx).color_ring.slider.clone());
         hue.update(cx, |slider, cx| {
             slider.set_value(125., cx);

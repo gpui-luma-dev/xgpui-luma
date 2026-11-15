@@ -1,5 +1,6 @@
 //! Color arc control exposition — channel arcs, renderer compare, and thickness variants.
 
+use crate::theme::{ColorVizLookExt, Look};
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
@@ -11,8 +12,6 @@ use xgpui_luma_color::color_arc::{
 use xgpui_luma_color::color_slider::color_spec::Hsv;
 use xgpui_luma_color::style::Size;
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::color_exposition_common::{
     centered_field, detail_row, format_compact_hsla, format_hex_color, format_slider_event, render_demo_section,
@@ -78,7 +77,7 @@ impl ArcDemo {
 }
 
 pub(super) struct ColorArcExpositionLeftPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     hue_arc: ArcDemo,
     saturation_arc: ArcDemo,
     lightness_arc: ArcDemo,
@@ -129,7 +128,7 @@ impl ColorArcExpositionLeftPane {
         self.thickness_large_arc.sync_hue_raster(saturation, lightness, cx);
     }
 
-    pub(super) fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for arc in [
             &self.hue_arc,
@@ -149,131 +148,129 @@ impl ColorArcExpositionLeftPane {
 
 impl Render for ColorArcExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let look = &self.look;
-            let selected = self.hsv.to_hsla_ext();
+        let look = &self.look;
+        let selected = self.hsv.to_hsla_ext();
 
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(28.0))
-                .child(render_demo_section(
-                    look,
-                    "Channels",
-                    "Hue, saturation, and lightness delegates rendered as 270-degree arcs.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Hue Arc",
-                            "Primary interactive hue arc.",
-                            ARC_CARD_WIDTH,
-                            centered_field(self.hue_arc.slider.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Saturation Arc",
-                            "Mirrored saturation arc delegate.",
-                            ARC_CARD_WIDTH,
-                            centered_field(self.saturation_arc.slider.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Lightness Arc",
-                            "Mirrored lightness arc delegate.",
-                            ARC_CARD_WIDTH,
-                            centered_field(self.lightness_arc.slider.clone()),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Renderer Compare",
-                    "Vector and raster hue arcs rendered with the same geometry.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Vector",
-                            "Segmented vector arc.",
-                            ARC_CARD_WIDTH,
-                            centered_field(self.vector_arc.slider.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Raster",
-                            "Raster-backed arc.",
-                            ARC_CARD_WIDTH,
-                            centered_field(self.raster_arc.slider.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Live Readout",
-                            "Current value from the primary hue arc.",
-                            ARC_CARD_WIDTH,
-                            div()
-                                .w_full()
-                                .flex()
-                                .flex_col()
-                                .gap(px(10.0))
-                                .child(
-                                    div()
-                                        .h(px(44.0))
-                                        .rounded(px(12.0))
-                                        .border_1()
-                                        .border_color(look.chrome().border)
-                                        .bg(selected),
-                                )
-                                .child(detail_row(look, "Hex", format_hex_color(selected)))
-                                .child(detail_row(look, "HSLA", format_compact_hsla(selected)))
-                                .child(detail_row(look, "Hue", format!("{:.1} deg", self.hsv.h)))
-                                .child(detail_row(look, "Last Event", self.last_event.clone())),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Thickness",
-                    "Thinner and thicker variants of the same hue arc.",
-                    render_field_card(
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                look,
+                "Channels",
+                "Hue, saturation, and lightness delegates rendered as 270-degree arcs.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
                         look,
-                        "Thickness Variants",
-                        "Small and large arc track thickness on a half arc.",
+                        "Hue Arc",
+                        "Primary interactive hue arc.",
+                        ARC_CARD_WIDTH,
+                        centered_field(self.hue_arc.slider.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Saturation Arc",
+                        "Mirrored saturation arc delegate.",
+                        ARC_CARD_WIDTH,
+                        centered_field(self.saturation_arc.slider.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Lightness Arc",
+                        "Mirrored lightness arc delegate.",
+                        ARC_CARD_WIDTH,
+                        centered_field(self.lightness_arc.slider.clone()),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(render_demo_section(
+                look,
+                "Renderer Compare",
+                "Vector and raster hue arcs rendered with the same geometry.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
+                        look,
+                        "Vector",
+                        "Segmented vector arc.",
+                        ARC_CARD_WIDTH,
+                        centered_field(self.vector_arc.slider.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Raster",
+                        "Raster-backed arc.",
+                        ARC_CARD_WIDTH,
+                        centered_field(self.raster_arc.slider.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Live Readout",
+                        "Current value from the primary hue arc.",
                         ARC_CARD_WIDTH,
                         div()
                             .w_full()
                             .flex()
                             .flex_col()
-                            .items_center()
-                            .gap(px(14.0))
-                            .child(self.thickness_small_arc.slider.clone())
-                            .child(self.thickness_large_arc.slider.clone()),
-                    ),
-                ))
-                .child(self.event_stream.clone());
+                            .gap(px(10.0))
+                            .child(
+                                div()
+                                    .h(px(44.0))
+                                    .rounded(px(look.metrics().radius.lg))
+                                    .border_1()
+                                    .border_color(look.chrome().border)
+                                    .bg(selected),
+                            )
+                            .child(detail_row(look, "Hex", format_hex_color(selected)))
+                            .child(detail_row(look, "HSLA", format_compact_hsla(selected)))
+                            .child(detail_row(look, "Hue", format!("{:.1} deg", self.hsv.h)))
+                            .child(detail_row(look, "Last Event", self.last_event.clone())),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(render_demo_section(
+                look,
+                "Thickness",
+                "Thinner and thicker variants of the same hue arc.",
+                render_field_card(
+                    look,
+                    "Thickness Variants",
+                    "Small and large arc track thickness on a half arc.",
+                    ARC_CARD_WIDTH,
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .gap(px(14.0))
+                        .child(self.thickness_small_arc.slider.clone())
+                        .child(self.thickness_large_arc.slider.clone()),
+                ),
+            ))
+            .child(self.event_stream.clone());
 
-            div()
-                .id("controls-doc-color-arc-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+        div()
+            .id("controls-doc-color-arc-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 
 impl ColorArcExpositionLeftPane {
-    pub(super) fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub(super) fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let hsv = Hsv { h: 28.0, s: 0.74, v: 0.92, a: 1.0 };
         let lightness = hsv.to_hsla_ext().l;
 

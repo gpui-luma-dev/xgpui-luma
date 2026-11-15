@@ -1,13 +1,12 @@
 //! Color field control exposition — rectangular, triangle, wheel, and renderer samples.
 
+use crate::theme::{ColorVizLookExt, Look};
 use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
 use xgpui_luma_color::color_slider::color_spec::Hsv;
 use xgpui_luma_color::color_slider::sizing;
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::ShadcnLook;
 
 use super::color_exposition_common::{
     detail_row, format_color_field_event, format_compact_hsla, format_hex_color, render_demo_section, render_field_card,
@@ -18,7 +17,7 @@ const FIELD_SIZE: f32 = 220.0;
 const CARD_WIDTH: f32 = 320.0;
 
 pub(super) struct ColorFieldExpositionLeftPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     rect_field: Entity<ColorFieldState>,
     raster_field: Entity<ColorFieldState>,
     triangle_field: Entity<ColorFieldState>,
@@ -30,7 +29,7 @@ pub(super) struct ColorFieldExpositionLeftPane {
 }
 
 impl ColorFieldExpositionLeftPane {
-    pub(super) fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for field in
             [&self.rect_field, &self.raster_field, &self.triangle_field, &self.wheel_field, &self.hue_value_field]
@@ -52,123 +51,121 @@ impl ColorFieldExpositionLeftPane {
 
 impl Render for ColorFieldExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let look = &self.look;
-            let selected = self.hsv.to_hsla_ext();
+        let look = &self.look;
+        let selected = self.hsv.to_hsla_ext();
 
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(px(28.0))
-                .child(render_demo_section(
-                    look,
-                    "Planes",
-                    "Representative field models from the gallery inventory.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Saturation / Value",
-                            "Primary rectangular HSV field.",
-                            CARD_WIDTH,
-                            div().size(px(FIELD_SIZE)).child(self.rect_field.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Hue / Value",
-                            "Alternate rectangular domain at fixed saturation.",
-                            CARD_WIDTH,
-                            div().size(px(FIELD_SIZE)).child(self.hue_value_field.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Triangle Domain",
-                            "Triangle selection surface using the same color model.",
-                            CARD_WIDTH,
-                            div().size(px(FIELD_SIZE)).child(self.triangle_field.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Hue / Saturation Wheel",
-                            "Circular field variant.",
-                            CARD_WIDTH,
-                            div().size(px(FIELD_SIZE)).child(self.wheel_field.clone()),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(render_demo_section(
-                    look,
-                    "Renderer Compare",
-                    "Vector field next to a prewarmed raster image field.",
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.0))
-                        .child(render_field_card(
-                            look,
-                            "Raster Image",
-                            "Raster-backed field using the same HSV model.",
-                            CARD_WIDTH,
-                            div().size(px(FIELD_SIZE)).child(self.raster_field.clone()),
-                        ))
-                        .child(render_field_card(
-                            look,
-                            "Selection Readout",
-                            "Readout from the primary saturation/value field.",
-                            CARD_WIDTH,
-                            div()
-                                .w_full()
-                                .flex()
-                                .flex_col()
-                                .gap(px(10.0))
-                                .child(
-                                    div()
-                                        .h(px(44.0))
-                                        .rounded(px(12.0))
-                                        .border_1()
-                                        .border_color(look.chrome().border)
-                                        .bg(selected),
-                                )
-                                .child(detail_row(look, "Hex", format_hex_color(selected)))
-                                .child(detail_row(look, "HSLA", format_compact_hsla(selected)))
-                                .child(detail_row(look, "Hue", format!("{:.1} deg", self.hsv.h)))
-                                .child(detail_row(look, "Saturation", format!("{:.3}", self.hsv.s)))
-                                .child(detail_row(look, "Value", format!("{:.3}", self.hsv.v))),
-                        ))
-                        .into_any_element(),
-                ))
-                .child(self.event_stream.clone());
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_start()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                look,
+                "Planes",
+                "Representative field models from the gallery inventory.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
+                        look,
+                        "Saturation / Value",
+                        "Primary rectangular HSV field.",
+                        CARD_WIDTH,
+                        div().size(px(FIELD_SIZE)).child(self.rect_field.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Hue / Value",
+                        "Alternate rectangular domain at fixed saturation.",
+                        CARD_WIDTH,
+                        div().size(px(FIELD_SIZE)).child(self.hue_value_field.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Triangle Domain",
+                        "Triangle selection surface using the same color model.",
+                        CARD_WIDTH,
+                        div().size(px(FIELD_SIZE)).child(self.triangle_field.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Hue / Saturation Wheel",
+                        "Circular field variant.",
+                        CARD_WIDTH,
+                        div().size(px(FIELD_SIZE)).child(self.wheel_field.clone()),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(render_demo_section(
+                look,
+                "Renderer Compare",
+                "Vector field next to a prewarmed raster image field.",
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap(px(16.0))
+                    .child(render_field_card(
+                        look,
+                        "Raster Image",
+                        "Raster-backed field using the same HSV model.",
+                        CARD_WIDTH,
+                        div().size(px(FIELD_SIZE)).child(self.raster_field.clone()),
+                    ))
+                    .child(render_field_card(
+                        look,
+                        "Selection Readout",
+                        "Readout from the primary saturation/value field.",
+                        CARD_WIDTH,
+                        div()
+                            .w_full()
+                            .flex()
+                            .flex_col()
+                            .gap(px(10.0))
+                            .child(
+                                div()
+                                    .h(px(44.0))
+                                    .rounded(px(look.metrics().radius.lg))
+                                    .border_1()
+                                    .border_color(look.chrome().border)
+                                    .bg(selected),
+                            )
+                            .child(detail_row(look, "Hex", format_hex_color(selected)))
+                            .child(detail_row(look, "HSLA", format_compact_hsla(selected)))
+                            .child(detail_row(look, "Hue", format!("{:.1} deg", self.hsv.h)))
+                            .child(detail_row(look, "Saturation", format!("{:.3}", self.hsv.s)))
+                            .child(detail_row(look, "Value", format!("{:.3}", self.hsv.v))),
+                    ))
+                    .into_any_element(),
+            ))
+            .child(self.event_stream.clone());
 
-            div()
-                .id("controls-doc-color-field-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+        div()
+            .id("controls-doc-color-field-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 
 impl ColorFieldExpositionLeftPane {
-    pub(super) fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub(super) fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let hsv = Hsv { h: 320.0, s: 0.72, v: 0.84, a: 1.0 };
 
         let rect_field = cx.new(|_| {
             ColorFieldState::saturation_value_rect("controls-doc-color-field-rect", hsv, sizing::THUMB_SIZE_MEDIUM)
                 .vector()
-                .rounded(px(12.0))
+                .rounded(px(look.metrics().radius.lg))
         });
         let raster_field = cx.new(|_| {
             ColorFieldState::saturation_value_rect("controls-doc-color-field-raster", hsv, sizing::THUMB_SIZE_MEDIUM)
-                .rounded(px(12.0))
+                .rounded(px(look.metrics().radius.lg))
                 .raster_image_prewarmed_square(FIELD_SIZE)
         });
         let triangle_field = cx.new(|_| {
@@ -186,7 +183,7 @@ impl ColorFieldExpositionLeftPane {
         });
         let hue_value_field = cx.new(|_| {
             ColorFieldState::hue_value("controls-doc-color-field-hue-value", hsv, sizing::THUMB_SIZE_MEDIUM)
-                .rounded(px(12.0))
+                .rounded(px(look.metrics().radius.lg))
                 .vector()
         });
 

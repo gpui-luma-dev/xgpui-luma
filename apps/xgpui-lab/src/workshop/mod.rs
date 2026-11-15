@@ -12,7 +12,6 @@ mod color_slider_revealed;
 mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
-mod radix_event_stream;
 mod sample_layout;
 mod event_log_view;
 
@@ -30,7 +29,6 @@ use xgpui_luma::controls::{
 };
 use xgpui_luma::theme::ThemeMode;
 use xgpui_luma::prelude::HasPresenter;
-use xgpui_luma_look_shadcn::ShadcnLook;
 use crate::theme::{ColorVizLookExt, Look};
 use catalog::COMPONENT_CATALOG;
 
@@ -62,11 +60,11 @@ impl Sample {
         }
     }
 
-    fn sync_look(&self, look: Arc<ShadcnLook>, shell_look: Arc<Look>, cx: &mut gpui::App) {
+    fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
-            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
-            Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
-            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(shell_look, cx)),
+            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Field(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Ring(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -88,15 +86,11 @@ pub(crate) struct Workshop {
     selected: &'static str,
     navigation: Vec<NavigationEntry>,
     samples: HashMap<&'static str, Sample>,
-    look: Arc<ShadcnLook>,
     shell_look: Arc<Look>,
 }
 
 impl Workshop {
     pub(crate) fn new(shell_look: Arc<Look>, cx: &mut Context<Self>) -> Self {
-        let look =
-            Arc::new(ShadcnLook::from_css_str(xgpui_luma_look_shadcn::FALLBACK_CSS).expect("bundled Workshop theme"));
-        look.set_mode(shell_look.mode());
         let mut navigation = Vec::new();
         let mut groups = Vec::new();
         for group in COMPONENT_CATALOG {
@@ -178,7 +172,7 @@ impl Workshop {
             .content_padding_y(4.)
             .items(groups)
             .spawn(cx);
-        let mut this = Self { sidebar, selected: "color-field", navigation, samples: HashMap::new(), look, shell_look };
+        let mut this = Self { sidebar, selected: "color-field", navigation, samples: HashMap::new(), shell_look };
         this.select("color-field", cx);
         this
     }
@@ -189,7 +183,7 @@ impl Workshop {
         }
         self.selected = id;
         if !self.samples.contains_key(id) {
-            let look = self.look.clone();
+            let look = self.shell_look.clone();
             let sample = match id {
                 "button" => {
                     Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
@@ -228,10 +222,9 @@ impl Workshop {
     }
 
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
-        self.look.set_mode(mode);
         self.shell_look.set_mode(mode);
         for sample in self.samples.values() {
-            sample.sync_look(self.look.clone(), self.shell_look.clone(), cx);
+            sample.sync_look(self.shell_look.clone(), cx);
         }
         cx.notify();
     }
@@ -356,7 +349,7 @@ mod tests {
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).samples.len(), 9);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
-            assert_eq!(view.read(cx).look.mode(), ThemeMode::Light);
+            assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
     }
 

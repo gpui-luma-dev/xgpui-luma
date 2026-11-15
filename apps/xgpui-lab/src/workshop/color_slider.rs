@@ -1,5 +1,6 @@
 //! Color slider control exposition — gallery-aligned hue/saturation/alpha, gradients, and channels.
 
+use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use xgpui_luma::controls::slider::SliderEventExt;
 use xgpui_luma::color::gpui_bridge::from_hsla;
 use std::sync::Arc;
@@ -13,8 +14,6 @@ use xgpui_luma_color::color_slider::{
 };
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::theme::ControlSize;
-use xgpui_luma_look_shadcn::prelude::*;
-use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
 use super::color_exposition_common::slider_labeled_row;
 use super::event_stream::ControlEventStream;
@@ -23,7 +22,7 @@ const WIDE_CARD: f32 = 420.0;
 const NARROW_CARD: f32 = 320.0;
 
 pub(super) struct ColorSliderExpositionLeftPane {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     hue_slider: Entity<SliderControl>,
     saturation_slider: Entity<SliderControl>,
     alpha_slider: Entity<SliderControl>,
@@ -41,7 +40,7 @@ pub(super) struct ColorSliderExpositionLeftPane {
 }
 
 impl ColorSliderExpositionLeftPane {
-    pub(super) fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for slider in [
             &self.hue_slider,
@@ -77,90 +76,88 @@ impl ColorSliderExpositionLeftPane {
 
 impl Render for ColorSliderExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        with_look(&self.look, || {
-            let selected = self.hsl.to_hsla();
+        let selected = self.hsl.to_hsla();
 
-            let preview = div()
-                .w_full()
-                .flex()
-                .flex_col()
-                .gap(px(28.0))
-                .child(render_demo_section(
+        let preview = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(28.0))
+            .child(render_demo_section(
+                &self.look,
+                "Core Delegates",
+                "Primary interactive color sliders backed by hue, saturation, and alpha delegates.",
+                render_demo_card(
                     &self.look,
-                    "Core Delegates",
-                    "Primary interactive color sliders backed by hue, saturation, and alpha delegates.",
-                    render_demo_card(
-                        &self.look,
-                        WIDE_CARD,
-                        div()
-                            .w_full()
-                            .flex()
-                            .flex_col()
-                            .gap(px(12.0))
-                            .child(slider_labeled_row(&self.look, "Hue", self.hue_slider.clone()))
-                            .child(slider_labeled_row(&self.look, "Saturation", self.saturation_slider.clone()))
-                            .child(slider_labeled_row(&self.look, "Alpha", self.alpha_slider.clone()))
-                            .child(
-                                ColorSwatch::new(from_hsla(selected))
-                                    .checkerboard(true)
-                                    .height(px(44.0))
-                                    .rounded(px(12.0))
-                                    .into_any_element(),
-                            )
-                            .child(detail_row(&self.look, "Hex", format_hex_color(selected)))
-                            .child(detail_row(&self.look, "HSLA", format_compact_hsla(selected))),
-                    ),
-                ))
-                .child(render_demo_section(
+                    WIDE_CARD,
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.0))
+                        .child(slider_labeled_row(&self.look, "Hue", self.hue_slider.clone()))
+                        .child(slider_labeled_row(&self.look, "Saturation", self.saturation_slider.clone()))
+                        .child(slider_labeled_row(&self.look, "Alpha", self.alpha_slider.clone()))
+                        .child(
+                            ColorSwatch::new(from_hsla(selected))
+                                .checkerboard(true)
+                                .height(px(44.0))
+                                .rounded(px(self.look.metrics().radius.lg))
+                                .into_any_element(),
+                        )
+                        .child(detail_row(&self.look, "Hex", format_hex_color(selected)))
+                        .child(detail_row(&self.look, "HSLA", format_compact_hsla(selected))),
+                ),
+            ))
+            .child(render_demo_section(
+                &self.look,
+                "Interpolation",
+                "Gradient interpolation paths from the upstream slider demos.",
+                render_demo_card(
                     &self.look,
-                    "Interpolation",
-                    "Gradient interpolation paths from the upstream slider demos.",
-                    render_demo_card(
-                        &self.look,
-                        NARROW_CARD,
-                        div()
-                            .w_full()
-                            .flex()
-                            .flex_col()
-                            .gap(px(12.0))
-                            .child(slider_labeled_row(&self.look, "RGB", self.gradient_rgb.clone()))
-                            .child(slider_labeled_row(&self.look, "HSL", self.gradient_hsl.clone()))
-                            .child(slider_labeled_row(&self.look, "Lab", self.gradient_lab.clone())),
-                    ),
-                ))
-                .child(render_demo_section(
+                    NARROW_CARD,
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.0))
+                        .child(slider_labeled_row(&self.look, "RGB", self.gradient_rgb.clone()))
+                        .child(slider_labeled_row(&self.look, "HSL", self.gradient_hsl.clone()))
+                        .child(slider_labeled_row(&self.look, "Lab", self.gradient_lab.clone())),
+                ),
+            ))
+            .child(render_demo_section(
+                &self.look,
+                "Channels",
+                "Representative RGB channel delegates.",
+                render_demo_card(
                     &self.look,
-                    "Channels",
-                    "Representative RGB channel delegates.",
-                    render_demo_card(
-                        &self.look,
-                        NARROW_CARD,
-                        div()
-                            .w_full()
-                            .flex()
-                            .flex_col()
-                            .gap(px(12.0))
-                            .child(slider_labeled_row(&self.look, "Red", self.red_slider.clone()))
-                            .child(slider_labeled_row(&self.look, "Green", self.green_slider.clone()))
-                            .child(slider_labeled_row(&self.look, "Blue", self.blue_slider.clone())),
-                    ),
-                ))
-                .child(self.event_stream.clone());
+                    NARROW_CARD,
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.0))
+                        .child(slider_labeled_row(&self.look, "Red", self.red_slider.clone()))
+                        .child(slider_labeled_row(&self.look, "Green", self.green_slider.clone()))
+                        .child(slider_labeled_row(&self.look, "Blue", self.blue_slider.clone())),
+                ),
+            ))
+            .child(self.event_stream.clone());
 
-            div()
-                .id("controls-doc-color-slider-left-pane")
-                .size_full()
-                .min_h(px(0.0))
-                .min_w(px(0.0))
-                .overflow_y_scroll()
-                .p(px(16.0))
-                .child(preview)
-        })
+        div()
+            .id("controls-doc-color-slider-left-pane")
+            .size_full()
+            .min_h(px(0.0))
+            .min_w(px(0.0))
+            .overflow_y_scroll()
+            .p(px(16.0))
+            .child(preview)
     }
 }
 
 impl ColorSliderExpositionLeftPane {
-    pub(super) fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
+    pub(super) fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let hsl = Hsl { h: 210.0, s: 0.72, l: 0.52, a: 0.85 };
 
         let hue_slider = ColorSliderBuilder::hue("controls-doc-color-slider-hue", hsl.h)
@@ -326,14 +323,14 @@ fn format_slider_event(source: &str, event: &SliderEvent) -> Option<String> {
 }
 
 fn render_demo_section(
-    look: &ShadcnLook,
+    look: &Look,
     title: &'static str,
     description: &'static str,
     content: gpui::AnyElement,
 ) -> gpui::AnyElement {
     let chrome = look.chrome();
-    let title_style = look.typography_role(ShadcnTextRole::H4);
-    let description_style = look.typography_scale(ShadcnTextSize::Sm);
+    let title_style = look.typography_scale(TextSize::Base);
+    let description_style = look.typography_scale(TextSize::Sm);
 
     div()
         .flex()
@@ -357,7 +354,7 @@ fn render_demo_section(
         .into_any_element()
 }
 
-fn render_demo_card(look: &ShadcnLook, width_px: f32, content: impl IntoElement) -> gpui::AnyElement {
+fn render_demo_card(look: &Look, width_px: f32, content: impl IntoElement) -> gpui::AnyElement {
     let chrome = look.chrome();
 
     div()
@@ -366,7 +363,7 @@ fn render_demo_card(look: &ShadcnLook, width_px: f32, content: impl IntoElement)
         .flex()
         .flex_col()
         .gap(px(14.0))
-        .rounded(px(16.0))
+        .rounded(px(look.metrics().radius.xl))
         .border_1()
         .border_color(chrome.border)
         .bg(chrome.panel_background)
@@ -375,9 +372,9 @@ fn render_demo_card(look: &ShadcnLook, width_px: f32, content: impl IntoElement)
         .into_any_element()
 }
 
-fn detail_row(look: &ShadcnLook, label: &'static str, value: String) -> gpui::AnyElement {
+fn detail_row(look: &Look, label: &'static str, value: String) -> gpui::AnyElement {
     let chrome = look.chrome();
-    let label_style = look.typography_scale(ShadcnTextSize::Xs);
+    let label_style = look.typography_scale(TextSize::Xs);
 
     div()
         .flex()

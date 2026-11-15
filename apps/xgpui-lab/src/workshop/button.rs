@@ -11,7 +11,7 @@ use xgpui_luma::controls::switch::{Switch};
 use crate::theme::Look;
 use xgpui_luma_look_radix as radix;
 
-use super::radix_event_stream::RadixEventStream as ControlEventStream;
+use super::event_stream::ControlEventStream;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum ButtonVariant {

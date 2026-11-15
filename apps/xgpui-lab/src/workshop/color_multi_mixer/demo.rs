@@ -1,5 +1,6 @@
 //! Multi mixer composition — per-color-space channel mixers.
 
+use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use xgpui_luma::controls::slider::SliderEventExt;
 use std::sync::Arc;
 
@@ -15,7 +16,6 @@ use xgpui_luma_color::color_slider::{
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::theme::ControlSize;
 use xgpui_luma::{wrappanel};
-use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
 use super::super::color_exposition_common::{
     detail_row, format_compact_hsla, format_hex_color, composition_inset_radius, render_field_card,
@@ -23,7 +23,7 @@ use super::super::color_exposition_common::{
 };
 
 pub struct MultiMixerDemo {
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     hue_alpha: Entity<ColorSpaceMixerState<HueAlpha>>,
     rgb: Entity<ColorSpaceMixerState<RgbaSpec>>,
     hsla: Entity<ColorSpaceMixerState<Hsl>>,
@@ -35,7 +35,7 @@ pub struct MultiMixerDemo {
 }
 
 impl MultiMixerDemo {
-    pub fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
+    pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let initial = gpui::hsla(0.55, 1.0, 0.5, 1.0);
         let hue_alpha = cx.new(|cx| {
             ColorSpaceMixerState::new("hue-alpha", None, true, look.clone(), HueAlpha::from_hsla(initial), cx)
@@ -73,7 +73,7 @@ impl MultiMixerDemo {
         Self { look, hue_alpha, rgb, hsla, hsva, lab, lab_auto, lab_dynamic, oklch }
     }
 
-    pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.hue_alpha.update(cx, |mixer, cx| mixer.sync_look(look.clone(), cx));
         self.rgb.update(cx, |mixer, cx| mixer.sync_look(look.clone(), cx));
@@ -107,14 +107,14 @@ impl Render for MultiMixerDemo {
                         .gap(px(2.0))
                         .child(
                             div()
-                                .typography_style(look.typography_role(ShadcnTextRole::H4))
+                                .typography_style(look.typography_scale(TextSize::Base))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(look.chrome().title_text)
                                 .child("Mixer Modes"),
                         )
                         .child(
                             div()
-                                .typography_style(look.typography_scale(ShadcnTextSize::Sm))
+                                .typography_style(look.typography_scale(TextSize::Sm))
                                 .text_color(look.chrome().muted_text)
                                 .child("Representative mixers for the upstream mode set."),
                         ),
@@ -137,7 +137,7 @@ impl Render for MultiMixerDemo {
     }
 }
 
-fn mixer_card(look: &ShadcnLook, title: &'static str, mixer: Entity<impl gpui::Render>) -> gpui::AnyElement {
+fn mixer_card(look: &Look, title: &'static str, mixer: Entity<impl gpui::Render>) -> gpui::AnyElement {
     render_field_card(look, title, "Interactive per-space channel mixer.", 340.0, mixer)
 }
 
@@ -150,7 +150,7 @@ struct MixerSliderRow {
 struct ColorSpaceMixerState<S: ColorSpecification> {
     subtitle: Option<&'static str>,
     show_gamut_warning: bool,
-    look: Arc<ShadcnLook>,
+    look: Arc<Look>,
     spec: S,
     sliders: Vec<MixerSliderRow>,
 }
@@ -160,7 +160,7 @@ impl<S: ColorSpecification> ColorSpaceMixerState<S> {
         id_prefix: &'static str,
         subtitle: Option<&'static str>,
         show_gamut_warning: bool,
-        look: Arc<ShadcnLook>,
+        look: Arc<Look>,
         spec: S,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -215,7 +215,7 @@ impl<S: ColorSpecification> ColorSpaceMixerState<S> {
         state
     }
 
-    fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
+    fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look;
         for row in &self.sliders {
             row.slider.update(cx, |_, cx| cx.notify());
@@ -293,7 +293,7 @@ impl<S: ColorSpecification> Render for ColorSpaceMixerState<S> {
             .when_some(self.subtitle, |container, subtitle| {
                 container.child(
                     div()
-                        .typography_style(look.typography_scale(ShadcnTextSize::Xs))
+                        .typography_style(look.typography_scale(TextSize::Xs))
                         .text_color(look.chrome().muted_text)
                         .child(subtitle),
                 )
