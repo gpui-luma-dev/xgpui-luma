@@ -70,10 +70,12 @@ impl Reveal {
             error: None,
         })
     }
-    pub(crate) fn poll(&mut self, window: &mut Window) {
+    pub(crate) fn poll(&mut self, window: &mut Window) -> bool {
+        let mut changed = false;
         for (job, image) in self.jobs.iter_mut().zip(&mut self.images) {
             if let Some(ready) = job.try_take() {
                 *image = Some(ready);
+                changed = true;
             }
             match job.status() {
                 xgpui_media::LoadStatus::Loading => window.request_animation_frame(),
@@ -86,6 +88,7 @@ impl Reveal {
                 self.error = Some(error);
             }
         }
+        changed
     }
     pub(crate) fn picture(&self, selection: usize, wide: bool) -> impl IntoElement {
         let image = self.images[usize::from(selection == 2)].clone();
