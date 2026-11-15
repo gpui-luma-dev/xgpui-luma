@@ -55,6 +55,8 @@ struct Settings {
     paused: bool,
     threaded: bool,
     demo: bool,
+    radius: f32,
+    opacity: f32,
     particles: u32,
     speed: f32,
     wide_slots: bool,
@@ -69,6 +71,8 @@ impl Default for Settings {
             paused: false,
             threaded: true,
             demo: false,
+            radius: 10.,
+            opacity: 0.6,
             particles: boids::boids::DEFAULT_PARTICLES,
             speed: 1.,
             wide_slots: true,
@@ -94,8 +98,6 @@ pub(crate) struct Page {
     choices: Vec<Choice>,
     sliders: Vec<Slider>,
     color: usize,
-    radius: f32,
-    opacity: f32,
     zoom: f32,
     pan: Point<f32>,
     last_point: Option<Point<f32>>,
@@ -278,7 +280,8 @@ impl Page {
                     .value(10.)
                     .step(1.)
                     .on_value_changed(cx, |this: &mut Self, _, value, cx| {
-                        this.radius = value;
+                        this.settings.radius = value;
+                        this.send_settings();
                         cx.notify();
                     })
                     .spawn(cx),
@@ -288,7 +291,8 @@ impl Page {
                     .value(0.6)
                     .step(0.05)
                     .on_value_changed(cx, |this: &mut Self, _, value, cx| {
-                        this.opacity = value;
+                        this.settings.opacity = value;
+                        this.send_settings();
                         cx.notify();
                     })
                     .spawn(cx),
@@ -321,8 +325,6 @@ impl Page {
             choices,
             sliders,
             color: 0,
-            radius: 10.,
-            opacity: 0.6,
             zoom: 1.,
             pan: point(0., 0.),
             last_point: None,
@@ -438,15 +440,15 @@ impl Page {
         let from = self.last_point.replace(to).unwrap_or(to);
         let dx = to.x - from.x;
         let dy = to.y - from.y;
-        let steps = ((dx * dx + dy * dy).sqrt() / (self.radius / 3.).max(1.)).ceil().max(1.) as u32;
+        let steps = ((dx * dx + dy * dy).sqrt() / (self.settings.radius / 3.).max(1.)).ceil().max(1.) as u32;
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
             self.send(Command::Dab(
                 Dab {
                     x: from.x + dx * t,
                     y: from.y + dy * t,
-                    radius: self.radius,
-                    opacity: self.opacity,
+                    radius: self.settings.radius,
+                    opacity: self.settings.opacity,
                     color: COLORS[self.color],
                 },
                 std::time::Instant::now(),
@@ -676,8 +678,8 @@ impl Render for Page {
             &[format!("Speed {:.2}×", self.settings.speed)]
         } else {
             &[
-                format!("Radius {:.0} px", self.radius),
-                format!("Opacity {:.0}%", self.opacity * 100.),
+                format!("Radius {:.0} px", self.settings.radius),
+                format!("Opacity {:.0}%", self.settings.opacity * 100.),
                 format!("Exposure {:+.1}", self.settings.exposure),
             ]
         };
@@ -764,6 +766,21 @@ mod tests {
         cx.run_until_parked();
         let (runtime, received) = Runtime::recording();
         view.update(cx, |page, _| page.runtime = Some(runtime));
+        let sliders = cx.update(|_, cx| view.read(cx).sliders.clone());
+        sliders[0].update(cx, |slider, cx| {
+            slider.set_thumb_position(slider.primary_thumb_id(), 1., cx);
+        });
+        let Command::Settings(settings) = received.try_recv().unwrap() else {
+            panic!("radius setting")
+        };
+        assert_eq!(settings.radius, 40.);
+        sliders[1].update(cx, |slider, cx| {
+            slider.set_thumb_position(slider.primary_thumb_id(), 0., cx);
+        });
+        let Command::Settings(settings) = received.try_recv().unwrap() else {
+            panic!("opacity setting")
+        };
+        assert_eq!(settings.opacity, 0.05);
         // Use the laid-out square canvas to exercise pointer mapping.
         let bounds = cx.update(|_, cx| view.read(cx).canvas_bounds.get());
         assert_eq!(bounds.size.width, bounds.size.height, "the demo surface is square");
@@ -775,6 +792,7 @@ mod tests {
         assert!((dab.x - WIDTH as f32 / 2.).abs() < 1.);
         assert!((dab.y - HEIGHT as f32 / 2.).abs() < 1.);
         assert_eq!(dab.color, COLORS[0]);
+        assert_eq!((dab.radius, dab.opacity), (40., 0.05));
         cx.simulate_mouse_down(bounds.center(), MouseButton::Right, Default::default());
         let Command::Inspect(x, y) = received.try_recv().unwrap() else {
             panic!("inspection command")

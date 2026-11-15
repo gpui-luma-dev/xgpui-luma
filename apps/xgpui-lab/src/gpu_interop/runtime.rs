@@ -181,14 +181,17 @@ fn run(
                     let to =
                         (WIDTH as f32 * (0.5 + 0.42 * (t * 1.3).sin()), HEIGHT as f32 * (0.5 + 0.4 * (t * 2.1).cos()));
                     let from = demo_point.replace(to).unwrap_or(to);
-                    let steps = (((to.0 - from.0).powi(2) + (to.1 - from.1).powi(2)).sqrt() / 3.).ceil().max(1.) as u32;
+                    let steps = (((to.0 - from.0).powi(2) + (to.1 - from.1).powi(2)).sqrt()
+                        / (settings.radius / 3.).max(1.))
+                    .ceil()
+                    .max(1.) as u32;
                     for i in 1..=steps {
                         let fraction = i as f32 / steps as f32;
                         e.dab(Dab {
                             x: from.0 + (to.0 - from.0) * fraction,
                             y: from.1 + (to.1 - from.1) * fraction,
-                            radius: 10.,
-                            opacity: 0.6,
+                            radius: settings.radius,
+                            opacity: settings.opacity,
                             color: super::COLORS[(demo_step / 120) as usize % super::COLORS.len()],
                         });
                     }
