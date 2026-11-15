@@ -9,7 +9,7 @@ use super::hv_field_shader::{NativeColors, Parameters};
 
 use gpui::{App, Context, Div, Entity, IntoElement, Render, Rgba, Subscription, Window, div, prelude::*, px, canvas};
 use xgpui_luma::{
-    controls::{slider::Slider, switch::Switch, textfield::TextField},
+    controls::{button::Button, slider::Slider, switch::Switch, textfield::TextField},
     infra::{ElementExt, icon::lucide_icon},
     prelude::HasPresenter,
 };
@@ -39,6 +39,7 @@ pub(crate) struct InteractiveSpaces {
     field: Entity<ColorFieldState>,
     channels: [RgbChannelControls; 3],
     saturation: Slider,
+    reset_button: Entity<Button>,
     saturation_track: Arc<ColorSliderDomainRenderer>,
     native_colors: Option<NativeColors>,
     gpu_painter: Option<ColorFieldBackgroundPainter>,
@@ -246,6 +247,21 @@ impl InteractiveSpaces {
             cx,
             |this: &mut Self, index, cx| this.set_source(index, cx),
         );
+        let reset_button = radix::Button::new("interactive-spaces-reset")
+            .look(&look)
+            .outline()
+            .label("Reset")
+            .on_click(cx, |this: &mut Self, cx| {
+                if let Ok(rgb) =
+                    source_field::convert_rgb(INITIAL, source_field::SPACES[0], this.field_settings.source_space())
+                {
+                    this.rgb = rgb;
+                    this.update_field_selection(cx);
+                    this.sync_controls(None, cx);
+                    cx.notify();
+                }
+            })
+            .spawn(cx);
         Self {
             look,
             field_settings,
@@ -255,6 +271,7 @@ impl InteractiveSpaces {
             field,
             channels,
             saturation,
+            reset_button,
             saturation_track,
             native_colors,
             gpu_painter,
@@ -530,6 +547,7 @@ impl Render for InteractiveSpaces {
             .control(self.contour_toggle.clone())
             .control(text(&self.look, TextRole::Caption, "Saturation"))
             .control(div().w(metrics.inline_slider_width).child(self.saturation.clone()))
+            .control(self.reset_button.clone())
             .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| format!("Native color rendering unavailable: {error}")))
             .notice(if self.renderer == 1 { self.interop.read(cx).error.clone() } else { None })
             .notice(conversion_error)
