@@ -754,16 +754,7 @@ impl Render for Page {
                 cx.notify();
             }));
         let hero = if self.kind == Kind::Boids {
-            Hero::full(
-                div()
-                    .w(px(600.))
-                    .max_w_full()
-                    .flex()
-                    .flex_col()
-                    .gap_2()
-                    .child(text(&self.look, TextRole::Name, "Flock simulation"))
-                    .child(card_surface(stage, &self.look)),
-            )
+            Hero::stage(ComparePane::new("Flock simulation", div().w(px(600.)).max_w_full().mx_auto().child(stage)))
         } else if self.kind == Kind::Workbench {
             Hero::full(
                 div()
