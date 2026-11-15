@@ -13,7 +13,7 @@ use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_gpu_interop::EngineSurface;
 use crate::{
     lab_controls::{Choice, labels},
-    screen::{ComparePane, Hero, LabScreen, PanelShell, TextRole, text, properties},
+    screen::{ComparePane, Hero, LabScreen, PanelShell, TextRole, text, properties, card_surface},
 };
 mod boids;
 mod wave;
@@ -98,13 +98,27 @@ pub(crate) struct Page {
     choices: Vec<Choice>,
     sliders: Vec<Slider>,
     color: usize,
+    swatches: Vec<Entity<Button>>,
+    compare: bool,
+    compare_active: bool,
+    compare_control: Switch,
+    preview: bool,
     zoom: f32,
     pan: Point<f32>,
     last_point: Option<Point<f32>>,
     stroke_id: u32,
     canvas_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
-const COLORS: [[f32; 3]; 6] = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1., 1., 0.], [1., 1., 1.], [0., 0., 0.]];
+const COLORS: [[f32; 3]; 6] =
+    [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [0.8, 0.3, 0.05], [0.004, 0.004, 0.004], [1., 1., 1.]];
+const SWATCHES: [(&str, u32); 6] = [
+    ("P3 red", 0xff2a1a),
+    ("P3 green", 0x2aff3a),
+    ("P3 blue", 0x2a40ff),
+    ("Orange", 0xe89540),
+    ("Near-black", 0x0e0e0e),
+    ("White", 0xffffff),
+];
 impl Page {
     pub fn new(look: Arc<Look>, page: &str, cx: &mut Context<Self>) -> Self {
         let kind = Kind::for_page(page);
@@ -242,18 +256,66 @@ impl Page {
             ));
         } else {
             choices.push(Choice::new(
-                "interop-brush-color",
-                "Brush",
+                "interop-presentation",
+                "Show",
                 &look,
-                labels(&["P3 Red", "P3 Green", "P3 Blue", "Yellow", "White", "Black"]),
+                labels(&["Auto", "sRGB preview"]),
                 0,
                 cx,
                 |this: &mut Self, index, cx| {
-                    this.color = index;
+                    this.preview = index == 1;
                     cx.notify();
                 },
             ));
         }
+        let compare_control = radix::Switch::new("workbench-compare")
+            .look(&look)
+            .label("Compare wide | sRGB")
+            .checked(false)
+            .on_value_changed(cx, |this: &mut Self, compare, cx| {
+                this.compare = compare;
+                cx.notify();
+            })
+            .spawn(cx);
+        let swatches = if kind == Kind::Workbench {
+            SWATCHES
+                .into_iter()
+                .enumerate()
+                .map(|(index, (name, color))| {
+                    let owner = cx.weak_entity();
+                    radix::Button::new(format!("workbench-swatch-{index}"))
+                        .look(&look)
+                        .outline()
+                        .content(move |_, cx| {
+                            let selected = owner.upgrade().is_some_and(|page| page.read(cx).color == index);
+                            div().size(px(24.)).rounded(px(3.)).bg(gpui::rgb(color)).border_2().border_color(
+                                if selected {
+                                    gpui::white()
+                                } else {
+                                    gpui::transparent_black()
+                                },
+                            )
+                        })
+                        .with_template_modifier(move |row, _| {
+                            row.size(px(34.))
+                                .p_1()
+                                .aria_label(name)
+                                .debug_selector(move || format!("workbench-swatch-{index}"))
+                        })
+                        .on_click(cx, move |this: &mut Self, cx| {
+                            this.color = index;
+                            this.last_point = None;
+                            for button in &this.swatches {
+                                button.update(cx, |_, cx| cx.notify());
+                            }
+                            cx.notify();
+                        })
+                        .spawn(cx)
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let sliders = if kind == Kind::Boids {
             vec![
                 radix::Slider::new("interop-speed")
@@ -326,6 +388,11 @@ impl Page {
             choices,
             sliders,
             color: 0,
+            swatches,
+            compare: false,
+            compare_active: false,
+            compare_control,
+            preview: false,
             zoom: 1.,
             pan: point(0., 0.),
             last_point: None,
@@ -433,10 +500,41 @@ impl Page {
             return None;
         }
         let scale = bounds.size.width.as_f32() / WIDTH as f32 * self.zoom;
-        Some(point(
-            (position.x - bounds.left()).as_f32() / scale + self.pan.x,
-            (position.y - bounds.top()).as_f32() / scale + self.pan.y,
-        ))
+        let x = self.view_x(position.x, bounds);
+        Some(point(x / scale + self.pan.x, (position.y - bounds.top()).as_f32() / scale + self.pan.y))
+    }
+    fn view_x(&self, x: Pixels, bounds: Bounds<Pixels>) -> f32 {
+        let mut x = (x - bounds.left()).as_f32();
+        let half = bounds.size.width.as_f32() / 2.;
+        if self.compare_active && x >= half {
+            x -= half;
+        }
+        x
+    }
+    fn scroll_view(&mut self, event: &ScrollEvent) {
+        let bounds = self.canvas_bounds.get();
+        if bounds.size.width <= px(0.) {
+            return;
+        }
+        let delta = event.delta.pixel_delta(px(24.));
+        if event.modifiers.platform || event.modifiers.control {
+            let Some(anchor) = self.slot_point(event.position) else {
+                return;
+            };
+            self.zoom = (self.zoom * (delta.y.as_f32() * 0.005).exp()).clamp(1., 8.);
+            let scale = bounds.size.width.as_f32() / WIDTH as f32 * self.zoom;
+            self.pan = point(
+                anchor.x - self.view_x(event.position.x, bounds) / scale,
+                anchor.y - (event.position.y - bounds.top()).as_f32() / scale,
+            );
+        } else {
+            let scale = bounds.size.width.as_f32() / WIDTH as f32 * self.zoom;
+            self.pan.x -= delta.x.as_f32() / scale;
+            self.pan.y -= delta.y.as_f32() / scale;
+        }
+        self.pan.x = self.pan.x.clamp(0., WIDTH as f32 * (1. - 1. / self.zoom));
+        self.pan.y = self.pan.y.clamp(0., HEIGHT as f32 * (1. - 1. / self.zoom));
+        self.last_point = None;
     }
     fn stroke_to(&mut self, to: Point<f32>) {
         let from = self.last_point.replace(to).unwrap_or_else(|| {
@@ -470,6 +568,7 @@ impl Page {
     ) -> AnyElement {
         let tracked = self.canvas_bounds.clone();
         let boids = self.kind == Kind::Boids;
+        let compare = interactive && self.compare_active;
         let (zoom, pan) = if interactive {
             (self.zoom, self.pan)
         } else {
@@ -494,6 +593,35 @@ impl Page {
                         size(fitted.size.width * zoom, fitted.size.height * zoom),
                     );
                     window.with_content_mask(Some(ContentMask { bounds }), |window| {
+                        if compare {
+                            let half = bounds.size.width / 2.;
+                            for (offset, content) in [(px(0.), surface.content()), (half, surface.preview_content())] {
+                                if let Some(content) = content {
+                                    let mask = Bounds::new(
+                                        point(bounds.left() + offset, bounds.top()),
+                                        size(half, bounds.size.height),
+                                    );
+                                    let at = Bounds::new(point(placed.left() + offset, placed.top()), placed.size);
+                                    window.with_content_mask(Some(ContentMask { bounds: mask }), |window| {
+                                        window.paint_custom(
+                                            CustomGeometry::RoundedRect {
+                                                bounds: at,
+                                                corner_radii: Corners::all(px(6.)),
+                                            },
+                                            content,
+                                        );
+                                    });
+                                }
+                            }
+                            window.paint_quad(gpui::fill(
+                                Bounds::new(
+                                    point(bounds.left() + half - px(0.5), bounds.top()),
+                                    size(px(1.), bounds.size.height),
+                                ),
+                                gpui::black(),
+                            ));
+                            return;
+                        }
                         let content = if preview {
                             surface.preview_content()
                         } else {
@@ -528,6 +656,9 @@ impl Render for Page {
             self.settings.refresh = refresh;
             self.send_settings();
         }
+        self.compare_active = self.kind == Kind::Workbench
+            && self.compare
+            && window.color_status().effective() == gpui::WindowColorMode::WideGamutSdr;
         let frame_started = std::time::Instant::now();
         let (boids_status, inline_more) = self.boids.frame(frame_started);
         if inline_more && self.active {
@@ -547,7 +678,7 @@ impl Render for Page {
         if self.kind == Kind::Workbench && (self.sliders[2].read(cx).value() - self.settings.exposure).abs() > 0.001 {
             self.sliders[2].update(cx, |slider, cx| slider.set_value(self.settings.exposure, cx));
         }
-        let surface = snapshot.surface;
+        let surface = snapshot.surface.clone();
         let detail = surface
             .as_ref()
             .map(|s| {
@@ -569,7 +700,12 @@ impl Render for Page {
                 }
             });
         let title = self.kind.title();
-        let primary = self.placement(surface.clone(), false, self.kind == Kind::Workbench, false);
+        let primary = self.placement(
+            surface.clone(),
+            self.kind == Kind::Workbench && self.preview,
+            self.kind == Kind::Workbench,
+            false,
+        );
         let stage = div()
             .id("interop-drawing")
             .when(self.kind == Kind::Boids, |stage| stage.debug_selector(|| "boids-simulation".into()))
@@ -587,7 +723,10 @@ impl Render for Page {
                 }),
             )
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
-                if this.kind == Kind::Workbench && event.pressed_button == Some(MouseButton::Left) {
+                if this.kind == Kind::Workbench
+                    && event.pressed_button == Some(MouseButton::Left)
+                    && this.last_point.is_some()
+                {
                     if let Some(at) = this.slot_point(event.position) {
                         this.stroke_to(at);
                         cx.notify();
@@ -612,24 +751,34 @@ impl Render for Page {
                 if this.kind != Kind::Workbench {
                     return;
                 }
-                let delta = event.delta.pixel_delta(px(24.));
-                if event.modifiers.platform || event.modifiers.control {
-                    this.zoom = (this.zoom * (delta.y.as_f32() * 0.005).exp()).clamp(1., 8.);
-                } else {
-                    let scale = this.canvas_bounds.get().size.width.as_f32() / WIDTH as f32 * this.zoom;
-                    if scale > 0. {
-                        this.pan.x -= delta.x.as_f32() / scale;
-                        this.pan.y -= delta.y.as_f32() / scale;
-                    }
-                }
-                this.pan.x = this.pan.x.clamp(0., WIDTH as f32 * (1. - 1. / this.zoom));
-                this.pan.y = this.pan.y.clamp(0., HEIGHT as f32 * (1. - 1. / this.zoom));
-                this.last_point = None;
+                this.scroll_view(event);
                 cx.stop_propagation();
                 cx.notify();
             }));
         let hero = if self.kind == Kind::Boids {
             Hero::stage(ComparePane::new("Flock simulation", stage))
+        } else if self.kind == Kind::Workbench {
+            Hero::full(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_start()
+                    .gap_6()
+                    .child(div().w(px(640.)).max_w_full().child(card_surface(stage, &self.look)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w(px(280.))
+                            .max_w(px(400.))
+                            .flex()
+                            .flex_col()
+                            .gap_3()
+                            .child(text(&self.look, TextRole::Caption, "Same revision, second placement"))
+                            .child(self.placement(surface.clone(), self.preview, false, true))
+                            .child(self.workbench_controls())
+                            .child(self.inspection_view(&snapshot)),
+                    ),
+            )
         } else {
             Hero::compare(
                 ComparePane::new(format!("Native presentation ({:?})", window.color_status().effective()), stage),
@@ -644,7 +793,7 @@ impl Render for Page {
                 ),
             )
         };
-        let caption = if self.kind == Kind::Boids {
+        let mut caption = if self.kind == Kind::Boids {
             detail
         } else {
             format!(
@@ -654,13 +803,31 @@ impl Render for Page {
                 window.color_status().display_wide_gamut()
             )
         };
+        if self.kind == Kind::Workbench {
+            let showing = if self.compare_active {
+                "wide | sRGB comparison"
+            } else if self.preview {
+                "sRGB preview (forced)"
+            } else if window.color_status().effective() == gpui::WindowColorMode::WideGamutSdr {
+                "wide-gamut"
+            } else {
+                "sRGB preview (window fallback)"
+            };
+            caption.push_str(&format!(" · Showing {showing}"));
+        }
         let mut screen = LabScreen::new("gpu-interop", self.look.clone()).crumb("xgpui-gpu-interop", title).title(title)
-            .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "Explore compute capacity, compositor pacing, and UI responsiveness. Increase the flock, compare Own thread with UI thread, then change speed or resize the window under load.", Kind::Workbench => "Paint a persistent linear-P3 GPU image. Published revisions are immutable; both placements show the same snapshot." })
+            .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "Explore compute capacity, compositor pacing, and UI responsiveness. Increase the flock, compare Own thread with UI thread, then change speed or resize the window under load.", Kind::Workbench => "Paint and inspect a persistent linear-P3 GPU image. Enable Compare wide | sRGB to compare the same region inside the interactive canvas." })
             .hero(hero)
             .caption(caption)
-            .action(self.buttons[0].clone())
-            .notice(self.error.clone().or(self.boids.error.clone()).or(snapshot.error))
+            .notice(self.error.clone().or(self.boids.error.clone()).or(snapshot.error.clone()))
             .credits("Ported from gpui-luma-dev/xgpui apps/xgpui-ext-lab. Boids derives from gfx-rs/wgpu (Apache-2.0 OR MIT). Timings are engine diagnostics, not confirmed displayed FPS.");
+        if self.kind != Kind::Workbench {
+            screen = screen.action(self.buttons[0].clone());
+        }
+        if self.kind == Kind::Workbench && self.compare && !self.compare_active {
+            screen = screen
+                .notice(Some("Compare wide | sRGB requires effective WideGamutSdr output; showing the single canvas."));
+        }
         if let Some(status) = &boids_status {
             screen = screen.section_panel(
                 PanelShell::new("Capacity, pacing & failure analysis")
@@ -676,27 +843,19 @@ impl Render for Page {
         if self.kind == Kind::Boids {
             screen = screen.action(self.buttons[6].clone()).note("Try 100,000 boids on Own thread, then UI thread. UI-thread mode deliberately puts engine recording and GPU waits in the UI frame. Observe-only avoids compositor GPU waits for slow engine steps. Pausing stops GPU work; Restart engine retries after an engine failure. UI timings cover the latest 120 frames after warm-up and are not displayed FPS.");
         }
-        for choice in &self.choices {
-            screen = screen.control(choice.clone());
+        if self.kind != Kind::Workbench {
+            for choice in &self.choices {
+                screen = screen.control(choice.clone());
+            }
+            screen = screen.control(self.pause.clone());
         }
-        screen = screen.control(self.pause.clone());
-        let names: &[String] = if self.kind == Kind::Boids {
-            &[format!("Speed {:.2}×", self.settings.speed)]
-        } else {
-            &[
-                format!("Radius {:.0} px", self.settings.radius),
-                format!("Opacity {:.0}%", self.settings.opacity * 100.),
-                format!("Exposure {:+.1}", self.settings.exposure),
-            ]
-        };
-        for (label, slider) in names.iter().zip(&self.sliders) {
-            screen = screen.control(div().w(px(160.)).child(label.clone()).child(slider.clone()));
+        if self.kind == Kind::Boids {
+            screen = screen.control(
+                div().w(px(160.)).child(format!("Speed {:.2}×", self.settings.speed)).child(self.sliders[0].clone()),
+            );
         }
         if self.kind == Kind::Workbench {
-            for index in 1..6 {
-                screen = screen.action(self.buttons[index].clone());
-            }
-            screen = screen.section(self.placement(surface, false, false, true)).note(format!("Drag to paint · Right-click to inspect 4×4 · Scroll to pan · Ctrl/Cmd-scroll to zoom · Zoom {:.2}×. {}", self.zoom, snapshot.inspection));
+            screen = screen.note(format!("Drag to paint · Right-click to inspect 4×4 · Scroll to pan · Ctrl/Cmd-scroll to zoom around the pointer · Zoom {:.2}×.", self.zoom));
         }
         screen
     }
@@ -723,12 +882,16 @@ mod tests {
                 look.set_mode(mode);
                 let (view, cx) = app.add_window_view(|_, cx| Page::new(look, page, cx));
                 cx.run_until_parked();
-                for slot in ["gpu-interop-crumb", "gpu-interop-hero", "gpu-interop-controls"] {
+                for slot in ["gpu-interop-crumb", "gpu-interop-hero"] {
                     assert!(cx.debug_bounds(slot).is_some(), "{page}: {slot}");
                 }
                 if page == "Interop Boids" {
                     assert!(cx.debug_bounds("boids-simulation").is_some());
                     assert!(cx.debug_bounds("interop-srgb-preview").is_none(), "Boids has no color comparison");
+                } else if page == "GPU Canvas Workbench" {
+                    assert!(cx.debug_bounds("interop-srgb-preview").is_none());
+                    assert!(cx.debug_bounds("workbench-controls").is_some());
+                    assert!(cx.debug_bounds("workbench-inspect").is_some());
                 } else {
                     assert!(cx.debug_bounds("interop-srgb-preview").is_some());
                 }
@@ -787,6 +950,17 @@ mod tests {
             panic!("opacity setting")
         };
         assert_eq!(settings.opacity, 0.05);
+        let blue = cx.update(|_, cx| view.read(cx).swatches[2].clone());
+        blue.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.update(|_, cx| {
+            let page = view.read(cx);
+            assert_eq!(page.color, 2);
+            assert_eq!(
+                (page.settings.radius, page.settings.opacity),
+                (40., 0.05),
+                "swatches share the brush settings as in the source"
+            );
+        });
         // Use the laid-out square canvas to exercise pointer mapping.
         let bounds = cx.update(|_, cx| view.read(cx).canvas_bounds.get());
         assert_eq!(bounds.size.width, bounds.size.height, "the demo surface is square");
@@ -797,7 +971,7 @@ mod tests {
         };
         assert!((dab.x - WIDTH as f32 / 2.).abs() < 1.);
         assert!((dab.y - HEIGHT as f32 / 2.).abs() < 1.);
-        assert_eq!(dab.color, COLORS[0]);
+        assert_eq!(dab.color, COLORS[2]);
         assert_eq!((dab.radius, dab.opacity), (40., 0.05));
         cx.simulate_mouse_down(bounds.center(), MouseButton::Right, Default::default());
         let Command::Inspect(x, y) = received.try_recv().unwrap() else {
@@ -810,5 +984,66 @@ mod tests {
         assert!(matches!(received.try_recv(), Ok(Command::Settings(_))));
         view.update(cx, |page, _| page.suspend());
         assert!(matches!(received.try_recv(), Err(std::sync::mpsc::TryRecvError::Disconnected)));
+    }
+    #[test]
+    fn workbench_zoom_fit_compare_and_inspection_follow_the_main_canvas() {
+        use gpui::{Modifiers, ScrollDelta};
+        use xgpui_luma::controls::switch::SwitchEvent;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (view, cx) =
+            app.add_window_view(|_, cx| Page::new(crate::theme::default_look(), "GPU Canvas Workbench", cx));
+        cx.run_until_parked();
+        let bounds = cx.update(|_, cx| view.read(cx).canvas_bounds.get());
+        let at = point(bounds.left() + bounds.size.width / 4., bounds.top() + bounds.size.height / 4.);
+        let before = cx.update(|_, cx| view.read(cx).slot_point(at).unwrap());
+        cx.simulate_event(ScrollEvent {
+            position: at,
+            delta: ScrollDelta::Pixels(point(px(0.), px(160.))),
+            modifiers: Modifiers { control: true, ..Default::default() },
+            ..Default::default()
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let page = view.read(cx);
+            let after = page.slot_point(at).unwrap();
+            assert!(page.zoom > 1.);
+            assert!(
+                (before.x - after.x).abs() < 0.01 && (before.y - after.y).abs() < 0.01,
+                "zoom stays anchored under the pointer"
+            );
+        });
+        let fit = cx.update(|_, cx| view.read(cx).buttons[5].clone());
+        fit.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.update(|_, cx| assert_eq!((view.read(cx).zoom, view.read(cx).pan), (1., point(0., 0.))));
+        let compare = cx.update(|_, cx| view.read(cx).compare_control.clone());
+        compare.update(cx, |_, cx| cx.emit(SwitchEvent::Change { on: true }));
+        cx.update(|_, cx| assert!(view.read(cx).compare));
+        view.update(cx, |page, _| {
+            // Test both mirrored halves against the same source coordinates.
+            page.compare_active = true;
+            let bounds = page.canvas_bounds.get();
+            let left = point(bounds.left() + bounds.size.width / 4., bounds.center().y);
+            let right = point(left.x + bounds.size.width / 2., left.y);
+            assert_eq!(page.slot_point(left), page.slot_point(right));
+            let snapshot = runtime::Snapshot {
+                revision: 9,
+                inspection_data: Some(workbench::engine::Inspection {
+                    x: 20,
+                    y: 40,
+                    revision: 7,
+                    generation: 2,
+                    pixels: vec![[0.25, 0.5, 0.75, 1.]; 16],
+                }),
+                ..Default::default()
+            };
+            let properties = page.inspection_properties(&snapshot);
+            assert!(properties.iter().any(|(label, value)| *label == "Revision" && value == "7 (now 9)"));
+            assert!(
+                properties
+                    .iter()
+                    .any(|(label, value)| *label == "Working linear P3" && value.contains("0.2500 0.5000 0.7500"))
+            );
+        });
     }
 }

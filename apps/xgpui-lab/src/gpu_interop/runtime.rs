@@ -21,6 +21,8 @@ pub(super) struct Snapshot {
     pub surface: Option<EngineSurface>,
     pub detail: String,
     pub inspection: String,
+    pub inspection_data: Option<workbench::engine::Inspection>,
+    pub revision: u64,
     pub error: Option<String>,
 }
 
@@ -145,6 +147,7 @@ fn run(
                 Command::Reset => {
                     held.clear();
                     snapshot.inspection.clear();
+                    snapshot.inspection_data = None;
                     demo_point = None;
                     if let Engine::Workbench(e) = &mut engine {
                         e.reset();
@@ -233,6 +236,7 @@ fn run(
                         }
                     }
                     if let Some(found) = e.poll_inspections().pop() {
+                        snapshot.inspection_data = Some(found.clone());
                         snapshot.inspection = format!(
                             "4×4 at ({}, {}) · revision {} · generation {} · first linear P3 pixel {:?}",
                             found.x,
@@ -244,6 +248,7 @@ fn run(
                     }
                 }
                 let s = e.stats();
+                snapshot.revision = s.revision;
                 snapshot.detail = format!(
                     "{} · revision {} / published {} · {} dabs · {} paint passes · {} touched tiles · {} publishes · {} blocked · {} submissions · {} objects · {} B GPU published / {} B uploaded / {} B read · {} inspections · generation {} · {} recoveries · {} replayed in {:.2} ms · {} pending · {} inspections pending · exposure {:+.1} · {} · {}",
                     e.adapter(),
@@ -333,8 +338,15 @@ mod tests {
         ));
         runtime.send(Command::Inspect(100, 100));
         wait(&|snapshot| snapshot.inspection.contains("revision 2"));
+        let inspected = runtime.snapshot().inspection_data.unwrap();
+        assert_eq!((inspected.x, inspected.y, inspected.revision), (100, 100, 2));
+        assert_eq!(inspected.pixels.len(), 16);
         runtime.send(Command::Reset);
-        wait(&|snapshot| snapshot.inspection.is_empty() && snapshot.detail.contains("revision 3 / published 3"));
+        wait(&|snapshot| {
+            snapshot.inspection.is_empty()
+                && snapshot.inspection_data.is_none()
+                && snapshot.detail.contains("revision 3 / published 3")
+        });
     }
 
     #[test]
