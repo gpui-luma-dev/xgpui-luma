@@ -27,7 +27,7 @@ use crate::theme::ColorVizLookExt;
 
 const CHANNELS: [&str; 3] = ["Red", "Green", "Blue"];
 const INITIAL: [f64; 3] = [0.86, 0.32, 0.58];
-const COLOR_FIELD_HEIGHT: f32 = 300.;
+const COLOR_FIELD_HEIGHT: f32 = 450.;
 const CHANNEL_GRADIENT_SEGMENTS: usize = 16;
 
 pub(crate) struct InteractiveSpaces {
@@ -167,7 +167,6 @@ impl InteractiveSpaces {
                 .with_model(field_settings.model())
                 .raster_image()
                 .rounded(px(0.))
-                .no_border()
                 .inside_field();
             if let (Some(painter), Some(colors)) = (&gpu_painter, &native_colors) {
                 field
@@ -622,7 +621,7 @@ mod tests {
         });
         let bounds = cx.debug_bounds("interactive-spaces-field-bounds").unwrap();
         assert!(bounds.size.width > px(400.));
-        assert_eq!(bounds.size.height, px(300.));
+        assert_eq!(bounds.size.height, px(450.));
         cx.simulate_click(
             point(bounds.left() + bounds.size.width * 0.25, bounds.top() + bounds.size.height * 0.25),
             Default::default(),
