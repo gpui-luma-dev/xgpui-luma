@@ -72,6 +72,7 @@ enum Command {
     Particles(u32),
     Speed(f32),
     Refresh(Duration),
+    OnFailure(Arc<dyn Fn() + Send + Sync>),
     /// Hand the simulation back to the UI thread.
     Stop,
 }
@@ -167,6 +168,10 @@ impl Engine {
     /// enough to present observe-only.
     pub fn set_refresh_interval(&mut self, refresh: Duration) {
         self.send(Command::Refresh(refresh));
+    }
+    /// Wake the UI if stepping fails without publishing another frame.
+    pub fn on_failure(&mut self, callback: impl Fn() + Send + Sync + 'static) {
+        self.send(Command::OnFailure(Arc::new(callback)));
     }
     /// Start a new flock of `particles` boids.
     pub fn set_particles(&mut self, particles: u32) {
@@ -373,6 +378,7 @@ struct Sim {
     /// (`Window::refresh_interval`). A slow engine is shown less often than
     /// the display refreshes, so `display` can't stand in for it.
     refresh: Duration,
+    on_failure: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 /// What `advance` did.
@@ -405,6 +411,7 @@ impl Sim {
             last_shown: None,
             display: Duration::from_secs_f32(1. / 60.),
             refresh: Duration::from_secs_f32(1. / 60.),
+            on_failure: None,
         })
     }
 
@@ -431,6 +438,7 @@ impl Sim {
         match command {
             Command::Speed(speed) => self.speed = speed,
             Command::Refresh(refresh) => self.refresh = refresh,
+            Command::OnFailure(callback) => self.on_failure = Some(callback),
             Command::Pause(pause) => {
                 if self.paused && !pause {
                     // The pause is not a display interval.
@@ -533,6 +541,12 @@ impl Sim {
         status.observe_only = self.gpu.observe_only;
         status.ring_full = self.ring_full;
         status.show_timeouts = self.show_timeouts;
+        drop(status);
+        if matches!(advanced, Advanced::Failed)
+            && let Some(callback) = &self.on_failure
+        {
+            callback();
+        }
         advanced
     }
 

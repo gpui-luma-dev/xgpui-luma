@@ -13,7 +13,7 @@ use xgpui_luma_look_radix::{self as radix, Look};
 use xgpui_gpu_interop::EngineSurface;
 use crate::{
     lab_controls::{Choice, labels},
-    screen::{ComparePane, Hero, LabScreen, PanelShell, TextRole, text},
+    screen::{ComparePane, Hero, LabScreen, PanelShell, TextRole, text, properties},
 };
 mod boids;
 mod wave;
@@ -53,6 +53,7 @@ impl Kind {
 #[derive(Clone, Debug)]
 struct Settings {
     paused: bool,
+    threaded: bool,
     demo: bool,
     particles: u32,
     speed: f32,
@@ -66,6 +67,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             paused: false,
+            threaded: true,
             demo: false,
             particles: boids::boids::DEFAULT_PARTICLES,
             speed: 1.,
@@ -85,6 +87,7 @@ pub(crate) struct Page {
     runtime: Option<Runtime>,
     updates: Option<gpui::Task<()>>,
     settings: Settings,
+    boids: boids::session::Session,
     error: Option<String>,
     buttons: Vec<Entity<Button>>,
     pause: Switch,
@@ -102,37 +105,49 @@ const COLORS: [[f32; 3]; 6] = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1., 1.
 impl Page {
     pub fn new(look: Arc<Look>, page: &str, cx: &mut Context<Self>) -> Self {
         let kind = Kind::for_page(page);
-        let buttons =
-            ["Start / Restart engine", "Reset", "Hold snapshot", "Release snapshots", "Lose device", "Fit view"]
-                .into_iter()
-                .enumerate()
-                .map(|(index, label)| {
-                    radix::Button::new(format!("interop-action-{index}"))
-                        .look(&look)
-                        .outline()
-                        .label(label)
-                        .on_click(cx, move |this: &mut Self, cx| {
-                            match index {
-                                0 => this.start(cx),
-                                1 => {
-                                    this.settings.exposure = 0.;
-                                    this.last_point = None;
-                                    this.send(Command::Reset);
-                                    this.send_settings();
-                                }
-                                2 => this.send(Command::Hold),
-                                3 => this.send(Command::Release),
-                                4 => this.send(Command::LoseDevice),
-                                _ => {
-                                    this.zoom = 1.;
-                                    this.pan = point(0., 0.);
-                                }
-                            }
-                            cx.notify();
-                        })
-                        .spawn(cx)
+        let buttons = [
+            "Start / Restart engine",
+            "Reset",
+            "Hold snapshot",
+            "Release snapshots",
+            "Lose device",
+            "Fit view",
+            "1× speed",
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(index, label)| {
+            radix::Button::new(format!("interop-action-{index}"))
+                .look(&look)
+                .outline()
+                .label(label)
+                .on_click(cx, move |this: &mut Self, cx| {
+                    match index {
+                        0 => this.start(cx),
+                        1 => {
+                            this.settings.exposure = 0.;
+                            this.last_point = None;
+                            this.send(Command::Reset);
+                            this.send_settings();
+                        }
+                        2 => this.send(Command::Hold),
+                        3 => this.send(Command::Release),
+                        4 => this.send(Command::LoseDevice),
+                        6 => {
+                            this.settings.speed = 1.;
+                            this.sliders[0].update(cx, |slider, cx| slider.set_value(0., cx));
+                            this.send_settings();
+                        }
+                        _ => {
+                            this.zoom = 1.;
+                            this.pan = point(0., 0.);
+                        }
+                    }
+                    cx.notify();
                 })
-                .collect();
+                .spawn(cx)
+        })
+        .collect();
         let pause = radix::Switch::new("interop-pause")
             .look(&look)
             .label(if kind == Kind::Workbench {
@@ -148,6 +163,7 @@ impl Page {
                     this.settings.paused = paused;
                 }
                 this.send_settings();
+                this.check_boids_pause(cx);
                 cx.notify();
             })
             .spawn(cx);
@@ -208,6 +224,19 @@ impl Page {
                     cx.notify();
                 },
             ));
+            choices.push(Choice::new(
+                "interop-engine-thread",
+                "Engine on",
+                &look,
+                labels(&["Own thread", "UI thread"]),
+                0,
+                cx,
+                |this: &mut Self, index, cx| {
+                    this.settings.threaded = index == 0;
+                    this.send_settings();
+                    cx.notify();
+                },
+            ));
         } else {
             choices.push(Choice::new(
                 "interop-brush-color",
@@ -226,11 +255,16 @@ impl Page {
             vec![
                 radix::Slider::new("interop-speed")
                     .look(&look)
-                    .range(0.25..4.)
-                    .value(1.)
-                    .step(0.05)
+                    .range(-2. ..2.)
+                    .value(0.)
+                    .step(0.01)
                     .on_value_changed(cx, |this: &mut Self, _, value, cx| {
-                        this.settings.speed = value;
+                        let speed = value.exp2();
+                        this.settings.speed = if (speed - 1.).abs() < 0.04 {
+                            1.
+                        } else {
+                            (speed * 100.).round() / 100.
+                        };
                         this.send_settings();
                         cx.notify();
                     })
@@ -280,6 +314,7 @@ impl Page {
             runtime: None,
             updates: None,
             settings: Settings::default(),
+            boids: boids::session::Session::default(),
             error: None,
             buttons,
             pause,
@@ -295,6 +330,10 @@ impl Page {
         }
     }
     fn start(&mut self, cx: &mut Context<Self>) {
+        if self.kind == Kind::Boids {
+            self.start_boids(cx);
+            return;
+        }
         self.updates = None;
         self.runtime = None;
         match Runtime::start(self.kind, self.settings.clone()) {
@@ -317,11 +356,66 @@ impl Page {
             runtime.send(command);
         }
     }
-    fn send_settings(&self) {
+    fn send_settings(&mut self) {
+        self.boids.apply(&self.settings);
         self.send(Command::Settings(self.settings.clone()));
+    }
+    fn check_boids_pause(&mut self, cx: &mut Context<Self>) {
+        if self.kind != Kind::Boids {
+            return;
+        }
+        self.boids.pause_check = None;
+        if self.settings.paused && self.boids.engine.is_some() {
+            self.boids.pause_check = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(std::time::Duration::from_millis(100)).await;
+                let _ = this.update(cx, |page, _| {
+                    if page.settings.paused {
+                        page.boids.paused_baseline = page.boids.engine.as_ref().map(|engine| engine.status().steps);
+                    }
+                });
+            }));
+        }
+    }
+    fn start_boids(&mut self, cx: &mut Context<Self>) {
+        self.updates = None;
+        self.boids.release();
+        self.boids = boids::session::Session::default();
+        let particles = self.settings.particles;
+        self.boids.starting = Some(cx.spawn(async move |this, cx| {
+            let result =
+                cx.background_executor().spawn(async move { boids::engine::Engine::new(particles, true) }).await;
+            let _ = this.update(cx, |page, cx| {
+                page.boids.starting = None;
+                match result {
+                    Ok(mut engine) => {
+                        let (wake, mut updates) = futures::channel::mpsc::unbounded();
+                        let failure = wake.clone();
+                        engine.on_failure(move || {
+                            let _ = failure.unbounded_send(());
+                        });
+                        engine.surface().on_present(move || {
+                            let _ = wake.unbounded_send(());
+                        });
+                        page.boids.install(engine);
+                        page.boids.apply(&page.settings);
+                        page.check_boids_pause(cx);
+                        page.updates = Some(cx.spawn(async move |this, cx| {
+                            while updates.next().await.is_some() {
+                                if this.update(cx, |_, cx| cx.notify()).is_err() {
+                                    break;
+                                }
+                            }
+                        }));
+                    }
+                    Err(error) => page.boids.error = Some(format!("{error:#}")),
+                }
+                cx.notify();
+            });
+        }));
     }
     pub fn suspend(&mut self) {
         self.active = false;
+        self.boids.release();
         self.updates = None;
         self.last_point = None;
         self.runtime = None;
@@ -372,6 +466,7 @@ impl Page {
         } else {
             (1., point(0., 0.))
         };
+        let ui_work = self.boids.measure_from.map(|started| (self.boids.ui_work.clone(), started));
         canvas(
             move |bounds, _, _| {
                 if interactive {
@@ -380,6 +475,9 @@ impl Page {
                 bounds
             },
             move |bounds, fitted, window, _| {
+                if let Some((samples, started)) = &ui_work {
+                    boids::session::push_sample(&mut samples.borrow_mut(), started.elapsed().as_secs_f32() * 1000.);
+                }
                 if let Some(surface) = &surface {
                     let scale = fitted.size.width.as_f32() / WIDTH as f32 * zoom;
                     let placed = Bounds::new(
@@ -420,8 +518,20 @@ impl Render for Page {
             self.settings.refresh = refresh;
             self.send_settings();
         }
-        let snapshot = self.runtime.as_ref().map(Runtime::snapshot).unwrap_or_default();
-        if self.active && surface_is_waiting(&snapshot.surface) {
+        let frame_started = std::time::Instant::now();
+        let (boids_status, inline_more) = self.boids.frame(frame_started);
+        if inline_more && self.active {
+            window.request_animation_frame();
+        }
+        let mut snapshot = self.runtime.as_ref().map(Runtime::snapshot).unwrap_or_default();
+        if let Some(engine) = &self.boids.engine {
+            snapshot.surface = Some(engine.surface().clone());
+        }
+        if let Some(status) = &boids_status {
+            snapshot.error =
+                status.error.clone().or_else(|| snapshot.surface.as_ref().and_then(EngineSurface::unsupported));
+        }
+        if self.active && snapshot.error.is_none() && surface_is_waiting(&snapshot.surface) {
             window.request_animation_frame();
         }
         if self.kind == Kind::Workbench && (self.sliders[2].read(cx).value() - self.settings.exposure).abs() > 0.001 {
@@ -442,7 +552,7 @@ impl Render for Page {
                 )
             })
             .unwrap_or_else(|| {
-                if self.runtime.is_some() {
+                if self.runtime.is_some() || self.boids.starting.is_some() {
                     "Starting engine…".into()
                 } else {
                     "Press Start / Restart engine. Navigating away releases its GPU resources.".into()
@@ -450,9 +560,9 @@ impl Render for Page {
             });
         let title = self.kind.title();
         let primary = self.placement(surface.clone(), false, self.kind == Kind::Workbench, false);
-        let preview = self.placement(surface.clone(), true, false, false);
         let stage = div()
             .id("interop-drawing")
+            .when(self.kind == Kind::Boids, |stage| stage.debug_selector(|| "boids-simulation".into()))
             .child(primary)
             .on_mouse_down(
                 MouseButton::Left,
@@ -508,14 +618,54 @@ impl Render for Page {
                 cx.stop_propagation();
                 cx.notify();
             }));
+        let hero = if self.kind == Kind::Boids {
+            Hero::stage(ComparePane::new("Flock simulation", stage))
+        } else {
+            Hero::compare(
+                ComparePane::new(format!("Native presentation ({:?})", window.color_status().effective()), stage),
+                ComparePane::new(
+                    "sRGB preview",
+                    div().debug_selector(|| "interop-srgb-preview".into()).child(self.placement(
+                        surface.clone(),
+                        true,
+                        false,
+                        false,
+                    )),
+                ),
+            )
+        };
+        let caption = if self.kind == Kind::Boids {
+            detail
+        } else {
+            format!(
+                "{detail} · Requested {:?} / Effective {:?} / Display wide gamut {:?}",
+                window.color_status().requested(),
+                window.color_status().effective(),
+                window.color_status().display_wide_gamut()
+            )
+        };
         let mut screen = LabScreen::new("gpu-interop", self.look.clone()).crumb("xgpui-gpu-interop", title).title(title)
-            .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "wgpu's boids compute and render example, with persistent particle buffers on an independent device and engine thread.", Kind::Workbench => "Paint a persistent linear-P3 GPU image. Published revisions are immutable; both placements show the same snapshot." })
-            .hero(Hero::compare(ComparePane::new(format!("Native presentation ({:?})", window.color_status().effective()), stage), ComparePane::new("sRGB preview", preview)))
-            .caption(format!("{detail} · Requested {:?} / Effective {:?} / Display wide gamut {:?}", window.color_status().requested(), window.color_status().effective(), window.color_status().display_wide_gamut()))
-            .section_panel(PanelShell::new("Engine diagnostics").child(text(&self.look, TextRole::Caption, snapshot.detail)))
+            .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "Explore compute capacity, compositor pacing, and UI responsiveness. Increase the flock, compare Own thread with UI thread, then change speed or resize the window under load.", Kind::Workbench => "Paint a persistent linear-P3 GPU image. Published revisions are immutable; both placements show the same snapshot." })
+            .hero(hero)
+            .caption(caption)
             .action(self.buttons[0].clone())
-            .notice(self.error.clone().or(snapshot.error))
+            .notice(self.error.clone().or(self.boids.error.clone()).or(snapshot.error))
             .credits("Ported from gpui-luma-dev/xgpui apps/xgpui-ext-lab. Boids derives from gfx-rs/wgpu (Apache-2.0 OR MIT). Timings are engine diagnostics, not confirmed displayed FPS.");
+        if let Some(status) = &boids_status {
+            screen = screen.section_panel(
+                PanelShell::new("Capacity, pacing & failure analysis")
+                    .child(properties(&self.look, self.boids.diagnostics(status))),
+            );
+        } else if self.kind != Kind::Boids {
+            screen = screen.section_panel(PanelShell::new("Engine diagnostics").child(text(
+                &self.look,
+                TextRole::Caption,
+                snapshot.detail,
+            )));
+        }
+        if self.kind == Kind::Boids {
+            screen = screen.action(self.buttons[6].clone()).note("Try 100,000 boids on Own thread, then UI thread. UI-thread mode deliberately puts engine recording and GPU waits in the UI frame. Observe-only avoids compositor GPU waits for slow engine steps. Pausing stops GPU work; Restart engine retries after an engine failure. UI timings cover the latest 120 frames after warm-up and are not displayed FPS.");
+        }
         for choice in &self.choices {
             screen = screen.control(choice.clone());
         }
@@ -566,7 +716,19 @@ mod tests {
                 for slot in ["gpu-interop-crumb", "gpu-interop-hero", "gpu-interop-controls"] {
                     assert!(cx.debug_bounds(slot).is_some(), "{page}: {slot}");
                 }
-                cx.update(|_, cx| assert!(view.read(cx).runtime.is_none(), "navigation must not create devices"));
+                if page == "Interop Boids" {
+                    assert!(cx.debug_bounds("boids-simulation").is_some());
+                    assert!(cx.debug_bounds("interop-srgb-preview").is_none(), "Boids has no color comparison");
+                } else {
+                    assert!(cx.debug_bounds("interop-srgb-preview").is_some());
+                }
+                cx.update(|_, cx| {
+                    let page = view.read(cx);
+                    assert!(
+                        page.runtime.is_none() && page.boids.engine.is_none() && page.boids.starting.is_none(),
+                        "navigation must not create devices"
+                    );
+                });
             }
         }
     }
@@ -577,16 +739,23 @@ mod tests {
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (boids, cx) = app.add_window_view(|_, cx| Page::new(crate::theme::default_look(), "Interop Boids", cx));
         cx.run_until_parked();
-        let (runtime, received) = Runtime::recording();
-        boids.update(cx, |page, _| page.runtime = Some(runtime));
         let choice = cx.update(|_, cx| boids.read(cx).choices[0].clone());
         cx.update(|_, cx| choice.select(4, cx));
-        let Command::Settings(settings) = received.try_recv().unwrap() else {
-            panic!("particle command")
-        };
-        assert_eq!(settings.particles, 100_000);
+        cx.update(|_, cx| assert_eq!(boids.read(cx).settings.particles, 100_000));
+        let mode = cx.update(|_, cx| boids.read(cx).choices[1].clone());
+        cx.update(|_, cx| mode.select(1, cx));
+        cx.update(|_, cx| assert!(!boids.read(cx).settings.threaded));
+        cx.update(|_, cx| mode.select(0, cx));
+        cx.update(|_, cx| assert!(boids.read(cx).settings.threaded));
+        let speed = cx.update(|_, cx| boids.read(cx).sliders[0].clone());
+        speed.update(cx, |slider, cx| {
+            slider.set_thumb_position(slider.primary_thumb_id(), 1., cx);
+        });
+        cx.update(|_, cx| assert_eq!(boids.read(cx).settings.speed, 4.));
+        let reset_speed = cx.update(|_, cx| boids.read(cx).buttons[6].clone());
+        reset_speed.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.update(|_, cx| assert_eq!(boids.read(cx).settings.speed, 1.));
         boids.update(cx, |page, _| page.suspend());
-        assert!(matches!(received.try_recv(), Err(std::sync::mpsc::TryRecvError::Disconnected)));
 
         let (view, cx) =
             app.add_window_view(|_, cx| Page::new(crate::theme::default_look(), "GPU Canvas Workbench", cx));

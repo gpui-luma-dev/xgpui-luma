@@ -1,5 +1,5 @@
 //! Background ownership of the upstream engines. No device setup or submission runs in render.
-use super::{Kind, Settings, boids, wave::WaveEngine, workbench};
+use super::{Kind, Settings, wave::WaveEngine, workbench};
 use futures::channel::mpsc::{unbounded, UnboundedReceiver, UnboundedSender};
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
@@ -54,14 +54,13 @@ impl Runtime {
 // the upstream boids worker off the UI thread, including when navigation cancels setup.
 
 enum Engine {
-    Wave(WaveEngine),
-    Boids(boids::engine::Engine),
+    Wave(Box<WaveEngine>),
     Workbench(Box<workbench::engine::Engine>),
 }
 impl Engine {
     fn new(kind: Kind, settings: &Settings) -> anyhow::Result<Self> {
         Ok(match kind {
-            Kind::Waves => Self::Wave(WaveEngine::new(
+            Kind::Waves => Self::Wave(Box::new(WaveEngine::new(
                 SurfaceDesc {
                     width: WIDTH,
                     height: HEIGHT,
@@ -73,31 +72,22 @@ impl Engine {
                     },
                 },
                 settings.work,
-            )?),
-            Kind::Boids => Self::Boids(boids::engine::Engine::new(settings.particles, true)?),
+            )?)),
+            Kind::Boids => anyhow::bail!("Boids is owned by its UI session"),
             Kind::Workbench => Self::Workbench(Box::new(workbench::engine::Engine::new(3)?)),
         })
     }
     fn surface(&self) -> &EngineSurface {
         match self {
             Self::Wave(e) => e.surface(),
-            Self::Boids(e) => e.surface(),
             Self::Workbench(e) => e.surface(),
         }
     }
-    fn settings(&mut self, previous: Option<&Settings>, settings: &Settings) {
+    fn settings(&mut self, settings: &Settings) {
         match self {
             Self::Wave(e) => {
                 e.set_work(settings.work);
                 e.set_bands(settings.bands);
-            }
-            Self::Boids(e) => {
-                e.set_paused(settings.paused);
-                e.set_speed(settings.speed);
-                e.set_refresh_interval(settings.refresh);
-                if previous.is_some_and(|p| p.particles != settings.particles) {
-                    e.set_particles(settings.particles);
-                }
             }
             Self::Workbench(e) => e.set_exposure(settings.exposure),
         }
@@ -112,7 +102,7 @@ fn run(
     wake: &UnboundedSender<()>,
 ) -> anyhow::Result<()> {
     let mut engine = Engine::new(kind, &settings)?;
-    engine.settings(None, &settings);
+    engine.settings(&settings);
     let mut held = Vec::new();
     let mut snapshot = Snapshot::default();
     let mut lost_at: Option<Instant> = None;
@@ -135,7 +125,7 @@ fn run(
             let Some(next) = command else { break };
             match next {
                 Command::Settings(next) => {
-                    engine.settings(Some(&settings), &next);
+                    engine.settings(&next);
                     settings = next;
                 }
                 Command::Dab(dab, sent) => {
@@ -183,30 +173,6 @@ fn run(
                 if !settings.paused || e.surface().stats().presents == 0 {
                     e.frame()?;
                 }
-            }
-            Engine::Boids(e) => {
-                // This call is a no-op in the default threaded mode. Kept for
-                // the upstream engine's shared stepping interface.
-                e.step_inline();
-                let s = e.status();
-                snapshot.error = s.error.clone();
-                snapshot.detail = format!(
-                    "{} · {} · {} particles · {:.1} steps/s · {} steps · GPU {:.2} ms · record {:.2} ms · display {:.2} ms · refresh {:.2} ms · {} · {} timeouts · {} ring-full · {} · {}",
-                    s.adapter,
-                    s.format,
-                    s.particles,
-                    s.steps_per_second,
-                    s.steps,
-                    s.gpu_ms,
-                    s.record_ms,
-                    s.display_ms,
-                    s.refresh_ms,
-                    if s.observe_only { "observe-only" } else { "GPU waits" },
-                    s.show_timeouts,
-                    s.ring_full,
-                    if s.threaded { "engine thread" } else { "inline" },
-                    if s.paused { "paused" } else { "running" }
-                );
             }
             Engine::Workbench(e) => {
                 if settings.demo && !e.is_lost() {
@@ -378,7 +344,7 @@ mod tests {
         assert!(engine.frame().unwrap());
         assert_eq!(engine.surface().stats().presents, 1);
         assert!(engine.surface().content().is_some());
-        let boids = Engine::new(Kind::Boids, &settings).unwrap();
+        let boids = super::super::boids::engine::Engine::new(settings.particles, true).unwrap();
         let deadline = Instant::now() + Duration::from_secs(10);
         while boids.surface().stats().presents == 0 && Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(10));
