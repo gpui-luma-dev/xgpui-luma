@@ -3,6 +3,8 @@ mod chromaticity;
 mod chromaticity_model;
 mod chromaticity_shader;
 mod hv_field_shader;
+mod interop_field;
+mod interop_field_engine;
 mod native_cpu_field;
 mod source_field;
 mod interactive_spaces;

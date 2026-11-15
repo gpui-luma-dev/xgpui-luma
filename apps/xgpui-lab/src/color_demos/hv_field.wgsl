@@ -27,7 +27,9 @@ fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
             let value = max(encoded.r, max(encoded.g, encoded.b));
             encoded = mix(vec3(value), encoded, position);
         } else {
-            encoded[u32(p.channel)] = position;
+            encoded = vec3(select(encoded.r, position, p.channel == 0.0),
+                select(encoded.g, position, p.channel == 1.0),
+                select(encoded.b, position, p.channel == 2.0));
         }
     }
     // The selected program declares the output encoding. No sRGB gamut mapping.

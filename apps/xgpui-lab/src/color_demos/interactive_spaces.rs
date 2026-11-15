@@ -48,7 +48,9 @@ pub(crate) struct InteractiveSpaces {
     presentation_attempted: Option<gpui::WindowColorMode>,
     previous_presentation: Option<gpui::WindowColorMode>,
     host_window: Option<gpui::AnyWindowHandle>,
-    gpu_toggle: Switch,
+    renderer_choice: crate::lab_controls::Choice,
+    renderer: usize,
+    interop: Entity<super::interop_field::Field>,
     contour_toggle: Switch,
     gpu_error: Option<String>,
     presentation_error: Option<String>,
@@ -205,16 +207,27 @@ impl InteractiveSpaces {
                 this.field.update(cx, |field, cx| field.set_hsv(this.hsv, cx));
             }
         }));
-        let gpu_toggle = radix::Switch::new("interactive-spaces-gpu")
-            .look(&look)
-            .label("GPU field")
-            .checked(gpu_painter.is_some())
-            .enabled(gpu_painter.is_some())
-            .on_value_changed(cx, |this: &mut Self, on, cx| {
-                this.install_field_painter(on, cx);
+        let interop = cx.new(|_| super::interop_field::Field::default());
+        subscriptions.push(cx.observe(&interop, |this, _, cx| {
+            this.field.update(cx, |_, cx| cx.notify());
+            cx.notify();
+        }));
+        let renderer_choice = crate::lab_controls::Choice::new(
+            "interactive-spaces-renderer",
+            "Field renderer",
+            &look,
+            crate::lab_controls::labels(&["Native shader", "wgpu interop", "CPU"]),
+            0,
+            cx,
+            |this: &mut Self, index, cx| {
+                this.renderer = index;
+                if index == 1 {
+                    this.interop.update(cx, |field, _| field.retry());
+                }
+                this.install_field_painter(cx);
                 cx.notify();
-            })
-            .spawn(cx);
+            },
+        );
         let contour_toggle = radix::Switch::new("interactive-spaces-contour")
             .look(&look)
             .label("sRGB out of gamut")
@@ -252,7 +265,9 @@ impl InteractiveSpaces {
             presentation_attempted: None,
             previous_presentation: None,
             host_window: None,
-            gpu_toggle,
+            renderer_choice,
+            renderer: 0,
+            interop,
             contour_toggle,
             gpu_error,
             presentation_error: None,
@@ -260,8 +275,10 @@ impl InteractiveSpaces {
         }
     }
 
-    fn install_field_painter(&self, gpu: bool, cx: &mut Context<Self>) {
-        let painter = if gpu {
+    fn install_field_painter(&self, cx: &mut Context<Self>) {
+        let painter = if self.renderer == 1 {
+            Some(self.interop.read(cx).painter())
+        } else if self.renderer == 0 {
             self.gpu_painter.clone()
         } else if self.field_settings.source_index() > 0 {
             self.cpu_painter.clone().or_else(|| self.gpu_painter.clone())
@@ -338,8 +355,7 @@ impl InteractiveSpaces {
         self.update_field_selection(cx);
         self.presentation_attempted = None;
         self.presentation_error = None;
-        let gpu = *self.gpu_toggle.read(cx).data();
-        self.install_field_painter(gpu, cx);
+        self.install_field_painter(cx);
         self.sync_controls(None, cx);
         self.field.update(cx, |field, cx| field.set_model(self.field_settings.model(), cx));
         cx.notify();
@@ -449,6 +465,7 @@ impl InteractiveSpaces {
     }
 
     fn render_field(&self) -> Div {
+        let interop = (self.renderer == 1).then(|| self.interop.clone());
         let settings = self.field_settings.clone();
         let field = self.field.clone();
         div()
@@ -456,7 +473,14 @@ impl InteractiveSpaces {
             .w_full()
             .h(px(COLOR_FIELD_HEIGHT))
             .flex_shrink_0()
-            .on_prepaint(move |bounds, _, cx| {
+            .on_prepaint(move |bounds, window, cx| {
+                if let Some(interop) = &interop {
+                    let check =
+                        interop.update(cx, |field, cx| field.request(&settings, bounds, window.scale_factor(), cx));
+                    if check {
+                        window.request_animation_frame();
+                    }
+                }
                 if settings.resize(bounds.size.width.as_f32()) {
                     field.update(cx, |field, cx| field.set_model(settings.model(), cx));
                 }
@@ -503,11 +527,12 @@ impl Render for InteractiveSpaces {
             .hero(Hero::full(self.render_field()))
             .caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
             .control(labeled_control(&self.look, self.source_choice.clone().into_element()))
-            .control(self.gpu_toggle.clone())
+            .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()))
             .control(self.contour_toggle.clone())
             .control(text(&self.look, TextRole::Caption, "Saturation"))
             .control(div().w(metrics.inline_slider_width).child(self.saturation.clone()))
             .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| format!("Native color rendering unavailable: {error}")))
+            .notice(if self.renderer == 1 { self.interop.read(cx).error.clone() } else { None })
             .notice(conversion_error)
             .cards(cards.into_iter().flatten())
             .panels(self.parameters(), self.preview(preview))
@@ -615,7 +640,6 @@ mod tests {
     #[test]
     fn switching_cpu_gpu_retains_color_and_luma_keyboard_and_drag_behavior() {
         use gpui::{KeyDownEvent, KeyUpEvent, Keystroke, MouseButton};
-        use xgpui_luma::controls::switch::SwitchEvent;
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|window, cx| {
@@ -626,15 +650,16 @@ mod tests {
         let toggle = cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(page.gpu_painter.is_some());
-            assert!(*page.gpu_toggle.read(cx).data());
-            page.gpu_toggle.clone()
+            assert_eq!(page.renderer, 0);
+            page.renderer_choice.clone()
         });
-        for on in [false, true] {
+        for renderer in [2, 0, 1] {
             let before = cx.update(|_, cx| page.read(cx).rgb);
-            toggle.update(cx, |toggle, cx| {
-                toggle.set_data(on, cx);
-                cx.emit(SwitchEvent::Change { on });
-            });
+            cx.update(|_, cx| toggle.select(renderer, cx));
+            if renderer == 1 {
+                let interop = cx.update(|_, cx| page.read(cx).interop.clone());
+                interop.update(cx, |field, _| field.error = Some("headless UI test".into()));
+            }
             cx.run_until_parked();
             cx.update(|_, cx| assert_eq!(page.read(cx).rgb, before));
             let bounds = cx.debug_bounds("interactive-spaces-field-bounds").unwrap();
