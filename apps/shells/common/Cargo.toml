@@ -11,7 +11,9 @@ gpui = { workspace = true }
 xgpui-luma.workspace = true
 xgpui-luma-color.workspace = true
 luma-app-common.workspace = true
-gpui_platform = { workspace = true }
 lucide-svg-static = { workspace = true }
 xgpui-luma-look-shadcn.workspace = true
 tracing = "0.1"
+
+[lints]
+workspace = true
