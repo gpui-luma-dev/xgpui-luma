@@ -13,6 +13,7 @@ mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
 mod sample_layout;
+mod sdk_sample;
 mod event_log_view;
 
 use std::{
@@ -184,7 +185,7 @@ impl Workshop {
         self.selected = id;
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
-            let sample = match id {
+            let sample = sdk_sample::with_sdk_defaults(|| match id {
                 "button" => {
                     Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
                 }
@@ -209,7 +210,7 @@ impl Workshop {
                     Some(Sample::Mixer(cx.new(|cx| color_multi_mixer::ColorMultiMixerControlExposition::new(cx, look))))
                 }
                 _ => None,
-            };
+            });
             if let Some(sample) = sample {
                 self.samples.insert(id, sample);
             }
@@ -236,7 +237,7 @@ impl Render for Workshop {
         let mut root =
             div().id("control-workshop-content").size_full().min_w_0().min_h_0().text_color(chrome.body_text);
         if let Some(sample) = self.samples.get(self.selected) {
-            root = root.child(sample.view());
+            root = root.child(sdk_sample::isolated(sample.view()));
         } else if let Some((group, entry)) = COMPONENT_CATALOG
             .iter()
             .find_map(|g| g.entries.iter().find(|e| e.id == self.selected).map(|e| (g, e)))

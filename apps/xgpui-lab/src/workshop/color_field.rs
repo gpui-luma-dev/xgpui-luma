@@ -161,11 +161,9 @@ impl ColorFieldExpositionLeftPane {
         let rect_field = cx.new(|_| {
             ColorFieldState::saturation_value_rect("controls-doc-color-field-rect", hsv, sizing::THUMB_SIZE_MEDIUM)
                 .vector()
-                .rounded(px(look.metrics().radius.lg))
         });
         let raster_field = cx.new(|_| {
             ColorFieldState::saturation_value_rect("controls-doc-color-field-raster", hsv, sizing::THUMB_SIZE_MEDIUM)
-                .rounded(px(look.metrics().radius.lg))
                 .raster_image_prewarmed_square(FIELD_SIZE)
         });
         let triangle_field = cx.new(|_| {
@@ -182,9 +180,7 @@ impl ColorFieldExpositionLeftPane {
                 .inside_field()
         });
         let hue_value_field = cx.new(|_| {
-            ColorFieldState::hue_value("controls-doc-color-field-hue-value", hsv, sizing::THUMB_SIZE_MEDIUM)
-                .rounded(px(look.metrics().radius.lg))
-                .vector()
+            ColorFieldState::hue_value("controls-doc-color-field-hue-value", hsv, sizing::THUMB_SIZE_MEDIUM).vector()
         });
 
         let event_stream = cx.new(|cx| {

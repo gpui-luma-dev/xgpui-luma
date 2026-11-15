@@ -7,7 +7,6 @@ use xgpui_luma::controls::button::ButtonEventExt;
 
 use xgpui_luma::controls::button::{Button, ButtonEvent, HasPresenter};
 use crate::theme::Look;
-use xgpui_luma_look_radix as radix;
 
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -26,9 +25,6 @@ pub struct CustomButtonControlExposition {
     standard_icon_only: Entity<Button>,
     standard_text_icon: Entity<Button>,
     standard_icon_text: Entity<Button>,
-    prominent_icon_only: Entity<Button>,
-    prominent_text_icon: Entity<Button>,
-    prominent_icon_text: Entity<Button>,
     event_stream: Entity<ControlEventStream>,
     modified_clicks: usize,
     custom_clicks: usize,
@@ -36,16 +32,9 @@ pub struct CustomButtonControlExposition {
 
 impl CustomButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        let modified_button = radix::Button::new("controls-doc-custom-modified")
-            .look(&look)
-            .soft()
-            .radius(radix::Radius::Full)
-            .label("New Button")
-            .spawn(cx);
-        let custom_button = radix::Button::new("controls-doc-custom-content")
-            .look(&look)
-            .soft()
-            .radius(radix::Radius::Full)
+        let modified_button =
+            Button::new("controls-doc-custom-modified").content(|_, _| div().child("New Button")).spawn(cx);
+        let custom_button = Button::new("controls-doc-custom-content")
             .content(|model, _| {
                 div()
                     .flex()
@@ -55,10 +44,7 @@ impl CustomButtonControlExposition {
                     .child("Custom Layout")
             })
             .spawn(cx);
-        let reactive_button = radix::Button::new("controls-doc-custom-reactive")
-            .look(&look)
-            .soft()
-            .radius(radix::Radius::Full)
+        let reactive_button = Button::new("controls-doc-custom-reactive")
             .typed(CounterState { count: 0 })
             .content(|model, _| {
                 div()
@@ -70,15 +56,11 @@ impl CustomButtonControlExposition {
             })
             .spawn(cx);
 
-        let standard_icon_only = radix::Button::new("controls-doc-custom-std-icon-only")
+        let standard_icon_only = Button::new("controls-doc-custom-std-icon-only")
             .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
             .icon(LucideIcon::FaceGrinning)
-            .look(look.as_ref())
-            .soft()
             .spawn(cx);
-        let standard_text_icon = radix::Button::new("controls-doc-custom-std-text-icon")
-            .look(look.as_ref())
-            .soft()
+        let standard_text_icon = Button::new("controls-doc-custom-std-text-icon")
             .content(|model, _| {
                 div()
                     .flex()
@@ -88,40 +70,7 @@ impl CustomButtonControlExposition {
                     .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
             })
             .spawn(cx);
-        let standard_icon_text = radix::Button::new("controls-doc-custom-std-icon-text")
-            .look(look.as_ref())
-            .soft()
-            .content(|model, _| {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
-                    .child("Label")
-            })
-            .spawn(cx);
-
-        let prominent_icon_only = radix::Button::new("controls-doc-custom-prom-icon-only")
-            .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
-            .icon(LucideIcon::FaceGrinning)
-            .look(look.as_ref())
-            .solid()
-            .spawn(cx);
-        let prominent_text_icon = radix::Button::new("controls-doc-custom-prom-text-icon")
-            .look(look.as_ref())
-            .solid()
-            .content(|model, _| {
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_2()
-                    .child("Label")
-                    .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
-            })
-            .spawn(cx);
-        let prominent_icon_text = radix::Button::new("controls-doc-custom-prom-icon-text")
-            .look(look.as_ref())
-            .solid()
+        let standard_icon_text = Button::new("controls-doc-custom-std-icon-text")
             .content(|model, _| {
                 div()
                     .flex()
@@ -149,9 +98,6 @@ impl CustomButtonControlExposition {
             standard_icon_only,
             standard_text_icon,
             standard_icon_text,
-            prominent_icon_only,
-            prominent_text_icon,
-            prominent_icon_text,
             event_stream: event_stream.clone(),
             modified_clicks: 0,
             custom_clicks: 0,
@@ -236,9 +182,6 @@ impl CustomButtonControlExposition {
             &self.standard_icon_only,
             &self.standard_text_icon,
             &self.standard_icon_text,
-            &self.prominent_icon_only,
-            &self.prominent_text_icon,
-            &self.prominent_icon_text,
         ] {
             button.update(cx, |_, cx| cx.notify());
         }
@@ -292,42 +235,21 @@ impl Render for CustomButtonControlExposition {
                         )),
                 )
                 .child(
-                    div()
-                        .w_full()
-                        .flex()
-                        .flex_wrap()
-                        .items_start()
-                        .gap(px(16.))
-                        .child(card(
-                            &self.look,
-                            "command-custom-soft",
-                            "Soft layouts",
-                            "Icon-only and text layouts.",
-                            420.,
-                            div()
-                                .flex()
-                                .flex_wrap()
-                                .items_center()
-                                .gap(px(12.))
-                                .child(self.standard_icon_only.clone())
-                                .child(self.standard_text_icon.clone())
-                                .child(self.standard_icon_text.clone()),
-                        ))
-                        .child(card(
-                            &self.look,
-                            "command-custom-solid",
-                            "Solid layouts",
-                            "Icon-only and text layouts.",
-                            420.,
-                            div()
-                                .flex()
-                                .flex_wrap()
-                                .items_center()
-                                .gap(px(12.))
-                                .child(self.prominent_icon_only.clone())
-                                .child(self.prominent_text_icon.clone())
-                                .child(self.prominent_icon_text.clone()),
-                        )),
+                    div().w_full().flex().flex_wrap().items_start().gap(px(16.)).child(card(
+                        &self.look,
+                        "command-custom-layouts",
+                        "Basic layouts",
+                        "Icon-only and text layouts.",
+                        420.,
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .items_center()
+                            .gap(px(12.))
+                            .child(self.standard_icon_only.clone())
+                            .child(self.standard_text_icon.clone())
+                            .child(self.standard_icon_text.clone()),
+                    )),
                 )
                 .child(self.event_stream.clone()),
         )

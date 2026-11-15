@@ -11,7 +11,6 @@ use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::controls::selector::SelectorItem;
 use xgpui_luma::controls::toolbar::{Toolbar, ToolbarEvent, ToolbarValue, ToolbarItem};
 use crate::theme::{ColorVizLookExt, Look};
-use xgpui_luma_look_radix as radix;
 
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -97,21 +96,15 @@ impl Render for ToolbarExpositionLeftPane {
 
 impl ToolbarControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        let roving_focus_button = radix::Button::new("controls-doc-toolbar-focus-roving")
-            .look(look.as_ref())
-            .ghost()
-            .label("Roving focus")
+        let roving_focus_button = Button::new("controls-doc-toolbar-focus-roving")
+            .content(|_, _| div().child("Roving focus"))
             .spawn(cx);
-        let sequential_focus_button = radix::Button::new("controls-doc-toolbar-focus-sequential")
-            .look(look.as_ref())
-            .ghost()
-            .label("Sequential focus")
+        let sequential_focus_button = Button::new("controls-doc-toolbar-focus-sequential")
+            .content(|_, _| div().child("Sequential focus"))
             .spawn(cx);
 
-        let toolbar = radix::Toolbar::new("controls-doc-toolbar")
-            .look(look.as_ref())
+        let toolbar = xgpui_luma::controls::toolbar::ToolbarBuilder::new("controls-doc-toolbar")
             .item(toolbar_menu(
-                &look,
                 "assistant",
                 "Assistant",
                 LucideIcon::WandSparkles,
@@ -124,7 +117,6 @@ impl ToolbarControlExposition {
             ))
             .separator("assistant-separator")
             .item(toolbar_selector(
-                &look,
                 "style",
                 "Paragraph",
                 [
@@ -136,11 +128,10 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("style-separator")
-            .item(toolbar_toggle(&look, "bold", LucideIcon::Bold, cx))
-            .item(toolbar_toggle(&look, "italic", LucideIcon::Italic, cx))
-            .item(toolbar_toggle(&look, "underline", LucideIcon::Underline, cx))
+            .item(toolbar_toggle("bold", LucideIcon::Bold, cx))
+            .item(toolbar_toggle("italic", LucideIcon::Italic, cx))
+            .item(toolbar_toggle("underline", LucideIcon::Underline, cx))
             .item(toolbar_label_menu(
-                &look,
                 "color",
                 "A",
                 [
@@ -152,7 +143,6 @@ impl ToolbarControlExposition {
             ))
             .separator("format-separator")
             .item(toolbar_menu(
-                &look,
                 "alignment",
                 "Alignment",
                 LucideIcon::TextAlignStart,
@@ -165,11 +155,10 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("insert-separator")
-            .item(toolbar_button(&look, "link", LucideIcon::Link, cx))
-            .item(toolbar_button(&look, "image", LucideIcon::Image, cx))
-            .item(toolbar_button(&look, "video", LucideIcon::Video, cx))
+            .item(toolbar_button("link", LucideIcon::Link, cx))
+            .item(toolbar_button("image", LucideIcon::Image, cx))
+            .item(toolbar_button("video", LucideIcon::Video, cx))
             .item(toolbar_menu(
-                &look,
                 "more",
                 "More",
                 LucideIcon::Ellipsis,
@@ -181,8 +170,8 @@ impl ToolbarControlExposition {
                 cx,
             ))
             .separator("code-separator")
-            .item(toolbar_search(&look, cx))
-            .item(toolbar_button(&look, "code", LucideIcon::Code, cx))
+            .item(toolbar_search(cx))
+            .item(toolbar_button("code", LucideIcon::Code, cx))
             .spawn(cx);
 
         toolbar.update(cx, |toolbar, cx| toolbar.set_focus_strategy(ControlGroupFocusStrategy::RovingItemFocus, cx));
@@ -283,55 +272,61 @@ fn format_toolbar_event(event: &ToolbarEvent) -> Option<String> {
     }
 }
 
-// Compose hosted SDK controls through Radix factories so every item shares the Lab look.
+// Sample items use only SDK builders and their default themes.
 fn toolbar_menu<T: 'static>(
-    look: &Look,
     id: &'static str,
     label: &'static str,
     icon: LucideIcon,
     items: impl IntoIterator<Item = MenuItem>,
     cx: &mut Context<T>,
 ) -> ToolbarItem {
-    let menu = radix::PopupMenu::new(id).look(look).ghost().gray().icon(icon).label(label).items(items).spawn(cx);
+    let menu = xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id)
+        .label(label)
+        .icon(icon)
+        .items(items)
+        .spawn(cx);
     ToolbarItem::menu_control(id, menu, cx).label(label)
 }
 fn toolbar_label_menu<T: 'static>(
-    look: &Look,
     id: &'static str,
     label: &'static str,
     items: impl IntoIterator<Item = MenuItem>,
     cx: &mut Context<T>,
 ) -> ToolbarItem {
-    let menu = radix::PopupMenu::new(id).look(look).ghost().gray().label(label).items(items).spawn(cx);
+    let menu = xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id).label(label).items(items).spawn(cx);
     ToolbarItem::menu_control(id, menu, cx).label(label)
 }
 fn toolbar_selector<T: 'static>(
-    look: &Look,
     id: &'static str,
     label: &'static str,
     items: impl IntoIterator<Item = SelectorItem>,
     selected: &'static str,
     cx: &mut Context<T>,
 ) -> ToolbarItem {
-    let selector = radix::Selector::new(id).look(look).label(label).items(items).selected_id(selected).spawn(cx);
+    let selector = xgpui_luma::controls::selector::SelectorBuilder::new(id)
+        .label(label)
+        .items(items)
+        .selected_id(selected)
+        .spawn(cx);
     ToolbarItem::selector_control(id, selector, cx).label(label)
 }
-fn toolbar_toggle<T: 'static>(look: &Look, id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
-    let toggle = radix::Toggle::new(id).look(look).gray().icon(icon).spawn(cx);
+fn toolbar_toggle<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
+    let toggle = xgpui_luma::controls::toggle::new(id)
+        .content(move |model, _| {
+            xgpui_luma::infra::icon::lucide_icon(icon, model.look.foreground, model.look.icon_size)
+        })
+        .spawn(cx);
     ToolbarItem::toggle_button(id, toggle, cx).label(id)
 }
-fn toolbar_button<T: 'static>(look: &Look, id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
-    let button = radix::Button::new(id)
-        .look(look)
-        .ghost_quiet()
-        .gray()
+fn toolbar_button<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
+    let button = Button::new(id)
         .role(xgpui_luma::controls::button_family::ButtonFamilyRole::Icon)
         .icon(icon)
         .spawn(cx);
     ToolbarItem::command_button(id, button, cx).label(id)
 }
-fn toolbar_search<T: 'static>(look: &Look, cx: &mut Context<T>) -> ToolbarItem {
-    let field = radix::TextField::new("search").look(look).placeholder("Search...").spawn(cx);
+fn toolbar_search<T: 'static>(cx: &mut Context<T>) -> ToolbarItem {
+    let field = xgpui_luma::controls::textfield::TextFieldBuilder::new("search").placeholder("Search...").spawn(cx);
     ToolbarItem::textfield_control("search", field, cx)
 }
 
