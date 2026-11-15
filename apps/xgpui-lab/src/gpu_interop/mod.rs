@@ -470,12 +470,6 @@ impl Page {
         let ui_work = self.boids.measure_from.map(|started| (self.boids.ui_work.clone(), started));
         canvas(
             move |bounds, _, _| {
-                let bounds = if boids {
-                    let side = bounds.size.width.min(bounds.size.height);
-                    Bounds::new(point(bounds.left() + (bounds.size.width - side) / 2., bounds.top()), size(side, side))
-                } else {
-                    bounds
-                };
                 if interactive {
                     tracked.set(bounds);
                 }
