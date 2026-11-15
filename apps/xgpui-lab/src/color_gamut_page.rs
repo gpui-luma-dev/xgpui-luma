@@ -12,27 +12,31 @@ pub(crate) struct Page {
     look: Arc<Look>,
     tabs: Entity<Tabs>,
     lab: Entity<Lab>,
+    chromaticity: Entity<crate::color_demos::ChromaticityLab>,
+    show_chromaticity: bool,
     _subscription: Subscription,
 }
 impl Page {
     pub(crate) fn new(window: &mut Window, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let lab = cx.new(|_| {
             let mut lab = Lab::new(window, false);
-            lab.set_example(true);
+            lab.set_photo();
             lab
         });
+        let chromaticity = cx.new(|cx| crate::color_demos::ChromaticityLab::new(look.clone(), cx));
         let tabs = Tabs::new("color-gamut-example-tabs")
             .template(crate::studio_tabs::template(look.clone(), true))
             .items(vec![
-                TabsItem::new("reveal").label("Hidden Wide-Gamut Symbol"),
+                TabsItem::new("chromaticity").label("Chromaticity & Gamut"),
                 TabsItem::new("photo").label("Photo Comparison"),
             ])
             .size(ControlSize::Sm)
             .width_mode(TabsWidthMode::Uniform)
-            .active("reveal")
+            .active("chromaticity")
             .spawn(cx);
         let subscription = cx.subscribe(&tabs, |this, _, event: &TabsEvent, cx| {
             if let TabsEvent::Activate { tab_id, .. } = event {
+                this.show_chromaticity = tab_id == "chromaticity";
                 this.lab.update(cx, |lab, cx| {
                     if tab_id == "photo" {
                         lab.set_photo();
@@ -44,7 +48,7 @@ impl Page {
                 cx.notify();
             }
         });
-        Self { look, tabs, lab, _subscription: subscription }
+        Self { look, tabs, lab, chromaticity, show_chromaticity: true, _subscription: subscription }
     }
 }
 impl Render for Page {
@@ -66,6 +70,10 @@ impl Render for Page {
                     .bg(chrome.panel_background)
                     .child(self.tabs.clone()),
             )
-            .child(div().flex_1().min_h_0().child(self.lab.clone()))
+            .child(div().flex_1().min_h_0().child(if self.show_chromaticity {
+                self.chromaticity.clone().into_any_element()
+            } else {
+                self.lab.clone().into_any_element()
+            }))
     }
 }

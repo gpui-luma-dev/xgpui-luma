@@ -271,6 +271,15 @@ impl Lab {
             hatch: self.hatch,
         }));
     }
+    // The standalone binary shares this module but does not use the app route.
+    #[allow(dead_code)]
+    pub(crate) fn hidden_symbol() -> Self {
+        let mut lab = Self::initial();
+        lab.standalone_navigation = false;
+        lab.set_example(true);
+        lab
+    }
+
     pub(crate) fn set_example(&mut self, reveal: bool) {
         self.photo_open = false;
         self.reveal_open = reveal;
