@@ -14,6 +14,8 @@ mod drag;
 pub use drag::{ListBoxDragDrop, ListBoxDropProposal, ListBoxDragDropBinding};
 mod item_template;
 mod layout;
+mod render;
+pub use render::ListBoxRenderGeometry;
 mod model;
 mod scroll;
 mod virtualization;

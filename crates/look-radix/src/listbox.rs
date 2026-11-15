@@ -3,7 +3,7 @@
 use std::hash::Hash;
 use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, prelude::*, px};
 use xgpui_luma::controls::listbox::{
-    ListBoxControl, ListBoxFlow, ListBoxItemRenderModel, ListBoxItemState, ListBoxItemTemplate, ListBoxVirtualization,
+    ListBoxControl, ListBoxFlow, ListBoxItemRenderModel, ListBoxItemState, ListBoxItemTemplate, ListBoxRenderGeometry,
     make_listbox_item_template,
 };
 use crate::{Look, ScaleFamily, SemanticRole};
@@ -116,29 +116,11 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             _ => (xgpui_luma::controls::listbox::ListBoxAxis::Vertical, layout.item_height),
         };
         let content_sized = matches!(self.flow, ListBoxFlow::VerticalContent { .. });
-        let virtual_window = if content_sized {
-            let (estimate, buffer) = match parts.virtualization {
-                ListBoxVirtualization::Measured { estimated_height, overscan } => (estimated_height, Some(overscan)),
-                _ => (48.0, None),
-            };
-            Some(parts.scroll.content_window(parts.state, estimate, layout.spacing, buffer))
-        } else {
-            match parts.virtualization {
-                ListBoxVirtualization::Uniform { overscan } => {
-                    parts.scroll.virtual_window(parts.state, axis, extent, layout.spacing, overscan)
-                }
-                _ => None,
-            }
-        };
+        let geometry = ListBoxRenderGeometry { axis, item_extent: extent, spacing: layout.spacing, content_sized };
+        let virtual_window = geometry.window(parts.state, parts.scroll, parts.virtualization);
         let range = virtual_window.as_ref().map_or(0..parts.state.visible_items().len(), |window| window.range.clone());
         let horizontal = axis == xgpui_luma::controls::listbox::ListBoxAxis::Horizontal;
-        let spacer = |extent| {
-            div()
-                .flex_shrink_0()
-                .when(horizontal, |s| s.w(px(extent)))
-                .when(!horizontal, |s| s.h(px(extent)))
-                .into_any_element()
-        };
+        let spacer = |extent| geometry.spacer(extent).into_any_element();
         // Drag labels share the tooltip's chrome so they read on any background.
         let drag_drop = parts.drag_drop.map(|binding| binding.preview_style(crate::tooltip_theme(&look).resolve()));
         let mut rows = Vec::new();

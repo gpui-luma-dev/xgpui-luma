@@ -27,7 +27,7 @@ use gpui::{
 use xgpui_luma::controls::frame::FrameBuilder;
 use xgpui_luma::controls::listbox::{
     ListBoxAxis, ListBoxBinding, ListBoxControl, ListBoxFlow, ListBoxInput, ListBoxItemRenderModel, ListBoxLayout,
-    ListBoxScrollHandle, ListBoxState, ListBoxVisibleItem, ListBoxVirtualization,
+    ListBoxRenderGeometry, ListBoxScrollHandle, ListBoxState, ListBoxVisibleItem, ListBoxVirtualization,
 };
 use xgpui_luma::infra::drag_drop::{
     DragDropElementExt, DragDropEvent, DropEdge, DropProposal, DropZone, KeyedDrag, KeyedDropTarget, bind_drag_source,
@@ -376,36 +376,25 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
             }
             surface
         };
-        let virtual_window = if content_sized {
-            let (estimate, buffer) = match self.virtualization {
-                ListBoxVirtualization::Measured { estimated_height, overscan } => (estimated_height, Some(overscan)),
-                _ => (48.0, None),
-            };
-            Some(self.scroll.content_window(self.state, estimate, self.layout.spacing, buffer))
-        } else {
-            match self.virtualization {
-                ListBoxVirtualization::Eager | ListBoxVirtualization::Measured { .. } => None,
-                ListBoxVirtualization::Uniform { overscan } => self.scroll.virtual_window(
-                    self.state,
-                    self.axis,
-                    match self.axis {
-                        ListBoxAxis::Vertical => self.layout.item_height,
-                        ListBoxAxis::Horizontal => self.item_width,
-                    },
-                    self.layout.spacing,
-                    overscan,
-                ),
-            }
+        let geometry = ListBoxRenderGeometry {
+            axis: self.axis,
+            item_extent: match self.axis {
+                ListBoxAxis::Vertical => self.layout.item_height,
+                ListBoxAxis::Horizontal => self.item_width,
+            },
+            spacing: self.layout.spacing,
+            content_sized,
         };
+        let virtual_window = geometry.window(self.state, self.scroll, self.virtualization);
         let range = virtual_window.as_ref().map_or(0..self.state.visible_items().len(), |window| window.range.clone());
         // `nth` on the projection's mapped slice iterator skips directly to the
         // range; off-screen items do not construct models, templates, or bindings.
         let items = self.state.visible_items().skip(range.start).take(range.len());
         let spacer = |extent: f32| {
-            div()
-                .flex_shrink_0()
-                .when(self.axis == ListBoxAxis::Vertical, |space| space.h(px(extent)).w_full())
-                .when(self.axis == ListBoxAxis::Horizontal, |space| space.w(px(extent)).h(px(self.layout.item_height)))
+            geometry
+                .spacer(extent)
+                .when(self.axis == ListBoxAxis::Vertical, |space| space.w_full())
+                .when(self.axis == ListBoxAxis::Horizontal, |space| space.h(px(self.layout.item_height)))
         };
         let mut rows = Vec::with_capacity(range.len() + 2);
         if let Some(extent) = virtual_window.as_ref().and_then(|window| window.leading_space) {
