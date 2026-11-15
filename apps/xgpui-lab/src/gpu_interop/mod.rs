@@ -461,6 +461,7 @@ impl Page {
         thumbnail: bool,
     ) -> AnyElement {
         let tracked = self.canvas_bounds.clone();
+        let boids = self.kind == Kind::Boids;
         let (zoom, pan) = if interactive {
             (self.zoom, self.pan)
         } else {
@@ -469,6 +470,12 @@ impl Page {
         let ui_work = self.boids.measure_from.map(|started| (self.boids.ui_work.clone(), started));
         canvas(
             move |bounds, _, _| {
+                let bounds = if boids {
+                    let side = bounds.size.width.min(bounds.size.height);
+                    Bounds::new(point(bounds.left() + (bounds.size.width - side) / 2., bounds.top()), size(side, side))
+                } else {
+                    bounds
+                };
                 if interactive {
                     tracked.set(bounds);
                 }
@@ -500,7 +507,8 @@ impl Page {
                 }
             },
         )
-        .aspect_square()
+        .when(!boids, |canvas| canvas.aspect_square())
+        .when(boids, |canvas| canvas.h(px(500.)))
         .when(thumbnail, |canvas| canvas.size(px(110.)))
         .when(!thumbnail, |canvas| canvas.w_full())
         .into_any_element()
