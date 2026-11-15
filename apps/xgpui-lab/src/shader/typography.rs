@@ -85,10 +85,14 @@ fn clip(text: &str, chars: usize) -> String {
 const STAGE_TYPE: [(f32, f32); 2] = [(36., 52.), (48., 64.)];
 
 const TRY_IT: &str = "Try it: Tab to focus · Shift + arrows to select · Home / End · Cmd or Ctrl + A / C · double-click a word · triple-click the line.";
-const SCOPE: &str = "Read-only text field with the full source, a text run and selection endpoints; motion does not change the accessible source or selection. Single-line LTR text: wrapping, bidirectional selection and rich-text editing are outside this milestone. Glyph glow and shadow present in SDR; the previous color mode is restored on exit.";
+const SCOPE: &str = "Read-only text field with the full source, a text run and selection endpoints; motion does not change the accessible source or selection. Single-line LTR text: wrapping, bidirectional selection and rich-text editing are outside this milestone. Compare glyph glow and shadow in default or wide-gamut SDR; the previous color mode is restored on exit.";
 
 pub struct TypographyDemo {
     focus_scope: FocusHandle,
+    presentation_buttons: Vec<Entity<Button>>,
+    window_handle: Option<AnyWindowHandle>,
+    previous_color_mode: Option<WindowColorMode>,
+    presentation_error: Option<String>,
     look: Arc<Look>,
     buttons: Vec<(Action, String, Entity<Button>)>,
     choices: Vec<(Action, Choice)>,
@@ -131,6 +135,23 @@ impl TypographyDemo {
         let selected_sample = Arc::new(AtomicUsize::new(0));
         let mut demo = Self {
             focus_scope: cx.focus_handle(),
+            presentation_buttons: [
+                ("typography-presentation-default", "Default SDR", WindowColorMode::Default),
+                ("typography-presentation-wide", "Wide-gamut SDR", WindowColorMode::WideGamutSdr),
+            ]
+            .into_iter()
+            .map(|(id, label, mode)| {
+                radix::Button::new(id)
+                    .look(look.as_ref())
+                    .outline()
+                    .label(label)
+                    .on_click(cx, move |this: &mut Self, cx| this.set_presentation(mode, cx))
+                    .spawn(cx)
+            })
+            .collect(),
+            window_handle: None,
+            previous_color_mode: None,
+            presentation_error: None,
             buttons: Self::make_buttons(&look, cx),
             choices: Self::make_choices(&look, cx),
             motion_choice: Choice::new(
@@ -196,6 +217,25 @@ impl TypographyDemo {
         demo.apply_style(cx);
         demo
     }
+    fn set_presentation(&mut self, mode: WindowColorMode, cx: &mut Context<Self>) {
+        if let Some(handle) = self.window_handle {
+            let result = handle
+                .update(cx, |_, window, _| {
+                    let previous = window.color_status().requested();
+                    window.set_color_mode(mode).map(|_| previous)
+                })
+                .and_then(|result| result);
+            match result {
+                Ok(previous) => {
+                    self.previous_color_mode.get_or_insert(previous);
+                    self.presentation_error = None;
+                }
+                Err(error) => self.presentation_error = Some(error.to_string()),
+            }
+            cx.notify();
+        }
+    }
+
     fn apply_style(&mut self, cx: &mut Context<Self>) {
         // Sample colors follow the look's mode: deep inks on light, bright inks on dark.
         let gradient = |light: [[f32; 4]; 2], dark: [[f32; 4]; 2]| {
@@ -286,6 +326,7 @@ fn motion_line(motion: MotionMode, reduced: bool, progress: f32, seed: u64, fram
 
 impl Render for TypographyDemo {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.window_handle = Some(window.window_handle());
         if self.focus_pending {
             self.focus_pending = false;
             window.focus(&self.samples[self.active].focus_handle(cx), cx);
@@ -354,6 +395,29 @@ impl Render for TypographyDemo {
                 screen.control(labeled_control(&self.look, self.motion_choice.clone().into_element())),
                 |screen, choice| screen.control(labeled_control(&self.look, choice.into_element())),
             );
+        let screen = self.presentation_buttons.iter().fold(screen, |screen, button| screen.control(button.clone()));
+        let color_status = window.color_status();
+        let presentation_status = format!(
+            "Requested: {:?} · Effective: {:?} · Display wide gamut: {:?} · Scale: {}",
+            color_status.requested(),
+            color_status.effective(),
+            color_status.display_wide_gamut(),
+            window.scale_factor()
+        );
+        let presentation_note = self.presentation_error.clone().unwrap_or_else(|| {
+            if color_status.requested() == WindowColorMode::WideGamutSdr
+                && color_status.effective() != WindowColorMode::WideGamutSdr
+            {
+                "Wide gamut is not effective; this run does not validate wide-gamut text rendering.".into()
+            } else {
+                "Compare both presentation modes; wide-gamut validation requires Effective: WideGamutSdr.".into()
+            }
+        });
+        let screen = screen.control(div().id("typography-presentation-status").role(Role::Status).child(text(
+            &self.look,
+            TextRole::Caption,
+            presentation_status,
+        )));
         let screen = self.switches.iter().fold(screen, |screen, (_, switch)| screen.control(switch.clone()));
         let logical = self.logical_layer(source, &selected, range, selected_count, total);
         div()
@@ -367,7 +431,7 @@ impl Render for TypographyDemo {
                     .iter()
                     .fold(screen, |screen, card| screen.card(card.clone()))
                     .panels(self.motion_panel(), logical)
-                    .note(TRY_IT)
+                    .note(format!("{presentation_note} {TRY_IT}"))
                     .credits(SCOPE),
             )
     }
@@ -735,7 +799,16 @@ impl TypographyDemo {
         }
         cx.notify();
     }
-    pub(super) fn suspend(&mut self) {
+    pub(super) fn suspend(&mut self, cx: &mut Context<Self>) {
+        if let Some(previous) = self.previous_color_mode.take()
+            && let Some(handle) = self.window_handle
+        {
+            self.presentation_error = handle
+                .update(cx, |_, window, _| window.set_color_mode(previous))
+                .and_then(|result| result)
+                .err()
+                .map(|error| error.to_string());
+        }
         self.playing = false;
         self.focus_pending = false;
         self.last_tick = Instant::now();
@@ -748,6 +821,38 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
     use xgpui_luma::controls::button::ButtonEvent;
     use xgpui_shader::typography::KineticEffect;
+
+    #[test]
+    fn presentation_buttons_report_unsupported_wide_output_and_restore_on_exit() {
+        use gpui::WindowColorMode;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
+        cx.run_until_parked();
+        let buttons = cx.update(|_, cx| page.read(cx).presentation_buttons.clone());
+        buttons[1].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            let demo = page.read(cx);
+            assert!(demo.presentation_error.as_ref().unwrap().contains("unsupported"));
+            assert_eq!(window.color_status().requested(), WindowColorMode::Default);
+            assert_eq!(demo.previous_color_mode, None);
+        });
+        buttons[0].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert!(demo.presentation_error.is_none());
+            assert_eq!(demo.previous_color_mode, Some(WindowColorMode::Default));
+        });
+        page.update(cx, |demo, cx| demo.suspend(cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert_eq!(demo.previous_color_mode, None);
+            assert!(demo.presentation_error.is_none());
+        });
+    }
 
     #[test]
     fn tab_and_shift_tab_reach_and_leave_selectable_text() {
@@ -854,7 +959,7 @@ mod tests {
         page.update(cx, |page, cx| {
             page.action(Action::Motion(MotionMode::Wave), cx);
             assert!(page.playing);
-            page.suspend();
+            page.suspend(cx);
             assert!(!page.playing);
         });
         cx.run_until_parked();
