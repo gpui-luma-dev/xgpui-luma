@@ -211,9 +211,6 @@ impl Workshop {
                 "toggle" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Toggle, look, cx))))
                 }
-                "toggle-group" => Some(Sample::Choice(
-                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::ToggleGroup, look, cx)),
-                )),
                 "button" => {
                     Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
                 }
@@ -278,7 +275,13 @@ impl Render for Workshop {
                     .gap_3()
                     .child(div().text_size(px(22.)).child(entry.label))
                     .child(div().text_color(chrome.muted_text).child(group.label))
-                    .child("Sample coming soon"),
+                    .child(if self.selected == "toggle-group" {
+                        div()
+                            .debug_selector(|| "workshop-sdk-unavailable".into())
+                            .child("The SDK does not provide a dedicated Toggle Group control.")
+                    } else {
+                        div().child("Sample coming soon")
+                    }),
             );
         }
         root
@@ -368,7 +371,7 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice")
+                        matches!(group.id, "color" | "command" | "choice") && entry.id != "toggle-group"
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -379,9 +382,23 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 17);
+            assert_eq!(view.read(cx).samples.len(), 16);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
+        });
+    }
+
+    #[test]
+    fn missing_sdk_toggle_group_shows_message_without_a_substitute_control() {
+        let mut app = TestAppContext::single();
+        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        view.update(cx, |v, cx| v.select("toggle-group", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
+        cx.update(|_, cx| {
+            let workshop = view.read(cx);
+            assert_eq!(workshop.selected, "toggle-group");
+            assert!(!workshop.samples.contains_key("toggle-group"));
         });
     }
 

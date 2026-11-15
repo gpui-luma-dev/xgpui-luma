@@ -1,7 +1,7 @@
 //! Basic Choice controls using SDK builders, SDK defaults, and retained local state.
 use std::sync::Arc;
 use gpui::{AnyView, Context, Entity, Render, Window, div, prelude::*, px};
-use xgpui_luma::controls::{accordion, checkbox, icon_group, pager, radio_button, radio_group, switch, toggle};
+use xgpui_luma::controls::{accordion, checkbox, pager, radio_button, radio_group, switch, toggle};
 use xgpui_luma::controls::button::HasPresenter;
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use super::{
@@ -18,7 +18,6 @@ pub(super) enum ChoiceKind {
     RadioGroup,
     Switch,
     Toggle,
-    ToggleGroup,
 }
 impl ChoiceKind {
     fn title(self) -> &'static str {
@@ -30,7 +29,6 @@ impl ChoiceKind {
             Self::RadioGroup => "Radio Group",
             Self::Switch => "Switch",
             Self::Toggle => "Toggle",
-            Self::ToggleGroup => "Toggle Group",
         }
     }
     fn description(self) -> &'static str {
@@ -42,7 +40,6 @@ impl ChoiceKind {
             Self::RadioGroup => "Choose one option from a group.",
             Self::Switch => "Turn an option on or off.",
             Self::Toggle => "Press or release a toggle.",
-            Self::ToggleGroup => "Select one or more text-formatting options.",
         }
     }
 }
@@ -55,7 +52,6 @@ enum Control {
     RadioGroup(radio_group::RadioGroup<radio_group::RadioGroupItem>),
     Switch(switch::Switch),
     Toggle(toggle::Toggle),
-    ToggleGroup(icon_group::IconGroup<icon_group::IconGroupItem>),
 }
 impl Control {
     fn view(&self) -> AnyView {
@@ -67,7 +63,6 @@ impl Control {
             Self::RadioGroup(v) => v.clone().into(),
             Self::Switch(v) => v.clone().into(),
             Self::Toggle(v) => v.clone().into(),
-            Self::ToggleGroup(v) => v.clone().into(),
         }
     }
 }
@@ -122,6 +117,10 @@ impl ChoiceSample {
             ),
             ChoiceKind::RadioGroup => Control::RadioGroup(
                 radio_group::new("workshop-sdk-radio-group")
+                    .template(radio_group::radio_group_buttons_template(
+                        radio_button::default_radio_button_template(),
+                        radio_group::RadioGroupLayout::Vertical,
+                    ))
                     .items([
                         radio_group::RadioGroupItem::new("small").label("Small"),
                         radio_group::RadioGroupItem::new("medium").label("Medium"),
@@ -136,18 +135,6 @@ impl ChoiceSample {
             ChoiceKind::Toggle => {
                 Control::Toggle(toggle::new("workshop-sdk-toggle").content(|_, _| div().child("Bold")).spawn(cx))
             }
-            ChoiceKind::ToggleGroup => Control::ToggleGroup(
-                icon_group::new("workshop-sdk-toggle-group")
-                    .items([
-                        icon_group::IconGroupItem::new("bold").label("Bold"),
-                        icon_group::IconGroupItem::new("italic").label("Italic"),
-                        icon_group::IconGroupItem::new("underline").label("Underline"),
-                    ])
-                    .horizontal()
-                    .multiple()
-                    .independent_toggles(true)
-                    .spawn(cx),
-            ),
         };
         // Observe the real SDK event streams; native controls own their state transitions.
         match &control {
@@ -218,25 +205,6 @@ impl ChoiceSample {
                 })
                 .detach();
             }
-            Control::ToggleGroup(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &icon_group::IconGroupEvent, cx| {
-                    if matches!(event, icon_group::IconGroupEvent::ItemBoundsChanged { .. }) {
-                        return;
-                    }
-                    if let icon_group::IconGroupEvent::Change { selected_ids, .. } = event {
-                        this.state = format!(
-                            "Selected: {}",
-                            if selected_ids.is_empty() {
-                                "none".to_owned()
-                            } else {
-                                selected_ids.iter().map(|s| s.as_ref()).collect::<Vec<_>>().join(", ")
-                            }
-                        );
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
         }
         let state = match kind {
             ChoiceKind::Accordion => "details: expanded",
@@ -246,7 +214,6 @@ impl ChoiceSample {
             ChoiceKind::RadioGroup => "Selected: medium",
             ChoiceKind::Switch => "On: false",
             ChoiceKind::Toggle => "Pressed: false",
-            ChoiceKind::ToggleGroup => "Selected: none",
         }
         .to_owned();
         let events = cx.new(|cx| {
@@ -397,32 +364,7 @@ mod tests {
         select(&workshop, "accordion", cx);
         cx.update(|_, cx| assert!(accordion.read(cx).is_expanded(&"more".into())));
     }
-    #[test]
-    fn choice_toggle_group_retains_multiple_selections() {
-        let mut app = TestAppContext::single();
-        let (workshop, cx) = setup(&mut app);
-        let sample = select(&workshop, "toggle-group", cx);
-        let group = cx.update(|_, cx| match &sample.read(cx).control {
-            Control::ToggleGroup(v) => v.clone(),
-            _ => unreachable!(),
-        });
-        cx.update(|window, cx| group.read(cx).focus_handle(cx).focus(window, cx));
-        cx.run_until_parked();
-        cx.simulate_keystrokes("end space home space");
-        cx.run_until_parked();
-        cx.update(|_, cx| {
-            let selected = group.read(cx).selected_ids();
-            assert_eq!(selected.len(), 2);
-            assert!(selected.iter().any(|s| s == "bold"));
-            assert!(selected.iter().any(|s| s == "underline"));
-            assert!(sample.read(cx).state.contains("bold"));
-            assert!(sample.read(cx).state.contains("underline"));
-        });
-        workshop.update(cx, |v, cx| v.select("button", cx));
-        cx.run_until_parked();
-        select(&workshop, "toggle-group", cx);
-        cx.update(|_, cx| assert_eq!(group.read(cx).selected_ids().len(), 2));
-    }
+
     #[test]
     fn choice_pager_click_updates_native_state_and_readout() {
         let mut app = TestAppContext::single();
