@@ -395,6 +395,7 @@ impl Render for TypographyDemo {
                 screen.control(labeled_control(&self.look, self.motion_choice.clone().into_element())),
                 |screen, choice| screen.control(labeled_control(&self.look, choice.into_element())),
             );
+        let screen = screen.control(self.button(Action::Reset));
         let screen = self.presentation_buttons.iter().fold(screen, |screen, button| screen.control(button.clone()));
         let color_status = window.color_status();
         let presentation_status = format!(
@@ -561,6 +562,7 @@ enum Action {
     Motion(MotionMode),
     Play,
     Restart,
+    Reset,
     Back,
     Next,
     Seed,
@@ -577,7 +579,7 @@ enum Action {
 impl TypographyDemo {
     fn make_buttons(look: &Arc<Look>, cx: &mut Context<Self>) -> Vec<(Action, String, Entity<Button>)> {
         use self::Action::*;
-        [Play, Restart, Back, Next, Seed, Frame, SelectAll, Copy]
+        [Play, Restart, Reset, Back, Next, Seed, Frame, SelectAll, Copy]
             .into_iter()
             .map(|action| {
                 let button = radix::Button::new(format!("typography-{action:?}"))
@@ -746,6 +748,7 @@ impl TypographyDemo {
             let label: String = match *action {
                 Action::Play => if self.playing { "Pause" } else { "Play" }.into(),
                 Action::Restart => "Restart".into(),
+                Action::Reset => "Reset".into(),
                 Action::Back => "−10%".into(),
                 Action::Next => "+10%".into(),
                 Action::Seed => "New seed".into(),
@@ -777,6 +780,7 @@ impl TypographyDemo {
                 self.playing = !self.playing;
                 self.last_tick = Instant::now();
             }
+            Reset => self.reset(cx),
             Restart => {
                 self.progress = 0.;
                 self.phase = 0.;
@@ -799,6 +803,34 @@ impl TypographyDemo {
         }
         cx.notify();
     }
+    fn reset(&mut self, cx: &mut Context<Self>) {
+        self.presentation_error = None;
+        self.suspend(cx);
+        self.choose(0, cx);
+        self.focus_pending = false;
+        self.narrow = false;
+        self.large = false;
+        self.reduced = false;
+        self.motion = MotionMode::Static;
+        self.progress = 0.45;
+        self.phase = 0.;
+        self.seed = 42;
+        self.fill = 1;
+        self.shadow = 1;
+        self.softness = 1;
+        self.status = "Select a phrase to inspect its authentic source.".into();
+        for sample in &self.samples {
+            sample.update(cx, |text, cx| {
+                text.clear_selection(cx);
+                text.set_effect(KineticEffect::Static, cx).unwrap();
+            });
+        }
+        // Reset invalid edits too, even if their parsed value never changed.
+        self.synced = (u32::MAX, u64::MAX, u64::MAX);
+        self.sync_controls(cx);
+        self.apply_style(cx);
+    }
+
     pub(super) fn suspend(&mut self, cx: &mut Context<Self>) {
         if let Some(previous) = self.previous_color_mode.take()
             && let Some(handle) = self.window_handle
@@ -851,6 +883,59 @@ mod tests {
             let demo = page.read(cx);
             assert_eq!(demo.previous_color_mode, None);
             assert!(demo.presentation_error.is_none());
+        });
+    }
+
+    #[test]
+    fn reset_button_restores_settings_selections_and_invalid_fields() {
+        use xgpui_luma::controls::textfield::TextFieldEvent;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
+        cx.run_until_parked();
+        page.update(cx, |demo, cx| {
+            demo.choose(2, cx);
+            demo.presentation_error = Some("previous failed request".into());
+            demo.select_all(cx);
+            demo.motion = MotionMode::Wave;
+            demo.playing = true;
+            demo.narrow = true;
+            demo.large = true;
+            demo.reduced = true;
+            demo.progress = 0.9;
+            demo.phase = 12.;
+            demo.seed = 99;
+            demo.fill = 2;
+            demo.shadow = 2;
+            demo.softness = 2;
+            demo.apply_style(cx);
+        });
+        cx.run_until_parked();
+        let field = cx.update(|_, cx| page.read(cx).progress_field.clone());
+        field.update(cx, |field, cx| {
+            field.set_value("invalid", cx);
+            cx.emit(TextFieldEvent::Change { value: "invalid".into() });
+        });
+        let reset = cx.update(|_, cx| {
+            page.read(cx).buttons.iter().find(|(action, _, _)| *action == Action::Reset).unwrap().2.clone()
+        });
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert_eq!(demo.active, 0);
+            assert!(demo.presentation_error.is_none());
+            assert_eq!(demo.motion, MotionMode::Static);
+            assert!(!demo.playing && !demo.narrow && !demo.large && !demo.reduced);
+            assert_eq!((demo.progress, demo.phase, demo.seed), (0.45, 0., 42));
+            assert_eq!((demo.fill, demo.shadow, demo.softness), (1, 1, 1));
+            assert_eq!(demo.progress_field.read(cx).value(), "45");
+            assert_eq!(demo.seed_field.read(cx).value(), "42");
+            assert_eq!(demo.frame_field.read(cx).value(), "0");
+            assert!(demo.switches.iter().all(|(_, switch)| !*switch.read(cx).data()));
+            assert!(demo.samples.iter().all(|sample| {
+                sample.read(cx).selection().is_empty() && sample.read(cx).effect() == KineticEffect::Static
+            }));
         });
     }
 
