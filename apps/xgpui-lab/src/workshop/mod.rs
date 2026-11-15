@@ -3,6 +3,7 @@
 pub(crate) mod catalog;
 mod button;
 mod choice;
+mod collection;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -36,6 +37,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
     Button(Entity<button::ButtonControlExposition>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
@@ -51,6 +53,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
             Self::Button(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
@@ -66,6 +69,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -190,6 +194,17 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "paging-table" => {
+                    Some(Sample::Collection(cx.new(|cx| {
+                        collection::CollectionSample::new(collection::CollectionKind::PagingTable, look, cx)
+                    })))
+                }
+                "scrolling-table" => Some(Sample::Collection(cx.new(|cx| {
+                    collection::CollectionSample::new(collection::CollectionKind::ScrollingTable, look, cx)
+                }))),
+                "tree-view" => Some(Sample::Collection(
+                    cx.new(|cx| collection::CollectionSample::new(collection::CollectionKind::TreeView, look, cx)),
+                )),
                 "accordion" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
                 )),
@@ -259,6 +274,13 @@ impl Workshop {
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.shell_look.chrome();
+        let unavailable_reason = match self.selected {
+            "toggle-group" => Some("The SDK does not provide a dedicated Toggle Group control."),
+            "listbox" => Some(
+                "The SDK provides ListBox state and behavior, but no default visual template. A native default sample is unavailable.",
+            ),
+            _ => None,
+        };
         let mut root =
             div().id("control-workshop-content").size_full().min_w_0().min_h_0().text_color(chrome.body_text);
         if let Some(sample) = self.samples.get(self.selected) {
@@ -275,10 +297,8 @@ impl Render for Workshop {
                     .gap_3()
                     .child(div().text_size(px(22.)).child(entry.label))
                     .child(div().text_color(chrome.muted_text).child(group.label))
-                    .child(if self.selected == "toggle-group" {
-                        div()
-                            .debug_selector(|| "workshop-sdk-unavailable".into())
-                            .child("The SDK does not provide a dedicated Toggle Group control.")
+                    .child(if let Some(reason) = unavailable_reason {
+                        div().debug_selector(|| "workshop-sdk-unavailable".into()).child(reason)
                     } else {
                         div().child("Sample coming soon")
                     }),
@@ -371,7 +391,8 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice") && entry.id != "toggle-group"
+                        matches!(group.id, "color" | "command" | "choice" | "collection")
+                            && !matches!(entry.id, "toggle-group" | "listbox")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -382,7 +403,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 16);
+            assert_eq!(view.read(cx).samples.len(), 19);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
