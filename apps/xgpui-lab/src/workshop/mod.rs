@@ -7,6 +7,7 @@ mod collection;
 mod input;
 mod menu;
 mod layout;
+mod navigation;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -40,6 +41,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Navigation(Entity<navigation::NavigationSample>),
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     Input(Entity<input::InputSample>),
@@ -59,6 +61,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Navigation(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Input(v) => v.clone().into(),
@@ -78,6 +81,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Navigation(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -206,6 +210,12 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "sidebar" => Some(Sample::Navigation(
+                    cx.new(|cx| navigation::NavigationSample::new(navigation::NavigationKind::Sidebar, look, cx)),
+                )),
+                "tabs-navigation" => Some(Sample::Navigation(
+                    cx.new(|cx| navigation::NavigationSample::new(navigation::NavigationKind::Tabs, look, cx)),
+                )),
                 "dock-panel" => {
                     Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Dock, look, cx))))
                 }
@@ -437,11 +447,13 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input" | "menu" | "layout")
-                            && !matches!(
-                                entry.id,
-                                "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
-                            )
+                        matches!(
+                            group.id,
+                            "color" | "command" | "choice" | "collection" | "input" | "menu" | "layout" | "navigation"
+                        ) && !matches!(
+                            entry.id,
+                            "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
+                        )
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -452,7 +464,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 28);
+            assert_eq!(view.read(cx).samples.len(), 30);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
