@@ -841,7 +841,7 @@ impl Render for Page {
             )));
         }
         if self.kind == Kind::Boids {
-            screen = screen.action(self.buttons[6].clone()).note("Try 100,000 boids on Own thread, then UI thread. UI-thread mode deliberately puts engine recording and GPU waits in the UI frame. Observe-only avoids compositor GPU waits for slow engine steps. Pausing stops GPU work; Restart engine retries after an engine failure. UI timings cover the latest 120 frames after warm-up and are not displayed FPS.");
+            screen = screen.note("Try 100,000 boids on Own thread, then UI thread. UI-thread mode deliberately puts engine recording and GPU waits in the UI frame. Observe-only avoids compositor GPU waits for slow engine steps. Pausing stops GPU work; Restart engine retries after an engine failure. UI timings cover the latest 120 frames after warm-up and are not displayed FPS.");
         }
         if self.kind != Kind::Workbench {
             for choice in &self.choices {
@@ -851,7 +851,17 @@ impl Render for Page {
         }
         if self.kind == Kind::Boids {
             screen = screen.control(
-                div().w(px(160.)).child(format!("Speed {:.2}×", self.settings.speed)).child(self.sliders[0].clone()),
+                div()
+                    .flex()
+                    .items_end()
+                    .gap_2()
+                    .child(
+                        div()
+                            .w(px(160.))
+                            .child(format!("Speed {:.2}×", self.settings.speed))
+                            .child(self.sliders[0].clone()),
+                    )
+                    .child(self.buttons[6].clone()),
             );
         }
         if self.kind == Kind::Workbench {
