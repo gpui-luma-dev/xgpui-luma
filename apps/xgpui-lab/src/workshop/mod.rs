@@ -2,6 +2,7 @@
 //! inspector and documentation hosts intentionally stay out of this application.
 pub(crate) mod catalog;
 mod button;
+mod choice;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -35,6 +36,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Choice(Entity<choice::ChoiceSample>),
     Button(Entity<button::ButtonControlExposition>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
     Toolbar(Entity<toolbar::ToolbarControlExposition>),
@@ -49,6 +51,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Choice(v) => v.clone().into(),
             Self::Button(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Toolbar(v) => v.clone().into(),
@@ -63,6 +66,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -186,6 +190,30 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "accordion" => Some(Sample::Choice(
+                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
+                )),
+                "checkbox" => {
+                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Checkbox, look, cx))))
+                }
+                "pager" => {
+                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
+                }
+                "radio-button" => Some(Sample::Choice(
+                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioButton, look, cx)),
+                )),
+                "radio-group" => Some(Sample::Choice(
+                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
+                )),
+                "switch" => {
+                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Switch, look, cx))))
+                }
+                "toggle" => {
+                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Toggle, look, cx))))
+                }
+                "toggle-group" => Some(Sample::Choice(
+                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::ToggleGroup, look, cx)),
+                )),
                 "button" => {
                     Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
                 }
@@ -338,7 +366,10 @@ mod tests {
                 cx.update(|_, cx| {
                     let workshop = view.read(cx);
                     assert_eq!(workshop.selected, entry.id);
-                    assert_eq!(workshop.samples.contains_key(entry.id), matches!(group.id, "color" | "command"));
+                    assert_eq!(
+                        workshop.samples.contains_key(entry.id),
+                        matches!(group.id, "color" | "command" | "choice")
+                    );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
             }
@@ -348,7 +379,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 9);
+            assert_eq!(view.read(cx).samples.len(), 17);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
