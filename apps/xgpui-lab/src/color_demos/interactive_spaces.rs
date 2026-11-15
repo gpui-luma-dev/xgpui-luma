@@ -548,13 +548,24 @@ impl Render for InteractiveSpaces {
             Ok(coordinates) => (Some(self.space_cards(coordinates)), None),
             Err(error) => (None, Some(format!("Color conversion unavailable: {error}"))),
         };
+        let status = window.color_status();
+        let output = if status.effective() == gpui::WindowColorMode::WideGamutSdr {
+            "Wide-gamut output (Display P3)"
+        } else {
+            "sRGB output"
+        };
+        let display = match status.display_wide_gamut() {
+            Some(true) => "Display reports wide gamut",
+            Some(false) => "Display reports sRGB / SDR",
+            None => "Display gamut unknown",
+        };
         let metrics = LabMetrics::STANDARD;
         LabScreen::new("interactive-color-spaces", self.look.clone())
             .crumb("xgpui-color", "Color Spaces")
             .title("Color Spaces")
             .lede("Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.")
             .hero(Hero::full(self.render_field()))
-            .caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
+            .caption(format!("{output} · {display} · Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
             .control(labeled_control(&self.look, self.source_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()))
             .control(self.contour_toggle.clone())
