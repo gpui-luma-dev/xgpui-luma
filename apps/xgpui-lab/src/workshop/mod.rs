@@ -6,6 +6,7 @@ mod choice;
 mod collection;
 mod input;
 mod menu;
+mod layout;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -39,6 +40,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
@@ -57,6 +59,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
@@ -75,6 +78,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -202,6 +206,15 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "dock-panel" => {
+                    Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Dock, look, cx))))
+                }
+                "resizable-panels" => Some(Sample::Layout(
+                    cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Resizable, look, cx)),
+                )),
+                "split-view-unified" => {
+                    Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Split, look, cx))))
+                }
                 "context-menu" => {
                     Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
                 }
@@ -299,6 +312,12 @@ impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.shell_look.chrome();
         let unavailable_reason = match self.selected {
+            "slide-panel" => Some(
+                "The SDK provides SlidePanelState and overlay rendering helpers, but no standalone Slide Panel control. A default control sample is unavailable.",
+            ),
+            "split-view-inset" => Some(
+                "The SDK provides one SplitView control with no Inset variant. Its default template is demonstrated on the Split View: Unified screen.",
+            ),
             "floating-menu" => Some(
                 "The SDK provides Floating Menu rendering and navigation for Context Menu and Popup Menu, but no standalone Floating Menu control.",
             ),
@@ -418,8 +437,11 @@ mod tests {
                     assert_eq!(workshop.selected, entry.id);
                     assert_eq!(
                         workshop.samples.contains_key(entry.id),
-                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input" | "menu")
-                            && !matches!(entry.id, "toggle-group" | "listbox" | "floating-menu")
+                        matches!(group.id, "color" | "command" | "choice" | "collection" | "input" | "menu" | "layout")
+                            && !matches!(
+                                entry.id,
+                                "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
+                            )
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -430,7 +452,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 25);
+            assert_eq!(view.read(cx).samples.len(), 28);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
