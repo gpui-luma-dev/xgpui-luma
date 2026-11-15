@@ -49,20 +49,7 @@ enum Workspace {
 type Section = (Workspace, &'static str, &'static [(&'static str, &'static str)]);
 
 const SECTIONS: &[Section] = &[
-    (
-        Workspace::Standalone,
-        "Standalone Benchmarks",
-        &[
-            ("Quad Benchmark", "Quad Composition"),
-            ("Color Field Benchmark", "Color Field"),
-            ("Dense Metal Producers", "Dense Metal Producers"),
-        ],
-    ),
-    (
-        Workspace::Gradients,
-        "Gradients",
-        &[("gradients", "Linear"), ("mesh", "Mesh"), ("freeform", "Freeform")],
-    ),
+    (Workspace::ColorGamut, "Color & Gamut", &[("Chromaticity & Gamut", "Chromaticity & Gamut")]),
     (
         Workspace::Compositions,
         "Compositions",
@@ -76,7 +63,20 @@ const SECTIONS: &[Section] = &[
             ("color-stops", "Color Stop List"),
         ],
     ),
-    (Workspace::ColorGamut, "Color & Gamut", &[("Chromaticity & Gamut", "Chromaticity & Gamut")]),
+    (
+        Workspace::Gradients,
+        "Gradients",
+        &[("gradients", "Linear"), ("mesh", "Mesh"), ("freeform", "Freeform")],
+    ),
+    (
+        Workspace::Standalone,
+        "Standalone Benchmarks",
+        &[
+            ("Quad Benchmark", "Quad Composition"),
+            ("Color Field Benchmark", "Color Field"),
+            ("Dense Metal Producers", "Dense Metal Producers"),
+        ],
+    ),
     (
         Workspace::Canvas,
         "xgpui-canvas",
@@ -265,12 +265,14 @@ impl XgpuiLabApp {
         let look = crate::theme::default_look();
         // Command-line launch options pick the starting page and theme (see `launch.rs`).
         let launch = cx.try_global::<crate::launch::LaunchOptions>();
-        let start = launch.and_then(|launch| launch.route);
+        let start = launch
+            .and_then(|launch| launch.route)
+            .unwrap_or(Route { workspace: Workspace::ColorGamut, page: "Chromaticity & Gamut" });
         let hide_nav = launch.is_some_and(|launch| launch.hide_nav);
         if let Some(theme) = launch.and_then(|launch| launch.theme) {
             look.set_mode(theme);
         }
-        let start_workspace = start.map_or(Workspace::Gradients, |route| route.workspace);
+        let start_workspace = start.workspace;
         let nav_look = look.clone();
         sync_color_control_theme(&look);
         let gradient_builder = cx.new(|cx| GradientBuilder::new(look.clone(), cx));
@@ -297,7 +299,7 @@ impl XgpuiLabApp {
         for &(workspace, label, entries) in SECTIONS {
             let mut rows = Vec::new();
             for &(page, title) in entries {
-                let selected = Arc::new(AtomicBool::new(workspace == Workspace::Gradients && page == "gradients"));
+                let selected = Arc::new(AtomicBool::new(workspace == start.workspace && page == start.page));
                 let paint_selected = selected.clone();
                 let entry_look = nav_look.clone();
                 let label_look = nav_look.clone();
@@ -438,9 +440,7 @@ impl XgpuiLabApp {
             content,
             active_page: "gradients",
         };
-        if let Some(route) = start {
-            this.activate(route.workspace, route.page, cx);
-        }
+        this.activate(start.workspace, start.page, cx);
         this
     }
     #[cfg(all(test, feature = "test-support"))]
@@ -868,7 +868,7 @@ mod tests {
             view.read(cx)
                 .navigation
                 .iter()
-                .find(|entry| entry.workspace == Workspace::Gradients && entry.page == "gradients")
+                .find(|entry| entry.workspace == Workspace::ColorGamut && entry.page == "Chromaticity & Gamut")
                 .unwrap()
                 .button
                 .clone()
@@ -887,19 +887,19 @@ mod tests {
         app.update(|cx| xgpui_luma::init(cx).expect("initialize SDK"));
         let (view, cx) = app.add_window_view(XgpuiLabApp::new);
         cx.run_until_parked();
-        let label = cx.debug_bounds("nav-label-Gradients").unwrap();
-        let folder = cx.debug_bounds("nav-folder-Gradients-open").unwrap();
+        let label = cx.debug_bounds("nav-label-Color & Gamut").unwrap();
+        let folder = cx.debug_bounds("nav-folder-Color & Gamut-open").unwrap();
         assert!((label.left() - folder.right() - px(6.)).abs() < px(1.));
-        let header = cx.debug_bounds("accordion-trigger-Gradients").unwrap();
+        let header = cx.debug_bounds("accordion-trigger-Color & Gamut").unwrap();
         cx.simulate_click(header.center(), Default::default());
         cx.run_until_parked();
-        assert!(cx.debug_bounds("nav-folder-Gradients-closed").is_some());
+        assert!(cx.debug_bounds("nav-folder-Color & Gamut-closed").is_some());
         cx.simulate_click(header.center(), Default::default());
         cx.run_until_parked();
-        assert!(cx.debug_bounds("nav-folder-Gradients-open").is_some());
+        assert!(cx.debug_bounds("nav-folder-Color & Gamut-open").is_some());
         cx.update(|_, cx| {
             let shell = view.read(cx);
-            assert_eq!((shell.active, shell.active_page), (Workspace::Gradients, "gradients"));
+            assert_eq!((shell.active, shell.active_page), (Workspace::ColorGamut, "Chromaticity & Gamut"));
         });
     }
 
@@ -915,7 +915,7 @@ mod tests {
             cx.update(|_, cx| {
                 let shell = view.read(cx);
                 assert_eq!(shell.look.mode(), mode);
-                assert_eq!((shell.active, shell.active_page), (Workspace::Gradients, "gradients"));
+                assert_eq!((shell.active, shell.active_page), (Workspace::ColorGamut, "Chromaticity & Gamut"));
             });
         }
     }
@@ -1035,7 +1035,7 @@ mod tests {
                     assert!((split.read(cx).panel_sizes_px()[0] - width).abs() < 1.);
                 }
                 let shell = view.read(cx);
-                assert_eq!((shell.active, shell.active_page), (Workspace::Gradients, "gradients"));
+                assert_eq!((shell.active, shell.active_page), (Workspace::ColorGamut, "Chromaticity & Gamut"));
                 assert!(shell.compositions.is_none());
             });
         }
