@@ -29,6 +29,12 @@ const CHANNELS: [&str; 3] = ["Red", "Green", "Blue"];
 const INITIAL: [f64; 3] = [0.86, 0.32, 0.58];
 const COLOR_FIELD_HEIGHT: f32 = 450.;
 const CHANNEL_GRADIENT_SEGMENTS: usize = 16;
+// Unoptimized CPU rasterization stalls the UI thread; keep it release-only.
+const FIELD_RENDERERS: &[&str] = if cfg!(debug_assertions) {
+    &["Native shader", "wgpu interop"]
+} else {
+    &["Native shader", "wgpu interop", "CPU"]
+};
 
 pub(crate) struct InteractiveSpaces {
     look: Arc<Look>,
@@ -154,7 +160,7 @@ impl InteractiveSpaces {
             Err(error) => (None, Some(error.to_string())),
         };
         let gpu_painter = native_colors.as_ref().map(|colors| colors.field_painter(field_settings.clone()));
-        let cpu_painter = native_colors.as_ref().and_then(|colors| {
+        let cpu_painter = native_colors.as_ref().filter(|_| !cfg!(debug_assertions)).and_then(|colors| {
             match super::native_cpu_field::painter(field_settings.clone(), colors.clone()) {
                 Ok(painter) => Some(painter),
                 Err(error) => {
@@ -173,6 +179,9 @@ impl InteractiveSpaces {
                 field
                     .background_painter(painter.clone())
                     .thumb_painter(colors.thumb_painter(field_settings.clone()))
+            } else if cfg!(debug_assertions) {
+                // Do not silently enter the synchronous CPU raster path on GPU failure.
+                field.background_painter(Arc::new(|_, _, _, _| Ok(())))
             } else {
                 field
             }
@@ -216,7 +225,7 @@ impl InteractiveSpaces {
             "interactive-spaces-renderer",
             "Field renderer",
             &look,
-            crate::lab_controls::labels(&["Native shader", "wgpu interop", "CPU"]),
+            crate::lab_controls::labels(FIELD_RENDERERS),
             0,
             cx,
             |this: &mut Self, index, cx| {
@@ -301,6 +310,10 @@ impl InteractiveSpaces {
         } else {
             None
         };
+        let painter = painter.or_else(|| {
+            cfg!(debug_assertions)
+                .then(|| Arc::new(|_, _, _: &mut Window, _: &mut App| Ok(())) as ColorFieldBackgroundPainter)
+        });
         self.field.update(cx, |field, cx| field.set_background_painter(painter, cx));
     }
 
@@ -655,7 +668,7 @@ mod tests {
         });
     }
     #[test]
-    fn switching_cpu_gpu_retains_color_and_luma_keyboard_and_drag_behavior() {
+    fn switching_renderers_retains_color_and_luma_keyboard_and_drag_behavior() {
         use gpui::{KeyDownEvent, KeyUpEvent, Keystroke, MouseButton};
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
@@ -668,9 +681,13 @@ mod tests {
             let page = page.read(cx);
             assert!(page.gpu_painter.is_some());
             assert_eq!(page.renderer, 0);
+            if cfg!(debug_assertions) {
+                assert!(page.cpu_painter.is_none());
+                assert_eq!(super::FIELD_RENDERERS, &["Native shader", "wgpu interop"]);
+            }
             page.renderer_choice.clone()
         });
-        for renderer in [2, 0, 1] {
+        for renderer in [2, 0, 1].into_iter().filter(|index| *index < super::FIELD_RENDERERS.len()) {
             let before = cx.update(|_, cx| page.read(cx).rgb);
             cx.update(|_, cx| toggle.select(renderer, cx));
             if renderer == 1 {
