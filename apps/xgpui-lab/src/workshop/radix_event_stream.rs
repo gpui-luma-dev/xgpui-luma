@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use gpui::{Context, Entity, FontWeight, Render, Window, div, prelude::*, px};
-use crate::theme::{ColorVizLookExt, Look, TextSize};
+use gpui::{Context, Entity, Render, Window};
+use crate::theme::{Look};
 
 use super::event_log_view::{EventLogView, EventLogViewLookExt, radix_event_log_theme};
 
@@ -45,60 +45,6 @@ impl RadixEventStream {
 
 impl Render for RadixEventStream {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let chrome = self.look.chrome();
-        let body_style = self.look.typography_scale(TextSize::Xs);
-        let title_style = self.look.typography_scale(TextSize::Sm);
-
-        div()
-            .id(self.log_id)
-            .w_full()
-            .flex()
-            .flex_col()
-            .items_start()
-            .gap(px(12.0))
-            .child(
-                div()
-                    .w_full()
-                    .flex()
-                    .flex_col()
-                    .items_start()
-                    .gap(px(4.0))
-                    .child(
-                        div()
-                            .text_size(px(title_style.size))
-                            .line_height(px(title_style.line_height))
-                            .font_weight(title_style.weight)
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(chrome.title_text)
-                            .child("Eventing"),
-                    )
-                    .child(
-                        div()
-                            .w_full()
-                            .text_size(px(body_style.size))
-                            .line_height(px(body_style.line_height))
-                            .font_weight(body_style.weight)
-                            .text_color(chrome.muted_text)
-                            .child(self.intro),
-                    ),
-            )
-            .child(
-                div()
-                    .w_full()
-                    .flex()
-                    .flex_col()
-                    .items_start()
-                    .gap(px(6.0))
-                    .child(
-                        div()
-                            .text_size(px(body_style.size))
-                            .line_height(px(body_style.line_height))
-                            .font_weight(body_style.weight)
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_color(chrome.title_text)
-                            .child("Event stream"),
-                    )
-                    .child(self.event_log.clone()),
-            )
+        super::sample_layout::card(&self.look, self.log_id, "Events", self.intro, 1120., self.event_log.clone())
     }
 }

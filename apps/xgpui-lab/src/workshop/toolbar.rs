@@ -44,41 +44,54 @@ impl ToolbarExpositionLeftPane {
 
 impl Render for ToolbarExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
+        use super::sample_layout::{card, page};
+        use crate::theme::{TextSize, TypographyExt};
         let chrome = self.look.chrome();
-        let preview = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(px(16.0))
-            .child(self.toolbar.clone())
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .justify_center()
-                    .gap(px(8.0))
-                    .child(self.roving_focus_button.clone())
-                    .child(self.sequential_focus_button.clone())
-                    .child(
-                        div()
-                            .text_size(px(12.0))
-                            .line_height(px(16.0))
-                            .text_color(chrome.muted_text)
-                            .child(format!("mode: {}", self.focus_mode)),
-                    ),
-            )
-            .child(self.event_stream.clone());
-
-        div()
-            .id("controls-doc-toolbar-left-pane")
-            .size_full()
-            .min_h(px(0.0))
-            .min_w(px(0.0))
-            .overflow_y_scroll()
-            .p(px(16.0))
-            .child(preview)
+        page(
+            "controls-doc-toolbar-left-pane",
+            div()
+                .w_full()
+                .flex()
+                .flex_col()
+                .items_start()
+                .gap(px(28.))
+                .child(card(
+                    &self.look,
+                    "command-toolbar-editing",
+                    "Editing toolbar",
+                    "Menus, text styles, formatting, and insert commands.",
+                    1120.,
+                    div().id("command-toolbar-scroll").w_full().overflow_x_scroll().child(self.toolbar.clone()),
+                ))
+                .child(card(
+                    &self.look,
+                    "command-toolbar-focus",
+                    "Keyboard navigation",
+                    "Choose how focus moves between toolbar items.",
+                    420.,
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(8.))
+                                .child(self.roving_focus_button.clone())
+                                .child(self.sequential_focus_button.clone()),
+                        )
+                        .child(
+                            div()
+                                .typography_style(self.look.typography_scale(TextSize::Xs))
+                                .text_color(chrome.muted_text)
+                                .child(format!("Mode: {}", self.focus_mode)),
+                        ),
+                ))
+                .child(self.event_stream.clone()),
+        )
     }
 }
 

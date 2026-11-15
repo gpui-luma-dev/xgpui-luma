@@ -56,35 +56,48 @@ impl ButtonExpositionLeftPane {
 
 impl Render for ButtonExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let preview = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .gap(px(16.0))
-            .child(
-                div()
-                    .w_full()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .justify_start()
-                    .gap(px(12.0))
-                    .child(self.enabled_switch.clone())
-                    .child(self.primary.clone())
-                    .child(self.secondary.clone())
-                    .child(self.outline.clone())
-                    .child(self.ghost.clone()),
-            )
-            .child(self.event_stream.clone());
-
-        div()
-            .id("controls-doc-button-left-pane")
-            .size_full()
-            .min_h(px(0.0))
-            .min_w(px(0.0))
-            .overflow_y_scroll()
-            .p(px(16.0))
-            .child(preview)
+        super::sample_layout::page(
+            "controls-doc-button-left-pane",
+            div()
+                .w_full()
+                .flex()
+                .flex_col()
+                .items_start()
+                .gap(px(28.))
+                .child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_wrap()
+                        .items_start()
+                        .gap(px(16.))
+                        .child(super::sample_layout::card(
+                            &self.look,
+                            "command-button-variants",
+                            "Button variants",
+                            "Solid, soft, outline, and ghost treatments.",
+                            420.,
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(12.))
+                                .child(self.primary.clone())
+                                .child(self.secondary.clone())
+                                .child(self.outline.clone())
+                                .child(self.ghost.clone()),
+                        ))
+                        .child(super::sample_layout::card(
+                            &self.look,
+                            "command-button-state",
+                            "Enabled state",
+                            "Enable or disable all four variants.",
+                            320.,
+                            self.enabled_switch.clone(),
+                        )),
+                )
+                .child(self.event_stream.clone()),
+        )
     }
 }
 

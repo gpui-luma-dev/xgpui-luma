@@ -13,6 +13,7 @@ mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
 mod radix_event_stream;
+mod sample_layout;
 mod event_log_view;
 
 use std::{

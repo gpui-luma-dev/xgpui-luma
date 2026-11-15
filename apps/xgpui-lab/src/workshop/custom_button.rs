@@ -6,7 +6,7 @@ use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::ButtonEventExt;
 
 use xgpui_luma::controls::button::{Button, ButtonEvent, HasPresenter};
-use crate::theme::{ColorVizLookExt, Look};
+use crate::theme::Look;
 use xgpui_luma_look_radix as radix;
 
 use lucide_svg_static::Icon as LucideIcon;
@@ -250,86 +250,88 @@ impl CustomButtonControlExposition {
 
 impl Render for CustomButtonControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let chrome = self.look.chrome();
-
-        let preview = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .items_start()
-            .gap(px(18.0))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_nowrap()
-                    .items_stretch()
-                    .gap(px(16.0))
-                    .child(render_example_card(
-                        "New Button (Text)",
-                        "Radix soft button with full radius.",
-                        self.modified_button.clone(),
-                        chrome,
-                    ))
-                    .child(render_example_card(
-                        "Custom Content",
-                        "Using .content() for free-form layouts.",
-                        self.custom_button.clone(),
-                        chrome,
-                    ))
-                    .child(render_example_card(
-                        "Reactive Button",
-                        "State-driven data (CounterState).",
-                        self.reactive_button.clone(),
-                        chrome,
-                    )),
-            )
-            .child(demo_section(
-                "Standard factory layouts",
-                chrome.muted_text,
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .gap(px(12.0))
-                    .child(self.standard_icon_only.clone())
-                    .child(self.standard_text_icon.clone())
-                    .child(self.standard_icon_text.clone()),
-            ))
-            .child(demo_section(
-                "Prominent factory layouts",
-                chrome.muted_text,
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .gap(px(12.0))
-                    .child(self.prominent_icon_only.clone())
-                    .child(self.prominent_text_icon.clone())
-                    .child(self.prominent_icon_text.clone()),
-            ))
-            .child(self.event_stream.clone());
-
-        div().id("workshop-custom-button-scroll").size_full().overflow_y_scroll().p(px(16.0)).child(preview)
+        use super::sample_layout::{card, page};
+        page(
+            "workshop-custom-button-scroll",
+            div()
+                .w_full()
+                .flex()
+                .flex_col()
+                .items_start()
+                .gap(px(28.))
+                .child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_wrap()
+                        .items_start()
+                        .gap(px(16.))
+                        .child(card(
+                            &self.look,
+                            "command-custom-text",
+                            "Text button",
+                            "Click to update the label.",
+                            320.,
+                            self.modified_button.clone(),
+                        ))
+                        .child(card(
+                            &self.look,
+                            "command-custom-content",
+                            "Custom content",
+                            "Icon and text in a Radix button.",
+                            320.,
+                            self.custom_button.clone(),
+                        ))
+                        .child(card(
+                            &self.look,
+                            "command-custom-counter",
+                            "Reactive counter",
+                            "Click to increment the count.",
+                            320.,
+                            self.reactive_button.clone(),
+                        )),
+                )
+                .child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_wrap()
+                        .items_start()
+                        .gap(px(16.))
+                        .child(card(
+                            &self.look,
+                            "command-custom-soft",
+                            "Soft layouts",
+                            "Icon-only and text layouts.",
+                            420.,
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(12.))
+                                .child(self.standard_icon_only.clone())
+                                .child(self.standard_text_icon.clone())
+                                .child(self.standard_icon_text.clone()),
+                        ))
+                        .child(card(
+                            &self.look,
+                            "command-custom-solid",
+                            "Solid layouts",
+                            "Icon-only and text layouts.",
+                            420.,
+                            div()
+                                .flex()
+                                .flex_wrap()
+                                .items_center()
+                                .gap(px(12.))
+                                .child(self.prominent_icon_only.clone())
+                                .child(self.prominent_text_icon.clone())
+                                .child(self.prominent_icon_text.clone()),
+                        )),
+                )
+                .child(self.event_stream.clone()),
+        )
     }
-}
-
-fn demo_section(title: &'static str, title_color: gpui::Hsla, content: impl IntoElement) -> impl IntoElement {
-    div()
-        .w_full()
-        .flex()
-        .flex_col()
-        .items_start()
-        .gap(px(4.0))
-        .child(section_label(title, title_color))
-        .child(content)
-}
-
-fn section_label(label: &'static str, color: gpui::Hsla) -> impl IntoElement {
-    div()
-        .text_size(px(12.0))
-        .line_height(px(16.0))
-        .font_weight(gpui::FontWeight::MEDIUM)
-        .text_color(color)
-        .child(label)
 }
 
 fn append_button_event(
@@ -350,48 +352,6 @@ fn render_lucide_icon(icon: LucideIcon, color: gpui::Hsla) -> AnyElement {
     div()
         .text_size(px(16.0))
         .child(xgpui_luma::infra::icon::lucide_icon(icon, color, 16.0))
-        .into_any_element()
-}
-
-fn render_example_card(
-    title: &'static str,
-    description: &'static str,
-    control: impl IntoElement,
-    chrome: xgpui_luma::theme::LumaChrome,
-) -> AnyElement {
-    div()
-        .flex_1()
-        .min_w(px(0.0))
-        .min_h(px(168.0))
-        .flex()
-        .flex_col()
-        .items_center()
-        .justify_center()
-        .gap(px(14.0))
-        .border_1()
-        .border_color(chrome.border)
-        .rounded(px(6.0))
-        .bg(chrome.panel_background)
-        .p(px(16.0))
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .items_center()
-                .gap(px(4.0))
-                .child(
-                    div()
-                        .text_size(px(13.0))
-                        .line_height(px(18.0))
-                        .font_weight(gpui::FontWeight::SEMIBOLD)
-                        .text_color(chrome.title_text)
-                        .child(title),
-                )
-                .child(
-                    div().text_size(px(12.0)).line_height(px(17.0)).text_color(chrome.muted_text).child(description),
-                ),
-        )
-        .child(control)
         .into_any_element()
 }
 
