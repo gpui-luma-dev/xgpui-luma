@@ -35,12 +35,15 @@ struct Params {
     count: u32,
     exposure: f32,
 };
-struct Dab { shape: vec4<f32>, color: vec4<f32> };
+struct Dab { shape: vec4<f32>, color: vec3<f32>, stroke: u32 };
+struct StrokeBase { color: vec3<f32>, stroke: u32 };
 
 @group(0) @binding(0) var<storage, read_write> working: array<vec4<f32>>;
 @group(0) @binding(1) var<uniform> p: Params;
 @group(0) @binding(2) var<storage, read> dabs: array<Dab>;
 @group(0) @binding(3) var slot: texture_storage_2d<rgba16float, write>;
+// RGB before this stroke and its integer ID.
+@group(0) @binding(4) var<storage, read_write> stroke_base: array<StrokeBase>;
 
 fn checker(x: u32, y: u32) -> f32 {
     return select(0.30, 0.18, (x / 16u + y / 16u) % 2u == 0u);
@@ -84,7 +87,9 @@ fn base(x: u32, y: u32) -> vec3<f32> {
 @compute @workgroup_size(8, 8)
 fn generate(@builtin(global_invocation_id) id: vec3<u32>) {
     if (id.x >= p.canvas.x || id.y >= p.canvas.y) { return; }
-    working[id.y * p.canvas.x + id.x] = vec4<f32>(base(id.x, id.y), 1.0);
+    let index = id.y * p.canvas.x + id.x;
+    working[index] = vec4<f32>(base(id.x, id.y), 1.0);
+    stroke_base[index] = StrokeBase(vec3<f32>(0.0), 0u);
 }
 
 @compute @workgroup_size(8, 8)
@@ -99,7 +104,15 @@ fn paint(@builtin(global_invocation_id) id: vec3<u32>) {
         let dx = f32(x) + 0.5 - d.shape.x;
         let dy = f32(y) + 0.5 - d.shape.y;
         if (dx * dx + dy * dy <= d.shape.z * d.shape.z) {
-            pixel = d.color.rgb * d.shape.w + pixel * (1.0 - d.shape.w);
+            let stroke = d.stroke;
+            var under = pixel;
+            if (stroke != 0u) {
+                if (stroke_base[index].stroke != stroke) {
+                    stroke_base[index] = StrokeBase(pixel, stroke);
+                }
+                under = stroke_base[index].color;
+            }
+            pixel = d.color.rgb * d.shape.w + under * (1.0 - d.shape.w);
         }
     }
     working[index] = vec4<f32>(pixel, 1.0);
@@ -298,6 +311,12 @@ impl Engine {
             usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             mapped_at_creation: false,
         });
+        let stroke_base = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("workbench_stroke_base"),
+            size: (WIDTH * HEIGHT) as u64 * PIXEL_BYTES,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
         let params = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("workbench_params"),
             size: 32,
@@ -320,7 +339,11 @@ impl Engine {
         let generate_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("workbench_generate"),
             layout: &generate.get_bind_group_layout(0),
-            entries: &[entry(0, working.as_entire_binding()), entry(1, params.as_entire_binding())],
+            entries: &[
+                entry(0, working.as_entire_binding()),
+                entry(1, params.as_entire_binding()),
+                entry(4, stroke_base.as_entire_binding()),
+            ],
         });
         let paint_bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("workbench_paint"),
@@ -329,6 +352,7 @@ impl Engine {
                 entry(0, working.as_entire_binding()),
                 entry(1, paint_params.as_entire_binding()),
                 entry(2, dab_buffer.as_entire_binding()),
+                entry(4, stroke_base.as_entire_binding()),
             ],
         });
         let staging = (0..STAGING)
@@ -356,8 +380,8 @@ impl Engine {
         });
         let device_for_belt = device.clone();
         let stats = EngineStats {
-            // Working image, two params, dabs, two bind groups, staging.
-            resources_created: 6 + STAGING as u64,
+            // Working image, stroke baseline, two params, dabs, two bind groups, staging.
+            resources_created: 7 + STAGING as u64,
             // The generated image is the first revision to publish.
             revision: 1,
             ..Default::default()
@@ -649,9 +673,10 @@ impl Engine {
                     tiles.insert((tx, ty));
                 }
             }
-            for v in [dab.x, dab.y, dab.radius, dab.opacity, dab.color[0], dab.color[1], dab.color[2], 1.] {
+            for v in [dab.x, dab.y, dab.radius, dab.opacity, dab.color[0], dab.color[1], dab.color[2]] {
                 bytes.extend_from_slice(&v.to_ne_bytes());
             }
+            bytes.extend_from_slice(&dab.stroke_id.to_ne_bytes());
         }
         self.stats.dabs_applied += batch.len() as u64;
         if x0 >= x1 {

@@ -188,6 +188,7 @@ fn run(
                     for i in 1..=steps {
                         let fraction = i as f32 / steps as f32;
                         e.dab(Dab {
+                            stroke_id: 0x8000_0000 | ((demo_step / 120) as u32 & 0x7fff_ffff),
                             x: from.0 + (to.0 - from.0) * fraction,
                             y: from.1 + (to.1 - from.1) * fraction,
                             radius: settings.radius,
@@ -327,7 +328,7 @@ mod tests {
         };
         wait(&|snapshot| snapshot.surface.as_ref().is_some_and(|surface| surface.stats().presents > 0));
         runtime.send(Command::Dab(
-            Dab { x: 100., y: 100., radius: 10., opacity: 1., color: [1., 0., 0.] },
+            Dab { stroke_id: 0, x: 100., y: 100., radius: 10., opacity: 1., color: [1., 0., 0.] },
             Instant::now(),
         ));
         runtime.send(Command::Inspect(100, 100));
@@ -349,7 +350,9 @@ mod tests {
         assert!(engine.surface().content().is_some());
         let boids = super::super::boids::engine::Engine::new(settings.particles, true).unwrap();
         let deadline = Instant::now() + Duration::from_secs(10);
-        while boids.surface().stats().presents == 0 && Instant::now() < deadline {
+        while (boids.surface().stats().presents == 0 || boids.surface().content().is_none())
+            && Instant::now() < deadline
+        {
             std::thread::sleep(Duration::from_millis(10));
         }
         assert!(boids.surface().stats().presents > 0);

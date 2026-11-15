@@ -101,6 +101,7 @@ pub(crate) struct Page {
     zoom: f32,
     pan: Point<f32>,
     last_point: Option<Point<f32>>,
+    stroke_id: u32,
     canvas_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
 const COLORS: [[f32; 3]; 6] = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1., 1., 0.], [1., 1., 1.], [0., 0., 0.]];
@@ -328,6 +329,7 @@ impl Page {
             zoom: 1.,
             pan: point(0., 0.),
             last_point: None,
+            stroke_id: 0,
             canvas_bounds: Rc::default(),
         }
     }
@@ -437,7 +439,10 @@ impl Page {
         ))
     }
     fn stroke_to(&mut self, to: Point<f32>) {
-        let from = self.last_point.replace(to).unwrap_or(to);
+        let from = self.last_point.replace(to).unwrap_or_else(|| {
+            self.stroke_id = (self.stroke_id.wrapping_add(1) & 0x7fff_ffff).max(1);
+            to
+        });
         let dx = to.x - from.x;
         let dy = to.y - from.y;
         let steps = ((dx * dx + dy * dy).sqrt() / (self.settings.radius / 3.).max(1.)).ceil().max(1.) as u32;
@@ -445,6 +450,7 @@ impl Page {
             let t = i as f32 / steps as f32;
             self.send(Command::Dab(
                 Dab {
+                    stroke_id: self.stroke_id,
                     x: from.x + dx * t,
                     y: from.y + dy * t,
                     radius: self.settings.radius,
