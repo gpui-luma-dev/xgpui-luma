@@ -1,15 +1,12 @@
 //! Cached native-color programs shared by the spectrum, swatches and SDK tracks.
 use std::sync::Arc;
 use gpui::{Bounds, Pixels, Window};
-use xgpui_luma_color::{
-    color_field::ColorFieldBackgroundPainter,
-    color_slider::{ColorSliderDelegate, ColorSliderTrackContext, color_spec::Hsv, types::Axis},
-};
+use xgpui_luma_color::{color_field::ColorFieldBackgroundPainter};
 use xgpui_shader::{
     WindowShaderExt,
     instanced::{InstanceField, ShaderInstance, ShaderProgram},
 };
-use super::source_field::{self, FieldSettings, ENDPOINT_STRIP_WIDTH};
+use super::source_field::{FieldSettings, ENDPOINT_STRIP_WIDTH};
 
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -61,15 +58,6 @@ impl Parameters {
             strip_width: 0.,
             reversed: 0.,
             sdr_fallback: 0.,
-        }
-    }
-    pub fn track(source: usize, rgb: [f64; 3], channel: usize, context: &ColorSliderTrackContext, radius: f32) -> Self {
-        Self {
-            kind: 2.,
-            channel: channel as f32,
-            vertical: if context.axis == Axis::Vertical { 1. } else { 0. },
-            reversed: if context.reversed { 1. } else { 0. },
-            ..Self::solid(source, rgb, radius)
         }
     }
 }
@@ -126,91 +114,6 @@ impl NativeColors {
                 window,
             )
         })
-    }
-    pub fn track(&self, source: usize, rgb: [f64; 3], channel: usize) -> Arc<dyn ColorSliderDelegate> {
-        Arc::new(NativeTrack { colors: self.clone(), source, rgb, channel: TrackChannel::Rgb(channel) })
-    }
-    pub fn saturation_track(&self, source: usize, mut hsv: Hsv) -> Arc<dyn ColorSliderDelegate> {
-        hsv.s = 1.;
-        let rgb: gpui::Rgba = hsv.to_hsla_ext().into();
-        Arc::new(NativeTrack {
-            colors: self.clone(),
-            source,
-            rgb: [rgb.r as f64, rgb.g as f64, rgb.b as f64],
-            channel: TrackChannel::Saturation,
-        })
-    }
-}
-#[derive(Clone, Copy)]
-enum TrackChannel {
-    Rgb(usize),
-    Saturation,
-}
-struct NativeTrack {
-    colors: NativeColors,
-    source: usize,
-    rgb: [f64; 3],
-    channel: TrackChannel,
-}
-impl NativeTrack {
-    fn sample(&self, context: &ColorSliderTrackContext, position: f32) -> [f64; 3] {
-        let position = if context.reversed {
-            1. - position as f64
-        } else {
-            position as f64
-        };
-        let mut rgb = self.rgb;
-        match self.channel {
-            TrackChannel::Rgb(channel) => rgb[channel] = position,
-            TrackChannel::Saturation => {
-                let value = rgb.into_iter().fold(0., f64::max);
-                rgb = rgb.map(|channel| value + (channel - value) * position);
-            }
-        }
-        rgb
-    }
-}
-impl ColorSliderDelegate for NativeTrack {
-    fn paint_domain_track(&self, context: &ColorSliderTrackContext, bounds: Bounds<Pixels>, window: &mut Window) {
-        let radius = context
-            .corner_radii
-            .top_left
-            .map(|r| r.to_pixels(window.rem_size()).as_f32())
-            .unwrap_or(bounds.size.height.as_f32() / 2.);
-        if let Err(error) = self.colors.paint(
-            bounds,
-            Parameters::track(
-                self.source,
-                self.rgb,
-                match self.channel {
-                    TrackChannel::Rgb(index) => index,
-                    TrackChannel::Saturation => 3,
-                },
-                context,
-                radius,
-            ),
-            window,
-        ) {
-            tracing::error!("Native color slider: {error:#}");
-        }
-    }
-    fn get_color_for_context(&self, context: &ColorSliderTrackContext, position: f32) -> gpui::Hsla {
-        let rgb = self.sample(context, position);
-        source_field::srgb_reference(rgb, source_field::SPACES[self.source])
-            .map(Into::into)
-            .unwrap_or_else(|_| gpui::black())
-    }
-    fn thumb_painter(
-        &self,
-        context: &ColorSliderTrackContext,
-        position: f32,
-    ) -> Option<xgpui_luma_color::color_slider::color_thumb::ColorThumbPainter> {
-        let colors = self.colors.clone();
-        let source = self.source;
-        let rgb = self.sample(context, position);
-        Some(Arc::new(move |bounds, window, _| {
-            colors.paint(bounds, Parameters::solid(source, rgb, bounds.size.width.as_f32() / 2.), window)
-        }))
     }
 }
 

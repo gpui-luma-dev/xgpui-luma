@@ -42,7 +42,7 @@ pub(crate) struct ChromaticityLab {
     cells: Arc<Vec<model::Cell>>,
     error: Option<String>,
     choices: Vec<Choice>,
-    shader: Result<xgpui_shader::instanced::ShaderProgram<Parameters>, String>,
+    shaders: Result<[xgpui_shader::instanced::ShaderProgram<Parameters>; 2], String>,
 }
 impl ChromaticityLab {
     pub(crate) fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
@@ -234,7 +234,8 @@ impl ChromaticityLab {
             cells: Arc::new(Vec::new()),
             error: None,
             choices,
-            shader: chromaticity_shader::program().map_err(|error| error.to_string()),
+            shaders: (|| Ok([chromaticity_shader::program(false)?, chromaticity_shader::program(true)?]))()
+                .map_err(|error: anyhow::Error| error.to_string()),
         };
         this.rebuild();
         this
@@ -292,8 +293,8 @@ impl ChromaticityLab {
         }
     }
     fn chart(&self, cx: &mut Context<Self>) -> AnyElement {
-        let program = match &self.shader {
-            Ok(program) => program.clone(),
+        let programs = match &self.shaders {
+            Ok(programs) => programs.clone(),
             Err(error) => {
                 return div().p_4().child(format!("Chromaticity shader unavailable: {error}")).into_any_element();
             }
@@ -326,7 +327,8 @@ impl ChromaticityLab {
                 chart_bounds.set(Some(bounds));
             },
             move |bounds, _, window, cx| {
-                if let Err(error) = window.paint_custom_shader(bounds, &program, parameters) {
+                let wide = window.color_status().effective() == WindowColorMode::WideGamutSdr;
+                if let Err(error) = window.paint_custom_shader(bounds, &programs[usize::from(wide)], parameters) {
                     tracing::error!("Chromaticity chart: {error:#}");
                 }
                 let extent = if parameters.uv > 0.5 { [0.65, 0.65] } else { [0.8, 0.9] };
@@ -449,7 +451,7 @@ fn hex(rgb: [f64; 3]) -> String {
 }
 
 const INTERACTION_NOTE: &str = "Click or drag the diagram to move the source pixel. Positions outside the source gamut are constrained to its RGB bounds. Changing source keeps the encoded RGB values and reinterprets them, so the gold cross moves while the controls stay the same. The simulated gamut sets hatching, mapping, and preview colors. Cards report source-pixel membership in each reference gamut.";
-const CIE_LOCUS_CREDIT: &str = "CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Fill colors are an sRGB preview, even on a wide-gamut window. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.";
+const CIE_LOCUS_CREDIT: &str = "CIE 1931 2° spectral locus: CIE 2019, DOI 10.25039/CIE.DS.mifmy4x4, CC BY-SA 4.0. The plotted locus retains that license. Wide-gamut output is limited to Display P3, even when the source or simulated gamut is Rec.2020. Coordinates and gamut calculations remain valid beyond P3, but displayed diagram colors are clipped to P3; other windows show an sRGB preview. Coverage percentages describe reference xy area. Hatching describes the selected simulated gamut, not a measurement of your monitor.";
 
 impl ChromaticityLab {
     fn legend(&self) -> Legend {
@@ -560,7 +562,7 @@ impl ChromaticityLab {
 }
 
 impl Render for ChromaticityLab {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // The pixel selector stays in the model (tests drive it); presets replace it on screen.
         let choices = self.choices.iter().enumerate().filter(|(index, _)| *index != 1);
         let controls = choices.map(|(_, choice)| labeled_control(&self.look, choice.clone().into_element()));
@@ -569,7 +571,9 @@ impl Render for ChromaticityLab {
             .title("Chromaticity & Gamut")
             .lede("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram.")
             .hero(Hero::with_legend(self.chart(cx), self.legend()))
-            .caption(self.caption_line());
+            .caption(format!("{} · {}", if window.color_status().effective() == WindowColorMode::WideGamutSdr {
+                "Wide-gamut output (Display P3)"
+            } else { "sRGB output" }, self.caption_line()));
         controls
             .fold(screen, LabScreen::control)
             .control(self.switches[0].clone())

@@ -104,9 +104,9 @@ fn outline() -> Vec<[f64; 2]> {
     result.push(points[points.len() - 1]);
     result
 }
-fn source() -> anyhow::Result<String> {
+fn source(wide: bool) -> anyhow::Result<String> {
     let locus = outline();
-    let mut source = String::from(WGSL_COLOR_MATH);
+    let mut source = format!("const WIDE_OUTPUT: bool = {wide};\n{WGSL_COLOR_MATH}");
     writeln!(
         source,
         "\nconst LOCUS_COUNT: u32 = {}u;\nconst LOCUS: array<vec2<f32>, {}> = array(",
@@ -139,8 +139,13 @@ fn source() -> anyhow::Result<String> {
     writeln!(source, ");\n{}", include_str!("chromaticity.wgsl"))?;
     Ok(source)
 }
-pub(super) fn program() -> anyhow::Result<ShaderProgram<Parameters>> {
-    ShaderProgram::new(&source()?)
+pub(super) fn program(wide: bool) -> anyhow::Result<ShaderProgram<Parameters>> {
+    let code = source(wide)?;
+    if wide {
+        ShaderProgram::new_linear_p3(&code)
+    } else {
+        ShaderProgram::new(&code)
+    }
 }
 
 #[cfg(test)]
@@ -149,7 +154,9 @@ mod tests {
 
     #[test]
     fn shader_validates_and_preserves_the_spectral_locus_with_subpixel_error() {
-        program().expect("portable shader and typed ABI");
+        for wide in [false, true] {
+            program(wide).expect("portable shader and typed ABI");
+        }
         let simplified = outline();
         assert!(simplified.len() < 180);
         for p in model::locus() {
@@ -175,6 +182,14 @@ mod gpu_tests {
         backing_scale: f32,
     ) -> anyhow::Result<image::RgbaImage> {
         let extent = size(DevicePixels((600. * backing_scale) as i32), DevicePixels((420. * backing_scale) as i32));
+        renderer.render_scene_to_image(&scene(shader, parameters, backing_scale), extent)
+    }
+
+    fn scene(
+        shader: &xgpui_shader::instanced::ShaderProgram<Parameters>,
+        parameters: Parameters,
+        backing_scale: f32,
+    ) -> Scene {
         let bounds = Bounds::new(
             point(ScaledPixels(0.), ScaledPixels(0.)),
             size(ScaledPixels(600. * backing_scale), ScaledPixels(420. * backing_scale)),
@@ -203,13 +218,13 @@ mod gpu_tests {
             glyph_mask: None,
         }));
         scene.finish();
-        renderer.render_scene_to_image(&scene, extent)
+        scene
     }
 
     #[test]
     #[ignore = "requires a native Metal device"]
     fn native_gpu_matches_cpu_color_math_at_1x_and_2x_and_captures_smooth_edges() -> anyhow::Result<()> {
-        let shader = program()?;
+        let shader = program(false)?;
         let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
         let boundary = model::locus();
         let simplified = outline();
@@ -291,6 +306,101 @@ mod gpu_tests {
             );
         }
         anyhow::ensure!(samples > 500, "insufficient CPU/GPU reference samples: {samples}");
+        Ok(())
+    }
+    #[test]
+    #[ignore = "requires a headless Metal device, no GUI or window"]
+    fn wide_chart_matches_linear_p3_reference_and_retains_out_of_srgb_colors() -> anyhow::Result<()> {
+        let wide = program(true)?;
+        let mut renderer = gpui_apple::metal_renderer::MetalHeadlessRenderer::new()?;
+        renderer.set_color_mode(gpui::WindowColorMode::WideGamutSdr)?;
+        let logical_scale = (420. - 48.) / 0.9;
+        let left = (600. - logical_scale * 0.8) * 0.5;
+        let boundary = model::locus();
+        let mut out_of_srgb = 0;
+        for scale in [1., 2.] {
+            let extent = size(DevicePixels((600. * scale) as i32), DevicePixels((420. * scale) as i32));
+            for (index, space) in model::SPACES.into_iter().enumerate() {
+                for (reduce, mapping) in [(0., GamutMapping::Clip), (1., GamutMapping::ReduceChroma)] {
+                    let p = Parameters {
+                        simulated: index as f32,
+                        luminance: 0.18,
+                        reduce_chroma: reduce,
+                        show_fill: 1.,
+                        ..bytemuck::Zeroable::zeroed()
+                    };
+                    let image = renderer.render_scene_to_linear_p3(&scene(&wide, p, scale), extent)?;
+                    for cell in model::cells(space, 0.18, mapping, &boundary)?.iter().step_by(19) {
+                        let center = [cell.xy[0] + 0.4 / 48., cell.xy[1] + 0.45 / 54.];
+                        let x = ((left + center[0] * logical_scale) * f64::from(scale)) as usize;
+                        let y = ((396. - center[1] * logical_scale) * f64::from(scale)) as usize;
+                        let xy = [
+                            ((x as f64 + 0.5) / f64::from(scale) - left) / logical_scale,
+                            (396. - (y as f64 + 0.5) / f64::from(scale)) / logical_scale,
+                        ];
+                        if outline().windows(2).map(|e| distance(xy, e[0], e[1])).fold(f64::INFINITY, f64::min)
+                            * logical_scale
+                            < 3.
+                        {
+                            continue;
+                        }
+                        let mapped = XyzD65::new([xy[0] * 0.18 / xy[1], 0.18, (1. - xy[0] - xy[1]) * 0.18 / xy[1]])?
+                            .to_linear(space)?
+                            .map_gamut(space, mapping)?;
+                        let expected = mapped.map_gamut(RgbSpace::DisplayP3, GamutMapping::Clip)?.components();
+                        let srgb_components = mapped.convert(RgbSpace::Srgb)?.components();
+                        if srgb_components.iter().any(|v| *v < -0.01 || *v > 1.01) {
+                            out_of_srgb += 1;
+                        }
+                        let actual = image.pixels[y * extent.width.0 as usize + x];
+                        for (bits, expected) in actual[..3].iter().zip(expected) {
+                            let actual = super::super::italy_model::half(*bits);
+                            anyhow::ensure!(
+                                (actual - expected).abs() < 0.008,
+                                "{space:?}/{mapping:?} scale={scale} xy={xy:?}: {actual} != {expected}"
+                            );
+                        }
+                    }
+                }
+            }
+            // Overlay/theme colors must retain their sRGB appearance in the P3 program.
+            let p =
+                Parameters { overlays: 1., grid_r: 0.5, grid_g: 0.25, grid_b: 0.75, ..bytemuck::Zeroable::zeroed() };
+            let image = renderer.render_scene_to_linear_p3(&scene(&wide, p, scale), extent)?;
+            // Sample a grid line away from the locus, triangles and markers.
+            // Compare linear source-over with the known enclosure background.
+            let x = ((left + 0.1 * logical_scale) * f64::from(scale)) as usize;
+            let y = ((396. - 0.4 * logical_scale) * f64::from(scale)) as usize;
+            let coordinate = [
+                ((x as f64 + 0.5) / f64::from(scale) - left) / logical_scale,
+                (396. - (y as f64 + 0.5) / f64::from(scale)) / logical_scale,
+            ];
+            let distance = coordinate
+                .into_iter()
+                .map(|v| (v / 0.1 - (v / 0.1).round()).abs() * 0.1 * logical_scale)
+                .fold(f64::INFINITY, f64::min);
+            let aa = 1. / f64::from(scale);
+            let t = ((distance - (0.5 - aa * 0.5)) / aa).clamp(0., 1.);
+            let alpha = 1. - t * t * (3. - 2. * t);
+            let convert = |rgb| -> anyhow::Result<[f64; 3]> {
+                Ok(xgpui_color::EncodedRgb::new(RgbSpace::Srgb, rgb)?
+                    .decode()?
+                    .convert(RgbSpace::DisplayP3)?
+                    .components())
+            };
+            let foreground = convert([0.5, 0.25, 0.75])?;
+            let background = convert([41. / 255., 59. / 255., 77. / 255.])?;
+            let actual = image.pixels[y * extent.width.0 as usize + x];
+            for channel in 0..3 {
+                let expected = foreground[channel] * alpha + background[channel] * (1. - alpha);
+                let actual = super::super::italy_model::half(actual[channel]);
+                anyhow::ensure!(
+                    (actual - expected).abs() < 0.004,
+                    "grid overlay scale={scale} channel={channel}: {actual} != {expected}"
+                );
+            }
+        }
+        anyhow::ensure!(out_of_srgb > 100, "must exercise native colors outside sRGB");
         Ok(())
     }
 }

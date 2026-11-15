@@ -6,7 +6,7 @@ mod metadata;
 #[path = "bin/chromaticity-lab/gpu.rs"]
 mod gpu;
 #[path = "bin/chromaticity-lab/reveal.rs"]
-mod reveal;
+pub(crate) mod reveal;
 #[path = "bin/chromaticity-lab/photo.rs"]
 mod photo;
 use gpui::{prelude::*, *};
