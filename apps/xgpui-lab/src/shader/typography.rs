@@ -96,7 +96,7 @@ pub struct TypographyDemo {
     look: Arc<Look>,
     buttons: Vec<(Action, String, Entity<Button>)>,
     choices: Vec<(Action, Choice)>,
-    motion_choice: Choice,
+    motion_buttons: Vec<(MotionMode, Entity<Button>)>,
     sample_cards: Vec<Entity<Button>>,
     selected_sample: Arc<AtomicUsize>,
     switches: Vec<(Action, Switch)>,
@@ -154,16 +154,18 @@ impl TypographyDemo {
             presentation_error: None,
             buttons: Self::make_buttons(&look, cx),
             choices: Self::make_choices(&look, cx),
-            motion_choice: Choice::new(
-                "typography-motion",
-                "Motion",
-                &look,
-                MOTIONS.iter().map(|mode| format!("{mode:?}")).collect(),
-                0,
-                cx,
-                // The selector is kept in sync, so a change always picks a different effect.
-                |this: &mut Self, index, cx| this.action(Action::Motion(MOTIONS[index]), cx),
-            ),
+            motion_buttons: MOTIONS
+                .into_iter()
+                .map(|mode| {
+                    let button = radix::Button::new(format!("typography-motion-{mode:?}"))
+                        .look(look.as_ref())
+                        .outline()
+                        .label(format!("{mode:?}"))
+                        .on_click(cx, move |this: &mut Self, cx| this.action(Action::Motion(mode), cx))
+                        .spawn(cx);
+                    (mode, button)
+                })
+                .collect(),
             sample_cards: Self::make_sample_cards(&look, &selected_sample, cx),
             selected_sample,
             switches: Self::make_switches(&look, cx),
@@ -291,12 +293,23 @@ impl TypographyDemo {
         .into();
         cx.notify();
     }
-    /// A new effect starts from its initial preview, even after the previous one completed.
-    fn select_motion(&mut self, mode: MotionMode) {
+    /// Reveal modes always replay from the start, including repeated clicks.
+    fn set_motion(&mut self, mode: MotionMode) {
         self.motion = mode;
-        self.playing = mode == MotionMode::Wave;
+        if matches!(mode, MotionMode::Typewriter | MotionMode::Scramble) {
+            self.progress = 0.;
+            self.phase = 0.;
+        }
+        self.playing = mode != MotionMode::Static;
+        self.last_tick = Instant::now();
+    }
+    /// A reveal at 0% is blank, so Restart must also resume playback.
+    fn restart(&mut self) {
         self.progress = 0.;
         self.phase = 0.;
+        if matches!(self.motion, MotionMode::Typewriter | MotionMode::Scramble) {
+            self.playing = true;
+        }
         self.last_tick = Instant::now();
     }
     /// Seek a reveal effect; static and wave seek through the typewriter.
@@ -392,7 +405,7 @@ impl Render for TypographyDemo {
             .into_iter()
             .filter_map(|action| self.choices.iter().find(|(id, _)| *id == action).map(|(_, choice)| choice.clone()))
             .fold(
-                screen.control(labeled_control(&self.look, self.motion_choice.clone().into_element())),
+                self.motion_buttons.iter().fold(screen, |screen, (_, button)| screen.control(button.clone())),
                 |screen, choice| screen.control(labeled_control(&self.look, choice.into_element())),
             );
         let screen = screen.control(self.button(Action::Reset));
@@ -717,8 +730,6 @@ impl TypographyDemo {
             };
             choice.sync(options, index, cx);
         }
-        let motion = MOTIONS.iter().position(|mode| *mode == self.motion).unwrap_or(0);
-        self.motion_choice.sync(MOTIONS.iter().map(|mode| format!("{mode:?}")).collect(), motion, cx);
         for (action, switch) in &self.switches {
             let on = match action {
                 Action::Width => self.narrow,
@@ -768,8 +779,7 @@ impl TypographyDemo {
         match action {
             Fill | Shadow | Softness => unreachable!("selector setting"),
             Sample(index) => self.choose(index, cx),
-            // Choosing the active effect again returns to the static reference.
-            Motion(mode) => self.select_motion(if self.motion == mode { MotionMode::Static } else { mode }),
+            Motion(mode) => self.set_motion(mode),
             Play => {
                 if self.motion == MotionMode::Static {
                     self.motion = MotionMode::Wave;
@@ -781,11 +791,7 @@ impl TypographyDemo {
                 self.last_tick = Instant::now();
             }
             Reset => self.reset(cx),
-            Restart => {
-                self.progress = 0.;
-                self.phase = 0.;
-                self.last_tick = Instant::now();
-            }
+            Restart => self.restart(),
             Back | Next => self.set_progress(self.progress + if action == Back { -0.1 } else { 0.1 }),
             Seed => {
                 self.seed = self.seed.wrapping_add(1);
@@ -996,7 +1002,7 @@ mod tests {
                     let button = button.clone();
                     button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
                 } else {
-                    // Motion and the toggles are selectors and switches; drive their actions directly.
+                    // Drive motion and toggle actions directly in this selection/clipboard test.
                     page.update(cx, |demo, cx| demo.action(action, cx));
                 }
             });
@@ -1098,36 +1104,61 @@ mod tests {
     }
 
     #[test]
-    fn motion_selection_resets_completed_previews_and_toggles_across_samples() {
+    fn motion_buttons_and_restart_replay_reveals_instead_of_leaving_blank_text() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
+        let restart = cx.update(|_, cx| {
+            page.read(cx).buttons.iter().find(|(action, _, _)| *action == Action::Restart).unwrap().2.clone()
+        });
+        for mode in [MotionMode::Typewriter, MotionMode::Scramble] {
+            let button =
+                cx.update(|_, cx| page.read(cx).motion_buttons.iter().find(|(key, _)| *key == mode).unwrap().1.clone());
+            // Exercise the actual button callbacks twice: repeating a mode replays it.
+            for _ in 0..2 {
+                page.update(cx, |demo, _| {
+                    demo.progress = 1.;
+                    demo.phase = 48.;
+                    demo.playing = false;
+                });
+                button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+                cx.update(|_, cx| {
+                    let demo = page.read(cx);
+                    assert_eq!(demo.motion, mode);
+                    assert!(
+                        demo.progress < 0.05 && demo.phase < 1.3,
+                        "reveal starts near zero and may already advance a frame"
+                    );
+                    assert!(demo.playing);
+                });
+            }
+            page.update(cx, |demo, cx| {
+                demo.choose(1, cx);
+                demo.choose(0, cx);
+                assert_eq!(demo.motion, mode);
+                demo.progress = 0.6;
+                demo.playing = false;
+            });
+            restart.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.update(|_, cx| {
+                let demo = page.read(cx);
+                assert!(demo.progress < 0.05 && demo.phase < 1.3, "restarted reveal may already advance a frame");
+                assert!(demo.playing, "Restart resumes a paused reveal");
+            });
+        }
         page.update(cx, |demo, cx| {
-            demo.progress = 1.;
-            demo.phase = 48.;
-            demo.action(Action::Motion(MotionMode::Scramble), cx);
-            assert_eq!(demo.motion, MotionMode::Scramble);
-            assert_eq!(demo.progress, 0.);
-            assert_eq!(demo.phase, 0.);
-            assert!(!demo.playing);
-            demo.action(Action::Play, cx);
+            demo.action(Action::Motion(MotionMode::Wave), cx);
             assert!(demo.playing);
-            demo.action(Action::Sample(1), cx);
-            demo.action(Action::Sample(0), cx);
-            assert_eq!(demo.motion, MotionMode::Scramble);
-            demo.action(Action::Motion(MotionMode::Scramble), cx);
-            assert_eq!(demo.motion, MotionMode::Static);
+            demo.playing = false;
+            demo.action(Action::Restart, cx);
+            assert!(!demo.playing, "Restart preserves a paused Wave");
+            demo.action(Action::Motion(MotionMode::Static), cx);
             assert!(!demo.playing);
-            demo.progress = 1.;
-            demo.action(Action::Motion(MotionMode::Typewriter), cx);
-            assert_eq!(demo.progress, 0.);
+            demo.action(Action::Restart, cx);
+            assert!(!demo.playing, "Restart does not animate Static");
         });
         cx.run_until_parked();
-        cx.update(|_, cx| {
-            let demo = page.read(cx);
-            assert_eq!(demo.samples[0].read(cx).effect(), KineticEffect::Typewriter { progress: 0. });
-        });
     }
 
     #[test]
