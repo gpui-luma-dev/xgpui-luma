@@ -40,20 +40,27 @@ impl HiddenSymbolLab {
                     .look(&look)
                     .content_only()
                     .content(move |_, cx| {
-                        let mut preview = div().w_full().aspect_ratio(1.).flex_shrink_0();
+                        let mut preview = div().w(px(140.)).h(px(140.)).flex_shrink_0();
                         if let Some(page) = owner.upgrade() {
                             let page = page.read(cx);
                             if let Ok(reveal) = &page.reveal {
                                 preview = preview.child(reveal.picture(index, page.thumbnail_wide));
                             }
                         }
-                        div().w_full().flex().flex_col().gap_2().child(preview).child(text(
+                        div().w(px(140.)).flex().flex_col().gap_2().child(preview).child(text(
                             &label_look,
                             TextRole::Caption,
                             label,
                         ))
                     })
-                    .with_template_modifier(|row, _| row.w_full().min_w_0().h_auto().p_0())
+                    .with_template_modifier(move |row, _| {
+                        row.w(px(140.))
+                            .h(px(190.))
+                            .flex_shrink_0()
+                            .p_0()
+                            .items_start()
+                            .debug_selector(move || format!("hidden-symbol-sample-{index}"))
+                    })
                     .on_click(cx, move |this: &mut Self, cx| this.select(index, cx))
                     .spawn(cx)
             })
@@ -133,7 +140,8 @@ impl Render for HiddenSymbolLab {
             .lede("Compare native Display P3 with its clipped sRGB preview. Look for a ring and X in the red field.")
             .hero(Hero::fixed(div().w_full().flex().flex_col().gap_4()
                 .child(picture)
-                .child(div().w_full().flex().gap_3().children(self.thumbnails.iter().map(|image| div().flex_1().min_w_0().child(image.clone())))), px(520.)))
+                .child(div().w_full().h(px(190.)).flex_shrink_0().flex().items_start().justify_center().gap_3()
+                    .debug_selector(|| "hidden-symbol-samples".into()).children(self.thumbnails.clone())), px(520.)))
             .caption(format!("{} · {} · {display}", VIEWS[self.selected],
                 if wide { "Wide-gamut output (Display P3)" } else { "sRGB output" }))
             .control(self.attribution.clone())
@@ -164,6 +172,20 @@ mod tests {
                 assert_eq!(page.selected, selected);
             });
         }
-        assert!(cx.debug_bounds("hidden-symbol-picture").is_some());
+        let main = cx.debug_bounds("hidden-symbol-picture").unwrap();
+        let samples = cx.debug_bounds("hidden-symbol-samples").unwrap();
+        let caption = cx.debug_bounds("hidden-wide-gamut-symbol-caption").unwrap();
+        assert!(samples.top() >= main.bottom() + px(15.));
+        assert!(caption.top() >= samples.bottom());
+        let mut previous = None;
+        for selector in ["hidden-symbol-sample-0", "hidden-symbol-sample-1", "hidden-symbol-sample-2"] {
+            let sample = cx.debug_bounds(selector).unwrap();
+            assert_eq!(sample.size, size(px(140.), px(190.)));
+            assert_eq!(sample.top(), samples.top());
+            if let Some(right) = previous {
+                assert!(sample.left() > right);
+            }
+            previous = Some(sample.right());
+        }
     }
 }
