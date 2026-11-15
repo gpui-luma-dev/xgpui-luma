@@ -10,7 +10,7 @@
 //! | Point dragging on the canvas | `builder/actions.rs` (shared with Mesh) |
 //! | Surface selection | [`GradientBuilder::freeform_surface`] (called from `builder/view.rs`) |
 //! | CPU raster + field model | `paint/freeform.rs` (`rasterize_freeform_preview`, `build_color_field`) |
-//! | GPU field (Metal) | [`gpu_field`] → `color_field/` |
+//! | GPU field (wgpu interop / native Metal) | [`gpu_field`] → `color_field/` |
 //! | P3 presentation of the CPU raster | [`p3`] |
 //!
 //! Colors stay source `ColorValue`s until `gradient_builder/encode.rs` encodes
@@ -21,6 +21,8 @@ use gpui::AnyElement;
 
 mod actions;
 pub(super) mod gpu_field;
+#[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
+mod interop;
 mod handles;
 pub(super) mod p3;
 
@@ -29,10 +31,10 @@ pub(super) use actions::{animated_spread, default_points};
 impl GradientBuilder {
     /// Freeform canvas surface: the GPU field when selected, else the P3
     /// presentation of the CPU raster. `None` shows the CPU raster as sRGB.
-    pub(super) fn freeform_surface(&mut self) -> Option<AnyElement> {
+    pub(super) fn freeform_surface(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let freeform_p3_active = self.freeform_p3_active();
-        if self.freeform_gpu {
-            Some(self.freeform_gpu_surface(freeform_p3_active))
+        if self.freeform_renderer.is_gpu() {
+            Some(self.freeform_gpu_surface(freeform_p3_active, cx))
         } else if freeform_p3_active {
             self.cached_preview_image().map(|image| self.freeform_p3_cache.element(image))
         } else {
@@ -40,7 +42,7 @@ impl GradientBuilder {
         }
     }
 
-    fn freeform_gpu_surface(&mut self, wide: bool) -> AnyElement {
+    fn freeform_gpu_surface(&mut self, wide: bool, cx: &mut Context<Self>) -> AnyElement {
         let output = OutputSpace::wide(wide);
         let field = super::super::paint::build_color_field(
             &encode_points(&self.render_points(), output),
@@ -55,6 +57,6 @@ impl GradientBuilder {
                 softness_percent: self.softness_percent,
             },
         );
-        self.freeform_gpu_cache.element(field, wide)
+        self.freeform_gpu_cache.element(field, wide, self.freeform_renderer, cx)
     }
 }

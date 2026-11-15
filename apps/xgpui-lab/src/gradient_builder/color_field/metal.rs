@@ -208,9 +208,9 @@ impl CustomContent for Paint {
 use bytemuck::Zeroable;
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
-    fn readback(paint: &Paint, ctx: &MetalCustomContext, width: usize, height: usize) -> Vec<u8> {
+    pub(crate) fn readback(paint: &Paint, ctx: &MetalCustomContext, width: usize, height: usize) -> Vec<u8> {
         let _ = paint.prepare(ctx, gpui::size(DevicePixels(width as i32), DevicePixels(height as i32))).unwrap();
         let cached = paint.cache.lock().unwrap();
         let result = &cached.as_ref().unwrap().2;

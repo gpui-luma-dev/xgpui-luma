@@ -100,7 +100,7 @@ pub struct GradientBuilder {
     freeform_hsl: bool,
     type_selector: Entity<Selector>,
     renderer_selector: Entity<Selector>,
-    freeform_gpu: bool,
+    freeform_renderer: freeform::gpu_field::Renderer,
     freeform_mixing: super::color_field::Mixing,
     freeform_renderer_selector: Entity<Selector>,
     freeform_mixing_selector: Entity<Selector>,
@@ -370,10 +370,7 @@ impl GradientBuilder {
             .spawn(cx);
         let freeform_renderer_selector = radix::Selector::new("freeform-renderer")
             .look(&look)
-            .items(vec![
-                xgpui_luma::controls::selector::SelectorItem::new("cpu").label("CPU"),
-                xgpui_luma::controls::selector::SelectorItem::new("gpu").label("GPU field"),
-            ])
+            .items(freeform::gpu_field::renderer_items())
             .selected_id("cpu")
             .spawn(cx);
         let freeform_mixing_selector = radix::Selector::new("freeform-mixing")
@@ -464,7 +461,7 @@ impl GradientBuilder {
             freeform_hsl: false,
             type_selector: type_selector.clone(),
             renderer_selector: renderer_selector.clone(),
-            freeform_gpu: false,
+            freeform_renderer: freeform::gpu_field::Renderer::Cpu,
             freeform_mixing: super::color_field::Mixing::Ordered,
             freeform_renderer_selector: freeform_renderer_selector.clone(),
             freeform_mixing_selector: freeform_mixing_selector.clone(),
@@ -682,7 +679,11 @@ impl GradientBuilder {
             ._subscriptions
             .push(cx.subscribe(&freeform_renderer_selector, |this, _, event: &SelectorEvent, cx| {
                 if let SelectorEvent::Change { item_id, .. } = event {
-                    this.freeform_gpu = item_id.as_ref() == "gpu";
+                    let Some(renderer) = freeform::gpu_field::Renderer::from_id(item_id.as_ref()) else {
+                        return;
+                    };
+                    this.freeform_renderer = renderer;
+                    this.freeform_gpu_cache.retry(cx);
                     this.render_task = None;
                     this.preview_image_cache = None;
                     let _ = this.ensure_preview_image_cache(this.preview_size, cx);
