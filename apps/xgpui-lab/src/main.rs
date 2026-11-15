@@ -17,6 +17,7 @@ mod shell_lab;
 mod compositions;
 mod extension_pane;
 mod gamut;
+mod gpu_interop;
 mod color_lab;
 mod color_stop;
 mod color_stop_list;
