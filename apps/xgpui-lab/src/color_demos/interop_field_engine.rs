@@ -350,10 +350,10 @@ mod tests {
             for y in 2..30 {
                 for x in 2..62 {
                     let index = y * 64 + x;
-                    for channel in 0..3 {
+                    for (channel, value) in image.pixels[index].iter().take(3).enumerate() {
                         let offset = index * 8 + channel * 2;
                         let expected = half(u16::from_le_bytes([reference[offset], reference[offset + 1]]));
-                        let actual = half(image.pixels[index][channel]);
+                        let actual = half(*value);
                         assert!(
                             (actual - expected).abs() < 0.004,
                             "source={source} ({x},{y}) channel={channel}: {actual} != {expected}"

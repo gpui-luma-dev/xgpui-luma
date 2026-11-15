@@ -5,7 +5,7 @@ edition.workspace = true
 publish = false
 
 [features]
-native = ["dep:gpui_platform"]
+native = ["dep:gpui_platform", "dep:luma-app-common"]
 
 [dependencies]
 anyhow.workspace = true
@@ -16,7 +16,7 @@ xgpui-luma-look-shadcn.workspace = true
 xgpui-luma-look-radix.workspace = true
 xgpui-luma-color.workspace = true
 xgpui-luma-plot.workspace = true
-luma-app-common.workspace = true
+luma-app-common = { workspace = true, optional = true }
 lucide-svg-static.workspace = true
 
 [dev-dependencies]

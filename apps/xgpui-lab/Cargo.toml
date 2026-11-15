@@ -75,3 +75,6 @@ gpui-apple = { package = "xgpui-apple", version = "5.0.0", features = ["test-sup
 [target.'cfg(target_os = "windows")'.dependencies]
 gpui-windows = { package = "xgpui-windows", version = "3.0.0" }
 windows = { version = "0.62", features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D_Fxc", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi_Common"] }
+
+[lints]
+workspace = true

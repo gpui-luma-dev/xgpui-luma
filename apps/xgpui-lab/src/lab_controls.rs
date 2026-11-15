@@ -142,7 +142,7 @@ impl Segmented {
         self.group.update(cx, |group, cx| group.set_enabled(enabled, cx));
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "test-support"))]
     pub fn select(&self, index: usize, cx: &mut gpui::App) {
         self.group.update(cx, |group, cx| {
             group.set_selected(index.to_string(), cx);

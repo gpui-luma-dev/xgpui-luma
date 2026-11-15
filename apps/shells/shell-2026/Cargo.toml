@@ -19,3 +19,6 @@ gtk = { version = "0.18" }
 
 [dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

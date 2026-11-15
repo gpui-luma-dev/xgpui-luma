@@ -20,3 +20,6 @@ raw-window-handle = { version = "0.6.2", features = ["std"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18" }
+
+[lints]
+workspace = true
