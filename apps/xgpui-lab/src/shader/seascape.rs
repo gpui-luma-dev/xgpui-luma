@@ -281,12 +281,12 @@ impl SeaPane {
                 },
             )
             .w_full()
-            .h(px(300.)),
+            .h(px(450.)),
         )
         .subtitle("Native WGSL loops · 32-byte instance");
         Ok(if self.compare {
             Hero::compare(
-                ComparePane::new("Shader paint", painted().w_full().h(px(300.)).bg_paint(programs.paint(p)?))
+                ComparePane::new("Shader paint", painted().w_full().h(px(450.)).bg_paint(programs.paint(p)?))
                     .subtitle("Expanded bounded loops"),
                 native,
             )
