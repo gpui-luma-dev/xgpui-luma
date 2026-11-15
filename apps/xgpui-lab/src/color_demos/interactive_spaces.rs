@@ -65,14 +65,10 @@ pub(crate) struct InteractiveSpaces {
 }
 
 fn rgb_slider_delegate(
-    colors: Option<&NativeColors>,
     rgb: [f64; 3],
     source: usize,
     channel: usize,
 ) -> Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate> {
-    if let Some(colors) = colors {
-        return colors.track(source, rgb, channel);
-    }
     let samples = (0..=CHANNEL_GRADIENT_SEGMENTS)
         .map(|step| {
             let mut sample = rgb;
@@ -96,12 +92,7 @@ fn parse_channel(text: &str) -> Option<f64> {
 }
 
 impl RgbChannelControls {
-    fn new(
-        index: usize,
-        look: &Look,
-        colors: Option<&NativeColors>,
-        cx: &mut Context<InteractiveSpaces>,
-    ) -> (Self, Subscription) {
+    fn new(index: usize, look: &Look, cx: &mut Context<InteractiveSpaces>) -> (Self, Subscription) {
         let input = radix::TextField::new(format!("interactive-spaces-input-{index}"))
             .look(look)
             .surface()
@@ -127,7 +118,7 @@ impl RgbChannelControls {
         let builder = ColorSliderBuilder::new(
             format!("interactive-spaces-slider-{index}"),
             INITIAL[index] as f32,
-            rgb_slider_delegate(colors, INITIAL, 0, index),
+            rgb_slider_delegate(INITIAL, 0, index),
         )
         .horizontal()
         .range(0. ..1.)
@@ -144,8 +135,8 @@ impl RgbChannelControls {
         (Self { input, slider, track }, subscription)
     }
 
-    fn refresh_track(&self, colors: Option<&NativeColors>, rgb: [f64; 3], source: usize, index: usize, cx: &mut App) {
-        self.track.set_delegate(rgb_slider_delegate(colors, rgb, source, index));
+    fn refresh_track(&self, rgb: [f64; 3], source: usize, index: usize, cx: &mut App) {
+        self.track.set_delegate(rgb_slider_delegate(rgb, source, index));
         refresh_color_slider(&self.slider, cx);
     }
 }
@@ -193,7 +184,7 @@ impl InteractiveSpaces {
         });
         let mut subscriptions = vec![subscription];
         let channels = std::array::from_fn(|index| {
-            let (controls, subscription) = RgbChannelControls::new(index, &look, native_colors.as_ref(), cx);
+            let (controls, subscription) = RgbChannelControls::new(index, &look, cx);
             subscriptions.push(subscription);
             controls
         });
@@ -205,9 +196,6 @@ impl InteractiveSpaces {
                 .size(xgpui_luma::theme::ControlSize::Sm)
                 .thumb_small();
         let saturation_track = saturation_builder.domain_renderer();
-        if let Some(colors) = &native_colors {
-            saturation_track.set_delegate(colors.saturation_track(0, hsv));
-        }
         let saturation = saturation_builder.spawn(cx);
         subscriptions.push(cx.subscribe(&saturation, |this: &mut Self, _, event, cx| {
             if let Some(value) = primary_slider_value(event) {
@@ -426,12 +414,8 @@ impl InteractiveSpaces {
 
     fn sync_controls(&self, editing: Option<usize>, cx: &mut Context<Self>) {
         self.saturation.update(cx, |slider, cx| slider.set_value(self.hsv.s, cx));
-        let delegate = if let Some(colors) = &self.native_colors {
-            colors.saturation_track(self.field_settings.source_index(), self.hsv)
-        } else {
-            Arc::new(ChannelDelegate::new(self.hsv, Hsv::SATURATION.into()).expect("valid HSV saturation channel"))
-                as Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate>
-        };
+        let delegate =
+            Arc::new(ChannelDelegate::new(self.hsv, Hsv::SATURATION.into()).expect("valid HSV saturation channel"));
         self.saturation_track.set_delegate(delegate);
         refresh_color_slider(&self.saturation, cx);
         for index in 0..3 {
@@ -441,13 +425,7 @@ impl InteractiveSpaces {
             self.channels[index]
                 .slider
                 .update(cx, |slider, cx| slider.set_value(self.rgb[index].clamp(0., 1.) as f32, cx));
-            self.channels[index].refresh_track(
-                self.native_colors.as_ref(),
-                self.rgb,
-                self.field_settings.source_index(),
-                index,
-                cx,
-            );
+            self.channels[index].refresh_track(self.rgb, self.field_settings.source_index(), index, cx);
         }
     }
 
