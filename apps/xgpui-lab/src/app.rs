@@ -550,7 +550,7 @@ fn sync_color_control_theme(look: &Look) {
 impl Render for XgpuiLabApp {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         if self.active == Workspace::ColorGamut && self.color_gamut.is_none() {
-            let page = _cx.new(|cx| crate::color_gamut_page::Page::new(_window, self.look.clone(), cx));
+            let page = _cx.new(|cx| crate::color_gamut_page::Page::new(self.look.clone(), cx));
             *self.content.borrow_mut() = page.clone().into();
             self.color_gamut = Some(page);
             self.panels.update(_cx, |_, cx| cx.notify());

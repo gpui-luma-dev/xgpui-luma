@@ -4,7 +4,7 @@ use gpui::{prelude::*, *};
 use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::{
-    chromaticity::reveal::Reveal,
+    gamut_reveal::Reveal,
     lab_controls::{Choice, labels},
     screen::{Hero, LabScreen, labeled_control},
 };
