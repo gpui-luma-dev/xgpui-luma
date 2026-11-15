@@ -129,7 +129,7 @@ impl Page {
             "Release snapshots",
             "Lose device",
             "Fit view",
-            "1× speed",
+            "Reset to 1×",
         ]
         .into_iter()
         .enumerate()
