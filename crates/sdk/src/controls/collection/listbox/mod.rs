@@ -1,11 +1,15 @@
 //! Keyed collection state and input binding for host-composed selectable lists.
 //!
-//! Hosts and looks own content and viewport composition. Named callbacks deliver
-//! committed event batches; hosts can also handle the returned events. An
-//! optional persistent control combines state and bindings; fixed-item geometry
-//! and content-template contracts support look-owned builders. This module never
-//! chooses appearance or depends on a particular look.
+//! The borrowed builder composes windowing, rows, input, drag/drop, scrolling,
+//! and motion over persistent SDK state. Hosts supply item content; looks supply
+//! chrome through templates. Named callbacks deliver committed event batches;
+//! hosts can also handle returned events. This module never chooses a look's
+//! appearance or depends on a particular look.
 
+mod builder;
+pub use builder::ListBoxBuilder;
+mod template;
+pub use template::{ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxDragLook};
 mod binding;
 mod callback;
 mod control;
