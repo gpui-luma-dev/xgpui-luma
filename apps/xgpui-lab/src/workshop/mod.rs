@@ -1,6 +1,9 @@
 //! Control Workshop. Catalog and complete sample compositions are copied from Luma Studio;
 //! inspector and documentation hosts intentionally stay out of this application.
 pub(crate) mod catalog;
+mod button;
+mod custom_button;
+mod toolbar;
 mod color_arc;
 mod color_field;
 mod color_ring;
@@ -31,6 +34,9 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Button(Entity<button::ButtonControlExposition>),
+    CustomButton(Entity<custom_button::CustomButtonControlExposition>),
+    Toolbar(Entity<toolbar::ToolbarControlExposition>),
     Arc(Entity<color_arc::ColorArcExpositionLeftPane>),
     Field(Entity<color_field::ColorFieldExpositionLeftPane>),
     Ring(Entity<color_ring::ColorRingExpositionLeftPane>),
@@ -42,6 +48,9 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Button(v) => v.clone().into(),
+            Self::CustomButton(v) => v.clone().into(),
+            Self::Toolbar(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
             Self::Field(v) => v.clone().into(),
             Self::Ring(v) => v.clone().into(),
@@ -53,6 +62,9 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<ShadcnLook>, cx: &mut gpui::App) {
         match self {
+            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Field(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Ring(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -177,6 +189,11 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.look.clone();
             let sample = match id {
+                "button" => Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, look)))),
+                "custom-button" => {
+                    Some(Sample::CustomButton(cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, look))))
+                }
+                "toolbar" => Some(Sample::Toolbar(cx.new(|cx| toolbar::ToolbarControlExposition::new(cx, look)))),
                 "color-arc" => Some(Sample::Arc(cx.new(|cx| color_arc::ColorArcExpositionLeftPane::new(cx, look)))),
                 "color-field" => {
                     Some(Sample::Field(cx.new(|cx| color_field::ColorFieldExpositionLeftPane::new(cx, look))))
@@ -320,7 +337,7 @@ mod tests {
                 cx.update(|_, cx| {
                     let workshop = view.read(cx);
                     assert_eq!(workshop.selected, entry.id);
-                    assert_eq!(workshop.samples.contains_key(entry.id), group.id == "color");
+                    assert_eq!(workshop.samples.contains_key(entry.id), matches!(group.id, "color" | "command"));
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
             }
@@ -330,7 +347,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 6);
+            assert_eq!(view.read(cx).samples.len(), 9);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).look.mode(), ThemeMode::Light);
         });
