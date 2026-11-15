@@ -84,13 +84,22 @@ fn chart_rgb(xy: vec2<f32>, p: Parameters) -> vec3<f32> {
     let space = color_space(p.simulated);
     let linear = gamut_from_xyz(xyz, space);
     let mapped = gamut_map(linear, space, u32(p.reduce_chroma));
+    if WIDE_OUTPUT {
+        // Keep the P3 gamut; the typed shader wrapper bounds final output to P3.
+        return gamut_convert(mapped, space, 1u);
+    }
     let srgb = clamp(gamut_convert(mapped, space, 0u), vec3(0.0), vec3(1.0));
     return gamut_encode(srgb, 0u);
+}
+// Overlay inputs are theme/data colors encoded in sRGB.
+fn output_color(rgb: vec3<f32>) -> vec3<f32> {
+    if WIDE_OUTPUT { return gamut_convert(gamut_decode(rgb, 0u), 0u, 1u); }
+    return rgb;
 }
 // Straight-alpha source-over keeps antialiased edges correct on any enclosure.
 fn over(base: vec4<f32>, rgb: vec3<f32>, coverage: f32) -> vec4<f32> {
     let alpha = coverage + base.a * (1.0 - coverage);
-    let premultiplied = rgb * coverage + base.rgb * base.a * (1.0 - coverage);
+    let premultiplied = output_color(rgb) * coverage + base.rgb * base.a * (1.0 - coverage);
     return vec4(premultiplied / max(alpha, 0.000001), alpha);
 }
 // A 2 px cross over a 4 px halo, so a marker reads on any fill or background.
@@ -120,7 +129,7 @@ fn shade(input: ShaderInput, p: Parameters) -> vec4<f32> {
             if !gamut_in_bounds(linear) {
                 let hatch_distance = abs(fract((input.position.x + input.position.y) / 8.0) - 0.5) * 8.0;
                 let hatch = stroke_coverage(hatch_distance, 0.85, aa);
-                color = vec4(mix(color.rgb, vec3(16.0, 24.0, 35.0) / 255.0, hatch * 0.55), color.a);
+                color = vec4(mix(color.rgb, output_color(vec3(16.0, 24.0, 35.0) / 255.0), hatch * 0.55), color.a);
             }
         }
     }

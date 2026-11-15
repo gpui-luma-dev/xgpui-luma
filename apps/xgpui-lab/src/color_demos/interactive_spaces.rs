@@ -9,7 +9,7 @@ use super::hv_field_shader::{NativeColors, Parameters};
 
 use gpui::{App, Context, Div, Entity, IntoElement, Render, Rgba, Subscription, Window, div, prelude::*, px, canvas};
 use xgpui_luma::{
-    controls::{slider::Slider, switch::Switch, textfield::TextField},
+    controls::{button::Button, slider::Slider, switch::Switch, textfield::TextField},
     infra::{ElementExt, icon::lucide_icon},
     prelude::HasPresenter,
 };
@@ -27,8 +27,14 @@ use crate::theme::ColorVizLookExt;
 
 const CHANNELS: [&str; 3] = ["Red", "Green", "Blue"];
 const INITIAL: [f64; 3] = [0.86, 0.32, 0.58];
-const COLOR_FIELD_HEIGHT: f32 = 300.;
+const COLOR_FIELD_HEIGHT: f32 = 450.;
 const CHANNEL_GRADIENT_SEGMENTS: usize = 16;
+// Unoptimized CPU rasterization stalls the UI thread; keep it release-only.
+const FIELD_RENDERERS: &[&str] = if cfg!(debug_assertions) {
+    &["Native shader", "wgpu interop"]
+} else {
+    &["Native shader", "wgpu interop", "CPU"]
+};
 
 pub(crate) struct InteractiveSpaces {
     look: Arc<Look>,
@@ -39,6 +45,7 @@ pub(crate) struct InteractiveSpaces {
     field: Entity<ColorFieldState>,
     channels: [RgbChannelControls; 3],
     saturation: Slider,
+    reset_button: Entity<Button>,
     saturation_track: Arc<ColorSliderDomainRenderer>,
     native_colors: Option<NativeColors>,
     gpu_painter: Option<ColorFieldBackgroundPainter>,
@@ -48,7 +55,9 @@ pub(crate) struct InteractiveSpaces {
     presentation_attempted: Option<gpui::WindowColorMode>,
     previous_presentation: Option<gpui::WindowColorMode>,
     host_window: Option<gpui::AnyWindowHandle>,
-    gpu_toggle: Switch,
+    renderer_choice: crate::lab_controls::Choice,
+    renderer: usize,
+    interop: Entity<super::interop_field::Field>,
     contour_toggle: Switch,
     gpu_error: Option<String>,
     presentation_error: Option<String>,
@@ -56,14 +65,10 @@ pub(crate) struct InteractiveSpaces {
 }
 
 fn rgb_slider_delegate(
-    colors: Option<&NativeColors>,
     rgb: [f64; 3],
     source: usize,
     channel: usize,
 ) -> Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate> {
-    if let Some(colors) = colors {
-        return colors.track(source, rgb, channel);
-    }
     let samples = (0..=CHANNEL_GRADIENT_SEGMENTS)
         .map(|step| {
             let mut sample = rgb;
@@ -87,12 +92,7 @@ fn parse_channel(text: &str) -> Option<f64> {
 }
 
 impl RgbChannelControls {
-    fn new(
-        index: usize,
-        look: &Look,
-        colors: Option<&NativeColors>,
-        cx: &mut Context<InteractiveSpaces>,
-    ) -> (Self, Subscription) {
+    fn new(index: usize, look: &Look, cx: &mut Context<InteractiveSpaces>) -> (Self, Subscription) {
         let input = radix::TextField::new(format!("interactive-spaces-input-{index}"))
             .look(look)
             .surface()
@@ -118,7 +118,7 @@ impl RgbChannelControls {
         let builder = ColorSliderBuilder::new(
             format!("interactive-spaces-slider-{index}"),
             INITIAL[index] as f32,
-            rgb_slider_delegate(colors, INITIAL, 0, index),
+            rgb_slider_delegate(INITIAL, 0, index),
         )
         .horizontal()
         .range(0. ..1.)
@@ -135,8 +135,8 @@ impl RgbChannelControls {
         (Self { input, slider, track }, subscription)
     }
 
-    fn refresh_track(&self, colors: Option<&NativeColors>, rgb: [f64; 3], source: usize, index: usize, cx: &mut App) {
-        self.track.set_delegate(rgb_slider_delegate(colors, rgb, source, index));
+    fn refresh_track(&self, rgb: [f64; 3], source: usize, index: usize, cx: &mut App) {
+        self.track.set_delegate(rgb_slider_delegate(rgb, source, index));
         refresh_color_slider(&self.slider, cx);
     }
 }
@@ -151,7 +151,7 @@ impl InteractiveSpaces {
             Err(error) => (None, Some(error.to_string())),
         };
         let gpu_painter = native_colors.as_ref().map(|colors| colors.field_painter(field_settings.clone()));
-        let cpu_painter = native_colors.as_ref().and_then(|colors| {
+        let cpu_painter = native_colors.as_ref().filter(|_| !cfg!(debug_assertions)).and_then(|colors| {
             match super::native_cpu_field::painter(field_settings.clone(), colors.clone()) {
                 Ok(painter) => Some(painter),
                 Err(error) => {
@@ -165,12 +165,14 @@ impl InteractiveSpaces {
                 .with_model(field_settings.model())
                 .raster_image()
                 .rounded(px(0.))
-                .no_border()
                 .inside_field();
             if let (Some(painter), Some(colors)) = (&gpu_painter, &native_colors) {
                 field
                     .background_painter(painter.clone())
                     .thumb_painter(colors.thumb_painter(field_settings.clone()))
+            } else if cfg!(debug_assertions) {
+                // Do not silently enter the synchronous CPU raster path on GPU failure.
+                field.background_painter(Arc::new(|_, _, _, _| Ok(())))
             } else {
                 field
             }
@@ -182,7 +184,7 @@ impl InteractiveSpaces {
         });
         let mut subscriptions = vec![subscription];
         let channels = std::array::from_fn(|index| {
-            let (controls, subscription) = RgbChannelControls::new(index, &look, native_colors.as_ref(), cx);
+            let (controls, subscription) = RgbChannelControls::new(index, &look, cx);
             subscriptions.push(subscription);
             controls
         });
@@ -194,9 +196,6 @@ impl InteractiveSpaces {
                 .size(xgpui_luma::theme::ControlSize::Sm)
                 .thumb_small();
         let saturation_track = saturation_builder.domain_renderer();
-        if let Some(colors) = &native_colors {
-            saturation_track.set_delegate(colors.saturation_track(0, hsv));
-        }
         let saturation = saturation_builder.spawn(cx);
         subscriptions.push(cx.subscribe(&saturation, |this: &mut Self, _, event, cx| {
             if let Some(value) = primary_slider_value(event) {
@@ -205,16 +204,27 @@ impl InteractiveSpaces {
                 this.field.update(cx, |field, cx| field.set_hsv(this.hsv, cx));
             }
         }));
-        let gpu_toggle = radix::Switch::new("interactive-spaces-gpu")
-            .look(&look)
-            .label("GPU field")
-            .checked(gpu_painter.is_some())
-            .enabled(gpu_painter.is_some())
-            .on_value_changed(cx, |this: &mut Self, on, cx| {
-                this.install_field_painter(on, cx);
+        let interop = cx.new(|_| super::interop_field::Field::default());
+        subscriptions.push(cx.observe(&interop, |this, _, cx| {
+            this.field.update(cx, |_, cx| cx.notify());
+            cx.notify();
+        }));
+        let renderer_choice = crate::lab_controls::Choice::new(
+            "interactive-spaces-renderer",
+            "Field renderer",
+            &look,
+            crate::lab_controls::labels(FIELD_RENDERERS),
+            0,
+            cx,
+            |this: &mut Self, index, cx| {
+                this.renderer = index;
+                if index == 1 {
+                    this.interop.update(cx, |field, _| field.retry());
+                }
+                this.install_field_painter(cx);
                 cx.notify();
-            })
-            .spawn(cx);
+            },
+        );
         let contour_toggle = radix::Switch::new("interactive-spaces-contour")
             .look(&look)
             .label("sRGB out of gamut")
@@ -234,6 +244,21 @@ impl InteractiveSpaces {
             cx,
             |this: &mut Self, index, cx| this.set_source(index, cx),
         );
+        let reset_button = radix::Button::new("interactive-spaces-reset")
+            .look(&look)
+            .outline()
+            .label("Reset")
+            .on_click(cx, |this: &mut Self, cx| {
+                if let Ok(rgb) =
+                    source_field::convert_rgb(INITIAL, source_field::SPACES[0], this.field_settings.source_space())
+                {
+                    this.rgb = rgb;
+                    this.update_field_selection(cx);
+                    this.sync_controls(None, cx);
+                    cx.notify();
+                }
+            })
+            .spawn(cx);
         Self {
             look,
             field_settings,
@@ -243,6 +268,7 @@ impl InteractiveSpaces {
             field,
             channels,
             saturation,
+            reset_button,
             saturation_track,
             native_colors,
             gpu_painter,
@@ -252,7 +278,9 @@ impl InteractiveSpaces {
             presentation_attempted: None,
             previous_presentation: None,
             host_window: None,
-            gpu_toggle,
+            renderer_choice,
+            renderer: 0,
+            interop,
             contour_toggle,
             gpu_error,
             presentation_error: None,
@@ -260,14 +288,20 @@ impl InteractiveSpaces {
         }
     }
 
-    fn install_field_painter(&self, gpu: bool, cx: &mut Context<Self>) {
-        let painter = if gpu {
+    fn install_field_painter(&self, cx: &mut Context<Self>) {
+        let painter = if self.renderer == 1 {
+            Some(self.interop.read(cx).painter())
+        } else if self.renderer == 0 {
             self.gpu_painter.clone()
         } else if self.field_settings.source_index() > 0 {
             self.cpu_painter.clone().or_else(|| self.gpu_painter.clone())
         } else {
             None
         };
+        let painter = painter.or_else(|| {
+            cfg!(debug_assertions)
+                .then(|| Arc::new(|_, _, _: &mut Window, _: &mut App| Ok(())) as ColorFieldBackgroundPainter)
+        });
         self.field.update(cx, |field, cx| field.set_background_painter(painter, cx));
     }
 
@@ -338,8 +372,7 @@ impl InteractiveSpaces {
         self.update_field_selection(cx);
         self.presentation_attempted = None;
         self.presentation_error = None;
-        let gpu = *self.gpu_toggle.read(cx).data();
-        self.install_field_painter(gpu, cx);
+        self.install_field_painter(cx);
         self.sync_controls(None, cx);
         self.field.update(cx, |field, cx| field.set_model(self.field_settings.model(), cx));
         cx.notify();
@@ -381,12 +414,8 @@ impl InteractiveSpaces {
 
     fn sync_controls(&self, editing: Option<usize>, cx: &mut Context<Self>) {
         self.saturation.update(cx, |slider, cx| slider.set_value(self.hsv.s, cx));
-        let delegate = if let Some(colors) = &self.native_colors {
-            colors.saturation_track(self.field_settings.source_index(), self.hsv)
-        } else {
-            Arc::new(ChannelDelegate::new(self.hsv, Hsv::SATURATION.into()).expect("valid HSV saturation channel"))
-                as Arc<dyn xgpui_luma_color::color_slider::ColorSliderDelegate>
-        };
+        let delegate =
+            Arc::new(ChannelDelegate::new(self.hsv, Hsv::SATURATION.into()).expect("valid HSV saturation channel"));
         self.saturation_track.set_delegate(delegate);
         refresh_color_slider(&self.saturation, cx);
         for index in 0..3 {
@@ -396,13 +425,7 @@ impl InteractiveSpaces {
             self.channels[index]
                 .slider
                 .update(cx, |slider, cx| slider.set_value(self.rgb[index].clamp(0., 1.) as f32, cx));
-            self.channels[index].refresh_track(
-                self.native_colors.as_ref(),
-                self.rgb,
-                self.field_settings.source_index(),
-                index,
-                cx,
-            );
+            self.channels[index].refresh_track(self.rgb, self.field_settings.source_index(), index, cx);
         }
     }
 
@@ -449,6 +472,7 @@ impl InteractiveSpaces {
     }
 
     fn render_field(&self) -> Div {
+        let interop = (self.renderer == 1).then(|| self.interop.clone());
         let settings = self.field_settings.clone();
         let field = self.field.clone();
         div()
@@ -456,7 +480,14 @@ impl InteractiveSpaces {
             .w_full()
             .h(px(COLOR_FIELD_HEIGHT))
             .flex_shrink_0()
-            .on_prepaint(move |bounds, _, cx| {
+            .on_prepaint(move |bounds, window, cx| {
+                if let Some(interop) = &interop {
+                    let check =
+                        interop.update(cx, |field, cx| field.request(&settings, bounds, window.scale_factor(), cx));
+                    if check {
+                        window.request_animation_frame();
+                    }
+                }
                 if settings.resize(bounds.size.width.as_f32()) {
                     field.update(cx, |field, cx| field.set_model(settings.model(), cx));
                 }
@@ -495,19 +526,32 @@ impl Render for InteractiveSpaces {
             Ok(coordinates) => (Some(self.space_cards(coordinates)), None),
             Err(error) => (None, Some(format!("Color conversion unavailable: {error}"))),
         };
+        let status = window.color_status();
+        let output = if status.effective() == gpui::WindowColorMode::WideGamutSdr {
+            "Wide-gamut output (Display P3)"
+        } else {
+            "sRGB output"
+        };
+        let display = match status.display_wide_gamut() {
+            Some(true) => "Display reports wide gamut",
+            Some(false) => "Display reports sRGB / SDR",
+            None => "Display gamut unknown",
+        };
         let metrics = LabMetrics::STANDARD;
         LabScreen::new("interactive-color-spaces", self.look.clone())
             .crumb("xgpui-color", "Color Spaces")
             .title("Color Spaces")
             .lede("Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.")
             .hero(Hero::full(self.render_field()))
-            .caption(format!("Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
+            .caption(format!("{output} · {display} · Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
             .control(labeled_control(&self.look, self.source_choice.clone().into_element()))
-            .control(self.gpu_toggle.clone())
+            .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()))
             .control(self.contour_toggle.clone())
             .control(text(&self.look, TextRole::Caption, "Saturation"))
             .control(div().w(metrics.inline_slider_width).child(self.saturation.clone()))
+            .control(self.reset_button.clone())
             .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| format!("Native color rendering unavailable: {error}")))
+            .notice(if self.renderer == 1 { self.interop.read(cx).error.clone() } else { None })
             .notice(conversion_error)
             .cards(cards.into_iter().flatten())
             .panels(self.parameters(), self.preview(preview))
@@ -597,7 +641,7 @@ mod tests {
         });
         let bounds = cx.debug_bounds("interactive-spaces-field-bounds").unwrap();
         assert!(bounds.size.width > px(400.));
-        assert_eq!(bounds.size.height, px(300.));
+        assert_eq!(bounds.size.height, px(450.));
         cx.simulate_click(
             point(bounds.left() + bounds.size.width * 0.25, bounds.top() + bounds.size.height * 0.25),
             Default::default(),
@@ -613,9 +657,8 @@ mod tests {
         });
     }
     #[test]
-    fn switching_cpu_gpu_retains_color_and_luma_keyboard_and_drag_behavior() {
+    fn switching_renderers_retains_color_and_luma_keyboard_and_drag_behavior() {
         use gpui::{KeyDownEvent, KeyUpEvent, Keystroke, MouseButton};
-        use xgpui_luma::controls::switch::SwitchEvent;
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|window, cx| {
@@ -626,15 +669,20 @@ mod tests {
         let toggle = cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(page.gpu_painter.is_some());
-            assert!(*page.gpu_toggle.read(cx).data());
-            page.gpu_toggle.clone()
+            assert_eq!(page.renderer, 0);
+            if cfg!(debug_assertions) {
+                assert!(page.cpu_painter.is_none());
+                assert_eq!(super::FIELD_RENDERERS, &["Native shader", "wgpu interop"]);
+            }
+            page.renderer_choice.clone()
         });
-        for on in [false, true] {
+        for renderer in [2, 0, 1].into_iter().filter(|index| *index < super::FIELD_RENDERERS.len()) {
             let before = cx.update(|_, cx| page.read(cx).rgb);
-            toggle.update(cx, |toggle, cx| {
-                toggle.set_data(on, cx);
-                cx.emit(SwitchEvent::Change { on });
-            });
+            cx.update(|_, cx| toggle.select(renderer, cx));
+            if renderer == 1 {
+                let interop = cx.update(|_, cx| page.read(cx).interop.clone());
+                interop.update(cx, |field, _| field.error = Some("headless UI test".into()));
+            }
             cx.run_until_parked();
             cx.update(|_, cx| assert_eq!(page.read(cx).rgb, before));
             let bounds = cx.debug_bounds("interactive-spaces-field-bounds").unwrap();

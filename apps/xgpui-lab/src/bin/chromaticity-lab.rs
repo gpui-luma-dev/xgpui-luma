@@ -1,6 +1,8 @@
 //! Standalone entry point; the full app uses the same color workspace.
 #[path = "../chromaticity.rs"]
 mod chromaticity;
+#[path = "../gamut_reveal.rs"]
+mod gamut_reveal;
 use chromaticity::Lab;
 use gpui::*;
 struct Diagnostics;

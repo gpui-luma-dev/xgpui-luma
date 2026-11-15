@@ -3759,8 +3759,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "180788110936d59bab6bd83b6060ffdfffb3b922ba1396b312ae795e1de9d81d"
 dependencies = [
  "bitflags 2.13.2",
+ "libc",
  "objc2 0.6.5",
  "objc2-core-foundation",
+ "objc2-foundation 0.3.2",
 ]
 
 [[package]]
@@ -3787,6 +3789,7 @@ dependencies = [
  "objc2 0.6.5",
  "objc2-core-foundation",
  "objc2-foundation 0.3.2",
+ "objc2-io-surface",
 ]
 
 [[package]]
@@ -7292,6 +7295,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "xgpui-gpu-interop"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "536034d638f9c27e11927e464d98d6671ea06491370c5504800d95a2d4c01b7a"
+dependencies = [
+ "anyhow",
+ "ash",
+ "objc2 0.6.5",
+ "objc2-core-foundation",
+ "objc2-io-surface",
+ "objc2-metal 0.3.2",
+ "wgpu",
+ "windows 0.62.2",
+ "xgpui",
+ "xgpui-apple",
+ "xgpui-wgpu",
+ "xgpui-windows",
+]
+
+[[package]]
 name = "xgpui-ios"
 version = "1.26.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7350,6 +7373,7 @@ dependencies = [
  "xgpui-canvas",
  "xgpui-color",
  "xgpui-gamut",
+ "xgpui-gpu-interop",
  "xgpui-luma",
  "xgpui-luma-color",
  "xgpui-luma-look-radix",
@@ -7653,6 +7677,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2d72968d78fc1a8ccfc59ae6faddfc637361362a5532fd447c81bc91efbbafbe"
 dependencies = [
  "anyhow",
+ "ash",
  "bytemuck",
  "collections-gpui-unofficial",
  "cosmic-text",
