@@ -1,10 +1,10 @@
 //! Keyed collection state and input binding for host-composed selectable lists.
 //!
-//! Hosts and looks own content and viewport composition. Named callbacks deliver
-//! committed event batches; hosts can also handle the returned events. An
-//! optional persistent control combines state and bindings; fixed-item geometry
-//! and content-template contracts support look-owned builders. This module never
-//! chooses appearance or depends on a particular look.
+//! The shared renderer composes windowing, rows, input, scrolling, drag/drop,
+//! and motion over persistent SDK state. Looks provide surface/row templates
+//! and hosts provide content. Named callbacks deliver committed event batches;
+//! hosts can also handle the returned events. This module never chooses a
+//! look's appearance or depends on a particular look.
 
 mod binding;
 mod callback;
@@ -15,7 +15,11 @@ pub use drag::{ListBoxDragDrop, ListBoxDropProposal, ListBoxDragDropBinding};
 mod item_template;
 mod layout;
 mod render;
-pub use render::ListBoxRenderGeometry;
+pub use render::{ListBoxRenderGeometry, ListBoxRenderBindings, render_listbox};
+mod template;
+pub use template::{ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel};
+mod render_drag;
+pub use render_drag::ListBoxDragDropRenderBindings;
 mod model;
 mod scroll;
 mod virtualization;

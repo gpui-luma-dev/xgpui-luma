@@ -3,8 +3,9 @@
 use std::hash::Hash;
 use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, prelude::*, px};
 use xgpui_luma::controls::listbox::{
-    ListBoxControl, ListBoxFlow, ListBoxItemRenderModel, ListBoxItemState, ListBoxItemTemplate, ListBoxRenderGeometry,
-    make_listbox_item_template,
+    ListBoxControl, ListBoxFlow, ListBoxItemRenderModel, ListBoxItemState, ListBoxItemTemplate, ListBoxAxis,
+    ListBoxDragDropRenderBindings, ListBoxRenderBindings, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxTemplate,
+    render_listbox, make_listbox_item_template,
 };
 use crate::{Look, ScaleFamily, SemanticRole};
 use crate::look::resolve_look;
@@ -107,127 +108,81 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
         let profile = parts.motion_config.inherit_with(|| look.motion_defaults().listbox, self.motion_edits);
         parts.scroll.set_motion(profile.scroll.enabled(motion_enabled));
         parts.drop_layout.configure_transition(&profile.drop_layout);
-        parts.scroll.set_wheel_focus_owner(parts.binding.focus_handle().clone());
         let layout = self.flow.layout((0.0, 0.0));
         let (axis, extent) = match self.flow {
-            ListBoxFlow::Horizontal { item_width, .. } => {
-                (xgpui_luma::controls::listbox::ListBoxAxis::Horizontal, item_width)
-            }
-            _ => (xgpui_luma::controls::listbox::ListBoxAxis::Vertical, layout.item_height),
+            ListBoxFlow::Horizontal { item_width, .. } => (ListBoxAxis::Horizontal, item_width),
+            _ => (ListBoxAxis::Vertical, layout.item_height),
         };
-        let content_sized = matches!(self.flow, ListBoxFlow::VerticalContent { .. });
-        let geometry = ListBoxRenderGeometry { axis, item_extent: extent, spacing: layout.spacing, content_sized };
-        let virtual_window = geometry.window(parts.state, parts.scroll, parts.virtualization);
-        let range = virtual_window.as_ref().map_or(0..parts.state.visible_items().len(), |window| window.range.clone());
-        let horizontal = axis == xgpui_luma::controls::listbox::ListBoxAxis::Horizontal;
-        let spacer = |extent| geometry.spacer(extent).into_any_element();
-        // Drag labels share the tooltip's chrome so they read on any background.
-        let drag_drop = parts.drag_drop.map(|binding| binding.preview_style(crate::tooltip_theme(&look).resolve()));
-        let mut rows = Vec::new();
-        if let Some(extent) = virtual_window.as_ref().and_then(|v| v.leading_space) {
-            rows.push(spacer(extent));
-        }
-        for item in parts.state.visible_items().skip(range.start).take(range.len()) {
-            let row = listbox_row(&look, (parts.item_id)(&item.key), item.state, parts.binding.focus_visible(window));
-            let key = item.key.clone();
-            let mut row = parts.binding.bind_row(row, item.key, item.state, cx, parts.on_input);
-            if let Some(drag_drop) = &drag_drop {
-                row = drag_drop.bind_row(row, parts.state.drag_keys(&key), (parts.item_label)(item.item), cx);
-            }
-            let model = ListBoxItemRenderModel {
-                item: item.item,
-                selected: item.state.selected,
-                active: item.state.active,
-                enabled: item.state.enabled,
-            };
-            let selector = format!("{}-item-{}", self.id, item.visible_index);
-            let mut rendered = row
-                .debug_selector(move || selector.clone())
-                .flex_shrink_0()
-                .min_w_0()
-                .when(horizontal, |row| row.w(px(extent)))
-                .when(!horizontal, |row| row.w_full())
-                .when(!content_sized, |row| row.h(px(layout.item_height)))
-                .aria_label((parts.item_label)(item.item))
-                .child((self.template)(&model, cx));
-            if let Some(drag_drop) = &drag_drop {
-                rendered = rendered.relative();
-                if cx.has_active_drag() {
-                    for (edge, before) in [
-                        (xgpui_luma::infra::drag_drop::DropEdge::Before, Some(key.clone())),
-                        (
-                            xgpui_luma::infra::drag_drop::DropEdge::After,
-                            parts.state.visible_items().nth(item.visible_index + 1).map(|item| item.key),
-                        ),
-                    ] {
-                        let zone = xgpui_luma::infra::drag_drop::DropZone {
-                            axis: if horizontal {
-                                gpui::Axis::Horizontal
-                            } else {
-                                gpui::Axis::Vertical
-                            },
-                            edge,
-                            item_extent: px(if horizontal { extent } else { layout.item_height }),
-                            following_gap: px(if before.is_some() { layout.spacing } else { 0.0 }),
-                            marker_width: px(2.0),
-                        };
-                        let target = div().id(if edge == xgpui_luma::infra::drag_drop::DropEdge::Before {
-                            "insert-before"
-                        } else {
-                            "insert-after"
-                        });
-                        let target = if content_sized {
-                            zone.apply_measured(target)
-                        } else {
-                            zone.apply(target)
-                        };
-                        let target = drag_drop.highlight(
-                            target.border_color(gpui::transparent_black()),
-                            look.resolve_role(SemanticRole::Focus).hsla(),
-                        );
-                        rendered = rendered.child(drag_drop.bind_target(target, before, cx));
-                    }
-                }
-            }
-            rows.push(parts.drop_layout.item(key, rendered));
-        }
-        if let Some(extent) = virtual_window.as_ref().and_then(|v| v.trailing_space) {
-            rows.push(spacer(extent));
-        }
-        let mut viewport = div()
-            .id(format!("{}-viewport", self.id))
-            .flex()
-            .w_full()
-            .min_w_0()
-            .h(px(layout.viewport_height))
-            .gap(px(layout.spacing))
-            .when(horizontal, |v| v.overflow_x_scroll())
-            .when(!horizontal, |v| v.flex_col().overflow_y_scroll())
-            .children(rows);
-        if let Some(drag_drop) = &drag_drop {
-            viewport = drag_drop.bind_viewport(viewport, parts.scroll, axis);
-        }
-        let mut surface = crate::tree_view_frame(&look)
-            .rounded(px(8.0))
-            .p_1()
-            .id(self.id)
-            .w_full()
-            .min_w_0()
-            .aria_label(self.id);
-        if let Some(drag_drop) = &drag_drop {
-            use xgpui_luma::infra::drag_drop::DragDropElementExt;
-            surface = drag_drop.bind_target(surface, None, cx).cancel_drag_on_escape();
-        }
-        let surface = match virtual_window {
-            Some(rendered) => parts.scroll.bind_virtualized(surface, viewport, parts.state, rendered),
-            None => parts.scroll.bind(surface, viewport, parts.state),
+        let model = ListBoxRenderModel {
+            id: self.id,
+            label: self.id,
+            layout,
+            axis,
+            item_width: extent,
+            content_sized: matches!(self.flow, ListBoxFlow::VerticalContent { .. }),
+            focused: parts.state.is_focused(),
         };
-        let surface = parts.binding.bind_root(surface, axis, parts.state.selection_mode(), window, cx, parts.on_input);
-        parts.drop_layout.set_motion_enabled(motion_enabled);
-        div()
-            .id("radix-listbox-drop-motion")
-            .w_full()
-            .child(parts.scroll.drop_layout_scope(&parts.drop_layout, surface))
+        let label = parts.item_label;
+        let drag_drop = parts
+            .drag_drop
+            .map(|binding| ListBoxDragDropRenderBindings::from_control(binding, parts.state, parts.scroll, label));
+        render_listbox(
+            &model,
+            ListBoxRenderBindings {
+                state: parts.state,
+                binding: parts.binding,
+                scroll: parts.scroll,
+                on_input: parts.on_input,
+                item_id: parts.item_id,
+                virtualization: parts.virtualization,
+                drag_drop,
+                drop_layout: Some(parts.drop_layout),
+                motion_enabled,
+            },
+            &RadixListBoxTemplate { look },
+            |surface, item, cx| {
+                let model = ListBoxItemRenderModel {
+                    item: item.item,
+                    selected: item.state.selected,
+                    active: item.state.active,
+                    enabled: item.state.enabled,
+                };
+                surface.aria_label(label(item.item)).child((self.template)(&model, cx))
+            },
+            None,
+            window,
+            cx,
+        )
+    }
+}
+
+struct RadixListBoxTemplate {
+    look: Look,
+}
+
+impl ListBoxTemplate for RadixListBoxTemplate {
+    fn render(&self, model: &ListBoxRenderModel, _: &mut App) -> Stateful<Div> {
+        crate::tree_view_frame(&self.look).rounded(px(8.0)).p_1().id(model.id).w_full().min_w_0()
+    }
+
+    fn render_row(&self, model: &ListBoxRowRenderModel, _: &mut App) -> Stateful<Div> {
+        listbox_row(&self.look, model.id.clone(), model.state, model.focus_visible)
+    }
+
+    fn drop_color(&self) -> gpui::Hsla {
+        self.look.resolve_role(SemanticRole::Focus).hsla()
+    }
+
+    fn surface_drop_color(&self) -> Option<gpui::Hsla> {
+        None
+    }
+
+    fn drop_marker_width(&self) -> f32 {
+        2.0
+    }
+
+    fn drag_preview_style(&self) -> xgpui_luma::controls::tooltip::TooltipLook {
+        crate::tooltip_theme(&self.look).resolve()
     }
 }
 
@@ -281,4 +236,18 @@ mod persistent_drag_tests {
         cx.update(|_, app| assert_eq!(view.read(app).lists[0].motion_profile().drop_layout.description(), expected));
     }
     include!("../../sdk/tests/support/listbox_drag.rs");
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod shared_render_tests {
+    fn render_contract_list(
+        list: &mut ListBoxControl<RenderHarness, u32, u32>,
+        flow: ListBoxFlow,
+        template: ListBoxItemTemplate<'_, u32>,
+        window: &mut Window,
+        cx: &mut Context<RenderHarness>,
+    ) -> Stateful<Div> {
+        super::ListBoxBuilder::new("contract-list", list, template).flow(flow).build(window, cx)
+    }
+    include!("../../sdk/tests/support/listbox_render.rs");
 }

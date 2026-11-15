@@ -1,4 +1,4 @@
-//! Persistent state and bindings for look-owned ListBox composition.
+//! Persistent state and bindings for shared ListBox rendering.
 
 crate::motion_profile!(ListBoxMotion => listbox {
     scroll: crate::motion::Transition,
@@ -17,7 +17,7 @@ use super::{
 pub type ListBoxInputHandler<M, K> = fn(&mut M, ListBoxInput<K>, &mut Window, &mut Context<M>);
 
 /// Persistent SDK objects shared by successive renders. This is host-owned,
-/// not a separately spawned entity; the look supplies the visual composition.
+/// not a separately spawned entity; templates supply its appearance.
 pub struct ListBoxControl<M: 'static, T, K: 'static> {
     motion_config: crate::motion::MotionConfig<ListBoxMotion>,
     /// Collection and selection state. Deliver updates from direct mutations
@@ -34,11 +34,11 @@ pub struct ListBoxControl<M: 'static, T, K: 'static> {
     drop_layout: crate::motion::DropLayoutMotion<K>,
 }
 
-/// Borrowed integration point for look-owned builders. The binding is mutable
+/// Borrowed integration point for the shared renderer and look builders. The binding is mutable
 /// only to register its persistent focus subscriptions during rendering.
 pub struct ListBoxRenderParts<'a, M: 'static, T, K: 'static> {
     pub motion_config: &'a mut crate::motion::MotionConfig<ListBoxMotion>,
-    /// Optional persistent SDK drag/drop binding; Looks attach native geometry.
+    /// Optional persistent SDK drag/drop binding; the shared renderer attaches geometry.
     pub drag_drop: Option<super::ListBoxDragDropBinding<M, K>>,
     /// Persistent SDK geometry for post-drop transitions.
     pub drop_layout: crate::motion::DropLayoutMotion<K>,
