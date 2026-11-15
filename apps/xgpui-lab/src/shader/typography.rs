@@ -85,14 +85,18 @@ fn clip(text: &str, chars: usize) -> String {
 const STAGE_TYPE: [(f32, f32); 2] = [(36., 52.), (48., 64.)];
 
 const TRY_IT: &str = "Try it: Tab to focus · Shift + arrows to select · Home / End · Cmd or Ctrl + A / C · double-click a word · triple-click the line.";
-const SCOPE: &str = "Read-only text field with the full source, a text run and selection endpoints; motion does not change the accessible source or selection. Single-line LTR text: wrapping, bidirectional selection and rich-text editing are outside this milestone. Glyph glow and shadow present in SDR; the previous color mode is restored on exit.";
+const SCOPE: &str = "Read-only text field with the full source, a text run and selection endpoints; motion does not change the accessible source or selection. Single-line LTR text: wrapping, bidirectional selection and rich-text editing are outside this milestone. Compare glyph glow and shadow in default or wide-gamut SDR; the previous color mode is restored on exit.";
 
 pub struct TypographyDemo {
     focus_scope: FocusHandle,
+    presentation_buttons: Vec<Entity<Button>>,
+    window_handle: Option<AnyWindowHandle>,
+    previous_color_mode: Option<WindowColorMode>,
+    presentation_error: Option<String>,
     look: Arc<Look>,
     buttons: Vec<(Action, String, Entity<Button>)>,
     choices: Vec<(Action, Choice)>,
-    motion_choice: Choice,
+    motion_buttons: Vec<(MotionMode, Entity<Button>)>,
     sample_cards: Vec<Entity<Button>>,
     selected_sample: Arc<AtomicUsize>,
     switches: Vec<(Action, Switch)>,
@@ -131,18 +135,37 @@ impl TypographyDemo {
         let selected_sample = Arc::new(AtomicUsize::new(0));
         let mut demo = Self {
             focus_scope: cx.focus_handle(),
+            presentation_buttons: [
+                ("typography-presentation-default", "Default SDR", WindowColorMode::Default),
+                ("typography-presentation-wide", "Wide-gamut SDR", WindowColorMode::WideGamutSdr),
+            ]
+            .into_iter()
+            .map(|(id, label, mode)| {
+                radix::Button::new(id)
+                    .look(look.as_ref())
+                    .outline()
+                    .label(label)
+                    .on_click(cx, move |this: &mut Self, cx| this.set_presentation(mode, cx))
+                    .spawn(cx)
+            })
+            .collect(),
+            window_handle: None,
+            previous_color_mode: None,
+            presentation_error: None,
             buttons: Self::make_buttons(&look, cx),
             choices: Self::make_choices(&look, cx),
-            motion_choice: Choice::new(
-                "typography-motion",
-                "Motion",
-                &look,
-                MOTIONS.iter().map(|mode| format!("{mode:?}")).collect(),
-                0,
-                cx,
-                // The selector is kept in sync, so a change always picks a different effect.
-                |this: &mut Self, index, cx| this.action(Action::Motion(MOTIONS[index]), cx),
-            ),
+            motion_buttons: MOTIONS
+                .into_iter()
+                .map(|mode| {
+                    let button = radix::Button::new(format!("typography-motion-{mode:?}"))
+                        .look(look.as_ref())
+                        .outline()
+                        .label(format!("{mode:?}"))
+                        .on_click(cx, move |this: &mut Self, cx| this.action(Action::Motion(mode), cx))
+                        .spawn(cx);
+                    (mode, button)
+                })
+                .collect(),
             sample_cards: Self::make_sample_cards(&look, &selected_sample, cx),
             selected_sample,
             switches: Self::make_switches(&look, cx),
@@ -196,6 +219,25 @@ impl TypographyDemo {
         demo.apply_style(cx);
         demo
     }
+    fn set_presentation(&mut self, mode: WindowColorMode, cx: &mut Context<Self>) {
+        if let Some(handle) = self.window_handle {
+            let result = handle
+                .update(cx, |_, window, _| {
+                    let previous = window.color_status().requested();
+                    window.set_color_mode(mode).map(|_| previous)
+                })
+                .and_then(|result| result);
+            match result {
+                Ok(previous) => {
+                    self.previous_color_mode.get_or_insert(previous);
+                    self.presentation_error = None;
+                }
+                Err(error) => self.presentation_error = Some(error.to_string()),
+            }
+            cx.notify();
+        }
+    }
+
     fn apply_style(&mut self, cx: &mut Context<Self>) {
         // Sample colors follow the look's mode: deep inks on light, bright inks on dark.
         let gradient = |light: [[f32; 4]; 2], dark: [[f32; 4]; 2]| {
@@ -251,12 +293,23 @@ impl TypographyDemo {
         .into();
         cx.notify();
     }
-    /// A new effect starts from its initial preview, even after the previous one completed.
-    fn select_motion(&mut self, mode: MotionMode) {
+    /// Reveal modes always replay from the start, including repeated clicks.
+    fn set_motion(&mut self, mode: MotionMode) {
         self.motion = mode;
-        self.playing = mode == MotionMode::Wave;
+        if matches!(mode, MotionMode::Typewriter | MotionMode::Scramble) {
+            self.progress = 0.;
+            self.phase = 0.;
+        }
+        self.playing = mode != MotionMode::Static;
+        self.last_tick = Instant::now();
+    }
+    /// A reveal at 0% is blank, so Restart must also resume playback.
+    fn restart(&mut self) {
         self.progress = 0.;
         self.phase = 0.;
+        if matches!(self.motion, MotionMode::Typewriter | MotionMode::Scramble) {
+            self.playing = true;
+        }
         self.last_tick = Instant::now();
     }
     /// Seek a reveal effect; static and wave seek through the typewriter.
@@ -286,6 +339,7 @@ fn motion_line(motion: MotionMode, reduced: bool, progress: f32, seed: u64, fram
 
 impl Render for TypographyDemo {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.window_handle = Some(window.window_handle());
         if self.focus_pending {
             self.focus_pending = false;
             window.focus(&self.samples[self.active].focus_handle(cx), cx);
@@ -351,9 +405,33 @@ impl Render for TypographyDemo {
             .into_iter()
             .filter_map(|action| self.choices.iter().find(|(id, _)| *id == action).map(|(_, choice)| choice.clone()))
             .fold(
-                screen.control(labeled_control(&self.look, self.motion_choice.clone().into_element())),
+                self.motion_buttons.iter().fold(screen, |screen, (_, button)| screen.control(button.clone())),
                 |screen, choice| screen.control(labeled_control(&self.look, choice.into_element())),
             );
+        let screen = screen.control(self.button(Action::Reset));
+        let screen = self.presentation_buttons.iter().fold(screen, |screen, button| screen.control(button.clone()));
+        let color_status = window.color_status();
+        let presentation_status = format!(
+            "Requested: {:?} · Effective: {:?} · Display wide gamut: {:?} · Scale: {}",
+            color_status.requested(),
+            color_status.effective(),
+            color_status.display_wide_gamut(),
+            window.scale_factor()
+        );
+        let presentation_note = self.presentation_error.clone().unwrap_or_else(|| {
+            if color_status.requested() == WindowColorMode::WideGamutSdr
+                && color_status.effective() != WindowColorMode::WideGamutSdr
+            {
+                "Wide gamut is not effective; this run does not validate wide-gamut text rendering.".into()
+            } else {
+                "Compare both presentation modes; wide-gamut validation requires Effective: WideGamutSdr.".into()
+            }
+        });
+        let screen = screen.control(div().id("typography-presentation-status").role(Role::Status).child(text(
+            &self.look,
+            TextRole::Caption,
+            presentation_status,
+        )));
         let screen = self.switches.iter().fold(screen, |screen, (_, switch)| screen.control(switch.clone()));
         let logical = self.logical_layer(source, &selected, range, selected_count, total);
         div()
@@ -367,7 +445,7 @@ impl Render for TypographyDemo {
                     .iter()
                     .fold(screen, |screen, card| screen.card(card.clone()))
                     .panels(self.motion_panel(), logical)
-                    .note(TRY_IT)
+                    .note(format!("{presentation_note} {TRY_IT}"))
                     .credits(SCOPE),
             )
     }
@@ -497,6 +575,7 @@ enum Action {
     Motion(MotionMode),
     Play,
     Restart,
+    Reset,
     Back,
     Next,
     Seed,
@@ -513,7 +592,7 @@ enum Action {
 impl TypographyDemo {
     fn make_buttons(look: &Arc<Look>, cx: &mut Context<Self>) -> Vec<(Action, String, Entity<Button>)> {
         use self::Action::*;
-        [Play, Restart, Back, Next, Seed, Frame, SelectAll, Copy]
+        [Play, Restart, Reset, Back, Next, Seed, Frame, SelectAll, Copy]
             .into_iter()
             .map(|action| {
                 let button = radix::Button::new(format!("typography-{action:?}"))
@@ -651,8 +730,6 @@ impl TypographyDemo {
             };
             choice.sync(options, index, cx);
         }
-        let motion = MOTIONS.iter().position(|mode| *mode == self.motion).unwrap_or(0);
-        self.motion_choice.sync(MOTIONS.iter().map(|mode| format!("{mode:?}")).collect(), motion, cx);
         for (action, switch) in &self.switches {
             let on = match action {
                 Action::Width => self.narrow,
@@ -682,6 +759,7 @@ impl TypographyDemo {
             let label: String = match *action {
                 Action::Play => if self.playing { "Pause" } else { "Play" }.into(),
                 Action::Restart => "Restart".into(),
+                Action::Reset => "Reset".into(),
                 Action::Back => "−10%".into(),
                 Action::Next => "+10%".into(),
                 Action::Seed => "New seed".into(),
@@ -701,8 +779,7 @@ impl TypographyDemo {
         match action {
             Fill | Shadow | Softness => unreachable!("selector setting"),
             Sample(index) => self.choose(index, cx),
-            // Choosing the active effect again returns to the static reference.
-            Motion(mode) => self.select_motion(if self.motion == mode { MotionMode::Static } else { mode }),
+            Motion(mode) => self.set_motion(mode),
             Play => {
                 if self.motion == MotionMode::Static {
                     self.motion = MotionMode::Wave;
@@ -713,11 +790,8 @@ impl TypographyDemo {
                 self.playing = !self.playing;
                 self.last_tick = Instant::now();
             }
-            Restart => {
-                self.progress = 0.;
-                self.phase = 0.;
-                self.last_tick = Instant::now();
-            }
+            Reset => self.reset(cx),
+            Restart => self.restart(),
             Back | Next => self.set_progress(self.progress + if action == Back { -0.1 } else { 0.1 }),
             Seed => {
                 self.seed = self.seed.wrapping_add(1);
@@ -735,7 +809,44 @@ impl TypographyDemo {
         }
         cx.notify();
     }
-    pub(super) fn suspend(&mut self) {
+    fn reset(&mut self, cx: &mut Context<Self>) {
+        self.presentation_error = None;
+        self.suspend(cx);
+        self.choose(0, cx);
+        self.focus_pending = false;
+        self.narrow = false;
+        self.large = false;
+        self.reduced = false;
+        self.motion = MotionMode::Static;
+        self.progress = 0.45;
+        self.phase = 0.;
+        self.seed = 42;
+        self.fill = 1;
+        self.shadow = 1;
+        self.softness = 1;
+        self.status = "Select a phrase to inspect its authentic source.".into();
+        for sample in &self.samples {
+            sample.update(cx, |text, cx| {
+                text.clear_selection(cx);
+                text.set_effect(KineticEffect::Static, cx).unwrap();
+            });
+        }
+        // Reset invalid edits too, even if their parsed value never changed.
+        self.synced = (u32::MAX, u64::MAX, u64::MAX);
+        self.sync_controls(cx);
+        self.apply_style(cx);
+    }
+
+    pub(super) fn suspend(&mut self, cx: &mut Context<Self>) {
+        if let Some(previous) = self.previous_color_mode.take()
+            && let Some(handle) = self.window_handle
+        {
+            self.presentation_error = handle
+                .update(cx, |_, window, _| window.set_color_mode(previous))
+                .and_then(|result| result)
+                .err()
+                .map(|error| error.to_string());
+        }
         self.playing = false;
         self.focus_pending = false;
         self.last_tick = Instant::now();
@@ -748,6 +859,91 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
     use xgpui_luma::controls::button::ButtonEvent;
     use xgpui_shader::typography::KineticEffect;
+
+    #[test]
+    fn presentation_buttons_report_unsupported_wide_output_and_restore_on_exit() {
+        use gpui::WindowColorMode;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
+        cx.run_until_parked();
+        let buttons = cx.update(|_, cx| page.read(cx).presentation_buttons.clone());
+        buttons[1].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|window, cx| {
+            let demo = page.read(cx);
+            assert!(demo.presentation_error.as_ref().unwrap().contains("unsupported"));
+            assert_eq!(window.color_status().requested(), WindowColorMode::Default);
+            assert_eq!(demo.previous_color_mode, None);
+        });
+        buttons[0].update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert!(demo.presentation_error.is_none());
+            assert_eq!(demo.previous_color_mode, Some(WindowColorMode::Default));
+        });
+        page.update(cx, |demo, cx| demo.suspend(cx));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert_eq!(demo.previous_color_mode, None);
+            assert!(demo.presentation_error.is_none());
+        });
+    }
+
+    #[test]
+    fn reset_button_restores_settings_selections_and_invalid_fields() {
+        use xgpui_luma::controls::textfield::TextFieldEvent;
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
+        cx.run_until_parked();
+        page.update(cx, |demo, cx| {
+            demo.choose(2, cx);
+            demo.presentation_error = Some("previous failed request".into());
+            demo.select_all(cx);
+            demo.motion = MotionMode::Wave;
+            demo.playing = true;
+            demo.narrow = true;
+            demo.large = true;
+            demo.reduced = true;
+            demo.progress = 0.9;
+            demo.phase = 12.;
+            demo.seed = 99;
+            demo.fill = 2;
+            demo.shadow = 2;
+            demo.softness = 2;
+            demo.apply_style(cx);
+        });
+        cx.run_until_parked();
+        let field = cx.update(|_, cx| page.read(cx).progress_field.clone());
+        field.update(cx, |field, cx| {
+            field.set_value("invalid", cx);
+            cx.emit(TextFieldEvent::Change { value: "invalid".into() });
+        });
+        let reset = cx.update(|_, cx| {
+            page.read(cx).buttons.iter().find(|(action, _, _)| *action == Action::Reset).unwrap().2.clone()
+        });
+        reset.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            let demo = page.read(cx);
+            assert_eq!(demo.active, 0);
+            assert!(demo.presentation_error.is_none());
+            assert_eq!(demo.motion, MotionMode::Static);
+            assert!(!demo.playing && !demo.narrow && !demo.large && !demo.reduced);
+            assert_eq!((demo.progress, demo.phase, demo.seed), (0.45, 0., 42));
+            assert_eq!((demo.fill, demo.shadow, demo.softness), (1, 1, 1));
+            assert_eq!(demo.progress_field.read(cx).value(), "45");
+            assert_eq!(demo.seed_field.read(cx).value(), "42");
+            assert_eq!(demo.frame_field.read(cx).value(), "0");
+            assert!(demo.switches.iter().all(|(_, switch)| !*switch.read(cx).data()));
+            assert!(demo.samples.iter().all(|sample| {
+                sample.read(cx).selection().is_empty() && sample.read(cx).effect() == KineticEffect::Static
+            }));
+        });
+    }
 
     #[test]
     fn tab_and_shift_tab_reach_and_leave_selectable_text() {
@@ -806,7 +1002,7 @@ mod tests {
                     let button = button.clone();
                     button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
                 } else {
-                    // Motion and the toggles are selectors and switches; drive their actions directly.
+                    // Drive motion and toggle actions directly in this selection/clipboard test.
                     page.update(cx, |demo, cx| demo.action(action, cx));
                 }
             });
@@ -854,7 +1050,7 @@ mod tests {
         page.update(cx, |page, cx| {
             page.action(Action::Motion(MotionMode::Wave), cx);
             assert!(page.playing);
-            page.suspend();
+            page.suspend(cx);
             assert!(!page.playing);
         });
         cx.run_until_parked();
@@ -908,36 +1104,61 @@ mod tests {
     }
 
     #[test]
-    fn motion_selection_resets_completed_previews_and_toggles_across_samples() {
+    fn motion_buttons_and_restart_replay_reveals_instead_of_leaving_blank_text() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (page, cx) = app.add_window_view(|_, cx| TypographyDemo::new(crate::theme::default_look(), cx));
         cx.run_until_parked();
+        let restart = cx.update(|_, cx| {
+            page.read(cx).buttons.iter().find(|(action, _, _)| *action == Action::Restart).unwrap().2.clone()
+        });
+        for mode in [MotionMode::Typewriter, MotionMode::Scramble] {
+            let button =
+                cx.update(|_, cx| page.read(cx).motion_buttons.iter().find(|(key, _)| *key == mode).unwrap().1.clone());
+            // Exercise the actual button callbacks twice: repeating a mode replays it.
+            for _ in 0..2 {
+                page.update(cx, |demo, _| {
+                    demo.progress = 1.;
+                    demo.phase = 48.;
+                    demo.playing = false;
+                });
+                button.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+                cx.update(|_, cx| {
+                    let demo = page.read(cx);
+                    assert_eq!(demo.motion, mode);
+                    assert!(
+                        demo.progress < 0.05 && demo.phase < 1.3,
+                        "reveal starts near zero and may already advance a frame"
+                    );
+                    assert!(demo.playing);
+                });
+            }
+            page.update(cx, |demo, cx| {
+                demo.choose(1, cx);
+                demo.choose(0, cx);
+                assert_eq!(demo.motion, mode);
+                demo.progress = 0.6;
+                demo.playing = false;
+            });
+            restart.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
+            cx.update(|_, cx| {
+                let demo = page.read(cx);
+                assert!(demo.progress < 0.05 && demo.phase < 1.3, "restarted reveal may already advance a frame");
+                assert!(demo.playing, "Restart resumes a paused reveal");
+            });
+        }
         page.update(cx, |demo, cx| {
-            demo.progress = 1.;
-            demo.phase = 48.;
-            demo.action(Action::Motion(MotionMode::Scramble), cx);
-            assert_eq!(demo.motion, MotionMode::Scramble);
-            assert_eq!(demo.progress, 0.);
-            assert_eq!(demo.phase, 0.);
-            assert!(!demo.playing);
-            demo.action(Action::Play, cx);
+            demo.action(Action::Motion(MotionMode::Wave), cx);
             assert!(demo.playing);
-            demo.action(Action::Sample(1), cx);
-            demo.action(Action::Sample(0), cx);
-            assert_eq!(demo.motion, MotionMode::Scramble);
-            demo.action(Action::Motion(MotionMode::Scramble), cx);
-            assert_eq!(demo.motion, MotionMode::Static);
+            demo.playing = false;
+            demo.action(Action::Restart, cx);
+            assert!(!demo.playing, "Restart preserves a paused Wave");
+            demo.action(Action::Motion(MotionMode::Static), cx);
             assert!(!demo.playing);
-            demo.progress = 1.;
-            demo.action(Action::Motion(MotionMode::Typewriter), cx);
-            assert_eq!(demo.progress, 0.);
+            demo.action(Action::Restart, cx);
+            assert!(!demo.playing, "Restart does not animate Static");
         });
         cx.run_until_parked();
-        cx.update(|_, cx| {
-            let demo = page.read(cx);
-            assert_eq!(demo.samples[0].read(cx).effect(), KineticEffect::Typewriter { progress: 0. });
-        });
     }
 
     #[test]

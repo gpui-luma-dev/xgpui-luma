@@ -502,7 +502,7 @@ impl ShaderPage {
         if self.active_tab != tab {
             self.grid_pane.update(cx, |pane, _| pane.suspend());
             self.sea_pane.update(cx, |pane, _| pane.suspend());
-            self.typography.update(cx, |demo, _| demo.suspend());
+            self.typography.update(cx, |demo, cx| demo.suspend(cx));
             self.shadow_pane.update(cx, |page, _| page.animated = false);
         }
         if tab == "Shader Depot: Grid" {
@@ -520,17 +520,14 @@ impl ShaderPage {
     }
 
     pub fn requires_sdr(&self) -> bool {
-        // Metal supports typography captures in linear P3; keep the fallback
-        // on other backends until their wide capture paths are implemented.
         matches!(self.active_tab.as_ref(), "Brushes" | "Layer Effects")
-            || (self.active_tab == "Typography" && !cfg!(target_os = "macos"))
     }
 
     pub fn suspend(&mut self, cx: &mut Context<Self>) {
         self.animated = false;
         self.grid_pane.update(cx, |pane, _| pane.suspend());
         self.sea_pane.update(cx, |pane, _| pane.suspend());
-        self.typography.update(cx, |demo, _| demo.suspend());
+        self.typography.update(cx, |demo, cx| demo.suspend(cx));
         self.shadow_pane.update(cx, |page, _| page.animated = false);
     }
 

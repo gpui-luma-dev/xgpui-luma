@@ -7344,6 +7344,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "clap",
+ "futures",
  "gtk",
  "image",
  "libc",
