@@ -1,7 +1,7 @@
 //! Gamut-reveal demonstration using the shared lab page and SDK controls.
 use std::sync::Arc;
 use gpui::{prelude::*, *};
-use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
+use xgpui_luma::{controls::button::Button, prelude::HasPresenter, vstack, hstack};
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::{
     gamut_reveal::Reveal,
@@ -33,9 +33,8 @@ impl HiddenSymbolLab {
         let thumbnails = VIEWS
             .iter()
             .enumerate()
-            .map(|(index, &label)| {
+            .map(|(index, _)| {
                 let owner = cx.weak_entity();
-                let label_look = look.clone();
                 radix::Button::new(format!("hidden-symbol-sample-{index}"))
                     .look(&look)
                     .content_only()
@@ -47,15 +46,11 @@ impl HiddenSymbolLab {
                                 preview = preview.child(reveal.picture(index, page.thumbnail_wide));
                             }
                         }
-                        div().w(px(140.)).flex().flex_col().gap_2().child(preview).child(text(
-                            &label_look,
-                            TextRole::Caption,
-                            label,
-                        ))
+                        preview
                     })
                     .with_template_modifier(move |row, _| {
                         row.w(px(140.))
-                            .h(px(190.))
+                            .h(px(140.))
                             .flex_shrink_0()
                             .p_0()
                             .items_start()
@@ -138,10 +133,15 @@ impl Render for HiddenSymbolLab {
             .crumb("xgpui-gamut", "Hidden Wide-Gamut Symbol")
             .title("Hidden Wide-Gamut Symbol")
             .lede("Compare native Display P3 with its clipped sRGB preview. Look for a ring and X in the red field.")
-            .hero(Hero::fixed(div().w_full().flex().flex_col().gap_4()
-                .child(picture)
-                .child(div().w_full().h(px(190.)).flex_shrink_0().flex().items_start().justify_center().gap_3()
-                    .debug_selector(|| "hidden-symbol-samples".into()).children(self.thumbnails.clone())), px(520.)))
+            .hero(Hero::fixed(vstack! { gap=16;
+                picture,
+                hstack! { gap=12 align=start justify=center; }
+                    .w_full().flex_shrink_0()
+                    .debug_selector(|| "hidden-symbol-samples".into())
+                    .children(self.thumbnails.iter().enumerate().map(|(index, image)| {
+                        vstack! { gap=8; image.clone(), text(&self.look, TextRole::Caption, VIEWS[index]) }.w(px(140.))
+                    }))
+            }.w_full(), px(520.)))
             .caption(format!("{} · {} · {display}", VIEWS[self.selected],
                 if wide { "Wide-gamut output (Display P3)" } else { "sRGB output" }))
             .control(self.attribution.clone())
@@ -180,7 +180,9 @@ mod tests {
         let mut previous = None;
         for selector in ["hidden-symbol-sample-0", "hidden-symbol-sample-1", "hidden-symbol-sample-2"] {
             let sample = cx.debug_bounds(selector).unwrap();
-            assert_eq!(sample.size, size(px(140.), px(190.)));
+            assert_eq!(sample.size.width, px(140.));
+            assert_eq!(sample.size.height, px(140.));
+            assert!(sample.bottom() <= samples.bottom());
             assert_eq!(sample.top(), samples.top());
             if let Some(right) = previous {
                 assert!(sample.left() > right);
