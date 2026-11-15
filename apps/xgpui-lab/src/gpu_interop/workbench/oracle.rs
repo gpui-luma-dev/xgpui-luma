@@ -1,14 +1,16 @@
-//! Independent CPU reference for the engine's working image. It mirrors the
-//! WGSL in `engine.rs` line by line, so a replayed edit script must produce
-//! the same linear P3 values on the GPU and here.
+//! Independent CPU reference for the upstream per-dab mode (`stroke_id = 0`).
+//! Stroke-opacity grouping is checked separately with GPU pixel readbacks in `check.rs`.
 
 pub const WIDTH: u32 = 640;
-pub const HEIGHT: u32 = 400;
+pub const HEIGHT: u32 = WIDTH;
 
 /// One brush dab: a hard-edged disc of linear P3 colour composited with
 /// `opacity` over the working image.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Dab {
+    /// Nonzero groups dabs into one stroke so overlap does not build opacity.
+    /// Zero retains the upstream per-dab compositing used by the oracle checks.
+    pub stroke_id: u32,
     pub x: f32,
     pub y: f32,
     pub radius: f32,

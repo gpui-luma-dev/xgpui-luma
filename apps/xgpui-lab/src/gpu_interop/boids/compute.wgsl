@@ -1,4 +1,4 @@
-// Ported unchanged from wgpu v30.0.1, examples/features/src/boids/compute.wgsl
+// Adapted from wgpu v30.0.1, examples/features/src/boids/compute.wgsl
 // (https://github.com/gfx-rs/wgpu/tree/v30.0.1/examples/features/src/boids).
 // Copyright (c) 2025 The gfx-rs developers. Licensed under either of the
 // Apache License, Version 2.0 or the MIT license, at your option.
@@ -16,6 +16,7 @@ struct SimParams {
   rule1Scale : f32,
   rule2Scale : f32,
   rule3Scale : f32,
+  halfWidth : f32,
 };
 
 @group(0) @binding(0) var<uniform> params : SimParams;
@@ -87,11 +88,11 @@ fn main(@builtin(global_invocation_id) global_invocation_id: vec3<u32>) {
   vPos += vVel * params.deltaT;
 
   // Wrap around boundary
-  if (vPos.x < -1.0) {
-    vPos.x = 1.0;
+  if (vPos.x < -params.halfWidth) {
+    vPos.x = params.halfWidth;
   }
-  if (vPos.x > 1.0) {
-    vPos.x = -1.0;
+  if (vPos.x > params.halfWidth) {
+    vPos.x = -params.halfWidth;
   }
   if (vPos.y < -1.0) {
     vPos.y = 1.0;

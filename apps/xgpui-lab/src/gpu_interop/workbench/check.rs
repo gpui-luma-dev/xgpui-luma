@@ -28,14 +28,21 @@ pub fn script() -> Vec<Dab> {
         let (mut x, mut y) = (next() * WIDTH as f32, next() * HEIGHT as f32);
         let (dx, dy) = (next() * 16. - 8., next() * 16. - 8.);
         for _ in 0..20 {
-            dabs.push(Dab { x, y, radius, opacity, color });
+            dabs.push(Dab { stroke_id: 0, x, y, radius, opacity, color });
             x += dx;
             y += dy;
         }
     }
     // Off the left edge, half visible.
     for i in 0..10 {
-        dabs.push(Dab { x: -4., y: 40. + i as f32 * 30., radius: 12.3, opacity: 0.8, color: [0., 0., 1.] });
+        dabs.push(Dab {
+            stroke_id: 0,
+            x: -4.,
+            y: 40. + i as f32 * 30.,
+            radius: 12.3,
+            opacity: 0.8,
+            color: [0., 0., 1.],
+        });
     }
     dabs
 }
@@ -177,8 +184,14 @@ pub fn run(slots: usize) -> Result<()> {
     ensure!(engine.inspect(ix, iy), "inspection rejected");
     let requested = engine.stats().revision;
     for i in 0..30 {
-        let dab =
-            Dab { x: ix as f32 + 2., y: iy as f32 + 2., radius: 6., opacity: 0.5, color: [i as f32 / 30., 0., 1.] };
+        let dab = Dab {
+            stroke_id: 0,
+            x: ix as f32 + 2.,
+            y: iy as f32 + 2.,
+            radius: 6.,
+            opacity: 0.5,
+            color: [i as f32 / 30., 0., 1.],
+        };
         engine.dab(dab);
         reference.apply(&dab);
         engine.frame()?;
@@ -227,6 +240,7 @@ pub fn run(slots: usize) -> Result<()> {
     let publishes = engine.stats().publishes;
     for i in 0..200 {
         let dab = Dab {
+            stroke_id: 0,
             x: (i * 3 % WIDTH) as f32,
             y: (i * 7 % HEIGHT) as f32,
             radius: 5.,
@@ -250,6 +264,7 @@ pub fn run(slots: usize) -> Result<()> {
     // More dabs than one pass holds are all applied, in order.
     for i in 0..(MAX_DABS * 2 + 37) {
         let dab = Dab {
+            stroke_id: 0,
             x: 320. + (i % 50) as f32 * 2.,
             y: 200. + (i / 50) as f32 * 2.,
             radius: 4.5,
@@ -279,7 +294,14 @@ pub fn run(slots: usize) -> Result<()> {
         if let Some(content) = engine.surface().content() {
             held.push(content);
         }
-        let dab = Dab { x: 100. + pinned_dab as f32 * 9., y: 60., radius: 4., opacity: 1., color: [1., 0., 1.] };
+        let dab = Dab {
+            stroke_id: 0,
+            x: 100. + pinned_dab as f32 * 9.,
+            y: 60.,
+            radius: 4.,
+            opacity: 1.,
+            color: [1., 0., 1.],
+        };
         pinned_dab += 1;
         engine.dab(dab);
         reference.apply(&dab);
@@ -289,7 +311,7 @@ pub fn run(slots: usize) -> Result<()> {
     let blocked_before = engine.stats().publish_blocked;
     let started = std::time::Instant::now();
     for i in 0..10 {
-        let dab = Dab { x: 500., y: 40. + i as f32 * 4., radius: 3., opacity: 1., color: [0., 1., 1.] };
+        let dab = Dab { stroke_id: 0, x: 500., y: 40. + i as f32 * 4., radius: 3., opacity: 1., color: [0., 1., 1.] };
         engine.dab(dab);
         reference.apply(&dab);
         engine.frame()?;
@@ -316,7 +338,7 @@ pub fn run(slots: usize) -> Result<()> {
     let old_surface = engine.surface().clone();
     engine.lose_device();
     let lost_frame_rejected = engine.frame().is_err() && !engine.inspect(10, 10);
-    let during = Dab { x: 300., y: 200., radius: 7., opacity: 1., color: [0.25, 0.5, 0.75] };
+    let during = Dab { stroke_id: 0, x: 300., y: 200., radius: 7., opacity: 1., color: [0.25, 0.5, 0.75] };
     engine.dab(during);
     reference.apply(&during);
     let old_still_shows = old_surface.content().is_some() && !old_surface.is_valid();
@@ -355,7 +377,7 @@ pub fn run(slots: usize) -> Result<()> {
     );
 
     // Reset regenerates the image and discards queued edits.
-    engine.dab(Dab { x: 10., y: 10., radius: 8., opacity: 1., color: [1., 1., 1.] });
+    engine.dab(Dab { stroke_id: 0, x: 10., y: 10., radius: 8., opacity: 1., color: [1., 1., 1.] });
     engine.reset();
     engine.frame()?;
     let (bad, _) = compare_working(&mut engine, &Reference::new())?;
@@ -391,4 +413,78 @@ pub fn percentile(values: &[f32], q: f32) -> f32 {
 #[ignore = "requires a compatible GPU, no GUI or window"]
 fn workbench_matches_cpu_reference() {
     run(3).unwrap();
+}
+
+#[test]
+#[ignore = "requires a compatible GPU, no GUI or window"]
+fn brush_opacity_changes_published_pixels() {
+    let mut engine = Engine::new(3).unwrap();
+    let (x, y) = (100, 500);
+    let background = base(x, y);
+    for opacity in [0.05, 0.25, 0.6, 1.] {
+        engine.reset();
+        engine.dab(Dab {
+            stroke_id: 0,
+            x: x as f32 + 0.5,
+            y: y as f32 + 0.5,
+            radius: 10.,
+            opacity,
+            color: [1., 0., 0.],
+        });
+        engine.frame().unwrap();
+        let published = engine.read_published().unwrap();
+        let actual = published[(y * WIDTH + x) as usize].map(f16_to_f32);
+        let expected = [
+            opacity + background[0] * (1. - opacity),
+            background[1] * (1. - opacity),
+            background[2] * (1. - opacity),
+            1.,
+        ];
+        eprintln!("opacity {opacity:.2}: published linear-P3 pixel {actual:?}");
+        assert!(actual.iter().zip(expected).all(|(a, e)| (a - e).abs() < PUBLISHED_TOLERANCE));
+    }
+}
+
+#[test]
+#[ignore = "requires a compatible GPU, no GUI or window"]
+fn overlapping_dabs_preserve_stroke_opacity_across_frames_and_recovery() {
+    let mut engine = Engine::new(3).unwrap();
+    let (x, y) = (100, 500);
+    let background = base(x, y);
+    for opacity in [0.05, 0.25, 0.6, 1.] {
+        engine.reset();
+        let dab = Dab { stroke_id: 1, x: x as f32 + 0.5, y: y as f32 + 0.5, radius: 10., opacity, color: [1., 0., 0.] };
+        let expected = [
+            opacity + background[0] * (1. - opacity),
+            background[1] * (1. - opacity),
+            background[2] * (1. - opacity),
+        ];
+        // Dense overlapping brush events spanning several published frames.
+        for _ in 0..3 {
+            for _ in 0..20 {
+                engine.dab(dab);
+            }
+            engine.frame().unwrap();
+            let published = engine.read_published().unwrap();
+            let actual = published[(y * WIDTH + x) as usize].map(f16_to_f32);
+            assert!(
+                actual.iter().zip(expected).all(|(a, e)| (a - e).abs() < PUBLISHED_TOLERANCE),
+                "opacity {opacity}: {actual:?} != {expected:?}"
+            );
+        }
+        // A second stroke may build on the first, but its own overlaps must not.
+        let second = Dab { stroke_id: 2, ..dab };
+        for _ in 0..20 {
+            engine.dab(second);
+        }
+        engine.frame().unwrap();
+        let expected =
+            [opacity + expected[0] * (1. - opacity), expected[1] * (1. - opacity), expected[2] * (1. - opacity)];
+        engine.lose_device();
+        engine.rebuild().unwrap();
+        let published = engine.read_published().unwrap();
+        let actual = published[(y * WIDTH + x) as usize].map(f16_to_f32);
+        eprintln!("opacity {opacity}: after two strokes and recovery {actual:?}");
+        assert!(actual.iter().zip(expected).all(|(a, e)| (a - e).abs() < PUBLISHED_TOLERANCE));
+    }
 }

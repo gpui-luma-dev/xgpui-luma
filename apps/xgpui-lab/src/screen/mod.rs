@@ -59,6 +59,7 @@ pub(crate) struct LabScreen {
     card_elements: Vec<AnyElement>,
     panels: Option<(Panel, Panel)>,
     equal_panel_widths: bool,
+    full_width: bool,
     sections: Vec<Section>,
     note: Option<SharedString>,
     credits: Option<SharedString>,
@@ -81,10 +82,17 @@ impl LabScreen {
             card_elements: Vec::new(),
             panels: None,
             equal_panel_widths: false,
+            full_width: false,
             sections: Vec::new(),
             note: None,
             credits: None,
         }
+    }
+
+    /// Use all available page width for wide visuals instead of the standard column cap.
+    pub fn full_width(mut self, full_width: bool) -> Self {
+        self.full_width = full_width;
+        self
     }
 
     /// Breadcrumb, e.g. `("xgpui-color", "Color Spaces")`. The separator is fixed.
@@ -250,7 +258,13 @@ impl RenderOnce for LabScreen {
         let content = (!content.is_empty())
             .then(|| slot(div().flex().flex_col().gap(metrics.section_gap), "content").children(content));
 
-        page(id, look).child(container().children(crumb).children(header).children(content))
+        page(id, look).child(
+            container()
+                .when(self.full_width, |container| container.max_w_full())
+                .children(crumb)
+                .children(header)
+                .children(content),
+        )
     }
 }
 
