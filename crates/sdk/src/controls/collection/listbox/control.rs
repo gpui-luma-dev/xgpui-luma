@@ -1,4 +1,4 @@
-//! Persistent state and bindings for look-owned ListBox composition.
+//! Persistent state and bindings for shared ListBox composition.
 
 crate::motion_profile!(ListBoxMotion => listbox {
     scroll: crate::motion::Transition,
@@ -38,7 +38,7 @@ pub struct ListBoxControl<M: 'static, T, K: 'static> {
 /// only to register its persistent focus subscriptions during rendering.
 pub struct ListBoxRenderParts<'a, M: 'static, T, K: 'static> {
     pub motion_config: &'a mut crate::motion::MotionConfig<ListBoxMotion>,
-    /// Optional persistent SDK drag/drop binding; Looks attach native geometry.
+    /// Optional persistent SDK drag/drop binding consumed by the shared builder.
     pub drag_drop: Option<super::ListBoxDragDropBinding<M, K>>,
     /// Persistent SDK geometry for post-drop transitions.
     pub drop_layout: crate::motion::DropLayoutMotion<K>,

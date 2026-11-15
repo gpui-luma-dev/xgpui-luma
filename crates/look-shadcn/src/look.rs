@@ -702,6 +702,11 @@ impl ShadcnLook {
         templates::tree_view_template(self.clone())
     }
 
+    /// Content-free chrome for the SDK's borrowed listbox renderer.
+    pub fn listbox_template(&self) -> Arc<dyn xgpui_luma::controls::listbox::ListBoxTemplate> {
+        templates::listbox_template(self.clone())
+    }
+
     pub fn tree_view_theme(&self) -> Arc<dyn xgpui_luma::controls::tree_view::TreeViewTheme> {
         templates::tree_view_theme(self.clone())
     }

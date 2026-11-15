@@ -156,7 +156,7 @@ mod typography;
 // Palette state, scales, and shared styling.
 pub use look::{PageBackground, Look};
 pub use hover_card::{HoverCard, HoverCardBuilder, HoverCardEvent, HoverCardEventExt, hover_card_look};
-pub use listbox::{ListBoxBuilder, listbox_row, listbox_template};
+pub use listbox::{ListBoxBuilder, listbox_row, listbox_template, listbox_surface_template};
 pub use palette::{PaletteSlot, Accent, Gray, ThemePalettes, scale_pair};
 pub use scale::{CUSTOM_PALETTE, ColorScale, ModeScales, SCALE_LEN, ScaleFamily, ScalePair, ScaleStep};
 pub use colors::{BLACK_ALPHA_STEPS, DARK_FAMILIES, LIGHT_FAMILIES, COLORS_VERSION, WHITE_ALPHA_STEPS};
