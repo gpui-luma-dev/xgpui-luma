@@ -6,6 +6,7 @@ Documentation:
 - DO NOT EDIT `README.md` without explicit user approval. It is an independently maintained document and should generally not be touched by agents.
 
 Git workflow and branching (Epic Branch Pattern):
+- Never have more than one open issue branch without explicit user permission. Check existing local and remote issue branches before creating another.
 - Never commit directly to `main` or `develop`.
 - Never create worktrees under `/private`, including `/private/tmp`. Place worktrees beside the repository in its parent directory, for example `/Users/scg/Developer/GitHub/xgpui-luma-issue-154`.
 - When assigned an issue (`<ISSUE_ID>`), isolate work under `issue-<ISSUE_ID>/epic`.
