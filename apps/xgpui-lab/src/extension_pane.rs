@@ -13,7 +13,6 @@ pub struct ExtensionPane {
     demo_sdr: bool,
     interactive_spaces: Option<Entity<crate::color_demos::InteractiveSpaces>>,
     italy: Option<Entity<crate::color_demos::ItalyLab>>,
-    chromaticity: Option<Entity<crate::color_demos::ChromaticityLab>>,
     hidden_symbol: Option<Entity<crate::color_demos::HiddenSymbolLab>>,
     active_demo: Option<gpui::AnyView>,
     benchmarks: Option<Entity<crate::benchmarks::Page>>,
@@ -126,12 +125,6 @@ impl ExtensionPane {
                 view.update(cx, |view, cx| view.activate(cx));
                 Some(view.clone().into())
             }
-            "Chromaticity & Gamut" if self.gamut.is_some() => {
-                let view = self.chromaticity.get_or_insert_with(|| {
-                    cx.new(|cx| crate::color_demos::ChromaticityLab::new(self.look.clone(), cx))
-                });
-                Some(view.clone().into())
-            }
             _ => None,
         };
         if self.active_demo.is_some() {
@@ -206,7 +199,6 @@ impl ExtensionPane {
             look,
             interactive_spaces: None,
             italy: None,
-            chromaticity: None,
             hidden_symbol: None,
             active_demo: None,
             benchmarks,
@@ -264,14 +256,14 @@ mod tests {
         for (id, lab, existing) in [
             ("xgpui-color-tabs", "Italy Photo Comparison", "Conversions"),
             ("xgpui-color-tabs", "Color Spaces", "Conversions"),
-            ("xgpui-gamut-tabs", "Chromaticity & Gamut", "Wide Color Fills"),
+            ("xgpui-gamut-tabs", "Hidden Wide-Gamut Symbol", "Wide Color Fills"),
         ] {
             let (view, cx) =
                 app.add_window_view(|_, cx| ExtensionPane::new(id, crate::theme::default_look(), None, cx));
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let pane = view.read(cx);
-                assert!(pane.interactive_spaces.is_none() && pane.italy.is_none() && pane.chromaticity.is_none());
+                assert!(pane.interactive_spaces.is_none() && pane.italy.is_none() && pane.hidden_symbol.is_none());
             });
             view.update(cx, |pane, cx| pane.activate_page(lab, cx));
             cx.run_until_parked();

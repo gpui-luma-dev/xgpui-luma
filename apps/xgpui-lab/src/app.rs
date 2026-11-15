@@ -100,7 +100,6 @@ const SECTIONS: &[Section] = &[
         &[
             ("Wide Color Fills", "Wide Color Fills"),
             ("Wide Gradients", "Wide Gradients"),
-            ("Chromaticity & Gamut", "Chromaticity & Gamut"),
             ("Hidden Wide-Gamut Symbol", "Hidden Wide-Gamut Symbol"),
             ("Gamut Mapping", "Gamut Mapping"),
             ("Overlays", "Overlays"),
@@ -695,7 +694,6 @@ mod tests {
             (Workspace::Color, "Italy Photo Comparison"),
             (Workspace::Color, "Color Spaces"),
             (Workspace::Gamut, "Gamut Mapping"),
-            (Workspace::Gamut, "Chromaticity & Gamut"),
             (Workspace::Gamut, "Hidden Wide-Gamut Symbol"),
             (Workspace::Compositions, "picker"),
             (Workspace::Gradients, "freeform"),

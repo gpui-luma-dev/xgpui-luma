@@ -7,13 +7,11 @@ use serde_json::{Value, json};
 pub(crate) const PAGES: &[&str] = &[
     "Wide Color Fills",
     "Wide Gradients",
-    "Chromaticity & Gamut",
     "Gamut Mapping",
     "Overlays",
     "Benchmarks",
     "Overlays",
     "Gamut Mapping",
-    "Chromaticity & Gamut",
     "Wide Gradients",
     "Wide Color Fills",
 ];
