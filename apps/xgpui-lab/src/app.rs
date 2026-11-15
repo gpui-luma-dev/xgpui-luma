@@ -402,6 +402,7 @@ impl XgpuiLabApp {
                             .overflow_y_scroll()
                             .p(px(8.))
                             .text_color(sidebar_look.chrome().body_text)
+                            .child(explorer_heading("LUMA CONTROLS", &sidebar_look))
                             .child(workshop_sidebar.clone())
                             .into_any_element();
                     }
