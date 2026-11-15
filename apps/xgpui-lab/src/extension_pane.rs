@@ -25,6 +25,8 @@ pub struct ExtensionPane {
     parley: Option<Entity<crate::parley_lab::ParleyPage>>,
     svg: Option<Entity<crate::svg_lab::SvgPage>>,
     shell: Option<Entity<crate::shell_lab::ShellPage>>,
+    interop_enabled: bool,
+    interop: Vec<(&'static str, Entity<crate::gpu_interop::Page>)>,
 }
 
 impl ExtensionPane {
@@ -45,6 +47,9 @@ impl ExtensionPane {
     }
 
     pub fn deactivate(&mut self, cx: &mut Context<Self>) {
+        for (_, page) in &self.interop {
+            page.update(cx, |page, _| page.suspend());
+        }
         if let Some(parley) = &self.parley {
             parley.update(cx, |page, cx| page.suspend(cx));
         }
@@ -81,6 +86,17 @@ impl ExtensionPane {
         self.deactivate(cx);
         self.demo_sdr = page == "Pastel Waves";
         self.active_demo = match page {
+            "GPU Interop Lab" | "Interop Boids" | "GPU Canvas Workbench" if self.interop_enabled => {
+                let view = if let Some((_, view)) = self.interop.iter().find(|(id, _)| *id == page) {
+                    view.clone()
+                } else {
+                    let view = cx.new(|cx| crate::gpu_interop::Page::new(self.look.clone(), page, cx));
+                    self.interop.push((page, view.clone()));
+                    view
+                };
+                view.update(cx, |view, _| view.activate());
+                Some(view.into())
+            }
             "Spatial Canvas" | "Mandelbrot" if self.canvas_enabled => {
                 let view =
                     self.canvas.get_or_insert_with(|| cx.new(|cx| crate::canvas_lab::Lab::new(self.look.clone(), cx)));
@@ -191,6 +207,8 @@ impl ExtensionPane {
         let standalone = (id == "standalone-benchmark-tabs")
             .then(|| cx.new(|cx| crate::standalone_benchmarks::Page::new(look.clone(), cx)));
         Self {
+            interop_enabled: id == "xgpui-gpu-interop-tabs",
+            interop: Vec::new(),
             canvas,
             canvas_enabled: id == "xgpui-canvas-tabs",
             standalone,
