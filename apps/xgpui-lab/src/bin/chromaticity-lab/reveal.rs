@@ -1,10 +1,10 @@
 //! Generated pixels, not an imported image: an original ring/X gamut-reveal motif.
 use super::*;
 
-pub(super) struct Reveal {
+pub(crate) struct Reveal {
     jobs: Vec<ImageJob>,
     images: Vec<Option<MediaImage>>,
-    error: Option<String>,
+    pub(crate) error: Option<String>,
 }
 fn symbol(x: f64, y: f64) -> bool {
     let radius = x.hypot(y);
@@ -16,7 +16,7 @@ fn colors() -> anyhow::Result<([f64; 3], [f64; 3])> {
     Ok((background, foreground))
 }
 impl Reveal {
-    pub(super) fn new() -> anyhow::Result<Self> {
+    pub(crate) fn new() -> anyhow::Result<Self> {
         let (background, foreground) = colors()?;
         let side = 384u32;
         let mut native = Vec::with_capacity((side * side) as usize);
@@ -64,7 +64,7 @@ impl Reveal {
             error: None,
         })
     }
-    fn poll(&mut self, window: &mut Window) {
+    pub(crate) fn poll(&mut self, window: &mut Window) {
         for (job, image) in self.jobs.iter_mut().zip(&mut self.images) {
             if let Some(ready) = job.try_take() {
                 *image = Some(ready);
@@ -81,7 +81,7 @@ impl Reveal {
             }
         }
     }
-    fn picture(&self, selection: usize, wide: bool) -> impl IntoElement {
+    pub(crate) fn picture(&self, selection: usize, wide: bool) -> impl IntoElement {
         let image = self.images[usize::from(selection == 2)].clone();
         canvas(
             |_, _, _| (),

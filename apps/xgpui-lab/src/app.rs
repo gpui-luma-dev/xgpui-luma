@@ -76,7 +76,7 @@ const SECTIONS: &[Section] = &[
             ("color-stops", "Color Stop List"),
         ],
     ),
-    (Workspace::ColorGamut, "Color & Gamut", &[("Color & Gamut", "Color & Gamut")]),
+    (Workspace::ColorGamut, "Color & Gamut", &[("Chromaticity & Gamut", "Chromaticity & Gamut")]),
     (
         Workspace::Canvas,
         "xgpui-canvas",
@@ -699,9 +699,9 @@ mod tests {
             (Workspace::Gamut, "Hidden Wide-Gamut Symbol"),
             (Workspace::Compositions, "picker"),
             (Workspace::Gradients, "freeform"),
-            (Workspace::ColorGamut, "Color & Gamut"),
+            (Workspace::ColorGamut, "Chromaticity & Gamut"),
             (Workspace::Gradients, "mesh"),
-            (Workspace::ColorGamut, "Color & Gamut"),
+            (Workspace::ColorGamut, "Chromaticity & Gamut"),
         ] {
             let button = cx.update(|_, cx| {
                 view.read(cx)

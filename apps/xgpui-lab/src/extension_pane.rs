@@ -14,7 +14,7 @@ pub struct ExtensionPane {
     interactive_spaces: Option<Entity<crate::color_demos::InteractiveSpaces>>,
     italy: Option<Entity<crate::color_demos::ItalyLab>>,
     chromaticity: Option<Entity<crate::color_demos::ChromaticityLab>>,
-    hidden_symbol: Option<Entity<crate::chromaticity::Lab>>,
+    hidden_symbol: Option<Entity<crate::color_demos::HiddenSymbolLab>>,
     active_demo: Option<gpui::AnyView>,
     benchmarks: Option<Entity<crate::benchmarks::Page>>,
     benchmarks_active: bool,
@@ -120,8 +120,10 @@ impl ExtensionPane {
                 Some(view.clone().into())
             }
             "Hidden Wide-Gamut Symbol" if self.gamut.is_some() => {
-                let view =
-                    self.hidden_symbol.get_or_insert_with(|| cx.new(|_| crate::chromaticity::Lab::hidden_symbol()));
+                let view = self.hidden_symbol.get_or_insert_with(|| {
+                    cx.new(|cx| crate::color_demos::HiddenSymbolLab::new(self.look.clone(), cx))
+                });
+                view.update(cx, |view, cx| view.activate(cx));
                 Some(view.clone().into())
             }
             "Chromaticity & Gamut" if self.gamut.is_some() => {

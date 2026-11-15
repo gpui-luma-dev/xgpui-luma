@@ -8,9 +8,11 @@ mod interop_field_engine;
 mod native_cpu_field;
 mod source_field;
 mod interactive_spaces;
+mod hidden_symbol;
 mod italy;
 mod italy_model;
 
 pub(crate) use chromaticity::ChromaticityLab;
 pub(crate) use interactive_spaces::InteractiveSpaces;
 pub(crate) use italy::ItalyLab;
+pub(crate) use hidden_symbol::HiddenSymbolLab;
