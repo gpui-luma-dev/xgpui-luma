@@ -2,8 +2,8 @@
 //!
 //! Chrome and colors come from Luma's text field look (`TextFieldTheme`), as the
 //! SDK `TextField` resolves them; text layout, hit testing, carets, selection and
-//! visual movement come from the application's paragraph backend (Parley). The
-//! control therefore needs an application created with the Parley text system.
+//! visual movement come from the application's paragraph backend. The
+//! control also supports the native paragraph fallback.
 //!
 //! Positions are byte offsets with an affinity, so carets sit on cluster
 //! boundaries and keep their side at direction changes. Deletion removes whole
@@ -11,8 +11,8 @@
 //!
 //! One line (the default) scrolls sideways and Enter submits. With
 //! [`ParleyTextField::with_rows`] it is a text area: Parley wraps lines at the
-//! control width, Enter inserts a line break (stored as U+2028, Parley's line
-//! separator, and reported as `\n`), Up/Down keep the caret's horizontal
+//! control width, Enter inserts a line break (stored and reported as `\n`),
+//! Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
 use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
@@ -38,7 +38,6 @@ use xgpui_luma::{
     theme::{ControlSize, StandardBoxScale},
 };
 
-/// Bound on width doublings when measuring a one-line text.
 /// Keep this much room between the caret and the viewport edge when scrolling.
 const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
@@ -211,17 +210,17 @@ fn byte_from_utf16(text: &str, utf16: usize) -> usize {
     text.len()
 }
 
-/// Parley's line break inside one paragraph.
-const LINE_SEPARATOR: char = '\u{2028}';
+/// Hard line break between the text area's independently laid out paragraphs.
+const LINE_SEPARATOR: char = '\n';
 
 /// A single-line field stores no line breaks.
 fn single_line(text: &str) -> String {
-    text.replace(['\r', '\n', LINE_SEPARATOR, '\u{2029}'], "")
+    text.replace(['\r', '\n', '\u{2028}', '\u{2029}'], "")
 }
 
-/// A text area stores every line break (CRLF, CR, LF, U+2029) as one separator.
+/// A text area normalizes CRLF, CR, U+2028 and U+2029 to LF.
 fn multi_line(text: &str) -> String {
-    text.replace("\r\n", "\n").replace(['\r', '\n', '\u{2029}'], &LINE_SEPARATOR.to_string())
+    text.replace("\r\n", "\n").replace(['\r', '\u{2028}', '\u{2029}'], "\n")
 }
 
 fn previous_grapheme(text: &str, index: usize) -> usize {
@@ -419,7 +418,7 @@ impl ParleyTextField {
     pub fn copy_selection(&self, cx: &mut Context<Self>) {
         let range = self.selected_range();
         if !range.is_empty() {
-            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].replace(LINE_SEPARATOR, "\n")));
+            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].to_owned()));
         }
     }
 
@@ -442,7 +441,7 @@ impl ParleyTextField {
 
     /// The text, with a text area's line breaks as `\n`.
     pub fn value(&self) -> String {
-        self.value.replace(LINE_SEPARATOR, "\n")
+        self.value.clone()
     }
 
     pub fn is_multiline(&self) -> bool {
@@ -459,7 +458,10 @@ impl ParleyTextField {
             single_line(text)
         };
         let tabs = self.options.allow_tab_character;
-        lines.chars().filter(|ch| !ch.is_control() || (tabs && *ch == '\t')).collect()
+        lines
+            .chars()
+            .filter(|ch| !ch.is_control() || (self.is_multiline() && *ch == LINE_SEPARATOR) || (tabs && *ch == '\t'))
+            .collect()
     }
 
     /// Logical selection as (anchor, caret) positions.

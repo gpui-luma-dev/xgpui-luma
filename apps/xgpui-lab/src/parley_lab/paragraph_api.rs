@@ -54,6 +54,7 @@ const LABELS: [(&str, &str); 4] = [
 const STYLED: &str = "שלום עולם יפה";
 
 const FONT_SIZE: Pixels = px(22.0);
+const PREVIEW_PADDING: Pixels = px(12.0);
 
 fn font() -> Font {
     let mut font = gpui::font("IBM Plex Sans");
@@ -189,6 +190,20 @@ impl ParagraphApiPage {
         }
     }
 
+    /// The canvas has no text nodes, so expose its source on the focus target.
+    fn accessible_preview(&self) -> gpui::Stateful<gpui::Div> {
+        div()
+            .id("paragraph-api-surface")
+            .role(gpui::Role::MultilineTextInput)
+            .aria_label(format!("{} paragraph preview", SAMPLES[self.sample].0))
+            .aria_value(SAMPLES[self.sample].1)
+            .aria_description(
+                "Read-only paragraph. Left and Right move the caret visually; hold Shift to extend the selection.",
+            )
+            .aria_keyshortcuts("ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight")
+            .a11y_synthetic_children(|builder| builder.parent_node().set_read_only())
+    }
+
     fn plain_text(&self) -> gpui::Div {
         let red = hsla(0.0, 0.75, 0.5, 1.0);
         let green = hsla(0.33, 0.6, 0.75, 1.0);
@@ -275,11 +290,14 @@ impl Render for ParagraphApiPage {
                 let (anchor, caret) = (self.anchor, self.caret);
                 let focused = self.focus.is_focused(window);
                 page = page.hero(Hero::full(
-                    div()
-                        .id("paragraph-api-surface")
+                    self.accessible_preview()
                         .track_focus(&self.focus)
                         .on_key_down(cx.listener(Self::key))
-                        .p_3()
+                        // Keep the paper's edge at the paragraph's edge. A stretched
+                        // surface makes RTL text look left-aligned in a wider field.
+                        .w(size.width + PREVIEW_PADDING * 2.0)
+                        .p(PREVIEW_PADDING)
+                        .debug_selector(|| "paragraph-api-paper".to_owned())
                         .bg(rgb(palette::PAPER))
                         .flex_none()
                         .on_mouse_down(
@@ -396,19 +414,32 @@ mod tests {
         let page = window.root(&mut cx).unwrap();
         window
             .update(&mut cx, |page, _, cx| {
-                page.sample = sample;
-                page.direction = direction;
-                cx.notify();
+                page.sample_choice.select(sample, cx);
+                page.direction_choice.select(direction, cx);
             })
             .unwrap();
         let mut visual = VisualTestContext::from_window(window.into(), &cx);
         visual.draw(point(px(0.0), px(0.0)), size(px(1000.0), px(900.0)), move |_, _| {
             div().size_full().child(page.clone())
         });
+        let paper = visual.debug_bounds("paragraph-api-paper").expect("preview paper");
         window
             .update(&mut cx, |page, window, _| {
+                use gpui::Element as _;
+                let preview = page.accessible_preview();
+                assert_eq!(preview.a11y_role(), Some(gpui::Role::MultilineTextInput));
+                let mut node = gpui::accesskit::Node::new(gpui::Role::MultilineTextInput);
+                preview.write_a11y_info(&mut node);
+                assert_eq!(node.label(), Some(format!("{} paragraph preview", SAMPLES[sample].0).as_str()));
+                assert_eq!(node.value(), Some(SAMPLES[sample].1));
+                assert!(node.description().unwrap().contains("Shift"));
                 let support = window.text_system().paragraph_support();
-                let (_, layout) = page.geometry.as_ref().expect("the paragraph laid out");
+                let (canvas, layout) = page.geometry.as_ref().expect("the paragraph laid out");
+                assert!((paper.left() + PREVIEW_PADDING - canvas.left()).abs() < px(1.0));
+                assert!(
+                    (paper.right() - PREVIEW_PADDING - canvas.right()).abs() < px(1.0),
+                    "the paper must not stretch beyond the paragraph's RTL alignment edge"
+                );
                 let text = SAMPLES[sample].1;
                 let end = ParagraphPosition { byte_index: text.len(), affinity: TextAffinity::Upstream };
                 let rects = layout.selection_bounds(start(), end).unwrap();

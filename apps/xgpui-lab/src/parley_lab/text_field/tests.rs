@@ -1307,3 +1307,37 @@ fn home_and_end_stay_on_a_wrapped_mixed_direction_row() {
         assert!((caret.center().y - layout.caret_bounds(at(start)).unwrap().center().y).abs() < px(1.0));
     }
 }
+
+#[test]
+fn multiline_storage_normalizes_all_hard_breaks_to_lf() {
+    let mut f = Fixture::area("a\r\nb\rc\nd\u{2028}e\u{2029}", 6);
+    assert_eq!(f.read(|field| field.value.clone()), "a\nb\nc\nd\ne\n");
+    assert_eq!(f.geometry().layout.source(), "a\nb\nc\nd\ne\n");
+    let mut single = Fixture::new("a\r\nb\rc\nd\u{2028}e\u{2029}");
+    assert_eq!(single.value(), "abcde");
+}
+
+#[test]
+fn multiline_ime_reads_lf_and_preserves_utf16_selection() {
+    let mut f = Fixture::area("a\n", 3);
+    let mut handler = f.handler();
+    f.visual.update(|window, cx| {
+        handler.replace_and_mark_text_in_range(None, "𝄞\r\ne\u{301}", Some(4..6), window, cx);
+        assert_eq!(handler.marked_text_range(window, cx), Some(2..7));
+        assert_eq!(handler.selected_text_range(false, window, cx).unwrap().range, 5..7);
+        let mut actual = None;
+        assert_eq!(handler.text_for_range(0..7, &mut actual, window, cx).as_deref(), Some("a\n𝄞\ne\u{301}"));
+        assert_eq!(actual, Some(0..7));
+        assert_eq!(handler.text_length_utf16(window, cx), Some(7));
+    });
+    assert_eq!(f.selection(), (7, 10));
+    f.draw();
+    let mut handler = f.handler();
+    f.visual.update(|window, cx| {
+        handler.replace_text_in_range(None, "𝄞\n€", window, cx);
+        assert_eq!(handler.marked_text_range(window, cx), None);
+    });
+    assert_eq!(f.value(), "a\n𝄞\n€");
+    f.keys(&format!("{}-z", f.secondary));
+    assert_eq!(f.value(), "a\n");
+}
