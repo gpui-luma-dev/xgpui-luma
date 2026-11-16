@@ -125,6 +125,7 @@ pub(crate) struct Workshop {
     navigation: Vec<NavigationEntry>,
     samples: HashMap<&'static str, Sample>,
     shell_look: Arc<Look>,
+    page_look: Arc<Look>,
 }
 
 impl Workshop {
@@ -212,8 +213,17 @@ impl Workshop {
             .content_padding_y(4.)
             .items(groups)
             .spawn(cx);
-        let mut this =
-            Self { sidebar, color_sidebar, selected: "color-field", navigation, samples: HashMap::new(), shell_look };
+        let page_look = crate::theme::default_look();
+        page_look.set_mode(ThemeMode::Light);
+        let mut this = Self {
+            sidebar,
+            color_sidebar,
+            selected: "color-field",
+            navigation,
+            samples: HashMap::new(),
+            shell_look,
+            page_look,
+        };
         this.select("color-field", cx);
         this
     }
@@ -224,7 +234,7 @@ impl Workshop {
         }
         self.selected = id;
         if !self.samples.contains_key(id) {
-            let look = self.shell_look.clone();
+            let look = self.page_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
                 "shadow-button" => {
                     Some(Sample::ShadowButton(cx.new(|cx| shadow_button::ShadowButtonSample::new(look, cx))))
@@ -367,7 +377,7 @@ impl Workshop {
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.shell_look.set_mode(mode);
         for sample in self.samples.values() {
-            sample.sync_look(self.shell_look.clone(), cx);
+            sample.sync_look(self.page_look.clone(), cx);
         }
         cx.notify();
     }
@@ -375,7 +385,7 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let chrome = self.shell_look.chrome();
+        let chrome = self.page_look.chrome();
         let unavailable_reason = match self.selected {
             "badge" => Some(
                 "The base SDK does not provide a Badge control. Badge elements belong to the Radix and Shadcn look crates, so no SDK-default sample is available.",
@@ -395,8 +405,15 @@ impl Render for Workshop {
             ),
             _ => None,
         };
-        let mut root =
-            div().id("control-workshop-content").size_full().min_w_0().min_h_0().text_color(chrome.body_text);
+        let mut root = div()
+            .id("control-workshop-content")
+            .relative()
+            .size_full()
+            .min_w_0()
+            .min_h_0()
+            .bg(gpui::rgb(0xffffff))
+            .text_color(chrome.body_text)
+            .child(sample_layout::ruled_background());
         if let Some(sample) = self.samples.get(self.selected) {
             root = root.child(sdk_sample::isolated(sample.view()));
         } else if let Some((group, entry)) = COMPONENT_CATALOG
@@ -405,12 +422,13 @@ impl Render for Workshop {
         {
             root = root.child(
                 div()
+                    .text_color(gpui::rgb(0x202020))
                     .p_6()
                     .flex()
                     .flex_col()
                     .gap_3()
                     .child(div().text_size(px(22.)).child(entry.label))
-                    .child(div().text_color(chrome.muted_text).child(group.label))
+                    .child(div().text_color(gpui::rgb(0x666666)).child(group.label))
                     .child(if let Some(reason) = unavailable_reason {
                         div().debug_selector(|| "workshop-sdk-unavailable".into()).child(reason)
                     } else {
@@ -490,6 +508,7 @@ mod tests {
         cx.update(|_, cx| {
             let workshop = view.read(cx);
             assert_eq!(workshop.selected, "color-field");
+            assert_eq!(workshop.page_look.mode(), ThemeMode::Light);
             assert!(!workshop.sidebar.read(cx).is_expanded(&"color".into()));
             assert_eq!(workshop.color_sidebar.len(), 6);
             assert!(!workshop.sidebar.read(cx).is_expanded(&"command".into()));
@@ -530,9 +549,12 @@ mod tests {
         }
         view.update(cx, |v, cx| {
             v.select("color-field", cx);
+            v.sync_theme(ThemeMode::Dark, cx);
+            assert_eq!(v.page_look.mode(), ThemeMode::Light);
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
+            assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
             assert_eq!(view.read(cx).samples.len(), 43);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);

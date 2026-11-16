@@ -2,6 +2,33 @@
 use gpui::{AnyElement, FontWeight, div, prelude::*, px};
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
+/// Paint-only backdrop shared by every Workshop route; it never captures input.
+pub(super) fn ruled_background() -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        |bounds, _, window, _| {
+            let spacing = 24.;
+            let thickness = px(1. / window.scale_factor());
+            let color = gpui::rgb(0xe6e6e6);
+            for column in 0..(f32::from(bounds.size.width) / spacing).ceil() as usize {
+                let origin = bounds.origin + gpui::point(px(column as f32 * spacing), px(0.));
+                window.paint_quad(gpui::fill(
+                    gpui::Bounds::new(origin, gpui::size(thickness, bounds.size.height)),
+                    color,
+                ));
+            }
+            for row in 0..(f32::from(bounds.size.height) / spacing).ceil() as usize {
+                let origin = bounds.origin + gpui::point(px(0.), px(row as f32 * spacing));
+                window
+                    .paint_quad(gpui::fill(gpui::Bounds::new(origin, gpui::size(bounds.size.width, thickness)), color));
+            }
+        },
+    )
+    .absolute()
+    .inset_0()
+    .size_full()
+}
+
 pub(super) fn page(id: &'static str, content: impl IntoElement) -> AnyElement {
     div()
         .id(id)
