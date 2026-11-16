@@ -169,6 +169,7 @@ fn open_configured_shell_window(
                                                 ThemeMode::Dark => ThemeMode::Light,
                                             };
                                             app.look.set_mode(mode);
+                                            app.workshop.update(cx, |workshop, cx| workshop.sync_theme(mode, cx));
                                             super::sync_color_control_theme(&app.look);
                                             cx.bump_luma_theme_revision();
                                             cx.notify();
