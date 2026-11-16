@@ -10,6 +10,7 @@ mod layout;
 mod navigation;
 mod feedback;
 mod selection;
+mod shadow_button;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -43,6 +44,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    ShadowButton(Entity<shadow_button::ShadowButtonSample>),
     Selection(Entity<selection::SelectionSample>),
     Feedback(Entity<feedback::FeedbackSample>),
     Navigation(Entity<navigation::NavigationSample>),
@@ -65,6 +67,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::ShadowButton(v) => v.clone().into(),
             Self::Selection(v) => v.clone().into(),
             Self::Feedback(v) => v.clone().into(),
             Self::Navigation(v) => v.clone().into(),
@@ -87,6 +90,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Feedback(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Navigation(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -222,6 +226,9 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "shadow-button" => {
+                    Some(Sample::ShadowButton(cx.new(|cx| shadow_button::ShadowButtonSample::new(look, cx))))
+                }
                 "split-button" => Some(Sample::Selection(
                     cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::SplitButton, look, cx)),
                 )),
@@ -511,6 +518,7 @@ mod tests {
                                 | "navigation"
                                 | "feedback"
                                 | "selection"
+                                | "prototypes"
                         ) && !matches!(
                             entry.id,
                             "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset" | "badge"
@@ -525,7 +533,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 42);
+            assert_eq!(view.read(cx).samples.len(), 43);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
