@@ -43,7 +43,8 @@ const DIRECTIONS: [(&str, TextDirection); 3] = [
 const WIDTHS: [&str; 3] = ["Fit", "Min-content", "Max-content"];
 
 /// Plain GPUI text: single-line labels through the flat-line path (xgpui#325 B).
-const LABELS: [(&str, &str); 4] = [
+const LABELS: [(&str, &str); 5] = [
+    ("Latin", "Plain GPUI text label"),
     ("Hebrew", "עברית"),
     ("Arabic", "مرحبا بالعالم"),
     ("Mixed", "abc עברית 123"),
@@ -66,8 +67,19 @@ fn start() -> ParagraphPosition {
     ParagraphPosition { byte_index: 0, affinity: TextAffinity::Downstream }
 }
 
+struct TypesetInstalled;
+impl gpui::Global for TypesetInstalled {}
+
+/// Typeset must share the application's backend: FontIds belong to that instance.
+pub(crate) fn install_typeset(backend: Arc<xgpui_parley::ParleyTextSystem>, cx: &mut gpui::App) {
+    xgpui_parley::typeset::install(backend, cx);
+    cx.set_global(TypesetInstalled);
+}
+
 pub struct ParagraphApiPage {
     look: Arc<Look>,
+    tooltip_buttons: Vec<gpui::Entity<xgpui_luma::controls::button::Button>>,
+    typeset_active: bool,
     sample: usize,
     direction: usize,
     width: usize,
@@ -120,8 +132,12 @@ impl ParagraphApiPage {
                 this.width = index;
                 this.reset(cx);
             });
+        let typeset_active = cx.try_global::<TypesetInstalled>().is_some();
+        let tooltip_buttons = examples::tooltip_buttons(&look, cx);
         Self {
             look,
+            tooltip_buttons,
+            typeset_active,
             sample: 0,
             direction: 0,
             width: 0,
@@ -269,11 +285,16 @@ impl Render for ParagraphApiPage {
             ParagraphSupport::LeftToRight => "native fallback; direction sets each line's edge, no paragraph bidi",
             _ => "unsupported; paragraph layout returns an error",
         };
+        let backend = if self.typeset_active { "Parley" } else { "Native" };
         let mut page = LabScreen::new("parley-paragraph-api", self.look.clone())
             .crumb("xgpui-parley", "Paragraph API")
-            .title("Paragraph API")
-            .lede("GPUI's paragraph API on this application's text system: the same code on native text and Parley.")
-            .caption(format!("paragraph_support(): {support:?} · {support_note}"))
+            .title(format!("Paragraph API · {backend}"))
+            .lede(if self.typeset_active {
+                "Running on the Parley text backend. Full bidirectional paragraph layout is enabled."
+            } else {
+                "Running on the native text backend. Paragraphs use the native fallback; mixed text has no full paragraph bidi reordering."
+            })
+            .caption(format!("{backend} backend · paragraph_support(): {support:?} · {support_note}"))
             .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.direction_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.width_choice.clone().into_element()));
@@ -376,6 +397,12 @@ impl Render for ParagraphApiPage {
             PanelShell::new("Measurements / live").child(properties(&self.look, readout)),
             PanelShell::new("Plain GPUI text").child(self.plain_text()),
         )
+        .section_panel(PanelShell::new("End truncation").child(examples::truncation(&self.look)))
+        .section_panel(PanelShell::new("Wrapped RTL: plain GPUI / typeset()").child(examples::wrapped(
+            &self.look,
+            self.typeset_active,
+            &self.tooltip_buttons,
+        )))
         .note(
             "Click or drag to select; Left/Right move visually and Shift extends. On Parley, Hebrew and the Right to \
              left direction start at the right edge on both text systems; only Parley also reorders mixed text \
@@ -469,3 +496,8 @@ mod tests {
         assert_eq!(draw(false, 1, 1), (ParagraphSupport::LeftToRight, Edge::Left), "native, Hebrew, left to right");
     }
 }
+
+mod examples;
+
+#[cfg(all(test, feature = "test-support"))]
+mod rtl_checks;

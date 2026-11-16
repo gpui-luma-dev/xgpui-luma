@@ -175,17 +175,25 @@ fn main() {
             std::process::exit(2);
         }
     };
-    // `--text-system=parley` runs the whole lab on the Parley text system, so
-    // pages that edit through GPUI's paragraph API (the Parley Text Field) work.
-    let parley_text_system = std::env::args()
-        .any(|arg| arg == "--text-system=parley")
+    // Use Parley throughout the lab by default; native remains available for
+    // backend comparisons. Keep --text-system=parley as an explicit override.
+    let use_parley = args
+        .iter()
+        .rev()
+        .find_map(|arg| match arg.as_str() {
+            "--text-system=native" => Some(false),
+            "--text-system=parley" => Some(true),
+            _ => None,
+        })
+        .unwrap_or(true);
+    let parley_text_system = use_parley
         .then(|| {
             parley_lab::application_text_system()
                 .inspect_err(|error| eprintln!("Parley text system unavailable, using the native one: {error:#}"))
                 .ok()
         })
         .flatten();
-    let app = match parley_text_system {
+    let app = match parley_text_system.clone() {
         Some(text_system) => {
             gpui::Application::with_platform_and_text_system(gpui_platform::current_platform(false), text_system)
         }
@@ -194,6 +202,9 @@ fn main() {
     .with_assets(Assets);
 
     app.run(move |cx| {
+        if let Some(backend) = parley_text_system {
+            parley_lab::paragraph_api::install_typeset(backend, cx);
+        }
         if let Some(launch) = launch {
             cx.set_global(launch);
         }

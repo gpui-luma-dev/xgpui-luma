@@ -2,7 +2,7 @@
 mod samples;
 mod timings;
 mod paragraph;
-mod paragraph_api;
+pub(crate) mod paragraph_api;
 mod raster;
 pub(crate) mod native;
 mod workload;
@@ -23,7 +23,7 @@ use crate::theme::ColorVizLookExt;
 
 /// The Parley text system for a whole application, with the lab's sample fonts
 /// (system fonts are found through Parley's `system-fonts` feature).
-pub(crate) fn application_text_system() -> Result<Arc<dyn PlatformTextSystem>> {
+pub(crate) fn application_text_system() -> Result<Arc<xgpui_parley::ParleyTextSystem>> {
     Ok(Engine::new()?.backend.clone())
 }
 

@@ -219,9 +219,13 @@ _control-docs-check:
 
 # --- XGPUI Lab ---
 
-# Run XGPUI Lab.
+# Run XGPUI Lab with Parley text by default.
 app-lab *args:
     {{ app-run }} -p xgpui-lab "${app_args[@]}"
+
+# Run XGPUI Lab with the native text system for backend comparisons.
+app-lab-nativetext *args:
+    set -- --text-system=native "$@"; {{ app-run }} -p xgpui-lab "${app_args[@]}"
 
 # Build the lab without launching it.
 lab-build:
