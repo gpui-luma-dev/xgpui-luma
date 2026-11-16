@@ -39,6 +39,7 @@ impl AccordionTheme for NavigationTheme {
 struct NavigationTemplate {
     look: Look,
     inner: ThemedAccordionTemplate,
+    labels: Vec<(&'static str, &'static str)>,
 }
 
 impl AccordionTemplate for NavigationTemplate {
@@ -49,13 +50,18 @@ impl AccordionTemplate for NavigationTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        // Section IDs are their displayed labels. Read expansion from the SDK's
+        // Resolve labels separately from stable IDs. Read expansion from the SDK's
         // render model so keyboard, pointer, and programmatic changes stay in sync.
         let triggers: Vec<_> = model
             .items
             .iter()
             .map(|item| {
-                let label = item.id.clone();
+                let label: gpui::SharedString = self
+                    .labels
+                    .iter()
+                    .find(|(id, _)| *id == item.id.as_ref())
+                    .map(|(_, label)| (*label).into())
+                    .unwrap_or_else(|| item.id.clone());
                 let expanded = item.expanded;
                 let look = self.look.clone();
                 AccordionTrigger::custom(move |_, _| {
@@ -119,6 +125,13 @@ impl AccordionTemplate for NavigationTemplate {
 }
 
 pub(super) fn template(look: &Look) -> Arc<dyn AccordionTemplate> {
+    template_with_labels(look, Vec::new())
+}
+
+pub(crate) fn template_with_labels(
+    look: &Look,
+    labels: Vec<(&'static str, &'static str)>,
+) -> Arc<dyn AccordionTemplate> {
     let theme = Arc::new(NavigationTheme { look: look.clone(), radix: xgpui_luma_look_radix::accordion_theme(look) });
-    Arc::new(NavigationTemplate { look: look.clone(), inner: ThemedAccordionTemplate::new(theme) })
+    Arc::new(NavigationTemplate { look: look.clone(), inner: ThemedAccordionTemplate::new(theme), labels })
 }
