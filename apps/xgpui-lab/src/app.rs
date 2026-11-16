@@ -381,6 +381,7 @@ impl XgpuiLabApp {
         let sidebar_destination = destination.clone();
         let workshop = cx.new(|cx| crate::workshop::Workshop::new(look.clone(), cx));
         let workshop_sidebar = workshop.read(cx).sidebar.clone();
+        let workshop_color_sidebar = workshop.read(cx).color_sidebar.clone();
         let content: Rc<RefCell<gpui::AnyView>> = Rc::new(RefCell::new(gradient_builder.clone().into()));
         let content_view = content.clone();
         let sidebar_look = nav_look.clone();
@@ -404,6 +405,8 @@ impl XgpuiLabApp {
                             .text_color(sidebar_look.chrome().body_text)
                             .child(explorer_heading("LUMA CONTROLS", &sidebar_look))
                             .child(workshop_sidebar.clone())
+                            .child(explorer_heading("LUMA COLOR CONTROLS", &sidebar_look))
+                            .child(div().flex().flex_col().gap_1().children(workshop_color_sidebar.clone()))
                             .into_any_element();
                     }
                     div()

@@ -116,6 +116,7 @@ struct NavigationEntry {
 
 pub(crate) struct Workshop {
     pub(crate) sidebar: Accordion,
+    pub(crate) color_sidebar: Vec<Entity<Button>>,
     selected: &'static str,
     navigation: Vec<NavigationEntry>,
     samples: HashMap<&'static str, Sample>,
@@ -126,6 +127,7 @@ impl Workshop {
     pub(crate) fn new(shell_look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let mut navigation = Vec::new();
         let mut groups = Vec::new();
+        let mut color_sidebar = Vec::new();
         for group in COMPONENT_CATALOG {
             let mut rows = Vec::new();
             for entry in group.entries {
@@ -182,22 +184,23 @@ impl Workshop {
                 rows.push(button.clone());
                 navigation.push(NavigationEntry { id, selected, button });
             }
-            groups.push(
-                AccordionItem::new(
-                    group.id,
-                    AccordionTrigger::new(group.label),
-                    AccordionContent::custom(move |_, _| {
-                        div().w_full().flex().flex_col().pl(px(20.)).gap_1().children(rows.clone()).into_any_element()
-                    }),
-                )
-                .expanded(group.id == "color"),
-            );
+            if group.id == "color" {
+                color_sidebar = rows;
+                continue;
+            }
+            groups.push(AccordionItem::new(
+                group.id,
+                AccordionTrigger::new(group.label),
+                AccordionContent::custom(move |_, _| {
+                    div().w_full().flex().flex_col().pl(px(20.)).gap_1().children(rows.clone()).into_any_element()
+                }),
+            ));
         }
         let sidebar = xgpui_luma_look_radix::accordion_builder(&shell_look, "control-workshop-catalog")
             .size(xgpui_luma::theme::ControlSize::Sm)
             .template(crate::app::nav_accordion::template_with_labels(
                 &shell_look,
-                COMPONENT_CATALOG.iter().map(|g| (g.id, g.label)).collect(),
+                COMPONENT_CATALOG.iter().filter(|g| g.id != "color").map(|g| (g.id, g.label)).collect(),
             ))
             .multiple()
             .collapsible(true)
@@ -205,7 +208,8 @@ impl Workshop {
             .content_padding_y(4.)
             .items(groups)
             .spawn(cx);
-        let mut this = Self { sidebar, selected: "color-field", navigation, samples: HashMap::new(), shell_look };
+        let mut this =
+            Self { sidebar, color_sidebar, selected: "color-field", navigation, samples: HashMap::new(), shell_look };
         this.select("color-field", cx);
         this
     }
@@ -479,7 +483,8 @@ mod tests {
         cx.update(|_, cx| {
             let workshop = view.read(cx);
             assert_eq!(workshop.selected, "color-field");
-            assert!(workshop.sidebar.read(cx).is_expanded(&"color".into()));
+            assert!(!workshop.sidebar.read(cx).is_expanded(&"color".into()));
+            assert_eq!(workshop.color_sidebar.len(), 6);
             assert!(!workshop.sidebar.read(cx).is_expanded(&"command".into()));
         });
         let field = cx.update(|_, cx| view.read(cx).samples["color-field"].view().entity_id());
@@ -548,7 +553,12 @@ mod tests {
             div()
                 .size_full()
                 .flex()
-                .child(div().w(px(260.)).child(self.workshop.read(cx).sidebar.clone()))
+                .child(
+                    div()
+                        .w(px(260.))
+                        .child(self.workshop.read(cx).sidebar.clone())
+                        .child(div().flex().flex_col().children(self.workshop.read(cx).color_sidebar.clone())),
+                )
                 .child(div().flex_1().child(self.workshop.clone()))
         }
     }
@@ -563,8 +573,8 @@ mod tests {
         });
         cx.update(|_, cx| xgpui_luma::key_handling::bind_default_control_keys(cx));
         cx.run_until_parked();
-        let folder = cx.debug_bounds("nav-folder-Color-open").unwrap();
-        let folder_label = cx.debug_bounds("nav-label-Color").unwrap();
+        let folder = cx.debug_bounds("nav-folder-Command-closed").unwrap();
+        let folder_label = cx.debug_bounds("nav-label-Command").unwrap();
         assert!((folder_label.left() - folder.right() - px(6.)).abs() < px(1.));
         let field_label = cx.debug_bounds("workshop-label-color-field").unwrap();
         for (label_id, row_id) in [
