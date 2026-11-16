@@ -377,7 +377,7 @@ impl Workshop {
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.shell_look.set_mode(mode);
         for (id, sample) in &self.samples {
-            let look = if *id == "button" {
+            let look = if matches!(*id, "button" | "toolbar") {
                 self.shell_look.clone()
             } else {
                 self.page_look.clone()
@@ -390,7 +390,7 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let converted = self.selected == "button";
+        let converted = matches!(self.selected, "button" | "toolbar");
         let chrome = if converted {
             self.shell_look.chrome()
         } else {
