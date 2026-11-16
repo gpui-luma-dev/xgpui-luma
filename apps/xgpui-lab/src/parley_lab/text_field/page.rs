@@ -277,7 +277,7 @@ impl Render for TextFieldPage {
                 if support.supports_bidi() {
                     "bidirectional paragraphs (Parley)"
                 } else {
-                    "left-to-right paragraphs (native fallback): right-to-left samples lay out left to right"
+                    "native fallback paragraphs: right-to-left lines align right; mixed text keeps the native line order"
                 }
             ))
             .section_panel(

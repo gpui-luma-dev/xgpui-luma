@@ -235,8 +235,8 @@ impl ParleyTextFieldBuilder {
     /// Base direction of every line, as `dir` on an HTML input. `Auto` (the
     /// default) takes each line's first strong character, so an empty or
     /// digits-only right-to-left field needs `RightToLeft` to start at the
-    /// right. Honored where `paragraph_support()` is `Full`; the native
-    /// left-to-right fallback ignores it. Not in the SDK text field.
+    /// right. Parley also reorders mixed text by it; the native fallback uses it
+    /// for each line's start edge. Not in the SDK text field.
     pub fn direction(mut self, direction: TextDirection) -> Self {
         self.direction = direction;
         self

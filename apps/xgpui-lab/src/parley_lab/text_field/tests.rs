@@ -815,11 +815,9 @@ fn native_text_system() -> bool {
 
 #[test]
 fn explicit_right_to_left_starts_empty_and_neutral_fields_at_the_right() {
+    // On Parley and on the native fallback alike (xgpui#325).
     for value in ["", "123"] {
         let mut f = Fixture::with(value, |builder| builder.direction(TextDirection::RightToLeft));
-        if !f.supports_bidi() {
-            return;
-        }
         let geometry = f.geometry();
         let caret = geometry.layout.caret_bounds(at(0)).unwrap();
         let start = geometry.origin.x + caret.left();

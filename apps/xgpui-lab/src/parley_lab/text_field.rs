@@ -150,7 +150,8 @@ pub struct ParleyTextField {
     rows: Option<usize>,
     /// Base direction of every line; `Auto` takes each line's first strong character.
     direction: TextDirection,
-    /// The text system honors `direction` (bidirectional paragraphs); set when laid out.
+    /// The text system honors `direction` (any paragraph layout: the native
+    /// fallback uses it for each line's start edge); set when laid out.
     honors_direction: bool,
     enabled: bool,
     options: Options,
@@ -576,7 +577,7 @@ impl ParleyTextField {
 
     /// Lay out for this frame, keep the caret visible and record geometry.
     fn prepare(&mut self, viewport: Bounds<Pixels>, look: &TextFieldLook, window: &Window) -> Option<Geometry> {
-        self.honors_direction = window.text_system().paragraph_support().supports_bidi();
+        self.honors_direction = window.text_system().paragraph_support().supports_layout();
         let layout = match self.layout(viewport.size.width, look, window) {
             Ok(layout) => {
                 self.layout_error = None;

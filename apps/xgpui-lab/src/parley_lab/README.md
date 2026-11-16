@@ -13,7 +13,7 @@ They run on a Parley-backed `TestAppContext`, and no window opens:
 cargo test -p xgpui-lab --features test-support --bin xgpui-lab text_field
 ```
 
-The same tests on GPUI's headless native text system (`just lab-parley-test-native`), whose paragraphs are left-to-right only (xgpui#325 A4). Checks of bidirectional behavior skip there:
+The same tests on GPUI's headless native text system (`just lab-parley-test-native`), whose fallback paragraphs align to the base direction but don't reorder mixed text (xgpui#325). Checks of bidirectional reordering skip there:
 
 ```bash
 LAB_FIELD_TEXT_SYSTEM=native cargo test -p xgpui-lab --features test-support --bin xgpui-lab text_field
@@ -38,7 +38,7 @@ cargo test --release -p xgpui-lab --features test-support --bin xgpui-lab measur
 - `measure_long_one_line_field` covers 10 K, 100 K and 1 M characters.
 
 ### In the app
-The control works on any text system with GPUI paragraph layout (`paragraph_support().supports_layout()`). On Parley it is fully bidirectional. On native text systems it uses xgpui#325 A4's left-to-right fallback: wrapping, carets, selection and editing work, but right-to-left text lays out left to right and `direction` is ignored.
+The control works on any text system with GPUI paragraph layout (`paragraph_support().supports_layout()`). On Parley it is fully bidirectional. On native text systems it uses xgpui#325's fallback paragraphs: wrapping, carets, selection and editing work, and each line aligns to its base direction's start edge (right for Hebrew or `direction(RightToLeft)`), but mixed text keeps the native line order rather than full bidirectional layout.
 
 ```bash
 # Standalone Parley window, opened on the text field tabs
@@ -50,7 +50,7 @@ Its tabs are Text Fields, Text Right-to-left, Text Areas, Text Scrolling and Tex
 # The main XGPUI Lab on Parley: xgpui-parley › Text Field
 cargo run -p xgpui-lab -- --text-system=parley
 ```
-Without `--text-system=parley`, the Text Field tab edits through the native left-to-right fallback, and its caption says so. Only a text system without paragraph layout gets the relaunch note.
+Without `--text-system=parley`, the Text Field tab edits through the native fallback, and its caption says so. Only a text system without paragraph layout gets the relaunch note.
 
 ## Public API
 

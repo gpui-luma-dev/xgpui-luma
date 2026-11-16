@@ -251,7 +251,7 @@ impl Render for ParagraphApiPage {
         let support = window.text_system().paragraph_support();
         let support_note = match support {
             ParagraphSupport::Full => "bidirectional; direction is honored",
-            ParagraphSupport::LeftToRight => "left-to-right fallback; direction is ignored",
+            ParagraphSupport::LeftToRight => "native fallback; direction sets each line's edge, no paragraph bidi",
             _ => "unsupported; paragraph layout returns an error",
         };
         let mut page = LabScreen::new("parley-paragraph-api", self.look.clone())
@@ -360,7 +360,8 @@ impl Render for ParagraphApiPage {
         )
         .note(
             "Click or drag to select; Left/Right move visually and Shift extends. On Parley, Hebrew and the Right to \
-             left direction start at the right edge; the native fallback keeps every line left to right. Plain text \
+             left direction start at the right edge on both text systems; only Parley also reorders mixed text \
+             across the paragraph. Plain text \
              labels should read right to left on both, and the styled Hebrew line should be red and underlined on the \
              right, green in the middle and blue and struck through on the left.",
         )
@@ -425,13 +426,15 @@ mod tests {
     }
 
     #[test]
-    fn hebrew_and_explicit_rtl_align_right_on_parley_and_left_on_native() {
+    fn hebrew_and_explicit_rtl_align_right_on_both_text_systems() {
         assert_eq!(draw(true, 1, 0), (ParagraphSupport::Full, Edge::Right), "Parley, Hebrew, auto");
         assert_eq!(draw(true, 0, 2), (ParagraphSupport::Full, Edge::Right), "Parley, Latin, right to left");
         assert_eq!(draw(true, 0, 0), (ParagraphSupport::Full, Edge::Left), "Parley, Latin, auto");
         assert_eq!(draw(true, 1, 1), (ParagraphSupport::Full, Edge::Left), "Parley, Hebrew, left to right");
-        // The native fallback lays out too, always from the left.
-        assert_eq!(draw(false, 1, 0), (ParagraphSupport::LeftToRight, Edge::Left), "native, Hebrew, auto");
-        assert_eq!(draw(false, 0, 2), (ParagraphSupport::LeftToRight, Edge::Left), "native, Latin, right to left");
+        // The native fallback aligns to the same start edge (xgpui#325).
+        assert_eq!(draw(false, 1, 0), (ParagraphSupport::LeftToRight, Edge::Right), "native, Hebrew, auto");
+        assert_eq!(draw(false, 0, 2), (ParagraphSupport::LeftToRight, Edge::Right), "native, Latin, right to left");
+        assert_eq!(draw(false, 0, 0), (ParagraphSupport::LeftToRight, Edge::Left), "native, Latin, auto");
+        assert_eq!(draw(false, 1, 1), (ParagraphSupport::LeftToRight, Edge::Left), "native, Hebrew, left to right");
     }
 }
