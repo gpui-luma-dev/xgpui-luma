@@ -1,4 +1,4 @@
-//! A basic SDK button. The surrounding card and event log use the Lab look.
+//! A basic SDK button. The surrounding settings and event log use the Lab look.
 use std::sync::Arc;
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonEventExt, HasPresenter};
@@ -16,8 +16,9 @@ pub struct ButtonControlExposition {
 impl ButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let button = Button::new("workshop-sdk-button").content(|_, _| div().child("Button")).spawn(cx);
-        let enabled_switch = xgpui_luma::controls::switch::new("workshop-sdk-button-enabled")
-            .with_data(true)
+        let enabled_switch = xgpui_luma_look_radix::Switch::new("workshop-sdk-button-enabled")
+            .look(&look)
+            .checked(true)
             .content(|_, _| div().child("Enabled"))
             .spawn(cx);
         let event_stream = cx.new(|cx| {
@@ -27,6 +28,7 @@ impl ButtonControlExposition {
                 "controls-button-event-log",
                 "Activate the button to see its SDK events.",
             )
+            .without_card()
         });
         button.clone().on_event(cx, |this: &mut Self, event, cx| {
             let line = format!("{event:?}");
@@ -47,7 +49,7 @@ impl ButtonControlExposition {
 }
 impl Render for ButtonControlExposition {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        use super::sample_layout::{card, page};
+        use super::sample_layout::{section, page, sdk_preview};
         page(
             "workshop-sdk-button-page",
             div()
@@ -56,20 +58,15 @@ impl Render for ButtonControlExposition {
                 .flex_col()
                 .items_start()
                 .gap(px(28.))
-                .child(card(
+                .child(section(
                     &self.look,
                     "command-button-basic",
                     "Button",
                     "Default SDK appearance and behavior.",
                     420.,
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .items_center()
-                        .gap(px(12.))
-                        .child(self.button.clone())
-                        .child(self.enabled_switch.clone()),
+                    sdk_preview("workshop-sdk-button-preview", self.button.clone()),
                 ))
+                .child(self.enabled_switch.clone())
                 .child(self.event_stream.clone()),
         )
     }
@@ -105,11 +102,21 @@ mod tests {
             v.select("button", cx);
         });
         cx.run_until_parked();
-        cx.update(|window, cx| {
-            let v = sample.read(cx);
-            assert!(!v.buttons_enabled);
-            assert!(v.button.read(cx).render_model(window).state.disabled);
-        });
+        for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
+            workshop.update(cx, |v, cx| v.sync_theme(mode, cx));
+            cx.run_until_parked();
+            assert!(cx.debug_bounds("workshop-sdk-button-preview").is_some());
+            cx.update(|window, cx| {
+                let v = sample.read(cx);
+                assert_eq!(v.look.mode(), mode);
+                // Unconverted pages keep their fixed light look.
+                assert_eq!(workshop.read(cx).page_look.mode(), xgpui_luma::theme::ThemeMode::Light);
+                assert!(!v.buttons_enabled);
+                let model = v.button.read(cx).render_model(window);
+                assert!(model.state.disabled);
+                assert!(model.look.is_none());
+            });
+        }
     }
     #[test]
     fn sdk_button_palette_does_not_follow_radix_theme() {

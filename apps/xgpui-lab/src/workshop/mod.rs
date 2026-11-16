@@ -376,8 +376,13 @@ impl Workshop {
 
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.shell_look.set_mode(mode);
-        for sample in self.samples.values() {
-            sample.sync_look(self.page_look.clone(), cx);
+        for (id, sample) in &self.samples {
+            let look = if *id == "button" {
+                self.shell_look.clone()
+            } else {
+                self.page_look.clone()
+            };
+            sample.sync_look(look, cx);
         }
         cx.notify();
     }
@@ -385,7 +390,12 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let chrome = self.page_look.chrome();
+        let converted = self.selected == "button";
+        let chrome = if converted {
+            self.shell_look.chrome()
+        } else {
+            self.page_look.chrome()
+        };
         let unavailable_reason = match self.selected {
             "badge" => Some(
                 "The base SDK does not provide a Badge control. Badge elements belong to the Radix and Shadcn look crates, so no SDK-default sample is available.",
@@ -411,11 +421,21 @@ impl Render for Workshop {
             .size_full()
             .min_w_0()
             .min_h_0()
-            .bg(gpui::hsla(68. / 360., 1., 0.95, 1.))
-            .text_color(chrome.body_text)
-            .child(sample_layout::ruled_background());
+            .bg(if converted {
+                chrome.content_background
+            } else {
+                gpui::hsla(68. / 360., 1., 0.95, 1.)
+            })
+            .text_color(chrome.body_text);
+        if !converted {
+            root = root.child(sample_layout::ruled_background());
+        }
         if let Some(sample) = self.samples.get(self.selected) {
-            root = root.child(sdk_sample::isolated(sample.view()));
+            root = if converted {
+                root.child(sample.view())
+            } else {
+                root.child(sdk_sample::isolated(sample.view()))
+            };
         } else if let Some((group, entry)) = COMPONENT_CATALOG
             .iter()
             .find_map(|g| g.entries.iter().find(|e| e.id == self.selected).map(|e| (g, e)))

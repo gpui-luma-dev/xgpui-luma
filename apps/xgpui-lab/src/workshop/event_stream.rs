@@ -11,6 +11,7 @@ pub struct ControlEventStream {
     intro: &'static str,
     event_log: Entity<EventLogView>,
     next_index: usize,
+    framed: bool,
 }
 
 impl ControlEventStream {
@@ -23,7 +24,12 @@ impl ControlEventStream {
             .font_family(crate::theme::MONO_FAMILY)
             .spawn(cx);
 
-        Self { look, log_id, intro, event_log, next_index: 1 }
+        Self { look, log_id, intro, event_log, next_index: 1, framed: true }
+    }
+
+    pub(super) fn without_card(mut self) -> Self {
+        self.framed = false;
+        self
     }
 
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -45,6 +51,11 @@ impl ControlEventStream {
 
 impl Render for ControlEventStream {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        super::sample_layout::card(&self.look, self.log_id, "Events", self.intro, 1120., self.event_log.clone())
+        let layout = if self.framed {
+            super::sample_layout::card
+        } else {
+            super::sample_layout::section
+        };
+        layout(&self.look, self.log_id, "Events", self.intro, 1120., self.event_log.clone())
     }
 }

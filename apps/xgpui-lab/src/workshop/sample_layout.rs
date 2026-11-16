@@ -2,7 +2,7 @@
 use gpui::{AnyElement, FontWeight, div, prelude::*, px};
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
-/// Paint-only backdrop shared by every Workshop route; it never captures input.
+/// Paint-only grid for legacy pages and fixed SDK preview surfaces; never captures input.
 pub(super) fn ruled_background() -> impl IntoElement {
     gpui::canvas(
         |_, _, _| (),
@@ -84,5 +84,64 @@ pub(super) fn card(
                 ),
         )
         .child(div().w_full().min_w_0().child(content))
+        .into_any_element()
+}
+
+/// Borderless, app-themed section for converted SDK sample pages.
+pub(super) fn section(
+    look: &Look,
+    id: &'static str,
+    title: &'static str,
+    description: &'static str,
+    width: f32,
+    content: impl IntoElement,
+) -> AnyElement {
+    let chrome = look.chrome();
+    div()
+        .id(id)
+        .debug_selector(move || id.into())
+        .w(px(width))
+        .max_w_full()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(px(14.))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(3.))
+                .child(
+                    div()
+                        .typography_style(look.typography_scale(TextSize::Sm))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(chrome.title_text)
+                        .child(title),
+                )
+                .child(
+                    div()
+                        .typography_style(look.typography_scale(TextSize::Xs))
+                        .text_color(chrome.muted_text)
+                        .child(description),
+                ),
+        )
+        .child(content)
+        .into_any_element()
+}
+
+/// Fixed SDK presentation surface; the paint-only grid never captures input.
+pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyElement {
+    div()
+        .id(id)
+        .debug_selector(move || id.into())
+        .relative()
+        .w_full()
+        .min_w_0()
+        .rounded(px(6.))
+        .overflow_hidden()
+        .bg(gpui::rgb(0xfafafa))
+        .text_color(gpui::rgb(0x202020))
+        .child(ruled_background())
+        .child(div().relative().p(px(24.)).child(super::sdk_sample::isolated(content)))
         .into_any_element()
 }
