@@ -37,10 +37,10 @@ impl Field {
 
     pub fn painter(&self) -> ColorFieldBackgroundPainter {
         let shared = self.surface.clone();
-        Arc::new(move |bounds, _, window, _| {
+        Arc::new(move |bounds, _, window, cx| {
             let surface = shared.lock().unwrap_or_else(|error| error.into_inner()).clone();
             if let Some(surface) = surface {
-                surface.paint(window, bounds, Default::default());
+                surface.paint(window, cx, bounds, Default::default());
                 if surface.stats().waiting > 0 {
                     window.request_animation_frame();
                 }
@@ -68,7 +68,8 @@ impl Field {
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .as_ref()
-            .and_then(EngineSurface::unsupported);
+            .and_then(EngineSurface::unsupported)
+            .map(|unsupported| unsupported.reason().to_owned());
         if self.error.is_none() && unsupported.is_some() {
             self.error = unsupported;
             cx.notify();

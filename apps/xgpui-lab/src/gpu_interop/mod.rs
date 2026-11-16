@@ -671,8 +671,13 @@ impl Render for Page {
             snapshot.surface = Some(engine.surface().clone());
         }
         if let Some(status) = &boids_status {
-            snapshot.error =
-                status.error.clone().or_else(|| snapshot.surface.as_ref().and_then(EngineSurface::unsupported));
+            snapshot.error = status.error.clone().or_else(|| {
+                snapshot
+                    .surface
+                    .as_ref()
+                    .and_then(EngineSurface::unsupported)
+                    .map(|unsupported| unsupported.reason().to_owned())
+            });
         }
         if self.active && snapshot.error.is_none() && surface_is_waiting(&snapshot.surface) {
             window.request_animation_frame();
