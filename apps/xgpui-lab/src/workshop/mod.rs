@@ -411,7 +411,7 @@ impl Render for Workshop {
             .size_full()
             .min_w_0()
             .min_h_0()
-            .bg(gpui::rgb(0xffffff))
+            .bg(gpui::hsla(68. / 360., 1., 0.95, 1.))
             .text_color(chrome.body_text)
             .child(sample_layout::ruled_background());
         if let Some(sample) = self.samples.get(self.selected) {
