@@ -64,7 +64,7 @@ impl Render for ButtonControlExposition {
                     "Button",
                     "Default SDK appearance and behavior.",
                     420.,
-                    sdk_preview("workshop-sdk-button-preview", self.button.clone()),
+                    sdk_preview(&self.look, "workshop-sdk-button-preview", self.button.clone()),
                 ))
                 .child(self.enabled_switch.clone())
                 .child(self.event_stream.clone()),

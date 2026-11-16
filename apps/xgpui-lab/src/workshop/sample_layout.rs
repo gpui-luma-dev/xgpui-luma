@@ -144,7 +144,8 @@ pub(super) fn section(
 }
 
 /// Fixed SDK presentation surface; the paint-only grid never captures input.
-pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyElement {
+pub(super) fn sdk_preview(look: &Look, id: &'static str, content: impl IntoElement) -> AnyElement {
+    let dark = look.mode() == xgpui_luma::theme::ThemeMode::Dark;
     div()
         .id(id)
         .debug_selector(move || id.into())
@@ -152,13 +153,34 @@ pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyEle
         .w_full()
         .min_w_0()
         .rounded(px(6.))
-        .shadow(vec![gpui::BoxShadow {
-            color: gpui::hsla(0., 0., 0., 0.35),
-            offset: gpui::point(px(0.), px(4.)),
-            blur_radius: px(12.),
-            spread_radius: px(0.),
-            inset: false,
-        }])
+        // Dark surroundings need a light ambient layer to reveal the raised surface.
+        // This is diffuse elevation, not a border around the SDK control.
+        .shadow(if dark {
+            vec![
+                gpui::BoxShadow {
+                    color: gpui::hsla(0., 0., 1., 0.18),
+                    offset: gpui::point(px(0.), px(2.)),
+                    blur_radius: px(14.),
+                    spread_radius: px(1.),
+                    inset: false,
+                },
+                gpui::BoxShadow {
+                    color: gpui::hsla(0., 0., 0., 0.5),
+                    offset: gpui::point(px(0.), px(5.)),
+                    blur_radius: px(10.),
+                    spread_radius: px(0.),
+                    inset: false,
+                },
+            ]
+        } else {
+            vec![gpui::BoxShadow {
+                color: gpui::hsla(0., 0., 0., 0.25),
+                offset: gpui::point(px(0.), px(4.)),
+                blur_radius: px(12.),
+                spread_radius: px(0.),
+                inset: false,
+            }]
+        })
         .bg(gpui::rgb(0xfafafa))
         .text_color(gpui::rgb(0x202020))
         .child(grid_background(12.))
