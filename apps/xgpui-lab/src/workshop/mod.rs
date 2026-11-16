@@ -9,6 +9,7 @@ mod menu;
 mod layout;
 mod navigation;
 mod feedback;
+mod selection;
 mod custom_button;
 mod toolbar;
 mod color_arc;
@@ -42,6 +43,7 @@ use catalog::COMPONENT_CATALOG;
 
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
+    Selection(Entity<selection::SelectionSample>),
     Feedback(Entity<feedback::FeedbackSample>),
     Navigation(Entity<navigation::NavigationSample>),
     Layout(Entity<layout::LayoutSample>),
@@ -63,6 +65,7 @@ enum Sample {
 impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
+            Self::Selection(v) => v.clone().into(),
             Self::Feedback(v) => v.clone().into(),
             Self::Navigation(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
@@ -84,6 +87,7 @@ impl Sample {
 
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
+            Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Feedback(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Navigation(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -214,6 +218,24 @@ impl Workshop {
         if !self.samples.contains_key(id) {
             let look = self.shell_look.clone();
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                "split-button" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::SplitButton, look, cx)),
+                )),
+                "selection-panel" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Panel, look, cx)),
+                )),
+                "popup-selector" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Selector, look, cx)),
+                )),
+                "search-selector" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::SearchSelector, look, cx)),
+                )),
+                "combobox" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::ComboBox, look, cx)),
+                )),
+                "autocomplete-textfield" => Some(Sample::Selection(
+                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Autocomplete, look, cx)),
+                )),
                 "dialog-draggable" => Some(Sample::Feedback(
                     cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Draggable, look, cx)),
                 )),
@@ -483,6 +505,7 @@ mod tests {
                                 | "layout"
                                 | "navigation"
                                 | "feedback"
+                                | "selection"
                         ) && !matches!(
                             entry.id,
                             "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset" | "badge"
@@ -497,7 +520,7 @@ mod tests {
             v.sync_theme(ThemeMode::Light, cx);
         });
         cx.update(|_, cx| {
-            assert_eq!(view.read(cx).samples.len(), 36);
+            assert_eq!(view.read(cx).samples.len(), 42);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
