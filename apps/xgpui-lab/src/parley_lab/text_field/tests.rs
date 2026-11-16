@@ -1,5 +1,8 @@
 //! Headless tests on an application whose text system is Parley, as in the lab's
-//! `--native-text-backend=parley` process.
+//! `--native-text-backend=parley` process. With `LAB_FIELD_TEXT_SYSTEM=native`
+//! the fixture uses GPUI's headless native text system instead, whose
+//! paragraphs are left-to-right only (xgpui#325 A4); tests of bidirectional
+//! behavior then skip those checks.
 use super::*;
 use gpui::{Entity, InputHandler, Modifiers, TestAppContext, TestDispatcher, VisualTestContext};
 use std::{cell::RefCell, rc::Rc};
@@ -38,8 +41,12 @@ impl Fixture {
         value: &str,
         configure: impl FnOnce(ParleyTextFieldBuilder) -> ParleyTextFieldBuilder + 'static,
     ) -> Self {
-        let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
-        let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
+        let mut cx = if native_text_system() {
+            TestAppContext::single()
+        } else {
+            let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
+            TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend)
+        };
         cx.update(|cx| xgpui_luma::init(cx).unwrap());
         let secondary = if cx.update(|cx| cx.platform_info().is_mac()) {
             "cmd"
@@ -97,6 +104,12 @@ impl Fixture {
 
     pub(super) fn selection(&mut self) -> (usize, usize) {
         self.read(|field| (field.anchor.byte_index, field.caret.byte_index))
+    }
+
+    /// Whether the text system lays out bidirectional paragraphs. False on the
+    /// native fallback, where right-to-left text lays out left to right.
+    pub(super) fn supports_bidi(&mut self) -> bool {
+        self.visual.update(|window, _| window.text_system().paragraph_support().supports_bidi())
     }
 
     pub(super) fn geometry(&mut self) -> Geometry {
@@ -188,6 +201,9 @@ fn word_deletion_and_movement_skip_separators() {
 #[test]
 fn left_and_right_move_visually_in_right_to_left_text() {
     let mut f = Fixture::new("שלום עולם");
+    if !f.supports_bidi() {
+        return;
+    }
     f.keys("home");
     assert!(f.read(|field| field.is_rtl()));
     let start = f.point_at(0);
@@ -559,6 +575,9 @@ fn each_text_area_line_has_its_own_direction() {
     let hebrew = "שלום עולם";
     let english = "office café 👍🏽";
     let mut f = Fixture::area(&format!("{hebrew}\n{english}"), 4);
+    if !f.supports_bidi() {
+        return;
+    }
     let width = f.geometry().layout.size().width;
     let second = hebrew.len() + LINE_SEPARATOR.len_utf8();
     // Hebrew first line: right to left, starting at the right edge.
@@ -594,6 +613,9 @@ fn left_and_right_continue_onto_neighbouring_lines() {
 
     // In right-to-left lines Left reads forward, so it continues downwards.
     let mut f = Fixture::area("אב\nגד", 3);
+    if !f.supports_bidi() {
+        return;
+    }
     f.keys(&top);
     f.keys("left left");
     assert_eq!(f.selection().1, "אב".len());
@@ -786,19 +808,70 @@ fn width_by_every_caret(layout: &dyn PlatformParagraphLayout, text: &str) -> Pix
     right - left
 }
 
+/// `LAB_FIELD_TEXT_SYSTEM=native`: run on GPUI's headless native text system.
+fn native_text_system() -> bool {
+    std::env::var("LAB_FIELD_TEXT_SYSTEM").is_ok_and(|value| value == "native")
+}
+
 #[test]
-fn line_width_from_edges_matches_every_caret() {
+fn explicit_right_to_left_starts_empty_and_neutral_fields_at_the_right() {
+    for value in ["", "123"] {
+        let mut f = Fixture::with(value, |builder| builder.direction(TextDirection::RightToLeft));
+        if !f.supports_bidi() {
+            return;
+        }
+        let geometry = f.geometry();
+        let caret = geometry.layout.caret_bounds(at(0)).unwrap();
+        let start = geometry.origin.x + caret.left();
+        assert!(
+            start > geometry.viewport.center().x,
+            "{value:?}: the start is on the right ({start:?} in {:?})",
+            geometry.viewport
+        );
+        assert!(f.read(|field| field.is_rtl()), "{value:?}: right-to-left");
+        // Automatic direction keeps these on the left, as before.
+        let mut auto = Fixture::new(value);
+        let geometry = auto.geometry();
+        let caret = geometry.layout.caret_bounds(at(0)).unwrap();
+        assert!(
+            geometry.origin.x + caret.left() < geometry.viewport.center().x,
+            "{value:?}: automatic is on the left"
+        );
+    }
+}
+
+/// Whether a no-break line wrapped: its start and end carets sit on different rows.
+fn wrapped(layout: &dyn PlatformParagraphLayout, text: &str) -> bool {
+    if text.is_empty() {
+        return false;
+    }
+    let start = layout.caret_bounds(at(0)).unwrap();
+    let end = layout
+        .caret_bounds(ParagraphPosition { byte_index: text.len(), affinity: TextAffinity::Upstream })
+        .unwrap();
+    (start.top() - end.top()).abs() > px(0.5)
+}
+
+#[test]
+fn content_width_matches_every_caret() {
     let mut f = Fixture::new("");
     let window_system = f.visual.update(|window, _| window.text_system().clone());
     let font_id = window_system.resolve_font(&page::font());
     for text in ["office café", "שלום עולם", "abc אבג 123 مرحبا", "👍🏽 emoji 🇮🇹 flags", "שלום office עולם"]
     {
         let runs = [FontRun { len: text.len(), font_id }];
-        let width = px(2_000.0);
-        let layout = window_system.layout_paragraph(text.into(), px(14.0), &runs, width).unwrap();
-        let edges = line_width(layout.as_ref()).unwrap();
+        let (_, max) = window_system.paragraph_content_widths(text.into(), px(14.0), &runs).unwrap();
+        // Laid out at its max-content width, the text stays on one row.
+        let layout = window_system.layout_paragraph(text.into(), px(14.0), &runs, max).unwrap();
+        assert!(!wrapped(layout.as_ref(), text), "{text:?}: wrapped at max-content {max:?}");
+        // Carets are 1px wide, so the every-caret extent is the text's advance
+        // plus at most one caret; the field adds that 1px of room itself.
         let every = width_by_every_caret(layout.as_ref(), text);
-        assert!((edges - every).abs() <= px(1.0), "{text:?}: edges {edges:?}, every caret {every:?}");
+        let caret_room = every - max;
+        assert!(
+            caret_room >= px(-0.01) && caret_room <= px(1.01),
+            "{text:?}: max-content {max:?}, every caret {every:?}"
+        );
     }
 }
 
@@ -809,7 +882,7 @@ fn a_long_unbreakable_line_scrolls_to_its_end() {
     let text = "x".repeat(150_000);
     let mut f = Fixture::new(&text);
     let layout = f.geometry().layout;
-    assert!(!wrapped(layout.as_ref(), &text).unwrap(), "one row");
+    assert!(!wrapped(layout.as_ref(), &text), "one row");
     assert!(f.read(|field| field.scroll()) > px(500_000.0), "scrolled to the caret at the end");
 }
 
@@ -881,12 +954,7 @@ fn page_lays_out_fields(parley: bool) -> (bool, bool) {
     } else {
         TestAppContext::single()
     };
-    cx.update(|cx| {
-        xgpui_luma::init(cx).unwrap();
-        if parley {
-            cx.set_global(crate::parley_lab::ParleyTextSystemActive);
-        }
-    });
+    cx.update(|cx| xgpui_luma::init(cx).unwrap());
     let look = crate::theme::default_look();
     let window =
         cx.open_window(size(px(600.0), px(900.0)), move |_, cx| page::TextFieldPage::new(look, false, false, cx));
@@ -906,13 +974,10 @@ fn page_lays_out_fields(parley: bool) -> (bool, bool) {
 }
 
 #[test]
-fn lab_page_edits_on_parley_and_explains_on_the_native_text_system() {
+fn lab_page_edits_on_parley_and_on_the_native_text_system() {
     assert_eq!(page_lays_out_fields(true), (true, false), "on Parley, the fields are live");
-    assert_eq!(
-        page_lays_out_fields(false),
-        (false, false),
-        "on the native text system, the page shows a note and never lays the fields out"
-    );
+    // xgpui#325 A4: native backends lay out left-to-right paragraphs.
+    assert_eq!(page_lays_out_fields(false), (true, false), "on the native text system, the fields are live too");
 }
 
 /// Opens the lab page on Parley at `screen` and reports which fields were laid
@@ -920,10 +985,7 @@ fn lab_page_edits_on_parley_and_explains_on_the_native_text_system() {
 fn screen_layout(screen: page::Screen) -> (Vec<usize>, bool) {
     let backend = crate::parley_lab::Engine::new().unwrap().backend.clone();
     let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
-    cx.update(|cx| {
-        xgpui_luma::init(cx).unwrap();
-        cx.set_global(crate::parley_lab::ParleyTextSystemActive);
-    });
+    cx.update(|cx| xgpui_luma::init(cx).unwrap());
     let look = crate::theme::default_look();
     let window = cx.open_window(size(px(600.0), px(1200.0)), move |_, cx| {
         let mut page = page::TextFieldPage::new(look, false, false, cx);

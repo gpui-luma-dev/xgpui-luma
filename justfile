@@ -249,6 +249,10 @@ lab-parley *args:
 lab-parley-test *args:
     cargo test --locked -p xgpui-lab --features test-support --bin xgpui-lab text_field "$@"
 
+# Run the text field headless tests on GPUI's native text system (left-to-right paragraphs).
+lab-parley-test-native *args:
+    LAB_FIELD_TEXT_SYSTEM=native cargo test --locked -p xgpui-lab --features test-support --bin xgpui-lab text_field "$@"
+
 # Run the ignored Parley text field performance measurements in release.
 lab-parley-perf:
     cargo test --release --locked -p xgpui-lab --features test-support --bin xgpui-lab measure_ -- --ignored --nocapture

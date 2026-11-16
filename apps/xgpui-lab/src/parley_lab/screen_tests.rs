@@ -93,10 +93,7 @@ fn text_field_variants_fit_with_the_live_parley_backend() {
     for mode in [ThemeMode::Dark, ThemeMode::Light] {
         let backend = Engine::new().unwrap().backend.clone();
         let mut app = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
-        app.update(|cx| {
-            xgpui_luma::init(cx).unwrap();
-            cx.set_global(ParleyTextSystemActive);
-        });
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
         let look = crate::theme::default_look();
         look.set_mode(mode);
         let (page, cx) = app.add_window_view(|_, cx| TextFieldPage::new(look, false, true, cx));

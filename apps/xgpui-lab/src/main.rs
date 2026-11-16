@@ -185,7 +185,6 @@ fn main() {
                 .ok()
         })
         .flatten();
-    let parley = parley_text_system.is_some();
     let app = match parley_text_system {
         Some(text_system) => {
             gpui::Application::with_platform_and_text_system(gpui_platform::current_platform(false), text_system)
@@ -195,9 +194,6 @@ fn main() {
     .with_assets(Assets);
 
     app.run(move |cx| {
-        if parley {
-            cx.set_global(parley_lab::ParleyTextSystemActive);
-        }
         if let Some(launch) = launch {
             cx.set_global(launch);
         }

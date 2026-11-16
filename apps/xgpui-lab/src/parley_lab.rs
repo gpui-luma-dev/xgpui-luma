@@ -20,12 +20,6 @@ use xgpui_luma::{
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 
-/// Present when the whole application runs on the Parley text system
-/// (`--text-system=parley`, or the standalone `--native-text-backend=parley`
-/// window). Controls that edit through GPUI's paragraph API need it.
-pub(crate) struct ParleyTextSystemActive;
-impl Global for ParleyTextSystemActive {}
-
 /// The Parley text system for a whole application, with the lab's sample fonts
 /// (system fonts are found through Parley's `system-fonts` feature).
 pub(crate) fn application_text_system() -> Result<Arc<dyn PlatformTextSystem>> {
@@ -99,7 +93,8 @@ impl ParleyPage {
         let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, true, cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
-                if cx.has_global::<ParleyTextSystemActive>() {
+                // Only the Parley engine reports bidirectional paragraphs here.
+                if cx.text_system().paragraph_support().supports_bidi() {
                     "Shell Parley backend"
                 } else {
                     "Shell native backend"
