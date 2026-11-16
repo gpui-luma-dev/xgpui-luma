@@ -4,21 +4,35 @@ use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
 /// Paint-only grid for legacy pages and fixed SDK preview surfaces; never captures input.
 pub(super) fn ruled_background() -> impl IntoElement {
+    grid_background(0.)
+}
+
+// Inset the preview grid's first lines beyond its corner radius. GPUI's
+// overflow mask is rectangular, so lines on the outer edges leak into corners.
+fn grid_background(offset: f32) -> impl IntoElement {
     gpui::canvas(
         |_, _, _| (),
-        |bounds, _, window, _| {
+        move |bounds, _, window, _| {
             let spacing = 24.;
             let thickness = px(1. / window.scale_factor());
             let color = gpui::rgb(0xe6e6e6);
             for column in 0..(f32::from(bounds.size.width) / spacing).ceil() as usize {
-                let origin = bounds.origin + gpui::point(px(column as f32 * spacing), px(0.));
+                let x = column as f32 * spacing + offset;
+                if x >= f32::from(bounds.size.width) - offset {
+                    continue;
+                }
+                let origin = bounds.origin + gpui::point(px(x), px(0.));
                 window.paint_quad(gpui::fill(
                     gpui::Bounds::new(origin, gpui::size(thickness, bounds.size.height)),
                     color,
                 ));
             }
             for row in 0..(f32::from(bounds.size.height) / spacing).ceil() as usize {
-                let origin = bounds.origin + gpui::point(px(0.), px(row as f32 * spacing));
+                let y = row as f32 * spacing + offset;
+                if y >= f32::from(bounds.size.height) - offset {
+                    continue;
+                }
+                let origin = bounds.origin + gpui::point(px(0.), px(y));
                 window
                     .paint_quad(gpui::fill(gpui::Bounds::new(origin, gpui::size(bounds.size.width, thickness)), color));
             }
@@ -138,10 +152,16 @@ pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyEle
         .w_full()
         .min_w_0()
         .rounded(px(6.))
-        .overflow_hidden()
+        .shadow(vec![gpui::BoxShadow {
+            color: gpui::hsla(0., 0., 0., 0.35),
+            offset: gpui::point(px(0.), px(4.)),
+            blur_radius: px(12.),
+            spread_radius: px(0.),
+            inset: false,
+        }])
         .bg(gpui::rgb(0xfafafa))
         .text_color(gpui::rgb(0x202020))
-        .child(ruled_background())
+        .child(grid_background(12.))
         .child(div().relative().p(px(24.)).child(super::sdk_sample::isolated(content)))
         .into_any_element()
 }
