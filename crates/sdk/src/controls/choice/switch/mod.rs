@@ -522,3 +522,6 @@ crate::infra::attachments::delegate_tooltips!(SwitchControl, gpui::Role::Switch)
 
 #[cfg(all(test, feature = "test-support"))]
 mod callback_tests;
+
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests;
