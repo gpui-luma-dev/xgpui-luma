@@ -88,6 +88,14 @@ impl NavigationSample {
             ),
         };
         match &control {
+            Control::Tabs(tabs) => {
+                crate::l10n::localize_tabs(tabs.clone(), cx);
+            }
+            Control::Sidebar(sidebar) => {
+                crate::l10n::localize_sidebar(sidebar.clone(), cx);
+            }
+        }
+        match &control {
             Control::Sidebar(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &sidebar::SidebarEvent, cx| {
                     match event {
@@ -164,7 +172,7 @@ impl Render for NavigationSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(format!("Selected: {}", self.selected)),
+                            .child(crate::l10n::ui(format!("Selected: {}", self.selected))),
                     ),
                 ))
                 .child(self.events.clone()),

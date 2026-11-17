@@ -57,7 +57,7 @@ impl MeshPane {
                 radix::Button::new(format!("hermite-{id}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         match id {
                             0 => this.editor.set_side(if this.editor.side == 2 { 3 } else { 2 }),
@@ -243,7 +243,7 @@ impl Render for MeshPane {
                     .child(
                         TextRole::Title
                             .apply(&self.look, painted().w_full().text_brush(brush.clone()))
-                            .child("Hermite patch across glyphs"),
+                            .child(crate::l10n::ui("Hermite patch across glyphs")),
                     ),
             );
         }

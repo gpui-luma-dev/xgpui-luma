@@ -145,7 +145,7 @@ impl GridPane {
                 radix::Button::new(format!("grid-action-{i}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(*label)
+                    .content(crate::l10n::label(*label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         match i {
                             0 => {
@@ -166,7 +166,7 @@ impl GridPane {
             .collect();
         let pulse_switch = radix::Switch::new("grid-pulse")
             .look(&look)
-            .label("Pulse width")
+            .content(crate::l10n::label("Pulse width"))
             .checked(true)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.settings.pulse = on;

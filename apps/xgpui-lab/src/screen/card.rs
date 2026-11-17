@@ -147,7 +147,7 @@ impl LabCard {
         let name_row = hstack! { name }.min_w_0().items_center().gap_2().children(badge);
         let heading = vstack! {}
             .min_w_0()
-            .child(name_row)
+            .child(crate::l10n::row(name_row))
             .children(self.subtitle.map(|subtitle| text(look, TextRole::Label, subtitle).truncate()));
         let values = (!self.values.is_empty()).then(|| readout(look, self.values));
         div()
@@ -155,7 +155,7 @@ impl LabCard {
             .flex_col()
             .gap_3()
             .min_w_0()
-            .child(hstack! {}.children(swatch).child(heading).items_center().gap_3())
+            .child(crate::l10n::row(hstack! {}.children(swatch).child(heading).items_center().gap_3()))
             .children(self.body)
             .children(values)
     }

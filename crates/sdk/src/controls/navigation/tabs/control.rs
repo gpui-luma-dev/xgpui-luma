@@ -401,6 +401,11 @@ impl Tabs {
         cx.notify();
     }
 
+    /// Clone the active presentation template for state-preserving decorators.
+    pub fn template(&self) -> std::sync::Arc<dyn super::TabsTemplate> {
+        self.template.clone()
+    }
+
     pub fn set_template(&mut self, template: std::sync::Arc<dyn super::TabsTemplate>, cx: &mut Context<Self>) {
         self.template = template;
         self.refresh_group_template(cx);

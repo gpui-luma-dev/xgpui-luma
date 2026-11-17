@@ -34,7 +34,7 @@ pub(super) fn compact_slider_row(
                 .flex_shrink_0()
                 .typography_style(style)
                 .text_color(chrome.muted_text)
-                .child(label),
+                .child(crate::l10n::ui(label)),
         )
         .child(div().flex_1().min_w_0().child(slider))
         .child(
@@ -478,13 +478,20 @@ impl Render for GradientBuilder {
                     .px(px(16.0))
                     .py(px(6.0))
                     .bg(card_bg)
-                    .child(div().h(px(32.0)).flex().items_center().text_size(px(13.)).child("Gradients"))
+                    .child(
+                        div().h(px(32.0)).flex().items_center().text_size(px(13.)).child(crate::l10n::ui("Gradients")),
+                    )
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .gap_3()
-                            .child(div().text_size(px(11.0)).text_color(chrome.muted_text).child("Untitled gradient"))
+                            .child(
+                                div()
+                                    .text_size(px(11.0))
+                                    .text_color(chrome.muted_text)
+                                    .child(crate::l10n::ui("Untitled gradient")),
+                            )
                             .child(self.export_button()),
                     ),
             )
@@ -530,12 +537,12 @@ impl Render for GradientBuilder {
                             .text_center()
                             .child(self.renderer_note().unwrap_or_default()),
                     )
-                    .child(format!(
+                    .child(crate::l10n::ui(format!(
                         "{:.0} × {:.0}  ·  {}",
                         self.preview_size.width.as_f32(),
                         self.preview_size.height.as_f32(),
                         self.output_status()
-                    )),
+                    ))),
             );
 
         div()

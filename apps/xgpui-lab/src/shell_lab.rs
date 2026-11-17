@@ -259,7 +259,7 @@ impl ShellPage {
                 .justify_center()
                 .bg(self.look.chrome().content_background)
                 .text_color(self.look.chrome().body_text)
-                .child("Application content keeps its Radix theme"),
+                .child(crate::l10n::ui("Application content keeps its Radix theme")),
         );
         preview.appearance = self.appearance(window);
         preview.active = self.values[Setting::Active as usize] == 1;

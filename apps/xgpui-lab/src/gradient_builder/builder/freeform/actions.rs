@@ -2,7 +2,6 @@
 //! selection, and the spread animation curve.
 use super::*;
 use xgpui_luma::infra::attachments::TooltipEntityExt;
-use xgpui_luma::controls::tooltip::Tooltip;
 
 pub(in super::super) fn default_points() -> Vec<ControlPoint> {
     let [yellow, pink, blue] = super::mesh::default_point_palette();
@@ -19,7 +18,7 @@ impl GradientBuilder {
             .look(&self.look)
             .content_only()
             .spawn(cx)
-            .tooltip(Tooltip::new("Add point"), cx);
+            .tooltip(crate::l10n::tooltip("Add point"), cx);
         self._subscriptions.push(cx.subscribe(&add, |this, _, event: &ButtonEvent, cx| {
             if event.is_click() {
                 this.edit_freeform(0, cx);
@@ -30,7 +29,7 @@ impl GradientBuilder {
             .look(&self.look)
             .content_only()
             .spawn(cx)
-            .tooltip(Tooltip::new("Randomize all point positions"), cx);
+            .tooltip(crate::l10n::tooltip("Randomize all point positions"), cx);
         self._subscriptions.push(cx.subscribe(&shuffle, |this, _, event: &ButtonEvent, cx| {
             if event.is_click() {
                 this.edit_freeform(2, cx);

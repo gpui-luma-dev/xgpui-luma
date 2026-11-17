@@ -29,7 +29,6 @@ use xgpui_luma::controls::listbox::{
     ListBoxControl, ListBoxDragDrop, ListBoxDropProposal, ListBoxEvent, ListBoxFlow, ListBoxInput,
     ListBoxItemRenderModel, ListBoxSnapshot, ListBoxState, SelectionMode, SelectionPolicy, make_listbox_item_template,
 };
-use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma::infra::attachments::TooltipEntityExt;
 use xgpui_luma_look_radix as radix;
 
@@ -251,7 +250,7 @@ impl ColorStopList {
                     .content_only()
                     .radius(radix::Radius::Medium)
                     .spawn(cx)
-                    .tooltip(Tooltip::new(tip), cx);
+                    .tooltip(crate::l10n::tooltip(tip), cx);
                 subscriptions.push(cx.subscribe(&button, move |this, _, event: &ButtonEvent, cx| {
                     if matches!(event, ButtonEvent::Click) {
                         action(this, cx);

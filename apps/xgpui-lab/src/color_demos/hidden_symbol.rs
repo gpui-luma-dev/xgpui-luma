@@ -27,7 +27,7 @@ impl HiddenSymbolLab {
         let attribution = radix::Button::new("hidden-symbol-reference")
             .look(&look)
             .outline()
-            .label("WebKit reference ↗")
+            .content(crate::l10n::label("WebKit reference ↗"))
             .on_click(cx, |_: &mut Self, cx| cx.open_url("https://webkit.org/blog-files/color-gamut/"))
             .spawn(cx);
         let thumbnails = VIEWS

@@ -382,7 +382,7 @@ fn render_ring_variant(
         div()
             .typography_style(label_style)
             .text_color(look.chrome().muted_text)
-            .child(label),
+            .child(crate::l10n::ui(label)),
         div()
             .size(px(frame_px))
             .flex()

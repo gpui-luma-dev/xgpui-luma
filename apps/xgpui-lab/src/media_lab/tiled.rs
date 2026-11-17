@@ -62,7 +62,7 @@ impl TiledDemo {
                 xgpui_luma_look_radix::Button::new(format!("tile-control-{index}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |s: &mut Self, cx| {
                         let scale = s.render_scale;
                         match index {
@@ -95,7 +95,7 @@ impl TiledDemo {
             .collect();
         let pressure_switch = xgpui_luma_look_radix::Switch::new("tile-pressure")
             .look(look.as_ref())
-            .label("2 MiB cache")
+            .content(crate::l10n::label("2 MiB cache"))
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.pressure = on;
@@ -112,7 +112,7 @@ impl TiledDemo {
             .spawn(cx);
         let quality_switch = xgpui_luma_look_radix::Switch::new("tile-quality")
             .look(look.as_ref())
-            .label("Full blur quality")
+            .content(crate::l10n::label("Full blur quality"))
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.full_quality = on;

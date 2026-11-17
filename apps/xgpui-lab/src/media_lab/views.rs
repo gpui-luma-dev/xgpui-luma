@@ -33,7 +33,7 @@ impl Render for MediaPage {
             window.request_animation_frame();
         }
         if self.requires_sdr(cx) && window.color_status().effective() != gpui::WindowColorMode::Default {
-            return div().p_4().child("Preparing SDR presentation for media blur…").into_any_element();
+            return div().p_4().child(crate::l10n::ui("Preparing SDR presentation for media blur…")).into_any_element();
         }
         let video = self.active_tab == "Video Frames";
         if !video {

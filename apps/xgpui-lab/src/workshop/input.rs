@@ -80,9 +80,10 @@ impl InputSample {
                     .placeholder("Enter multiple lines…")
                     .spawn(cx),
             ),
-            InputKind::TextField => Control::TextField(
+            InputKind::TextField => Control::TextField(crate::l10n::localize_field(
                 textfield::TextFieldBuilder::new("workshop-sdk-textfield").placeholder("Enter text…").spawn(cx),
-            ),
+                cx,
+            )),
         };
         match &control {
             Control::Scrollbar(v) => {

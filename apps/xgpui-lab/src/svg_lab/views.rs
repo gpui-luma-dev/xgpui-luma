@@ -103,7 +103,7 @@ impl SvgPage {
                         })),
                 )
             } else if mode == 2 && asset.source.is_some() {
-                panel.child("Imported artwork has no automatic SVG-to-native-path conversion")
+                panel.child(crate::l10n::ui("Imported artwork has no automatic SVG-to-native-path conversion"))
             } else {
                 panel.child(self.texture_or_native(camera, mode == 2))
             };
@@ -206,7 +206,7 @@ impl SvgPage {
                             .on_status_change(cx.listener(|_, _: &SvgStatus, _, cx| cx.notify())),
                     );
                 } else {
-                    tile = tile.child(div().h(px(180.)).child("Outside visible + overscan rows"));
+                    tile = tile.child(div().h(px(180.)).child(crate::l10n::ui("Outside visible + overscan rows")));
                 }
                 row = row.child(tile);
             }
@@ -286,15 +286,15 @@ impl SvgPage {
     }
 
     fn benchmark_view(&self) -> AnyElement {
-        let mut view=div().flex().flex_col().gap_3().child("svg-lab CPU parse/raster observations")
-            .child("Runs five bounded parse + raster samples in a background task. Times exclude GPU upload and presentation. These in-process observations are not the standalone lab's isolated-process corpus benchmark or GPU timing.");
+        let mut view=div().flex().flex_col().gap_3().child(crate::l10n::ui("svg-lab CPU parse/raster observations"))
+            .child(crate::l10n::ui("Runs five bounded parse + raster samples in a background task. Times exclude GPU upload and presentation. These in-process observations are not the standalone lab's isolated-process corpus benchmark or GPU timing."));
         if self.benchmarking {
             view = view.child(self.bench_progress.snapshot().0);
         }
         if let Some(result) = &self.bench_result {
             match result {
                 Ok(_) => {}
-                Err(error) => view = view.child(format!("Benchmark failed: {error}")),
+                Err(error) => view = view.child(crate::l10n::ui(format!("Benchmark failed: {error}"))),
             }
         }
         view.child(crate::benchmarks::svg_table::view(self.bench_table.clone())).into_any_element()

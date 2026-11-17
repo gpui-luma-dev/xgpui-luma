@@ -131,22 +131,25 @@ impl ChromaticityLab {
         ];
         let inputs = (0..3)
             .map(|index| {
-                radix::TextField::new(format!("chroma-rgb-{index}"))
-                    .look(&look)
-                    .surface()
-                    .look_override(value_field_look(&look))
-                    .full_width(true)
-                    .value(format!("{:.3}", model::PATCHES[0].1[index]))
-                    .validator(Arc::new(|text| parse_channel(text).is_some()))
-                    .on_value_changed(cx, move |this: &mut Self, text, cx| {
-                        if let Some(value) = parse_channel(text) {
-                            this.rgb[index] = value;
-                            this.sliders[index].update(cx, |slider, cx| slider.set_value(value, cx));
-                            this.refresh_tracks(cx);
-                            cx.notify();
-                        }
-                    })
-                    .spawn(cx)
+                crate::l10n::localize_field(
+                    radix::TextField::new(format!("chroma-rgb-{index}"))
+                        .look(&look)
+                        .surface()
+                        .look_override(value_field_look(&look))
+                        .full_width(true)
+                        .value(format!("{:.3}", model::PATCHES[0].1[index]))
+                        .validator(Arc::new(|text| parse_channel(text).is_some()))
+                        .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                            if let Some(value) = parse_channel(text) {
+                                this.rgb[index] = value;
+                                this.sliders[index].update(cx, |slider, cx| slider.set_value(value, cx));
+                                this.refresh_tracks(cx);
+                                cx.notify();
+                            }
+                        })
+                        .spawn(cx),
+                    cx,
+                )
             })
             .collect();
         let mut sliders = Vec::new();
@@ -184,7 +187,7 @@ impl ChromaticityLab {
                     .radius(radix::Radius::Full)
                     .size(radix::ButtonSize::One)
                     .outline()
-                    .label(*label)
+                    .content(crate::l10n::label(*label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         this.set_rgb(model::PATCHES[index].1, cx);
                     })
@@ -296,7 +299,10 @@ impl ChromaticityLab {
         let programs = match &self.shaders {
             Ok(programs) => programs.clone(),
             Err(error) => {
-                return div().p_4().child(format!("Chromaticity shader unavailable: {error}")).into_any_element();
+                return div()
+                    .p_4()
+                    .child(crate::l10n::ui(format!("Chromaticity shader unavailable: {error}")))
+                    .into_any_element();
             }
         };
         let selected = model::source_xy(model::SPACES[self.source], self.rgb);

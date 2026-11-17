@@ -101,7 +101,7 @@ impl Cache {
         #[cfg(not(target_os = "macos"))]
         {
             let _ = (field, wide);
-            div().p_3().child("Native Metal is available only on macOS.").into_any_element()
+            div().p_3().child(crate::l10n::ui("Native Metal is available only on macOS.")).into_any_element()
         }
     }
 }

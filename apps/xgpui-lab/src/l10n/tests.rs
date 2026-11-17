@@ -81,7 +81,7 @@ fn native_and_parley_layouts_keep_slots_and_mirror_preview_rows() {
             mode_look.set_mode(mode);
             for width in [720., 1280.] {
                 cx.simulate_resize(size(px(width), px(2400.)));
-                for tag in ["en", "ar"] {
+                for tag in ["en", "ar", "en-XA", "ar-XB"] {
                     cx.update(|_, cx| {
                         xgpui_luma_l10n::set_locale(tag.parse().unwrap(), cx);
                     });
@@ -92,7 +92,7 @@ fn native_and_parley_layouts_keep_slots_and_mirror_preview_rows() {
                     }
                     let key = cx.debug_bounds("l10n-key-0").unwrap();
                     let value = cx.debug_bounds("l10n-value-0").unwrap();
-                    if tag == "ar" {
+                    if tag.starts_with("ar") {
                         assert!(key.left() > value.left());
                     } else {
                         assert!(key.left() < value.left());
@@ -100,5 +100,38 @@ fn native_and_parley_layouts_keep_slots_and_mirror_preview_rows() {
                 }
             }
         }
+    }
+}
+
+#[test]
+fn pseudo_resources_expand_copy_preserve_arguments_and_keep_data_literal() {
+    let app = TestAppContext::single();
+    for tag in ["en-XA", "ar-XB"] {
+        app.update(|cx| {
+            let localizer = localizer(tag.parse().unwrap()).unwrap();
+            xgpui_luma_l10n::install(localizer, cx).unwrap();
+            let translated = copy::resolve("Reset canvas", cx);
+            assert!(translated.contains('⟦'));
+            assert!(translated.chars().count() > "Reset canvas".len());
+            assert_eq!(copy::resolve("user-entered-file.rs", cx), "user-entered-file.rs");
+            assert!(samples(cx).unwrap().saved.contains("שלום.txt"));
+        });
+    }
+}
+
+#[test]
+fn catalog_bridge_formats_real_labels_and_decimal_arguments() {
+    let app = TestAppContext::single();
+    for (tag, reset) in
+        [("de", "Zeichenfläche zurücksetzen"), ("ja", "キャンバスをリセット"), ("ar", "إعادة ضبط اللوحة")]
+    {
+        app.update(|cx| {
+            xgpui_luma_l10n::install(localizer(tag.parse().unwrap()).unwrap(), cx).unwrap();
+            assert_eq!(copy::resolve("Reset canvas", cx), reset);
+            assert_eq!(copy::resolve("literal-file-name.rs", cx), "literal-file-name.rs");
+            if tag == "de" {
+                assert!(copy::resolve("Speed 1.25×", cx).contains("1,25"));
+            }
+        });
     }
 }

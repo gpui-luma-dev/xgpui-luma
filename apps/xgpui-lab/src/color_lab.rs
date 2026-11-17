@@ -212,7 +212,7 @@ impl ColorPage {
                     radix::Button::new(format!("color-lab-{action:?}"))
                         .look(look.as_ref())
                         .outline()
-                        .label(label)
+                        .content(crate::l10n::label(label))
                         .on_click(cx, move |this: &mut Self, cx| this.action(action, cx))
                         .spawn(cx),
                 )
@@ -220,7 +220,7 @@ impl ColorPage {
             .to_vec();
         let transparency = radix::Switch::new("color-lab-transparency")
             .look(look.as_ref())
-            .label("Endpoint transparency")
+            .content(crate::l10n::label("Endpoint transparency"))
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.translucent = on;
                 cx.notify();
@@ -251,30 +251,33 @@ impl ColorPage {
         // slider; leaving the field rewrites it in the parameter's fixed format.
         let fields = PARAMETERS
             .map(|parameter| {
-                let field = radix::TextField::new(format!("color-lab-field-{parameter:?}"))
-                    .look(look.as_ref())
-                    .surface()
-                    .look_override(crate::screen::value_field_look(&look))
-                    .full_width(true)
-                    .value(parameter.format(parameter.config().3 as f64))
-                    .select_all_on_tab_focus(true)
-                    .validator(Arc::new(move |text| parameter.parse(text).is_some()))
-                    .on_value_changed(cx, move |this: &mut Self, text, cx| {
-                        if let Some(value) = parameter.parse(text) {
-                            this.set_value(parameter, value);
-                            if let Some((_, slider)) = this.sliders.iter().find(|(id, _)| *id == parameter) {
-                                slider.update(cx, |slider, cx| slider.set_value(value as f32, cx));
+                let field = crate::l10n::localize_field(
+                    radix::TextField::new(format!("color-lab-field-{parameter:?}"))
+                        .look(look.as_ref())
+                        .surface()
+                        .look_override(crate::screen::value_field_look(&look))
+                        .full_width(true)
+                        .value(parameter.format(parameter.config().3 as f64))
+                        .select_all_on_tab_focus(true)
+                        .validator(Arc::new(move |text| parameter.parse(text).is_some()))
+                        .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                            if let Some(value) = parameter.parse(text) {
+                                this.set_value(parameter, value);
+                                if let Some((_, slider)) = this.sliders.iter().find(|(id, _)| *id == parameter) {
+                                    slider.update(cx, |slider, cx| slider.set_value(value as f32, cx));
+                                }
+                                cx.notify();
                             }
-                            cx.notify();
-                        }
-                    })
-                    .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
-                        if !focused {
-                            this.sync_field(parameter, cx);
-                        }
-                    })
-                    .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
-                    .spawn(cx);
+                        })
+                        .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
+                            if !focused {
+                                this.sync_field(parameter, cx);
+                            }
+                        })
+                        .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
+                        .spawn(cx),
+                    cx,
+                );
                 (parameter, field)
             })
             .to_vec();

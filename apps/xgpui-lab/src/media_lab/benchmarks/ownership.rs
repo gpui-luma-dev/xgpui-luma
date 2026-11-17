@@ -492,7 +492,7 @@ impl Render for MixedWindow {
             .gap_2()
             .bg(black())
             .text_color(white())
-            .child(div().h(px(32.)).child("Ownership: native glyphs Aa 0123 Ω 中 😀"))
+            .child(div().h(px(32.)).child(crate::l10n::ui("Ownership: native glyphs Aa 0123 Ω 中 😀")))
             .child(div().h(px(32.)).w(px(100.)).bg(rgb(0x4080bf)).border_2().border_color(white()).rounded_lg())
             .child(div().flex().gap_2().children(paints.into_iter().map(|paint| {
                 canvas(

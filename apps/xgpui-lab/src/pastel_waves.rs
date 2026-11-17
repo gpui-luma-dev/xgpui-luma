@@ -102,7 +102,7 @@ impl PastelWaves {
             .map(|(i, label)| {
                 radix::Button::new(format!("waves-{i}"))
                     .look(&look)
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         match i {
                             0 => {
@@ -162,7 +162,7 @@ impl PastelWaves {
             .map(|(i, (label, checked))| {
                 radix::Switch::new(format!("waves-switch-{i}"))
                     .look(&look)
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .checked(checked)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
                         if i == 0 {
@@ -261,7 +261,8 @@ impl Render for PastelWaves {
         let play_label = if self.playing { "Pause" } else { "Animate" };
         if self.play_label != play_label {
             self.play_label = play_label;
-            self.buttons[0].update(cx, |button, cx| button.set_label(play_label, cx));
+            self.buttons[0]
+                .update(cx, |button, cx| button.set_presenter(std::sync::Arc::new(crate::l10n::label(play_label)), cx));
         }
         self.phase_number.observe(self.phase, cx);
         for (switch, on) in self.switches.iter().zip([self.playing, self.grain]) {

@@ -101,7 +101,7 @@ impl PhotoViewport {
                 xgpui_luma_look_radix::Button::new(format!("photo-{index}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         match index {
                             0 => {
@@ -124,7 +124,7 @@ impl PhotoViewport {
             .collect();
         let wide_switch = xgpui_luma_look_radix::Switch::new("photo-wide")
             .look(look.as_ref())
-            .label("Wide output")
+            .content(crate::l10n::label("Wide output"))
             .checked(true)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.wide = on;

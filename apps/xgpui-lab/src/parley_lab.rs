@@ -127,7 +127,7 @@ impl ParleyPage {
             radix::Button::new(format!("parley-action-{index}"))
                 .look(look.as_ref())
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |this: &mut Self, cx| {
                     if index == 0 {
                         this.measure(cx);

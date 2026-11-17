@@ -211,15 +211,16 @@ impl ParagraphApiPage {
     }
 
     /// The canvas has no text nodes, so expose its source on the focus target.
-    fn accessible_preview(&self) -> gpui::Stateful<gpui::Div> {
+    fn accessible_preview(&self, cx: &gpui::App) -> gpui::Stateful<gpui::Div> {
         div()
             .id("paragraph-api-surface")
             .role(gpui::Role::MultilineTextInput)
-            .aria_label(format!("{} paragraph preview", SAMPLES[self.sample].0))
+            .aria_label(crate::l10n::resolve(&format!("{} paragraph preview", SAMPLES[self.sample].0), cx))
             .aria_value(SAMPLES[self.sample].1)
-            .aria_description(
+            .aria_description(crate::l10n::resolve(
                 "Read-only paragraph. Left and Right move the caret visually; hold Shift to extend the selection.",
-            )
+                cx,
+            ))
             .aria_keyshortcuts("ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight")
             .a11y_synthetic_children(|builder| builder.parent_node().set_read_only())
     }
@@ -315,7 +316,7 @@ impl Render for ParagraphApiPage {
                 let (anchor, caret) = (self.anchor, self.caret);
                 let focused = self.focus.is_focused(window);
                 page = page.hero(Hero::full(
-                    self.accessible_preview()
+                    self.accessible_preview(cx)
                         .track_focus(&self.focus)
                         .on_key_down(cx.listener(Self::key))
                         // Keep the paper's edge at the paragraph's edge. A stretched
@@ -455,9 +456,9 @@ mod tests {
         });
         let paper = visual.debug_bounds("paragraph-api-paper").expect("preview paper");
         window
-            .update(&mut cx, |page, window, _| {
+            .update(&mut cx, |page, window, cx| {
                 use gpui::Element as _;
-                let preview = page.accessible_preview();
+                let preview = page.accessible_preview(cx);
                 assert_eq!(preview.a11y_role(), Some(gpui::Role::MultilineTextInput));
                 let mut node = gpui::accesskit::Node::new(gpui::Role::MultilineTextInput);
                 preview.write_a11y_info(&mut node);

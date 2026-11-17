@@ -197,7 +197,7 @@ impl Page {
             .map(|(i, label)| {
                 radix::Button::new(format!("standalone-{i}"))
                     .look(&look)
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| match i {
                         0 => this.start(cx),
                         1 => {
@@ -352,14 +352,19 @@ impl Render for Page {
             .gap_4()
             .when(self.kind == Kind::Quad, |d| {
                 d.child(self.count.clone()).child(self.pattern.clone()).child(
-                    div().w(px(160.)).child(format!("Opacity {:.2}", self.opacity_value)).child(self.opacity.clone()),
+                    div()
+                        .w(px(160.))
+                        .child(crate::l10n::ui(format!("Opacity {:.2}", self.opacity_value)))
+                        .child(self.opacity.clone()),
                 )
             })
             .when(self.kind == Kind::Field, |d| {
-                d.child(self.method.clone())
-                    .child(self.samples.clone())
-                    .child(self.animation.clone())
-                    .child(div().w(px(180.)).child(format!("Hue {:.0}°", self.hue_value)).child(self.hue.clone()))
+                d.child(self.method.clone()).child(self.samples.clone()).child(self.animation.clone()).child(
+                    div()
+                        .w(px(180.))
+                        .child(crate::l10n::ui(format!("Hue {:.0}°", self.hue_value)))
+                        .child(self.hue.clone()),
+                )
             })
             .when(self.kind != Kind::Dense, |d| d.child(self.backend.clone()).child(self.frames.clone()))
             .when(self.kind == Kind::Dense, |d| d.child(self.producers.clone()));
@@ -377,11 +382,11 @@ impl Render for Page {
             .child(self.kind.name())
             .child(controls)
             .child(div().flex().gap_2().children(self.buttons.iter().cloned()))
-            .child(self.status.clone());
+            .child(crate::l10n::ui(self.status.clone()));
         if self.kind == Kind::Dense {
-            root=root.child("macOS Metal · isolated control and dense/sparse/replay runs · 15-second timeout per process. A timeout is a failed regression. Preparation markers are retained in logs.");
+            root=root.child(crate::l10n::ui("macOS Metal · isolated control and dense/sparse/replay runs · 15-second timeout per process. A timeout is a failed regression. Preparation markers are retained in logs."));
         } else {
-            root=root.child("Live preview uses the same geometry generator. Timings cover CPU work and optional offscreen rendering/readback, including GPU waits; they do not measure presented FPS or GPU-only time.");
+            root=root.child(crate::l10n::ui("Live preview uses the same geometry generator. Timings cover CPU work and optional offscreen rendering/readback, including GPU waits; they do not measure presented FPS or GPU-only time."));
             root = root.child(div().h(px(320.)).w_full().overflow_hidden().bg(rgb(0xf1f0e8)).child(
                 if self.kind == Kind::Quad {
                     quad::preview(
@@ -400,7 +405,7 @@ impl Render for Page {
             root = root.child(div().text_size(px(12.)).child(serde_json::to_string_pretty(report).unwrap_or_default()));
         }
         if let Some(output) = &self.output {
-            root = root.child(format!("Results: {}", output.display()));
+            root = root.child(crate::l10n::ui(format!("Results: {}", output.display())));
         }
         root
     }

@@ -312,7 +312,7 @@ impl MediaPage {
                 radix::Button::new(format!("media-{action:?}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.action(action, cx))
                     .spawn(cx),
             )
@@ -363,36 +363,39 @@ impl MediaPage {
         let filter_fields = ALL_FIELDS
             .map(|parameter| {
                 let (_, _, _, value) = parameter.config();
-                let field = radix::TextField::new(format!("media-field-{parameter:?}"))
-                    .look(look.as_ref())
-                    .surface()
-                    .look_override(crate::screen::value_field_look(&look))
-                    .full_width(true)
-                    .value(parameter.format(value))
-                    .select_all_on_tab_focus(true)
-                    .validator(Arc::new(move |text| parameter.parse(text).is_some()))
-                    .on_value_changed(cx, move |this: &mut Self, text, cx| {
-                        if let Some(value) = parameter.parse(text) {
-                            this.values[parameter as usize] = value;
-                            if let Some((_, slider)) = this.sliders.iter().find(|(id, _)| *id == parameter) {
-                                slider.update(cx, |slider, cx| slider.set_value(value, cx));
+                let field = crate::l10n::localize_field(
+                    radix::TextField::new(format!("media-field-{parameter:?}"))
+                        .look(look.as_ref())
+                        .surface()
+                        .look_override(crate::screen::value_field_look(&look))
+                        .full_width(true)
+                        .value(parameter.format(value))
+                        .select_all_on_tab_focus(true)
+                        .validator(Arc::new(move |text| parameter.parse(text).is_some()))
+                        .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                            if let Some(value) = parameter.parse(text) {
+                                this.values[parameter as usize] = value;
+                                if let Some((_, slider)) = this.sliders.iter().find(|(id, _)| *id == parameter) {
+                                    slider.update(cx, |slider, cx| slider.set_value(value, cx));
+                                }
+                                cx.notify();
                             }
-                            cx.notify();
-                        }
-                    })
-                    .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
-                        if !focused {
-                            this.sync_field(parameter, cx);
-                        }
-                    })
-                    .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
-                    .spawn(cx);
+                        })
+                        .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
+                            if !focused {
+                                this.sync_field(parameter, cx);
+                            }
+                        })
+                        .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
+                        .spawn(cx),
+                    cx,
+                );
                 (parameter, field)
             })
             .to_vec();
         let sweep_switch = radix::Switch::new("media-sweep")
             .look(look.as_ref())
-            .label("Sweep zoom")
+            .content(crate::l10n::label("Sweep zoom"))
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.sweep = on;
@@ -409,7 +412,7 @@ impl MediaPage {
         .map(|(action, label, checked)| {
             let switch = radix::Switch::new(format!("media-switch-{action:?}"))
                 .look(look.as_ref())
-                .label(label)
+                .content(crate::l10n::label(label))
                 .checked(checked)
                 .on_value_changed(cx, move |this: &mut Self, on, cx| {
                     match action {

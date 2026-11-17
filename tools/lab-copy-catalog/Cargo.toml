@@ -1,0 +1,13 @@
+[package]
+name = "lab-copy-catalog"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[dependencies]
+syn = { version = "2", features = ["full", "visit"] }
+proc-macro2 = { version = "1", features = ["span-locations"] }
+serde_json = "1"
+
+[lints]
+workspace = true

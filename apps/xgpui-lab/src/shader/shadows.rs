@@ -165,7 +165,7 @@ impl ShadowPane {
             radix::Button::new(format!("shadow-{id}"))
                 .look(if id < 3 { light.as_ref() } else { look.as_ref() })
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |this: &mut Self, cx| {
                     match id {
                         0..=2 => this.shadow.clicks += 1,
@@ -209,7 +209,7 @@ impl ShadowPane {
             .map(|(i, (label, checked))| {
                 radix::Switch::new(format!("shadow-switch-{i}"))
                     .look(&look)
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .checked(checked)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
                         match i {
@@ -285,7 +285,12 @@ impl Render for ShadowPane {
         if self.last_clicks != self.shadow.clicks {
             self.last_clicks = self.shadow.clicks;
             for button in self.buttons.iter().take(3) {
-                button.update(cx, |button, cx| button.set_label(format!("Child clicks: {}", self.shadow.clicks), cx));
+                button.update(cx, |button, cx| {
+                    button.set_presenter(
+                        std::sync::Arc::new(crate::l10n::label(format!("Child clicks: {}", self.shadow.clicks))),
+                        cx,
+                    )
+                });
             }
         }
         if cx.reduce_motion() {

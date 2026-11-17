@@ -152,7 +152,13 @@ impl TextRole {
 
 /// A text element in the given role.
 pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<SharedString>) -> Div {
-    role.apply(look, div()).child(content.into())
+    let content = content.into();
+    let leaf = if matches!(role, TextRole::Value) {
+        crate::l10n::data(content)
+    } else {
+        crate::l10n::ui(content)
+    };
+    role.apply(look, div()).child(leaf)
 }
 
 /// Key/value pairs: keys in `Label` (UI, muted), values in `Value` (mono). An empty key shows the value alone.
@@ -162,12 +168,14 @@ pub(crate) fn readout<K: Into<SharedString>, V: Into<SharedString>>(
 ) -> Div {
     div().flex().flex_wrap().items_baseline().gap_2().children(pairs.into_iter().map(|(key, value)| {
         let key: SharedString = key.into();
-        div()
-            .flex()
-            .items_baseline()
-            .gap_1()
-            .children((!key.is_empty()).then(|| text(look, TextRole::Label, key)))
-            .child(text(look, TextRole::Value, value))
+        crate::l10n::row(
+            div()
+                .flex()
+                .items_baseline()
+                .gap_1()
+                .children((!key.is_empty()).then(|| text(look, TextRole::Label, key)))
+                .child(text(look, TextRole::Value, value)),
+        )
     }))
 }
 

@@ -52,26 +52,29 @@ impl ShaderPage {
             .into_iter()
             .chain(WGSL_PARAMETERS)
             .map(|parameter| {
-                let field = radix::TextField::new(format!("shader-field-{parameter:?}"))
-                    .look(&look)
-                    .surface()
-                    .look_override(value_field_look(&look))
-                    .full_width(true)
-                    .value(parameter.format(self.value(parameter)))
-                    .select_all_on_tab_focus(true)
-                    .validator(std::sync::Arc::new(move |text| parameter.parse(text).is_some()))
-                    .on_value_changed(cx, move |this: &mut Self, text, cx| {
-                        if let Some(value) = parameter.parse(text) {
-                            this.edit(parameter, value, cx);
-                        }
-                    })
-                    .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
-                        if !focused {
-                            this.sync_field(parameter, cx);
-                        }
-                    })
-                    .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
-                    .spawn(cx);
+                let field = crate::l10n::localize_field(
+                    radix::TextField::new(format!("shader-field-{parameter:?}"))
+                        .look(&look)
+                        .surface()
+                        .look_override(value_field_look(&look))
+                        .full_width(true)
+                        .value(parameter.format(self.value(parameter)))
+                        .select_all_on_tab_focus(true)
+                        .validator(std::sync::Arc::new(move |text| parameter.parse(text).is_some()))
+                        .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                            if let Some(value) = parameter.parse(text) {
+                                this.edit(parameter, value, cx);
+                            }
+                        })
+                        .on_focus_changed(cx, move |this: &mut Self, focused, cx| {
+                            if !focused {
+                                this.sync_field(parameter, cx);
+                            }
+                        })
+                        .on_submit(cx, move |this: &mut Self, _, cx| this.sync_field(parameter, cx))
+                        .spawn(cx),
+                    cx,
+                );
                 (parameter, field)
             })
             .collect();
@@ -84,7 +87,7 @@ impl ShaderPage {
         .map(|(action, label)| {
             let switch = radix::Switch::new(format!("shader-switch-{action:?}"))
                 .look(&look)
-                .label(label)
+                .content(crate::l10n::label(label))
                 .checked(false)
                 .on_value_changed(cx, move |this: &mut Self, on, cx| {
                     match action {

@@ -244,7 +244,7 @@ impl Benchmarks {
                 radix::Button::new(format!("media-benchmark-{index}"))
                     .look(&look)
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.start(case, None, cx))
                     .spawn(cx)
             })
@@ -252,7 +252,7 @@ impl Benchmarks {
         let cancel_button = radix::Button::new("media-benchmark-cancel")
             .look(&look)
             .outline()
-            .label("Cancel")
+            .content(crate::l10n::label("Cancel"))
             .on_click(cx, |this: &mut Self, cx| {
                 this.cancel.store(true, Ordering::Relaxed);
                 this.status = "Cancelling…".into();
@@ -262,7 +262,7 @@ impl Benchmarks {
         let reveal = radix::Button::new("media-benchmark-reveal")
             .look(&look)
             .outline()
-            .label("Reveal results")
+            .content(crate::l10n::label("Reveal results"))
             .on_click(cx, |this: &mut Self, cx| {
                 if let Some(path) = &this.output {
                     cx.reveal_path(path);
@@ -355,20 +355,20 @@ impl Render for Benchmarks {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div().id("media-benchmarks").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4()
             .text_color(crate::theme::ColorVizLookExt::chrome(self.look.as_ref()).body_text)
-            .child("Media benchmarks")
+            .child(crate::l10n::ui("Media benchmarks"))
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()).when(self.busy, |row| row.child(self.cancel_button.clone())))
-            .child("Upload: six 2048×2048 sources, three upload waves, 120 cached frames. Cadence: 180 baseline intervals, a 12-source burst, 180 cached intervals. Scroll: 24 cards, four 3072×2048 sources, 5s baseline / 30s loading / 5s cached.")
-            .child(format!("Build: {}. Timings describe CPU work and render-start cadence, not GPU execution or proof of displayed frames. Keep measurement windows foreground; debug builds are for functional checks.", profile()))
-            .child(self.status.clone())
-            .when_some(self.output.as_ref(), |root, output| root.child(format!("Results: {}", output.display())).child(self.reveal.clone()))
+            .child(crate::l10n::ui("Upload: six 2048×2048 sources, three upload waves, 120 cached frames. Cadence: 180 baseline intervals, a 12-source burst, 180 cached intervals. Scroll: 24 cards, four 3072×2048 sources, 5s baseline / 30s loading / 5s cached."))
+            .child(crate::l10n::ui(format!("Build: {}. Timings describe CPU work and render-start cadence, not GPU execution or proof of displayed frames. Keep measurement windows foreground; debug builds are for functional checks.", profile())))
+            .child(crate::l10n::ui(self.status.clone()))
+            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui(format!("Results: {}", output.display()))).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
-                let mut row = div().flex().flex_col().gap_2().child(format!("{} · {}", result["label"].as_str().unwrap_or("Workload"), result["outcome"].as_str().unwrap_or("unknown")));
+                let mut row = div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}", result["label"].as_str().unwrap_or("Workload"), result["outcome"].as_str().unwrap_or("unknown"))));
                 if let Some(error) = result["error"].as_str() { row = row.child(error.to_owned()); }
                 if let Some(errors) = result["errors"].as_array() { for error in errors { row = row.child(error.to_string()); } }
                 if let Some(description) = result["description"].as_str() { row = row.child(description.to_owned()); }
-                if let Some(value) = result["upload_render_scene_cpu"]["p95_ms"].as_f64() { row = row.child(format!("Upload render CPU p95: {value:.3} ms")); }
-                if result.get("baseline").is_some() { row = row.child(format!("Cadence p95: baseline {} ms · loading/burst {} ms · cached {} ms", result["baseline"]["p95_ms"], result.get("loading").unwrap_or(&result["burst"])["p95_ms"], result["cached"]["p95_ms"])); }
-                if let Some(pass) = result["provisional_60hz_pass"].as_bool() { row = row.child(format!("Provisional release 60 Hz criteria met: {pass}")); }
+                if let Some(value) = result["upload_render_scene_cpu"]["p95_ms"].as_f64() { row = row.child(crate::l10n::ui(format!("Upload render CPU p95: {value:.3} ms"))); }
+                if result.get("baseline").is_some() { row = row.child(crate::l10n::ui(format!("Cadence p95: baseline {} ms · loading/burst {} ms · cached {} ms", result["baseline"]["p95_ms"], result.get("loading").unwrap_or(&result["burst"])["p95_ms"], result["cached"]["p95_ms"]))); }
+                if let Some(pass) = result["provisional_60hz_pass"].as_bool() { row = row.child(crate::l10n::ui(format!("Provisional release 60 Hz criteria met: {pass}"))); }
                 if let Some(previews) = result["previews"].as_array() { for path in previews.iter().filter_map(Value::as_str) { row = row.child(img(PathBuf::from(path)).max_w(px(760.))); } }
                 row
             }))

@@ -282,7 +282,7 @@ impl ShaderPage {
             let button = radix::Button::new(format!("shader-{action:?}"))
                 .look(look.as_ref())
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |this: &mut Self, cx| this.action(action, cx))
                 .spawn(cx);
             (action, button)
@@ -337,7 +337,7 @@ impl ShaderPage {
             let button = radix::Button::new(format!("gallery-{id}"))
                 .look(look.as_ref())
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |this: &mut Self, cx| {
                     match id {
                         "backdrop-source" => this.backdrop_changed = !this.backdrop_changed,
@@ -431,7 +431,7 @@ impl ShaderPage {
         .map(|(id, label, checked)| {
             let switch = radix::Switch::new(format!("gallery-switch-{id}"))
                 .look(&look)
-                .label(label)
+                .content(crate::l10n::label(label))
                 .checked(checked)
                 .on_value_changed(cx, move |this: &mut Self, on, cx| {
                     match id {
@@ -551,7 +551,7 @@ impl ShaderPage {
         let changed = self.gallery_labels.borrow().get(id) != Some(&label);
         if changed {
             self.gallery_labels.borrow_mut().insert(id, label.clone());
-            button.update(cx, |button, cx| button.set_label(label, cx));
+            button.update(cx, |button, cx| button.set_presenter(std::sync::Arc::new(crate::l10n::label(label)), cx));
         }
         button.into_any_element()
     }

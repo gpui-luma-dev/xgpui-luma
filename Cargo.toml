@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
   "tools/release",
+  "tools/lab-copy-catalog",
   "apps/xgpui-lab",
   "apps/docs-embed",
   "apps/sdk-perf",

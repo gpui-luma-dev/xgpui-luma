@@ -5,6 +5,13 @@ mod chromaticity;
 mod gamut_reveal;
 use chromaticity::Lab;
 use gpui::*;
+// The standalone probe has no app localizer; shared source text remains English.
+mod l10n {
+    pub fn ui(source: impl Into<gpui::SharedString>) -> gpui::Div {
+        use gpui::ParentElement;
+        gpui::div().child(source.into())
+    }
+}
 struct Diagnostics;
 impl log::Log for Diagnostics {
     fn enabled(&self, m: &log::Metadata) -> bool {

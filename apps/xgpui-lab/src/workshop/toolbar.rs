@@ -86,7 +86,7 @@ impl Render for ToolbarExpositionLeftPane {
                             div()
                                 .typography_style(self.look.typography_scale(TextSize::Xs))
                                 .text_color(chrome.muted_text)
-                                .child(format!("Mode: {}", self.focus_mode)),
+                                .child(crate::l10n::ui(format!("Mode: {}", self.focus_mode))),
                         ),
                 ))
                 .child(self.event_stream.clone()),
@@ -97,10 +97,10 @@ impl Render for ToolbarExpositionLeftPane {
 impl ToolbarControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let roving_focus_button = Button::new("controls-doc-toolbar-focus-roving")
-            .content(|_, _| div().child("Roving focus"))
+            .content(|_, _| div().child(crate::l10n::ui("Roving focus")))
             .spawn(cx);
         let sequential_focus_button = Button::new("controls-doc-toolbar-focus-sequential")
-            .content(|_, _| div().child("Sequential focus"))
+            .content(|_, _| div().child(crate::l10n::ui("Sequential focus")))
             .spawn(cx);
 
         let toolbar = xgpui_luma::controls::toolbar::ToolbarBuilder::new("controls-doc-toolbar")
@@ -280,11 +280,14 @@ fn toolbar_menu<T: 'static>(
     items: impl IntoIterator<Item = MenuItem>,
     cx: &mut Context<T>,
 ) -> ToolbarItem {
-    let menu = xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id)
-        .label(label)
-        .icon(icon)
-        .items(items)
-        .spawn(cx);
+    let menu = crate::l10n::localize_popup(
+        xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id)
+            .label(label)
+            .icon(icon)
+            .items(items)
+            .spawn(cx),
+        cx,
+    );
     ToolbarItem::menu_control(id, menu, cx).label(label)
 }
 fn toolbar_label_menu<T: 'static>(
@@ -293,7 +296,10 @@ fn toolbar_label_menu<T: 'static>(
     items: impl IntoIterator<Item = MenuItem>,
     cx: &mut Context<T>,
 ) -> ToolbarItem {
-    let menu = xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id).label(label).items(items).spawn(cx);
+    let menu = crate::l10n::localize_popup(
+        xgpui_luma::controls::popup_menu::PopupMenuBuilder::new(id).label(label).items(items).spawn(cx),
+        cx,
+    );
     ToolbarItem::menu_control(id, menu, cx).label(label)
 }
 fn toolbar_selector<T: 'static>(
@@ -326,7 +332,10 @@ fn toolbar_button<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Conte
     ToolbarItem::command_button(id, button, cx).label(id)
 }
 fn toolbar_search<T: 'static>(cx: &mut Context<T>) -> ToolbarItem {
-    let field = xgpui_luma::controls::textfield::TextFieldBuilder::new("search").placeholder("Search...").spawn(cx);
+    let field = crate::l10n::localize_field(
+        xgpui_luma::controls::textfield::TextFieldBuilder::new("search").placeholder("Search...").spawn(cx),
+        cx,
+    );
     ToolbarItem::textfield_control("search", field, cx)
 }
 

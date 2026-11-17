@@ -36,6 +36,12 @@ pub(crate) fn options(cx: &App, kind: TextKind) -> TextOptions {
 /// alignment follows the locale, but native bidi/language support is limited.
 pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<SharedString>, kind: TextKind, cx: &App) -> Div {
     let settings = options(cx, kind);
+    let content = content.into();
+    let content = if kind == TextKind::Ui {
+        crate::l10n::resolve(&content, cx)
+    } else {
+        crate::l10n::number(&content, cx)
+    };
     let mut leaf = typeset(content).direction(settings.direction);
     if let Some(language) = settings.language {
         leaf = leaf.language(language);

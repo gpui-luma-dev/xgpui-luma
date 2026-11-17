@@ -149,20 +149,26 @@ impl ColorHarmoniesDemo {
         let lightness_renderer = lightness_builder.domain_renderer();
         let lightness_context = lightness_builder.track_context();
         let lightness_ring = lightness_builder.spawn(cx);
-        let harmony_menu = radix::Selector::new("controls-doc-color-harmonies-harmony")
-            .look(look.as_ref())
-            .label("Combination")
-            .size(radix::ButtonSize::Two)
-            .items(color_combination_items())
-            .selected_id(ColorCombination::Tetradic.id())
-            .spawn(cx);
-        let color_input = radix::TextField::new("controls-doc-color-harmonies-input")
-            .look(look.as_ref())
-            .value(format_hsl_input(color))
-            .placeholder("hsl(120 50% 40%) or #006081")
-            .size(radix::TextFieldSize::Two)
-            .full_width(true)
-            .spawn(cx);
+        let harmony_menu = crate::l10n::localize_selector(
+            radix::Selector::new("controls-doc-color-harmonies-harmony")
+                .look(look.as_ref())
+                .label("Combination")
+                .size(radix::ButtonSize::Two)
+                .items(color_combination_items())
+                .selected_id(ColorCombination::Tetradic.id())
+                .spawn(cx),
+            cx,
+        );
+        let color_input = crate::l10n::localize_field(
+            radix::TextField::new("controls-doc-color-harmonies-input")
+                .look(look.as_ref())
+                .value(format_hsl_input(color))
+                .placeholder("hsl(120 50% 40%) or #006081")
+                .size(radix::TextFieldSize::Two)
+                .full_width(true)
+                .spawn(cx),
+            cx,
+        );
 
         let subscriptions = vec![
             cx.subscribe(&wheel, |this, _, event: &ColorFieldEvent, cx| {
@@ -641,7 +647,7 @@ fn field_label(look: &Look, label: &'static str, color: Hsla, text_size: TextSiz
         .font_weight(FontWeight::MEDIUM)
         .text_color(color)
         .whitespace_nowrap()
-        .child(label)
+        .child(crate::l10n::ui(label))
 }
 
 fn parse_color_input(value: &str) -> Option<Hsla> {

@@ -55,9 +55,14 @@ pub(super) fn render_demo_section(
                         .typography_style(title_style)
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(chrome.title_text)
-                        .child(title),
+                        .child(crate::l10n::ui(title)),
                 )
-                .child(div().typography_style(description_style).text_color(chrome.muted_text).child(description)),
+                .child(
+                    div()
+                        .typography_style(description_style)
+                        .text_color(chrome.muted_text)
+                        .child(crate::l10n::ui(description)),
+                ),
         )
         .child(content)
         .into_any_element()
@@ -113,7 +118,7 @@ pub(super) fn detail_row_sized(
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(chrome.muted_text)
                 .whitespace_nowrap()
-                .child(label),
+                .child(crate::l10n::ui(label)),
         )
         .child(
             div()
@@ -168,7 +173,7 @@ pub(super) fn control_label_sized(look: &Look, label: &'static str, text_size: T
         .font_weight(FontWeight::MEDIUM)
         .text_color(look.chrome().muted_text)
         .whitespace_nowrap()
-        .child(label)
+        .child(crate::l10n::ui(label))
         .into_any_element()
 }
 

@@ -106,7 +106,7 @@ impl ScrollLab {
                 xgpui_luma_look_radix::Button::new(format!("scroll-{id}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         if id == 0 {
                             this.pending_start = true;

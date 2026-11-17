@@ -12,6 +12,7 @@ use gpui::{
 };
 use gpui::prelude::FluentBuilder;
 use xgpui_luma::hstack;
+use xgpui_luma::infra::locale::{LocaleContext, LogicalStyled};
 use xgpui_luma_look_radix::Look;
 
 use crate::theme::{ColorVizLookExt, TypographyExt};
@@ -88,7 +89,7 @@ impl LabScreen {
             sections: Vec::new(),
             note: None,
             credits: None,
-            localized: false,
+            localized: true,
         }
     }
 
@@ -205,6 +206,7 @@ impl LabScreen {
 
 impl RenderOnce for LabScreen {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
+        let direction = LocaleContext::current(_cx).direction;
         let metrics = LabMetrics::STANDARD;
         let look = &*self.look;
         let id = self.id;
@@ -235,10 +237,16 @@ impl RenderOnce for LabScreen {
         content.extend(live);
         if !self.controls.is_empty() || !self.actions.is_empty() {
             // Actions stay together at the right end; the spacer pushes them there and lets the row wrap.
-            let actions = (!self.actions.is_empty())
-                .then(|| div().flex().items_center().gap(metrics.control_gap).children(self.actions));
+            let actions = (!self.actions.is_empty()).then(|| {
+                div()
+                    .flex()
+                    .flex_row_logical(direction)
+                    .items_center()
+                    .gap(metrics.control_gap)
+                    .children(self.actions)
+            });
             let spacer = actions.is_some().then(|| div().flex_1());
-            let row = control_row().when(centered, |row| row.justify_center());
+            let row = control_row().flex_row_logical(direction).when(centered, |row| row.justify_center());
             content.push(slot(row, "controls").children(self.controls).children(spacer).children(actions));
         }
         content.extend(self.notices.into_iter().map(|notice| match notice {
@@ -251,8 +259,11 @@ impl RenderOnce for LabScreen {
             let hosted = self.card_elements.into_iter().map(|card| {
                 div().flex_1().min_w(metrics.card_min_width).flex_basis(metrics.card_min_width).child(card)
             });
-            content
-                .push(slot(hstack! {}.flex_wrap().gap(metrics.section_gap), "cards").children(cards).children(hosted));
+            content.push(
+                slot(hstack! {}.flex_row_logical(direction).flex_wrap().gap(metrics.section_gap), "cards")
+                    .children(cards)
+                    .children(hosted),
+            );
         }
         if let Some((wide, narrow)) = self.panels {
             let wide_width = if self.equal_panel_widths {
@@ -263,7 +274,10 @@ impl RenderOnce for LabScreen {
             let wide = sized(slot(wide.render(look, &metrics), "panel-wide"), wide_width);
             // `flex_1` keeps the narrow panel's shrink and grow at 1, as before.
             let narrow = sized(slot(narrow.render(look, &metrics).flex_1(), "panel-narrow"), metrics.narrow_panel);
-            content.push(slot(hstack! { wide, narrow }.flex_wrap().gap(metrics.section_gap), "panels"));
+            content.push(slot(
+                hstack! { wide, narrow }.flex_row_logical(direction).flex_wrap().gap(metrics.section_gap),
+                "panels",
+            ));
         }
         content.extend(self.sections.into_iter().map(|section| match section {
             Section::Element(element) => slot(div(), "section").child(element),
@@ -337,13 +351,16 @@ pub(crate) fn control_row() -> Div {
 }
 
 /// Apply the reference switch label typography to a labeled control.
-pub(crate) fn labeled_control(look: &Look, element: Div) -> Div {
+pub(crate) fn labeled_control(look: &Look, element: impl IntoElement) -> Div {
     let label = xgpui_luma_look_radix::switch_theme(look).resolve(
         false,
         xgpui_luma::theme::InteractionState::default(),
         xgpui_luma::theme::ControlSize::Md,
     );
-    element
+    div()
+        .flex()
+        .items_center()
+        .child(element)
         .typography_style(label.label_typography)
         .font_family(label.label_font_family)
         .text_color(label.label_color)

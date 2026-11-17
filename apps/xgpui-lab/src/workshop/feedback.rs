@@ -78,18 +78,18 @@ impl FeedbackSample {
                     .labels(vec!["Prepare", "Review", "Finish"])
                     .spawn(cx);
                 let next = Button::new("workshop-sdk-stepper-next")
-                    .content(|_, _| div().child("Next"))
+                    .content(|_, _| div().child(crate::l10n::ui("Next")))
                     .on_click(cx, |this: &mut Self, cx| this.next_step(cx))
                     .spawn(cx);
                 let reset = Button::new("workshop-sdk-stepper-reset")
-                    .content(|_, _| div().child("Reset"))
+                    .content(|_, _| div().child(crate::l10n::ui("Reset")))
                     .on_click(cx, |this: &mut Self, cx| this.reset_step(cx))
                     .spawn(cx);
                 Control::Stepper { view, next, reset }
             }
             _ => {
                 let close = Button::new("workshop-sdk-dialog-close")
-                    .content(|_, _| div().child("Close"))
+                    .content(|_, _| div().child(crate::l10n::ui("Close")))
                     .on_click(cx, |this: &mut Self, cx| {
                         if let Control::Dialog { view, .. } = &this.control {
                             view.update(cx, |v, cx| v.dismiss(cx));
@@ -117,8 +117,8 @@ impl FeedbackSample {
                             .flex()
                             .flex_col()
                             .gap(px(16.))
-                            .child(title)
-                            .child("Native SDK OverlayWindow content.")
+                            .child(crate::l10n::ui(title))
+                            .child(crate::l10n::ui("Native SDK OverlayWindow content."))
                             .child(close.clone())
                             .into_any_element()
                     })
@@ -128,7 +128,7 @@ impl FeedbackSample {
                 })
                 .detach();
                 let trigger = Button::new("workshop-sdk-dialog-open")
-                    .content(|_, _| div().child("Open dialog"))
+                    .content(|_, _| div().child(crate::l10n::ui("Open dialog")))
                     .on_click(cx, |this: &mut Self, cx| {
                         if let Control::Dialog { view, trigger } = &this.control {
                             use gpui::Focusable;

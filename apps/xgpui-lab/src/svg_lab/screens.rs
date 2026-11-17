@@ -65,28 +65,32 @@ impl SvgPage {
                                 .flex()
                                 .flex_col()
                                 .gap_2()
-                                .child(format!("{}: {:.2}", parameter.config().0, self.values[*parameter as usize]))
+                                .child(crate::l10n::ui(format!(
+                                    "{}: {:.2}",
+                                    parameter.config().0,
+                                    self.values[*parameter as usize]
+                                )))
                                 .child(slider.clone())
                         },
                     ),
                 ))
                 .when(self.active_tab != "Rendering", |view| {
-                    view.child(format!(
+                    view.child(crate::l10n::ui(format!(
                         "Output budget: {:.2} MiB · Zoom {:.2}× · Display scale {:.2}×",
                         self.policy.max_output_bytes as f64 / MIB as f64,
                         self.values[0],
                         self.density
-                    ))
+                    )))
                 })
-                .when(self.loading, |view| view.child("Loading artwork in the background…"))
-                .children(
-                    self.load_error
-                        .as_ref()
-                        .map(|error| div().child(format!("Load failed; previous artwork retained: {error}"))),
-                )
+                .when(self.loading, |view| view.child(crate::l10n::ui("Loading artwork in the background…")))
+                .children(self.load_error.as_ref().map(|error| {
+                    div().child(crate::l10n::ui(format!("Load failed; previous artwork retained: {error}")))
+                }))
                 .child(match result {
                     Ok(view) => view,
-                    Err(error) => div().child(format!("SVG lab unavailable: {error:#}")).into_any_element(),
+                    Err(error) => {
+                        div().child(crate::l10n::ui(format!("SVG lab unavailable: {error:#}"))).into_any_element()
+                    }
                 })
                 .into_any_element();
         }
@@ -162,8 +166,9 @@ impl SvgPage {
                         .flex()
                         .items_center()
                         .gap_2()
-                        .child(choice.label())
+                        .child(crate::l10n::ui(choice.label()))
                         .child(div().w(px(160.)).flex_shrink_0().child(choice.selector.clone()))
+                        .into_any_element()
                 } else {
                     choice.clone().into_element()
                 };

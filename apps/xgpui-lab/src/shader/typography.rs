@@ -144,7 +144,7 @@ impl TypographyDemo {
                 radix::Button::new(id)
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.set_presentation(mode, cx))
                     .spawn(cx)
             })
@@ -160,7 +160,7 @@ impl TypographyDemo {
                     let button = radix::Button::new(format!("typography-motion-{mode:?}"))
                         .look(look.as_ref())
                         .outline()
-                        .label(format!("{mode:?}"))
+                        .content(crate::l10n::label(format!("{mode:?}")))
                         .on_click(cx, move |this: &mut Self, cx| this.action(Action::Motion(mode), cx))
                         .spawn(cx);
                     (mode, button)
@@ -437,7 +437,7 @@ impl Render for TypographyDemo {
         div()
             .id("typography-demo")
             .role(Role::Application)
-            .aria_label("Selectable typography demo")
+            .aria_label(crate::l10n::resolve("Selectable typography demo", cx))
             .luma_focus_scope(&self.focus_scope)
             .size_full()
             .child(
@@ -598,7 +598,7 @@ impl TypographyDemo {
                 let button = radix::Button::new(format!("typography-{action:?}"))
                     .look(look.as_ref())
                     .outline()
-                    .label("…")
+                    .content(crate::l10n::label("…"))
                     .on_click(cx, move |this: &mut Self, cx| this.action(action, cx))
                     .spawn(cx);
                 (action, String::new(), button)
@@ -641,7 +641,7 @@ impl TypographyDemo {
             .map(|(action, label)| {
                 let switch = radix::Switch::new(format!("typography-{action:?}"))
                     .look(look.as_ref())
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .checked(false)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
                         match action {
@@ -664,19 +664,22 @@ impl TypographyDemo {
         cx: &mut Context<Self>,
         apply: impl Fn(&mut Self, &str, &mut Context<Self>) -> Option<()> + 'static,
     ) -> TextField {
-        radix::TextField::new(id.to_owned())
-            .look(look.as_ref())
-            .surface()
-            .look_override(value_field_look(look))
-            .full_width(true)
-            .value(value.to_owned())
-            .select_all_on_tab_focus(true)
-            .on_value_changed(cx, move |this: &mut Self, text, cx| {
-                if apply(this, text, cx).is_some() {
-                    cx.notify();
-                }
-            })
-            .spawn(cx)
+        crate::l10n::localize_field(
+            radix::TextField::new(id.to_owned())
+                .look(look.as_ref())
+                .surface()
+                .look_override(value_field_look(look))
+                .full_width(true)
+                .value(value.to_owned())
+                .select_all_on_tab_focus(true)
+                .on_value_changed(cx, move |this: &mut Self, text, cx| {
+                    if apply(this, text, cx).is_some() {
+                        cx.notify();
+                    }
+                })
+                .spawn(cx),
+            cx,
+        )
     }
     fn make_choices(look: &Look, cx: &mut Context<Self>) -> Vec<(Action, Choice)> {
         [
@@ -770,7 +773,8 @@ impl TypographyDemo {
             };
             if *previous != label {
                 *previous = label.clone();
-                button.update(cx, |button, cx| button.set_label(label, cx));
+                button
+                    .update(cx, |button, cx| button.set_presenter(std::sync::Arc::new(crate::l10n::label(label)), cx));
             }
         }
     }

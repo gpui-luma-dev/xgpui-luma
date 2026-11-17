@@ -66,12 +66,13 @@ impl Attachment {
 
     pub(crate) fn description(&self, cx: &App) -> Option<gpui::SharedString> {
         let config = &self.controller.read(cx).config;
-        if !config.enabled || config.text.is_empty() {
+        let text = config.text_provider.as_ref().map_or_else(|| config.text.clone(), |provider| provider(cx));
+        if !config.enabled || text.is_empty() {
             return None;
         }
         Some(match config.shortcut.as_ref().filter(|hint| !hint.is_empty()) {
-            Some(hint) => format!("{} ({})", config.text, hint).into(),
-            None => config.text.clone(),
+            Some(hint) => format!("{} ({})", text, hint).into(),
+            None => text,
         })
     }
 
@@ -351,7 +352,15 @@ impl Controller {
         let transition = self.state.sync(
             hovered,
             focused,
-            enabled && self.config.enabled && can_open && !self.config.text.is_empty(),
+            enabled
+                && self.config.enabled
+                && can_open
+                && !self
+                    .config
+                    .text_provider
+                    .as_ref()
+                    .map_or_else(|| self.config.text.clone(), |provider| provider(cx))
+                    .is_empty(),
         );
         match transition {
             Transition::None => {}
@@ -390,7 +399,7 @@ impl Controller {
             shortcut_gap: look.shortcut_gap,
             shortcut_font_size: look.shortcut_font_size,
             shortcut_opacity: look.shortcut_opacity,
-            text: self.config.text.clone(),
+            text: self.config.text_provider.as_ref().map_or_else(|| self.config.text.clone(), |provider| provider(cx)),
             shortcut: self.config.shortcut.clone(),
             background: look.background,
             foreground: look.foreground,
@@ -690,6 +699,31 @@ mod ownership_tests {
             assert!(regular.controller.read(cx).config.enabled);
         });
         app.update(|cx| cx.set_global(TooltipSettings { enabled: true }));
+    }
+
+    #[test]
+    fn live_text_provider_updates_bubble_and_description_without_resetting_dismissal() {
+        struct Help(gpui::SharedString);
+        impl gpui::Global for Help {}
+        let app = TestAppContext::single();
+        let (_owner, tip) = app.update(|cx| {
+            cx.set_global(Help("Save".into()));
+            let owner = cx.new(|cx| Button::from_builder(Button::new("localized-owner"), cx));
+            let config = Tooltip::new("Save").shortcut("⌘S").text_provider(|cx| cx.global::<Help>().0.clone());
+            let tip = Attachment::new(config, default_tooltip_theme(), &owner, cx);
+            tip.controller.update(cx, |tip, _| {
+                tip.state.suppressed = true;
+            });
+            (owner, tip)
+        });
+        for text in ["Speichern", "保存", "حفظ"] {
+            app.update(|cx| {
+                cx.set_global(Help(text.into()));
+                assert_eq!(tip.description(cx).unwrap(), format!("{text} (⌘S)"));
+                assert_eq!(tip.controller.read(cx).render_model(cx).text, text);
+                assert!(tip.controller.read(cx).state.suppressed);
+            });
+        }
     }
 
     #[test]

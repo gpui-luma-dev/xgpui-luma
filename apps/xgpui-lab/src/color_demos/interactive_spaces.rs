@@ -93,28 +93,31 @@ fn parse_channel(text: &str) -> Option<f64> {
 
 impl RgbChannelControls {
     fn new(index: usize, look: &Look, cx: &mut Context<InteractiveSpaces>) -> (Self, Subscription) {
-        let input = radix::TextField::new(format!("interactive-spaces-input-{index}"))
-            .look(look)
-            .surface()
-            .size(radix::TextFieldSize::Two)
-            .look_override(value_field_look(look))
-            .placeholder(format!("{} 0–1", CHANNELS[index]))
-            .value(format!("{:.3}", INITIAL[index]))
-            .full_width(true)
-            .select_all_on_tab_focus(true)
-            .validator(Arc::new(|text| parse_channel(text).is_some()))
-            .on_value_changed(cx, move |page, text, cx| {
-                if let Some(value) = parse_channel(text) {
-                    page.set_channel(index, value, Some(index), cx);
-                }
-            })
-            .on_focus_changed(cx, move |page, focused, cx| {
-                if !focused {
-                    page.sync_input(index, cx);
-                }
-            })
-            .on_submit(cx, move |page, _, cx| page.sync_input(index, cx))
-            .spawn(cx);
+        let input = crate::l10n::localize_field(
+            radix::TextField::new(format!("interactive-spaces-input-{index}"))
+                .look(look)
+                .surface()
+                .size(radix::TextFieldSize::Two)
+                .look_override(value_field_look(look))
+                .placeholder(format!("{} 0–1", CHANNELS[index]))
+                .value(format!("{:.3}", INITIAL[index]))
+                .full_width(true)
+                .select_all_on_tab_focus(true)
+                .validator(Arc::new(|text| parse_channel(text).is_some()))
+                .on_value_changed(cx, move |page, text, cx| {
+                    if let Some(value) = parse_channel(text) {
+                        page.set_channel(index, value, Some(index), cx);
+                    }
+                })
+                .on_focus_changed(cx, move |page, focused, cx| {
+                    if !focused {
+                        page.sync_input(index, cx);
+                    }
+                })
+                .on_submit(cx, move |page, _, cx| page.sync_input(index, cx))
+                .spawn(cx),
+            cx,
+        );
         let builder = ColorSliderBuilder::new(
             format!("interactive-spaces-slider-{index}"),
             INITIAL[index] as f32,
@@ -227,7 +230,7 @@ impl InteractiveSpaces {
         );
         let contour_toggle = radix::Switch::new("interactive-spaces-contour")
             .look(&look)
-            .label("sRGB out of gamut")
+            .content(crate::l10n::label("sRGB out of gamut"))
             .checked(true)
             .on_value_changed(cx, |this: &mut Self, enabled, cx| {
                 this.field_settings.set_contour(enabled);
@@ -247,7 +250,7 @@ impl InteractiveSpaces {
         let reset_button = radix::Button::new("interactive-spaces-reset")
             .look(&look)
             .outline()
-            .label("Reset")
+            .content(crate::l10n::label("Reset"))
             .on_click(cx, |this: &mut Self, cx| {
                 if let Ok(rgb) =
                     source_field::convert_rgb(INITIAL, source_field::SPACES[0], this.field_settings.source_space())

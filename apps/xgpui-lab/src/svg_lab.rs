@@ -278,7 +278,7 @@ impl SvgPage {
                 radix::Button::new(format!("svg-lab-{action:?}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.action(action, cx))
                     .spawn(cx),
             )
@@ -423,7 +423,7 @@ impl SvgPage {
         .map(|(action, label, on)| {
             let switch = radix::Switch::new(format!("svg-switch-{action:?}"))
                 .look(&look)
-                .label(label)
+                .content(crate::l10n::label(label))
                 .checked(on)
                 .on_value_changed(cx, move |this: &mut Self, on, cx| {
                     if this.switch_value(action) != on {

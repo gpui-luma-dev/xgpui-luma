@@ -338,7 +338,7 @@ impl Page {
                 radix::Button::new(format!("bench-{suite:?}-{index}"))
                     .look(&look)
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.start(job, None, cx))
                     .spawn(cx)
             })
@@ -346,14 +346,14 @@ impl Page {
         let cancel_button = radix::Button::new("bench-cancel")
             .look(&look)
             .outline()
-            .label("Stop")
+            .content(crate::l10n::label("Stop"))
             .enabled(false)
             .on_click(cx, |this: &mut Self, cx| this.stop(cx))
             .spawn(cx);
         let reveal = radix::Button::new("bench-reveal")
             .look(&look)
             .outline()
-            .label("Reveal results")
+            .content(crate::l10n::label("Reveal results"))
             .on_click(cx, |this: &mut Self, cx| {
                 if let Some(path) = &this.output {
                     cx.reveal_path(path);
@@ -363,7 +363,7 @@ impl Page {
         let export_button = radix::Button::new("svg-export")
             .look(&look)
             .outline()
-            .label("Export…")
+            .content(crate::l10n::label("Export…"))
             .on_click(cx, |this: &mut Self, cx| this.export_svg(cx))
             .spawn(cx);
         let svg_raster_view = crate::lab_controls::Segmented::new(
@@ -636,7 +636,7 @@ impl Page {
         }
         self.status = "Stopping active workers…".into();
         self.cancel_button.update(cx, |button, cx| {
-            button.set_label("Stopping…", cx);
+            button.set_presenter(std::sync::Arc::new(crate::l10n::label("Stopping…")), cx);
             button.set_enabled(false, cx);
         });
         cx.notify();
@@ -675,7 +675,7 @@ impl Page {
         self.svg_started = Some(Instant::now());
         self.busy = true;
         self.cancel_button.update(cx, |button, cx| {
-            button.set_label("Stop", cx);
+            button.set_presenter(std::sync::Arc::new(crate::l10n::label("Stop")), cx);
             button.set_enabled(true, cx);
         });
         self.status = "Preparing benchmark…".into();
@@ -828,7 +828,7 @@ impl Page {
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
                 this.cancel_button.update(cx, |button, cx| {
-                    button.set_label("Stop", cx);
+                    button.set_presenter(std::sync::Arc::new(crate::l10n::label("Stop")), cx);
                     button.set_enabled(false, cx);
                 });
                 if in_memory {
@@ -897,12 +897,12 @@ impl Render for Page {
         let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
             .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>""})
-            .child(self.status.clone()).when_some(self.output.as_ref(),|root,output|root.child(format!("Results: {}",output.display())).child(self.reveal.clone()))
+            .child(crate::l10n::ui(self.status.clone())).when_some(self.output.as_ref(),|root,output|root.child(crate::l10n::ui(format!("Results: {}",output.display()))).child(self.reveal.clone()))
             .children(self.results.iter().map(|result|{
-                let mut row=div().flex().flex_col().gap_2().child(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown")));
+                let mut row=div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown"))));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
                 if let Some(errors)=result["errors"].as_array(){for error in errors{row=row.child(error.to_string());}}
-                if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(format!("Raster median: {ms:.3} ms · {}×{} pixels",result["pixel_width"],result["pixel_height"]));}
+                if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(crate::l10n::ui(format!("Raster median: {ms:.3} ms · {}×{} pixels",result["pixel_width"],result["pixel_height"])));}
                 if let Some(previews)=result["previews"].as_array(){for path in previews.iter().filter_map(Value::as_str){row=row.child(img(PathBuf::from(path)).max_w(px(760.)));}}row
             }));
         div()

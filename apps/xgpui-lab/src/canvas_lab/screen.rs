@@ -47,7 +47,7 @@ impl Controls {
             radix::Button::new(format!("canvas-{id}"))
                 .look(look)
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |lab: &mut Lab, cx| {
                     lab.cancel_interaction();
                     action(lab, cx);
@@ -95,7 +95,7 @@ impl Controls {
         });
         let preview = radix::Switch::new("canvas-preview-switch")
             .look(look)
-            .label("Preview")
+            .content(crate::l10n::label("Preview"))
             .checked(false)
             .on_value_changed(cx, |lab: &mut Lab, on, cx| {
                 lab.cancel_interaction();

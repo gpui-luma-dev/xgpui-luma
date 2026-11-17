@@ -137,7 +137,7 @@ impl Page {
             radix::Button::new(format!("interop-action-{index}"))
                 .look(&look)
                 .outline()
-                .label(label)
+                .content(crate::l10n::label(label))
                 .on_click(cx, move |this: &mut Self, cx| {
                     match index {
                         0 => this.start(cx),
@@ -167,11 +167,11 @@ impl Page {
         .collect();
         let pause = radix::Switch::new("interop-pause")
             .look(&look)
-            .label(if kind == Kind::Workbench {
+            .content(crate::l10n::label(if kind == Kind::Workbench {
                 "Demo strokes"
             } else {
                 "Paused"
-            })
+            }))
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, paused, cx| {
                 if this.kind == Kind::Workbench {
@@ -270,7 +270,7 @@ impl Page {
         }
         let compare_control = radix::Switch::new("workbench-compare")
             .look(&look)
-            .label("Compare wide | sRGB")
+            .content(crate::l10n::label("Compare wide | sRGB"))
             .checked(false)
             .on_value_changed(cx, |this: &mut Self, compare, cx| {
                 this.compare = compare;
@@ -283,7 +283,7 @@ impl Page {
                 .enumerate()
                 .map(|(index, (name, color))| {
                     let owner = cx.weak_entity();
-                    radix::Button::new(format!("workbench-swatch-{index}"))
+                    let button = radix::Button::new(format!("workbench-swatch-{index}"))
                         .look(&look)
                         .outline()
                         .content(move |_, cx| {
@@ -310,7 +310,8 @@ impl Page {
                             }
                             cx.notify();
                         })
-                        .spawn(cx)
+                        .spawn(cx);
+                    crate::l10n::name_button(button, name, cx)
                 })
                 .collect()
         } else {
@@ -865,7 +866,7 @@ impl Render for Page {
                     .child(
                         div()
                             .w(px(160.))
-                            .child(format!("Speed {:.2}×", self.settings.speed))
+                            .child(crate::l10n::ui(format!("Speed {:.2}×", self.settings.speed)))
                             .child(self.sliders[0].clone()),
                     )
                     .child(self.buttons[6].clone()),

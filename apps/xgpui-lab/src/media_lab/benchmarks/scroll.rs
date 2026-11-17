@@ -327,12 +327,15 @@ impl Render for ScrollPerf {
             } else {
                 0x22303a
             }));
-            card =
-                card.child(div().w(px(150.)).child(format!("Card {} · source {}\n3072 × 2048", index + 1, source + 1)));
+            card = card.child(div().w(px(150.)).child(crate::l10n::ui(format!(
+                "Card {} · source {}\n3072 × 2048",
+                index + 1,
+                source + 1
+            ))));
             if let Some(image) = &self.images[source] {
                 card = card.child(image_view(image.clone()).w(px(900.)).h(px(260.)).rounded(px(12.)));
             } else {
-                card = card.child("Loading generated large image…");
+                card = card.child(crate::l10n::ui("Loading generated large image…"));
             }
             card
         });
@@ -344,14 +347,16 @@ impl Render for ScrollPerf {
             .gap_2()
             .bg(rgb(0x101820))
             .text_color(rgb(0xe8eef4))
-            .child(format!(
+            .child(crate::l10n::ui(format!(
                 "60 Hz baseline · {} · {} replacements · {} errors · {:.1}s",
                 self.phase(),
                 self.report.replacements_completed,
                 self.report.errors.len(),
                 self.started.elapsed().as_secs_f32()
+            )))
+            .child(crate::l10n::ui(
+                "24 scrolling cards · four 3072×2048 sources · one upload / 33 MiB per scene · keep foreground",
             ))
-            .child("24 scrolling cards · four 3072×2048 sources · one upload / 33 MiB per scene · keep foreground")
             .child(thumbnails)
             .child(
                 div()
