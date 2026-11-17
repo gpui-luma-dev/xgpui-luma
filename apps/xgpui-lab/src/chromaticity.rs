@@ -68,6 +68,9 @@ fn primaries(space: RgbSpace) -> ImagePrimaries {
         RgbSpace::DisplayP3 => ImagePrimaries::DisplayP3,
         RgbSpace::AdobeRgb1998 => ImagePrimaries::AdobeRgb1998,
         RgbSpace::Rec2020 => ImagePrimaries::Rec2020,
+        RgbSpace::ProPhotoRgb => ImagePrimaries::ProPhotoRgb,
+        // RgbSpace is non_exhaustive; the lab only offers the spaces above.
+        other => unreachable!("no image primaries for {other:?}"),
     }
 }
 #[derive(Clone)]

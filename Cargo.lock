@@ -7147,9 +7147,9 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xgpui"
-version = "4.0.0"
+version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "264654b0568504ad48db5b7c29b4e7301bff601be7764946a2fe55114eb94f70"
+checksum = "a51cb01ebe27d218611a93aaebbd274f2d1e87e6c9e2be213e0de98df6ddb228"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -7206,6 +7206,7 @@ dependencies = [
  "taffy",
  "thiserror 2.0.20",
  "ttf-parser",
+ "unicode-bidi",
  "unicode-segmentation",
  "url",
  "usvg",
@@ -7219,9 +7220,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-apple"
-version = "5.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6f95103f6a9f44b06ecfc9f06f74850b92080d67020c339780ed9336c0aca33"
+checksum = "1b5c68e36cdf49134b4e9503ca1c32f85fa25d49b24a0d7631f12bee31628305"
 dependencies = [
  "anyhow",
  "async-task",
@@ -7260,9 +7261,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-canvas"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62a02572b01abf00b0a841cb9903f128975b1acff561c0f5702dcb102c416d57"
+checksum = "be58d4577271581c80c81c358b6a5b40a7b8080ead0d154fcada6c3a7ca8b024"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7272,18 +7273,18 @@ dependencies = [
 
 [[package]]
 name = "xgpui-color"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4d498c2f002a7f79e453364c93bfcc1bba504a26b3179dd0c621abd77f9db64"
+checksum = "3a42c0f68c3cba46b4889b53618d0bc5601128aff018467b547dd9953c8f6e72"
 dependencies = [
  "moxcms",
 ]
 
 [[package]]
 name = "xgpui-gamut"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42ae4822d99c0f54f54aed71b14ac46fc879c5f839455deb9b334719c284796e"
+checksum = "cf3824afc61c044e9dd55f39987a66a0d0a415d31ac61f4b57de2ef5a5b8dcda"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7297,9 +7298,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-gpu-interop"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99a8d496b6bf2bfa75818a4545f8d31b587aaa1d408e040927601fb42ea9954a"
+checksum = "7fdbc90618fa4b236ed6ba40d140b408b9a4409ad4057bd2a127dea05d03a497"
 dependencies = [
  "anyhow",
  "ash",
@@ -7317,9 +7318,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-ios"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "535c2582b4cfbc597c1a6036f8747a10f827132d0d8aa5d1db92eaf1d02b0738"
+checksum = "5f24269f3bd3a2278f57c61196a1f940dd166c3074e0740f1a3f20a7b2705a87"
 dependencies = [
  "anyhow",
  "block2 0.6.2",
@@ -7392,9 +7393,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-linux"
-version = "3.0.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67e55e7e3ae2b23a28ed54b7e33861fe465e3790849ef97751b609c0824a2df0"
+checksum = "6c819222b2e9f77691bae7fe30597b79a5bac5c5883bba7ceb2db0479e806f3c"
 dependencies = [
  "accesskit",
  "accesskit_unix",
@@ -7498,9 +7499,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macos"
-version = "5.0.0"
+version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a93332c684fbb4ef3b2ae99c05f3861cab9deac46b767d5a4b01bca815a5ff0c"
+checksum = "3b9232fef7a07455b25740c0c4549abb5e55de5ef2fc87047c8ee228c56be0a5"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -7539,9 +7540,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macros"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc005b8fbf72b867b7a38c19fc9897b3cdedf98b6df5f2d216249eddcbbafa52"
+checksum = "89dd26466fd588f29c7a93f363222f6183827843b7cfcee9d71e01076b47515e"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -7551,9 +7552,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-media"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3534a1ccf7d025ca2de1ec38449409e7d33e7cf0fe8c59d379f8b0a25b6cc00e"
+checksum = "f74fdba5b0a6da70ba3976ef5a6c4ef26a7eed2ed3e815a79f365034e42cfde2"
 dependencies = [
  "anyhow",
  "half",
@@ -7570,9 +7571,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-parley"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64afd7ac7426c443954a271b9e977e2badfe10dc9f9cb940bdb2541016db4754"
+checksum = "2313b31072bbbe9959ad75f91fbceb55897b8fcd66de55c22ca2b536201df750"
 dependencies = [
  "anyhow",
  "parley",
@@ -7583,9 +7584,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-platform"
-version = "3.0.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11046cfaaab522077956ceab83f5415713235d287db8068204b209b6c02fc27a"
+checksum = "81fc4925823493ae60b7802ded024c38ef1b7fc3883a297101fe22ecf0c96219"
 dependencies = [
  "anyhow",
  "console_error_panic_hook",
@@ -7600,9 +7601,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-shader"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c555ce2bb0bc0c79bcd2028d65c8f3ee2a2b17fcda846bb75c7a5dbcd2443dcf"
+checksum = "1508f722fefe987031f78d4a162b7143a3f26cfec4acaa0e429731c6c208c61d"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -7623,9 +7624,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-shell"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd71e351d4156238fd20ed6b668273adb7c01d481606420e76857511c132af20"
+checksum = "b198cb5bbd26bf97ac54291ce71417e2609b3ab9477074f061f12d8db5222709"
 dependencies = [
  "anyhow",
  "xgpui",
@@ -7633,9 +7634,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-svg"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbcfc286eab413d3417843ff580592864eaec055d041be41f302f5b9f567ebc"
+checksum = "b4605aa74a24cd9970d59b7ca64afa4b7d72e21309c423acd7154913158fa4c6"
 dependencies = [
  "anyhow",
  "web-time",
@@ -7644,9 +7645,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-web"
-version = "3.0.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91373be5a883b1adfbd8526613588a42232edf05206408c4bc36426c7c6f4767"
+checksum = "a2bad7a8e43ab49169cdfc2f4c02da1b29afe4043b407bc9a4b66ccb82a19fe5"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -7674,9 +7675,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-wgpu"
-version = "3.0.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a300a55dfe56d31af950c2560f4158d94abfff8495bf7f160fe94d6382eb1dd"
+checksum = "13568f77a8a1abb68a618034c0c01292ecaadb4064e343da01f763ba49cb604f"
 dependencies = [
  "anyhow",
  "ash",
@@ -7704,9 +7705,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-windows"
-version = "3.0.0"
+version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4c9d2d0a3fea0d30b0e6a6571da007098cec039a771d1feafa1d9f15bb9bfca"
+checksum = "9d1923d4692a2a343eaae215d6011b330c03d9259d22bbc7606b4bc1cf545263"
 dependencies = [
  "accesskit",
  "accesskit_windows",

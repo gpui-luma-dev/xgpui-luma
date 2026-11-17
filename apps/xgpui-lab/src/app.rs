@@ -140,6 +140,7 @@ const SECTIONS: &[Section] = &[
             ("Text Shaping", "Text Shaping"),
             ("Line Layout", "Line Layout"),
             ("Paragraphs", "Paragraphs"),
+            ("Paragraph API", "Paragraph API"),
             ("Text Field", "Text Field"),
             ("Fonts & Fallback", "Fonts & Fallback"),
             ("Rasterization", "Rasterization"),

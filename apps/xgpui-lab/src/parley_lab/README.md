@@ -13,6 +13,12 @@ They run on a Parley-backed `TestAppContext`, and no window opens:
 cargo test -p xgpui-lab --features test-support --bin xgpui-lab text_field
 ```
 
+The same tests on GPUI's headless native text system (`just lab-parley-test-native`), whose fallback paragraphs align to the base direction but don't reorder mixed text (xgpui#325). Checks of bidirectional reordering skip there:
+
+```bash
+LAB_FIELD_TEXT_SYSTEM=native cargo test -p xgpui-lab --features test-support --bin xgpui-lab text_field
+```
+
 | File | Covers |
 |---|---|
 | `text_field/tests.rs` | editing, IME, selection, drag capture and autoscroll, text areas, per-line direction, options, look resolution, template chrome, accessibility, undo and redo, the lab page |
@@ -32,7 +38,7 @@ cargo test --release -p xgpui-lab --features test-support --bin xgpui-lab measur
 - `measure_long_one_line_field` covers 10 K, 100 K and 1 M characters.
 
 ### In the app
-The control needs the whole application on the Parley text system.
+The control works on any text system with GPUI paragraph layout (`paragraph_support().supports_layout()`). On Parley it is fully bidirectional. On native text systems it uses xgpui#325's fallback paragraphs: wrapping, carets, selection and editing work, and each line aligns to its base direction's start edge (right for Hebrew or `direction(RightToLeft)`), but mixed text keeps the native line order rather than full bidirectional layout.
 
 ```bash
 # Standalone Parley window, opened on the text field tabs
@@ -44,7 +50,7 @@ Its tabs are Text Fields, Text Right-to-left, Text Areas, Text Scrolling and Tex
 # The main XGPUI Lab on Parley: xgpui-parley › Text Field
 cargo run -p xgpui-lab -- --text-system=parley
 ```
-Without `--text-system=parley`, the Text Field tab explains how to relaunch.
+Without `--text-system=parley`, the Text Field tab edits through the native fallback, and its caption says so. Only a text system without paragraph layout gets the relaunch note.
 
 ## Public API
 
@@ -56,7 +62,7 @@ Without `--text-system=parley`, the Text Field tab explains how to relaunch.
 | Look (Radix-owned) | `look(&Look)`, `variant`, `classic`, `surface`, `soft`, `size(TextFieldSize)`, `look_override`, `with_template_modifier`, `theme` (an SDK-level escape hatch that skips the look) |
 | Content | `value`, `placeholder`, `font`, `rows(n)` (makes it a text area) |
 | Options (SDK names) | `enabled`, `prefix_icon`, `tab_stop`, `compact`, `full_width`, `clean_on_escape`, `select_all_on_tab_focus`, `propagate_home_end_to_parent`, `max_clipboard_paste_bytes`, `validator` |
-| Lab additions | `allow_tab_character`, `aria_label` |
+| Lab additions | `allow_tab_character`, `aria_label`, `direction(TextDirection)` (base direction of every line; `Auto` by default, so an empty or digits-only right-to-left field needs `RightToLeft`) |
 | Callbacks (SDK `EventCallbacks`) | `on_event`, `on_value_changed`, `on_submit`, `on_focus_changed`, `on_enabled_changed` |
 
 The look resolves in this order: the explicit `look`, then the ambient `Look` global, then `Look::built_in()`.

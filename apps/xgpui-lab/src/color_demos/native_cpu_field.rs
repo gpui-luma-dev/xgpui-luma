@@ -22,6 +22,9 @@ pub(super) fn primaries(source: usize) -> ImagePrimaries {
         xgpui_color::RgbSpace::DisplayP3 => ImagePrimaries::DisplayP3,
         xgpui_color::RgbSpace::Rec2020 => ImagePrimaries::Rec2020,
         xgpui_color::RgbSpace::AdobeRgb1998 => ImagePrimaries::AdobeRgb1998,
+        xgpui_color::RgbSpace::ProPhotoRgb => ImagePrimaries::ProPhotoRgb,
+        // RgbSpace is non_exhaustive; SPACES only lists the spaces above.
+        other => unreachable!("no image primaries for {other:?}"),
     }
 }
 

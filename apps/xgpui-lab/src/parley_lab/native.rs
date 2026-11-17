@@ -21,7 +21,6 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         Cow::Borrowed(paragraph::FONTS[1]),
     ])?;
     let name = backend.to_owned();
-    let parley_active = backend == "parley";
     let benchmark_output = output.clone();
     let report_backend = name.clone();
     application.run(move |cx| {
@@ -32,9 +31,6 @@ fn run_with_output(backend: &str, frames: usize, output: Option<std::path::PathB
         }
         xgpui_luma::focus::bind_default_focus_keys(cx);
         xgpui_luma::key_handling::bind_default_control_keys(cx);
-        if parley_active {
-            cx.set_global(ParleyTextSystemActive);
-        }
         // Install the lab look as the ambient one, as a shell does; looks resolve from it.
         cx.set_global(crate::theme::default_look().as_ref().clone());
         cx.on_action(crate::quit);
@@ -256,17 +252,14 @@ pub fn benchmark(backend: &str, mode: &str, output: &std::path::Path) -> Result<
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
-    use super::{Engine, FIRST_TEXT_TAB, NativeText, ParleyTextSystemActive, text_field};
+    use super::{Engine, FIRST_TEXT_TAB, NativeText, text_field};
     use gpui::{TestAppContext, TestDispatcher, px, size};
 
     #[test]
     fn each_text_field_screen_is_a_tab_of_the_window() {
         let backend = Engine::new().unwrap().backend.clone();
         let mut cx = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend);
-        cx.update(|cx| {
-            xgpui_luma::init(cx).unwrap();
-            cx.set_global(ParleyTextSystemActive);
-        });
+        cx.update(|cx| xgpui_luma::init(cx).unwrap());
         let window = cx.open_window(size(px(1100.0), px(850.0)), |_, cx| NativeText::new("parley".into(), 0, cx));
         let screens = text_field::page::Screen::ALL;
         let count = window.update(&mut cx, |text, _, _| text.buttons.len()).unwrap();

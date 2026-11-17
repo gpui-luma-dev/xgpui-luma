@@ -129,6 +129,12 @@ jobs:
         if: needs.scope.result != 'success' || needs.scope.outputs.native == 'true'
         run: cargo test --locked -p xgpui-lab --all-targets --features test-support,portable-app
 
+      - name: Test XGPUI Lab text field on the native text system
+        if: needs.scope.result != 'success' || needs.scope.outputs.native == 'true'
+        env:
+          LAB_FIELD_TEXT_SYSTEM: native
+        run: cargo test --locked -p xgpui-lab --bin xgpui-lab --features test-support,portable-app text_field
+
       # Only run doc-tests on library packages that actually contain documentation
       - name: Documentation tests
         timeout-minutes: 10
