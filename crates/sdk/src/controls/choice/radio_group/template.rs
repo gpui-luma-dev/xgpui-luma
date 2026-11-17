@@ -144,11 +144,6 @@ where
             row = row.flex_1().h_full();
         }
 
-        #[cfg(feature = "test-support")]
-        {
-            let index = item.index;
-            row = row.debug_selector(move || format!("radio-option-{index}"));
-        }
         if item.enabled {
             row = row.cursor_pointer();
         } else {
