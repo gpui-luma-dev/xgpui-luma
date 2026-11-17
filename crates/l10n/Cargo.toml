@@ -11,14 +11,24 @@ description = "Fluent localization and locale handling for XGPUI-Luma"
 [features]
 default = ["gpui"]
 gpui = ["dep:gpui"]
+build-support = ["dep:fluent-syntax"]
+
+[[bin]]
+name = "luma-l10n-check"
+path = "src/bin/check.rs"
+required-features = ["build-support"]
 
 [dependencies]
 fluent-bundle = "0.16"
+fluent-syntax = { version = "0.12", optional = true }
 icu_locale = "2.1"
 thiserror.workspace = true
 log = "0.4"
 sys-locale = "0.3"
 gpui = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = "3"
 
 [lints]
 workspace = true

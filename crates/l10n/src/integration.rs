@@ -1,5 +1,5 @@
 use gpui::{App, SharedString};
-use crate::{FluentArgs, LayoutDirection, Locale, Localizer};
+use crate::{FluentArgs, LayoutDirection, Locale, Localizer, Message};
 
 impl gpui::Global for Localizer {}
 
@@ -19,6 +19,8 @@ pub fn set_locale(locale: Locale, cx: &mut App) -> bool {
 pub trait L10nExt {
     fn tr(&self, id: &str) -> SharedString;
     fn tr_args(&self, id: &str, args: &FluentArgs<'_>) -> SharedString;
+    /// Translate a catalog-generated message with checked argument names.
+    fn tr_message(&self, message: Message<'_>) -> SharedString;
     fn locale(&self) -> Option<&Locale>;
     fn layout_direction(&self) -> LayoutDirection;
 }
@@ -36,6 +38,16 @@ impl L10nExt for App {
 
     fn locale(&self) -> Option<&Locale> {
         self.try_global::<Localizer>().map(Localizer::locale)
+    }
+
+    fn tr_message(&self, message: Message<'_>) -> SharedString {
+        match self.try_global::<Localizer>() {
+            Some(localizer) => localizer.format(message).into(),
+            None => message
+                .attribute
+                .map_or_else(|| message.id.to_owned(), |attr| format!("{}.{attr}", message.id))
+                .into(),
+        }
     }
 
     fn layout_direction(&self) -> LayoutDirection {

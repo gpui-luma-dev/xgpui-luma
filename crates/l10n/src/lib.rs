@@ -19,8 +19,9 @@
 //!
 //! With the `gpui` feature, install with `cx.set_global(localizer)`, translate
 //! through `L10nExt`, and switch with `set_locale`. SDK context integration,
-//! ICU number/date formatting, typed IDs, and resource validation tooling are
-//! subsequent slices of issue #225; this crate currently supplies the engine core.
+//! ICU number/date formatting and SDK context integration are subsequent slices
+//! of issue #225. The `build-support` feature provides resource checks and typed
+//! message constructors generated from the English catalog; see `build_support`.
 //!
 //! Resolve startup preferences with `LocaleRequest` before creating the localizer.
 //! Explicit CLI and saved-setting values are validated strictly. Unusable OS
@@ -31,6 +32,9 @@
 mod locale;
 mod localizer;
 mod selection;
+mod message;
+#[cfg(feature = "build-support")]
+pub mod build_support;
 #[cfg(feature = "gpui")]
 mod integration;
 
@@ -38,5 +42,6 @@ pub use fluent_bundle::{FluentArgs, FluentValue};
 pub use locale::{LayoutDirection, Locale};
 pub use localizer::{Error, Localizer};
 pub use selection::{LocaleRequest, LocaleSource, SelectedLocale};
+pub use message::Message;
 #[cfg(feature = "gpui")]
 pub use integration::{L10nExt, set_locale};

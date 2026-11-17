@@ -1,0 +1,27 @@
+name: Localization core
+
+# Keep checks opt-in, matching the repository's manual workflow policy.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resource-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check formatting
+        run: cargo fmt -p xgpui-luma-l10n --check
+      - name: Lint headless tools
+        run: cargo clippy -p xgpui-luma-l10n --no-default-features --features build-support --all-targets --locked -- -D warnings
+      - name: Test resource checks and generated consumer
+        run: cargo test -p xgpui-luma-l10n --no-default-features --features build-support --locked
+      - name: Test runtime without build tooling
+        run: cargo test -p xgpui-luma-l10n --no-default-features --locked
