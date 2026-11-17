@@ -215,7 +215,7 @@ impl Render for FeedbackSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(state),
+                            .child(crate::l10n::ui(state)),
                     ),
                 ))
                 .child(self.events.clone()),

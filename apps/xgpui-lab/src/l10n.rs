@@ -274,6 +274,8 @@ impl Render for Page {
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests;
+#[cfg(all(test, feature = "test-support"))]
+mod audit_tests;
 
 mod copy;
 pub(crate) use copy::{ui, data, label, resolve, number, row};

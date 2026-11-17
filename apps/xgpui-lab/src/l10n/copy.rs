@@ -79,8 +79,8 @@ pub(crate) fn ui(source: impl Into<SharedString>) -> UiText {
 pub(crate) fn data(source: impl Into<SharedString>) -> UiText {
     UiText { source: source.into(), kind: TextKind::Data }
 }
-impl RenderOnce for UiText {
-    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+impl UiText {
+    fn element(self, cx: &App) -> gpui::Div {
         let source = if self.kind == TextKind::Ui {
             resolve(&self.source, cx)
         } else {
@@ -91,10 +91,19 @@ impl RenderOnce for UiText {
         if let Some(language) = options.language {
             leaf = leaf.language(language);
         }
-        let rtl = options.direction == gpui::TextDirection::RightToLeft;
+        // Parley maps Left/Right to logical start/end. Only native fallback
+        // needs a physical right alignment for RTL UI.
+        let rtl = !crate::parley_lab::paragraph_api::typeset_active(cx)
+            && options.direction == gpui::TextDirection::RightToLeft;
         div().min_w_0().when(rtl, |text| text.text_right()).child(leaf)
     }
 }
+impl RenderOnce for UiText {
+    fn render(self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        self.element(cx)
+    }
+}
+
 pub(crate) fn label<M>(source: impl Into<SharedString>) -> impl Fn(&M, &mut App) -> AnyElement + Send + Sync + 'static {
     let source = source.into();
     move |_, cx| {
@@ -110,6 +119,29 @@ pub(crate) fn label<M>(source: impl Into<SharedString>) -> impl Fn(&M, &mut App)
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "test-support")]
+    #[test]
+    fn parley_rtl_keeps_logical_start_and_native_fallback_uses_physical_right() {
+        use gpui::{TestAppContext, TestDispatcher, TextAlign};
+        for parley in [false, true] {
+            let app = if parley {
+                let backend = crate::parley_lab::application_text_system().unwrap();
+                let app = TestAppContext::build_with_text_system(TestDispatcher::new(0), None, backend.clone());
+                app.update(|cx| crate::parley_lab::paragraph_api::install_typeset(backend, cx));
+                app
+            } else {
+                TestAppContext::single()
+            };
+            app.update(|cx| {
+                xgpui_luma_l10n::install(super::super::localizer("ar-XB".parse().unwrap()).unwrap(), cx).unwrap();
+                let mut element = ui("Reset canvas").element(cx);
+                let align = element.style().text.text_align;
+                // No physical override allows Parley's natural/start alignment.
+                assert_eq!(align, if parley { None } else { Some(TextAlign::Right) });
+            });
+        }
+    }
+
     #[test]
     fn formatted_copy_keeps_argument_boundaries_and_rejects_ambiguous_fields() {
         assert_eq!(capture("Frames: 12; GPU: 4.25 ms", &["Frames: ", "; GPU: ", " ms"]), Some(vec!["12", "4.25"]));
