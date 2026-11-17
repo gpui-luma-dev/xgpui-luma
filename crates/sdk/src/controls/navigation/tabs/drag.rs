@@ -1,4 +1,5 @@
 //! Same-strip keyed transactions. Content and focus stay owned by Tabs.
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 use std::rc::Rc;
 use gpui::{Context, Div, EntityId, SharedString, Stateful, Window, div, prelude::*, px};
 use crate::infra::drag_drop::{
@@ -214,15 +215,42 @@ impl Tabs {
         else {
             return strip;
         };
-        let mut left = inset;
-        let positions: Vec<_> = bounds
-            .iter()
-            .map(|bounds| {
-                let start = left;
-                left += bounds.size.width.as_f32() + gap;
-                (start, left - gap)
-            })
-            .collect();
+        let rtl = LocaleContext::current(cx).direction == LayoutDirection::Rtl;
+        let width = self.indicator_motion.list_bounds().map_or_else(
+            || {
+                bounds.iter().map(|b| b.size.width.as_f32()).sum::<f32>()
+                    + gap * bounds.len().saturating_sub(1) as f32
+                    + inset * 2.
+            },
+            |b| b.size.width.as_f32(),
+        );
+        let positions: Vec<_> = if let Some(strip_bounds) = self.indicator_motion.list_bounds() {
+            let scroll_x = self.drag_scroll.offset().x.as_f32();
+            // Work in logical content coordinates, independent of viewport scrolling.
+            bounds
+                .iter()
+                .map(|bounds| {
+                    let left = (bounds.left() - strip_bounds.left()).as_f32() - scroll_x;
+                    let right = left + bounds.size.width.as_f32();
+                    if rtl {
+                        (width - right, width - left)
+                    } else {
+                        (left, right)
+                    }
+                })
+                .collect()
+        } else {
+            // Custom strips without indicator geometry retain the intrinsic-width fallback.
+            let mut start = inset;
+            bounds
+                .iter()
+                .map(|b| {
+                    let left = start;
+                    start += b.size.width.as_f32() + gap;
+                    (left, start - gap)
+                })
+                .collect()
+        };
         for index in 0..=positions.len() {
             let previous = index.checked_sub(1).map(|i| positions[i]);
             let next = positions.get(index).copied();
@@ -233,6 +261,11 @@ impl Tabs {
                 (None, Some((l, _))) => l,
                 (Some((_, r)), None) => r,
                 _ => continue,
+            };
+            let (start, end, marker) = if rtl {
+                (width - end, width - start, width - marker)
+            } else {
+                (start, end, marker)
             };
             let before = self.items.get(index).map(|item| item.id().clone());
             let name: SharedString = before

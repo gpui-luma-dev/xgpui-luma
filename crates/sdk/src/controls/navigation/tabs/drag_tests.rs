@@ -412,3 +412,70 @@ fn native_drop_animates_positions_after_lifecycle_completion() {
     assert!(mid > old.left() && mid < end);
     cx.update(|_, cx| assert_eq!(tabs.read(cx).active_id().map(|id| id.as_ref()), Some("b")));
 }
+
+#[test]
+fn rtl_reorder_uses_logical_before_targets_and_preserves_active_identity() {
+    use crate::infra::locale::{LayoutDirection, LocaleContext, set_locale_context};
+    let mut app = TestAppContext::single();
+    app.update(|cx| set_locale_context(LocaleContext { direction: LayoutDirection::Rtl, ..Default::default() }, cx));
+    let (page, cx) = setup(&mut app, 0);
+    drag(cx, "a", "c", 0.2);
+    cx.update(|_, cx| {
+        let page = page.read(cx);
+        let tabs = page.tabs.read(cx);
+        assert_eq!(
+            tabs.items().iter().map(|item| item.id().as_ref()).collect::<Vec<_>>(),
+            ["b", "c", "a", "disabled", "menu"]
+        );
+        assert_eq!(tabs.active_id.as_deref(), Some("b"));
+        assert!(!page.events.iter().any(|event| matches!(
+            event,
+            TabsEvent::Change { .. } | TabsEvent::Activate { .. } | TabsEvent::Reactivate { .. }
+        )));
+    });
+}
+
+#[test]
+fn live_direction_reverses_tabs_and_arrows_and_keeps_indicator_on_active_item() {
+    use crate::infra::locale::{LayoutDirection, LocaleContext, set_locale_context};
+    use gpui::Focusable;
+    let mut app = TestAppContext::single();
+    let (page, cx) = setup(&mut app, 0);
+    let tabs = cx.update(|_, cx| page.read(cx).tabs.clone());
+    for direction in [LayoutDirection::Ltr, LayoutDirection::Rtl, LayoutDirection::Ltr] {
+        tabs.update(cx, |tabs, cx| tabs.set_active("b", cx));
+        cx.update(|window, cx| tabs.read(cx).group.read(cx).focus_handle(cx).focus(window, cx));
+        let events_before = cx.update(|_, cx| {
+            page.read(cx).events.iter().filter(|event| matches!(event, TabsEvent::Change { .. })).count()
+        });
+        cx.update(|_, cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+        cx.run_until_parked();
+        let a = cx.debug_bounds("tab-drag-a").unwrap();
+        let c = cx.debug_bounds("tab-drag-c").unwrap();
+        assert_eq!(a.left() < c.left(), direction == LayoutDirection::Ltr);
+        cx.update(|_, cx| {
+            let view = tabs.read(cx);
+            assert_eq!(view.active_id.as_deref(), Some("b"));
+            let paint = view.indicator_motion.paint().unwrap();
+            let list = view.indicator_motion.list_bounds().unwrap();
+            let b = view.item_bounds[1].unwrap();
+            assert!(list.left() + px(paint.left) >= b.left());
+            assert!(list.left() + px(paint.left + paint.width) <= b.right() + px(1.));
+            assert_eq!(
+                page.read(cx).events.iter().filter(|event| matches!(event, TabsEvent::Change { .. })).count(),
+                events_before
+            );
+        });
+        cx.simulate_keystrokes("right");
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert_eq!(
+                tabs.read(cx).active_id.as_deref(),
+                Some(if direction == LayoutDirection::Rtl { "a" } else { "c" })
+            )
+        });
+        cx.simulate_keystrokes("left");
+        cx.run_until_parked();
+        cx.update(|_, cx| assert_eq!(tabs.read(cx).active_id.as_deref(), Some("b")));
+    }
+}

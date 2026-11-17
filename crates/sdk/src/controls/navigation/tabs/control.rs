@@ -95,6 +95,7 @@ impl Tabs {
                 cx.weak_entity(),
             ));
 
+        group_builder.model.locale_navigation = true;
         if let Some(active_id) = model.active_id {
             group_builder = group_builder.selected(active_id);
         }

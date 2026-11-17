@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -294,7 +295,7 @@ impl TabsTemplate for ThemedTabsTemplate {
             .id(model.id.clone())
             .relative()
             .flex()
-            .flex_row()
+            .flex_row_logical(LocaleContext::current(cx).direction)
             .items_center()
             .gap(px(list_look.gap))
             .p(px(list_look.padding))
@@ -390,6 +391,7 @@ impl TabsTemplate for ThemedTabsTemplate {
             root = root.child(
                 div()
                     .absolute()
+                    .debug_selector(|| "tabs-active-indicator".into())
                     .left(px(indicator.left))
                     .bottom(px(0.0))
                     .w(px(indicator.width))
@@ -636,8 +638,12 @@ fn tab_button_model(
         id: format!("{}-tab-{}", navigation_id, item.id).into(),
         data: TabsButtonData { look, disclosure_icons },
         icon: None,
-        content: Arc::new(move |model, _| {
-            let mut label_content = div().flex().items_center().gap(px(model.data.look.accessory_gap));
+        content: Arc::new(move |model, cx| {
+            let mut label_content = div()
+                .flex()
+                .flex_row_logical(LocaleContext::current(cx).direction)
+                .items_center()
+                .gap(px(model.data.look.accessory_gap));
             if let Some((x, y, background, radius)) = inner_background {
                 label_content = label_content.px(px(x)).py(px(y)).rounded(px(radius));
                 if let Some(background) = background {
