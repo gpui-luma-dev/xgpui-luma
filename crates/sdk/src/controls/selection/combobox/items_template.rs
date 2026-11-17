@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, SharedString, Stateful, div, prelude::*, px};
@@ -124,6 +125,7 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
     ) -> Stateful<gpui::Div> {
         let ComboBoxItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
         let look = &model.look;
+        let direction = LocaleContext::current(cx).direction;
 
         let mut root =
             div().id((model.menu_id.clone(), 0usize)).relative().flex().flex_col().w_full().p(px(look.padding));
@@ -159,12 +161,17 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
                     cx,
                 )
             } else {
-                div().flex_1().child(item.label.clone()).into_any_element()
+                div()
+                    .flex_1()
+                    .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+                    .child(item.label.clone())
+                    .into_any_element()
             };
 
             let mut row = div()
                 .id(("row", visible_index))
                 .flex()
+                .flex_row_logical(direction)
                 .items_center()
                 .min_h(px(look.item_height))
                 .px(px(look.item_padding_x))

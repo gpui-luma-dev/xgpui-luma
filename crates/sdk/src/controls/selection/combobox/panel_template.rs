@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Bounds, Pixels, SharedString, anchored, deferred, div, point, prelude::*, px};
@@ -74,15 +75,20 @@ where
 }
 
 impl ComboBoxPanelTemplate for DefaultComboBoxPanelTemplate {
-    fn render(&self, model: ComboBoxPanelRenderModel<'_>, _cx: &mut App) -> AnyElement {
+    fn render(&self, model: ComboBoxPanelRenderModel<'_>, cx: &mut App) -> AnyElement {
+        let rtl = LocaleContext::current(cx).direction == LayoutDirection::Rtl;
         if let Some(bounds) = model.popup_bounds {
             let look = model.popup_look;
 
             return deferred(
                 anchored()
                     .snap_to_window_with_margin(px(look.window_margin))
-                    .anchor(gpui::Anchor::TopLeft)
-                    .position(point(bounds.left(), bounds.bottom()))
+                    .anchor(if rtl {
+                        gpui::Anchor::TopRight
+                    } else {
+                        gpui::Anchor::TopLeft
+                    })
+                    .position(point(if rtl { bounds.right() } else { bounds.left() }, bounds.bottom()))
                     .offset(point(px(0.0), px(look.popup_offset_y)))
                     .child(
                         div()

@@ -15,6 +15,7 @@ pub type TextFieldLookOverride = Arc<dyn Fn(TextFieldLook) -> TextFieldLook + Se
 pub struct TextFieldModel {
     pub(crate) id: SharedString,
     pub(crate) placeholder: SharedString,
+    pub(crate) content_insets: (f32, f32),
     pub(crate) value: SharedString,
     pub(crate) prefix_icon: Option<ControlIcon>,
     pub(crate) enabled: bool,
@@ -34,6 +35,9 @@ pub struct TextFieldModel {
 pub struct TextFieldRenderModel<'a> {
     pub id: &'a SharedString,
     pub placeholder: &'a SharedString,
+    /// Extra physical (left, right) editor padding reserved by composite controls.
+    /// Custom templates should add these to the look's horizontal padding.
+    pub content_insets: (f32, f32),
     pub value: &'a SharedString,
     pub prefix_icon: Option<&'a ControlIcon>,
     pub size: ControlSize,
@@ -125,6 +129,7 @@ impl TextFieldBuilder {
             model: TextFieldModel {
                 id: id.into(),
                 placeholder: SharedString::default(),
+                content_insets: (0.0, 0.0),
                 value: SharedString::default(),
                 prefix_icon: None,
                 enabled: true,
