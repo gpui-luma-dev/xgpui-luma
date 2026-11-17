@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use gpui::{App, Div, Hsla, Stateful, Window, div, hsla, px, prelude::*};
 
 use crate::infra::shadow_layout::should_paint_shadow;
@@ -50,6 +51,7 @@ fn lerp_switch_palette(off: &SwitchPalette, on: &SwitchPalette, progress: f32) -
 
 impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
     fn render(&self, model: &ButtonRenderModel<SwitchData>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+        let direction = LocaleContext::current(cx).direction;
         let progress = model.data.progress;
         let checked = model.data.checked;
         let focused = model.state.focused && !model.state.disabled;
@@ -84,7 +86,12 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
             SwitchOrientation::Horizontal => {
                 let thumb_left_off = scale.track_padding;
                 let thumb_left_on = scale.track_width - scale.thumb_size - scale.track_padding;
-                let thumb_left = snap_to_pixel(lerp_f32(thumb_left_off, thumb_left_on, progress), scale_factor);
+                let position = if direction == LayoutDirection::Rtl {
+                    1.0 - progress
+                } else {
+                    progress
+                };
+                let thumb_left = snap_to_pixel(lerp_f32(thumb_left_off, thumb_left_on, position), scale_factor);
                 let thumb_top = snap_to_pixel(
                     ((scale.track_height - scale.thumb_size) * 0.5 - self.theme.metrics().border_width.default)
                         .max(0.0),
@@ -106,6 +113,7 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
 
         let mut thumb = div()
             .id("thumb")
+            .debug_selector(|| "switch-thumb".into())
             .absolute()
             .left(px(thumb_left))
             .top(px(thumb_top))
@@ -141,6 +149,7 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
 
         let mut track_visual = div()
             .id("track")
+            .debug_selector(|| "switch-track".into())
             .relative()
             .w(px(scale.track_width))
             .h(px(scale.track_height))
@@ -189,13 +198,21 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
         };
 
         let indicator_only = matches!(model.role, crate::controls::button_family::ButtonFamilyRole::Icon);
-        let mut control =
-            div().id((model.id.clone(), 0usize)).relative().flex().items_center().rounded(px(track_radius));
+        let mut control = div()
+            .id((model.id.clone(), 0usize))
+            .relative()
+            .flex()
+            .flex_row_logical(direction)
+            .items_center()
+            .rounded(px(track_radius));
 
         if indicator_only {
             control = control.child(track);
         } else {
-            let label = div().mt(px(scale.label_baseline_shift)).child((model.content)(&content_model, cx));
+            let label = div()
+                .debug_selector(|| "switch-label".into())
+                .mt(px(scale.label_baseline_shift))
+                .child((model.content)(&content_model, cx));
             control = control
                 .gap(px(scale.gap))
                 .text_color(settled_palette.label_color)
