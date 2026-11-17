@@ -5,6 +5,7 @@ use gpui::{
     prelude::*, px,
 };
 use crate::infra::icon::{IconSource, render_icon_source};
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use super::item_template::{SelectorItemRenderModel, SelectorItemTemplate};
 use super::model::{SelectorItemLike, SelectorPath};
 use crate::infra::state::ControlFocusState;
@@ -249,6 +250,7 @@ where
         let SelectorItemsTemplateHandlers { item_hovers, item_mouse_downs, item_clicks, scroll_wheel, popup_geometry } =
             handlers;
         let look = &model.look;
+        let direction = LocaleContext::current(cx).direction;
         let content_max_height = (model.max_height - px((look.padding + look.border_width) * 2.0)).max(px(0.0));
         let mut rows = div().relative().flex().flex_col().w_full();
 
@@ -323,15 +325,29 @@ where
             } else {
                 div()
                     .flex()
+                    .flex_row_logical(direction)
                     .items_center()
                     .gap(px(look.item_gap))
-                    .child(div().flex_1().child(item.label().clone()))
+                    .child(
+                        div()
+                            .flex_1()
+                            .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+                            .child(item.label().clone()),
+                    )
                     .into_any_element()
             };
 
+            let content_slot = div().flex_1().child(content);
+            let selection_slot =
+                div().child(render_selection_checkmark(selected, color, look.item_icon_size, model.selection_icon));
+            #[cfg(feature = "test-support")]
+            let content_slot = content_slot.debug_selector(move || format!("selector-row-content-{index}"));
+            #[cfg(feature = "test-support")]
+            let selection_slot = selection_slot.debug_selector(move || format!("selector-row-check-{index}"));
             let mut row = div()
                 .id((item.id().clone(), 0usize))
                 .flex()
+                .flex_row_logical(direction)
                 .items_center()
                 .gap(px(look.item_gap))
                 .min_h(px(look.item_height))
@@ -342,8 +358,12 @@ where
                 .text_size(px(look.item_typography.size))
                 .line_height(px(look.item_typography.line_height))
                 .font_weight(look.item_typography.weight)
-                .child(div().flex_1().child(content))
-                .child(render_selection_checkmark(selected, color, look.item_icon_size, model.selection_icon));
+                .child(content_slot)
+                .child(selection_slot);
+            #[cfg(feature = "test-support")]
+            {
+                row = row.debug_selector(move || format!("selector-row-{index}"));
+            }
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
