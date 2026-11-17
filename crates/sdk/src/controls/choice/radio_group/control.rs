@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use gpui::{
     AnyElement, App, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, ParentElement, Render,
     SharedString, Subscription, Window, div,

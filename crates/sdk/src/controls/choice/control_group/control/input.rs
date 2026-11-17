@@ -396,6 +396,12 @@ where
         }
     }
 
+    fn horizontal_rtl(&self, cx: &App) -> bool {
+        self.model.locale_navigation
+            && self.model.layout == super::super::model::ControlGroupLayout::Horizontal
+            && crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl
+    }
+
     pub(super) fn handle_select_previous_item(
         &mut self,
         _: &SelectPreviousItem,
@@ -403,13 +409,23 @@ where
         cx: &mut Context<Self>,
     ) {
         if self.group_handles_arrow_action(ControlGroupArrowAxis::Horizontal, window, cx) {
-            self.move_active(ControlGroupDirection::Previous, window, cx);
+            let direction = if self.horizontal_rtl(cx) {
+                ControlGroupDirection::Next
+            } else {
+                ControlGroupDirection::Previous
+            };
+            self.move_active(direction, window, cx);
         }
     }
 
     pub(super) fn handle_select_next_item(&mut self, _: &SelectNextItem, window: &mut Window, cx: &mut Context<Self>) {
         if self.group_handles_arrow_action(ControlGroupArrowAxis::Horizontal, window, cx) {
-            self.move_active(ControlGroupDirection::Next, window, cx);
+            let direction = if self.horizontal_rtl(cx) {
+                ControlGroupDirection::Previous
+            } else {
+                ControlGroupDirection::Next
+            };
+            self.move_active(direction, window, cx);
         }
     }
 
