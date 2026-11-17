@@ -14,7 +14,7 @@ use crate::controls::pager::{
 
 use super::control::{TableControl, TableEvent};
 use super::model::TableBuilder;
-use crate::infra::locale::LocaleContext;
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 
 pub type PagingTable<T> = Entity<PagingTableControl<T>>;
 
@@ -130,6 +130,7 @@ impl<T: 'static> PagerTemplate for TablePagerTemplate<T> {
         window: &mut Window,
         cx: &mut App,
     ) -> gpui::AnyElement {
+        let direction = LocaleContext::current(cx).direction;
         let look = self.theme.resolve(model.enabled, PagerStyle::MinimalEdge);
         let page_size_label = model
             .page_size_label()
@@ -152,6 +153,7 @@ impl<T: 'static> PagerTemplate for TablePagerTemplate<T> {
             .w_full()
             .flex_none()
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .justify_between()
             .gap(px(look.group_gap))
@@ -164,22 +166,28 @@ impl<T: 'static> PagerTemplate for TablePagerTemplate<T> {
                 div()
                     .flex_none()
                     .flex()
+                    .flex_row_logical(direction)
                     .items_center()
                     .gap(px(look.group_gap))
-                    .child(div().flex_none().flex().items_center().gap(px(look.page_size_label_gap)).when(
-                        !model.page_size_options.is_empty(),
-                        |slot| {
-                            slot.child(
-                                div()
-                                    .flex_none()
-                                    .text_color(look.muted_text)
-                                    .text_size(px(look.typography.size))
-                                    .line_height(px(look.typography.line_height))
-                                    .child(page_size_label.clone()),
-                            )
-                            .child(render_page_size_select(model, &look, &handlers, cx))
-                        },
-                    ))
+                    .child(
+                        div()
+                            .flex_none()
+                            .flex()
+                            .flex_row_logical(direction)
+                            .items_center()
+                            .gap(px(look.page_size_label_gap))
+                            .when(!model.page_size_options.is_empty(), |slot| {
+                                slot.child(
+                                    div()
+                                        .flex_none()
+                                        .text_color(look.muted_text)
+                                        .text_size(px(look.typography.size))
+                                        .line_height(px(look.typography.line_height))
+                                        .child(page_size_label.clone()),
+                                )
+                                .child(render_page_size_select(model, &look, &handlers, cx))
+                            }),
+                    )
                     .child(render_page_indicator(model, &look, cx))
                     .child(render_nav_group(model, &look, &self.theme, &handlers, true, window, cx)),
             )
