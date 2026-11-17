@@ -2,6 +2,7 @@
 mod samples;
 mod timings;
 mod paragraph;
+pub(crate) mod paragraph_api;
 mod raster;
 pub(crate) mod native;
 mod workload;
@@ -20,15 +21,9 @@ use xgpui_luma::{
 use xgpui_luma_look_radix::{self as radix, Look};
 use crate::theme::ColorVizLookExt;
 
-/// Present when the whole application runs on the Parley text system
-/// (`--text-system=parley`, or the standalone `--native-text-backend=parley`
-/// window). Controls that edit through GPUI's paragraph API need it.
-pub(crate) struct ParleyTextSystemActive;
-impl Global for ParleyTextSystemActive {}
-
 /// The Parley text system for a whole application, with the lab's sample fonts
 /// (system fonts are found through Parley's `system-fonts` feature).
-pub(crate) fn application_text_system() -> Result<Arc<dyn PlatformTextSystem>> {
+pub(crate) fn application_text_system() -> Result<Arc<xgpui_parley::ParleyTextSystem>> {
     Ok(Engine::new()?.backend.clone())
 }
 
@@ -65,6 +60,8 @@ pub struct ParleyPage {
     look: Arc<Look>,
     engine: Result<Rc<Engine>>,
     paragraph: Option<Entity<paragraph::ParagraphLab>>,
+    /// GPUI's paragraph API on the application's own text system.
+    paragraph_api: Entity<paragraph_api::ParagraphApiPage>,
     line: Option<Entity<line::LinePage>>,
     /// The Parley text field and text area, in the application's active look.
     text_field: Entity<text_field::page::TextFieldPage>,
@@ -97,9 +94,11 @@ impl ParleyPage {
             .ok()
             .map(|engine| cx.new(|cx| line::LinePage::new(engine.clone(), look.clone(), cx)));
         let text_field = cx.new(|cx| text_field::page::TextFieldPage::new(look.clone(), false, true, cx));
+        let paragraph_api = cx.new(|cx| paragraph_api::ParagraphApiPage::new(look.clone(), cx));
         let scroll = cx.new(|cx| {
             let mut page = workload::ScrollLab::new(
-                if cx.has_global::<ParleyTextSystemActive>() {
+                // Only the Parley engine reports bidirectional paragraphs here.
+                if cx.text_system().paragraph_support().supports_bidi() {
                     "Shell Parley backend"
                 } else {
                     "Shell native backend"
@@ -195,6 +194,7 @@ impl ParleyPage {
             paragraph,
             line,
             text_field,
+            paragraph_api,
             scroll,
             children: vec![],
             child_error: None,
@@ -389,6 +389,9 @@ impl Render for ParleyPage {
         }
         if self.active_tab == "Text Field" {
             return div().size_full().child(self.text_field.clone()).into_any_element();
+        }
+        if self.active_tab == "Paragraph API" {
+            return div().size_full().child(self.paragraph_api.clone()).into_any_element();
         }
         if self.active_tab == "Paragraphs" {
             return match &self.paragraph {

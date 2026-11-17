@@ -229,13 +229,14 @@ impl TextFieldPage {
 }
 
 impl Render for TextFieldPage {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if !cx.has_global::<crate::parley_lab::ParleyTextSystemActive>() {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let support = window.text_system().paragraph_support();
+        if !support.supports_layout() {
             return LabScreen::new("parley-fields", self.look.clone()).crumb("xgpui-parley", "Text Field").title("Text Field")
                 .lede("Explore editable text fields, text areas and mixed-direction input.")
-                .hero(Hero::full(div().flex().flex_col().gap_2().child(text(&self.look,TextRole::Name,"Parley backend required")).child(text(&self.look,TextRole::Caption,
-                    "These controls use GPUI’s paragraph API. Relaunch the application with the Parley text system to edit the samples."))))
-                .caption("Current application backend: native")
+                .hero(Hero::full(div().flex().flex_col().gap_2().child(text(&self.look,TextRole::Name,"Paragraph layout unavailable")).child(text(&self.look,TextRole::Caption,
+                    "These controls use GPUI’s paragraph API, which this text backend doesn't support. Relaunch the application with the Parley text system to edit the samples."))))
+                .caption("Current application backend: no paragraph support")
                 .section_panel(PanelShell::new("Launch command").child(text(&self.look,TextRole::Value,"cargo run -p xgpui-lab -- --text-system=parley")))
                 .note("The shaping, line layout and paragraph previews use an isolated Parley engine and remain available on the native backend.")
                 .into_any_element();
@@ -270,7 +271,15 @@ impl Render for TextFieldPage {
             .title("Text Field")
             .lede("Explore editable text fields, text areas and mixed-direction input.")
             .hero(Hero::full(div().id("parley-text-field-page").flex().flex_col().gap_4().children(rows)))
-            .caption(format!("{} · Parley application backend", screen.title()))
+            .caption(format!(
+                "{} · {}",
+                screen.title(),
+                if support.supports_bidi() {
+                    "bidirectional paragraphs (Parley)"
+                } else {
+                    "native fallback paragraphs: right-to-left lines align right; mixed text keeps the native line order"
+                }
+            ))
             .section_panel(
                 PanelShell::new("Events / live")
                     .child(properties(&self.look, [("Last event", self.last_event.clone())])),

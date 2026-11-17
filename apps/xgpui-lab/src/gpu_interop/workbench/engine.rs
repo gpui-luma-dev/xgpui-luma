@@ -727,7 +727,8 @@ impl Engine {
                 self.stats.publish_blocked += 1;
                 return Ok(());
             }
-            Err(error @ AcquireError::Invalidated) => return Err(error.into()),
+            // Invalidated, or a future non_exhaustive reason.
+            Err(error) => return Err(error.into()),
         };
         let index = slot.index();
         if gpu!(self).publish_binds[index].is_none() {

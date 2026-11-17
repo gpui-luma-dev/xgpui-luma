@@ -130,9 +130,9 @@ impl Render for FieldView {
                             window.request_animation_frame();
                         }
                     },
-                    move |bounds, _, window, _| {
+                    move |bounds, _, window, cx| {
                         if let Some(surface) = &surface {
-                            surface.paint(window, bounds, Corners::default());
+                            surface.paint(window, cx, bounds, Corners::default());
                             if surface.stats().waiting > 0 {
                                 window.request_animation_frame();
                             }

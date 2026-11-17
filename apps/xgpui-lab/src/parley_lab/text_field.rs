@@ -2,8 +2,8 @@
 //!
 //! Chrome and colors come from Luma's text field look (`TextFieldTheme`), as the
 //! SDK `TextField` resolves them; text layout, hit testing, carets, selection and
-//! visual movement come from the application's paragraph backend (Parley). The
-//! control therefore needs an application created with the Parley text system.
+//! visual movement come from the application's paragraph backend. The
+//! control also supports the native paragraph fallback.
 //!
 //! Positions are byte offsets with an affinity, so carets sit on cluster
 //! boundaries and keep their side at direction changes. Deletion removes whole
@@ -11,19 +11,19 @@
 //!
 //! One line (the default) scrolls sideways and Enter submits. With
 //! [`ParleyTextField::with_rows`] it is a text area: Parley wraps lines at the
-//! control width, Enter inserts a line break (stored as U+2028, Parley's line
-//! separator, and reported as `\n`), Up/Down keep the caret's horizontal
+//! control width, Enter inserts a line break (stored and reported as `\n`),
+//! Up/Down keep the caret's horizontal
 //! position, Home/End go to the visual line's ends and the content scrolls
 //! vertically.
 use std::{cell::Cell, ops::Range, sync::Arc, time::Duration};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use gpui::{
     Div, Role, Stateful, AnyElement, App, Bounds, ClipboardItem, ContentMask, Context, ElementInputHandler,
     EntityInputHandler, EventEmitter, DispatchPhase, FocusHandle, Focusable, Font, FontId, FontRun, Hsla, KeyDownEvent,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, Pixels, PlatformParagraphLayout,
-    Point, Render, SharedString, ScrollEvent, Task, TextAffinity, UTF16Selection, VisualDirection, Window, canvas, div,
-    fill, point, prelude::*, px, size,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, ParagraphPosition, ParagraphShapeOptions, Pixels,
+    PlatformParagraphLayout, Point, Render, SharedString, ScrollEvent, Task, TextAffinity, TextDirection,
+    UTF16Selection, VisualDirection, Window, canvas, div, fill, point, prelude::*, px, size,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use xgpui_luma::{
@@ -38,8 +38,6 @@ use xgpui_luma::{
     theme::{ControlSize, StandardBoxScale},
 };
 
-/// Bound on width doublings when measuring a one-line text.
-const MAX_MEASURE_DOUBLINGS: usize = 40;
 /// Keep this much room between the caret and the viewport edge when scrolling.
 const REVEAL_PADDING: f32 = 24.0;
 const CARET_BLINK: Duration = Duration::from_millis(500);
@@ -149,6 +147,11 @@ pub struct ParleyTextField {
     font: Font,
     /// Visible lines of a text area; `None` for a one-line field.
     rows: Option<usize>,
+    /// Base direction of every line; `Auto` takes each line's first strong character.
+    direction: TextDirection,
+    /// The text system honors `direction` (any paragraph layout: the native
+    /// fallback uses it for each line's start edge); set when laid out.
+    honors_direction: bool,
     enabled: bool,
     options: Options,
     invalid: bool,
@@ -207,17 +210,17 @@ fn byte_from_utf16(text: &str, utf16: usize) -> usize {
     text.len()
 }
 
-/// Parley's line break inside one paragraph.
-const LINE_SEPARATOR: char = '\u{2028}';
+/// Hard line break between the text area's independently laid out paragraphs.
+const LINE_SEPARATOR: char = '\n';
 
 /// A single-line field stores no line breaks.
 fn single_line(text: &str) -> String {
-    text.replace(['\r', '\n', LINE_SEPARATOR, '\u{2029}'], "")
+    text.replace(['\r', '\n', '\u{2028}', '\u{2029}'], "")
 }
 
-/// A text area stores every line break (CRLF, CR, LF, U+2029) as one separator.
+/// A text area normalizes CRLF, CR, U+2028 and U+2029 to LF.
 fn multi_line(text: &str) -> String {
-    text.replace("\r\n", "\n").replace(['\r', '\n', '\u{2029}'], &LINE_SEPARATOR.to_string())
+    text.replace("\r\n", "\n").replace(['\r', '\u{2028}', '\u{2029}'], "\n")
 }
 
 fn previous_grapheme(text: &str, index: usize) -> usize {
@@ -275,6 +278,8 @@ impl ParleyTextField {
             size: builder.size.control_size(),
             font: builder.font,
             rows: builder.rows,
+            direction: builder.direction,
+            honors_direction: false,
             enabled: builder.enabled,
             options: builder.options.clone(),
             invalid: false,
@@ -413,7 +418,7 @@ impl ParleyTextField {
     pub fn copy_selection(&self, cx: &mut Context<Self>) {
         let range = self.selected_range();
         if !range.is_empty() {
-            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].replace(LINE_SEPARATOR, "\n")));
+            cx.write_to_clipboard(ClipboardItem::new_string(self.value[range].to_owned()));
         }
     }
 
@@ -436,7 +441,7 @@ impl ParleyTextField {
 
     /// The text, with a text area's line breaks as `\n`.
     pub fn value(&self) -> String {
-        self.value.replace(LINE_SEPARATOR, "\n")
+        self.value.clone()
     }
 
     pub fn is_multiline(&self) -> bool {
@@ -453,7 +458,10 @@ impl ParleyTextField {
             single_line(text)
         };
         let tabs = self.options.allow_tab_character;
-        lines.chars().filter(|ch| !ch.is_control() || (tabs && *ch == '\t')).collect()
+        lines
+            .chars()
+            .filter(|ch| !ch.is_control() || (self.is_multiline() && *ch == LINE_SEPARATOR) || (tabs && *ch == '\t'))
+            .collect()
     }
 
     /// Logical selection as (anchor, caret) positions.
@@ -523,13 +531,22 @@ impl ParleyTextField {
             }
         };
         let width = viewport.max(px(1.0));
+        let options = self.shape_options();
         if self.is_multiline() {
-            // Each hard line is its own paragraph, with its own base direction,
-            // wrapped at the control width.
+            // Each hard line is its own paragraph, with its own base direction
+            // unless one is set, wrapped at the control width.
             let layouts = self
                 .value
                 .split(LINE_SEPARATOR)
-                .map(|line| system.layout_paragraph(line.to_owned().into(), font_size, &runs(line), width))
+                .map(|line| {
+                    system.layout_paragraph_with_options(
+                        line.to_owned().into(),
+                        font_size,
+                        &runs(line),
+                        &options,
+                        width,
+                    )
+                })
                 .collect::<Result<Vec<_>>>()?;
             return Ok(Arc::new(StackedLayout::new(self.value.clone(), LINE_SEPARATOR, font_size, layouts)?));
         }
@@ -539,7 +556,7 @@ impl ParleyTextField {
         let content = match self.measured.get() {
             Some((revision, font, size, content)) if (revision, font, size) == key => content,
             _ => {
-                let content = self.measure_line(&text, font_size, &runs, width, window)?;
+                let content = system.paragraph_content_widths_with_options(text.clone(), font_size, &runs, &options)?.1;
                 self.measured.set(Some((key.0, key.1, key.2, content)));
                 content
             }
@@ -550,35 +567,19 @@ impl ParleyTextField {
         } else {
             (content + px(1.0)).ceil()
         };
-        system.layout_paragraph(text, font_size, &runs, layout_width)
+        system.layout_paragraph_with_options(text, font_size, &runs, &options, layout_width)
     }
 
-    /// Width of the text on one unbroken line. Lays it out at the field width,
-    /// then at doubling widths until it no longer wraps, and measures the
-    /// line's two visual edges: a few queries, not one per character.
-    fn measure_line(
-        &self,
-        text: &SharedString,
-        font_size: Pixels,
-        runs: &[FontRun],
-        viewport: Pixels,
-        window: &Window,
-    ) -> Result<Pixels> {
-        let system = window.text_system();
-        let mut width = viewport;
-        for _ in 0..MAX_MEASURE_DOUBLINGS {
-            let layout = system.layout_paragraph(text.clone(), font_size, runs, width)?;
-            if !wrapped(layout.as_ref(), text)? {
-                return line_width(layout.as_ref());
-            }
-            // At least the next doubling; a first guess of one em per byte saves steps.
-            width = (width * 2.0).max(font_size * text.len() as f32);
-        }
-        Err(anyhow!("text too long to lay out on one line"))
+    /// Paragraph options for every line: the base direction. The width of a
+    /// one-line field's text is its max-content width
+    /// (`paragraph_content_widths`), from the same cached shape the layout uses.
+    fn shape_options(&self) -> ParagraphShapeOptions {
+        ParagraphShapeOptions::default().with_direction(self.direction)
     }
 
     /// Lay out for this frame, keep the caret visible and record geometry.
     fn prepare(&mut self, viewport: Bounds<Pixels>, look: &TextFieldLook, window: &Window) -> Option<Geometry> {
+        self.honors_direction = window.text_system().paragraph_support().supports_layout();
         let layout = match self.layout(viewport.size.width, look, window) {
             Ok(layout) => {
                 self.layout_error = None;
@@ -998,6 +999,11 @@ impl ParleyTextField {
     /// logical start is right of its logical end. A text area's lines each have
     /// their own direction.
     fn is_rtl(&self) -> bool {
+        // A set direction is every line's base direction, wherever the text system
+        // honors it. Neutral text (digits, an empty line) can't show it visually.
+        if self.direction != TextDirection::Auto && self.honors_direction {
+            return self.direction == TextDirection::RightToLeft;
+        }
         let (Some(geometry), Some(ends)) = (&self.geometry, self.line_bounds()) else {
             return false;
         };
@@ -1226,26 +1232,6 @@ impl ParleyTextField {
             }
         });
     }
-}
-
-/// Whether a no-break line wrapped: its start and end carets sit on different rows.
-fn wrapped(layout: &dyn PlatformParagraphLayout, text: &str) -> Result<bool> {
-    if text.is_empty() {
-        return Ok(false);
-    }
-    let start = layout.caret_bounds(at(0))?;
-    let end = layout.caret_bounds(ParagraphPosition { byte_index: text.len(), affinity: TextAffinity::Upstream })?;
-    Ok((start.top() - end.top()).abs() > px(0.5))
-}
-
-/// Horizontal extent of a one-row layout: the carets at its two visual edges,
-/// found by hit testing far outside them. Text with no break opportunity can
-/// overflow the layout's width on either side (left for right-to-left text).
-fn line_width(layout: &dyn PlatformParagraphLayout) -> Result<Pixels> {
-    let (y, far) = (layout.size().height / 2.0, px(f32::MAX / 4.0));
-    let left = layout.caret_bounds(layout.hit_test(point(-far, y))?)?;
-    let right = layout.caret_bounds(layout.hit_test(point(far, y))?)?;
-    Ok((right.right() - left.left()).abs())
 }
 
 /// Paint the glyphs near `visible`, skipping the rest of a long text. As

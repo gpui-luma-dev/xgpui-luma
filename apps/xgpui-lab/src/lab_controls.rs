@@ -116,6 +116,7 @@ impl Segmented {
     ) -> Self {
         use xgpui_luma::controls::radio_group::{self, RadioGroupItem};
         let count = options.len();
+        let accessible_label = SharedString::from(label.to_owned());
         let group = radio_group::horizontal(id)
             .single_required()
             .selection_follows_active(true)
@@ -127,6 +128,7 @@ impl Segmented {
             )
             .selected(selected.to_string())
             .template(xgpui_luma_look_radix::segmented_radio_template(look))
+            .with_template_modifier(move |root, _| root.aria_label(accessible_label.clone()))
             .on_value_changed(cx, move |owner, value, cx| {
                 if let Some(index) = value.as_ref().and_then(|id| id.parse::<usize>().ok())
                     && index < count

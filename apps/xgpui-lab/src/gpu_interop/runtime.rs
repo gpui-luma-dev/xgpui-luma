@@ -288,7 +288,7 @@ fn run(
             snapshot.detail.push_str(&format!(" · {} held snapshots", held.len()));
         }
         if let Some(error) = engine.surface().unsupported() {
-            snapshot.error = Some(error);
+            snapshot.error = Some(error.reason().to_owned());
         }
         let signature = (
             snapshot.detail.clone(),

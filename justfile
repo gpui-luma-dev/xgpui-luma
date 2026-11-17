@@ -219,9 +219,13 @@ _control-docs-check:
 
 # --- XGPUI Lab ---
 
-# Run XGPUI Lab.
+# Run XGPUI Lab with Parley text by default.
 app-lab *args:
     {{ app-run }} -p xgpui-lab "${app_args[@]}"
+
+# Run XGPUI Lab with the native text system for backend comparisons.
+app-lab-nativetext *args:
+    set -- --text-system=native "$@"; {{ app-run }} -p xgpui-lab "${app_args[@]}"
 
 # Build the lab without launching it.
 lab-build:
@@ -248,6 +252,10 @@ lab-parley *args:
 # Run the Parley text field headless tests; extra args filter or pass through.
 lab-parley-test *args:
     cargo test --locked -p xgpui-lab --features test-support --bin xgpui-lab text_field "$@"
+
+# Run the text field headless tests on GPUI's native text system (left-to-right paragraphs).
+lab-parley-test-native *args:
+    LAB_FIELD_TEXT_SYSTEM=native cargo test --locked -p xgpui-lab --features test-support --bin xgpui-lab text_field "$@"
 
 # Run the ignored Parley text field performance measurements in release.
 lab-parley-perf:

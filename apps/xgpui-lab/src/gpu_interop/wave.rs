@@ -172,7 +172,8 @@ impl WaveEngine {
         let slot = match self.target.surface().acquire() {
             Ok(slot) => slot,
             Err(AcquireError::WouldBlock) => return Ok(false),
-            Err(error @ AcquireError::Invalidated) => return Err(error.into()),
+            // Invalidated, or a future non_exhaustive reason.
+            Err(error) => return Err(error.into()),
         };
         let texture = self.target.texture(&slot)?;
         let view = texture.create_view(&Default::default());
