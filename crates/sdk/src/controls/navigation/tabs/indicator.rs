@@ -176,6 +176,10 @@ impl TabsIndicatorMotion {
         self.inner().set_list_bounds(bounds);
     }
 
+    pub(crate) fn list_bounds(&self) -> Option<Bounds<Pixels>> {
+        self.inner().list_bounds
+    }
+
     pub fn clear_geometry(&self) {
         self.inner().clear_geometry();
     }
