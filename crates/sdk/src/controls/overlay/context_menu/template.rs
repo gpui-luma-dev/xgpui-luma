@@ -6,7 +6,10 @@ use gpui::{
 };
 
 use super::ContextMenuRenderModel;
-use crate::controls::floating_menu::render_floating_menu_with_submenu_presence_and_transition;
+use crate::controls::floating_menu::{
+    default_floating_menu_template, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
+};
+use crate::infra::locale::LocaleContext;
 use crate::controls::context_menu::{ContextMenuTheme, default_context_menu_theme};
 
 pub type ContextMenuBoundsHandler = Box<dyn Fn(&Bounds<Pixels>, &mut Window, &mut App) + 'static>;
@@ -189,16 +192,25 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
         }
 
         if let Some(position) = model.menu_position {
-            let menu = render_floating_menu_with_submenu_presence_and_transition(
-                model.id,
-                model.items,
-                model.open_submenu,
-                model.active_path,
-                look.floating_menu,
-                item_hovers,
-                item_clicks,
-                model.submenu_presence.clone(),
-                model.submenu_transition,
+            let menu = default_floating_menu_template().render(
+                &FloatingMenuRenderModel {
+                    id: model.id,
+                    direction: LocaleContext::current(cx).direction,
+                    items: model.items,
+                    open_submenu: model.open_submenu,
+                    active_path: model.active_path,
+                    look: look.floating_menu,
+                    highlight: None,
+                    disclosure_icons: &crate::infra::icon::DisclosureIcons::default(),
+                    submenu_presence: model.submenu_presence.clone(),
+                    submenu_transition: model.submenu_transition,
+                },
+                FloatingMenuTemplateHandlers {
+                    item_hovers,
+                    submenu_hovers: Vec::new(),
+                    controlled_hover: false,
+                    item_clicks,
+                },
             );
             let overlay = anchored()
                 .snap_to_window_with_margin(px(look.window_margin))

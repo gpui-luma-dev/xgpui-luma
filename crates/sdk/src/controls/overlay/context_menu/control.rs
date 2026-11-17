@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use gpui::{
     App, Bounds, ClickEvent, Context, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,
     MouseUpEvent, Pixels, Point, Render, SharedString, Subscription, Window, div, point, prelude::*, px, relative,
@@ -7,6 +11,7 @@ use super::{ContextMenuBuilder, ContextMenuRenderModel, ContextMenuTemplateHandl
 use crate::controls::context_menu::model::ContextMenuModel;
 use crate::controls::floating_menu::{FloatingMenuActivateResult, FloatingMenuState, FloatingMenuStepDirection};
 use crate::infra::interaction::ControlInteraction;
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 use crate::infra::menu_navigation::MenuNavigator;
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::infra::state::{ControlFocusState, MenuPath};
@@ -444,7 +449,11 @@ impl ContextMenu {
 
     fn handle_open_submenu(&mut self, _: &OpenSubmenu, _window: &mut Window, cx: &mut Context<Self>) {
         if self.menu_position.is_some() {
-            self.open_active_submenu(cx);
+            if LocaleContext::current(cx).direction == LayoutDirection::Rtl {
+                self.close_active_submenu(cx);
+            } else {
+                self.open_active_submenu(cx);
+            }
         } else if self.model.enabled {
             cx.propagate();
         }
@@ -452,7 +461,11 @@ impl ContextMenu {
 
     fn handle_close_submenu(&mut self, _: &CloseSubmenu, _window: &mut Window, cx: &mut Context<Self>) {
         if self.menu_position.is_some() {
-            self.close_active_submenu(cx);
+            if LocaleContext::current(cx).direction == LayoutDirection::Rtl {
+                self.open_active_submenu(cx);
+            } else {
+                self.close_active_submenu(cx);
+            }
         } else if self.model.enabled {
             cx.propagate();
         }
