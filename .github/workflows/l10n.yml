@@ -30,6 +30,8 @@ jobs:
           done
       - name: Test runtime without build tooling
         run: cargo test -p xgpui-luma-l10n --no-default-features --locked
+      - name: Test SDK adapter and embedded SDK resource contracts
+        run: cargo test -p xgpui-luma-l10n --no-default-features --features sdk,test-support,build-support --locked
       - name: Check Lab resource contracts
         run: >-
           cargo run -p xgpui-luma-l10n --no-default-features --features build-support

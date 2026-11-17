@@ -1,6 +1,6 @@
 //! Lab-first text prototype for #220; SDK and look templates are not migrated.
 use gpui::{App, Div, ParentElement, SharedString, Styled, TextAlign, TextDirection, div};
-use xgpui_luma_l10n::{LayoutDirection, Localizer};
+use xgpui_luma::infra::locale::LocaleContext;
 use xgpui_luma_look_radix::Look;
 use xgpui_parley::{TextLanguage, typeset::typeset};
 use super::TextRole;
@@ -18,16 +18,16 @@ pub(crate) struct TextOptions {
 }
 
 pub(crate) fn options(cx: &App, kind: TextKind) -> TextOptions {
-    let locale = cx.try_global::<Localizer>().map(Localizer::locale);
-    let direction = if kind == TextKind::Data {
-        TextDirection::Auto
+    let context = LocaleContext::current(cx);
+    let options = if kind == TextKind::Data {
+        context.data_paragraph_options()
     } else {
-        match locale.map(|locale| locale.direction()) {
-            Some(LayoutDirection::Rtl) => TextDirection::RightToLeft,
-            _ => TextDirection::LeftToRight,
-        }
+        context.paragraph_options()
     };
-    TextOptions { direction, language: locale.and_then(|locale| TextLanguage::parse(&locale.language_tag()).ok()) }
+    TextOptions {
+        direction: options.direction,
+        language: options.language.and_then(|tag| TextLanguage::parse(&tag).ok()),
+    }
 }
 
 /// Inherits role typography, wrapping, truncation and line clamping from its

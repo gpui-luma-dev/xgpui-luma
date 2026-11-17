@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 
 use fluent_bundle::{concurrent::FluentBundle, FluentArgs, FluentResource};
@@ -25,13 +25,25 @@ pub enum Error {
 /// displaying Fluent's partial error output. Fluent argument isolation stays on.
 pub struct Localizer {
     locale: Locale,
-    bundles: HashMap<String, FluentBundle<FluentResource>>,
+    bundles: HashMap<String, FluentBundle<Arc<FluentResource>>>,
+    #[cfg(feature = "sdk")]
+    resources: HashMap<String, Vec<Arc<FluentResource>>>,
+    #[cfg(feature = "sdk")]
+    pub(crate) sdk_resources_loaded: bool,
     reported: Mutex<HashSet<String>>,
 }
 
 impl Localizer {
     pub fn new(locale: Locale) -> Self {
-        Self { locale, bundles: HashMap::new(), reported: Mutex::new(HashSet::new()) }
+        Self {
+            locale,
+            bundles: HashMap::new(),
+            reported: Mutex::new(HashSet::new()),
+            #[cfg(feature = "sdk")]
+            resources: HashMap::new(),
+            #[cfg(feature = "sdk")]
+            sdk_resources_loaded: false,
+        }
     }
 
     pub fn locale(&self) -> &Locale {
@@ -55,7 +67,34 @@ impl Localizer {
             .bundles
             .entry(locale.to_string())
             .or_insert_with(|| FluentBundle::new_concurrent(vec![language]));
+        let resource = Arc::new(resource);
+        #[cfg(feature = "sdk")]
+        self.resources.entry(locale.to_string()).or_default().push(resource.clone());
         bundle.add_resource_overriding(resource);
+        Ok(())
+    }
+
+    /// Parse every default before changing bundles. App resources are replayed
+    /// after defaults so installing an adapter never overrides app messages.
+    #[cfg(feature = "sdk")]
+    pub(crate) fn prepend_defaults(&mut self, sources: &[(&str, &str)]) -> Result<(), Error> {
+        let mut defaults = Vec::new();
+        for (tag, source) in sources {
+            let locale: Locale = tag.parse()?;
+            let language = locale.0.id.to_string().parse().map_err(|_| Error::InvalidLocale(locale.to_string()))?;
+            let resource = FluentResource::try_new(source.to_string()).map_err(|(_, errors)| {
+                Error::InvalidResource { locale: locale.to_string(), details: format!("{errors:?}") }
+            })?;
+            defaults.push((locale.to_string(), language, Arc::new(resource)));
+        }
+        for (tag, language, resource) in defaults {
+            let mut bundle = FluentBundle::new_concurrent(vec![language]);
+            bundle.add_resource_overriding(resource);
+            for resource in self.resources.get(&tag).into_iter().flatten() {
+                bundle.add_resource_overriding(resource.clone());
+            }
+            self.bundles.insert(tag, bundle);
+        }
         Ok(())
     }
 

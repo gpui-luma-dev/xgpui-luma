@@ -1,15 +1,42 @@
 use gpui::{App, SharedString};
-use crate::{FluentArgs, LayoutDirection, Locale, Localizer, Message};
+use crate::{Error, FluentArgs, LayoutDirection, Locale, Localizer, Message};
 
 impl gpui::Global for Localizer {}
 
-/// Update the installed localizer and refresh every window. Returns false if no
-/// localizer is installed, avoiding a panic during application initialization.
+/// Install a localizer and refresh windows. With `sdk`, built-in SDK resources
+/// are loaded below app overrides and both globals are published before redraw.
+/// Resource errors leave the previously installed globals unchanged.
+pub fn install(localizer: Localizer, cx: &mut App) -> Result<(), Error> {
+    #[cfg(feature = "sdk")]
+    let mut localizer = localizer;
+    #[cfg(feature = "sdk")]
+    crate::sdk::prepare(&mut localizer)?;
+    #[cfg(feature = "sdk")]
+    let context = crate::sdk::context(&localizer);
+    cx.set_global(localizer);
+    #[cfg(feature = "sdk")]
+    cx.set_global(context);
+    cx.refresh_windows();
+    Ok(())
+}
+
+/// Update the installed localizer and refresh every window. With `sdk`, publish
+/// the matching SDK context first. Returns false if no localizer is installed
+/// or SDK resource preparation fails (logged), without changing the locale.
 pub fn set_locale(locale: Locale, cx: &mut App) -> bool {
     if cx.try_global::<Localizer>().is_none() {
         return false;
     }
+    #[cfg(feature = "sdk")]
+    if let Err(error) = crate::sdk::prepare(cx.global_mut::<Localizer>()) {
+        log::error!("SDK localization: {error}");
+        return false;
+    }
     cx.global_mut::<Localizer>().set_locale(locale);
+    #[cfg(feature = "sdk")]
+    let context = crate::sdk::context(cx.global::<Localizer>());
+    #[cfg(feature = "sdk")]
+    cx.set_global(context);
     cx.refresh_windows();
     true
 }

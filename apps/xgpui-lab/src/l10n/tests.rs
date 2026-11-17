@@ -13,7 +13,7 @@ fn locale_resources_format_samples_and_keep_routes_stable() {
         ("fr", "fr", "Localization", "1\u{202f}234\u{202f}567,50"),
     ] {
         app.update(|cx| {
-            cx.set_global(localizer(tag.parse().unwrap()).unwrap());
+            xgpui_luma_l10n::install(localizer(tag.parse().unwrap()).unwrap(), cx).unwrap();
             assert_eq!(tr(cx, messages::msg_l10n_title()), title);
             let sample = samples(cx).unwrap();
             assert_eq!(sample.rows[1].1, number);
@@ -40,12 +40,13 @@ fn picker_updates_translations_numbers_and_direction_without_recreating_the_page
     let mut app = TestAppContext::single();
     app.update(|cx| {
         xgpui_luma::init(cx).unwrap();
-        cx.set_global(localizer("en-US".parse().unwrap()).unwrap());
+        xgpui_luma_l10n::install(localizer("en-US".parse().unwrap()).unwrap(), cx).unwrap();
     });
     let (page, cx) = app.add_window_view(|_, cx| Page::new(crate::theme::default_look(), cx));
     cx.run_until_parked();
     let original = page.clone();
-    for (tag, greeting) in [("de", "Willkommen"), ("ar", "مرحبًا"), ("en", "Welcome")] {
+    for (tag, greeting, next) in [("de", "Willkommen", "Weiter"), ("ar", "مرحبًا", "التالي"), ("en", "Welcome", "Next")]
+    {
         let index = cx.update(|_, cx| choices(cx).iter().position(|(id, _)| id == tag).unwrap());
         page.update(cx, |page, cx| page.locale.select(index, cx));
         cx.run_until_parked();
@@ -53,6 +54,9 @@ fn picker_updates_translations_numbers_and_direction_without_recreating_the_page
             assert_eq!(page, original);
             assert_eq!(cx.global::<Localizer>().locale().language_tag(), tag);
             assert!(samples(cx).unwrap().greeting.starts_with(greeting));
+            let sdk = xgpui_luma::infra::locale::LocaleContext::current(cx);
+            assert_eq!(sdk.language.as_deref(), Some(tag));
+            assert_eq!(sdk.strings.next, next);
             assert_eq!(page.read(cx).locale.selector.read(cx).selected_id().unwrap(), &index.to_string());
         });
     }
