@@ -1,0 +1,23 @@
+[package]
+name = "xgpui-luma-l10n"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Fluent localization and locale handling for XGPUI-Luma"
+
+[features]
+default = ["gpui"]
+gpui = ["dep:gpui"]
+
+[dependencies]
+fluent-bundle = "0.16"
+icu_locale = "2.1"
+thiserror.workspace = true
+log = "0.4"
+gpui = { workspace = true, optional = true }
+
+[lints]
+workspace = true
