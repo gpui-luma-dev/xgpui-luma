@@ -2,6 +2,9 @@
 
 pub use crate::infra::icon::{DisclosureIcons, IconSource, SelectionStatusIcons};
 pub use crate::infra::presenter::{ControlPresenter, HasPresenter};
+pub use crate::infra::locale::{
+    LayoutDirection, LocaleContext, LogicalStyled, NumberFormat, PlainNumberFormat, SdkStrings, set_locale_context,
+};
 pub use crate::interaction::{
     PointerFocusPolicy, ScrollBoundaryPolicy, ScrollInteraction, WheelFocusScope, WheelScrollPolicy,
 };
