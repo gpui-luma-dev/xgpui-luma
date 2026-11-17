@@ -9,6 +9,7 @@ use crate::controls::button_family::button_family_effective_border;
 use crate::controls::selector::SelectorLook;
 use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
 use crate::motion::overlay_presence::OverlayPresence;
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 
 use super::behavior::SelectionItem;
 use super::item_template::{SearchSelectorItemRenderModel, SearchSelectorItemTemplate};
@@ -125,8 +126,9 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
         model: SearchSelectorRenderModel,
         handlers: SearchSelectorTemplateHandlers,
         _window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> Stateful<gpui::Div> {
+        let direction = LocaleContext::current(cx).direction;
         let SearchSelectorTemplateHandlers {
             key_down,
             scroll_wheel,
@@ -173,6 +175,7 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
                     .h_full()
                     .w_full()
                     .flex()
+                    .flex_row_logical(direction)
                     .items_center()
                     .justify_between()
                     .gap(px(trigger_look.trigger_gap))
@@ -190,6 +193,7 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
                             .debug_selector(|| "search-selector-icon".into())
                             .w(px(model.geometry.search_icon_width))
                             .flex()
+                            .flex_row_logical(direction)
                             .items_center()
                             .justify_center()
                             .text_color(trigger_look.trigger_icon)
@@ -388,6 +392,7 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
     ) -> Stateful<gpui::Div> {
         let SearchSelectorItemsTemplateHandlers { item_hovers, item_clicks } = handlers;
         let look = &model.look;
+        let direction = LocaleContext::current(cx).direction;
 
         let mut root =
             div().id((model.menu_id.clone(), 0usize)).relative().flex().flex_col().w_full().p(px(look.padding));
@@ -423,10 +428,18 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
                     cx,
                 )
             } else {
-                let mut content = div().flex().items_center().justify_between().flex_1().child(item.label.clone());
+                let label =
+                    div().when(direction == LayoutDirection::Rtl, |label| label.text_right()).child(item.label.clone());
+                #[cfg(feature = "test-support")]
+                let label = label.debug_selector(move || format!("search-row-label-{visible_index}"));
+                let mut content =
+                    div().flex().flex_row_logical(direction).items_center().justify_between().flex_1().child(label);
                 if let Some(icon) = item.trailing_icon {
-                    content =
-                        content.child(crate::infra::icon::lucide_icon(icon, look.positive, model.trailing_icon_size));
+                    let icon =
+                        div().child(crate::infra::icon::lucide_icon(icon, look.positive, model.trailing_icon_size));
+                    #[cfg(feature = "test-support")]
+                    let icon = icon.debug_selector(move || format!("search-row-icon-{visible_index}"));
+                    content = content.child(icon);
                 }
                 content.into_any_element()
             };
@@ -434,6 +447,7 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
             let mut row = div()
                 .id(("row", visible_index))
                 .flex()
+                .flex_row_logical(direction)
                 .items_center()
                 .min_h(px(look.item_height))
                 .px(px(look.item_padding_x))
@@ -444,6 +458,10 @@ impl SearchSelectorItemsTemplate for DefaultSearchSelectorItemsTemplate {
                 .font_weight(look.item_typography.weight)
                 .child(content);
 
+            #[cfg(feature = "test-support")]
+            {
+                row = row.debug_selector(move || format!("search-row-{visible_index}"));
+            }
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({
                     let hover_background = look.item_hover_background;
