@@ -63,6 +63,7 @@ impl Render for TooltipPreview {
         let style = shadcn::tooltip_theme(&self.look).resolve();
         let samples = SAMPLES.iter().zip(&self.buttons).map(|((title, text, hint), button)| {
             let model = TooltipRenderModel {
+                direction: xgpui_luma::infra::locale::LayoutDirection::Ltr,
                 placement: style.placement,
                 shortcut_gap: style.shortcut_gap,
                 shortcut_font_size: style.shortcut_font_size,

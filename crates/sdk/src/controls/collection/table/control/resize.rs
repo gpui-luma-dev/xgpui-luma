@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use gpui::{
     AnyElement, Context, DragMoveEvent, EntityId, MouseButton, MouseDownEvent, MouseUpEvent, Render, Window, div,
     prelude::*, px,
@@ -11,6 +12,7 @@ const MIN_COLUMN_WIDTH: f32 = 48.0;
 
 pub(super) struct ColumnResize {
     index: usize,
+    direction: LayoutDirection,
     start_x: f32,
     viewport_width: f32,
     widths: Vec<f32>,
@@ -27,8 +29,24 @@ impl Render for ColumnResizeDrag {
 }
 
 impl<T: 'static> TableControl<T> {
+    pub(super) fn sync_column_resize_direction(&mut self, cx: &mut Context<Self>) {
+        if self
+            .column_resize
+            .as_ref()
+            .is_some_and(|resize| resize.direction != LocaleContext::current(cx).direction)
+        {
+            self.cancel_column_resize(cx);
+        }
+    }
+
     pub(super) fn render_grid_header(&self, look: &TableLook, cx: &mut Context<Self>) -> AnyElement {
-        let mut row = div().w_full().flex().items_center();
+        let direction = LocaleContext::current(cx).direction;
+        let mut row = div()
+            .w_full()
+            .flex()
+            .flex_row_logical(direction)
+            .items_center()
+            .when(direction == LayoutDirection::Rtl, |row| row.text_right());
         for (index, column) in self.model.columns.iter().enumerate() {
             let slot = render_grid_view_header_column_slot(
                 column.width(),
@@ -74,9 +92,9 @@ impl<T: 'static> TableControl<T> {
                 header = header.child(
                     handle
                         .absolute()
-                        // Center the hit target on the divider. A target ending
-                        // at the divider excludes clicks on its right edge.
-                        .left(px(divider_x - look.column_resize_hit_width * 0.5))
+                        // Center the hit target on the divider so boundary
+                        // clicks work from either visual direction.
+                        .start(px(divider_x - look.column_resize_hit_width * 0.5), direction)
                         .top(px(-look.column_resize_vertical_extension))
                         .bottom(px(-look.column_resize_vertical_extension))
                         .w(px(look.column_resize_hit_width))
@@ -158,6 +176,7 @@ impl<T: 'static> TableControl<T> {
         self.focus_handle.focus(window, cx);
         self.column_resize = Some(ColumnResize {
             index,
+            direction: LocaleContext::current(cx).direction,
             start_x: event.position.x.as_f32(),
             viewport_width: self.measured_header_width,
             widths: self.measured_column_widths.clone(),
@@ -179,11 +198,20 @@ impl<T: 'static> TableControl<T> {
         let Some(resize) = self.column_resize.as_ref() else {
             return;
         };
+        if resize.direction != LocaleContext::current(cx).direction {
+            self.cancel_column_resize(cx);
+            return;
+        }
         let index = resize.index;
         let left = resize.widths[index];
         let right = resize.widths[index + 1];
         // Already narrow columns may grow, but cannot be made narrower.
-        let delta = (event.event.position.x.as_f32() - resize.start_x)
+        let sign = if resize.direction == LayoutDirection::Rtl {
+            -1.0
+        } else {
+            1.0
+        };
+        let delta = ((event.event.position.x.as_f32() - resize.start_x) * sign)
             .clamp(MIN_COLUMN_WIDTH.min(left) - left, right - MIN_COLUMN_WIDTH.min(right));
         for (i, column) in self.model.columns.iter_mut().enumerate() {
             let width = resize.widths[i]

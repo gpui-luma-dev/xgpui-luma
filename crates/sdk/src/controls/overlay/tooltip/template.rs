@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LogicalStyled};
 use std::sync::Arc;
 use gpui::{AnyElement, IntoElement, div, prelude::*, px};
 use super::TooltipRenderModel;
@@ -9,6 +10,8 @@ pub fn bubble(model: &TooltipRenderModel) -> AnyElement {
     div()
         .block_mouse_except_scroll()
         .flex()
+        .flex_row_logical(model.direction)
+        .when(model.direction == LayoutDirection::Rtl, |root| root.text_right())
         .items_center()
         .gap(px(model.shortcut_gap))
         .max_w(px(model.max_width))

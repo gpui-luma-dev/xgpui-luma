@@ -205,7 +205,7 @@ impl SplitButtonBuilder {
     pub fn disclosure_icons(self, icons: crate::infra::icon::DisclosureIcons) -> Self {
         self.map_popup(|popup| popup.disclosure_icons(icons))
     }
-    pub fn end_icon(self, icon: lucide_svg_static::Icon) -> Self {
+    pub fn end_icon(self, icon: impl Into<crate::controls::button::ControlIcon>) -> Self {
         self.map_popup(|popup| popup.end_icon(icon))
     }
     /// Disable the primary action without disabling the menu or its tab stop.

@@ -997,6 +997,14 @@ where
     }
 
     fn handle_expand_focused_node(&mut self, _: &ExpandNode, _: &mut Window, cx: &mut Context<Self>) {
+        if crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl {
+            self.collapse_focused_node(cx);
+        } else {
+            self.expand_focused_node(cx);
+        }
+    }
+
+    fn expand_focused_node(&mut self, cx: &mut Context<Self>) {
         if !self.model.enabled {
             return;
         }
@@ -1028,6 +1036,14 @@ where
     }
 
     fn handle_collapse_focused_node(&mut self, _: &CollapseNode, _: &mut Window, cx: &mut Context<Self>) {
+        if crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl {
+            self.expand_focused_node(cx);
+        } else {
+            self.collapse_focused_node(cx);
+        }
+    }
+
+    fn collapse_focused_node(&mut self, cx: &mut Context<Self>) {
         if !self.model.enabled {
             return;
         }
@@ -1417,3 +1433,7 @@ fn wheel_policy_dispatch_matrix() {
 #[cfg(all(test, feature = "test-support"))]
 #[path = "perf_tests.rs"]
 mod perf_tests;
+
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;

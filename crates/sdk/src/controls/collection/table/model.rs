@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 crate::motion_profile!(TableMotion => table {
     drop_layout: crate::motion::Transition,
 });
@@ -974,7 +975,13 @@ pub(crate) fn render_grid_view_cells<T>(
 where
     T: 'static,
 {
-    let mut cells = div().w_full().flex().items_center();
+    let direction = LocaleContext::current(cx).direction;
+    let mut cells = div()
+        .w_full()
+        .flex()
+        .flex_row_logical(direction)
+        .items_center()
+        .when(direction == LayoutDirection::Rtl, |cells| cells.text_right());
 
     for column in columns {
         cells = cells.child(render_grid_view_column_slot(

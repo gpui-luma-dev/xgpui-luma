@@ -11,3 +11,12 @@ sdk-selection-search = البحث في الخيارات
 sdk-page-of = الصفحة { $page } من { $pages }
 sdk-rows-per-page = صفوف في الصفحة
 sdk-selection-summary = الصفوف المحددة: { $selected } من { $total }
+
+sdk-no-selection = لا شيء
+sdk-autocomplete-status = الحالة: { $status ->
+    [idle] جاهز
+    [searching] جارٍ البحث
+    [complete] مكتمل
+   *[other] لا توجد نتيجة
+}
+sdk-autocomplete-detail = المحدد: { $selected } | النتائج: { $matches } | الأخير: { $last } | لوحة المفاتيح: { $keyboard }

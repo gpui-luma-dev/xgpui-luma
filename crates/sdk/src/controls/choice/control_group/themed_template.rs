@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use std::sync::Arc;
 
 use gpui::{App, Div, Stateful, Window, div, prelude::*, px};
@@ -53,7 +54,9 @@ impl ThemedControlGroupTemplate {
             .py(px(list.padding_y));
 
         root = match chrome.layout {
-            ControlGroupLayout::Horizontal => root.items_center().gap(px(list.gap)),
+            ControlGroupLayout::Horizontal => {
+                root.flex_row_logical(LocaleContext::current(cx).direction).items_center().gap(px(list.gap))
+            }
             ControlGroupLayout::Vertical => root.flex_col().items_start().gap(px(list.vertical_gap)),
         };
 

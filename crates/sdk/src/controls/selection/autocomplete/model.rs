@@ -29,6 +29,7 @@ pub struct AutocompleteModel {
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
+    pub(crate) placeholder_explicit: bool,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
@@ -169,7 +170,8 @@ impl AutocompleteBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().autocomplete.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Type to filter…"),
+                placeholder: crate::infra::locale::SdkStrings::default().search_placeholder,
+                placeholder_explicit: false,
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
@@ -202,6 +204,7 @@ impl AutocompleteBuilder {
     }
 
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
+        self.model.placeholder_explicit = true;
         self.model.placeholder = placeholder.into();
         self
     }

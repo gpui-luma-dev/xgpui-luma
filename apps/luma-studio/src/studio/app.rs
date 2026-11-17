@@ -633,6 +633,7 @@ fn titlebar_icon_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPrese
         ControlIcon::SvgPath(path) => {
             gpui::svg().size(px(14.0)).text_color(color).path(path.clone()).into_any_element()
         }
+        ControlIcon::Mirrored(_) => icon.clone().element(color, 14.0).into_any_element(),
     })
 }
 

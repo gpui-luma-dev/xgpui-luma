@@ -52,6 +52,7 @@ where
     pub(crate) motion: crate::motion::MotionConfig<SelectorMotion>,
     pub(crate) id: SharedString,
     pub(crate) label: SharedString,
+    pub(crate) label_explicit: bool,
     pub(crate) items: Vec<T>,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
@@ -212,6 +213,7 @@ where
             model: SelectorModel {
                 motion: Default::default(),
                 label: id.clone(),
+                label_explicit: false,
                 id,
                 items: Vec::new(),
                 enabled: true,
@@ -234,6 +236,7 @@ where
     }
 
     pub fn label(mut self, label: impl Into<SharedString>) -> Self {
+        self.model.label_explicit = true;
         self.model.label = label.into();
         self
     }

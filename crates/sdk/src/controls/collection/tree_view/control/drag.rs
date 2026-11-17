@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use gpui::{App, Context, Div, Render, SharedString, Stateful, WeakEntity, Window, div, px, relative};
 use crate::infra::drag_drop::{DragDropElementExt, DragDropEvent, bind_drag_source};
 use super::super::drag::TreeDrag;
@@ -199,8 +200,11 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
             let zone = div()
                 .id(("drop-zone", position as usize))
                 .absolute()
-                .left(px(node.depth as f32 * self.model.template.resolve_scale(self.model.size, 1.0).indentation_width))
-                .right_0()
+                .start(
+                    px(node.depth as f32 * self.model.template.resolve_scale(self.model.size, 1.0).indentation_width),
+                    LocaleContext::current(cx).direction,
+                )
+                .end(px(0.0), LocaleContext::current(cx).direction)
                 .border_color(gpui::transparent_black());
             #[cfg(any(test, feature = "test-support"))]
             let zone = {

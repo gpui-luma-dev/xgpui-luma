@@ -916,3 +916,44 @@ fn resize_hit_target_uses_resolved_width_and_remains_centered_with_hidden_stroke
     assert_eq!(updated.center(), original.center());
     assert_eq!(updated.size.height, original.size.height + px(6.0));
 }
+
+#[test]
+fn rtl_grid_reverses_columns_and_resize_delta_and_cancels_on_locale_switch() {
+    use crate::infra::locale::{LayoutDirection, LocaleContext, set_locale_context};
+    let mut app = TestAppContext::single();
+    let (table, cx) = resizable_grid(&mut app, true, false);
+    for direction in [LayoutDirection::Rtl, LayoutDirection::Ltr] {
+        cx.update(|_, cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+        cx.run_until_parked();
+        let first = cx.debug_bounds("table-column-0").unwrap();
+        let last = cx.debug_bounds("table-column-3").unwrap();
+        assert_eq!(first.left() < last.left(), direction == LayoutDirection::Ltr);
+        assert_grid_alignment(cx, 0);
+        let delta = if direction == LayoutDirection::Rtl { -30.0 } else { 30.0 };
+        let end = resize_column(cx, 0, delta);
+        let resized = cx.debug_bounds("table-column-0").unwrap();
+        assert!((resized.size.width - first.size.width - px(30.0)).abs() < px(1.0));
+        assert_grid_alignment(cx, 0);
+        // Switching direction rolls back the in-progress resize, retaining row state.
+        cx.update(|_, cx| {
+            set_locale_context(
+                LocaleContext {
+                    direction: if direction == LayoutDirection::Rtl {
+                        LayoutDirection::Ltr
+                    } else {
+                        LayoutDirection::Rtl
+                    },
+                    ..Default::default()
+                },
+                cx,
+            )
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| {
+            assert!(table.read(cx).column_resize.is_none());
+            assert_eq!(table.read(cx).selected_indices(), &[1]);
+        });
+        assert!((cx.debug_bounds("table-column-0").unwrap().size.width - first.size.width).abs() < px(1.0));
+        cx.simulate_mouse_up(end, gpui::MouseButton::Left, Default::default());
+    }
+}

@@ -27,6 +27,7 @@ impl TooltipExamples {
         let style = radix::tooltip_theme(look).resolve();
         let samples = SAMPLES.iter().map(|(title, text, hint)| {
             let model = TooltipRenderModel {
+                direction: xgpui_luma::infra::locale::LayoutDirection::Ltr,
                 placement: style.placement,
                 shortcut_gap: style.shortcut_gap,
                 shortcut_font_size: style.shortcut_font_size,

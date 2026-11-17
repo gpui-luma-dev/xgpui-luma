@@ -162,6 +162,7 @@ where
     }
 
     pub fn set_label(&mut self, label: impl Into<SharedString>, cx: &mut Context<Self>) {
+        self.model.label_explicit = true;
         self.model.label = label.into();
         cx.notify();
     }
@@ -695,6 +696,9 @@ where
     T: SelectorItemLike + 'static,
 {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.model.label_explicit {
+            self.model.label = crate::infra::locale::LocaleContext::current(cx).strings.select_placeholder.clone();
+        }
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         if self.focus_in_subscription.is_none() {

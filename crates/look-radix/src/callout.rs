@@ -1,6 +1,6 @@
 //! Soft informational callout built from the current Radix accent scale.
 
-use gpui::{Div, SharedString, div, prelude::*, px, svg};
+use gpui::{Div, SharedString, div, prelude::*, px};
 use xgpui_luma::controls::button::ControlIcon;
 
 use crate::{Look, ScaleFamily};
@@ -9,10 +9,7 @@ use crate::{Look, ScaleFamily};
 /// Applications supply content and assets; spacing and colors belong to the look.
 pub fn callout(look: &Look, text: impl Into<SharedString>, icon: impl Into<ControlIcon>) -> Div {
     let foreground = look.resolve_step(ScaleFamily::Color, 11).hsla();
-    let path = match icon.into() {
-        ControlIcon::Lucide(icon) => SharedString::from(icon.asset_path()),
-        ControlIcon::SvgPath(path) => path,
-    };
+    let icon = icon.into();
     let geometry = resolve_geometry(look);
     div()
         .flex()
@@ -22,7 +19,7 @@ pub fn callout(look: &Look, text: impl Into<SharedString>, icon: impl Into<Contr
         .rounded_lg()
         .p(px(geometry.padding))
         .bg(look.resolve_step(ScaleFamily::Color, 3).hsla())
-        .child(div().flex_none().child(svg().path(path).size(px(geometry.icon_size)).text_color(foreground)))
+        .child(div().flex_none().child(icon.element(foreground, geometry.icon_size)))
         .child(div().text_size(px(geometry.font_size)).text_color(foreground).child(text.into()))
 }
 

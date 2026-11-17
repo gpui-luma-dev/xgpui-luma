@@ -94,3 +94,12 @@ xgpui_luma::test_stylesheet_motion_contract!(
     },
     crate
 );
+
+#[cfg(all(test, feature = "test-support"))]
+xgpui_luma::l10n_conformance!(
+    crate::controls::templates::checkbox_template(
+        crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap(),
+        crate::ShadcnButtonStyle::Secondary
+    ),
+    crate::controls::templates::selector_template(crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap())
+);

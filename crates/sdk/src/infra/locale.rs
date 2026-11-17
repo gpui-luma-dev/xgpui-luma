@@ -70,11 +70,18 @@ pub type PageOfFormatter = Arc<dyn Fn(usize, usize, &App) -> SharedString + Send
 /// As with [`PageOfFormatter`], adapters may read the active localizer at render time.
 pub type SelectionSummaryFormatter = Arc<dyn Fn(usize, usize, &App) -> SharedString + Send + Sync>;
 
+/// Autocomplete diagnostic/status copy. State/event identifiers are data, not UI labels.
+/// Adapters localize the framing and status names; the selected label is app content.
+pub type AutocompleteStatusFormatter =
+    Arc<dyn Fn(&str, Option<&str>, usize, &str, &str, &App) -> (SharedString, SharedString) + Send + Sync>;
+
 /// SDK-owned text. App-provided labels/placeholders take precedence when
 /// controls adopt this contract. Dynamic text stays in a formatter so plural
 /// selection and word order can be provided by the localization engine.
 #[derive(Clone)]
 pub struct SdkStrings {
+    /// Locale-sensitive autocomplete status and diagnostic framing.
+    pub autocomplete_status: AutocompleteStatusFormatter,
     pub cancel: SharedString,
     pub clear: SharedString,
     pub first: SharedString,
@@ -93,6 +100,16 @@ pub struct SdkStrings {
 impl Default for SdkStrings {
     fn default() -> Self {
         Self {
+            autocomplete_status: Arc::new(|status, selected, matches, last, keyboard, _| {
+                (
+                    format!("status: {status}").into(),
+                    format!(
+                        "selected: {} | matches: {matches} | last: {last} | keyboard: {keyboard}",
+                        selected.unwrap_or("none")
+                    )
+                    .into(),
+                )
+            }),
             cancel: "Cancel".into(),
             clear: "Clear".into(),
             first: "First".into(),
@@ -170,3 +187,6 @@ pub fn set_locale_context(context: LocaleContext, cx: &mut App) {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(feature = "test-support")]
+pub mod conformance;

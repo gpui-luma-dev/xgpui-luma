@@ -1,4 +1,5 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
+use xgpui_luma::infra::locale::{LocaleContext, LogicalStyled};
 use std::sync::Arc;
 use gpui::{AnyElement, App, BoxShadow, SharedString, Window, div, point, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
@@ -66,12 +67,15 @@ pub fn control_group_template<T: ControlGroupItemLike + 'static>(look: &Look) ->
 /// Joined Radix toggle-group shell, composed through the SDK item-layout API.
 pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
     let look = look.clone();
-    let template = control_group_item_layout_template(move |items, model, _, _| {
+    let template = control_group_item_layout_template(move |items, model, _, cx| {
         div()
             .relative()
             .flex()
             .items_center()
             .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
+            .when(model.layout == ControlGroupLayout::Horizontal, |shell| {
+                shell.flex_row_logical(LocaleContext::current(cx).direction)
+            })
             .rounded(px(look.metrics().radius.md))
             .bg(look.resolve_role(SemanticRole::Surface).hsla())
             .shadow(vec![BoxShadow {
@@ -274,6 +278,7 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
         let first = self.first;
         let last = self.last;
         let radius = px(self.look.metrics().radius.md);
+        let direction = LocaleContext::current(cx).direction;
         let separator = !last;
         let vertical = self.layout == ControlGroupLayout::Vertical;
         let border = self.look.resolve_step(ScaleFamily::Gray, 6).hsla();
@@ -286,8 +291,12 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             .right(-outset)
             .bottom(-outset)
             .left(-outset)
-            .when(first && !vertical, |ring| ring.rounded_tl(focus_radius).rounded_bl(focus_radius))
-            .when(last && !vertical, |ring| ring.rounded_tr(focus_radius).rounded_br(focus_radius))
+            .when(first && !vertical, |ring| {
+                ring.rounded_ss(focus_radius, direction).rounded_es(focus_radius, direction)
+            })
+            .when(last && !vertical, |ring| {
+                ring.rounded_se(focus_radius, direction).rounded_ee(focus_radius, direction)
+            })
             .when(first && vertical, |ring| ring.rounded_tl(focus_radius).rounded_tr(focus_radius))
             .when(last && vertical, |ring| ring.rounded_bl(focus_radius).rounded_br(focus_radius));
         DefaultButtonTemplate::<ToggleData>::new(crate::button_family_theme(&self.look, ButtonVariant::Ghost))
@@ -296,11 +305,11 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
                     .border_0()
                     .rounded_none()
                     .min_w(px(height))
-                    .when(first && !vertical, |face| face.rounded_tl(radius).rounded_bl(radius))
-                    .when(last && !vertical, |face| face.rounded_tr(radius).rounded_br(radius))
+                    .when(first && !vertical, |face| face.rounded_ss(radius, direction).rounded_es(radius, direction))
+                    .when(last && !vertical, |face| face.rounded_se(radius, direction).rounded_ee(radius, direction))
                     .when(first && vertical, |face| face.rounded_tl(radius).rounded_tr(radius))
                     .when(last && vertical, |face| face.rounded_bl(radius).rounded_br(radius))
-                    .when(separator && !vertical, |face| face.border_r_1().border_color(border))
+                    .when(separator && !vertical, |face| face.border_e(px(1.0), direction).border_color(border))
                     .when(separator && vertical, |face| face.border_b_1().border_color(border))
             })
             .render(&model, window, cx)

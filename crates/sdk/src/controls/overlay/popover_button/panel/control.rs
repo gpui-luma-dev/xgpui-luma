@@ -348,13 +348,19 @@ impl Render for PopoverPanel {
         let panel = cx.entity();
         let content = (self.model.content)(&model, window, cx);
         let content_size = self.content_bounds.map(|bounds| bounds.size).or(self.model.initial_content_size);
-        let placement = resolve_popover_panel_placement(
+        let mut placement = resolve_popover_panel_placement(
             anchor_bounds,
             content_size,
             self.model.placement,
             self.model.offset_y,
             window.viewport_size(),
             self.model.window_margin,
+        );
+        placement = logical_start_placement(
+            placement,
+            anchor_bounds,
+            self.model.placement,
+            crate::infra::locale::LocaleContext::current(cx).direction,
         );
         let scale_size = content_size.unwrap_or(Size { width: px(0.0), height: px(0.0) });
         let offset = self.presence.adjust_offset(placement.offset, scale_size);
@@ -398,6 +404,23 @@ struct ResolvedPopoverPanelPlacement {
     anchor: Anchor,
     position: Point<Pixels>,
     offset: Point<Pixels>,
+}
+
+fn logical_start_placement(
+    mut placement: ResolvedPopoverPanelPlacement,
+    bounds: Bounds<Pixels>,
+    preferred: PopoverPanelPlacement,
+    direction: crate::infra::locale::LayoutDirection,
+) -> ResolvedPopoverPanelPlacement {
+    if direction == crate::infra::locale::LayoutDirection::Rtl && preferred != PopoverPanelPlacement::BelowCenter {
+        placement.position.x = bounds.right();
+        placement.anchor = if placement.anchor == Anchor::BottomLeft {
+            Anchor::BottomRight
+        } else {
+            Anchor::TopRight
+        };
+    }
+    placement
 }
 
 fn resolve_popover_panel_placement(
@@ -476,5 +499,26 @@ mod tests {
         assert_eq!(placement.anchor, Anchor::BottomLeft);
         assert_eq!(placement.position, point(px(20.0), px(450.0)));
         assert_eq!(placement.offset, point(px(0.0), px(-4.0)));
+    }
+}
+
+#[test]
+fn popover_start_follows_direction_including_smart_above() {
+    use crate::infra::locale::LayoutDirection;
+    let bounds = Bounds::new(point(px(100.), px(570.)), gpui::size(px(80.), px(20.)));
+    for (direction, anchor, x) in
+        [(LayoutDirection::Ltr, Anchor::BottomLeft, 100.), (LayoutDirection::Rtl, Anchor::BottomRight, 180.)]
+    {
+        let placement = resolve_popover_panel_placement(
+            bounds,
+            Some(gpui::size(px(120.), px(80.))),
+            PopoverPanelPlacement::SmartStart,
+            px(4.),
+            gpui::size(px(800.), px(600.)),
+            px(8.),
+        );
+        let logical = logical_start_placement(placement, bounds, PopoverPanelPlacement::SmartStart, direction);
+        assert_eq!(logical.anchor, anchor);
+        assert_eq!(logical.position.x, px(x));
     }
 }

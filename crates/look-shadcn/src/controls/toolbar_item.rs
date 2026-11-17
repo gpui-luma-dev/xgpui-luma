@@ -166,9 +166,7 @@ impl ShadcnToolbarItemExt for ShadcnLook {
             .ghost()
             .tab_stop(false)
             .items(items);
-        if let ControlIcon::Lucide(lucide) = icon.into() {
-            builder = builder.icon(lucide);
-        }
+        builder = builder.icon(icon);
         let entity = builder.spawn(cx);
         ToolbarItem::menu_control(id, entity, cx)
     }

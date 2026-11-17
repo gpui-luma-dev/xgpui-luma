@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -168,6 +169,8 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
 
         let status_row = div()
             .flex()
+            .flex_row_logical(LocaleContext::current(cx).direction)
+            .when(LocaleContext::current(cx).direction == LayoutDirection::Rtl, |row| row.text_right())
             .items_center()
             .justify_between()
             .gap(px(model.geometry.status_gap))
@@ -213,7 +216,7 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
                                 .id("prototype-autocomplete-clear")
                                 .absolute()
                                 .top(px(0.0))
-                                .right(px(model.geometry.clear_inset))
+                                .end(px(model.geometry.clear_inset), LocaleContext::current(cx).direction)
                                 .h_full()
                                 .w(px(model.geometry.clear_width))
                                 .flex()
@@ -237,8 +240,19 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
                         deferred(
                             anchored()
                                 .snap_to_window_with_margin(px(model.popup_look.window_margin))
-                                .anchor(gpui::Anchor::TopLeft)
-                                .position(point(bounds.left(), bounds.bottom()))
+                                .anchor(if LocaleContext::current(cx).direction == LayoutDirection::Rtl {
+                                    gpui::Anchor::TopRight
+                                } else {
+                                    gpui::Anchor::TopLeft
+                                })
+                                .position(point(
+                                    if LocaleContext::current(cx).direction == LayoutDirection::Rtl {
+                                        bounds.right()
+                                    } else {
+                                        bounds.left()
+                                    },
+                                    bounds.bottom(),
+                                ))
                                 .offset(point(px(0.0), px(model.popup_look.popup_offset_y)))
                                 .child(
                                     div()
@@ -264,6 +278,8 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
 }
 
 pub struct AutocompleteItemsRenderModel<'a> {
+    /// Direction snapshot for item templates that have no App argument.
+    pub direction: LayoutDirection,
     pub id: &'a SharedString,
     pub items: &'a [SelectorItem],
     pub look: SelectorItemsPanelLook,
@@ -402,7 +418,14 @@ impl AutocompleteItemsTemplate for DefaultAutocompleteItemsTemplate {
                 .text_size(px(look.item_typography.size))
                 .line_height(px(look.item_typography.line_height))
                 .font_weight(look.item_typography.weight)
-                .child(div().flex_1().min_w(px(0.0)).truncate().child(item.label_text().clone()));
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w(px(0.0))
+                        .when(model.direction == LayoutDirection::Rtl, |label| label.text_right())
+                        .truncate()
+                        .child(item.label_text().clone()),
+                );
 
             if enabled_item {
                 row = row.cursor_pointer().on_hover(hover).hover({

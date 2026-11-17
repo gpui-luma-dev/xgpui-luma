@@ -116,6 +116,8 @@ pub fn default_tooltip_theme() -> Arc<dyn TooltipTheme> {
 /// Presentation-only input, resolved from the explicitly bound draft look on every frame.
 #[derive(Clone)]
 pub struct TooltipRenderModel {
+    /// Direction snapshot for tooltip chrome and logical alignment.
+    pub direction: crate::infra::locale::LayoutDirection,
     pub placement: TooltipPlacementGeometry,
     pub shortcut_gap: f32,
     pub shortcut_font_size: f32,

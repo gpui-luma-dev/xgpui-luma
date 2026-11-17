@@ -228,12 +228,7 @@ impl Avatar {
         let foreground = style.foreground;
         let content = match &self.fallback {
             Fallback::Text(text) => div().child(text.clone()).into_any_element(),
-            Fallback::Icon(ControlIcon::SvgPath(path)) => {
-                gpui::svg().path(path.clone()).size(px(style.icon_size)).text_color(foreground).into_any_element()
-            }
-            Fallback::Icon(ControlIcon::Lucide(icon)) => {
-                xgpui_luma::infra::icon::lucide_icon(*icon, foreground, style.icon_size)
-            }
+            Fallback::Icon(icon) => icon.clone().element(foreground, style.icon_size).into_any_element(),
         };
         div()
             .size_full()

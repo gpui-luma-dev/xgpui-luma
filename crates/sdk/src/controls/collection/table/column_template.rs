@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, SharedString, Window, div, prelude::*};
@@ -54,7 +55,14 @@ where
 {
     Arc::new(move |model, _window, _cx| {
         let value = value_fn(model.row);
-        div().w_full().flex().justify_end().truncate().child(value.into()).into_any_element()
+        div()
+            .w_full()
+            .flex()
+            .when(LocaleContext::current(_cx).direction == LayoutDirection::Rtl, |cell| cell.justify_start())
+            .when(LocaleContext::current(_cx).direction == LayoutDirection::Ltr, |cell| cell.justify_end())
+            .truncate()
+            .child(value.into())
+            .into_any_element()
     })
 }
 

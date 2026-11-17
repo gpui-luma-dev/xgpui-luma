@@ -465,6 +465,7 @@ fn render_stepper_sample(
         labels: &labels,
         label_placement,
         direction,
+        direction_explicit: true,
         size: DEMO_SIZE,
         enabled,
         step_contents: &empty_contents,

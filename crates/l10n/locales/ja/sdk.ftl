@@ -11,3 +11,12 @@ sdk-selection-search = 選択項目を検索
 sdk-page-of = 全 { $pages } ページ中 { $page } ページ
 sdk-rows-per-page = ページあたりの行数
 sdk-selection-summary = 選択した行: { $selected } / { $total }
+
+sdk-no-selection = なし
+sdk-autocomplete-status = 状態: { $status ->
+    [idle] 待機中
+    [searching] 検索中
+    [complete] 完了
+   *[other] 一致なし
+}
+sdk-autocomplete-detail = 選択: { $selected } | 一致: { $matches } | 最後: { $last } | キーボード: { $keyboard }

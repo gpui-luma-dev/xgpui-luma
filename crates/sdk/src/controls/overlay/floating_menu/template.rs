@@ -1,7 +1,7 @@
 use crate::infra::locale::{LayoutDirection, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
-use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, relative, prelude::*, svg};
+use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, relative, prelude::*};
 use crate::infra::menu_item::{MenuItem, MenuItemIcon};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::infra::state::MenuPath;
@@ -185,7 +185,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                             let id = item.id().clone();
                             move || format!("floating-icon-{id}")
                         })
-                        .child(render_item_icon(item.icon_ref(), color, look.item_icon_size)),
+                        .child(render_item_icon(item.icon_ref(), color, look.item_icon_size, direction)),
                 )
                 .child(
                     div()
@@ -562,7 +562,7 @@ fn render_floating_submenu(
                         let id = submenu_item.id().clone();
                         move || format!("floating-icon-{id}")
                     })
-                    .child(render_item_icon(submenu_item.icon_ref(), color, look.item_icon_size)),
+                    .child(render_item_icon(submenu_item.icon_ref(), color, look.item_icon_size, direction)),
             )
             .child(
                 div()
@@ -704,13 +704,14 @@ fn highlight_rect(
     ))
 }
 
-fn render_item_icon(icon: Option<&MenuItemIcon>, color: gpui::Hsla, size: f32) -> AnyElement {
-    if let Some(icon) = icon.and_then(MenuItemIcon::lucide) {
-        svg().path(icon.asset_path()).size(px(size)).text_color(color).into_any_element()
-    } else if let Some(path) = icon.and_then(MenuItemIcon::asset_path) {
-        svg().path(path.clone()).size(px(size)).text_color(color).into_any_element()
-    } else if let Some(path) = icon.and_then(MenuItemIcon::svg_path) {
-        svg().external_path(path.clone()).size(px(size)).text_color(color).into_any_element()
+fn render_item_icon(
+    icon: Option<&MenuItemIcon>,
+    color: gpui::Hsla,
+    size: f32,
+    direction: LayoutDirection,
+) -> AnyElement {
+    if let Some(icon) = icon {
+        icon.render(color, size, direction)
     } else {
         div().size(px(size)).into_any_element()
     }
