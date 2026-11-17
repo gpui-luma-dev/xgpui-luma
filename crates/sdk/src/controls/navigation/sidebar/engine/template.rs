@@ -10,7 +10,11 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{NavNodeKind, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};
-use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
+use crate::controls::floating_menu::{
+    FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
+    default_floating_menu_template,
+};
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{ControlSize, InteractionState, LumaTextStyle, LumaTypography};
 use crate::controls::floating_menu::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
@@ -235,6 +239,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
                 root = root.child(
                     deferred(render_rail_submenu_overlay(
                         rail_submenu,
+                        LocaleContext::current(cx).direction,
                         self.floating_menu_theme.resolve(),
                         self.theme.geometry(),
                         rail_submenu_item_hovers,
@@ -829,8 +834,10 @@ fn render_collapsed_rail_node(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_rail_submenu_overlay(
     submenu: RenderedRailSubmenu,
+    direction: LayoutDirection,
     look: FloatingMenuLook,
     geometry: crate::theme::stylesheet::SidebarGeometry,
     item_hovers: Vec<FloatingMenuHoverHandler>,
@@ -838,18 +845,30 @@ fn render_rail_submenu_overlay(
     bounds_handler: Option<SidebarPanelBoundsHandler>,
     mouse_down_out: SidebarPanelMouseDownHandler,
 ) -> impl IntoElement {
-    let menu = render_floating_menu(
-        &submenu.id,
-        &submenu.items,
-        submenu.open_submenu,
-        submenu.active_path,
-        look.clone(),
-        item_hovers,
-        item_clicks,
+    let menu = default_floating_menu_template().render(
+        &FloatingMenuRenderModel {
+            id: &submenu.id,
+            direction,
+            items: &submenu.items,
+            open_submenu: submenu.open_submenu,
+            active_path: submenu.active_path,
+            look,
+            highlight: None,
+            disclosure_icons: &DisclosureIcons::default(),
+            submenu_presence: crate::motion::overlay_presence::OverlayPresence::new(true, false),
+            submenu_transition: None,
+        },
+        FloatingMenuTemplateHandlers { item_hovers, submenu_hovers: Vec::new(), controlled_hover: false, item_clicks },
     );
 
     let content_size = submenu.content_size.unwrap_or_default();
-    let offset = submenu.presence.adjust_offset(point(px(geometry.rail_submenu_offset_x), px(0.0)), content_size);
+    let rtl = direction == LayoutDirection::Rtl;
+    let offset_x = if rtl {
+        -geometry.rail_submenu_offset_x
+    } else {
+        geometry.rail_submenu_offset_x
+    };
+    let offset = submenu.presence.adjust_offset(point(px(offset_x), px(0.0)), content_size);
     let content = if let Some(bounds_handler) = bounds_handler {
         div()
             .on_mouse_down_out(move |event, window, cx| mouse_down_out(event, window, cx))
@@ -864,8 +883,15 @@ fn render_rail_submenu_overlay(
 
     anchored()
         .snap_to_window_with_margin(px(geometry.window_margin))
-        .anchor(Anchor::TopLeft)
-        .position(point(submenu.parent_bounds.right(), submenu.parent_bounds.top()))
+        .anchor(if rtl { Anchor::TopRight } else { Anchor::TopLeft })
+        .position(point(
+            if rtl {
+                submenu.parent_bounds.left()
+            } else {
+                submenu.parent_bounds.right()
+            },
+            submenu.parent_bounds.top(),
+        ))
         .offset(offset)
         .child(content)
 }
@@ -975,3 +1001,7 @@ mod focus_tests {
         }
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+#[path = "rail_locale_tests.rs"]
+mod rail_locale_tests;
