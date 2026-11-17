@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use std::cell::Cell;
 use std::sync::Arc;
 
@@ -38,7 +39,9 @@ where
         let root = div().id(model.id.clone()).flex().gap(px(recipe.gap.unwrap_or_default()));
         match layout {
             RadioGroupLayout::Vertical => root.flex_col().items_start().children(rows),
-            RadioGroupLayout::Horizontal => root.items_center().children(rows),
+            RadioGroupLayout::Horizontal => {
+                root.flex_row_logical(LocaleContext::current(cx).direction).items_center().children(rows)
+            }
         }
     })
 }
@@ -85,6 +88,7 @@ where
         div()
             .id((gpui::ElementId::from(item.group_id.clone()), item.item.id().clone()))
             .flex()
+            .flex_row_logical(LocaleContext::current(cx).direction)
             .items_center()
             .gap(px(item
                 .stylesheet
@@ -140,6 +144,11 @@ where
             row = row.flex_1().h_full();
         }
 
+        #[cfg(feature = "test-support")]
+        {
+            let index = item.index;
+            row = row.debug_selector(move || format!("radio-option-{index}"));
+        }
         if item.enabled {
             row = row.cursor_pointer();
         } else {
@@ -166,14 +175,22 @@ pub fn radio_group_container_template<T>() -> RadioGroupTemplate<T>
 where
     T: ControlGroupItemLike + 'static,
 {
-    control_group::vertical_group_template()
+    let base = control_group::vertical_group_template();
+    Arc::new(move |model, handlers, window, cx| {
+        let root = base(model, handlers, window, cx);
+        if model.layout == ControlGroupLayout::Horizontal {
+            root.flex_row_logical(LocaleContext::current(cx).direction)
+        } else {
+            root
+        }
+    })
 }
 
 pub fn horizontal_group_container_template<T>() -> RadioGroupTemplate<T>
 where
     T: ControlGroupItemLike + 'static,
 {
-    control_group::horizontal_group_template()
+    radio_group_container_template()
 }
 
 pub fn default_radio_group_container_template<T>() -> RadioGroupTemplate<T>

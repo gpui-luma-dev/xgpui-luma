@@ -117,7 +117,8 @@ where
         self
     }
 
-    fn from_inner(inner: InnerControlGroupBuilder<T>) -> Self {
+    fn from_inner(mut inner: InnerControlGroupBuilder<T>) -> Self {
+        inner.model.locale_navigation = true;
         Self { callbacks: Default::default(), inner }
     }
 
