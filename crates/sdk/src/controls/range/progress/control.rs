@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use gpui::{Context, IntoElement, Render, SharedString, Window, div, prelude::*};
 
 use super::direction::ProgressDirection;
@@ -24,6 +28,7 @@ impl ProgressControl {
 
     pub(crate) fn from_builder(builder: ProgressBuilder, cx: &mut Context<Self>) -> Self {
         let mut builder = builder;
+        builder.model.resolve_locale_direction(cx);
         builder.model.motion.freeze();
         let motion = builder.model.motion.profile().clone();
         observe_theme_revision(cx, |_, cx| cx.notify()).detach();
@@ -104,7 +109,9 @@ impl ProgressControl {
         cx.notify();
     }
 
+    /// Fix the physical fill direction, including when it equals the current default.
     pub fn set_direction(&mut self, direction: ProgressDirection, cx: &mut Context<Self>) {
+        self.model.direction_explicit = true;
         if self.model.direction == direction {
             return;
         }
@@ -183,6 +190,7 @@ impl ProgressControl {
 
 impl Render for ProgressControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.model.resolve_locale_direction(cx);
         let was_animating = self.transition.is_animating();
         let _ = self.transition.sync();
         let model = self.render_model();
