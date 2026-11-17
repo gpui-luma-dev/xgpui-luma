@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
@@ -86,14 +87,14 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
         model: &ToolbarRenderModel<'_>,
         items: Vec<ToolbarRenderedItem>,
         _window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> Stateful<Div> {
         let size = model.size.unwrap_or(self.size);
         let look = self.theme.resolve(model.enabled, size, model.variant);
         let mut root = div()
             .id(model.id.clone())
             .flex()
-            .flex_row()
+            .flex_row_logical(LocaleContext::current(cx).direction)
             .items_center()
             .gap(px(look.gap))
             .px(px(look.padding_x))

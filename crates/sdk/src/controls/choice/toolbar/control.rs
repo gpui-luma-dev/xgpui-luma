@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use gpui::{
     App, Context, Entity, EventEmitter, Focusable, IntoElement, Render, SharedString, Subscription, Window, div,
     prelude::*,
@@ -55,7 +59,7 @@ impl ToolbarControl {
 
     pub(crate) fn from_builder(builder: ToolbarBuilder, cx: &mut Context<Self>) -> Self {
         let model = builder.model.clone();
-        let group = ControlGroupControl::new(model.id)
+        let mut group_builder = ControlGroupControl::new(model.id)
             .items(model.items.clone())
             .selection_mode(ControlSelectionMode::SingleAllowNone)
             .layout(ControlGroupLayout::Horizontal)
@@ -66,8 +70,9 @@ impl ToolbarControl {
                     .map(|focus_handle| ControlGroupFocusTarget { focus_handle, arrow_policy: item.arrow_policy })
             })
             .enabled(model.enabled)
-            .template(builder.control_group_template())
-            .spawn(cx);
+            .template(builder.control_group_template());
+        group_builder.model.locale_navigation = true;
+        let group = group_builder.spawn(cx);
 
         let mut toolbar = Self {
             group,
