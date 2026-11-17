@@ -10,6 +10,7 @@ use super::item_template::render_item_content;
 
 use crate::controls::button_family::button_family_effective_border;
 use crate::infra::ElementExt;
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use crate::controls::selector_list::{
     SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
     default_selector_items_template,
@@ -227,6 +228,7 @@ where
             on_item_mouse_down,
             on_item_click,
         } = handlers;
+        let direction = LocaleContext::current(cx).direction;
         let scale_factor = window.scale_factor();
         let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
         let mut look = self.theme.resolve_visual_look(
@@ -244,9 +246,30 @@ where
         let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
         let focus_extent = focus.extent();
         let trigger_content = render_item_content(model, &look, cx);
+        let label_slot = div()
+            .flex()
+            .flex_row_logical(direction)
+            .items_center()
+            .gap(px(look.trigger_gap))
+            .min_w(px(0.0))
+            .flex_1()
+            .text_color(look.trigger_foreground)
+            .text_size(px(look.trigger_typography.size))
+            .line_height(px(look.trigger_typography.line_height))
+            .font_weight(look.trigger_typography.weight)
+            .child(trigger_content);
+        let caret_slot =
+            div().flex().items_center().justify_center().flex_shrink_0().text_color(look.trigger_icon).child(
+                crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
+            );
+        #[cfg(feature = "test-support")]
+        let label_slot = label_slot.debug_selector(|| "selector-trigger-label".into());
+        #[cfg(feature = "test-support")]
+        let caret_slot = caret_slot.debug_selector(|| "selector-trigger-caret".into());
         let mut trigger = div()
             .id("trigger")
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .justify_between()
             .gap(px(look.trigger_gap))
@@ -266,22 +289,8 @@ where
             .on_mouse_up(MouseButton::Left, trigger_mouse_up)
             .on_mouse_up_out(MouseButton::Left, trigger_mouse_up_out)
             .on_click(trigger_click)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(look.trigger_gap))
-                    .min_w(px(0.0))
-                    .flex_1()
-                    .text_color(look.trigger_foreground)
-                    .text_size(px(look.trigger_typography.size))
-                    .line_height(px(look.trigger_typography.line_height))
-                    .font_weight(look.trigger_typography.weight)
-                    .child(trigger_content),
-            )
-            .child(div().flex().items_center().justify_center().flex_shrink_0().text_color(look.trigger_icon).child(
-                crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
-            ));
+            .child(label_slot)
+            .child(caret_slot);
 
         trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
 
@@ -309,6 +318,7 @@ where
                 &look,
                 model.items.len(),
                 window.viewport_size(),
+                direction,
             );
             let centered = model.opening_mode == SelectorOpeningMode::Centered && !model.items.is_empty();
             if centered {
@@ -325,6 +335,7 @@ where
                         geometry,
                         window.viewport_size(),
                         look.items_panel.window_margin,
+                        direction,
                     );
                     if model.initialize_popup_scroll
                         && let Some(scroll) = model.popup_scroll
@@ -410,12 +421,20 @@ pub(crate) struct ResolvedSelectorPlacement {
     initial_scroll: Pixels,
 }
 
+fn inline_start(bounds: Bounds<Pixels>, direction: LayoutDirection) -> Pixels {
+    match direction {
+        LayoutDirection::Ltr => bounds.left(),
+        LayoutDirection::Rtl => bounds.right(),
+    }
+}
+
 pub(crate) fn resolve_selector_popup_metrics(
     trigger_bounds: Option<Bounds<Pixels>>,
     placement: SelectorPlacement,
     look: &SelectorLook,
     item_count: usize,
     viewport_size: Size<Pixels>,
+    direction: LayoutDirection,
 ) -> ResolvedSelectorPlacement {
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
@@ -455,16 +474,24 @@ pub(crate) fn resolve_selector_popup_metrics(
 
     match resolved {
         SelectorPlacement::Smart | SelectorPlacement::BelowStart => ResolvedSelectorPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
+            anchor: if direction == LayoutDirection::Rtl {
+                Anchor::TopRight
+            } else {
+                Anchor::TopLeft
+            },
+            position: point(inline_start(trigger_bounds, direction), trigger_bounds.bottom()),
             offset: point(px(0.0), offset_y),
             max_height,
             scrolling,
             initial_scroll: px(0.0),
         },
         SelectorPlacement::AboveStart => ResolvedSelectorPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.top()),
+            anchor: if direction == LayoutDirection::Rtl {
+                Anchor::BottomRight
+            } else {
+                Anchor::BottomLeft
+            },
+            position: point(inline_start(trigger_bounds, direction), trigger_bounds.top()),
             offset: point(px(0.0), -offset_y),
             max_height,
             scrolling,
@@ -479,8 +506,12 @@ pub(crate) fn resolve_selector_popup_metrics(
             initial_scroll: px(0.0),
         },
         SelectorPlacement::OverlayOnTrigger => ResolvedSelectorPlacement {
-            anchor: Anchor::TopLeft,
-            position: trigger_bounds.origin,
+            anchor: if direction == LayoutDirection::Rtl {
+                Anchor::TopRight
+            } else {
+                Anchor::TopLeft
+            },
+            position: point(inline_start(trigger_bounds, direction), trigger_bounds.top()),
             offset: point(px(0.0), px(0.0)),
             max_height,
             scrolling,
@@ -496,6 +527,7 @@ fn resolve_centered_popup_metrics(
     geometry: crate::controls::selector_list::SelectorPopupGeometry,
     viewport: Size<Pixels>,
     window_margin: f32,
+    direction: LayoutDirection,
 ) -> ResolvedSelectorPlacement {
     let trigger = trigger.unwrap_or_else(|| Bounds::new(point(px(0.0), px(0.0)), gpui::size(px(0.0), px(0.0))));
     let margin = px(window_margin).min((viewport.height * 0.5).max(px(0.0)));
@@ -509,8 +541,12 @@ fn resolve_centered_popup_metrics(
     let max_scroll = (panel_height - max_height).max(px(0.0));
     let initial_scroll = (row_center - (trigger.center().y - top)).max(px(0.0)).min(max_scroll);
     ResolvedSelectorPlacement {
-        anchor: Anchor::TopLeft,
-        position: point(trigger.left(), top),
+        anchor: if direction == LayoutDirection::Rtl {
+            Anchor::TopRight
+        } else {
+            Anchor::TopLeft
+        },
+        position: point(inline_start(trigger, direction), top),
         offset: point(px(0.0), px(0.0)),
         max_height,
         scrolling: panel_height > max_height,
@@ -550,6 +586,56 @@ mod tests {
     }
 
     #[test]
+    fn rtl_start_anchors_preserve_vertical_placement_and_centered_scroll() {
+        let trigger = Bounds::new(point(px(40.), px(180.)), size(px(120.), px(32.)));
+        let viewport = size(px(800.), px(600.));
+        let look = look();
+        for placement in [
+            SelectorPlacement::Smart,
+            SelectorPlacement::BelowStart,
+            SelectorPlacement::AboveStart,
+            SelectorPlacement::OverlayOnTrigger,
+            SelectorPlacement::CenteredOnTrigger,
+        ] {
+            let ltr =
+                resolve_selector_popup_metrics(Some(trigger), placement, &look, 10, viewport, LayoutDirection::Ltr);
+            let rtl =
+                resolve_selector_popup_metrics(Some(trigger), placement, &look, 10, viewport, LayoutDirection::Rtl);
+            assert_eq!(
+                (ltr.position.y, ltr.offset, ltr.max_height, ltr.scrolling),
+                (rtl.position.y, rtl.offset, rtl.max_height, rtl.scrolling)
+            );
+            if placement == SelectorPlacement::CenteredOnTrigger {
+                assert_eq!(rtl.position, ltr.position);
+                assert_eq!(rtl.anchor, ltr.anchor);
+            } else {
+                assert_eq!(rtl.position.x, trigger.right());
+                assert_eq!(
+                    rtl.anchor,
+                    if placement == SelectorPlacement::AboveStart {
+                        Anchor::BottomRight
+                    } else {
+                        Anchor::TopRight
+                    }
+                );
+            }
+        }
+        let geometry = crate::controls::selector_list::SelectorPopupGeometry {
+            row_center: px(400.),
+            content_height: px(2000.),
+            inset: px(5.),
+        };
+        let ltr = resolve_centered_popup_metrics(Some(trigger), geometry, viewport, 8., LayoutDirection::Ltr);
+        let rtl = resolve_centered_popup_metrics(Some(trigger), geometry, viewport, 8., LayoutDirection::Rtl);
+        assert_eq!(rtl.anchor, Anchor::TopRight);
+        assert_eq!(rtl.position.x, trigger.right());
+        assert_eq!(
+            (ltr.position.y, ltr.max_height, ltr.initial_scroll),
+            (rtl.position.y, rtl.max_height, rtl.initial_scroll)
+        );
+    }
+
+    #[test]
     fn centered_rows_align_first_middle_and_last_when_the_panel_fits() {
         for index in [0, 4, 9] {
             let geometry = crate::controls::selector_list::SelectorPopupGeometry {
@@ -558,7 +644,13 @@ mod tests {
                 inset: px(5.0),
             };
             let trigger = Bounds::new(point(px(40.0), px(480.0)), size(px(180.0), px(32.0)));
-            let metrics = resolve_centered_popup_metrics(Some(trigger), geometry, size(px(800.0), px(1000.0)), 8.0);
+            let metrics = resolve_centered_popup_metrics(
+                Some(trigger),
+                geometry,
+                size(px(800.0), px(1000.0)),
+                8.0,
+                LayoutDirection::Ltr,
+            );
             assert_eq!(metrics.position.x, trigger.left());
             assert_eq!(
                 metrics.position.y + geometry.inset + geometry.row_center - metrics.initial_scroll,
@@ -579,7 +671,13 @@ mod tests {
                     inset: px(5.0),
                 };
                 let trigger = Bounds::new(point(px(30.0), px(trigger_y)), size(px(150.0), px(32.0)));
-                let metrics = resolve_centered_popup_metrics(Some(trigger), geometry, size(px(320.0), px(400.0)), 8.0);
+                let metrics = resolve_centered_popup_metrics(
+                    Some(trigger),
+                    geometry,
+                    size(px(320.0), px(400.0)),
+                    8.0,
+                    LayoutDirection::Ltr,
+                );
                 let row = geometry.inset + geometry.row_center - metrics.initial_scroll;
                 assert!(metrics.scrolling);
                 assert_eq!(metrics.position.y, px(8.0));
@@ -600,7 +698,8 @@ mod tests {
             content_height: px(32.0),
             inset: px(5.0),
         };
-        let metrics = resolve_centered_popup_metrics(None, geometry, size(px(20.0), px(10.0)), 8.0);
+        let metrics =
+            resolve_centered_popup_metrics(None, geometry, size(px(20.0), px(10.0)), 8.0, LayoutDirection::Ltr);
         assert_eq!(metrics.max_height, px(0.0));
         assert!(metrics.initial_scroll >= px(0.0));
     }
@@ -615,6 +714,7 @@ mod tests {
             &look,
             3,
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(popup_metrics.anchor, Anchor::TopLeft);
@@ -632,6 +732,7 @@ mod tests {
             &look,
             6,
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(popup_metrics.anchor, Anchor::TopLeft);
@@ -649,6 +750,7 @@ mod tests {
             &look,
             20,
             size(px(320.0), px(280.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(popup_metrics.anchor, Anchor::BottomLeft);
