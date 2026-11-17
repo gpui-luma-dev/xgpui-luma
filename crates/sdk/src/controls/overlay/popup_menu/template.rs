@@ -9,7 +9,9 @@ use lucide_svg_static::Icon as LucideIcon;
 
 use super::{PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTriggerModel};
 use crate::controls::button_family::button_family_effective_border;
-use crate::controls::floating_menu::render_floating_menu_with_submenu_hovers_and_icons_and_transition;
+use crate::controls::floating_menu::{
+    default_floating_menu_template, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
+};
 use crate::infra::icon::render_disclosure_icon;
 use crate::controls::popup_menu::{PopupMenuLook, PopupMenuTheme, PopupMenuTriggerMetrics, default_popup_menu_theme};
 use crate::theme::InteractionState;
@@ -399,21 +401,21 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 model.trigger_bounds.map(|bounds| bounds.size.width).unwrap_or(px(look.trigger_height)),
             );
             let offset = model.presence.adjust_offset(placement.offset, content_size);
-            let menu = div().opacity(model.presence.opacity()).child(
-                render_floating_menu_with_submenu_hovers_and_icons_and_transition(
-                    model.id,
-                    model.items,
-                    model.open_submenu,
-                    model.active_path,
-                    look.floating_menu.clone(),
-                    item_hovers,
-                    submenu_hovers,
-                    item_clicks,
-                    model.highlight,
-                    crate::infra::icon::DisclosureIcons::default(),
-                    model.submenu_transition,
-                ),
-            );
+            let menu = div().opacity(model.presence.opacity()).child(default_floating_menu_template().render(
+                &FloatingMenuRenderModel {
+                    id: model.id,
+                    direction,
+                    items: model.items,
+                    open_submenu: model.open_submenu,
+                    active_path: model.active_path,
+                    look: look.floating_menu.clone(),
+                    highlight: model.highlight,
+                    disclosure_icons: &crate::infra::icon::DisclosureIcons::default(),
+                    submenu_transition: model.submenu_transition,
+                    submenu_presence: crate::motion::overlay_presence::OverlayPresence::new(true, false),
+                },
+                FloatingMenuTemplateHandlers { item_hovers, submenu_hovers, controlled_hover: true, item_clicks },
+            ));
             let overlay = anchored()
                 .snap_to_window_with_margin(px(look.floating_menu.window_margin))
                 .anchor(placement.anchor)

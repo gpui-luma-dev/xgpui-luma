@@ -648,7 +648,12 @@ impl PopupMenu {
 
     fn handle_open_submenu(&mut self, _: &OpenSubmenu, _window: &mut Window, cx: &mut Context<Self>) {
         if self.lifecycle.is_open() {
-            self.open_active_submenu(cx);
+            if crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl
+            {
+                self.close_active_submenu(cx);
+            } else {
+                self.open_active_submenu(cx);
+            }
         } else if self.model.enabled {
             cx.propagate();
         }
@@ -656,7 +661,12 @@ impl PopupMenu {
 
     fn handle_close_submenu(&mut self, _: &CloseSubmenu, _window: &mut Window, cx: &mut Context<Self>) {
         if self.lifecycle.is_open() {
-            self.close_active_submenu(cx);
+            if crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl
+            {
+                self.open_active_submenu(cx);
+            } else {
+                self.close_active_submenu(cx);
+            }
         } else if self.model.enabled {
             cx.propagate();
         }
