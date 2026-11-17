@@ -8,3 +8,6 @@ pub mod radio_group;
 pub mod switch;
 pub mod toggle;
 pub mod toolbar;
+
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests;

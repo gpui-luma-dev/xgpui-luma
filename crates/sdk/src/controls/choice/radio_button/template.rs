@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use gpui::{AnyElement, App, Div, Hsla, Stateful, Window, div, hsla, px, prelude::*};
 
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
@@ -59,6 +60,7 @@ fn lerp_radio_palette(off: &RadioButtonPalette, on: &RadioButtonPalette, progres
 
 impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
     fn render(&self, model: &ButtonRenderModel<RadioButtonData>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+        let direction = LocaleContext::current(cx).direction;
         let progress = model.data.progress.clamp(0.0, 1.0);
         let selected = model.data.selected;
         let focused = model.state.focused && !model.state.disabled;
@@ -74,6 +76,7 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
         let indicator_only = matches!(model.role, ButtonFamilyRole::Icon);
         let indicator_visual = {
             let mut indicator = div()
+                .debug_selector(|| "radio_button-indicator".into())
                 .id("indicator")
                 .flex()
                 .items_center()
@@ -132,12 +135,16 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
             shadow: None,
         };
         let content_model = button_content_context(model, content_look);
-        let label = div().mt(px(scale.label_baseline_shift)).child((model.content)(&content_model, cx));
+        let label = div()
+            .debug_selector(|| "radio_button-label".into())
+            .mt(px(scale.label_baseline_shift))
+            .child((model.content)(&content_model, cx));
 
         let mut control = div()
             .id((model.id.clone(), 0usize))
             .relative()
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .gap(px(scale.gap))
             .min_h(px(scale.height))
