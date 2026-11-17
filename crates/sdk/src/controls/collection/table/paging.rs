@@ -1,6 +1,10 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "paging_locale_tests.rs"]
+mod locale_tests;
+
 use std::sync::Arc;
 
-use gpui::{App, AppContext, Context, Entity, EventEmitter, Render, Window, div, prelude::*, px};
+use gpui::{App, AppContext, Context, Entity, EventEmitter, Render, WeakEntity, Window, div, prelude::*, px};
 
 use crate::controls::pager::{
     PagerBuilder, PagerControl, PagerEvent, PagerRenderModel, PagerStyle, PagerTemplate, PagerTemplateHandlers,
@@ -10,6 +14,7 @@ use crate::controls::pager::{
 
 use super::control::{TableControl, TableEvent};
 use super::model::TableBuilder;
+use crate::infra::locale::LocaleContext;
 
 pub type PagingTable<T> = Entity<PagingTableControl<T>>;
 
@@ -24,11 +29,6 @@ impl<T: 'static> PagingTableControl<T> {
         cx.subscribe(&list, move |_, list_control, event, cx| {
             let list = list_control.read(cx);
             match event {
-                TableEvent::SelectionChanged { selected_indices } => {
-                    let count = selected_indices.len();
-                    let total = list.items().len();
-                    pager_clone.update(cx, |pager, cx| pager.set_info_text(Some(selection_summary(count, total)), cx));
-                }
                 TableEvent::PageChanged { page } => {
                     let page_size = list.page_size().unwrap_or(10);
                     let page_count = list.page_count();
@@ -52,6 +52,11 @@ impl<T: 'static> PagingTableControl<T> {
             }
         })
         .detach();
+
+        // Default footer slots read current row counts at render time. Observe
+        // notifications as well as events so replacing items refreshes the total.
+        let footer = pager.clone();
+        cx.observe(&list, move |_, _, cx| footer.update(cx, |_, cx| cx.notify())).detach();
 
         let list_clone = list.clone();
         cx.subscribe(&pager, move |_, _, event, cx| {
@@ -106,17 +111,18 @@ impl<T: 'static> Render for PagingTableControl<T> {
     }
 }
 
-struct TablePagerTemplate {
+struct TablePagerTemplate<T: 'static> {
     theme: Arc<dyn PagerTheme>,
+    rows: WeakEntity<TableControl<T>>,
 }
 
-impl TablePagerTemplate {
-    fn new(theme: Arc<dyn PagerTheme>) -> Self {
-        Self { theme }
+impl<T: 'static> TablePagerTemplate<T> {
+    fn new(theme: Arc<dyn PagerTheme>, rows: WeakEntity<TableControl<T>>) -> Self {
+        Self { theme, rows }
     }
 }
 
-impl PagerTemplate for TablePagerTemplate {
+impl<T: 'static> PagerTemplate for TablePagerTemplate<T> {
     fn render(
         &self,
         model: &PagerRenderModel<'_>,
@@ -125,6 +131,22 @@ impl PagerTemplate for TablePagerTemplate {
         cx: &mut App,
     ) -> gpui::AnyElement {
         let look = self.theme.resolve(model.enabled, PagerStyle::MinimalEdge);
+        let page_size_label = model
+            .page_size_label()
+            .cloned()
+            .unwrap_or_else(|| LocaleContext::current(cx).strings.rows_per_page.clone());
+
+        let info = render_info_slot(model, window, cx).unwrap_or_else(|| {
+            let text = self.rows.upgrade().map(|rows| {
+                let rows = rows.read(cx);
+                (LocaleContext::current(cx).strings.selection_summary)(
+                    rows.selected_indices().len(),
+                    rows.items().len(),
+                    cx,
+                )
+            });
+            div().flex_1().min_w(px(0.0)).truncate().children(text).into_any_element()
+        });
 
         div()
             .w_full()
@@ -137,9 +159,7 @@ impl PagerTemplate for TablePagerTemplate {
             .text_color(look.muted_text)
             .text_size(px(look.typography.size))
             .line_height(px(look.typography.line_height))
-            .child(
-                render_info_slot(model, window, cx).unwrap_or_else(|| div().flex_1().min_w(px(0.0)).into_any_element()),
-            )
+            .child(info)
             .child(
                 div()
                     .flex_none()
@@ -149,16 +169,14 @@ impl PagerTemplate for TablePagerTemplate {
                     .child(div().flex_none().flex().items_center().gap(px(look.page_size_label_gap)).when(
                         !model.page_size_options.is_empty(),
                         |slot| {
-                            slot.when_some(model.page_size_label(), |slot, label| {
-                                slot.child(
-                                    div()
-                                        .flex_none()
-                                        .text_color(look.muted_text)
-                                        .text_size(px(look.typography.size))
-                                        .line_height(px(look.typography.line_height))
-                                        .child(label.clone()),
-                                )
-                            })
+                            slot.child(
+                                div()
+                                    .flex_none()
+                                    .text_color(look.muted_text)
+                                    .text_size(px(look.typography.size))
+                                    .line_height(px(look.typography.line_height))
+                                    .child(page_size_label.clone()),
+                            )
                             .child(render_page_size_select(model, &look, &handlers, cx))
                         },
                     ))
@@ -476,41 +494,23 @@ impl<T: 'static> PagingTableBuilder<T> {
             let fill_height = self.list_builder.model.fill_height;
             let list = self.list_builder.spawn(cx);
 
-            let (current_page, page_count, page_size, selected_count, total_rows) = list.read_with(cx, |list, _| {
-                (
-                    list.current_page(),
-                    list.page_count(),
-                    list.page_size().unwrap_or(10),
-                    list.selected_indices().len(),
-                    list.items().len(),
-                )
-            });
+            let (current_page, page_count, page_size) =
+                list.read_with(cx, |list, _| (list.current_page(), list.page_count(), list.page_size().unwrap_or(10)));
 
             let mut pager_builder = self.pager_builder;
             // Viewport-driven page size: hide the manual "rows per page" control.
             if fill_height {
                 pager_builder = pager_builder.page_size_options([]);
-            } else if pager_builder.model.template_parameters.page_size_label.is_none() {
-                pager_builder = pager_builder.page_size_label("Rows per page");
             }
             let pager_theme = pager_builder.model.theme.clone().unwrap_or_else(default_pager_theme);
             pager_builder = pager_builder.style(PagerStyle::MinimalEdge);
-            pager_builder = pager_builder.template(Arc::new(TablePagerTemplate::new(pager_theme)));
+            pager_builder = pager_builder.template(Arc::new(TablePagerTemplate::new(pager_theme, list.downgrade())));
 
-            let pager = pager_builder
-                .current_page(current_page)
-                .page_count(page_count)
-                .page_size(page_size)
-                .info_text(selection_summary(selected_count, total_rows))
-                .spawn(cx);
+            let pager = pager_builder.current_page(current_page).page_count(page_count).page_size(page_size).spawn(cx);
 
             cx.new(|cx| PagingTableControl::new(list, pager, cx))
         };
         callbacks.bind(&control, cx);
         control
     }
-}
-
-fn selection_summary(selected_count: usize, total_rows: usize) -> String {
-    format!("{} of {} row(s) selected.", selected_count, total_rows)
 }

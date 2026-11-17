@@ -16,6 +16,7 @@ fn compatibility_defaults_and_exact_integer_display() {
     assert_eq!(context.strings.select_placeholder, "Select…");
     assert_eq!(context.strings.search_placeholder, "Search…");
     assert_eq!(context.strings.selection_search, "Selection search");
+    assert_eq!(context.strings.rows_per_page, "Rows per page");
     assert_eq!(context.numbers.integer(u64::MAX), "18446744073709551615");
     assert_eq!(context.numbers.number(-1.5), "-1.5");
     assert_eq!(context.numbers.percent(0.125), "12.5%");
