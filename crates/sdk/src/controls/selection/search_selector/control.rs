@@ -1,4 +1,8 @@
 #[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
+#[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
 
@@ -76,12 +80,22 @@ impl SearchSelectorControl {
 
     crate::motion_snapshot!(super::SearchSelectorMotion, model.motion);
 
+    fn sync_locale_defaults(&mut self, cx: &mut Context<Self>) {
+        let previous = self.model.search_placeholder.clone();
+        self.model.resolve_locale_defaults(cx);
+        if self.model.search_placeholder != previous {
+            let placeholder = self.model.search_placeholder.to_string();
+            self.popup_search_textfield.update(cx, |field, cx| field.set_placeholder(placeholder, cx));
+        }
+    }
+
     pub(crate) fn from_builder(builder: SearchSelectorBuilder, cx: &mut Context<Self>) -> Self {
         let mut builder = builder;
         builder.model.motion.freeze();
         let motion = builder.model.motion.profile().clone();
         let motion_enabled = builder.model.motion.enabled();
-        let model = builder.model;
+        let mut model = builder.model;
+        model.resolve_locale_defaults(cx);
         let enabled = model.enabled;
         let geometry = model.stylesheet.resolve_geometry(model.size.stylesheet_key(), Default::default());
         let padding_reduction = geometry.search_padding_reduction;
@@ -179,6 +193,7 @@ impl SearchSelectorControl {
 
     pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.model.placeholder = placeholder.into();
+        self.model.placeholder_explicit = true;
         cx.notify();
     }
 
@@ -701,6 +716,7 @@ impl Focusable for SearchSelectorControl {
 
 impl Render for SearchSelectorControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_locale_defaults(cx);
         self.disclosure_transition.sync();
         self.disclosure_transition.schedule_frame(window, cx);
         self.presence.sync();
@@ -812,7 +828,7 @@ impl Render for SearchSelectorControl {
                     .line_height(px(look.item_typography.line_height))
                     .font_weight(look.item_typography.weight)
                     .text_color(autocomplete_look.muted_text_color)
-                    .child("No matches")
+                    .child(self.model.no_matches.clone())
                     .into_any_element()
             } else {
                 self.model

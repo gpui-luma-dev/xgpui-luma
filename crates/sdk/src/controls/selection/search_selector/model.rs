@@ -37,7 +37,10 @@ pub struct SearchSelectorModel {
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
+    pub(crate) placeholder_explicit: bool,
     pub(crate) search_placeholder: SharedString,
+    pub(crate) search_placeholder_explicit: bool,
+    pub(crate) no_matches: SharedString,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
@@ -177,6 +180,7 @@ impl SearchSelectorBuilder {
     }
 
     pub fn new(id: impl Into<SharedString>, items: impl IntoIterator<Item = SelectionItem>) -> Self {
+        let strings = crate::infra::locale::SdkStrings::default();
         Self {
             callbacks: Default::default(),
 
@@ -187,8 +191,11 @@ impl SearchSelectorBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().search_selector.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Select…"),
-                search_placeholder: SharedString::from("Selection search"),
+                placeholder: strings.select_placeholder,
+                placeholder_explicit: false,
+                search_placeholder: strings.selection_search,
+                search_placeholder_explicit: false,
+                no_matches: strings.no_matches,
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
@@ -242,13 +249,17 @@ impl SearchSelectorBuilder {
         self
     }
 
+    /// App-supplied text, including an empty string, is retained across locale changes.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.placeholder = placeholder.into();
+        self.model.placeholder_explicit = true;
         self
     }
 
+    /// App-supplied search text remains fixed across locale changes, including empty text.
     pub fn search_placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.search_placeholder = placeholder.into();
+        self.model.search_placeholder_explicit = true;
         self
     }
 
@@ -529,5 +540,18 @@ mod stylesheet_tests {
             (0.0, 0.0, 21.0, 0.0)
         );
         assert_eq!(geometry.search_icon_width, 18.0);
+    }
+}
+
+impl SearchSelectorModel {
+    pub(crate) fn resolve_locale_defaults(&mut self, cx: &App) {
+        let strings = &crate::infra::locale::LocaleContext::current(cx).strings;
+        self.no_matches = strings.no_matches.clone();
+        if !self.placeholder_explicit {
+            self.placeholder = strings.select_placeholder.clone();
+        }
+        if !self.search_placeholder_explicit {
+            self.search_placeholder = strings.selection_search.clone();
+        }
     }
 }

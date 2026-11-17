@@ -39,6 +39,7 @@ pub struct ComboBoxModel {
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
+    pub(crate) placeholder_explicit: bool,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
@@ -185,7 +186,8 @@ impl ComboBoxBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().combobox.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Select…"),
+                placeholder: crate::infra::locale::SdkStrings::default().select_placeholder,
+                placeholder_explicit: false,
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
@@ -238,8 +240,10 @@ impl ComboBoxBuilder {
         self
     }
 
+    /// App-supplied text, including an empty string, is retained across locale changes.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.placeholder = placeholder.into();
+        self.model.placeholder_explicit = true;
         self
     }
 
@@ -492,5 +496,14 @@ mod stylesheet_tests {
             (geometry.affordance_inset, geometry.affordance_width, geometry.affordance_icon_size),
             (0.0, 31.0, 23.0)
         );
+    }
+}
+
+impl ComboBoxModel {
+    pub(crate) fn resolve_locale_defaults(&mut self, cx: &App) {
+        let strings = &crate::infra::locale::LocaleContext::current(cx).strings;
+        if !self.placeholder_explicit {
+            self.placeholder = strings.select_placeholder.clone();
+        }
     }
 }
