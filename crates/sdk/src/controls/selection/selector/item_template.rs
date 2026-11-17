@@ -1,5 +1,7 @@
 use gpui::{AnyElement, App, div, prelude::*, px};
 
+use crate::infra::locale::{LocaleContext, LogicalStyled};
+
 use super::{SelectorRenderModel, theme::SelectorLook};
 use crate::controls::selector_list::{SelectorItemLike, SelectorItemRenderModel};
 
@@ -27,5 +29,11 @@ where
         return item_template(&item_model, cx);
     }
 
-    div().flex().items_center().gap(px(look.trigger_gap)).child(model.label.clone()).into_any_element()
+    div()
+        .flex()
+        .flex_row_logical(LocaleContext::current(cx).direction)
+        .items_center()
+        .gap(px(look.trigger_gap))
+        .child(model.label.clone())
+        .into_any_element()
 }

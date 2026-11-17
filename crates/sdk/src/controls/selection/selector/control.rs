@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use std::sync::Arc;
 
