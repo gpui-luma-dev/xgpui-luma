@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{
     AnyElement, App, Bounds, Div, DragMoveEvent, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Stateful, TextAlign,
-    Window, canvas, div, fill, font, point, px, prelude::*, size, svg,
+    Window, canvas, div, fill, font, point, px, prelude::*, size,
 };
 
 use super::{TextFieldDrag, TextFieldLook, TextFieldRenderModel, TextFieldState};
@@ -291,7 +291,12 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
                 .flex()
                 .items_center()
                 .gap(px(look.gap))
-                .child(render_prefix_icon(icon, look.icon, look.icon_size))
+                .child(render_prefix_icon(
+                    icon,
+                    look.icon,
+                    look.icon_size,
+                    crate::infra::locale::LocaleContext::current(_cx).direction,
+                ))
                 .child(text_viewport);
         }
 
@@ -362,18 +367,11 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
     }
 }
 
-fn render_prefix_icon(icon: &ControlIcon, color: gpui::Hsla, size: f32) -> AnyElement {
-    match icon {
-        ControlIcon::Lucide(icon) => div()
-            .size(px(size))
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_size(px(size))
-            .line_height(px(size))
-            .text_color(color)
-            .child(crate::infra::icon::lucide_icon(*icon, color, size))
-            .into_any_element(),
-        ControlIcon::SvgPath(path) => svg().size(px(size)).text_color(color).path(path.clone()).into_any_element(),
-    }
+fn render_prefix_icon(
+    icon: &ControlIcon,
+    color: gpui::Hsla,
+    size: f32,
+    direction: crate::infra::locale::LayoutDirection,
+) -> AnyElement {
+    icon.render(Some(color), size, direction)
 }

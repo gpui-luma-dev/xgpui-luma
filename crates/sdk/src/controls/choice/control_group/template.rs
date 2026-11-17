@@ -1,3 +1,4 @@
+use crate::infra::locale::LogicalStyled;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -311,12 +312,16 @@ where
     })
 }
 
-fn default_item_content<T>(model: &ControlGroupItemRenderModel<'_, T>) -> AnyElement
+fn default_item_content<T>(model: &ControlGroupItemRenderModel<'_, T>, cx: &App) -> AnyElement
 where
     T: ControlGroupItemLike + 'static,
 {
     let active_marker = if model.state.focus_visible {
-        ">"
+        if crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl {
+            "<"
+        } else {
+            ">"
+        }
     } else if model.active {
         "*"
     } else {
@@ -344,6 +349,7 @@ where
     // selection changes. Keep the two marker columns independent of their paint.
     div()
         .flex()
+        .flex_row_logical(crate::infra::locale::LocaleContext::current(cx).direction)
         .items_center()
         .child(div().w(gpui::rems(1.0)).flex_none().overflow_hidden().whitespace_nowrap().child(active_marker))
         .child(div().w(gpui::rems(2.0)).flex_none().overflow_hidden().whitespace_nowrap().child(selection_marker))
@@ -363,7 +369,7 @@ where
     let content = if let Some(item_template) = item_template {
         item_template(model, window, cx)
     } else {
-        default_item_content(model)
+        default_item_content(model, cx)
     };
 
     div().id((model.item.id().clone(), 0usize)).flex().child(content)
@@ -456,26 +462,29 @@ fn default_group_markers_keep_intrinsic_bounds_across_focus_states() {
     let item = ControlGroupItem::new("fallback").label("Fallback item");
     let id = "group".into();
     let stylesheet = crate::theme::stylesheet::CommonStylesheet::sdk_default();
-    crate::infra::focus_adorner::testing::assert_stable_layout(move |state, selected, _, _| {
-        default_item_content(&ControlGroupItemRenderModel {
-            group_id: &id,
-            stylesheet,
-            layout: ControlGroupLayout::Vertical,
-            item: &item,
-            index: 0,
-            sibling_count: 1,
-            selected,
-            selection_progress: if selected { 1.0 } else { 0.0 },
-            active: state.focused,
-            enabled: !state.disabled,
-            state: CompositeItemState {
-                active: state.focused,
-                focus_visible: state.focused,
+    crate::infra::focus_adorner::testing::assert_stable_layout(move |state, selected, _, cx| {
+        default_item_content(
+            &ControlGroupItemRenderModel {
+                group_id: &id,
+                stylesheet,
+                layout: ControlGroupLayout::Vertical,
+                item: &item,
+                index: 0,
+                sibling_count: 1,
                 selected,
-                ..Default::default()
+                selection_progress: if selected { 1.0 } else { 0.0 },
+                active: state.focused,
+                enabled: !state.disabled,
+                state: CompositeItemState {
+                    active: state.focused,
+                    focus_visible: state.focused,
+                    selected,
+                    ..Default::default()
+                },
+                selection_mode: ControlSelectionMode::Multiple,
+                foreground: None,
             },
-            selection_mode: ControlSelectionMode::Multiple,
-            foreground: None,
-        })
+            cx,
+        )
     });
 }

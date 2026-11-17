@@ -242,11 +242,11 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .font_weight(look.trigger_typography.weight)
                 .on_click(action_click)
                 .child(face)
-                .when_some(model.end_icon, |face, icon| {
-                    face.gap(px(look.trigger_gap)).child(render_lucide_icon(
-                        icon,
-                        primary_look.trigger_foreground,
+                .when_some(model.end_icon.as_ref(), |face, icon| {
+                    face.gap(px(look.trigger_gap)).child(icon.render(
+                        Some(primary_look.trigger_foreground),
                         look.trigger_icon_size,
+                        direction,
                     ))
                 });
             let mut secondary = div()
@@ -300,7 +300,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .child(
                     div()
                         .h_full()
-                        .border_l(px(self.theme.metrics().border_width.default))
+                        .border_s(px(self.theme.metrics().border_width.default), direction)
                         .border_color(look.trigger_foreground)
                         .child(secondary),
                 );
@@ -327,8 +327,8 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .line_height(px(look.trigger_typography.line_height))
                 .font_weight(look.trigger_typography.weight)
                 .child(face)
-                .child(if let Some(end_icon) = model.end_icon {
-                    render_lucide_icon(end_icon, look.trigger_foreground, look.trigger_icon_size)
+                .child(if let Some(end_icon) = model.end_icon.as_ref() {
+                    end_icon.render(Some(look.trigger_foreground), look.trigger_icon_size, direction)
                 } else {
                     render_disclosure_icon(
                         model.disclosure_icons,

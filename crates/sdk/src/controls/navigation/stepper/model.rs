@@ -51,6 +51,7 @@ pub struct StepperModel {
     pub(crate) labels: Vec<SharedString>,
     pub(crate) label_placement: StepperLabelPlacement,
     pub(crate) direction: ProgressDirection,
+    pub(crate) direction_explicit: bool,
     pub(crate) size: ControlSize,
     pub(crate) enabled: bool,
     pub(crate) workflow_complete: bool,
@@ -76,6 +77,8 @@ pub struct StepperRenderModel<'a> {
     pub labels: &'a [SharedString],
     pub label_placement: StepperLabelPlacement,
     pub direction: ProgressDirection,
+    /// An explicit physical direction overrides automatic horizontal locale flow.
+    pub direction_explicit: bool,
     pub size: ControlSize,
     pub enabled: bool,
     pub step_contents: &'a [Option<StepperContentRenderer>],
@@ -108,6 +111,7 @@ impl StepperBuilder {
                 labels: Vec::new(),
                 label_placement: StepperLabelPlacement::default(),
                 direction: ProgressDirection::default(),
+                direction_explicit: false,
                 size: ControlSize::Md,
                 enabled: true,
                 workflow_complete: false,
@@ -164,6 +168,7 @@ impl StepperBuilder {
     }
 
     pub fn direction(mut self, direction: ProgressDirection) -> Self {
+        self.model.direction_explicit = true;
         self.model.direction = direction;
         self
     }

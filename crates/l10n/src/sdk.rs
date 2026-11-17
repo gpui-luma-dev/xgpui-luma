@@ -94,9 +94,32 @@ fn selection_summary(selected: usize, total: usize, cx: &App) -> SharedString {
     localizer.tr_args("sdk-selection-summary", &args).into()
 }
 
+fn autocomplete_status(
+    status: &str,
+    selected: Option<&str>,
+    matches: usize,
+    last: &str,
+    keyboard: &str,
+    cx: &App,
+) -> (SharedString, SharedString) {
+    let Some(localizer) = cx.try_global::<Localizer>() else {
+        return (SdkStrings::default().autocomplete_status)(status, selected, matches, last, keyboard, cx);
+    };
+    let mut args = FluentArgs::new();
+    args.set("status", status);
+    let label = localizer.tr_args("sdk-autocomplete-status", &args).into();
+    let none = localizer.tr("sdk-no-selection");
+    args.set("selected", selected.unwrap_or(&none));
+    args.set("matches", LocaleContext::current(cx).numbers.integer(matches as u64).to_string());
+    args.set("last", last);
+    args.set("keyboard", keyboard);
+    (label, localizer.tr_args("sdk-autocomplete-detail", &args).into())
+}
+
 pub(crate) fn context(localizer: &Localizer) -> LocaleContext {
     let tr = |id| localizer.tr(id).into();
     let strings = SdkStrings {
+        autocomplete_status: Arc::new(autocomplete_status),
         cancel: tr("sdk-cancel"),
         clear: tr("sdk-clear"),
         first: tr("sdk-first"),

@@ -451,13 +451,39 @@ pub fn resolve_tabs_uniform_item_width(
     Some(max_width)
 }
 
+/// Legacy overlay helper with LTR alignment. Use the direction-aware variant for localized chrome.
 pub fn render_tabs_overlay_host<F>(
+    id: impl Into<SharedString>,
+    trigger: Stateful<Div>,
+    width: Option<Pixels>,
+    overlay_state: TabsOverlayState,
+    overlay: Option<TabsItemOverlay>,
+    on_mouse_down_out: F,
+) -> AnyElement
+where
+    F: Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
+{
+    render_tabs_overlay_host_with_direction(
+        id,
+        trigger,
+        width,
+        overlay_state,
+        overlay,
+        on_mouse_down_out,
+        crate::infra::locale::LayoutDirection::Ltr,
+    )
+}
+
+/// Render a tab accessory overlay with logical start alignment in the supplied direction.
+/// Callers with an App should pass `LocaleContext::current(cx).direction`.
+pub fn render_tabs_overlay_host_with_direction<F>(
     id: impl Into<SharedString>,
     mut trigger: Stateful<Div>,
     width: Option<Pixels>,
     overlay_state: TabsOverlayState,
     overlay: Option<TabsItemOverlay>,
     on_mouse_down_out: F,
+    direction: crate::infra::locale::LayoutDirection,
 ) -> AnyElement
 where
     F: Fn(&MouseDownEvent, &mut Window, &mut App) + 'static,
@@ -493,11 +519,12 @@ where
             });
             overlay_state.set_overlay_open(true);
             let presence = overlay_state.presence_snapshot();
-            let placement = resolve_tabs_overlay_placement(
+            let placement = logical_tabs_overlay_placement(
                 overlay_state.trigger_bounds(),
                 overlay.placement,
                 overlay.content_size,
                 overlay.offset_y,
+                direction,
             );
             let offset = presence.adjust_offset(placement.offset, overlay.content_size);
             let content = div().opacity(presence.opacity()).child(overlay.content);
@@ -515,11 +542,12 @@ where
             if presence.should_paint()
                 && let Some(cached) = lock::mutex(&overlay_state.last_overlay).clone()
             {
-                let placement = resolve_tabs_overlay_placement(
+                let placement = logical_tabs_overlay_placement(
                     overlay_state.trigger_bounds(),
                     cached.placement,
                     cached.content_size,
                     cached.offset_y,
+                    direction,
                 );
                 let offset = presence.adjust_offset(placement.offset, cached.content_size);
                 // Exit keeps a sized shell while content is unavailable (`AnyElement` is not cloneable).
@@ -537,6 +565,21 @@ where
     }
 
     root.into_any_element()
+}
+
+fn logical_tabs_overlay_placement(
+    trigger_bounds: Option<Bounds<Pixels>>,
+    preferred: TabsOverlayPlacement,
+    content_size: Size<Pixels>,
+    offset_y: Pixels,
+    direction: crate::infra::locale::LayoutDirection,
+) -> ResolvedTabsOverlayPlacement {
+    let mut placement = resolve_tabs_overlay_placement(trigger_bounds, preferred, content_size, offset_y);
+    if direction == crate::infra::locale::LayoutDirection::Rtl && preferred == TabsOverlayPlacement::BelowStart {
+        placement.anchor = Anchor::TopRight;
+        placement.position.x = trigger_bounds.map_or(px(0.0), |bounds| bounds.right());
+    }
+    placement
 }
 
 fn resolve_tabs_overlay_placement(
@@ -828,4 +871,28 @@ mod tests {
         assert!(!state.is_animating());
         assert!(state.trigger_bounds().is_none());
     }
+}
+
+#[test]
+fn tab_accessory_start_placement_tracks_direction_without_changing_center() {
+    use crate::infra::locale::LayoutDirection;
+    let bounds = Bounds::new(point(px(100.), px(50.)), gpui::size(px(80.), px(30.)));
+    let content = gpui::size(px(120.), px(60.));
+    let rtl = logical_tabs_overlay_placement(
+        Some(bounds),
+        TabsOverlayPlacement::BelowStart,
+        content,
+        px(4.),
+        LayoutDirection::Rtl,
+    );
+    assert_eq!(rtl.anchor, Anchor::TopRight);
+    assert_eq!(rtl.position.x, bounds.right());
+    let center = logical_tabs_overlay_placement(
+        Some(bounds),
+        TabsOverlayPlacement::BelowCenter,
+        content,
+        px(4.),
+        LayoutDirection::Rtl,
+    );
+    assert_eq!(center.position.x, bounds.center().x);
 }

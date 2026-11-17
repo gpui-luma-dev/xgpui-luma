@@ -502,6 +502,7 @@ fn expanded_panel(
         autocomplete::default_autocomplete_items_template()
             .render(
                 &autocomplete::AutocompleteItemsRenderModel {
+                    direction: xgpui_luma::infra::locale::LayoutDirection::Ltr,
                     id,
                     items: &selector_items,
                     look: panel_look.clone(),

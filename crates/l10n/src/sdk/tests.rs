@@ -219,3 +219,22 @@ fn malformed_default_resource_set_does_not_partially_replace_app_bundles() {
     };
     assert_eq!(localizer.tr("sdk-cancel"), expected);
 }
+
+#[cfg(feature = "test-support")]
+#[test]
+fn autocomplete_copy_uses_live_locale_and_isolates_app_data() {
+    let app = gpui::TestAppContext::single();
+    app.update(|cx| {
+        crate::install(Localizer::new("en".parse().unwrap()), cx).unwrap();
+        let formatter = LocaleContext::current(cx).strings.autocomplete_status.clone();
+        crate::set_locale("de".parse().unwrap(), cx);
+        let (status, detail) = formatter("searching", Some("שלום"), 1234, "input", "left", cx);
+        assert!(status.contains("Suche"));
+        assert!(detail.contains("1.234"));
+        assert!(detail.contains("\u{2068}שלום\u{2069}"));
+        crate::set_locale("ja".parse().unwrap(), cx);
+        let (status, detail) = formatter("idle", None, 0, "clear", "escape", cx);
+        assert!(status.contains("待機中"));
+        assert!(detail.contains("なし"));
+    });
+}

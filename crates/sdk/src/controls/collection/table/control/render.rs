@@ -127,7 +127,17 @@ where
         let cells = if !self.model.columns.is_empty() {
             render_grid_view_cells(&row_model, &self.model.columns, window, cx)
         } else {
-            div().flex_1().min_w(px(0.0)).truncate().child(self.model.label_for_row(item)).into_any_element()
+            div()
+                .flex_1()
+                .min_w(px(0.0))
+                .when(
+                    crate::infra::locale::LocaleContext::current(cx).direction
+                        == crate::infra::locale::LayoutDirection::Rtl,
+                    |label| label.text_right(),
+                )
+                .truncate()
+                .child(self.model.label_for_row(item))
+                .into_any_element()
         };
 
         let is_custom = self.model.row_template.is_some();
@@ -184,6 +194,7 @@ where
     T: 'static,
 {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_column_resize_direction(cx);
         self.sync_row_measurement_policy();
         if !self.model.enabled && self.focus_handle.contains_focused(window, cx) {
             window.blur(cx);

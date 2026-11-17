@@ -382,9 +382,10 @@ impl Controller {
         }
     }
 
-    fn render_model(&self) -> TooltipRenderModel {
+    fn render_model(&self, cx: &App) -> TooltipRenderModel {
         let look = self.config.theme.as_ref().unwrap_or(&self.theme).resolve();
         TooltipRenderModel {
+            direction: crate::infra::locale::LocaleContext::current(cx).direction,
             placement: look.placement,
             shortcut_gap: look.shortcut_gap,
             shortcut_font_size: look.shortcut_font_size,
@@ -425,8 +426,12 @@ fn placement(
     let above_y = target.origin.y - size.height - px(geometry.gap);
     let below_fits = target.bottom() + px(geometry.gap) + size.height <= viewport.height - px(geometry.margin);
     let above = match preferred {
-        TooltipPlacement::Above => above_y >= px(geometry.margin) || !below_fits,
-        TooltipPlacement::Below => !below_fits && above_y >= px(geometry.margin),
+        TooltipPlacement::Above | TooltipPlacement::AboveStart | TooltipPlacement::AboveEnd => {
+            above_y >= px(geometry.margin) || !below_fits
+        }
+        TooltipPlacement::Below | TooltipPlacement::BelowStart | TooltipPlacement::BelowEnd => {
+            !below_fits && above_y >= px(geometry.margin)
+        }
     };
     let y = (if above {
         above_y
@@ -442,9 +447,38 @@ fn placement(
     }
 }
 
+fn logical_placement(
+    target: Bounds<Pixels>,
+    size: Size<Pixels>,
+    viewport: Size<Pixels>,
+    preferred: TooltipPlacement,
+    geometry: super::TooltipPlacementGeometry,
+    direction: crate::infra::locale::LayoutDirection,
+) -> Placement {
+    let mut position = placement(target, size, viewport, preferred, geometry);
+    let start = matches!(preferred, TooltipPlacement::AboveStart | TooltipPlacement::BelowStart);
+    let end = matches!(preferred, TooltipPlacement::AboveEnd | TooltipPlacement::BelowEnd);
+    if start || end {
+        let align_left = start != (direction == crate::infra::locale::LayoutDirection::Rtl);
+        position.origin.x = (if align_left {
+            target.left()
+        } else {
+            target.right() - size.width
+        })
+        .max(px(geometry.margin))
+        .min((viewport.width - size.width - px(geometry.margin)).max(px(geometry.margin)));
+        position.pointer_x = target
+            .center()
+            .x
+            .max(position.origin.x + px(geometry.pointer_inset))
+            .min(position.origin.x + size.width - px(geometry.pointer_inset));
+    }
+    position
+}
+
 impl Render for Controller {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut model = self.render_model();
+        let mut model = self.render_model(cx);
         model.max_width = model
             .max_width
             .min((f32::from(window.viewport_size().width) - 2.0 * model.placement.margin).max(1.0));
@@ -456,7 +490,14 @@ impl Render for Controller {
             move |_, window, cx| {
                 let mut bubble = template(&model);
                 let size = bubble.layout_as_root(AvailableSpace::min_size(), window, cx);
-                let position = placement(target, size, window.viewport_size(), preferred, model.placement);
+                let position = logical_placement(
+                    target,
+                    size,
+                    window.viewport_size(),
+                    preferred,
+                    model.placement,
+                    model.direction,
+                );
                 if let Some(entity) = weak.upgrade() {
                     entity.update(cx, |tip, cx| {
                         tip.bubble = Bounds::new(position.origin, size);
@@ -666,5 +707,44 @@ mod ownership_tests {
             assert!(!tip.controller.read(cx).state.visible);
             assert!(tip.controller.read(cx).pending.is_none());
         });
+    }
+}
+
+#[test]
+fn tooltip_logical_edges_mirror_and_keep_viewport_fallback() {
+    use crate::infra::locale::LayoutDirection;
+    let target = Bounds::new(point(px(200.), px(100.)), gpui::size(px(80.), px(30.)));
+    let viewport = gpui::size(px(800.), px(600.));
+    for (direction, start_x, end_x) in [(LayoutDirection::Ltr, 200., 160.), (LayoutDirection::Rtl, 160., 200.)] {
+        let start = logical_placement(
+            target,
+            gpui::size(px(120.), px(40.)),
+            viewport,
+            TooltipPlacement::BelowStart,
+            Default::default(),
+            direction,
+        );
+        let end = logical_placement(
+            target,
+            gpui::size(px(120.), px(40.)),
+            viewport,
+            TooltipPlacement::BelowEnd,
+            Default::default(),
+            direction,
+        );
+        assert_eq!(start.origin.x, px(start_x));
+        assert_eq!(end.origin.x, px(end_x));
+        assert!(!start.above);
+        let near_top = Bounds::new(point(px(1.), px(1.)), target.size);
+        let flipped = logical_placement(
+            near_top,
+            gpui::size(px(120.), px(40.)),
+            viewport,
+            TooltipPlacement::AboveStart,
+            Default::default(),
+            direction,
+        );
+        assert!(!flipped.above);
+        assert!(flipped.origin.x >= px(super::TooltipPlacementGeometry::default().margin));
     }
 }

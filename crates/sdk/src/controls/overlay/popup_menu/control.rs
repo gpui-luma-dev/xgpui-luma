@@ -136,14 +136,14 @@ impl PopupMenu {
         self.model.icon_only = true;
         self.model.icon = match icon {
             ControlIcon::Lucide(icon) => Some(icon),
-            ControlIcon::SvgPath(_) => None,
+            ControlIcon::SvgPath(_) | ControlIcon::Mirrored(_) => None,
         };
         cx.notify();
     }
 
     /// Trailing adornment on a labeled trigger (distinct from the icon face preset).
     pub fn set_end_icon(&mut self, icon: Option<LucideIcon>, cx: &mut Context<Self>) {
-        self.model.end_icon = icon;
+        self.model.end_icon = icon.map(Into::into);
         cx.notify();
     }
 
@@ -171,6 +171,12 @@ impl PopupMenu {
         if changed {
             cx.emit(PopupMenuEvent::EnabledChanged { enabled });
         }
+        cx.notify();
+    }
+
+    /// Set a trailing icon, including explicit RTL mirroring for directional artwork.
+    pub fn set_end_control_icon(&mut self, icon: Option<ControlIcon>, cx: &mut Context<Self>) {
+        self.model.end_icon = icon;
         cx.notify();
     }
 
@@ -237,7 +243,7 @@ impl PopupMenu {
             menu_size: self.model.menu_size,
             icon_only: self.model.icon_only,
             icon: self.model.icon,
-            end_icon: self.model.end_icon,
+            end_icon: self.model.end_icon.clone(),
             disclosure_icons: &self.model.disclosure_icons,
             full_width: self.model.full_width,
             without_elevation: self.model.without_elevation,

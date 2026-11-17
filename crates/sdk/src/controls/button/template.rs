@@ -174,16 +174,11 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
         }
 
         let content = if let Some(icon) = &model.icon {
-            match icon {
-                super::model::ControlIcon::Lucide(icon) => {
-                    crate::infra::icon::lucide_icon(*icon, look.foreground, look.icon_size)
-                }
-                super::model::ControlIcon::SvgPath(path) => gpui::svg()
-                    .size(px(look.icon_size))
-                    .text_color(look.foreground)
-                    .path(path.clone())
-                    .into_any_element(),
-            }
+            icon.render(
+                Some(look.foreground),
+                look.icon_size,
+                crate::infra::locale::LocaleContext::current(cx).direction,
+            )
         } else {
             (model.content)(&presenter_model, cx)
         };

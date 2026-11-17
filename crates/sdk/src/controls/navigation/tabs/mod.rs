@@ -150,7 +150,7 @@ pub use template::{
     TabsBoundsHandler, TabsClickHandler, TabsHoverHandler, TabsItemButtonStyle, TabsItemOverlay, TabsMouseDownHandler,
     TabsMouseUpHandler, TabsOverlayPlacement, TabsOverlayState, TabsTemplate, TabsTemplateHandlers, ThemedTabsTemplate,
     default_tabs_template, render_tab_button, render_tab_button_with_style, render_tabs_overlay_host,
-    resolve_tabs_uniform_item_width,
+    render_tabs_overlay_host_with_direction, resolve_tabs_uniform_item_width,
 };
 
 pub use theme::{DefaultTabsTheme, TabsBaseline, TabsItemLook, TabsListLook, TabsTheme, default_tabs_theme};

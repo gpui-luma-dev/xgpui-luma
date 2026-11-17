@@ -583,6 +583,7 @@ fn stepper_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Wind
         step_states: &status,
         labels: &labels,
         label_placement: stepper::StepperLabelPlacement::End,
+        direction_explicit: true,
         direction: if cell.variant == 0 {
             ProgressDirection::LeftToRight
         } else {

@@ -64,7 +64,11 @@ impl AutocompleteControl {
         let model = builder.model;
 
         let textfield = text_selection::new(format!("{}-textfield", model.id))
-            .placeholder(model.placeholder.clone())
+            .placeholder(if model.placeholder_explicit {
+                model.placeholder.clone()
+            } else {
+                crate::infra::locale::LocaleContext::current(cx).strings.search_placeholder.clone()
+            })
             .enabled(model.enabled)
             .size(model.size)
             .full_width(model.full_width)
@@ -406,6 +410,13 @@ impl AutocompleteControl {
 
 impl Render for AutocompleteControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.model.placeholder_explicit {
+            let placeholder = crate::infra::locale::LocaleContext::current(cx).strings.search_placeholder.clone();
+            if self.model.placeholder != placeholder {
+                self.model.placeholder = placeholder.clone();
+                self.textfield.update(cx, |field, cx| field.set_placeholder(placeholder.to_string(), cx));
+            }
+        }
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
@@ -420,13 +431,14 @@ impl Render for AutocompleteControl {
         let mut status_typography = autocomplete_look.status_typography;
         status_typography.size = geometry.status_font_size;
         status_typography.line_height = geometry.status_line_height;
+        let reserved = geometry.clear_width + geometry.clear_inset;
+        let rtl =
+            crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl;
+        self.textfield.update(cx, |field, cx| {
+            field.set_content_insets(if rtl { reserved } else { 0.0 }, if rtl { 0.0 } else { reserved }, cx)
+        });
         let look = (self.model.popup_look_provider)(self.model.size);
-        let selected_label = self
-            .behavior
-            .state
-            .selected_item
-            .map(|index| self.model.items[index].label.to_string())
-            .unwrap_or_else(|| "none".to_string());
+        let selected_label = self.behavior.state.selected_item.map(|index| self.model.items[index].label.to_string());
 
         let menu_items = self
             .behavior
@@ -458,13 +470,15 @@ impl Render for AutocompleteControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) =
+            (crate::infra::locale::LocaleContext::current(cx).strings.autocomplete_status)(
+                self.behavior.state.status.label(),
+                selected_label.as_deref(),
+                self.behavior.state.filtered.len(),
+                &self.last_event,
+                &self.last_keyboard_event,
+                cx,
+            );
 
         let trigger_width = self.trigger_bounds.map(|bounds| bounds.size.width).unwrap_or(px(geometry.trigger_width));
         let popup_width = {
@@ -505,6 +519,7 @@ impl Render for AutocompleteControl {
 
             let menu_content = self.model.items_template.render(
                 &AutocompleteItemsRenderModel {
+                    direction: crate::infra::locale::LocaleContext::current(cx).direction,
                     id: &menu_id,
                     items: &menu_items,
                     look: look.clone(),
@@ -550,3 +565,7 @@ impl Render for AutocompleteControl {
         self.model.template.render(render_model, handlers, window, cx)
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;

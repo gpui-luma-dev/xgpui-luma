@@ -287,3 +287,9 @@ mod navigation_tests;
 
 #[cfg(all(test, feature = "test-support"))]
 mod focus_tests;
+
+#[cfg(all(test, feature = "test-support"))]
+xgpui_luma::l10n_conformance!(
+    crate::checkbox_template(&crate::Look::built_in(), crate::CheckboxVariant::Soft, crate::Paint::accent()),
+    crate::selector_template(&crate::Look::built_in())
+);

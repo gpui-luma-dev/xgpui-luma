@@ -15,6 +15,65 @@ use lucide_svg_static::Icon as LucideIcon;
 pub enum ControlIcon {
     Lucide(LucideIcon),
     SvgPath(SharedString),
+    /// Opt-in directional artwork; mirrored only in RTL UI.
+    Mirrored(Box<ControlIcon>),
+}
+
+impl ControlIcon {
+    /// Mirror directional artwork in RTL. Logos and other artwork remain unchanged by default.
+    pub fn mirrored_in_rtl(self) -> Self {
+        if matches!(self, Self::Mirrored(_)) {
+            self
+        } else {
+            Self::Mirrored(Box::new(self))
+        }
+    }
+    pub(crate) fn source(&self) -> &Self {
+        match self {
+            Self::Mirrored(icon) => icon.source(),
+            _ => self,
+        }
+    }
+    pub(crate) fn render(
+        &self,
+        color: Option<gpui::Hsla>,
+        size: f32,
+        direction: crate::infra::locale::LayoutDirection,
+    ) -> gpui::AnyElement {
+        let path = match self.source() {
+            Self::Lucide(icon) => gpui::SharedString::from(icon.asset_path()),
+            Self::SvgPath(path) => path.clone(),
+            Self::Mirrored(_) => return gpui::Empty.into_any_element(),
+        };
+        gpui::svg()
+            .path(path)
+            .size(gpui::px(size))
+            .when_some(color, |icon, color| icon.text_color(color))
+            .when(
+                matches!(self, Self::Mirrored(_)) && direction == crate::infra::locale::LayoutDirection::Rtl,
+                |icon| icon.with_transformation(gpui::Transformation::scale(gpui::size(-1.0, 1.0))),
+            )
+            .into_any_element()
+    }
+}
+
+#[derive(gpui::IntoElement)]
+struct ControlIconElement {
+    icon: ControlIcon,
+    color: gpui::Hsla,
+    size: f32,
+}
+impl gpui::RenderOnce for ControlIconElement {
+    fn render(self, _: &mut gpui::Window, cx: &mut gpui::App) -> impl IntoElement {
+        self.icon
+            .render(Some(self.color), self.size, crate::infra::locale::LocaleContext::current(cx).direction)
+    }
+}
+impl ControlIcon {
+    /// Render with the live locale direction, including explicit RTL mirroring.
+    pub fn element(self, color: gpui::Hsla, size: f32) -> impl IntoElement {
+        ControlIconElement { icon: self, color, size }
+    }
 }
 
 impl From<LucideIcon> for ControlIcon {

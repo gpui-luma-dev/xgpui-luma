@@ -280,6 +280,7 @@ fn sidebar_toggle_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPres
         ControlIcon::SvgPath(path) => {
             gpui::svg().size(px(16.0)).text_color(color).path(path.clone()).into_any_element()
         }
+        ControlIcon::Mirrored(_) => icon.clone().element(color, 16.0).into_any_element(),
     })
 }
 

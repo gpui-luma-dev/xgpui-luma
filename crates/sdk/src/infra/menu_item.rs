@@ -7,9 +7,23 @@ pub enum MenuItemIcon {
     SvgPath(SharedString),
     /// SVG supplied by the application's registered asset source.
     AssetPath(SharedString),
+    /// Opt-in directional artwork, mirrored only in RTL UI.
+    Mirrored(Box<MenuItemIcon>),
 }
 
 impl MenuItemIcon {
+    /// Mirror this directional icon in RTL; ordinary artwork is unchanged by default.
+    pub fn mirrored_in_rtl(self) -> Self {
+        if matches!(self, Self::Mirrored(_)) {
+            self
+        } else {
+            Self::Mirrored(Box::new(self))
+        }
+    }
+    pub(crate) fn mirrors_in_rtl(&self) -> bool {
+        matches!(self, Self::Mirrored(_))
+    }
+
     /// Use an SVG from the application's registered asset source.
     pub fn asset(path: impl Into<SharedString>) -> Self {
         Self::AssetPath(path.into())
@@ -18,6 +32,7 @@ impl MenuItemIcon {
     pub fn asset_path(&self) -> Option<&SharedString> {
         match self {
             Self::AssetPath(path) => Some(path),
+            Self::Mirrored(icon) => icon.asset_path(),
             _ => None,
         }
     }
@@ -25,6 +40,7 @@ impl MenuItemIcon {
     pub fn lucide(&self) -> Option<LucideIcon> {
         match self {
             Self::Lucide(icon) => Some(*icon),
+            Self::Mirrored(icon) => icon.lucide(),
             Self::SvgPath(_) | Self::AssetPath(_) => None,
         }
     }
@@ -33,7 +49,34 @@ impl MenuItemIcon {
         match self {
             Self::Lucide(_) | Self::AssetPath(_) => None,
             Self::SvgPath(path) => Some(path),
+            Self::Mirrored(icon) => icon.svg_path(),
         }
+    }
+}
+
+impl MenuItemIcon {
+    pub(crate) fn render(
+        &self,
+        color: gpui::Hsla,
+        size: f32,
+        direction: crate::infra::locale::LayoutDirection,
+    ) -> gpui::AnyElement {
+        use gpui::{prelude::*, px, svg};
+        let icon = if let Some(icon) = self.lucide() {
+            svg().path(icon.asset_path())
+        } else if let Some(path) = self.asset_path() {
+            svg().path(path.clone())
+        } else if let Some(path) = self.svg_path() {
+            svg().external_path(path.clone())
+        } else {
+            return gpui::Empty.into_any_element();
+        };
+        icon.size(px(size))
+            .text_color(color)
+            .when(self.mirrors_in_rtl() && direction == crate::infra::locale::LayoutDirection::Rtl, |icon| {
+                icon.with_transformation(gpui::Transformation::scale(gpui::size(-1.0, 1.0)))
+            })
+            .into_any_element()
     }
 }
 

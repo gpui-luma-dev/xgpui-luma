@@ -7,7 +7,7 @@ crate::motion_profile!(PopupMenuMotion => popup_menu {
 
 use std::sync::Arc;
 
-use gpui::{AppContext, Bounds, Entity, Pixels, SharedString, div, prelude::*, px, svg};
+use gpui::{AppContext, Bounds, Entity, Pixels, SharedString, div, prelude::*, px};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{ControlFocusState, MenuPath, PopupMenu, PopupMenuTemplate, default_popup_menu_template};
@@ -58,20 +58,14 @@ fn default_trigger_content() -> ControlPresenter<PopupMenuTriggerModel> {
 
 /// Presenter used by the icon-only face preset ([`PopupMenuBuilder::icon`] / [`PopupMenu::set_icon`](super::PopupMenu::set_icon)).
 pub fn icon_content(icon: impl Into<ControlIcon>) -> ControlPresenter<PopupMenuTriggerModel> {
-    match icon.into() {
-        ControlIcon::Lucide(icon) => Arc::new(move |_, _| {
-            svg()
-                .path(icon.asset_path())
-                .size(px(crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().popup_icon_size))
-                .into_any_element()
-        }),
-        ControlIcon::SvgPath(path) => Arc::new(move |_, _| {
-            svg()
-                .size(px(crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().popup_icon_size))
-                .path(path.clone())
-                .into_any_element()
-        }),
-    }
+    let icon = icon.into();
+    Arc::new(move |_, cx| {
+        icon.render(
+            None,
+            crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().popup_icon_size,
+            crate::infra::locale::LocaleContext::current(cx).direction,
+        )
+    })
 }
 
 #[derive(Clone)]
@@ -90,7 +84,7 @@ pub struct PopupMenuModel {
     /// Square icon-button chrome (no trailing end icon). Set by the icon face preset.
     pub(crate) icon_only: bool,
     pub(crate) icon: Option<LucideIcon>,
-    pub(crate) end_icon: Option<LucideIcon>,
+    pub(crate) end_icon: Option<ControlIcon>,
     pub(crate) disclosure_icons_explicit: bool,
     pub(crate) disclosure_icons: DisclosureIcons,
     pub(crate) full_width: bool,
@@ -116,7 +110,7 @@ pub struct PopupMenuRenderModel<'a> {
     pub menu_size: ControlSize,
     pub icon_only: bool,
     pub icon: Option<LucideIcon>,
-    pub end_icon: Option<LucideIcon>,
+    pub end_icon: Option<ControlIcon>,
     pub disclosure_icons: &'a DisclosureIcons,
     pub full_width: bool,
     pub without_elevation: bool,
@@ -297,14 +291,14 @@ impl PopupMenuBuilder {
         self.model.icon_only = true;
         self.model.icon = match icon {
             ControlIcon::Lucide(icon) => Some(icon),
-            ControlIcon::SvgPath(_) => None,
+            ControlIcon::SvgPath(_) | ControlIcon::Mirrored(_) => None,
         };
         self
     }
 
     /// Trailing adornment on a labeled trigger (distinct from the icon face preset).
-    pub fn end_icon(mut self, icon: LucideIcon) -> Self {
-        self.model.end_icon = Some(icon);
+    pub fn end_icon(mut self, icon: impl Into<ControlIcon>) -> Self {
+        self.model.end_icon = Some(icon.into());
         self
     }
 

@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::{rc::Rc, sync::Arc};
 
 use gpui::{
@@ -5,7 +6,6 @@ use gpui::{
 };
 
 use super::{FlatTreeNode, TreeViewRenderModel, TreeViewTheme, default_tree_view_theme};
-use crate::infra::icon::render_disclosure_icon;
 
 /// Shared callback retained across redraws; use `Rc::new` when supplying a custom handler.
 pub type TreeViewHoverHandler = Rc<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
@@ -282,6 +282,7 @@ impl ThemedTreeViewTemplate {
         let palette = self.theme.resolve_row(node.state.interaction_state(), node.state.selected, node.size);
         let icon_size = scale.icon_size;
         let chevron_size = scale.chevron_size;
+        let direction = LocaleContext::current(_cx).direction;
         let left_padding = scale.base_padding_x + (node.depth as f32 * scale.indentation_width);
 
         let height_factor = node.row_height_factor.clamp(0.0, 1.0);
@@ -289,6 +290,7 @@ impl ThemedTreeViewTemplate {
 
         let mut row = div()
             .id((node.id.clone(), 1usize))
+            .flex_row_logical(direction)
             .relative()
             .flex()
             .items_center()
@@ -296,8 +298,8 @@ impl ThemedTreeViewTemplate {
             .h(px(row_height))
             .overflow_hidden()
             .opacity(height_factor.max(0.0))
-            .pl(px(left_padding))
-            .pr(px(scale.base_padding_x))
+            .ps(px(left_padding), direction)
+            .pe(px(scale.base_padding_x), direction)
             .rounded(px(scale.radius))
             .text_color(palette.foreground)
             .text_size(px(palette.typography.size))
@@ -333,11 +335,12 @@ impl ThemedTreeViewTemplate {
                 .when(node.enabled, |chevron| {
                     chevron.on_click(move |event, window, cx| (handlers.disclosure)(event, window, cx))
                 })
-                .child(render_disclosure_icon(
+                .child(crate::infra::icon::render_logical_disclosure_icon(
                     node.disclosure_icons,
                     node.expand_progress.clamp(0.0, 1.0),
                     palette.chevron_color,
                     chevron_size,
+                    direction,
                 ));
 
             #[cfg(any(test, feature = "test-support"))]
@@ -368,7 +371,15 @@ impl ThemedTreeViewTemplate {
         row = row.child(div().w(px(scale.inner_gap)));
         row = row.child(match content {
             Some(content) => div().flex_1().min_w(px(0.0)).child(content),
-            None => div().flex_1().truncate().child(node.label.clone()),
+            None => div()
+                .debug_selector({
+                    let id = node.id.clone();
+                    move || format!("tree-label-{id}")
+                })
+                .flex_1()
+                .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+                .truncate()
+                .child(node.label.clone()),
         });
 
         if let Some(color) = self.theme.row_outline(node.state.interaction_state(), node.size) {

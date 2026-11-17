@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::Arc;
 
 use gpui::{
@@ -5,7 +6,6 @@ use gpui::{
     Window, div, prelude::*, px,
 };
 
-use crate::infra::icon::lucide_icon;
 use crate::infra::icon::{SelectionStatusIcons, render_icon_source};
 use super::model::SelectionPanelItemLike;
 use super::theme::SelectionPanelLook;
@@ -149,6 +149,7 @@ where
         model.look.item_disabled_foreground
     };
 
+    let direction = LocaleContext::current(cx).direction;
     let content = if let Some(item_template) = model.item_template {
         item_template(
             &SelectionPanelItemRenderModel {
@@ -169,11 +170,18 @@ where
             cx,
         )
     } else {
-        div().flex_1().min_w(px(0.0)).truncate().child(model.item.label().clone()).into_any_element()
+        div()
+            .flex_1()
+            .min_w(px(0.0))
+            .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+            .truncate()
+            .child(model.item.label().clone())
+            .into_any_element()
     };
 
     let mut row = div()
         .id((model.panel_id.clone(), model.visible_index))
+        .flex_row_logical(direction)
         .flex()
         .items_center()
         .gap(px(model.look.item_gap))
@@ -184,15 +192,7 @@ where
         .text_size(px(model.look.item_typography.size))
         .line_height(px(model.look.item_typography.line_height))
         .font_weight(model.look.item_typography.weight)
-        .when_some(model.item.icon(), |row, icon| {
-            if let Some(icon) = icon.lucide() {
-                row.child(lucide_icon(icon, color, model.look.item_icon_size))
-            } else if let Some(path) = icon.svg_path() {
-                row.child(gpui::svg().external_path(path.clone()).size(px(model.look.item_icon_size)).text_color(color))
-            } else {
-                row
-            }
-        })
+        .when_some(model.item.icon(), |row, icon| row.child(render_icon_source(icon, color, model.look.item_icon_size)))
         .child(div().flex_1().child(content));
 
     if model.show_selection_marker {

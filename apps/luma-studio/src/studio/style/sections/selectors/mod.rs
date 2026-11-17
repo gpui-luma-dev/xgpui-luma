@@ -743,6 +743,7 @@ fn render_selector_popup_preview(
         SelectorTemplateControl::Autocomplete => default_autocomplete_items_template()
             .render(
                 &AutocompleteItemsRenderModel {
+                    direction: xgpui_luma::infra::locale::LayoutDirection::Ltr,
                     id: &popup_id,
                     items: &items,
                     look: popup_look.clone(),

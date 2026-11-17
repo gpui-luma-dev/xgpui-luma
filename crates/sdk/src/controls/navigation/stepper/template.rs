@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Div, FontWeight, SharedString, Stateful, Window, div, px, relative, prelude::*};
@@ -78,14 +79,20 @@ impl StepperTemplate for ModifiedStepperTemplate {
 
 impl StepperTemplate for ThemedStepperTemplate {
     fn render(&self, model: &StepperRenderModel<'_>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+        let direction = if model.direction_explicit && model.direction.orientation() == ProgressOrientation::Horizontal
+        {
+            LayoutDirection::Ltr
+        } else {
+            LocaleContext::current(cx).direction
+        };
         let look = self.theme.resolve(model.enabled, model.size);
         let display_indices = display_indices(model.step_count, model.direction);
         let horizontal = model.direction.orientation() == ProgressOrientation::Horizontal;
 
         let indicator = if horizontal {
-            render_horizontal_stepper(model, &display_indices, &look)
+            render_horizontal_stepper(model, &display_indices, &look, direction)
         } else {
-            render_vertical_stepper(model, &display_indices, &look)
+            render_vertical_stepper(model, &display_indices, &look, direction)
         };
 
         let root = if model.has_content_panel() {
@@ -105,7 +112,7 @@ impl StepperTemplate for ThemedStepperTemplate {
                     .h_full()
                     .w_full()
                     .flex()
-                    .flex_row()
+                    .flex_row_logical(direction)
                     .gap(px(look.geometry.content_gap))
                     .child(indicator)
                     .child(panel.flex_1())
@@ -134,11 +141,12 @@ fn render_horizontal_stepper(
     model: &StepperRenderModel<'_>,
     display_indices: &[usize],
     look: &StepperLook,
+    direction: LayoutDirection,
 ) -> Stateful<Div> {
     let badge_size = look.step_badge_size;
     let track_thickness = look.track_thickness;
 
-    let mut root = div().id(model.id.clone()).w_full().flex().flex_row().items_start();
+    let mut root = div().id(model.id.clone()).w_full().flex().flex_row_logical(direction).items_start();
 
     for (position, &step_index) in display_indices.iter().enumerate() {
         let state = model.step_states.get(step_index).copied().unwrap_or(StepState::Incomplete);
@@ -160,6 +168,7 @@ fn render_horizontal_stepper(
         root = root.child(
             div()
                 .id(("step", step_index))
+                .debug_selector(move || format!("stepper-step-{step_index}"))
                 .flex_1()
                 .min_w(px(0.0))
                 .flex()
@@ -170,7 +179,7 @@ fn render_horizontal_stepper(
                     div()
                         .w_full()
                         .flex()
-                        .flex_row()
+                        .flex_row_logical(direction)
                         .items_center()
                         .child(render_horizontal_track(
                             is_first,
@@ -180,6 +189,7 @@ fn render_horizontal_stepper(
                             look.track_active_color,
                             look.track_muted_color,
                             step_index * 2,
+                            direction,
                         ))
                         .child(render_badge(step_index, state, badge_size, look, model.icons))
                         .child(render_horizontal_track(
@@ -190,6 +200,7 @@ fn render_horizontal_stepper(
                             look.track_active_color,
                             look.track_muted_color,
                             step_index * 2 + 1,
+                            direction,
                         )),
                 )
                 .children(label.map(|label| render_step_label(label, look, false).text_center())),
@@ -203,6 +214,7 @@ fn render_vertical_stepper(
     model: &StepperRenderModel<'_>,
     display_indices: &[usize],
     look: &StepperLook,
+    direction: LayoutDirection,
 ) -> Stateful<Div> {
     let badge_size = look.step_badge_size;
     let track_thickness = look.track_thickness;
@@ -267,6 +279,7 @@ fn render_vertical_stepper(
         root = root.child(match model.label_placement {
             StepperLabelPlacement::Below => div()
                 .id(("step", step_index))
+                .debug_selector(move || format!("stepper-step-{step_index}"))
                 .flex_1()
                 .min_h(px(0.0))
                 .flex()
@@ -276,26 +289,28 @@ fn render_vertical_stepper(
                 .children(label.map(|label| render_step_label(label, look, false))),
             StepperLabelPlacement::Start => div()
                 .id(("step", step_index))
+                .debug_selector(move || format!("stepper-step-{step_index}"))
                 .flex_1()
                 .min_h(px(0.0))
                 .flex()
-                .flex_row()
+                .flex_row_logical(direction)
                 .items_center()
                 .gap(px(look.geometry.side_label_gap))
-                .child(render_side_label_slot(label, look, true))
+                .child(render_side_label_slot(label, look, direction == LayoutDirection::Ltr))
                 .child(badge_column)
                 .child(div().flex_1()),
             StepperLabelPlacement::End => div()
                 .id(("step", step_index))
+                .debug_selector(move || format!("stepper-step-{step_index}"))
                 .flex_1()
                 .min_h(px(0.0))
                 .flex()
-                .flex_row()
+                .flex_row_logical(direction)
                 .items_center()
                 .gap(px(look.geometry.side_label_gap))
                 .child(div().flex_1())
                 .child(badge_column)
-                .child(render_side_label_slot(label, look, false)),
+                .child(render_side_label_slot(label, look, direction == LayoutDirection::Rtl)),
         });
     }
 
@@ -314,7 +329,10 @@ fn render_content_panel(
     let from_index = model.from_step.round().clamp(0.0, max_index as f32) as usize;
     let to_index = model.to_step.min(max_index);
     let settled = progress >= 1.0 - f32::EPSILON || from_index == to_index;
-    let forward = (to_index as f32) >= model.from_step;
+    let mut forward = (to_index as f32) >= model.from_step;
+    if horizontal && !model.direction_explicit && LocaleContext::current(cx).direction == LayoutDirection::Rtl {
+        forward = !forward;
+    }
 
     let mut host = div().id((model.id.clone(), 1usize)).relative().overflow_hidden().w_full();
 
@@ -388,6 +406,7 @@ fn render_side_label_slot(label: Option<&SharedString>, look: &StepperLook, alig
     slot
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_horizontal_track(
     is_edge: bool,
     fill: f32,
@@ -396,6 +415,7 @@ fn render_horizontal_track(
     active_color: gpui::Hsla,
     muted_color: gpui::Hsla,
     segment_id: usize,
+    direction: LayoutDirection,
 ) -> Stateful<Div> {
     if is_edge {
         return div().id(("track-h-edge", segment_id)).flex_1().h(px(badge_size));
@@ -408,7 +428,7 @@ fn render_horizontal_track(
             .w_full()
             .h(px(track_thickness))
             .bg(muted_color)
-            .child(div().absolute().top_0().left_0().h_full().w(relative(fill)).bg(active_color)),
+            .child(div().absolute().top_0().start(px(0.0), direction).h_full().w(relative(fill)).bg(active_color)),
     )
 }
 

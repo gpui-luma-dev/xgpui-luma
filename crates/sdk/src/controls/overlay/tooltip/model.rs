@@ -15,6 +15,14 @@ pub enum TooltipPlacement {
     #[default]
     Above,
     Below,
+    /// Above the target, aligned to its logical start edge.
+    AboveStart,
+    /// Above the target, aligned to its logical end edge.
+    AboveEnd,
+    /// Below the target, aligned to its logical start edge.
+    BelowStart,
+    /// Below the target, aligned to its logical end edge.
+    BelowEnd,
 }
 
 /// Escape can suppress help until the target is left, or disable this attachment permanently.

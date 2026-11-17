@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
@@ -203,8 +204,11 @@ impl AccordionTemplate for ThemedAccordionTemplate {
             let trigger_padding_y = model.trigger_padding_y.unwrap_or(scale.padding_y);
 
             let handle = handles.next().flatten();
+            let direction = LocaleContext::current(cx).direction;
             let mut trigger = div()
                 .id("trigger")
+                .flex_row_logical(direction)
+                .when(direction == LayoutDirection::Rtl, |row| row.text_right())
                 .flex()
                 .items_center()
                 .justify_between()
@@ -237,7 +241,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
             let trigger_content = match &item.trigger.custom_element {
                 Some(renderer) => renderer(window, cx),
                 None => {
-                    let mut row = div().flex().items_center().gap(px(scale.inner_gap));
+                    let mut row = div().flex().flex_row_logical(direction).items_center().gap(px(scale.inner_gap));
                     if let Some(icon) = item.trigger.icon {
                         row = row.child(render_icon(icon, trigger_palette.icon_color, scale.icon_size));
                     }

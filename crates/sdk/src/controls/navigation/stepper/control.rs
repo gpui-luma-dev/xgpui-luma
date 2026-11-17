@@ -149,10 +149,11 @@ impl StepperControl {
     }
 
     pub fn set_direction(&mut self, direction: ProgressDirection, cx: &mut Context<Self>) {
-        if self.model.direction == direction {
+        if self.model.direction == direction && self.model.direction_explicit {
             return;
         }
 
+        self.model.direction_explicit = true;
         self.model.direction = direction;
         cx.notify();
     }
@@ -224,6 +225,7 @@ impl StepperControl {
             labels: &self.model.labels,
             label_placement: self.model.label_placement,
             direction: self.model.direction,
+            direction_explicit: self.model.direction_explicit,
             size: self.model.size,
             enabled: self.model.enabled,
             step_contents: &self.model.step_contents,
@@ -247,4 +249,30 @@ impl Render for StepperControl {
 
         div().child(self.model.template.render(&model, window, cx)).into_any_element()
     }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+#[test]
+fn stepper_auto_flow_mirrors_but_explicit_physical_direction_is_stable() {
+    use crate::infra::locale::{LayoutDirection, LocaleContext, set_locale_context};
+    let mut app = gpui::TestAppContext::single();
+    let (stepper, cx) = app.add_window_view(|_, cx| {
+        StepperControl::from_builder(
+            StepperBuilder::new("locale-stepper", 3)
+                .labels(vec!["First", "Second", "Third"])
+                .motion_enabled(false),
+            cx,
+        )
+    });
+    for direction in [LayoutDirection::Ltr, LayoutDirection::Rtl, LayoutDirection::Ltr] {
+        cx.update(|_, cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+        cx.run_until_parked();
+        let first = cx.debug_bounds("stepper-step-0").unwrap();
+        let last = cx.debug_bounds("stepper-step-2").unwrap();
+        assert_eq!(first.left() < last.left(), direction == LayoutDirection::Ltr);
+    }
+    stepper.update(cx, |stepper, cx| stepper.set_direction(ProgressDirection::LeftToRight, cx));
+    cx.update(|_, cx| set_locale_context(LocaleContext { direction: LayoutDirection::Rtl, ..Default::default() }, cx));
+    cx.run_until_parked();
+    assert!(cx.debug_bounds("stepper-step-0").unwrap().left() < cx.debug_bounds("stepper-step-2").unwrap().left());
 }
