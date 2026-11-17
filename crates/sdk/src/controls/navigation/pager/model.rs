@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, AppContext, SharedString, Window};
 
@@ -49,12 +49,17 @@ pub struct PagerTemplateParameters {
     pub numeric_slot_count: usize,
 }
 
+// Share the compatibility formatter so locale-aware rendering can distinguish it
+// from app callbacks, including callbacks assigned directly to the public field.
+fn default_page_indicator_formatter() -> PagerPageIndicatorFormatter {
+    static FORMATTER: OnceLock<PagerPageIndicatorFormatter> = OnceLock::new();
+    FORMATTER.get_or_init(|| Arc::new(|page, pages| format!("Page {page} of {pages}").into())).clone()
+}
+
 impl Default for PagerTemplateParameters {
     fn default() -> Self {
         Self {
-            page_indicator_formatter: Arc::new(|current_page, page_count| {
-                SharedString::from(format!("Page {current_page} of {page_count}"))
-            }),
+            page_indicator_formatter: default_page_indicator_formatter(),
             page_size_label: None,
             page_size_trigger_width: crate::theme::stylesheet::CommonStylesheet::sdk_default()
                 .shared_geometry()
@@ -205,8 +210,24 @@ impl PagerRenderModel<'_> {
         self.page_count.max(1)
     }
 
+    /// Format without an app context, using the compatibility English default.
     pub fn page_indicator(&self) -> SharedString {
         (self.template_parameters.page_indicator_formatter)(self.display_current_page(), self.display_page_count())
+    }
+
+    /// Format the built-in indicator with the active SDK locale. App callbacks
+    /// take precedence, including direct assignments to template parameters.
+    /// Custom templates should use this method to follow locale changes.
+    pub fn page_indicator_with_locale(&self, cx: &App) -> SharedString {
+        if Arc::ptr_eq(&self.template_parameters.page_indicator_formatter, &default_page_indicator_formatter()) {
+            (crate::infra::locale::LocaleContext::current(cx).strings.page_of)(
+                self.display_current_page(),
+                self.display_page_count(),
+                cx,
+            )
+        } else {
+            self.page_indicator()
+        }
     }
 
     pub fn page_size_label(&self) -> Option<&SharedString> {

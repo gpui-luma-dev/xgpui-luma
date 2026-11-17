@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use gpui::{ClickEvent, Context, EventEmitter, IntoElement, MouseDownEvent, Render, SharedString, Window, div, prelude::*};
 
 use super::model::{PagerBuilder, PagerInfoSlot, PagerModel, PagerRenderModel, PagerTemplateParameters};
