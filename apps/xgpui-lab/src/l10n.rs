@@ -116,7 +116,7 @@ impl Page {
         // CLI/OS preferences before opening any views.
         let startup_error = if cx.try_global::<Localizer>().is_none() {
             let result = (|| -> Result<()> {
-                cx.set_global(localizer("en".parse()?)?);
+                xgpui_luma_l10n::install(localizer("en".parse()?)?, cx)?;
                 Ok(())
             })();
             result.err().map(|error| error.to_string())

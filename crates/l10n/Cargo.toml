@@ -11,6 +11,8 @@ description = "Fluent localization and locale handling for XGPUI-Luma"
 [features]
 default = ["gpui"]
 gpui = ["dep:gpui"]
+sdk = ["gpui", "format-percent", "dep:xgpui-luma"]
+test-support = ["gpui", "gpui/test-support"]
 build-support = ["dep:fluent-syntax"]
 formatting = ["format-numbers", "format-percent", "format-duration", "format-datetime", "format-lists"]
 format-numbers = ["dep:icu_decimal", "dep:fixed_decimal"]
@@ -37,6 +39,7 @@ thiserror.workspace = true
 log = "0.4"
 sys-locale = "0.3"
 gpui = { workspace = true, optional = true }
+xgpui-luma = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3"

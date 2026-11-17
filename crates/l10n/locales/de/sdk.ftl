@@ -1,0 +1,11 @@
+sdk-cancel = Abbrechen
+sdk-clear = Löschen
+sdk-first = Erste
+sdk-previous = Zurück
+sdk-next = Weiter
+sdk-last = Letzte
+sdk-no-matches = Keine Treffer
+sdk-select-placeholder = Auswählen…
+sdk-search-placeholder = Suchen…
+sdk-selection-search = Auswahl suchen
+sdk-page-of = Seite { $page } von { $pages }

@@ -1,0 +1,11 @@
+sdk-cancel = キャンセル
+sdk-clear = クリア
+sdk-first = 最初
+sdk-previous = 前へ
+sdk-next = 次へ
+sdk-last = 最後
+sdk-no-matches = 一致する項目はありません
+sdk-select-placeholder = 選択…
+sdk-search-placeholder = 検索…
+sdk-selection-search = 選択項目を検索
+sdk-page-of = 全 { $pages } ページ中 { $page } ページ

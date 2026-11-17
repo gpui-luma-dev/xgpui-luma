@@ -217,7 +217,11 @@ fn main() {
     .with_assets(Assets);
 
     app.run(move |cx| {
-        cx.set_global(localizer);
+        if let Err(error) = xgpui_luma_l10n::install(localizer, cx) {
+            eprintln!("XGPUI Lab localization: {error:#}");
+            cx.quit();
+            return;
+        }
         if let Some(backend) = parley_text_system {
             parley_lab::paragraph_api::install_typeset(backend, cx);
         }

@@ -17,9 +17,10 @@
 //! # }
 //! ```
 //!
-//! With the `gpui` feature, install with `cx.set_global(localizer)`, translate
-//! through `L10nExt`, and switch with `set_locale`. SDK context integration is a
-//! subsequent slice of issue #225. Optional formatting features add ICU helpers
+//! With the `gpui` feature, use `install` to publish the localizer, translate
+//! through `L10nExt`, and switch with `set_locale`. The optional `sdk` feature
+//! also publishes the SDK locale context, built-in strings, and ICU numbers.
+//! Optional formatting features add ICU helpers
 //! on `Locale`; see `formatting`. The `build-support` feature provides resource checks and typed
 //! message constructors generated from the English catalog; see `build_support`.
 //!
@@ -44,6 +45,8 @@ pub mod formatting;
 pub mod build_support;
 #[cfg(feature = "gpui")]
 mod integration;
+#[cfg(feature = "sdk")]
+pub mod sdk;
 
 pub use fluent_bundle::{FluentArgs, FluentValue};
 pub use locale::{LayoutDirection, Locale};
@@ -51,4 +54,4 @@ pub use localizer::{Error, Localizer};
 pub use selection::{LocaleRequest, LocaleSource, SelectedLocale};
 pub use message::Message;
 #[cfg(feature = "gpui")]
-pub use integration::{L10nExt, set_locale};
+pub use integration::{L10nExt, install, set_locale};
