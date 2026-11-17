@@ -30,3 +30,12 @@ jobs:
           done
       - name: Test runtime without build tooling
         run: cargo test -p xgpui-luma-l10n --no-default-features --locked
+      - name: Check Lab resource contracts
+        run: >-
+          cargo run -p xgpui-luma-l10n --no-default-features --features build-support
+          --bin luma-l10n-check --locked --
+          --reference apps/xgpui-lab/locales/en/lab.ftl
+          --locale de=apps/xgpui-lab/locales/de/lab.ftl
+          --locale ja=apps/xgpui-lab/locales/ja/lab.ftl
+          --locale ar=apps/xgpui-lab/locales/ar/lab.ftl
+          --used apps/xgpui-lab/locales/used-ids.txt

@@ -141,6 +141,7 @@ const SECTIONS: &[Section] = &[
             ("Line Layout", "Line Layout"),
             ("Paragraphs", "Paragraphs"),
             ("Paragraph API", "Paragraph API"),
+            ("Localization", "Localization"),
             ("Text Field", "Text Field"),
             ("Fonts & Fallback", "Fonts & Fallback"),
             ("Rasterization", "Rasterization"),

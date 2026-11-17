@@ -21,6 +21,7 @@ mod card_button;
 pub(crate) mod data;
 mod hero;
 mod metrics;
+pub(crate) mod localized;
 mod numeric;
 pub(crate) use numeric::Number;
 mod panel;
@@ -63,6 +64,7 @@ pub(crate) struct LabScreen {
     sections: Vec<Section>,
     note: Option<SharedString>,
     credits: Option<SharedString>,
+    localized: bool,
 }
 
 impl LabScreen {
@@ -86,7 +88,14 @@ impl LabScreen {
             sections: Vec::new(),
             note: None,
             credits: None,
+            localized: false,
         }
+    }
+
+    /// Opt this screen's header and notes into the lab-first localized text leaf.
+    pub fn localized(mut self) -> Self {
+        self.localized = true;
+        self
     }
 
     /// Use all available page width for wide visuals instead of the standard column cap.
@@ -199,12 +208,19 @@ impl RenderOnce for LabScreen {
         let metrics = LabMetrics::STANDARD;
         let look = &*self.look;
         let id = self.id;
+        let label = |role, content: SharedString| {
+            if self.localized {
+                localized::text(look, role, content, localized::TextKind::Ui, _cx)
+            } else {
+                metrics::text(look, role, content)
+            }
+        };
         let slot = move |element: Div, name: &'static str| element.debug_selector(move || format!("{id}-{name}"));
-        let caption = |text: SharedString, name| slot(metrics::text(look, TextRole::Caption, text), name);
+        let caption = |text: SharedString, name| slot(label(TextRole::Caption, text), name);
 
-        let crumb = self.crumb.map(|crumb| slot(metrics::text(look, TextRole::Crumb, crumb), "crumb"));
-        let title = self.title.map(|title| slot(metrics::text(look, TextRole::Title, title), "title"));
-        let lede = self.lede.map(|lede| slot(metrics::text(look, TextRole::Lede, lede), "lede"));
+        let crumb = self.crumb.map(|crumb| slot(label(TextRole::Crumb, crumb), "crumb"));
+        let title = self.title.map(|title| slot(label(TextRole::Title, title), "title"));
+        let lede = self.lede.map(|lede| slot(label(TextRole::Lede, lede), "lede"));
         let header = (title.is_some() || lede.is_some())
             .then(|| slot(div().flex().flex_col().gap(metrics.header_gap), "header").children(title).children(lede));
 
@@ -254,7 +270,7 @@ impl RenderOnce for LabScreen {
             Section::Panel(panel) => slot(panel.render(look, &metrics), "section"),
         }));
         content.extend(self.note.map(|text| caption(text, "note")));
-        content.extend(self.credits.map(|text| slot(metrics::text(look, TextRole::Fine, text), "credits")));
+        content.extend(self.credits.map(|text| slot(label(TextRole::Fine, text), "credits")));
         let content = (!content.is_empty())
             .then(|| slot(div().flex().flex_col().gap(metrics.section_gap), "content").children(content));
 

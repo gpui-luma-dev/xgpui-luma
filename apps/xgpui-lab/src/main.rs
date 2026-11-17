@@ -10,6 +10,7 @@ mod gamut_reveal;
 mod color_gamut_page;
 mod lab_controls;
 mod launch;
+mod l10n;
 mod screen;
 mod benchmarks;
 
@@ -175,6 +176,20 @@ fn main() {
             std::process::exit(2);
         }
     };
+    let localizer = (|| -> anyhow::Result<_> {
+        let locale = match launch.as_ref().and_then(|launch| launch.locale.clone()) {
+            Some(locale) => locale,
+            None => xgpui_luma_l10n::LocaleRequest::default().resolve()?.locale,
+        };
+        l10n::localizer(locale)
+    })();
+    let localizer = match localizer {
+        Ok(localizer) => localizer,
+        Err(error) => {
+            eprintln!("XGPUI Lab localization: {error:#}");
+            std::process::exit(2);
+        }
+    };
     // Use Parley throughout the lab by default; native remains available for
     // backend comparisons. Keep --text-system=parley as an explicit override.
     let use_parley = args
@@ -202,6 +217,7 @@ fn main() {
     .with_assets(Assets);
 
     app.run(move |cx| {
+        cx.set_global(localizer);
         if let Some(backend) = parley_text_system {
             parley_lab::paragraph_api::install_typeset(backend, cx);
         }

@@ -62,6 +62,7 @@ pub struct ParleyPage {
     paragraph: Option<Entity<paragraph::ParagraphLab>>,
     /// GPUI's paragraph API on the application's own text system.
     paragraph_api: Entity<paragraph_api::ParagraphApiPage>,
+    localization: Option<Entity<crate::l10n::Page>>,
     line: Option<Entity<line::LinePage>>,
     /// The Parley text field and text area, in the application's active look.
     text_field: Entity<text_field::page::TextFieldPage>,
@@ -195,6 +196,7 @@ impl ParleyPage {
             line,
             text_field,
             paragraph_api,
+            localization: None,
             scroll,
             children: vec![],
             child_error: None,
@@ -367,6 +369,11 @@ impl Drop for ParleyPage {
 
 impl Render for ParleyPage {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        if self.active_tab == "Localization" {
+            let page =
+                self.localization.get_or_insert_with(|| _cx.new(|cx| crate::l10n::Page::new(self.look.clone(), cx)));
+            return div().size_full().child(page.clone()).into_any_element();
+        }
         if self.active_tab == "Scrolling" {
             let report = self.scroll_report.as_ref().map(|report| match report {
                 Ok(text) => text.clone(),

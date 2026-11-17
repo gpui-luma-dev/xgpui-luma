@@ -7724,6 +7724,7 @@ dependencies = [
  "xgpui-gpu-interop",
  "xgpui-luma",
  "xgpui-luma-color",
+ "xgpui-luma-l10n",
  "xgpui-luma-look-radix",
  "xgpui-luma-plot",
  "xgpui-media",
