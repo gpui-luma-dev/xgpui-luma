@@ -1,0 +1,15 @@
+l10n-title
+l10n-description
+l10n-locale
+l10n-preview
+l10n-greeting
+l10n-saved
+l10n-items
+l10n-number
+l10n-date
+l10n-list
+l10n-data
+l10n-native-note
+l10n-ltr
+l10n-rtl
+l10n-direction

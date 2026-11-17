@@ -6,6 +6,7 @@
 //! xgpui-lab --open Typography --hide-nav              start with the navigation panel closed
 //! xgpui-lab --open "Color Spaces" --size 1280x900 --capture out.png [--settle 3000]
 //! xgpui-lab --list-pages                              print every page
+//! xgpui-lab --open Localization --locale ar            localized text prototype
 //! ```
 //!
 //! `--capture` opens the real Lab window at the page, waits for it to settle,
@@ -22,6 +23,7 @@ use crate::app::Route;
 pub(crate) struct LaunchOptions {
     pub route: Option<Route>,
     pub theme: Option<ThemeMode>,
+    pub locale: Option<xgpui_luma_l10n::Locale>,
     pub size: Option<Size<Pixels>>,
     /// `--hide-nav`: start with the navigation panel closed (the titlebar toggle reopens it).
     pub hide_nav: bool,
@@ -45,6 +47,7 @@ fn value<'a>(args: &'a [String], flag: &str) -> Result<Option<&'a str>> {
 impl LaunchOptions {
     /// `None` when no launch option is present, so a plain start is unchanged.
     pub(crate) fn parse(args: &[String]) -> Result<Option<Self>> {
+        let locale = value(args, "--locale")?.map(str::parse).transpose()?;
         let route = value(args, "--open")?.map(Route::resolve).transpose().map_err(|error| anyhow!(error))?;
         let theme = value(args, "--theme")?
             .map(|theme| match theme.to_ascii_lowercase().as_str() {
@@ -73,14 +76,8 @@ impl LaunchOptions {
             bail!("--capture needs --open <page>");
         }
         Ok(
-            (route.is_some() || theme.is_some() || size.is_some() || capture.is_some() || hide_nav).then_some(Self {
-                route,
-                theme,
-                size,
-                hide_nav,
-                capture,
-                settle,
-            }),
+            (route.is_some() || theme.is_some() || locale.is_some() || size.is_some() || capture.is_some() || hide_nav)
+                .then_some(Self { route, theme, locale, size, hide_nav, capture, settle }),
         )
     }
 }
@@ -176,6 +173,17 @@ mod tests {
         for bad in [&["--capture", "out.png"][..], &["--theme", "sepia"], &["--size", "100x100"], &["--open"]] {
             assert!(LaunchOptions::parse(&args(bad)).is_err(), "{bad:?} is rejected");
         }
+    }
+
+    #[test]
+    fn locale_launch_options_are_independent_and_validate_tags() {
+        let launch = LaunchOptions::parse(&args(&["--locale", "ar-u-nu-latn"])).unwrap().unwrap();
+        assert_eq!(launch.locale.unwrap().language_tag(), "ar-u-nu-latn");
+        for options in [&["--locale"][..], &["--locale", "bad!"], &["--locale", "--hide-nav"]] {
+            assert!(LaunchOptions::parse(&args(options)).is_err());
+        }
+        let launch = LaunchOptions::parse(&args(&["--locale", "de", "--open", "Localization"])).unwrap().unwrap();
+        assert_eq!(launch.route, Some(Route::resolve("Localization").unwrap()));
     }
 
     #[cfg(feature = "test-support")]

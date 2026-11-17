@@ -70,6 +70,10 @@ fn start() -> ParagraphPosition {
 struct TypesetInstalled;
 impl gpui::Global for TypesetInstalled {}
 
+pub(crate) fn typeset_active(cx: &gpui::App) -> bool {
+    cx.try_global::<TypesetInstalled>().is_some()
+}
+
 /// Typeset must share the application's backend: FontIds belong to that instance.
 pub(crate) fn install_typeset(backend: Arc<xgpui_parley::ParleyTextSystem>, cx: &mut gpui::App) {
     xgpui_parley::typeset::install(backend, cx);
