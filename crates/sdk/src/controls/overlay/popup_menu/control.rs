@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use gpui::{
     App, Bounds, ClickEvent, Context, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,

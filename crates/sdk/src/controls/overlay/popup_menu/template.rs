@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -189,11 +190,13 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 model.state
             },
         };
+        let direction = LocaleContext::current(_cx).direction;
         let face = (model.content)(&trigger_model, _cx);
         let mut trigger = div()
             .id("trigger")
             .relative()
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .cursor_pointer()
             .on_hover(trigger_hover)
@@ -225,6 +228,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .bg(primary_look.trigger_background)
                 .h_full()
                 .flex()
+                .flex_row_logical(direction)
                 .flex_1()
                 .min_w(px(0.0))
                 .items_center()
@@ -387,6 +391,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 &look,
                 model.items,
                 window.viewport_size(),
+                direction,
             );
             let content_size = estimated_menu_size(
                 &look,
@@ -462,6 +467,7 @@ fn resolve_popup_menu_placement(
     look: &PopupMenuLook,
     items: &[crate::infra::menu_item::MenuItem],
     viewport_size: Size<Pixels>,
+    direction: LayoutDirection,
 ) -> ResolvedPopupMenuPlacement {
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
@@ -482,13 +488,35 @@ fn resolve_popup_menu_placement(
 
     match resolved {
         PopupMenuPlacement::Smart | PopupMenuPlacement::BelowStart => ResolvedPopupMenuPlacement {
-            anchor: Anchor::TopLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.bottom()),
+            anchor: if direction == LayoutDirection::Rtl {
+                Anchor::TopRight
+            } else {
+                Anchor::TopLeft
+            },
+            position: point(
+                if direction == LayoutDirection::Rtl {
+                    trigger_bounds.right()
+                } else {
+                    trigger_bounds.left()
+                },
+                trigger_bounds.bottom(),
+            ),
             offset: point(px(0.0), offset_y),
         },
         PopupMenuPlacement::AboveStart => ResolvedPopupMenuPlacement {
-            anchor: Anchor::BottomLeft,
-            position: point(trigger_bounds.left(), trigger_bounds.top()),
+            anchor: if direction == LayoutDirection::Rtl {
+                Anchor::BottomRight
+            } else {
+                Anchor::BottomLeft
+            },
+            position: point(
+                if direction == LayoutDirection::Rtl {
+                    trigger_bounds.right()
+                } else {
+                    trigger_bounds.left()
+                },
+                trigger_bounds.top(),
+            ),
             offset: point(px(0.0), -offset_y),
         },
         PopupMenuPlacement::RightEnd => ResolvedPopupMenuPlacement {
@@ -529,6 +557,52 @@ mod tests {
     }
 
     #[test]
+    fn logical_start_placement_mirrors_but_explicit_physical_and_centered_placement_stay_fixed() {
+        let bounds = Bounds::new(point(px(40.), px(100.)), size(px(160.), px(32.)));
+        let look = look();
+        for placement in [
+            PopupMenuPlacement::BelowStart,
+            PopupMenuPlacement::AboveStart,
+            PopupMenuPlacement::Smart,
+            PopupMenuPlacement::RightEnd,
+            PopupMenuPlacement::CenteredOnTrigger,
+        ] {
+            let ltr = resolve_popup_menu_placement(
+                Some(bounds),
+                placement,
+                &look,
+                &[],
+                size(px(800.), px(600.)),
+                LayoutDirection::Ltr,
+            );
+            let rtl = resolve_popup_menu_placement(
+                Some(bounds),
+                placement,
+                &look,
+                &[],
+                size(px(800.), px(600.)),
+                LayoutDirection::Rtl,
+            );
+            assert_eq!(ltr.position.y, rtl.position.y);
+            assert_eq!(ltr.offset, rtl.offset);
+            if matches!(placement, PopupMenuPlacement::RightEnd | PopupMenuPlacement::CenteredOnTrigger) {
+                assert_eq!(ltr.anchor, rtl.anchor);
+                assert_eq!(ltr.position, rtl.position);
+            } else {
+                assert_eq!(rtl.position.x, bounds.right());
+                assert_eq!(
+                    rtl.anchor,
+                    if placement == PopupMenuPlacement::AboveStart {
+                        Anchor::BottomRight
+                    } else {
+                        Anchor::TopRight
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
     fn split_faces_expose_independent_disabled_and_menu_semantics() {
         let mut primary = gpui::accesskit::Node::new(gpui::Role::Button);
         split_face_accessibility(&mut primary, false, false);
@@ -560,6 +634,7 @@ mod tests {
             &look,
             &items,
             size(px(320.0), px(320.0)),
+            LayoutDirection::Ltr,
         );
         assert_eq!(placement.anchor, Anchor::TopLeft);
     }
@@ -574,6 +649,7 @@ mod tests {
             &look,
             &vec![crate::infra::menu_item::MenuItem::new("item"); 3],
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -591,6 +667,7 @@ mod tests {
             &look,
             &vec![crate::infra::menu_item::MenuItem::new("item"); 4],
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(placement.anchor, Anchor::BottomLeft);
@@ -608,6 +685,7 @@ mod tests {
             &look,
             &vec![crate::infra::menu_item::MenuItem::new("item"); 3],
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(placement.anchor, Anchor::BottomLeft);
@@ -626,6 +704,7 @@ mod tests {
             &look,
             &vec![crate::infra::menu_item::MenuItem::new("item"); 5],
             size(px(320.0), px(360.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(placement.anchor, Anchor::TopLeft);
@@ -643,6 +722,7 @@ mod tests {
             &look,
             &vec![crate::infra::menu_item::MenuItem::new("item"); 4],
             size(px(800.0), px(600.0)),
+            LayoutDirection::Ltr,
         );
 
         assert_eq!(placement.anchor, Anchor::BottomLeft);
