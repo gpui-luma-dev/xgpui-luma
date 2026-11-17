@@ -251,6 +251,13 @@ impl TextFieldControl {
         cx.notify();
     }
 
+    pub(crate) fn set_content_insets(&mut self, left: f32, right: f32, cx: &mut Context<Self>) {
+        if self.model.content_insets != (left, right) {
+            self.model.content_insets = (left, right);
+            cx.notify();
+        }
+    }
+
     pub fn set_placeholder(&mut self, placeholder: impl Into<String>, cx: &mut Context<Self>) {
         self.model.placeholder = placeholder.into().into();
         cx.notify();
@@ -325,6 +332,7 @@ impl TextFieldControl {
         TextFieldRenderModel {
             id: &self.model.id,
             placeholder: &self.model.placeholder,
+            content_insets: self.model.content_insets,
             value: &self.model.value,
             prefix_icon: self.model.prefix_icon.as_ref(),
             size: self.model.size,
@@ -679,6 +687,7 @@ impl Render for TextFieldControl {
         let look = layout_preview.look.clone();
         let canvas_look = look.clone();
         let has_prefix_icon = self.model.prefix_icon.is_some();
+        let (inset_left, inset_right) = self.model.content_insets;
         let horizontal_scroll = self.horizontal_scroll;
 
         let input_root = self.model.template.render(
@@ -727,6 +736,7 @@ impl Render for TextFieldControl {
                             None,
                         );
                         let x_offset = canvas_look.padding_x
+                            + inset_left
                             + if has_prefix_icon {
                                 canvas_look.icon_size + canvas_look.gap
                             } else {
@@ -734,7 +744,7 @@ impl Render for TextFieldControl {
                             };
                         let text_viewport = Bounds::from_corners(
                             point(bounds.left() + px(x_offset), bounds.top()),
-                            point(bounds.right() - px(canvas_look.padding_x), bounds.bottom()),
+                            point(bounds.right() - px(canvas_look.padding_x + inset_right), bounds.bottom()),
                         );
                         TextFieldLayoutCache {
                             bounds,

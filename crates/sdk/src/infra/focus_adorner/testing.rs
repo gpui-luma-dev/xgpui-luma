@@ -98,6 +98,7 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     id: &id,
                     placeholder: &placeholder.into(),
                     value: &empty,
+                    content_insets: (0.0, 0.0),
                     prefix_icon: None,
                     size: ControlSize::Md,
                     enabled,

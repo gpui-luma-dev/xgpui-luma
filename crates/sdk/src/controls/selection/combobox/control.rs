@@ -633,6 +633,12 @@ impl Render for ComboBoxControl {
         let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
         let geometry = self.model.stylesheet.resolve_geometry(self.model.size.stylesheet_key(), Default::default());
         let look = (self.model.popup_look_provider)(self.model.size);
+        let reserved = reserved_affordance_width(&geometry, self.model.show_down_arrow, self.model.show_clear_button);
+        let rtl =
+            crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl;
+        self.textfield.update(cx, |field, cx| {
+            field.set_content_insets(if rtl { reserved } else { 0.0 }, if rtl { 0.0 } else { reserved }, cx);
+        });
         let selected_label = self
             .behavior
             .state

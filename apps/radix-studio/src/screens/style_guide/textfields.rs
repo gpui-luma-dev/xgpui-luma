@@ -293,6 +293,7 @@ fn render_field(
     let look = field_look(&theme, sample.state, sample.enabled, size, window);
     let character_offsets = character_offsets(value.as_ref(), theme, sample.state, sample.enabled, size, window);
     let model = TextFieldRenderModel {
+        content_insets: (0.0, 0.0),
         id: &id,
         placeholder: &placeholder,
         value: &value,
@@ -384,6 +385,7 @@ pub(super) fn selection_field(
     let value = SharedString::from("Option one");
     let placeholder = SharedString::from("Choose an option");
     let model = TextFieldRenderModel {
+        content_insets: (0.0, 0.0),
         id,
         placeholder: &placeholder,
         value: &value,

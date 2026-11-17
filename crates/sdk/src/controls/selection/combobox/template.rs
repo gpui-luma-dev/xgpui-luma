@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
@@ -107,8 +108,9 @@ impl ComboBoxTemplate for DefaultComboBoxTemplate {
         model: ComboBoxRenderModel,
         handlers: ComboBoxTemplateHandlers,
         _window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> AnyElement {
+        let direction = LocaleContext::current(cx).direction;
         let ComboBoxTemplateHandlers {
             key_down,
             scroll_wheel,
@@ -140,9 +142,10 @@ impl ComboBoxTemplate for DefaultComboBoxTemplate {
                         row.child(
                             div()
                                 .id("combobox-arrow")
+                                .debug_selector(|| "combobox-arrow".into())
                                 .absolute()
                                 .top(px(0.0))
-                                .right(px(model.geometry.affordance_inset))
+                                .end(px(model.geometry.affordance_inset), direction)
                                 .h_full()
                                 .w(px(model.geometry.affordance_width))
                                 .flex()
@@ -163,14 +166,18 @@ impl ComboBoxTemplate for DefaultComboBoxTemplate {
                         row.child(
                             div()
                                 .id("combobox-clear")
+                                .debug_selector(|| "combobox-clear".into())
                                 .absolute()
                                 .top(px(0.0))
-                                .right(px(model.geometry.affordance_inset
-                                    + if model.show_down_arrow {
-                                        model.geometry.affordance_width + model.geometry.affordance_gap
-                                    } else {
-                                        0.0
-                                    }))
+                                .end(
+                                    px(model.geometry.affordance_inset
+                                        + if model.show_down_arrow {
+                                            model.geometry.affordance_width + model.geometry.affordance_gap
+                                        } else {
+                                            0.0
+                                        }),
+                                    direction,
+                                )
                                 .h_full()
                                 .w(px(model.geometry.affordance_width))
                                 .flex()

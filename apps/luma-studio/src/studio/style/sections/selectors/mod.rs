@@ -700,6 +700,7 @@ fn render_selector_preview_textfield(
     let look =
         selector_preview_textfield_look(look, theme, state.textfield_state, state.textfield_enabled, size, window);
     let text_model = TextFieldRenderModel {
+        content_insets: (0.0, 0.0),
         id,
         placeholder,
         value,
@@ -809,6 +810,7 @@ fn render_selector_popup_preview(
             let search_look =
                 selector_preview_textfield_look(look, &look.input_textfield_theme(), search_state, true, size, window);
             let search_model = TextFieldRenderModel {
+                content_insets: (0.0, 0.0),
                 id: &search_id,
                 placeholder: &search_placeholder,
                 value: &search_value,

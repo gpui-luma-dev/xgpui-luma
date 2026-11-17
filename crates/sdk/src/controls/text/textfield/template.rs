@@ -274,6 +274,7 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
         // Keep intrinsic placeholder measurement independent of focus. The editor
         // paints over the same viewport instead of replacing its layout subtree.
         let mut text_viewport = div()
+            .debug_selector(|| "textfield-editor-viewport".into())
             .relative()
             .min_w(px(0.0))
             .flex_1()
@@ -308,7 +309,8 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
             .h(px(look.min_height))
             .flex()
             .items_center()
-            .px(px(look.padding_x))
+            .pl(px(look.padding_x + model.content_insets.0))
+            .pr(px(look.padding_x + model.content_insets.1))
             .py(px(look.padding_y))
             .bg(look.background)
             .border(px(look.border_width))

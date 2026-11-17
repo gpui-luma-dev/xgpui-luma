@@ -1480,6 +1480,7 @@ impl ParleyTextField {
             ..TextFieldState::default()
         };
         let model = TextFieldRenderModel {
+            content_insets: (0.0, 0.0),
             id: &self.id,
             placeholder: &placeholder,
             value: &empty,

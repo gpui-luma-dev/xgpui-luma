@@ -221,6 +221,7 @@ fn render_textfield_cell(
         input_textfield_character_offsets(value.as_ref(), theme, sample.state, sample.enabled, size, window);
     let prefix_icon = ControlIcon::Lucide(LucideIcon::Search);
     let model = TextFieldRenderModel {
+        content_insets: (0.0, 0.0),
         id: &id,
         placeholder: &placeholder,
         value: &value,
