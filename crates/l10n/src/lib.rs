@@ -18,9 +18,9 @@
 //! ```
 //!
 //! With the `gpui` feature, install with `cx.set_global(localizer)`, translate
-//! through `L10nExt`, and switch with `set_locale`. SDK context integration,
-//! ICU number/date formatting and SDK context integration are subsequent slices
-//! of issue #225. The `build-support` feature provides resource checks and typed
+//! through `L10nExt`, and switch with `set_locale`. SDK context integration is a
+//! subsequent slice of issue #225. Optional formatting features add ICU helpers
+//! on `Locale`; see `formatting`. The `build-support` feature provides resource checks and typed
 //! message constructors generated from the English catalog; see `build_support`.
 //!
 //! Resolve startup preferences with `LocaleRequest` before creating the localizer.
@@ -33,6 +33,13 @@ mod locale;
 mod localizer;
 mod selection;
 mod message;
+#[cfg(any(
+    feature = "format-numbers",
+    feature = "format-duration",
+    feature = "format-datetime",
+    feature = "format-lists"
+))]
+pub mod formatting;
 #[cfg(feature = "build-support")]
 pub mod build_support;
 #[cfg(feature = "gpui")]

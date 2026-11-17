@@ -20,8 +20,13 @@ jobs:
       - name: Check formatting
         run: cargo fmt -p xgpui-luma-l10n --check
       - name: Lint headless tools
-        run: cargo clippy -p xgpui-luma-l10n --no-default-features --features build-support --all-targets --locked -- -D warnings
-      - name: Test resource checks and generated consumer
-        run: cargo test -p xgpui-luma-l10n --no-default-features --features build-support --locked
+        run: cargo clippy -p xgpui-luma-l10n --no-default-features --features build-support,formatting --all-targets --locked -- -D warnings
+      - name: Test resource checks, formatting, and generated consumer
+        run: cargo test -p xgpui-luma-l10n --no-default-features --features build-support,formatting --locked
+      - name: Check independent formatting features
+        run: |
+          for feature in format-numbers format-percent format-duration format-datetime format-lists; do
+            cargo check -p xgpui-luma-l10n --no-default-features --features "$feature" --locked
+          done
       - name: Test runtime without build tooling
         run: cargo test -p xgpui-luma-l10n --no-default-features --locked
