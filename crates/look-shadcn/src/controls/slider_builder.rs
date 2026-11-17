@@ -32,7 +32,7 @@ pub struct Slider {
     enabled: bool,
     motion_enabled: bool,
     wrapping: bool,
-    reversed: bool,
+    reversed: Option<bool>,
     orientation: Option<SliderOrientation>,
     presentation: Option<TrackPresentation>,
     thumb_policy: Option<SliderThumbPolicy>,
@@ -201,7 +201,7 @@ impl Slider {
             enabled: true,
             motion_enabled: true,
             wrapping: false,
-            reversed: false,
+            reversed: None,
             orientation: None,
             presentation: None,
             thumb_policy: None,
@@ -275,7 +275,7 @@ impl Slider {
     }
 
     pub fn reversed(mut self, reversed: bool) -> Self {
-        self.reversed = reversed;
+        self.reversed = Some(reversed);
         self
     }
 
@@ -369,8 +369,10 @@ impl Slider {
             .step(self.step)
             .enabled(self.enabled)
             .motion_enabled(self.motion_enabled)
-            .wrapping(self.wrapping)
-            .reversed(self.reversed);
+            .wrapping(self.wrapping);
+        if let Some(reversed) = self.reversed {
+            builder = builder.reversed(reversed);
+        }
         if let Some(preset) = self.radius {
             let tokens = look.mode_tokens();
             let resolved = slider_look(
@@ -450,5 +452,50 @@ mod tests {
             .value(40)
             .with_template_modifier(|root, _| root)
             .into_sdk_builder(look);
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests {
+    use super::*;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    use gpui::{Context, Render, Window, IntoElement, TestAppContext, div, prelude::*};
+    use xgpui_luma::infra::locale::{LayoutDirection, LocaleContext, set_locale_context};
+    struct Harness {
+        slider: xgpui_luma::controls::slider::Slider,
+    }
+    impl Render for Harness {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().child(self.slider.clone())
+        }
+    }
+    #[test]
+    fn locale_defaults_and_explicit_reversal_reach_the_rendered_slider() {
+        for explicit in [None, Some(false), Some(true)] {
+            let mut app = TestAppContext::single();
+            app.update(|cx| {
+                set_locale_context(LocaleContext { direction: LayoutDirection::Rtl, ..Default::default() }, cx)
+            });
+            let reversed = Arc::new(AtomicBool::new(false));
+            let capture = reversed.clone();
+            let (_, cx) = app.add_window_view(|_, cx| {
+                let mut builder = Slider::new("look-rtl").with_template_modifier(move |root, model| {
+                    capture.store(model.reversed, Ordering::SeqCst);
+                    root
+                });
+                if let Some(value) = explicit {
+                    builder = builder.reversed(value);
+                }
+                Harness { slider: builder.into_sdk_builder(ShadcnLook::built_in()).spawn(cx) }
+            });
+            cx.run_until_parked();
+            assert_eq!(reversed.load(Ordering::SeqCst), explicit.unwrap_or(true));
+            cx.update(|_, cx| set_locale_context(LocaleContext::default(), cx));
+            cx.run_until_parked();
+            assert_eq!(reversed.load(Ordering::SeqCst), explicit.unwrap_or(false));
+        }
     }
 }

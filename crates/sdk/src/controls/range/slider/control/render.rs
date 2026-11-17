@@ -62,6 +62,7 @@ impl SliderControl {
 
 impl Render for SliderControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.model.resolve_locale_direction(cx);
         if self.focus_in_subscription.is_none() {
             let focus_handle = self.interaction.focus_handle().clone();
             self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
