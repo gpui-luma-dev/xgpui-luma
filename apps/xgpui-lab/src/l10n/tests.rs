@@ -130,7 +130,14 @@ fn catalog_bridge_formats_real_labels_and_decimal_arguments() {
             assert_eq!(copy::resolve("Reset canvas", cx), reset);
             assert_eq!(copy::resolve("literal-file-name.rs", cx), "literal-file-name.rs");
             if tag == "de" {
-                assert!(copy::resolve("Speed 1.25×", cx).contains("1,25"));
+                assert!(
+                    crate::l10n::UiCopy::formatted(
+                        |args| messages::msg_ui_369fe568e689(args[0].clone()),
+                        vec!["1.25".to_owned()]
+                    )
+                    .resolve(cx)
+                    .contains("1,25")
+                );
             }
         });
     }

@@ -20,3 +20,12 @@ sdk-autocomplete-status = Status: { $status ->
    *[other] No match
 }
 sdk-autocomplete-detail = Selected: { $selected } | Matches: { $matches } | Last: { $last } | Keyboard: { $keyboard }
+
+sdk-disabled = Disabled
+sdk-selection-mode = Selection mode: { $mode ->
+    [none] None
+    [single-required] Single required
+    [single-optional] Single optional
+    [multiple] Multiple
+   *[extended] Extended
+}

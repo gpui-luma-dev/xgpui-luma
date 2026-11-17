@@ -253,16 +253,30 @@ impl SelectionSample {
 }
 impl Render for SelectionSample {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let selection = self.selected.clone();
+        let query = format!("{:?}", self.query);
+        let actions = self.action_count;
         let state = match self.kind {
             SelectionKind::Autocomplete | SelectionKind::ComboBox | SelectionKind::SearchSelector => {
-                format!("Last query: {:?} · Last selection: {}", self.query, self.selected.as_deref().unwrap_or("none"))
+                crate::l10n::UiCopy::deferred(move |cx| {
+                    crate::l10n::messages::msg_lab_query_selection(
+                        query.clone(),
+                        selection.clone().unwrap_or_else(|| crate::l10n::UiCopy::state("none").resolve(cx).to_string()),
+                    )
+                })
             }
-            SelectionKind::SplitButton => format!(
-                "Apply actions: {} · Last menu selection: {}",
-                self.action_count,
-                self.selected.as_deref().unwrap_or("none")
-            ),
-            _ => format!("Selected: {}", self.selected.as_deref().unwrap_or("none")),
+            SelectionKind::SplitButton => crate::l10n::UiCopy::deferred(move |cx| {
+                crate::l10n::messages::msg_lab_actions_selection(
+                    actions as f64,
+                    crate::l10n::number(&actions.to_string(), cx).to_string(),
+                    selection.clone().unwrap_or_else(|| crate::l10n::UiCopy::state("none").resolve(cx).to_string()),
+                )
+            }),
+            _ => crate::l10n::UiCopy::deferred(move |cx| {
+                crate::l10n::messages::msg_lab_selected(
+                    selection.clone().unwrap_or_else(|| crate::l10n::UiCopy::state("none").resolve(cx).to_string()),
+                )
+            }),
         };
         page(
             "workshop-selection-page",

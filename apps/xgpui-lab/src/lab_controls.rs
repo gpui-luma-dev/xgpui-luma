@@ -1,5 +1,9 @@
 //! Labeled, directly selectable lab settings. Numeric IDs stay independent of display labels.
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 use gpui::{prelude::*, Context, Entity, SharedString, div};
 use xgpui_luma::controls::control_group::ControlGroupItemLike;
 use xgpui_luma::controls::selector::{Selector, SelectorItem};
@@ -10,6 +14,7 @@ pub(crate) struct Choice {
     pub selector: Entity<Selector>,
     label: SharedString,
     labels: Rc<RefCell<Vec<String>>>,
+    display: Arc<Mutex<Vec<crate::l10n::UiCopy>>>,
 }
 
 pub(crate) fn labels(values: &[&str]) -> Vec<String> {
@@ -36,7 +41,10 @@ impl Choice {
     ) -> Self {
         let labels = Rc::new(RefCell::new(options));
         let callback_labels = labels.clone();
-        let selector = crate::l10n::localize_selector(
+        let display: Arc<Mutex<Vec<crate::l10n::UiCopy>>> =
+            Arc::new(Mutex::new(labels.borrow().iter().cloned().map(Into::into).collect()));
+        let render_labels = display.clone();
+        let selector = crate::l10n::localize_selector_with(
             RadixSelector::new(id)
                 .look(look)
                 .enabled(!labels.borrow().is_empty())
@@ -51,9 +59,16 @@ impl Choice {
                     }
                 })
                 .spawn(cx),
+            Arc::new(move |item, cx| {
+                item.id()
+                    .parse::<usize>()
+                    .ok()
+                    .and_then(|index| render_labels.lock().ok().and_then(|labels| labels.get(index).cloned()))
+                    .map_or_else(|| crate::l10n::resolve(item.label_text(), cx), |label| label.resolve(cx))
+            }),
             cx,
         );
-        Self { selector, label: label.to_owned().into(), labels }
+        Self { selector, label: label.to_owned().into(), labels, display }
     }
 
     /// The label, for layouts that place it apart from the selector (e.g. `screen::form_group`).
@@ -61,7 +76,37 @@ impl Choice {
         self.label.clone()
     }
 
+    pub fn sync_indexed(&self, options: Vec<String>, kind: &'static str, selected: usize, cx: &mut gpui::App) {
+        self.sync_messages(
+            options
+                .into_iter()
+                .enumerate()
+                .map(|(i, source)| {
+                    let number = crate::l10n::UiCopy::numeric((i + 1).to_string());
+                    (
+                        source,
+                        crate::l10n::UiCopy::compose(
+                            |a| crate::l10n::messages::msg_lab_indexed(a[0].clone(), a[1].clone()),
+                            vec![crate::l10n::UiCopy::raw(kind), number],
+                        ),
+                    )
+                })
+                .collect(),
+            selected,
+            cx,
+        );
+    }
+
     pub fn sync(&self, options: Vec<String>, selected: usize, cx: &mut gpui::App) {
+        self.sync_messages(options.into_iter().map(|source| (source.clone(), source.into())).collect(), selected, cx);
+    }
+
+    /// Source labels remain event data; retained display messages resolve at render.
+    pub fn sync_messages(&self, options: Vec<(String, crate::l10n::UiCopy)>, selected: usize, cx: &mut gpui::App) {
+        let (options, display): (Vec<_>, Vec<_>) = options.into_iter().unzip();
+        if let Ok(mut labels) = self.display.lock() {
+            *labels = display;
+        }
         let changed = *self.labels.borrow() != options;
         if changed {
             *self.labels.borrow_mut() = options;

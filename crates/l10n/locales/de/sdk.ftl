@@ -20,3 +20,12 @@ sdk-autocomplete-status = Status: { $status ->
    *[other] Kein Treffer
 }
 sdk-autocomplete-detail = Auswahl: { $selected } | Treffer: { $matches } | Zuletzt: { $last } | Tastatur: { $keyboard }
+
+sdk-disabled = Deaktiviert
+sdk-selection-mode = Auswahlmodus: { $mode ->
+    [none] Keine
+    [single-required] Einzelauswahl erforderlich
+    [single-optional] Einzelauswahl optional
+    [multiple] Mehrfachauswahl
+   *[extended] Erweiterte Auswahl
+}

@@ -14,46 +14,16 @@ pub(crate) fn resolve(source: &str, cx: &App) -> SharedString {
         return source.to_owned().into();
     };
     if let Some(message) = generated::literal(source) {
+        #[cfg(all(test, feature = "test-support"))]
+        super::usage::message(&message, cx);
         return localizer.format(message).into();
     }
     if let Some((owner, title)) = source.split_once("  /  ") {
         return format!("{owner}  /  {}", resolve(title, cx)).into();
     }
-    for pattern in generated::PATTERNS {
-        if let Some(values) = capture(source, pattern.parts) {
-            let values: Vec<String> = values.into_iter().map(|value| number(value, cx).to_string()).collect();
-            if let Some(message) = generated::formatted(pattern.id, &values) {
-                return localizer.format(message).into();
-            }
-        }
-    }
+    #[cfg(all(test, feature = "test-support"))]
+    super::usage::unknown(source, cx);
     source.to_owned().into()
-}
-
-pub(super) struct Pattern {
-    pub id: &'static str,
-    pub parts: &'static [&'static str],
-}
-fn capture<'a>(source: &'a str, parts: &[&str]) -> Option<Vec<&'a str>> {
-    let (prefix, rest) = parts.split_first()?;
-    let mut source = source.strip_prefix(prefix)?;
-    let mut values = Vec::with_capacity(rest.len());
-    for (index, part) in rest.iter().enumerate() {
-        if index + 1 == rest.len() {
-            values.push(source.strip_suffix(part)?);
-            source = "";
-        } else {
-            // Adjacent fields cannot be recovered unambiguously at this legacy
-            // string boundary; the extractor excludes those source patterns.
-            if part.is_empty() {
-                return None;
-            }
-            let end = source.find(part)?;
-            values.push(&source[..end]);
-            source = &source[end + part.len()..];
-        }
-    }
-    source.is_empty().then_some(values)
 }
 
 pub(crate) fn number(source: &str, cx: &App) -> SharedString {
@@ -70,21 +40,21 @@ pub(crate) fn number(source: &str, cx: &App) -> SharedString {
 
 #[derive(gpui::IntoElement)]
 pub(crate) struct UiText {
-    source: SharedString,
+    source: super::UiCopy,
     kind: TextKind,
 }
-pub(crate) fn ui(source: impl Into<SharedString>) -> UiText {
+pub(crate) fn ui(source: impl Into<super::UiCopy>) -> UiText {
     UiText { source: source.into(), kind: TextKind::Ui }
 }
-pub(crate) fn data(source: impl Into<SharedString>) -> UiText {
+pub(crate) fn data(source: impl Into<super::UiCopy>) -> UiText {
     UiText { source: source.into(), kind: TextKind::Data }
 }
 impl UiText {
     fn element(self, cx: &App) -> gpui::Div {
         let source = if self.kind == TextKind::Ui {
-            resolve(&self.source, cx)
+            self.source.resolve(cx)
         } else {
-            number(&self.source, cx)
+            self.source.data(cx)
         };
         let options = localized::options(cx, self.kind);
         let mut leaf = xgpui_parley::typeset::typeset(source.clone()).direction(options.direction);
@@ -104,13 +74,15 @@ impl RenderOnce for UiText {
     }
 }
 
-pub(crate) fn label<M>(source: impl Into<SharedString>) -> impl Fn(&M, &mut App) -> AnyElement + Send + Sync + 'static {
+pub(crate) fn label<M>(
+    source: impl Into<super::UiCopy>,
+) -> impl Fn(&M, &mut App) -> AnyElement + Send + Sync + 'static {
     let source = source.into();
     move |_, cx| {
         div()
             .id("lab-control-label")
             .role(gpui::accesskit::Role::Label)
-            .aria_label(resolve(&source, cx))
+            .aria_label(source.resolve(cx))
             .child(ui(source.clone()))
             .into_any_element()
     }
@@ -140,13 +112,6 @@ mod tests {
                 assert_eq!(align, if parley { None } else { Some(TextAlign::Right) });
             });
         }
-    }
-
-    #[test]
-    fn formatted_copy_keeps_argument_boundaries_and_rejects_ambiguous_fields() {
-        assert_eq!(capture("Frames: 12; GPU: 4.25 ms", &["Frames: ", "; GPU: ", " ms"]), Some(vec!["12", "4.25"]));
-        assert!(capture("other 12", &["Frames: ", ""]).is_none());
-        assert!(capture("a b", &["", "", ""]).is_none());
     }
 }
 

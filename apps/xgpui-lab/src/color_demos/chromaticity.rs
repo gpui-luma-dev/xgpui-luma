@@ -301,7 +301,10 @@ impl ChromaticityLab {
             Err(error) => {
                 return div()
                     .p_4()
-                    .child(crate::l10n::ui(format!("Chromaticity shader unavailable: {error}")))
+                    .child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_91098ee35421(args[0].clone()),
+                        vec![error.to_string()],
+                    )))
                     .into_any_element();
             }
         };
@@ -480,20 +483,37 @@ impl ChromaticityLab {
             .marker(Mark::Hatch, "Outside simulated gamut")
     }
 
-    fn caption_line(&self) -> String {
+    fn caption_line(&self) -> crate::l10n::UiCopy {
         let outside = self.cells.iter().filter(|cell| cell.outside).count();
         let fraction = 100. * outside as f64 / self.cells.len().max(1) as f64;
-        format!(
-            "{} · fill Y {} · {} · sampled area outside {}: {fraction:.1}%",
-            if self.uv { "CIE 1976 u′v′" } else { "CIE 1931 xy" },
-            model::LUMINANCE[self.luminance],
-            if self.mapping == GamutMapping::Clip {
+        {
+            let __l10n_0 = &(if self.uv { "CIE 1976 u′v′" } else { "CIE 1931 xy" });
+            let __l10n_1 = &(model::LUMINANCE[self.luminance]);
+            let __l10n_2 = &(if self.mapping == GamutMapping::Clip {
                 "clip"
             } else {
                 "reduce chroma"
-            },
-            model::NAMES[self.simulated]
-        )
+            });
+            let __l10n_3 = &(model::NAMES[self.simulated]);
+            crate::l10n::UiCopy::compose(
+                |args| {
+                    crate::l10n::messages::msg_ui_9080486eb476(
+                        args[0].clone(),
+                        args[1].clone(),
+                        args[2].clone(),
+                        args[3].clone(),
+                        args[4].clone(),
+                    )
+                },
+                vec![
+                    (__l10n_0.to_string()).into(),
+                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                    (__l10n_2.to_string()).into(),
+                    (__l10n_3.to_string()).into(),
+                    crate::l10n::UiCopy::percentage(format!("{:.1}", fraction), 1),
+                ],
+            )
+        }
     }
 
     fn space_card(&self, index: usize) -> LabCard {
@@ -527,7 +547,13 @@ impl ChromaticityLab {
 
     fn pixel_parameters(&self) -> ParametersPanel {
         ParametersPanel::new("Pixel parameters")
-            .subtitle(format!("Encoded {} values (0–1)", model::NAMES[self.source]))
+            .subtitle({
+                let __l10n_0 = &(model::NAMES[self.source]);
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_f1e1d3465ba1(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            })
             .params(
                 ["Red", "Green", "Blue"]
                     .into_iter()
@@ -577,9 +603,10 @@ impl Render for ChromaticityLab {
             .title("Chromaticity & Gamut")
             .lede("Keep one pixel fixed and change how it is interpreted. Compare reference gamut boundaries, luminance, and mapping on the CIE 1931 diagram.")
             .hero(Hero::with_legend(self.chart(cx), self.legend()))
-            .caption(format!("{} · {}", if window.color_status().effective() == WindowColorMode::WideGamutSdr {
-                "Wide-gamut output (Display P3)"
-            } else { "sRGB output" }, self.caption_line()));
+            .caption(crate::l10n::UiCopy::Separated(" · ", vec![
+                (if window.color_status().effective() == WindowColorMode::WideGamutSdr {
+                    "Wide-gamut output (Display P3)"
+                } else { "sRGB output" }).into(), self.caption_line()]));
         controls
             .fold(screen, LabScreen::control)
             .control(self.switches[0].clone())

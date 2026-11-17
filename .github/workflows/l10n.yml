@@ -49,3 +49,29 @@ jobs:
         run: python3 -m unittest discover -s scripts/tests -p 'test_update_lab_copy.py'
       - name: Report translation review candidates
         run: python3 scripts/audit_l10n.py
+
+  lab-headless:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check workspace formatting and lints
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --features test-support --locked -- -D warnings
+      - name: Test SDK, both looks, and all Lab destinations without launching an app
+        env:
+          LAB_COPY_USAGE: /tmp/lab-copy-usage.json
+        run: cargo test -p xgpui-luma -p xgpui-luma-look-radix -p xgpui-luma-look-shadcn -p xgpui-lab --features test-support --locked
+      - name: Report exercised messages and unresolved review candidates
+        run: python3 scripts/audit_l10n.py --usage /tmp/lab-copy-usage.json > /tmp/lab-copy-audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localization-render-coverage
+          path: |
+            /tmp/lab-copy-usage.json
+            /tmp/lab-copy-audit.json

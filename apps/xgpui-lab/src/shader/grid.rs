@@ -273,7 +273,7 @@ impl Render for GridPane {
         let p = self.settings.frame(self.time);
         let screen = LabScreen::new("shader-grid", self.look.clone()).crumb("xgpui-shader", "Shader Depot: Grid").title("Shader Depot: Grid")
             .lede("Compare the same pulsing grid drawn through two shader interfaces.")
-            .caption(format!("{} · effective line width {:.2} · {:.0} cells · 16-byte instance", if self.settings.pulse {"Pulsing"} else {"Static"}, p.line_width, p.grid_dimensions))
+            .caption({ let __l10n_0 = &(if self.settings.pulse {"Pulsing"} else {"Static"}); let __l10n_1 = &(p.line_width); let __l10n_2 = &(p.grid_dimensions); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_86fcbb66bfdc(args[0].clone(), args[1].clone(), args[2].clone()), vec![__l10n_0.to_string().into(), crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_1)), crate::l10n::UiCopy::counted("cells", format!("{:.0}", __l10n_2))]) })
             .control(self.pulse_switch.clone()).action(self.buttons[1].clone()).action(self.buttons[2].clone())
             .panels(ParametersPanel::new("Grid parameters").params(self.numbers.iter().map(Number::param)),
                 PanelShell::new("Rendering").child(properties(&self.look, [("Comparison", "Same grid parameters and phase"), ("Pulse", "Cosine interpolation of line width"), ("Instance", "Four scalar inputs / 16 bytes")])))
@@ -281,7 +281,10 @@ impl Render for GridPane {
             .credits("Adapted from Christian Helgeson's WGSL Shader Depot. Copyright 2019 WebGPU Samples Contributors; BSD-3-Clause, licenses/ShaderDepot-BSD-3-Clause.txt. No GPU timing is measured.");
         match self.preview(p) {
             Ok(hero) => screen.hero(hero),
-            Err(e) => screen.notice(Some(format!("Grid shader error: {e:#}"))),
+            Err(e) => screen.notice(Some(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_75a12d0b9de2(args[0].clone()),
+                vec![format!("{:#}", e)],
+            ))),
         }
     }
 }

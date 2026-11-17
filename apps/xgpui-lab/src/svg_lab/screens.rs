@@ -75,22 +75,37 @@ impl SvgPage {
                     ),
                 ))
                 .when(self.active_tab != "Rendering", |view| {
-                    view.child(crate::l10n::ui(format!(
-                        "Output budget: {:.2} MiB · Zoom {:.2}× · Display scale {:.2}×",
-                        self.policy.max_output_bytes as f64 / MIB as f64,
-                        self.values[0],
-                        self.density
-                    )))
+                    view.child(crate::l10n::ui({
+                        let __l10n_0 = &(self.policy.max_output_bytes as f64 / MIB as f64);
+                        let __l10n_1 = &(self.values[0]);
+                        let __l10n_2 = &(self.density);
+                        crate::l10n::UiCopy::formatted(
+                            |args| {
+                                crate::l10n::messages::msg_ui_7d350a322de2(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                )
+                            },
+                            vec![format!("{:.2}", __l10n_0), format!("{:.2}", __l10n_1), format!("{:.2}", __l10n_2)],
+                        )
+                    }))
                 })
                 .when(self.loading, |view| view.child(crate::l10n::ui("Loading artwork in the background…")))
                 .children(self.load_error.as_ref().map(|error| {
-                    div().child(crate::l10n::ui(format!("Load failed; previous artwork retained: {error}")))
+                    div().child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_fd4a34fe2d4f(args[0].clone()),
+                        vec![error.to_string()],
+                    )))
                 }))
                 .child(match result {
                     Ok(view) => view,
-                    Err(error) => {
-                        div().child(crate::l10n::ui(format!("SVG lab unavailable: {error:#}"))).into_any_element()
-                    }
+                    Err(error) => div()
+                        .child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_9d21d7c85a1f(args[0].clone()),
+                            vec![format!("{:#}", error)],
+                        )))
+                        .into_any_element(),
                 })
                 .into_any_element();
         }
@@ -124,39 +139,81 @@ impl SvgPage {
             number.observe(value, cx);
         }
         let caption = if title == "Path Effects" {
-            format!(
-                "Trim {:.0}% · dash {} · phase {:.1} · width {:.0} px · {}",
-                self.effective_trim() * 100.,
-                self.dash,
-                self.effective_phase(),
-                self.values[5],
-                if self.animate && self.motion_allowed {
+            {
+                let __l10n_0 = &(self.effective_trim() * 100.);
+                let __l10n_1 = &(self.dash);
+                let __l10n_2 = &(self.effective_phase());
+                let __l10n_3 = &(self.values[5]);
+                let __l10n_4 = &(if self.animate && self.motion_allowed {
                     "Animating"
                 } else {
                     "Paused"
-                }
-            )
+                });
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_50c594bb0188(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                            args[4].clone(),
+                        )
+                    },
+                    vec![
+                        crate::l10n::UiCopy::percentage(format!("{:.0}", __l10n_0), 0),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                        crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_2)),
+                        crate::l10n::UiCopy::numeric(format!("{:.0}", __l10n_3)),
+                        (__l10n_4.to_string()).into(),
+                    ],
+                )
+            }
         } else if title == "Scheduling & Cache" {
-            format!(
-                "{} tiles · {} documents · {} · {:.2}× zoom",
-                self.tiles,
-                self.gallery_docs.len().max(1),
-                if self.eager { "eager" } else { "visible + overscan" },
-                self.values[0]
-            )
+            {
+                let __l10n_0 = &(self.tiles);
+                let __l10n_1 = &(self.gallery_docs.len().max(1));
+                let __l10n_2 = &(if self.eager { "eager" } else { "visible + overscan" });
+                let __l10n_3 = &(self.values[0]);
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_2e56146e9fdb(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        format!("{}", __l10n_0),
+                        format!("{}", __l10n_1),
+                        __l10n_2.to_string(),
+                        format!("{:.2}", __l10n_3),
+                    ],
+                )
+            }
         } else {
-            format!(
-                "{} · {:.2}× zoom · {:.2}× display density",
-                self.source_label(),
-                if title == "Rendering" { 1. } else { self.camera.zoom },
-                self.density
-            )
+            {
+                let __l10n_0 = &(self.source_label());
+                let __l10n_1 = &(if title == "Rendering" { 1. } else { self.camera.zoom });
+                let __l10n_2 = &(self.density);
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_0ededdf2f666(args[0].clone(), args[1].clone(), args[2].clone())
+                    },
+                    vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1), format!("{:.2}", __l10n_2)],
+                )
+            }
         };
         let mut page = LabScreen::new(id,self.look.clone()).crumb("xgpui-svg",title).title(title).lede(lede).caption(caption).note(note)
             .credits("Raster budgets account for output image reservations, excluding SVG filter intermediates, total process RSS and driver VRAM. CPU parse/raster observations are not GPU or presentation timing.");
         match result {
             Ok(view) => page = page.hero(Hero::full(view)),
-            Err(e) => page = page.notice(Some(format!("SVG lab unavailable: {e:#}"))),
+            Err(e) => {
+                page = page.notice(Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_f0612f027b21(args[0].clone()),
+                    vec![format!("{:#}", e)],
+                )))
+            }
         }
         for (action, choice) in &self.choices {
             if actions.contains(action) {
@@ -224,30 +281,54 @@ impl SvgPage {
             page = page.notice(Some("Loading artwork in the background…"));
         }
         if let Some(error) = &self.load_error {
-            page = page.notice(Some(format!("Load failed; previous artwork retained: {error}")));
+            page = page.notice(Some(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_fd4a34fe2d4f(args[0].clone()),
+                vec![error.to_string()],
+            )));
         }
         page.into_any_element()
     }
     pub(super) fn diagnostics(&self) -> PanelShell {
-        let mut rows = vec![("Output budget", format!("{:.2} MiB", self.policy.max_output_bytes as f64 / MIB as f64))];
+        let mut rows = vec![("Output budget", {
+            let __l10n_0 = &(self.policy.max_output_bytes as f64 / MIB as f64);
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()),
+                vec![format!("{:.2}", __l10n_0)],
+            )
+        })];
         if self.active_tab == "Scheduling & Cache"
             && let Ok(scheduler) = &self.scheduler
         {
             let s = scheduler.stats();
             let l = scheduler.limits();
             rows.extend([
-                ("Job limit", l.max_jobs.to_string()),
-                ("Pool", format!("{} MiB", l.max_bytes / MIB)),
-                ("Members / active / queued", format!("{} / {} / {}", s.members, s.active_jobs, s.queued_jobs)),
+                ("Job limit", crate::l10n::UiCopy::from(l.max_jobs.to_string())),
+                ("Pool", {
+                    let __l10n_0 = &(l.max_bytes / MIB);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_34bf1fee6f9c(args[0].clone()),
+                        vec![format!("{}", __l10n_0)],
+                    )
+                }),
                 (
-                    "Retained / in-flight",
-                    format!(
-                        "{:.2} / {:.2} MiB",
-                        s.retained_bytes as f64 / MIB as f64,
-                        s.in_flight_bytes as f64 / MIB as f64
-                    ),
+                    "Members / active / queued",
+                    crate::l10n::UiCopy::from(format!("{} / {} / {}", s.members, s.active_jobs, s.queued_jobs)),
                 ),
-                ("Peak managed", format!("{:.2} MiB", s.peak_managed_bytes as f64 / MIB as f64)),
+                ("Retained / in-flight", {
+                    let __l10n_0 = &(s.retained_bytes as f64 / MIB as f64);
+                    let __l10n_1 = &(s.in_flight_bytes as f64 / MIB as f64);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_539fab89e3e0(args[0].clone(), args[1].clone()),
+                        vec![format!("{:.2}", __l10n_0), format!("{:.2}", __l10n_1)],
+                    )
+                }),
+                ("Peak managed", {
+                    let __l10n_0 = &(s.peak_managed_bytes as f64 / MIB as f64);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()),
+                        vec![format!("{:.2}", __l10n_0)],
+                    )
+                }),
             ]);
         }
         if self.active_tab == "Scaling"
@@ -256,27 +337,58 @@ impl SvgPage {
             if let Ok(r) = self.policy.resolution(asset.logical, self.camera.zoom, self.density) {
                 let p = self.policy.preview(r.output);
                 rows.extend([
-                    ("Requested", format!("{}×{} px", i32::from(r.requested.width), i32::from(r.requested.height))),
-                    (
-                        "Output",
-                        format!(
-                            "{}×{} px · {:.2} MiB{}",
-                            i32::from(r.output.width),
-                            i32::from(r.output.height),
-                            xgpui_svg::image_bytes(r.output) as f64 / MIB as f64,
-                            if r.limited() { " · capped" } else { "" }
-                        ),
-                    ),
-                    (
-                        "Preview",
-                        format!(
-                            "{}×{} px · {} px edge",
-                            i32::from(p.width),
-                            i32::from(p.height),
-                            self.policy.preview_edge
-                        ),
-                    ),
-                    ("Settle", format!("{} ms", self.policy.settle_delay.as_millis())),
+                    ("Requested", {
+                        let __l10n_0 = &(i32::from(r.requested.width));
+                        let __l10n_1 = &(i32::from(r.requested.height));
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_aad7e3d8ae81(args[0].clone(), args[1].clone()),
+                            vec![format!("{}", __l10n_0), format!("{}", __l10n_1)],
+                        )
+                    }),
+                    ("Output", {
+                        let __l10n_0 = &(i32::from(r.output.width));
+                        let __l10n_1 = &(i32::from(r.output.height));
+                        let __l10n_2 = &(xgpui_svg::image_bytes(r.output) as f64 / MIB as f64);
+                        let __l10n_3 = &(if r.limited() { " · capped" } else { "" });
+                        crate::l10n::UiCopy::formatted(
+                            |args| {
+                                crate::l10n::messages::msg_ui_3150eda2f76d(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                    args[3].clone(),
+                                )
+                            },
+                            vec![
+                                format!("{}", __l10n_0),
+                                format!("{}", __l10n_1),
+                                format!("{:.2}", __l10n_2),
+                                __l10n_3.to_string(),
+                            ],
+                        )
+                    }),
+                    ("Preview", {
+                        let __l10n_0 = &(i32::from(p.width));
+                        let __l10n_1 = &(i32::from(p.height));
+                        let __l10n_2 = &(self.policy.preview_edge);
+                        crate::l10n::UiCopy::formatted(
+                            |args| {
+                                crate::l10n::messages::msg_ui_9801a0925784(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                )
+                            },
+                            vec![format!("{}", __l10n_0), format!("{}", __l10n_1), format!("{}", __l10n_2)],
+                        )
+                    }),
+                    ("Settle", {
+                        let __l10n_0 = &(self.policy.settle_delay.as_millis());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_8636e9ced1c8(args[0].clone()),
+                            vec![format!("{}", __l10n_0)],
+                        )
+                    }),
                 ]);
             }
             for density in [1., 2., 3.] {
@@ -287,15 +399,34 @@ impl SvgPage {
                             2 => "2× density estimate",
                             _ => "3× density estimate",
                         },
-                        format!(
-                            "{}×{} → {}×{} px · {:.2} MiB{}",
-                            i32::from(r.requested.width),
-                            i32::from(r.requested.height),
-                            i32::from(r.output.width),
-                            i32::from(r.output.height),
-                            xgpui_svg::image_bytes(r.output) as f64 / MIB as f64,
-                            if r.limited() { " · capped" } else { "" }
-                        ),
+                        {
+                            let __l10n_0 = &(i32::from(r.requested.width));
+                            let __l10n_1 = &(i32::from(r.requested.height));
+                            let __l10n_2 = &(i32::from(r.output.width));
+                            let __l10n_3 = &(i32::from(r.output.height));
+                            let __l10n_4 = &(xgpui_svg::image_bytes(r.output) as f64 / MIB as f64);
+                            let __l10n_5 = &(if r.limited() { " · capped" } else { "" });
+                            crate::l10n::UiCopy::formatted(
+                                |args| {
+                                    crate::l10n::messages::msg_ui_ac1c276faf2e(
+                                        args[0].clone(),
+                                        args[1].clone(),
+                                        args[2].clone(),
+                                        args[3].clone(),
+                                        args[4].clone(),
+                                        args[5].clone(),
+                                    )
+                                },
+                                vec![
+                                    format!("{}", __l10n_0),
+                                    format!("{}", __l10n_1),
+                                    format!("{}", __l10n_2),
+                                    format!("{}", __l10n_3),
+                                    format!("{:.2}", __l10n_4),
+                                    __l10n_5.to_string(),
+                                ],
+                            )
+                        },
                     ));
                 }
             }
@@ -304,9 +435,21 @@ impl SvgPage {
             && let Ok(a) = &self.asset
         {
             rows.extend([
-                ("Parse", format!("{:.3} ms", a.parse_ms)),
-                ("Baseline raster", format!("{:.3} ms", a.raster_ms)),
-                ("Clip / shadow", format!("{} / {}", self.clipped, self.shadow)),
+                ("Parse", {
+                    let __l10n_0 = &(a.parse_ms);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_98830503eef0(args[0].clone()),
+                        vec![format!("{:.3}", __l10n_0)],
+                    )
+                }),
+                ("Baseline raster", {
+                    let __l10n_0 = &(a.raster_ms);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_98830503eef0(args[0].clone()),
+                        vec![format!("{:.3}", __l10n_0)],
+                    )
+                }),
+                ("Clip / shadow", crate::l10n::UiCopy::from(format!("{} / {}", self.clipped, self.shadow))),
             ]);
         }
         let status = if self.active_tab == "Rendering" {
@@ -318,25 +461,45 @@ impl SvgPage {
             // Rebuilding artwork clears status until the element reports again.
             // Keep the same rows mounted so the panel and footer do not jump.
             rows.extend([
-                ("Phase", status.as_ref().map_or_else(|| "Pending".into(), |s| format!("{:?}", s.phase))),
+                (
+                    "Phase",
+                    crate::l10n::UiCopy::from(
+                        status.as_ref().map_or_else(|| "Pending".into(), |s| format!("{:?}", s.phase)),
+                    ),
+                ),
                 (
                     "Displayed",
                     status.as_ref().and_then(|s| s.displayed).map_or_else(
                         || "Pending".into(),
-                        |size| format!("{}×{} px", i32::from(size.width), i32::from(size.height)),
+                        |size| {
+                            let __l10n_0 = &(i32::from(size.width));
+                            let __l10n_1 = &(i32::from(size.height));
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_aad7e3d8ae81(args[0].clone(), args[1].clone()),
+                                vec![format!("{}", __l10n_0), format!("{}", __l10n_1)],
+                            )
+                        },
                     ),
                 ),
                 (
                     "Raster",
-                    status
-                        .as_ref()
-                        .and_then(|s| s.raster_ms)
-                        .map_or_else(|| "Pending".into(), |ms| format!("{ms:.3} ms")),
+                    status.as_ref().and_then(|s| s.raster_ms).map_or_else(
+                        || "Pending".into(),
+                        |ms| {
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_4fa8083516f8(args[0].clone()),
+                                vec![format!("{:.3}", ms)],
+                            )
+                        },
+                    ),
                 ),
-                ("Completed", status.as_ref().map_or(0, |s| s.completed_rasters).to_string()),
+                (
+                    "Completed",
+                    crate::l10n::UiCopy::from(status.as_ref().map_or(0, |s| s.completed_rasters).to_string()),
+                ),
             ]);
             if let Some(error) = status.as_ref().and_then(|s| s.error.as_ref()) {
-                rows.push(("Raster error", error.clone()));
+                rows.push(("Raster error", crate::l10n::UiCopy::from(error.clone())));
             }
         }
         PanelShell::new("Rendering / live").child(properties(&self.look, rows))

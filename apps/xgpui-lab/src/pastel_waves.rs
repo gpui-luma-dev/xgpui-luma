@@ -287,19 +287,29 @@ impl Render for PastelWaves {
             .title("Pastel Waves")
             .lede("Explore translucent ribbons as they fold, overlap and move through a soft color field.")
             .hero(Hero::fixed(visual, px(900.)))
-            .caption(format!(
-                "{} · phase {:.3} · {} · grain {}",
-                if cx.reduce_motion() {
+            .caption({
+                let __l10n_0 = &(if cx.reduce_motion() {
                     "Reduced motion"
                 } else if self.playing {
                     "Playing"
                 } else {
                     "Paused"
-                },
-                self.phase,
-                if self.direction > 0. { "forward" } else { "reverse" },
-                if self.grain { "on" } else { "off" }
-            ))
+                });
+                let __l10n_1 = &(self.phase);
+                let __l10n_2 = &(if self.direction > 0. { "forward" } else { "reverse" });
+                let __l10n_3 = &(if self.grain { "on" } else { "off" });
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_14684942f056(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![__l10n_0.to_string(), format!("{:.3}", __l10n_1), __l10n_2.to_string(), __l10n_3.to_string()],
+                )
+            })
             .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()));
         for switch in &self.switches {
             screen = screen.control(switch.clone());

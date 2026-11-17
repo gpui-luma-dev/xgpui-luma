@@ -135,18 +135,14 @@ fn graph(
         .into_any_element()
 }
 
-fn plan_summary(cases: &[Case], artworks: usize, zooms: usize, budgets: usize) -> String {
-    let measured = cases.iter().filter(|c| c.measure.is_some()).count();
-    let mut summary = format!(
-        "{} cases · {artworks} artworks × {zooms} {} × {budgets} {}",
-        cases.len(),
-        if zooms == 1 { "zoom" } else { "zooms" },
-        if budgets == 1 { "budget" } else { "budgets" }
-    );
-    if measured > 0 {
-        summary.push_str(&format!(" · {measured} measured"));
-    }
-    summary
+fn plan_summary(cases: &[Case], artworks: usize, zooms: usize, budgets: usize) -> crate::l10n::UiCopy {
+    crate::l10n::UiCopy::compose(
+        |a| crate::l10n::messages::msg_lab_plan(a[0].clone(), a[1].clone(), a[2].clone(), a[3].clone(), a[4].clone()),
+        [artworks, budgets, cases.len(), cases.iter().filter(|c| c.measure.is_some()).count(), zooms]
+            .into_iter()
+            .map(|n| crate::l10n::UiCopy::numeric(n.to_string()))
+            .collect(),
+    )
 }
 
 impl Page {
@@ -175,7 +171,7 @@ impl Page {
         let settled = cases.iter().filter(|c| c.outcome.settled()).count();
         let (label, status) = if self.busy {
             ("Running", Status::Running)
-        } else if self.status.starts_with("Cancelled") {
+        } else if self.cancel.load(Ordering::Relaxed) {
             ("Stopped", Status::Neutral)
         } else if settled > 0 && settled == cases.len() {
             ("Done", Status::Done)
@@ -185,7 +181,7 @@ impl Page {
         let message = if !self.status.is_empty() {
             self.status.clone()
         } else {
-            format!("{} cases planned. Run benchmark measures them one at a time.", cases.len())
+            format!("{} cases planned. Run benchmark measures them one at a time.", cases.len()).into()
         };
         let right = estimate.filter(|_| self.busy).unwrap_or_else(|| format!("{settled} / {}", cases.len()));
         let muted = look.chrome().muted_text;
@@ -272,13 +268,13 @@ impl Page {
                 "Each case runs in a fresh copy of this app, one at a time: five parse samples, then five raster \
                  samples of the parsed artwork. Stop keeps finished results.",
             )
-            .credits(format!(
-                "Timings are CPU only and exclude PNG encoding and GPU upload. Debug builds run much slower than \
-                 release; compare runs from the same build. RSS is for the whole process. Budgets limit the output \
-                 image, not filter intermediates. The opt-in 256 MiB baseline is the worker's largest budget; output \
-                 edges still stop at 8192 px, so the largest zooms can be capped even there. {}",
-                crate::svg_lab::benchmarks::artwork_credits()
-            ))
+            .credits({
+                let __l10n_0 = &(crate::svg_lab::benchmarks::artwork_credits());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_08c221bc7881(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            })
             .into_any_element()
     }
 }

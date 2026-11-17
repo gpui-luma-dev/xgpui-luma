@@ -306,7 +306,7 @@ impl Render for ParagraphLab {
         let mut root = LabScreen::new("parley-paragraph", self.look.clone())
             .crumb("xgpui-parley", "Paragraphs").title("Paragraphs")
             .lede("Explore editing, selection and mixed-direction text as a paragraph reflows.")
-            .caption(format!("{label} · {:.0} px wrap · {} bytes · {}", f32::from(width), self.content.len(), if native_atlas {"native glyph atlas"} else {"CPU raster preview"}))
+            .caption({ let __l10n_0 = &(f32::from(width)); let __l10n_1 = &(self.content.len()); let __l10n_2 = &(if native_atlas {"native glyph atlas"} else {"CPU raster preview"}); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_56cbd416cf2b(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone()), vec![label.to_string(), format!("{:.0}", __l10n_0), format!("{}", __l10n_1), __l10n_2.to_string()]) })
             .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
             .panels(PanelShell::new("Selection / live").child(properties(&self.look, [
                 ("Anchor",format!("{} {:?}",self.anchor.byte_index,self.anchor.affinity)),
@@ -320,7 +320,10 @@ impl Render for ParagraphLab {
             root = root.action(button.clone());
         }
         if let Some(error) = &self.raster_error {
-            root = root.notice(Some(format!("Raster preview unavailable: {error}")));
+            root = root.notice(Some(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_2f1e16ed915e(args[0].clone()),
+                vec![error.to_string()],
+            )));
         }
         match layout {
             Ok(layout) => {
@@ -334,17 +337,28 @@ impl Render for ParagraphLab {
                             lines.entry(f32::from(rect.top()).to_bits()).or_insert(Vec::new()).push(byte_index);
                         }
                     }
-                    root = root.section(label_text(
-                        &self.look,
-                        TextRole::Value,
-                        format!(
-                            "{} visual lines · {:.1} × {:.1}px · {} resolved runs",
-                            lines.len(),
-                            f32::from(width),
-                            f32::from(height),
-                            layout.runs().len()
-                        ),
-                    ));
+                    root = root.section(label_text(&self.look, TextRole::Value, {
+                        let __l10n_0 = &(lines.len());
+                        let __l10n_1 = &(f32::from(width));
+                        let __l10n_2 = &(f32::from(height));
+                        let __l10n_3 = &(layout.runs().len());
+                        crate::l10n::UiCopy::formatted(
+                            |args| {
+                                crate::l10n::messages::msg_ui_5f0c4dc87d0b(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                    args[3].clone(),
+                                )
+                            },
+                            vec![
+                                format!("{}", __l10n_0),
+                                format!("{:.1}", __l10n_1),
+                                format!("{:.1}", __l10n_2),
+                                format!("{}", __l10n_3),
+                            ],
+                        )
+                    }));
                     for (y, clusters) in lines {
                         root = root.section(label_text(
                             &self.look,
@@ -474,7 +488,10 @@ impl Render for ParagraphLab {
             }
             Err(error) => {
                 self.geometry = None;
-                root = root.notice(Some(format!("Paragraph unavailable: {error:#}")));
+                root = root.notice(Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_834f47ff5aea(args[0].clone()),
+                    vec![format!("{:#}", error)],
+                )));
             }
         }
         div()

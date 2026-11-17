@@ -13,7 +13,18 @@ import sys
 
 root = Path('apps/xgpui-lab/locales')
 entries = []
+previous = {entry['source']: entry for entry in json.loads((root/'copy.json').read_text())} if (root/'copy.json').exists() else {}
 for source, meta in sorted(json.loads(Path(sys.argv[1]).read_text()).items()):
+    if meta.get('explicit') and source in previous:
+        record = dict(previous[source])
+        record['files'] = sorted(set(meta['files']))
+        record['explicit'] = True
+        if meta.get('boundaries'):
+            record['boundaries'] = sorted(set(meta['boundaries']))
+        else:
+            record.pop('boundaries', None)
+        entries.append(record)
+        continue
     parts = None
     value = source
     if meta['kind'] == 'format':
@@ -29,8 +40,13 @@ for source, meta in sorted(json.loads(Path(sys.argv[1]).read_text()).items()):
             continue
         escaped = [''.join({'{': '{ "{" }', '}': '{ "}" }'}.get(c, c) for c in part) for part in parts]
         value = ''.join(part + ('{ $a' + str(i) + ' }' if i < len(parts)-1 else '') for i, part in enumerate(escaped))
+    if meta.get('explicit') and source in previous:
+        value = previous[source]['value']
+        parts = previous[source]['parts']
     entries.append(dict(id='ui-' + hashlib.sha256(source.encode()).hexdigest()[:12], source=source,
-                        value=value, parts=parts, files=sorted(set(meta['files']))))
+                        value=value, parts=parts, files=sorted(set(meta['files'])),
+                        **({'explicit': True} if meta.get('explicit') else {}),
+                        **({'boundaries': sorted(set(meta['boundaries']))} if meta.get('boundaries') else {})))
 if '--check' in sys.argv:
     if json.loads((root/'copy.json').read_text()) != entries:
         raise SystemExit('Lab catalog inventory changed; run update_lab_copy.py and review translations')
@@ -40,8 +56,8 @@ if '--check' in sys.argv:
 for tag in ('en', 'de', 'ja', 'ar'):
     path = root/tag/'lab.ftl'
     source = path.read_text()
-    translations = dict(re.findall(r'^(ui-[a-f0-9]+) = (.*(?:\n[ \t]+.*)*)', source, re.M))
-    source = re.sub(r'^ui-[a-f0-9]+ = .*\n(?:[ \t]+.*\n)*', '', source, flags=re.M)
+    translations = {match[1]: match[2].rstrip('\n') for match in re.finditer(r'^(ui-[a-f0-9]+) = ([\s\S]*?)(?=^-?[A-Za-z][\w-]*\s*=|^#|\Z)', source, re.M)}
+    source = re.sub(r'^ui-[a-f0-9]+ = [\s\S]*?(?=^-?[A-Za-z][\w-]*\s*=|^#|\Z)', '', source, flags=re.M)
     source = source.replace('# Extracted Lab copy (stable generated IDs; source references in copy.json).\n', '')
     source = source.rstrip()+'\n\n# Extracted Lab copy (stable generated IDs; source references in copy.json).\n'
     def message(entry):

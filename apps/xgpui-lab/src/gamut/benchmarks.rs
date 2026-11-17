@@ -237,7 +237,7 @@ pub(super) struct Benchmarks {
     buttons: Vec<Entity<Button>>,
     reveal: Entity<Button>,
     busy: bool,
-    status: String,
+    status: crate::l10n::UiCopy,
     output: Option<PathBuf>,
     results: Vec<Value>,
 }
@@ -284,7 +284,10 @@ impl Benchmarks {
         let output = match tempfile::Builder::new().prefix("xgpui-gamut-benchmarks-").tempdir() {
             Ok(directory) => directory.keep(),
             Err(error) => {
-                self.status = format!("Cannot create results folder: {error}");
+                self.status = crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_70d860bdc197(args[0].clone()),
+                    vec![format!("{}", error)],
+                );
                 cx.notify();
                 return;
             }
@@ -302,7 +305,13 @@ impl Benchmarks {
         cx.spawn(async move |this, cx| {
             for case in cases {
                 let captured = this.update(cx, |this, cx| {
-                    this.status = format!("Running {}…", case.label());
+                    this.status = {
+                        let __l10n_0 = &(case.label());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_b3c4cadb4274(args[0].clone()),
+                            vec![__l10n_0.to_string()],
+                        )
+                    };
                     cx.notify();
                     capture(case, &settings, look.clone(), cx)
                 });
@@ -320,7 +329,10 @@ impl Benchmarks {
                             |error| json!({"case": case.id(), "label": case.label(), "error": format!("{error:#}")}),
                         ));
                         if let Err(error) = write_summary(&output, &this.results) {
-                            this.status = format!("Cannot save benchmark report: {error:#}");
+                            this.status = crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_5808b92549e2(args[0].clone()),
+                                vec![format!("{:#}", error)],
+                            );
                             this.busy = false;
                             for button in &this.buttons {
                                 button.update(cx, |button, cx| button.set_enabled(true, cx));
@@ -341,10 +353,23 @@ impl Benchmarks {
                 this.busy = false;
                 let failures = this.results.iter().filter(|result| result.get("error").is_some()).count();
                 let fallbacks = this.results.iter().filter(|result| result["outcome"] == "sRGB fallback").count();
-                this.status = format!(
-                    "Finished: {} workloads, {failures} failures, {fallbacks} sRGB fallbacks.",
-                    this.results.len()
-                );
+                this.status = {
+                    let __l10n_0 = &(this.results.len());
+                    crate::l10n::UiCopy::compose(
+                        |args| {
+                            crate::l10n::messages::msg_ui_f8d33a3ab84d(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                            )
+                        },
+                        vec![
+                            crate::l10n::UiCopy::counted("workloads", format!("{}", __l10n_0)),
+                            crate::l10n::UiCopy::counted("failures", format!("{}", failures)),
+                            crate::l10n::UiCopy::numeric(format!("{}", fallbacks)),
+                        ],
+                    )
+                };
                 for button in &this.buttons {
                     button.update(cx, |button, cx| button.set_enabled(true, cx));
                 }
@@ -364,12 +389,12 @@ impl Render for Benchmarks {
             .child(crate::l10n::ui("Measures CPU layout/paint and render + readback. PNG encoding and file writes are excluded. These are not GPU execution timings."))
             .child(crate::l10n::ui("Wide cases use the Overlays scene. Current lab controls captures the last Gamut tab and its settings. PNG previews are clipped sRGB; presentation negotiation is recorded separately."))
             .child(crate::l10n::ui(self.status.clone()))
-            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui(format!("Results: {}", output.display()))).child(self.reveal.clone()))
+            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui({ let __l10n_0 = &(output.display()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()), vec![format!("{}", __l10n_0)]) })).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
                 let mut row = div().flex().flex_col().gap_2().child(result["label"].as_str().unwrap_or("Workload").to_owned());
-                if let Some(error) = result["error"].as_str() { return row.child(crate::l10n::ui(format!("Failed: {error}"))); }
-                row = row.child(crate::l10n::ui(format!("{} · requested {} · effective {}", result["outcome"].as_str().unwrap_or("unknown"), result["requested"].as_str().unwrap_or("unknown"), result["effective"].as_str().unwrap_or("unknown"))))
-                    .child(crate::l10n::ui(format!("Warm median: draw {:.3} ms · render + readback {:.3} ms · {} frames", result["warm_draw_median_ms"].as_f64().unwrap_or(0.), result["warm_render_readback_median_ms"].as_f64().unwrap_or(0.), FRAMES)));
+                if let Some(error) = result["error"].as_str() { return row.child(crate::l10n::ui(crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_64c14e352881(args[0].clone()), vec![error.to_string()]))); }
+                row = row.child(crate::l10n::ui({ let __l10n_0 = &(result["outcome"].as_str().unwrap_or("unknown")); let __l10n_1 = &(result["requested"].as_str().unwrap_or("unknown")); let __l10n_2 = &(result["effective"].as_str().unwrap_or("unknown")); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_551d6a886806(args[0].clone(), args[1].clone(), args[2].clone()), vec![__l10n_0.to_string(), __l10n_1.to_string(), __l10n_2.to_string()]) }))
+                    .child(crate::l10n::ui({ let __l10n_0 = &(result["warm_draw_median_ms"].as_f64().unwrap_or(0.)); let __l10n_1 = &(result["warm_render_readback_median_ms"].as_f64().unwrap_or(0.)); let __l10n_2 = &(FRAMES); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_c4b2d5821ac8(args[0].clone(), args[1].clone(), args[2].clone()), vec![crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_0)), crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1)), crate::l10n::UiCopy::counted("frames", format!("{}", __l10n_2))]) }));
                 if let (Some(output), Some(case)) = (&self.output, result["case"].as_str()) {
                     row = row.child(img(output.join(format!("{case}.png"))).max_w(px(760.)));
                 }

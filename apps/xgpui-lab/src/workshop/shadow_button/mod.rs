@@ -194,10 +194,13 @@ impl Render for ShadowButtonSample {
             .gap(px(14.))
             .child(self.reset.clone())
             .child(self.bounds_toggle.clone())
-            .child(crate::l10n::ui(format!(
-                "Shadow color: {} (RGB, rgb(...), or #hex)",
-                format_rgb_triplet(spec.color)
-            )))
+            .child(crate::l10n::ui({
+                let __l10n_0 = &(format_rgb_triplet(spec.color));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_151aa794c768(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            }))
             .child(self.color_field.clone())
             .child(div().text_color(chrome.muted_text).child(if self.color_valid {
                 "Empty uses the SDK-default neutral shadow color."
@@ -217,7 +220,7 @@ impl Render for ShadowButtonSample {
                 div().flex().flex_col().items_start().gap(px(16.))
                     .child(div().debug_selector(|| "workshop-shadow-stage".into())
                             .bg(xgpui_luma::theme::ThemeTokens::default().palette.surface.panel.background).border_1().border_color(if self.show_bounds { chrome.border } else { chrome.border.opacity(0.) }).p(px(32.)).child(self.demo.clone()))
-                    .child(crate::l10n::ui(format!("Clicks: {}", self.clicks)))
+                    .child(crate::l10n::ui({ let __l10n_0 = &(self.clicks); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_6b581b966d40(args[0].clone()), vec![format!("{}", __l10n_0)]) }))
                     .child(div().font_family(crate::theme::MONO_FAMILY).typography_style(self.look.typography_scale(TextSize::Xs)).child(format_css_box_shadow(spec)))))
             .child(card(&self.look, "workshop-shadow-tuning", "Shadow Tuning", "Adjust the prototype's shadow geometry and color.", 700., tuning))
             .child(self.events.clone()))

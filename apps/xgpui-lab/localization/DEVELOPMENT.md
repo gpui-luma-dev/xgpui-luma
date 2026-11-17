@@ -16,11 +16,12 @@ decorators, placeholders, tooltips, and explicit accessibility labels use this
 bridge. New dedicated features should prefer explicit descriptive message IDs
 as the localization demonstration does.
 
-Formatted legacy UI copy captures arguments using literal separators. Ambiguous
-adjacent fields are excluded; unmatched text is displayed unchanged. Exact
-numeric arguments use ICU4X decimal formatting. This is a compatibility bridge,
-not a Rust format-string parser at runtime. New complex formatting and plural
-messages should pass typed arguments directly rather than rely on capture.
+Dynamic UI copy retains `UiCopy` messages chosen at the call site. Rust formatting
+specifications are applied to individual arguments before locale formatting;
+`compose` distinguishes translated labels, numeric values, percentages, byte
+counts, and raw data. Counts pass raw numeric selectors separately from localized
+display digits. No runtime English pattern matching or argument capture remains.
+An unknown English sentence stays unchanged and is a review candidate.
 
 The inventory intentionally includes candidate technical strings and diagnostic
 copy. It is not proof that every string reaches a translated UI boundary.
@@ -42,8 +43,22 @@ The updater preserves translated messages by stable ID and leaves new ones in
 English for review. `build.rs` checks locale ID/argument parity, used IDs, and
 pseudo-locale schemas. The opt-in localization workflow also verifies the source
 inventory. Source-only checks cannot prove semantic correctness or UI coverage;
-the [independent audit #258](../../../docs/l10n/audit-258.md) records remaining
-coverage and semantic-formatting gaps.
+the [independent audit #258](../../../docs/l10n/audit-258.md) is the historical
+baseline. The [gap validation report](../../../docs/l10n/localization-gaps.md)
+records this follow-up and its limits.
+
+To capture independent render evidence without starting the application:
+
+```sh
+LAB_COPY_USAGE=/tmp/lab-copy-usage.json cargo test -p xgpui-lab --features test-support every_destination_survives
+python3 scripts/audit_l10n.py --usage /tmp/lab-copy-usage.json > /tmp/lab-copy-audit.json
+```
+
+This visits every registered destination with native and Parley text, narrow/light
+`en-XA` and wide/dark `ar-XB`. The report separates actual rendered IDs from
+candidate definitions and lists unresolved text for review. It does not execute
+every interaction, certify all leaf bounds, or replace visual review. The manual
+localization workflow has a macOS job that publishes these observations.
 
 ## Translation provenance and review
 
@@ -51,7 +66,7 @@ Existing descriptive-ID translations are retained. The expanded `ui-*` catalogs
 were generated **locally** on 2026-11-17, with manually corrected common shell
 terms. No application strings were sent to a hosted translation service. These
 expanded translations require native-speaker review, particularly technical
-terminology and grammar around captured arguments. Equal IDs/arguments do not
+terminology and grammar around typed arguments. Equal IDs/arguments do not
 establish translation quality.
 
 Local models used:

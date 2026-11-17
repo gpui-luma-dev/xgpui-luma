@@ -167,7 +167,21 @@ impl ColorPage {
                 crate::lab_controls::labels(&["Clip", "Reduce chroma"]),
                 usize::from(self.policy != GamutMapping::Clip),
             ),
-            Action::Hue => ("Hue", HUES.iter().map(|s| format!("{s:?}")).collect(), self.hue_index),
+            Action::Hue => (
+                "Hue",
+                HUES.iter()
+                    .map(|s| {
+                        match s {
+                            HueInterpolation::Shorter => "Shorter",
+                            HueInterpolation::Longer => "Longer",
+                            HueInterpolation::Increasing => "Increasing",
+                            HueInterpolation::Decreasing => "Decreasing",
+                        }
+                        .to_owned()
+                    })
+                    .collect(),
+                self.hue_index,
+            ),
             Action::Model => {
                 ("Interpolation", crate::lab_controls::labels(&["Linear RGB", "OkLab", "OkLCh"]), self.model_index)
             }

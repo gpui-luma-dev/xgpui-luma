@@ -204,17 +204,38 @@ impl Lab {
             .credits(CANVAS_CREDITS)
     }
 
-    fn canvas_caption(&self, drawn: Drawn) -> String {
-        format!(
-            "{:.1}% zoom · {} of {} cards visible · {} drawn in full · {} proxies ({} points) · {} selected",
-            self.camera.zoom() * 100.,
-            grouped(drawn.cards + drawn.proxies),
-            grouped(self.scene.len()),
-            grouped(drawn.cards),
-            grouped(drawn.proxies),
-            grouped(drawn.points),
-            grouped(self.selected.len()),
-        )
+    fn canvas_caption(&self, drawn: Drawn) -> crate::l10n::UiCopy {
+        {
+            let __l10n_0 = &(self.camera.zoom() * 100.);
+            let __l10n_1 = &(drawn.cards + drawn.proxies);
+            let __l10n_2 = &(self.scene.len());
+            let __l10n_3 = &(drawn.cards);
+            let __l10n_4 = &(drawn.proxies);
+            let __l10n_5 = &(drawn.points);
+            let __l10n_6 = &(self.selected.len());
+            crate::l10n::UiCopy::compose(
+                |args| {
+                    crate::l10n::messages::msg_ui_2c23a4d296d9(
+                        args[0].clone(),
+                        args[1].clone(),
+                        args[2].clone(),
+                        args[3].clone(),
+                        args[4].clone(),
+                        args[5].clone(),
+                        args[6].clone(),
+                    )
+                },
+                vec![
+                    crate::l10n::UiCopy::percentage(format!("{:.1}", __l10n_0), 1),
+                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                    crate::l10n::UiCopy::counted("cards", format!("{}", __l10n_2)),
+                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_4)),
+                    crate::l10n::UiCopy::counted("points", format!("{}", __l10n_5)),
+                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_6)),
+                ],
+            )
+        }
     }
 
     fn canvas_cards(&self, drawn: Drawn) -> [LabCard; 4] {
@@ -248,14 +269,25 @@ impl Lab {
         ]
     }
 
-    fn fractal_caption(&self) -> String {
-        let mut parts =
-            vec![format!("{} zoom", zoom_factor(self.camera.zoom())), format!("c = {}", self.complex_center())];
-        parts.extend(self.fractal.limit().map(|limit| format!("{limit} iterations")));
-        parts.extend(self.fractal.route().map(str::to_owned));
-        parts.extend(self.fractal.frame_size().map(|[w, h]| format!("{w}×{h}")));
+    fn fractal_caption(&self) -> crate::l10n::UiCopy {
+        use crate::l10n::UiCopy;
+        let mut parts = vec![
+            UiCopy::compose(
+                |a| crate::l10n::messages::msg_lab_zoom(a[0].clone()),
+                vec![UiCopy::raw(zoom_factor(self.camera.zoom()))],
+            ),
+            UiCopy::raw(format!("c = {}", self.complex_center())),
+        ];
+        parts.extend(self.fractal.limit().map(|limit| {
+            UiCopy::compose(
+                |a| crate::l10n::messages::msg_lab_iterations(a[0].clone()),
+                vec![UiCopy::numeric(limit.to_string())],
+            )
+        }));
+        parts.extend(self.fractal.route().map(UiCopy::raw));
+        parts.extend(self.fractal.frame_size().map(|[w, h]| UiCopy::raw(format!("{w}×{h}"))));
         parts.push(if self.fractal.refined { "refined" } else { "interactive" }.into());
-        parts.join(" · ")
+        UiCopy::Separated(" · ", parts)
     }
 
     fn fractal_cards(&self, wide: bool) -> [LabCard; 4] {
@@ -265,7 +297,13 @@ impl Lab {
         [
             LabCard::new("Renderer")
                 .icon(Icon::Cpu)
-                .subtitle(format!("GPU up to {}×, then f64 CPU", mandelbrot::GPU_MAX_ZOOM))
+                .subtitle({
+                    let __l10n_0 = &(mandelbrot::GPU_MAX_ZOOM);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_04970e1ec283(args[0].clone()),
+                        vec![format!("{}", __l10n_0)],
+                    )
+                })
                 .badge(self.badge(if self.fractal.cpu_forced() { "CPU" } else { "Auto" }, gpu))
                 .values([
                     ("route", route.unwrap_or("—").to_owned()),
@@ -280,8 +318,20 @@ impl Lab {
                 .subtitle("Whole frames, refined when settled")
                 .badge(self.badge(if refined { "Refined" } else { "Interactive" }, refined))
                 .values([
-                    ("settle", format!("{} ms", mandelbrot::SETTLE.as_millis())),
-                    ("blend", format!("{} ms", mandelbrot::SHARPEN_BLEND.as_millis())),
+                    ("settle", {
+                        let __l10n_0 = &(mandelbrot::SETTLE.as_millis());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_8636e9ced1c8(args[0].clone()),
+                            vec![format!("{}", __l10n_0)],
+                        )
+                    }),
+                    ("blend", {
+                        let __l10n_0 = &(mandelbrot::SHARPEN_BLEND.as_millis());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_8636e9ced1c8(args[0].clone()),
+                            vec![format!("{}", __l10n_0)],
+                        )
+                    }),
                 ]),
             LabCard::new("Color")
                 .icon(Icon::Palette)

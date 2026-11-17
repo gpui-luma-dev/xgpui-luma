@@ -20,3 +20,12 @@ sdk-autocomplete-status = الحالة: { $status ->
    *[other] لا توجد نتيجة
 }
 sdk-autocomplete-detail = المحدد: { $selected } | النتائج: { $matches } | الأخير: { $last } | لوحة المفاتيح: { $keyboard }
+
+sdk-disabled = معطّل
+sdk-selection-mode = وضع الاختيار: { $mode ->
+    [none] بدون اختيار
+    [single-required] اختيار واحد مطلوب
+    [single-optional] اختيار واحد اختياري
+    [multiple] اختيار متعدد
+   *[extended] اختيار موسّع
+}

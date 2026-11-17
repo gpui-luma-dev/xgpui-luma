@@ -69,7 +69,7 @@ pub struct Page {
     hue_value: f32,
     busy: bool,
     cancel: Arc<AtomicBool>,
-    status: String,
+    status: crate::l10n::UiCopy,
     output: Option<PathBuf>,
     report: Option<Value>,
 }
@@ -306,7 +306,7 @@ impl Page {
         let output = match tempfile::Builder::new().prefix("xgpui-standalone-").tempdir() {
             Ok(dir) => dir.keep(),
             Err(e) => {
-                self.status = e.to_string();
+                self.status = crate::l10n::UiCopy::raw(e.to_string());
                 cx.notify();
                 return;
             }
@@ -318,7 +318,13 @@ impl Page {
         let cancel = self.cancel.clone();
         let kind = self.kind;
         let args = self.args();
-        self.status = format!("Running {}… settings are captured for this run.", kind.name());
+        self.status = {
+            let __l10n_0 = &(kind.name());
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_7339af7ee6e1(args[0].clone()),
+                vec![__l10n_0.to_string()],
+            )
+        };
         self.buttons[0].update(cx, |button, cx| button.set_enabled(false, cx));
         cx.spawn(async move |this, cx| {
             let result = cx.background_executor().spawn(async move { run(kind, &args, &output, &cancel) }).await;
@@ -326,10 +332,16 @@ impl Page {
                 this.busy = false;
                 match result {
                     Ok(report) => {
-                        this.status = format!("{} completed. Open results for timings and captures.", kind.name());
+                        this.status = {
+                            let __l10n_0 = &(kind.name());
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_7c6859a14618(args[0].clone()),
+                                vec![__l10n_0.to_string()],
+                            )
+                        };
                         this.report = Some(report);
                     }
-                    Err(e) => this.status = format!("{}: {e:#}", kind.name()),
+                    Err(e) => this.status = crate::l10n::UiCopy::raw(format!("{}: {e:#}", kind.name())),
                 };
                 this.buttons[0].update(cx, |button, cx| button.set_enabled(true, cx));
                 cx.notify();
@@ -354,7 +366,13 @@ impl Render for Page {
                 d.child(self.count.clone()).child(self.pattern.clone()).child(
                     div()
                         .w(px(160.))
-                        .child(crate::l10n::ui(format!("Opacity {:.2}", self.opacity_value)))
+                        .child(crate::l10n::ui({
+                            let __l10n_0 = &(self.opacity_value);
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_30222ea026ec(args[0].clone()),
+                                vec![format!("{:.2}", __l10n_0)],
+                            )
+                        }))
                         .child(self.opacity.clone()),
                 )
             })
@@ -362,7 +380,13 @@ impl Render for Page {
                 d.child(self.method.clone()).child(self.samples.clone()).child(self.animation.clone()).child(
                     div()
                         .w(px(180.))
-                        .child(crate::l10n::ui(format!("Hue {:.0}°", self.hue_value)))
+                        .child(crate::l10n::ui({
+                            let __l10n_0 = &(self.hue_value);
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_3b69e2ddc982(args[0].clone()),
+                                vec![format!("{:.0}", __l10n_0)],
+                            )
+                        }))
                         .child(self.hue.clone()),
                 )
             })
@@ -405,7 +429,13 @@ impl Render for Page {
             root = root.child(div().text_size(px(12.)).child(serde_json::to_string_pretty(report).unwrap_or_default()));
         }
         if let Some(output) = &self.output {
-            root = root.child(crate::l10n::ui(format!("Results: {}", output.display())));
+            root = root.child(crate::l10n::ui({
+                let __l10n_0 = &(output.display());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()),
+                    vec![format!("{}", __l10n_0)],
+                )
+            }));
         }
         root
     }

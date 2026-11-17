@@ -271,15 +271,14 @@ impl Render for TextFieldPage {
             .title("Text Field")
             .lede("Explore editable text fields, text areas and mixed-direction input.")
             .hero(Hero::full(div().id("parley-text-field-page").flex().flex_col().gap_4().children(rows)))
-            .caption(format!(
-                "{} · {}",
-                screen.title(),
+            .caption(crate::l10n::UiCopy::Separated(" · ", vec![
+                screen.title().into(),
                 if support.supports_bidi() {
                     "bidirectional paragraphs (Parley)"
                 } else {
                     "native fallback paragraphs: right-to-left lines align right; mixed text keeps the native line order"
-                }
-            ))
+                }.into()
+            ]))
             .section_panel(
                 PanelShell::new("Events / live")
                     .child(properties(&self.look, [("Last event", self.last_event.clone())])),

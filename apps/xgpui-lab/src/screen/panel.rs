@@ -1,7 +1,8 @@
 //! Supporting panels for the two-panel row.
 //!
 //! A free-body `PanelShell` is added when a screen needs one; see `docs/lab-screen-api.md`.
-use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, SharedString, Styled, div, relative};
+use crate::l10n::UiCopy;
+use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Styled, div, relative};
 use xgpui_luma::{hstack, vstack};
 use xgpui_luma_look_radix::Look;
 
@@ -29,7 +30,7 @@ impl Panel {
 
 /// Panel surface with its heading: title and subtitle stack with no gap between them,
 /// with an optional header action (e.g. *Reset filters*) at the right.
-fn shell(look: &Look, title: SharedString, subtitle: Option<SharedString>, action: Option<AnyElement>) -> Div {
+fn shell(look: &Look, title: UiCopy, subtitle: Option<UiCopy>, action: Option<AnyElement>) -> Div {
     let heading = div()
         .flex()
         .flex_col()
@@ -43,27 +44,27 @@ fn shell(look: &Look, title: SharedString, subtitle: Option<SharedString>, actio
 
 /// One labeled parameter: label and optional range, then a text input above its slider.
 pub(crate) struct Param {
-    label: SharedString,
-    range: Option<SharedString>,
+    label: UiCopy,
+    range: Option<UiCopy>,
     input: AnyElement,
     slider: AnyElement,
 }
 
 impl Param {
-    pub fn new(label: impl Into<SharedString>, input: impl IntoElement, slider: impl IntoElement) -> Self {
+    pub fn new(label: impl Into<UiCopy>, input: impl IntoElement, slider: impl IntoElement) -> Self {
         Self { label: label.into(), range: None, input: input.into_any_element(), slider: slider.into_any_element() }
     }
 
     /// The accepted range, shown muted at the right of the label, e.g. `0–2` or `0–360°`.
-    pub fn range(mut self, range: impl Into<SharedString>) -> Self {
+    pub fn range(mut self, range: impl Into<UiCopy>) -> Self {
         self.range = Some(range.into());
         self
     }
 }
 
 pub(crate) struct ParametersPanel {
-    title: SharedString,
-    subtitle: Option<SharedString>,
+    title: UiCopy,
+    subtitle: Option<UiCopy>,
     params: Vec<Param>,
     footer: Option<AnyElement>,
     action: Option<AnyElement>,
@@ -72,11 +73,11 @@ pub(crate) struct ParametersPanel {
 impl FluentBuilder for ParametersPanel {}
 
 impl ParametersPanel {
-    pub fn new(title: impl Into<SharedString>) -> Self {
+    pub fn new(title: impl Into<UiCopy>) -> Self {
         Self { title: title.into(), subtitle: None, params: Vec::new(), footer: None, action: None }
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
@@ -132,27 +133,27 @@ impl From<ParametersPanel> for Panel {
 
 struct PreviewSwatch {
     visual: AnyElement,
-    readout: Option<(SharedString, SharedString)>,
+    readout: Option<(UiCopy, UiCopy)>,
 }
 
 /// Key/value pairs shown as a readout line.
-type Pairs = Vec<(SharedString, SharedString)>;
+type Pairs = Vec<(UiCopy, UiCopy)>;
 
 pub(crate) struct PreviewPanel {
-    title: SharedString,
-    subtitle: Option<SharedString>,
+    title: UiCopy,
+    subtitle: Option<UiCopy>,
     swatches: Vec<PreviewSwatch>,
-    reference: Option<(SharedString, Pairs)>,
+    reference: Option<(UiCopy, Pairs)>,
 }
 
 impl FluentBuilder for PreviewPanel {}
 
 impl PreviewPanel {
-    pub fn new(title: impl Into<SharedString>) -> Self {
+    pub fn new(title: impl Into<UiCopy>) -> Self {
         Self { title: title.into(), subtitle: None, swatches: Vec::new(), reference: None }
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
@@ -164,36 +165,26 @@ impl PreviewPanel {
     }
 
     /// A swatch with its readout underneath, e.g. `Clip #00FF00`. Several sit side by side.
-    pub fn labeled(
-        mut self,
-        swatch: impl IntoElement,
-        key: impl Into<SharedString>,
-        value: impl Into<SharedString>,
-    ) -> Self {
+    pub fn labeled(mut self, swatch: impl IntoElement, key: impl Into<UiCopy>, value: impl Into<UiCopy>) -> Self {
         let readout = Some((key.into(), value.into()));
         self.swatches.push(PreviewSwatch { visual: swatch.into_any_element(), readout });
         self
     }
 
     /// A labeled swatch filled with one data color.
-    pub fn labeled_color(
-        self,
-        color: impl Into<Hsla>,
-        key: impl Into<SharedString>,
-        value: impl Into<SharedString>,
-    ) -> Self {
+    pub fn labeled_color(self, color: impl Into<Hsla>, key: impl Into<UiCopy>, value: impl Into<UiCopy>) -> Self {
         self.labeled(div().size_full().rounded_md().bg(color.into()), key, value)
     }
 
     /// Reference line that ends the panel: a key, then one value.
-    pub fn reference(self, key: impl Into<SharedString>, value: impl Into<SharedString>) -> Self {
+    pub fn reference(self, key: impl Into<UiCopy>, value: impl Into<UiCopy>) -> Self {
         self.reference_values(key, [("", value)])
     }
 
     /// Reference line that ends the panel: a key, then key/value pairs (`Source x 0.2650 y 0.6900`).
-    pub fn reference_values<K: Into<SharedString>, V: Into<SharedString>>(
+    pub fn reference_values<K: Into<UiCopy>, V: Into<UiCopy>>(
         mut self,
-        key: impl Into<SharedString>,
+        key: impl Into<UiCopy>,
         pairs: impl IntoIterator<Item = (K, V)>,
     ) -> Self {
         let pairs = pairs.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
@@ -240,39 +231,39 @@ impl From<PreviewPanel> for Panel {
 
 /// One step of an ordered pipeline.
 struct ChainStep {
-    name: SharedString,
-    detail: SharedString,
+    name: UiCopy,
+    detail: UiCopy,
     active: bool,
 }
 
 /// Numbered pipeline steps; inactive steps are muted, and the panel counts the active ones.
 pub(crate) struct ChainPanel {
-    title: SharedString,
-    subtitle: Option<SharedString>,
+    title: UiCopy,
+    subtitle: Option<UiCopy>,
     steps: Vec<ChainStep>,
-    note: Option<SharedString>,
+    note: Option<UiCopy>,
 }
 
 impl FluentBuilder for ChainPanel {}
 
 impl ChainPanel {
-    pub fn new(title: impl Into<SharedString>) -> Self {
+    pub fn new(title: impl Into<UiCopy>) -> Self {
         Self { title: title.into(), subtitle: None, steps: Vec::new(), note: None }
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
 
     /// A step: its name, its value or formula (a value, so mono), and whether it changes the result.
-    pub fn step(mut self, name: impl Into<SharedString>, detail: impl Into<SharedString>, active: bool) -> Self {
+    pub fn step(mut self, name: impl Into<UiCopy>, detail: impl Into<UiCopy>, active: bool) -> Self {
         self.steps.push(ChainStep { name: name.into(), detail: detail.into(), active });
         self
     }
 
     /// A sentence before the generated "N of M steps active" count.
-    pub fn note(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn note(mut self, text: impl Into<UiCopy>) -> Self {
         self.note = Some(text.into());
         self
     }
@@ -298,9 +289,15 @@ impl ChainPanel {
                 .child(text(look, TextRole::Detail, step.name).flex_1().min_w_0().truncate().text_color(color))
                 .child(text(look, TextRole::Value, step.detail).flex_shrink_0().text_color(color))
         });
-        let count = format!("{active} of {total} steps active.");
+        let count = UiCopy::deferred(move |cx| {
+            crate::l10n::messages::msg_lab_chain_status(
+                crate::l10n::number(&active.to_string(), cx).to_string(),
+                total as f64,
+                crate::l10n::number(&total.to_string(), cx).to_string(),
+            )
+        });
         let footer = match self.note {
-            Some(note) => format!("{note} {count}"),
+            Some(note) => UiCopy::Joined(vec![note, count]),
             None => count,
         };
         shell(look, self.title, self.subtitle, None)
@@ -317,21 +314,21 @@ impl From<ChainPanel> for Panel {
 
 /// A panel with the standard heading and a free body, for content no other panel covers.
 pub(crate) struct PanelShell {
-    title: SharedString,
-    subtitle: Option<SharedString>,
+    title: UiCopy,
+    subtitle: Option<UiCopy>,
     action: Option<AnyElement>,
     body: Vec<AnyElement>,
-    footer: Option<SharedString>,
+    footer: Option<UiCopy>,
 }
 
 impl FluentBuilder for PanelShell {}
 
 impl PanelShell {
-    pub fn new(title: impl Into<SharedString>) -> Self {
+    pub fn new(title: impl Into<UiCopy>) -> Self {
         Self { title: title.into(), subtitle: None, action: None, body: Vec::new(), footer: None }
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
@@ -349,7 +346,7 @@ impl PanelShell {
     }
 
     /// A muted closing line.
-    pub fn footer(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn footer(mut self, text: impl Into<UiCopy>) -> Self {
         self.footer = Some(text.into());
         self
     }
@@ -368,10 +365,7 @@ impl From<PanelShell> for Panel {
 }
 
 /// A properties list: keys in `Label` in a fixed column, values in `Value` (mono), wrapping.
-pub(crate) fn properties<K: Into<SharedString>, V: Into<SharedString>>(
-    look: &Look,
-    rows: impl IntoIterator<Item = (K, V)>,
-) -> Div {
+pub(crate) fn properties<K: Into<UiCopy>, V: Into<UiCopy>>(look: &Look, rows: impl IntoIterator<Item = (K, V)>) -> Div {
     let key_width = LabMetrics::STANDARD.property_key_width;
     div().flex().flex_col().gap_1().children(rows.into_iter().map(|(key, value)| {
         // Keys align with a value's first line, also when the value wraps.
@@ -388,13 +382,13 @@ pub(crate) fn properties<K: Into<SharedString>, V: Into<SharedString>>(
 
 /// One row of a form group: a label, its control, and whether the row is set (e.g. overridden).
 pub(crate) struct FormRow {
-    label: SharedString,
+    label: UiCopy,
     control: AnyElement,
     set: bool,
 }
 
 impl FormRow {
-    pub fn new(label: impl Into<SharedString>, control: impl IntoElement, set: bool) -> Self {
+    pub fn new(label: impl Into<UiCopy>, control: impl IntoElement, set: bool) -> Self {
         Self { label: label.into(), control: control.into_any_element(), set }
     }
 }
@@ -402,7 +396,7 @@ impl FormRow {
 /// A titled column of labeled controls with aligned labels. Rows that are not `set` (still
 /// following a default) show a muted label; set rows show it in foreground.
 /// Groups placed in one wrapping row read as a compact form.
-pub(crate) fn form_group(look: &Look, title: impl Into<SharedString>, rows: impl IntoIterator<Item = FormRow>) -> Div {
+pub(crate) fn form_group(look: &Look, title: impl Into<UiCopy>, rows: impl IntoIterator<Item = FormRow>) -> Div {
     let metrics = LabMetrics::STANDARD;
     let chrome = look.chrome();
     vstack! {}

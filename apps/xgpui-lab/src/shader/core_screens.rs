@@ -193,7 +193,10 @@ impl ShaderPage {
                     TextRole::Caption,
                     "Preview unavailable",
                 ))))
-                .notice(Some(format!("Shader lab unavailable: {error:#}"))),
+                .notice(Some(crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_1970ba7498b0(args[0].clone()),
+                    vec![crate::l10n::UiCopy::numeric(format!("{:#}", error))],
+                ))),
         };
         if gradient {
             screen = self.core_choices(screen, &[Action::Effect, Action::Stop]);
@@ -269,33 +272,81 @@ impl ShaderPage {
         }
         screen
     }
-    fn core_caption(&self) -> String {
+    fn core_caption(&self) -> crate::l10n::UiCopy {
         let state = if self.animated { "Animating" } else { "Paused" };
-        let opacity = if self.half_opacity { "50%" } else { "100%" };
         match self.active_tab.as_ref() {
-            "Instancing" => format!(
-                "{} · {} instances · {state} · opacity {opacity}",
-                ["Glow", "Particles", "Composition"][self.mode],
-                self.instance_count()
-            ),
-            "WGSL Paints" => format!(
-                "Wash progress {:.3} · alpha {:.3} · {state} · opacity {opacity}",
-                self.progress + if self.animated { 0.25 * self.time.sin() } else { 0. },
-                self.shader_alpha
-            ),
+            "Instancing" => {
+                let __l10n_0 = &(["Glow", "Particles", "Composition"][self.mode]);
+                let __l10n_1 = &(self.instance_count());
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_92c9a44210ce(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        __l10n_0.to_string().into(),
+                        crate::l10n::UiCopy::counted("instances", format!("{}", __l10n_1)),
+                        state.to_string().into(),
+                        crate::l10n::UiCopy::percentage(if self.half_opacity { "50" } else { "100" }.to_owned(), 0),
+                    ],
+                )
+            }
+            "WGSL Paints" => {
+                let __l10n_0 = &(self.progress + if self.animated { 0.25 * self.time.sin() } else { 0. });
+                let __l10n_1 = &(self.shader_alpha);
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_8f0ca01418a1(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_0)),
+                        crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1)),
+                        state.to_string().into(),
+                        crate::l10n::UiCopy::percentage(if self.half_opacity { "50" } else { "100" }.to_owned(), 0),
+                    ],
+                )
+            }
             _ => {
                 let settings = &self.settings[self.effect_index];
-                format!(
-                    "{} · stop {} of {} · {} · {state} · opacity {opacity}",
-                    Self::EFFECTS[self.effect_index].label(),
-                    settings.selected + 1,
-                    settings.stops.len(),
-                    if self.native {
+                {
+                    let __l10n_0 = &(Self::EFFECTS[self.effect_index].label());
+                    let __l10n_1 = &(settings.selected + 1);
+                    let __l10n_2 = &(settings.stops.len());
+                    let __l10n_3 = &(if self.native {
                         "native white coverage"
                     } else {
                         "gradient producer"
-                    }
-                )
+                    });
+                    crate::l10n::UiCopy::compose(
+                        |args| {
+                            crate::l10n::messages::msg_ui_66e75540e38e(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                                args[3].clone(),
+                                args[4].clone(),
+                                args[5].clone(),
+                            )
+                        },
+                        vec![
+                            __l10n_0.to_string().into(),
+                            crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                            crate::l10n::UiCopy::numeric(format!("{}", __l10n_2)),
+                            __l10n_3.to_string().into(),
+                            state.to_string().into(),
+                            crate::l10n::UiCopy::percentage(if self.half_opacity { "50" } else { "100" }.to_owned(), 0),
+                        ],
+                    )
+                }
             }
         }
     }

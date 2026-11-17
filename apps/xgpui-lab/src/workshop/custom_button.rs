@@ -146,7 +146,10 @@ impl CustomButtonControlExposition {
                                     model.look.foreground,
                                     16.0,
                                 ))
-                                .child(crate::l10n::ui(format!("Customized {clicks}")))
+                                .child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_91603a9c210a(args[0].clone()),
+                                    vec![format!("{}", clicks)],
+                                )))
                                 .into_any_element()
                         }),
                         cx,

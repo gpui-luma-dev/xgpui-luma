@@ -52,7 +52,7 @@ fn yes_no(value: bool) -> &'static str {
 }
 
 /// A labeled gradient bar, with a strip marking samples outside sRGB before mapping.
-fn bar(look: &Look, label: impl Into<SharedString>, display: AnyElement, outside: &[bool]) -> Div {
+fn bar(look: &Look, label: impl Into<crate::l10n::UiCopy>, display: AnyElement, outside: &[bool]) -> Div {
     let inside = look.chrome().border;
     let strip = hstack! {}.h(px(4.)).w_full().rounded_sm().overflow_hidden().children(outside.iter().map(|outside| {
         let color = if *outside {
@@ -86,7 +86,7 @@ fn with_marker(look: &Look, display: AnyElement, t: f64) -> Div {
 /// A labeled bar of encoded sRGB reference samples.
 fn reference_bar(
     look: &Look,
-    label: impl Into<SharedString>,
+    label: impl Into<crate::l10n::UiCopy>,
     colors: &[[f32; 4]],
     outside: &[bool],
 ) -> anyhow::Result<Div> {
@@ -108,10 +108,20 @@ impl Render for ColorPage {
         }
         .map(|screen| {
             let error = self.painter.as_ref().err().filter(|_| wide);
-            screen.notice(error.map(|error| format!("Wide-gamut painting unavailable, showing sRGB previews: {error}")))
+            screen.notice(error.map(|error| {
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_3b5c0e631b3c(args[0].clone()),
+                    vec![error.to_string().into()],
+                )
+            }))
         });
         // The color math failed: keep the tab's controls and say what happened.
-        screen.unwrap_or_else(|error| self.base().notice(Some(format!("Color lab unavailable: {error:#}"))))
+        screen.unwrap_or_else(|error| {
+            self.base().notice(Some(crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_1c6e039063d7(args[0].clone()),
+                vec![crate::l10n::UiCopy::numeric(format!("{:#}", error))],
+            )))
+        })
     }
 }
 
@@ -185,11 +195,20 @@ impl ColorPage {
         let source = space_name(SPACES[self.source_index]);
         let (subtitle, parameters): (_, &[Parameter]) = if saturation {
             (
-                format!("{source} channels, then OkLCh chroma scaled by Saturation"),
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_af15778bc067(args[0].clone()),
+                    vec![source.to_string().into()],
+                ),
                 &[Parameter::Red, Parameter::Green, Parameter::Blue, Parameter::Saturation],
             )
         } else {
-            (format!("{source} channels"), &[Parameter::Red, Parameter::Green, Parameter::Blue])
+            (
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_lab_channels(args[0].clone()),
+                    vec![crate::l10n::UiCopy::raw(source)],
+                ),
+                &[Parameter::Red, Parameter::Green, Parameter::Blue],
+            )
         };
         ParametersPanel::new("Encoded input").subtitle(subtitle).params(self.params(parameters))
     }
@@ -236,7 +255,14 @@ impl ColorPage {
                 .values(keys.into_iter().zip(values).map(|(key, value)| (key, format!("{value:.4}"))))
         };
         let round_trip = PanelShell::new("Round trip")
-            .subtitle(format!("{} back to {}", space_name(destination), space_name(source)))
+            .subtitle({
+                let __l10n_0 = &(space_name(destination));
+                let __l10n_1 = &(space_name(source));
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_e6eda493182f(args[0].clone(), args[1].clone()),
+                    vec![__l10n_0.to_string().into(), __l10n_1.to_string().into()],
+                )
+            })
             .child(properties(
                 look,
                 [
@@ -247,13 +273,7 @@ impl ColorPage {
             ));
         Ok(screen
             .hero(Hero::compare(source_pane, destination_pane))
-            .caption(format!(
-                "{} → {} · {} · round-trip error {error:.1e} · {}",
-                space_name(source),
-                space_name(destination),
-                if inside { "in gamut" } else { "outside the destination gamut" },
-                display.label(),
-            ))
+            .caption({ let __l10n_0 = &(space_name(source)); let __l10n_1 = &(space_name(destination)); let __l10n_2 = &(if inside { "in gamut" } else { "outside the destination gamut" }); let __l10n_3 = &(display.label()); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_2bb6fd298c01(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone(), args[4].clone()), vec![__l10n_0.to_string().into(), __l10n_1.to_string().into(), __l10n_2.to_string().into(), crate::l10n::UiCopy::numeric(format!("{:.1e}", error)), __l10n_3.to_string().into()]) })
             .cards([
                 card("Decoded source", "Linear light", CHANNELS, linear.components()),
                 card("XYZ", "CIE 1931, D65", ["X", "Y", "Z"], xyz),
@@ -287,16 +307,39 @@ impl ColorPage {
                 outside.push(!color.rgb().is_in_gamut());
                 colors.push(preview(color.rgb(), self.policy, color.alpha())?);
             }
-            view = view.child(reference_bar(&self.look, format!("OkLCh · {hue:?} hue"), &colors, &outside)?);
+            view = view.child(reference_bar(
+                &self.look,
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_dbf78bd0fe7a(args[0].clone()),
+                    vec![format!("{:?}", hue).into()],
+                ),
+                &colors,
+                &outside,
+            )?);
         }
         Ok(screen
             .hero(Hero::full(view))
-            .caption(format!(
-                "{} · {} · end alpha {} · OkLCh {hue:?} hue",
-                reference::PRESETS[self.preset],
-                mapping_name(self.policy),
-                if self.translucent { "25%" } else { "100%" },
-            ))
+            .caption({
+                let __l10n_0 = &(reference::PRESETS[self.preset]);
+                let __l10n_1 = &(mapping_name(self.policy));
+                let __l10n_2 = &(if self.translucent { "25%" } else { "100%" });
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_33c9f35d977a(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        __l10n_0.to_string().into(),
+                        __l10n_1.to_string().into(),
+                        crate::l10n::UiCopy::percentage(__l10n_2.trim_end_matches('%').to_owned(), 0),
+                        format!("{:?}", hue).into(),
+                    ],
+                )
+            })
             .note(INTERPOLATION_NOTE)
             .credits(SRGB_REFERENCE_CREDITS))
     }
@@ -313,12 +356,24 @@ impl ColorPage {
             let changed = mapped.components().into_iter().zip(extended.components()).any(|(a, b)| (a - b).abs() > 1e-9);
             let swatch = display.fill(mapped, 1., GamutMapping::ReduceChroma, px(6.))?;
             Ok(ComparePane::new(mapping_name(policy), swatch_with(look, swatch, channels(mapped.components(), 4)))
-                .subtitle(format!("Linear {}", space_name(destination)))
+                .subtitle({
+                    let __l10n_0 = &(space_name(destination));
+                    crate::l10n::UiCopy::compose(
+                        |args| crate::l10n::messages::msg_ui_4d489c25ddb2(args[0].clone()),
+                        vec![__l10n_0.to_string().into()],
+                    )
+                })
                 .badge(self.badge(if changed { verb } else { "Unchanged" }, changed)))
         };
         // The color before mapping, drawn as far as the display allows (P3 on a wide window).
         let unmapped = PanelShell::new("Unmapped")
-            .subtitle(format!("Converted to {}, before mapping", space_name(destination)))
+            .subtitle({
+                let __l10n_0 = &(space_name(destination));
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_29c9a298d19d(args[0].clone()),
+                    vec![__l10n_0.to_string().into()],
+                )
+            })
             .child(div().w_full().h(px(80.)).child(display.fill(extended, 1., GamutMapping::ReduceChroma, px(6.))?))
             .child(properties(
                 look,
@@ -330,18 +385,11 @@ impl ColorPage {
             ));
         Ok(screen
             .hero(Hero::compare(pane(GamutMapping::Clip, "Clipped")?, pane(GamutMapping::ReduceChroma, "Reduced")?))
-            .caption(format!(
-                "{} → {} · saturation ×{:.3} · {} · {}",
-                space_name(SPACES[self.source_index]),
-                space_name(destination),
-                self.saturation,
-                if extended.is_in_gamut() {
-                    "in gamut, so both policies agree".to_owned()
+            .caption({ let __l10n_0 = &(space_name(SPACES[self.source_index])); let __l10n_1 = &(space_name(destination)); let __l10n_2 = &(self.saturation); let __l10n_3 = &(if extended.is_in_gamut() {
+                    crate::l10n::UiCopy::from("in gamut, so both policies agree")
                 } else {
-                    format!("outside by {excess:.4}")
-                },
-                display.label(),
-            ))
+                    crate::l10n::UiCopy::compose(|a| crate::l10n::messages::msg_lab_outside_by(a[0].clone()), vec![crate::l10n::UiCopy::numeric(format!("{excess:.4}"))])
+                }); let __l10n_4 = &(display.label()); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_e1ca00c1b212(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone(), args[4].clone()), vec![__l10n_0.to_string().into(), __l10n_1.to_string().into(), crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_2)), __l10n_3.clone(), __l10n_4.to_string().into()]) })
             .panels(self.input_parameters(true), unmapped)
 .note("Raise Saturation to push the color out of the destination gamut and watch the two policies part: Clip moves each channel into 0–1 on its own, Reduce chroma lowers chroma until the color fits. Whole gradients through both policies, drawn natively in P3, are on xgpui-gamut → Gamut Mapping.")
             .credits(PREVIEW_CREDITS))
@@ -373,15 +421,35 @@ impl ColorPage {
         let sample = self.gradient(self.model())?.sample(point)?;
         let mapped = sample.map_gamut(destination, self.policy)?;
         let premultiplied = mapped.premultiplied();
-        let label =
-            format!("{count} samples, mapped into {} · marker at t = {:.3}", space_name(destination), self.position);
+        let label = {
+            let __l10n_0 = &(space_name(destination));
+            let __l10n_1 = &(self.position);
+            crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_f9c9cfa1a678(args[0].clone(), args[1].clone(), args[2].clone()),
+                vec![
+                    crate::l10n::UiCopy::numeric(format!("{}", count)),
+                    __l10n_0.to_string().into(),
+                    crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1)),
+                ],
+            )
+        };
         let model = match self.model() {
-            ColorInterpolation::Oklch(hue) => format!("OkLCh {hue:?} hue"),
-            ColorInterpolation::Oklab => "OkLab".to_owned(),
-            _ => "Linear RGB".to_owned(),
+            ColorInterpolation::Oklch(hue) => crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_2ae987004f64(args[0].clone()),
+                vec![format!("{:?}", hue).into()],
+            ),
+            ColorInterpolation::Oklab => "OkLab".into(),
+            _ => "Linear RGB".into(),
         };
         let sample_preview = PreviewPanel::new("Sample")
-            .subtitle(format!("At t = {:.3} · {}", self.position, display.label()))
+            .subtitle({
+                let __l10n_0 = &(self.position);
+                let __l10n_1 = &(display.label());
+                crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_673338f2a110(args[0].clone(), args[1].clone()),
+                    vec![crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_0)), __l10n_1.to_string().into()],
+                )
+            })
             .swatch(display.fill(mapped.rgb(), mapped.alpha(), self.policy, px(6.))?);
         let sampling = ParametersPanel::new("Sample position")
             .subtitle("Where along the gradient to sample: 0 is the first color, 1 the second")
@@ -393,17 +461,11 @@ impl ColorPage {
                 with_marker(look, display.samples(&colors, self.policy, px(BAR_HEIGHT))?, self.position).into_any_element(),
                 &outside,
             )))
-            .caption(format!(
-                "{} · {model} · output {} · {} · {}",
-                reference::PRESETS[self.preset],
-                space_name(destination),
-                mapping_name(self.policy),
-                display.label(),
-            ))
+            .caption({ let __l10n_0 = &(reference::PRESETS[self.preset]); let __l10n_1 = &(space_name(destination)); let __l10n_2 = &(mapping_name(self.policy)); let __l10n_3 = &(display.label()); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_27a042af0813(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone(), args[4].clone()), vec![__l10n_0.to_string().into(), model, __l10n_1.to_string().into(), __l10n_2.to_string().into(), __l10n_3.to_string().into()]) })
             .cards([
                 LabCard::new("Unmapped sample")
                     .icon(Icon::Crosshair)
-                    .subtitle(format!("Linear {} · alpha {:.3}", space_name(destination), sample.alpha()))
+                    .subtitle({ let __l10n_0 = &(space_name(destination)); let __l10n_1 = &(sample.alpha()); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_d486190015c3(args[0].clone(), args[1].clone()), vec![__l10n_0.to_string().into(), crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1))]) })
                     .badge(self.gamut_badge(sample.rgb().is_in_gamut()))
                     .values(channels(sample.rgb().components(), 4)),
                 LabCard::new("Mapped sample")

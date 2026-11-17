@@ -9,6 +9,9 @@ use syn::{
 struct Scan {
     strings: BTreeSet<String>,
     formats: BTreeSet<String>,
+    ids: BTreeSet<String>,
+    ui: bool,
+    ui_strings: BTreeSet<String>,
 }
 fn natural(s: &str) -> bool {
     !s.is_empty()
@@ -20,9 +23,86 @@ fn natural(s: &str) -> bool {
         && (s.trim().contains(' ')
             || s.chars().next().is_some_and(|c| c.is_ascii_uppercase())
                 && s.chars().nth(1).is_some_and(|c| c.is_ascii_lowercase())
-            || ["none", "on", "off", "enabled", "disabled", "ready", "paused", "idle"].contains(&s))
+            || [
+                "none",
+                "on",
+                "off",
+                "enabled",
+                "disabled",
+                "ready",
+                "paused",
+                "idle",
+                "interactive",
+                "refined",
+                "capped",
+                "clip",
+                "paths",
+                "scramble",
+            ]
+            .contains(&s))
 }
 impl<'a> Visit<'a> for Scan {
+    fn visit_expr_method_call(&mut self, node: &'a syn::ExprMethodCall) {
+        let old = self.ui;
+        self.ui = false;
+        self.visit_expr(&node.receiver);
+        self.ui = [
+            "title",
+            "lede",
+            "caption",
+            "subtitle",
+            "note",
+            "credits",
+            "footer",
+            "label",
+            "placeholder",
+            "help",
+            "aria_label",
+            "aria_description",
+            "values",
+        ]
+        .contains(&node.method.to_string().as_str());
+        for arg in &node.args {
+            self.visit_expr(arg);
+        }
+        self.ui = old;
+    }
+    fn visit_expr_call(&mut self, node: &'a syn::ExprCall) {
+        self.visit_expr(&node.func);
+        let name = if let syn::Expr::Path(path) = node.func.as_ref() {
+            path.path.segments.iter().map(|s| s.ident.to_string()).collect::<Vec<_>>().join("::")
+        } else {
+            String::new()
+        };
+        let old = self.ui;
+        self.ui = ["text", "readout", "properties"].contains(&name.as_str())
+            || [
+                "l10n::ui",
+                "l10n::label",
+                "l10n::tooltip",
+                "LabCard::new",
+                "PanelShell::new",
+                "ParametersPanel::new",
+                "PreviewPanel::new",
+                "ChainPanel::new",
+                "ComparePane::new",
+            ]
+            .iter()
+            .any(|suffix| name.ends_with(suffix));
+        for arg in &node.args {
+            self.visit_expr(arg);
+        }
+        self.ui = old;
+    }
+    fn visit_path(&mut self, path: &'a syn::Path) {
+        if let Some(segment) = path.segments.last() {
+            let name = segment.ident.to_string();
+            if let Some(hash) = name.strip_prefix("msg_ui_") {
+                self.ids.insert(format!("ui-{hash}"));
+            }
+        }
+        visit::visit_path(self, path);
+    }
     fn visit_attribute(&mut self, _: &'a syn::Attribute) {}
     fn visit_item_mod(&mut self, n: &'a syn::ItemMod) {
         if n.attrs
@@ -41,11 +121,33 @@ impl<'a> Visit<'a> for Scan {
     }
     fn visit_lit_str(&mut self, n: &'a syn::LitStr) {
         let s = n.value();
-        if natural(&s) {
+        if self.ui && !s.is_empty() && s.len() < 1400 && !s.contains(['\n', '{', '}']) {
+            self.ui_strings.insert(s.clone());
+            self.strings.insert(s);
+        } else if natural(&s) {
             self.strings.insert(s);
         }
     }
     fn visit_expr_macro(&mut self, n: &'a syn::ExprMacro) {
+        if ["vec", "hstack", "vstack"].iter().any(|name| n.mac.path.is_ident(name)) {
+            use syn::parse::Parser;
+            let mut tokens = n.mac.tokens.clone();
+            if !n.mac.path.is_ident("vec") {
+                let trees: Vec<_> = tokens.clone().into_iter().collect();
+                if let Some(index) =
+                    trees.iter().position(|tree| matches!(tree, proc_macro2::TokenTree::Punct(p) if p.as_char()==';'))
+                {
+                    tokens = trees.into_iter().skip(index + 1).collect();
+                }
+            }
+            if let Ok(expressions) =
+                syn::punctuated::Punctuated::<syn::Expr, syn::Token![,]>::parse_terminated.parse2(tokens)
+            {
+                for expression in &expressions {
+                    self.visit_expr(expression);
+                }
+            }
+        }
         if n.mac.path.is_ident("format") {
             if let Some(proc_macro2::TokenTree::Literal(lit)) = n.mac.tokens.clone().into_iter().next() {
                 if let Ok(lit) = syn::parse_str::<syn::LitStr>(&lit.to_string()) {
@@ -94,6 +196,8 @@ fn walk(p: &Path, files: &mut Vec<std::path::PathBuf>) {
         } else if p.extension().is_some_and(|s| s == "rs")
             && !p.to_string_lossy().contains("tests")
             && !p.to_string_lossy().contains("/l10n/")
+            && !p.to_string_lossy().contains("/bin/")
+            && p != Path::new("apps/xgpui-lab/src/chromaticity.rs")
         {
             files.push(p);
         }
@@ -103,11 +207,21 @@ fn main() {
     let mut files = Vec::new();
     walk(Path::new("apps/xgpui-lab/src"), &mut files);
     let mut data: BTreeMap<String, serde_json::Value> = BTreeMap::new();
+    // Typed call sites retain their source/translation records after the old
+    // English format literal has disappeared from Rust.
+    let records: Vec<serde_json::Value> =
+        serde_json::from_str(&fs::read_to_string("apps/xgpui-lab/locales/copy.json").unwrap()).unwrap();
     for p in files {
         let text = fs::read_to_string(&p).unwrap();
         let path = p.to_str().unwrap().to_owned();
         let file = syn::parse_file(&text).unwrap_or_else(|e| panic!("{path}: {e}"));
-        let mut scan = Scan { strings: Default::default(), formats: Default::default() };
+        let mut scan = Scan {
+            strings: Default::default(),
+            formats: Default::default(),
+            ids: Default::default(),
+            ui: false,
+            ui_strings: Default::default(),
+        };
         scan.visit_file(&file);
         for s in &scan.strings {
             data.entry(s.clone()).or_insert_with(|| serde_json::json!({"kind":"text","files":[]}))["files"]
@@ -115,11 +229,27 @@ fn main() {
                 .unwrap()
                 .push(path.clone().into());
         }
+        for source in &scan.ui_strings {
+            let meta = data.get_mut(source).unwrap();
+            let locations = meta.as_object_mut().unwrap().entry("boundaries").or_insert_with(|| serde_json::json!([]));
+            locations.as_array_mut().unwrap().push(path.clone().into());
+        }
         for s in &scan.formats {
             data.entry(s.clone()).or_insert_with(|| serde_json::json!({"kind":"format","files":[]}))["files"]
                 .as_array_mut()
                 .unwrap()
                 .push(path.clone().into());
+        }
+        for id in &scan.ids {
+            let entry = records
+                .iter()
+                .find(|entry| entry["id"].as_str() == Some(id.as_str()))
+                .unwrap_or_else(|| panic!("{path}: unknown typed ID {id}"));
+            let source = entry["source"].as_str().unwrap().to_owned();
+            let kind = if entry["parts"].is_array() { "format" } else { "text" };
+            let meta = data.entry(source).or_insert_with(|| serde_json::json!({"kind":kind,"files":[]}));
+            meta["explicit"] = true.into();
+            meta["files"].as_array_mut().unwrap().push(path.clone().into());
         }
     }
 
@@ -129,4 +259,35 @@ fn main() {
     )
     .unwrap();
     println!("{} catalog candidates", data.len());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expression_macros_keep_lowercase_ui_boundaries_and_explicit_ids() {
+        let file = syn::parse_file(
+            r#"
+            fn screen() {
+                let _ = view.caption(vec!["tiny"]);
+                let _ = hstack! { gap=2; text(&look, TextRole::Caption, "waiting") };
+                let _ = messages::msg_ui_012345abcdef("data");
+            }
+        "#,
+        )
+        .unwrap();
+        let mut scan = Scan {
+            strings: Default::default(),
+            formats: Default::default(),
+            ids: Default::default(),
+            ui: false,
+            ui_strings: Default::default(),
+        };
+        scan.visit_file(&file);
+        assert!(scan.ui_strings.contains("tiny"));
+        assert!(scan.ui_strings.contains("waiting"));
+        assert!(scan.ids.contains("ui-012345abcdef"));
+        assert!(!scan.ui_strings.contains("data"));
+    }
 }

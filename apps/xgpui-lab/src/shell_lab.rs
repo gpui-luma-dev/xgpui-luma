@@ -320,8 +320,14 @@ impl ShellPage {
         let total: usize = OVERRIDE_GROUPS.iter().map(|(_, settings)| settings.len()).sum();
         let count = OVERRIDE_GROUPS.iter().flat_map(|(_, settings)| settings.iter()).filter(|s| overridden(s)).count();
         let subtitle = match count {
-            0 => format!("All {total} follow the desktop"),
-            n => format!("{n} of {total} overridden · the rest follow the desktop"),
+            0 => crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_d7b3d2b95aa7(args[0].clone()),
+                vec![format!("{}", total)],
+            ),
+            n => crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_9863d5e7f267(args[0].clone(), args[1].clone()),
+                vec![format!("{}", n), format!("{}", total)],
+            ),
         };
         let groups = OVERRIDE_GROUPS.iter().map(|(title, settings)| {
             let rows = settings.iter().filter_map(|setting| {
@@ -372,28 +378,17 @@ impl ShellPage {
                 [
                     (
                         "Title font",
-                        format!(
-                            "{} · {:.1}px · weight {}",
-                            look.typography.font.family, look.typography.size, look.typography.font.weight
-                        ),
+                        { let __l10n_0 = &(look.typography.font.family); let __l10n_1 = &(look.typography.size); let __l10n_2 = &(look.typography.font.weight); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_48afaa7c8e7e(args[0].clone(), args[1].clone(), args[2].clone()), vec![format!("{}", __l10n_0), format!("{:.1}", __l10n_1), format!("{}", __l10n_2)]) },
                     ),
                     (
                         "Geometry",
-                        format!(
-                            "header {:.1}px · button {:.1}px · scale {:.0}%",
-                            look.titlebar_height,
-                            look.button_size,
-                            resolved.text_scale * 100.
-                        ),
+                        { let __l10n_0 = &(look.titlebar_height); let __l10n_1 = &(look.button_size); let __l10n_2 = &(resolved.text_scale * 100.); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_1d48adfb364f(args[0].clone(), args[1].clone(), args[2].clone()), vec![crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_0)), crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_1)), crate::l10n::UiCopy::percentage(format!("{:.0}", __l10n_2), 0)]) },
                     ),
                     (
                         "Titlebar actions",
-                        format!(
-                            "double {:?} · middle {:?} · right {:?}",
-                            resolved.double_click_action, resolved.middle_click_action, resolved.right_click_action
-                        ),
+                        { let __l10n_0 = &(resolved.double_click_action); let __l10n_1 = &(resolved.middle_click_action); let __l10n_2 = &(resolved.right_click_action); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8a95b6a78d10(args[0].clone(), args[1].clone(), args[2].clone()), vec![format!("{:?}", __l10n_0), format!("{:?}", __l10n_1), format!("{:?}", __l10n_2)]) },
                     ),
-                    ("Reduced motion", format!("{} (policy; frame has no animation)", look.reduced_motion)),
+                    ("Reduced motion", { let __l10n_0 = &(look.reduced_motion); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_d3c7aba6d297(args[0].clone()), vec![format!("{}", __l10n_0)]) }),
                 ],
             ))
             .footer("Requested font may be substituted. Logical text scale is separate from device DPI. Native controls and compositor decorations remain platform-owned.")
@@ -411,36 +406,25 @@ impl ShellPage {
             .child(properties(
                 &self.look,
                 [
-                    ("Platform", format!("{:?}", cx.platform_info())),
-                    ("Appearance", format!("{:?}", window.appearance())),
-                    ("Button layout", format!("{:?}", cx.button_layout())),
-                    ("Accent", detected(desktop.accent_color)),
-                    ("High contrast", detected(desktop.high_contrast)),
-                    ("Reduced motion", detected(desktop.reduced_motion)),
-                    ("Font", detected(desktop.font)),
-                    ("Text scale", detected(desktop.text_scale)),
+                    ("Platform", crate::l10n::UiCopy::from(format!("{:?}", cx.platform_info()))),
+                    ("Appearance", crate::l10n::UiCopy::from(format!("{:?}", window.appearance()))),
+                    ("Button layout", crate::l10n::UiCopy::from(format!("{:?}", cx.button_layout()))),
+                    ("Accent", crate::l10n::UiCopy::from(detected(desktop.accent_color))),
+                    ("High contrast", crate::l10n::UiCopy::from(detected(desktop.high_contrast))),
+                    ("Reduced motion", crate::l10n::UiCopy::from(detected(desktop.reduced_motion))),
+                    ("Font", crate::l10n::UiCopy::from(detected(desktop.font))),
+                    ("Text scale", crate::l10n::UiCopy::from(detected(desktop.text_scale))),
                     (
                         "Titlebar actions",
-                        format!(
-                            "double {} · middle {} · right {}",
-                            detected(desktop.titlebar_double_click),
-                            detected(desktop.titlebar_middle_click),
-                            detected(desktop.titlebar_right_click)
-                        ),
+                        { let __l10n_0 = &(detected(desktop.titlebar_double_click)); let __l10n_1 = &(detected(desktop.titlebar_middle_click)); let __l10n_2 = &(detected(desktop.titlebar_right_click)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_3e87e5846ee1(args[0].clone(), args[1].clone(), args[2].clone()), vec![__l10n_0.to_string(), __l10n_1.to_string(), __l10n_2.to_string()]) },
                     ),
-                    ("Decorations", format!("{:?}", window.window_decorations())),
+                    ("Decorations", crate::l10n::UiCopy::from(format!("{:?}", window.window_decorations()))),
                     (
                         "Window state",
-                        format!(
-                            "active {} · maximized {} · fullscreen {} · resizable {}",
-                            window.is_window_active(),
-                            window.is_maximized(),
-                            window.is_fullscreen(),
-                            window.is_resizable()
-                        ),
+                        { let __l10n_0 = &(window.is_window_active()); let __l10n_1 = &(window.is_maximized()); let __l10n_2 = &(window.is_fullscreen()); let __l10n_3 = &(window.is_resizable()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_1801c846c07e(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone()), vec![format!("{}", __l10n_0), format!("{}", __l10n_1), format!("{}", __l10n_2), format!("{}", __l10n_3)]) },
                     ),
-                    ("Capabilities", format!("{:?}", window.window_controls())),
-                    ("Device scale", format!("{:.2}×", window.scale_factor())),
+                    ("Capabilities", crate::l10n::UiCopy::from(format!("{:?}", window.window_controls()))),
+                    ("Device scale", crate::l10n::UiCopy::from(format!("{:.2}×", window.scale_factor()))),
                 ],
             ))
     }
@@ -489,8 +473,9 @@ impl Render for ShellPage {
             .fold(screen, |screen, button| screen.action(button.clone()))
             .panels(self.overrides(), self.inspector(window, cx))
             .section_panel(self.events())
-            .note(format!(
-                "This window is {this_window}. Each new-window button opens a separate Lab on this page with its own theme and preview state. Close a test window with its native traffic lights; no restart is needed."
+            .note(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_65574b0a9790(args[0].clone()),
+                vec![this_window.to_string()],
             ))
     }
 }

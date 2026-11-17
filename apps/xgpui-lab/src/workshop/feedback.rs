@@ -174,10 +174,15 @@ impl FeedbackSample {
 impl Render for FeedbackSample {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let (preview, state) = match &self.control {
-            Control::Progress { view, driver } => (
-                div().flex().flex_col().gap(px(16.)).child(view.clone()).child(driver.clone()),
-                format!("Value: {:.0}", view.read(cx).value()),
-            ),
+            Control::Progress { view, driver } => {
+                (div().flex().flex_col().gap(px(16.)).child(view.clone()).child(driver.clone()), {
+                    let __l10n_0 = &(view.read(cx).value());
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_9e8934dd8d3f(args[0].clone()),
+                        vec![format!("{:.0}", __l10n_0)],
+                    )
+                })
+            }
             Control::Stepper { view, next, reset } => (
                 div()
                     .flex()
@@ -185,16 +190,24 @@ impl Render for FeedbackSample {
                     .gap(px(16.))
                     .child(view.clone())
                     .child(div().flex().gap(px(8.)).child(next.clone()).child(reset.clone())),
-                format!(
-                    "Step {} of {} · Complete: {}",
-                    view.read(cx).current_step() + 1,
-                    view.read(cx).step_count(),
-                    view.read(cx).is_complete()
-                ),
+                {
+                    let (step, steps, complete) =
+                        (view.read(cx).current_step() + 1, view.read(cx).step_count(), view.read(cx).is_complete());
+                    crate::l10n::UiCopy::deferred(move |cx| {
+                        crate::l10n::messages::msg_lab_step_status(
+                            complete.to_string(),
+                            crate::l10n::number(&step.to_string(), cx).to_string(),
+                            crate::l10n::number(&steps.to_string(), cx).to_string(),
+                        )
+                    })
+                },
             ),
             Control::Dialog { view, trigger } => (
                 div().child(trigger.clone()),
-                format!("Dialog: {}", if view.read(cx).is_open() { "open" } else { "closed" }),
+                crate::l10n::messages::msg_lab_dialog(
+                    if view.read(cx).is_open() { "open" } else { "closed" }.to_owned(),
+                )
+                .into(),
             ),
         };
         let content = page(

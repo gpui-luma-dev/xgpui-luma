@@ -20,3 +20,12 @@ sdk-autocomplete-status = 状態: { $status ->
    *[other] 一致なし
 }
 sdk-autocomplete-detail = 選択: { $selected } | 一致: { $matches } | 最後: { $last } | キーボード: { $keyboard }
+
+sdk-disabled = 無効
+sdk-selection-mode = 選択モード: { $mode ->
+    [none] なし
+    [single-required] 単一選択必須
+    [single-optional] 単一選択任意
+    [multiple] 複数選択
+   *[extended] 拡張選択
+}

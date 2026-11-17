@@ -156,19 +156,26 @@ impl MeshPane {
         pane
     }
     fn sync(&mut self, cx: &mut Context<Self>) {
-        self.choices[0].sync(
+        self.choices[0].sync_indexed(
             (0..self.editor.preset_count()).map(|i| format!("Preset {}", i + 1)).collect(),
+            "preset",
             self.editor.preset as usize,
             cx,
         );
-        self.choices[1].sync(
+        self.choices[1].sync_messages(
             (0..self.editor.points.len())
                 .map(|i| {
-                    format!(
-                        "Point {} (row {}, column {})",
-                        i + 1,
-                        i / self.editor.side as usize + 1,
-                        i % self.editor.side as usize + 1
+                    let row = i / self.editor.side as usize + 1;
+                    let column = i % self.editor.side as usize + 1;
+                    (
+                        format!("Point {} (row {row}, column {column})", i + 1),
+                        crate::l10n::UiCopy::compose(
+                            |a| crate::l10n::messages::msg_lab_grid_point(a[0].clone(), a[1].clone(), a[2].clone()),
+                            [column, i + 1, row]
+                                .into_iter()
+                                .map(|n| crate::l10n::UiCopy::numeric(n.to_string()))
+                                .collect(),
+                        ),
                     )
                 })
                 .collect(),
@@ -208,16 +215,37 @@ impl Render for MeshPane {
                 ComparePane::new("Legacy tessellation", legacy),
                 ComparePane::new("Direct Hermite brush", direct),
             ))
-            .caption(format!(
-                "{}×{} · preset {} · point {} (row {}, column {}) · {}",
-                self.editor.side,
-                self.editor.side,
-                self.editor.preset + 1,
-                self.editor.selected + 1,
-                self.editor.selected / self.editor.side as usize + 1,
-                self.editor.selected % self.editor.side as usize + 1,
-                if self.editor.edited { "edited" } else { "preset" }
-            ))
+            .caption({
+                let __l10n_0 = &(self.editor.side);
+                let __l10n_1 = &(self.editor.side);
+                let __l10n_2 = &(self.editor.preset + 1);
+                let __l10n_3 = &(self.editor.selected + 1);
+                let __l10n_4 = &(self.editor.selected / self.editor.side as usize + 1);
+                let __l10n_5 = &(self.editor.selected % self.editor.side as usize + 1);
+                let __l10n_6 = &(if self.editor.edited { "edited" } else { "preset" });
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_58f03ee0b0a7(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                            args[4].clone(),
+                            args[5].clone(),
+                            args[6].clone(),
+                        )
+                    },
+                    vec![
+                        format!("{}", __l10n_0),
+                        format!("{}", __l10n_1),
+                        format!("{}", __l10n_2),
+                        format!("{}", __l10n_3),
+                        format!("{}", __l10n_4),
+                        format!("{}", __l10n_5),
+                        __l10n_6.to_string(),
+                    ],
+                )
+            })
             .notice(error);
         for choice in &self.choices {
             screen = screen.control(labeled_control(&self.look, choice.clone().into_element()));

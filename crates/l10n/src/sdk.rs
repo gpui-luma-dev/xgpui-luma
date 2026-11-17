@@ -119,6 +119,15 @@ fn autocomplete_status(
 pub(crate) fn context(localizer: &Localizer) -> LocaleContext {
     let tr = |id| localizer.tr(id).into();
     let strings = SdkStrings {
+        disabled: tr("sdk-disabled"),
+        selection_mode: Arc::new(|mode, cx| {
+            let Some(localizer) = cx.try_global::<Localizer>() else {
+                return (SdkStrings::default().selection_mode)(mode, cx);
+            };
+            let mut args = FluentArgs::new();
+            args.set("mode", mode);
+            localizer.tr_args("sdk-selection-mode", &args).into()
+        }),
         autocomplete_status: Arc::new(autocomplete_status),
         cancel: tr("sdk-cancel"),
         clear: tr("sdk-clear"),

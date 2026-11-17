@@ -238,3 +238,29 @@ fn autocomplete_copy_uses_live_locale_and_isolates_app_data() {
         assert!(detail.contains("なし"));
     });
 }
+
+#[cfg(feature = "test-support")]
+#[test]
+fn listbox_descriptions_follow_real_resources_and_overrides() {
+    let app = gpui::TestAppContext::single();
+    for (tag, disabled, selected) in [
+        ("en", "Disabled", "Multiple"),
+        ("de", "Deaktiviert", "Mehrfachauswahl"),
+        ("ja", "無効", "複数選択"),
+        ("ar", "معطّل", "اختيار متعدد"),
+    ] {
+        app.update(|cx| {
+            crate::install(Localizer::new(tag.parse().unwrap()), cx).unwrap();
+            let strings = &LocaleContext::current(cx).strings;
+            assert_eq!(strings.disabled, disabled);
+            assert!((strings.selection_mode)("multiple", cx).contains(selected));
+        });
+    }
+    app.update(|cx| {
+        cx.global_mut::<Localizer>()
+            .add_resource(&"ar".parse().unwrap(), "sdk-disabled = App override")
+            .unwrap();
+        sync(cx).unwrap();
+        assert_eq!(LocaleContext::current(cx).strings.disabled, "App override");
+    });
+}

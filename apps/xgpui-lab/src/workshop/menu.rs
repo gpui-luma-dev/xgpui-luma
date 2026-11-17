@@ -155,11 +155,14 @@ impl Render for MenuSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(crate::l10n::ui(format!(
-                                "Menu: {} · Last selection: {}",
-                                if self.open { "open" } else { "closed" },
-                                self.selected
-                            ))),
+                            .child(crate::l10n::ui({
+                                let __l10n_0 = &(if self.open { "open" } else { "closed" });
+                                let __l10n_1 = &(self.selected);
+                                crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_d236e3233293(args[0].clone(), args[1].clone()),
+                                    vec![__l10n_0.to_string(), __l10n_1.to_string()],
+                                )
+                            })),
                     ),
                 ))
                 .child(self.events.clone()),

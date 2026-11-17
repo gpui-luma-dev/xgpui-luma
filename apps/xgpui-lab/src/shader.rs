@@ -213,6 +213,19 @@ impl ShaderPage {
                     cx,
                     move |this: &mut Self, index, cx| this.select_choice(action, index, cx),
                 );
+                if matches!(action, Action::Stop | Action::Point) {
+                    let (_, options, selected) = self.choice_options(action);
+                    choice.sync_indexed(
+                        options,
+                        if matches!(action, Action::Stop) {
+                            "stop"
+                        } else {
+                            "point"
+                        },
+                        selected,
+                        cx,
+                    );
+                }
                 (action, choice)
             })
             .collect();
@@ -220,7 +233,11 @@ impl ShaderPage {
     fn sync_choices(&self, cx: &mut gpui::App) {
         for (action, choice) in &self.choices {
             let (_, options, selected) = self.choice_options(*action);
-            choice.sync(options, selected, cx);
+            match action {
+                Action::Stop => choice.sync_indexed(options, "stop", selected, cx),
+                Action::Point => choice.sync_indexed(options, "point", selected, cx),
+                _ => choice.sync(options, selected, cx),
+            }
         }
     }
     fn choice_options(&self, action: Action) -> (&'static str, Vec<String>, usize) {

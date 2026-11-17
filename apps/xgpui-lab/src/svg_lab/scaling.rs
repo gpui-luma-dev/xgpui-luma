@@ -21,7 +21,7 @@ impl SvgPage {
                     cx.notify();
                 })),
         );
-        let column = |name: &str, detail: String, visual: gpui::AnyElement| {
+        let column = |name: &str, detail: crate::l10n::UiCopy, visual: gpui::AnyElement| {
             div()
                 .flex_1()
                 .min_w(gpui::px(280.))
@@ -53,7 +53,14 @@ impl SvgPage {
             .gap_4()
             .child(column(
                 "Texture zoom",
-                format!("Fixed {}×{} source px", i32::from(baseline.width), i32::from(baseline.height)),
+                {
+                    let __l10n_0 = &(i32::from(baseline.width));
+                    let __l10n_1 = &(i32::from(baseline.height));
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_3c47ce3e53ed(args[0].clone(), args[1].clone()),
+                        vec![format!("{}", __l10n_0), format!("{}", __l10n_1)],
+                    )
+                },
                 fixed.into_any_element(),
             ))
             .child(column("Sharp zoom", "Progressive rerasterization".into(), sharp.into_any_element()))

@@ -1,8 +1,6 @@
 //! Variant / comparison card.
-use gpui::{
-    AnyElement, Div, Hsla, InteractiveElement, IntoElement, ParentElement, SharedString, Styled, div,
-    prelude::FluentBuilder,
-};
+use crate::l10n::UiCopy;
+use gpui::{AnyElement, Div, Hsla, InteractiveElement, IntoElement, ParentElement, Styled, div, prelude::FluentBuilder};
 use lucide_svg_static::Icon;
 use xgpui_luma::{hstack, infra::icon::lucide_icon, vstack};
 use xgpui_luma_look_radix::Look;
@@ -13,13 +11,13 @@ use super::{LabMetrics, TextRole, card_surface, readout, text};
 
 /// One card in the screen's card row. Styling is fixed; the screen supplies content.
 pub(crate) struct LabCard {
-    name: SharedString,
+    name: UiCopy,
     swatch: Option<AnyElement>,
     icon: Option<Icon>,
     mark: Option<Hsla>,
-    subtitle: Option<SharedString>,
+    subtitle: Option<UiCopy>,
     badge: Option<AnyElement>,
-    values: Vec<(SharedString, SharedString)>,
+    values: Vec<(UiCopy, UiCopy)>,
     body: Option<AnyElement>,
     disabled: bool,
     selector: Option<String>,
@@ -28,7 +26,7 @@ pub(crate) struct LabCard {
 impl FluentBuilder for LabCard {}
 
 impl LabCard {
-    pub fn new(name: impl Into<SharedString>) -> Self {
+    pub fn new(name: impl Into<UiCopy>) -> Self {
         Self {
             name: name.into(),
             swatch: None,
@@ -66,7 +64,7 @@ impl LabCard {
         self
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
@@ -78,10 +76,7 @@ impl LabCard {
     }
 
     /// Label/value pairs in the values row.
-    pub fn values<L: Into<SharedString>, V: Into<SharedString>>(
-        mut self,
-        pairs: impl IntoIterator<Item = (L, V)>,
-    ) -> Self {
+    pub fn values<L: Into<UiCopy>, V: Into<UiCopy>>(mut self, pairs: impl IntoIterator<Item = (L, V)>) -> Self {
         self.values = pairs.into_iter().map(|(label, value)| (label.into(), value.into())).collect();
         self
     }

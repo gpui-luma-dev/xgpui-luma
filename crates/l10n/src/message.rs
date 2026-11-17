@@ -9,6 +9,15 @@ pub struct Message<'a> {
 }
 
 impl<'a> Message<'a> {
+    /// Resource identifier selected by the generated constructor.
+    pub fn id(&self) -> &'static str {
+        self.id
+    }
+    /// Optional Fluent attribute selected by the generated constructor.
+    pub fn attribute(&self) -> Option<&'static str> {
+        self.attribute
+    }
+
     /// For generated code. Applications should use their catalog's constructors.
     #[doc(hidden)]
     pub fn new(id: &'static str, attribute: Option<&'static str>, args: FluentArgs<'a>) -> Self {

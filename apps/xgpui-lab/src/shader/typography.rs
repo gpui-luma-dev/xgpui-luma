@@ -34,6 +34,16 @@ enum MotionMode {
     Scramble,
     Wave,
 }
+impl MotionMode {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Static => "Static",
+            Self::Typewriter => "Typewriter",
+            Self::Scramble => "Scramble",
+            Self::Wave => "Wave",
+        }
+    }
+}
 const MOTIONS: [MotionMode; 4] = [MotionMode::Static, MotionMode::Typewriter, MotionMode::Scramble, MotionMode::Wave];
 const FILLS: [&str; 3] = ["Native", "Cool gradient", "Warm gradient"];
 const SHADOWS: [&str; 3] = ["Off", "Glow", "Drop"];
@@ -160,7 +170,7 @@ impl TypographyDemo {
                     let button = radix::Button::new(format!("typography-motion-{mode:?}"))
                         .look(look.as_ref())
                         .outline()
-                        .content(crate::l10n::label(format!("{mode:?}")))
+                        .content(crate::l10n::label(mode.label()))
                         .on_click(cx, move |this: &mut Self, cx| this.action(Action::Motion(mode), cx))
                         .spawn(cx);
                     (mode, button)
@@ -323,16 +333,26 @@ impl TypographyDemo {
 }
 
 /// Live state for the caption line.
-fn motion_line(motion: MotionMode, reduced: bool, progress: f32, seed: u64, frame: u64) -> String {
+fn motion_line(motion: MotionMode, reduced: bool, progress: f32, seed: u64, frame: u64) -> crate::l10n::UiCopy {
     if reduced {
         return "reduced motion: complete static source, no animation requests".into();
     }
     match motion {
         MotionMode::Static => "static reference · select the unchanged source".into(),
         MotionMode::Typewriter => {
-            format!("typewriter · revealed {:.0}% · whole shaped clusters appear together", progress * 100.)
+            let __l10n_0 = &(progress * 100.);
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_22978acebeaa(args[0].clone()),
+                vec![format!("{:.0}", __l10n_0)],
+            )
         }
-        MotionMode::Scramble => format!("scramble · decoded {:.0}% · seed {seed} · frame {frame}", progress * 100.),
+        MotionMode::Scramble => {
+            let __l10n_0 = &(progress * 100.);
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_b4db23dc5d3e(args[0].clone(), args[1].clone(), args[2].clone()),
+                vec![format!("{:.0}", __l10n_0), format!("{}", seed), format!("{}", frame)],
+            )
+        }
         MotionMode::Wave => "wave · 8 px amplitude · selection follows the original baseline".into(),
     }
 }
@@ -390,10 +410,19 @@ impl Render for TypographyDemo {
         let selected = text_state.selected_text().to_owned();
         let selected_count = selected.chars().count();
         let total = source.chars().count();
-        let caption = format!(
-            "{} · {} · selected {selected_count} of {total} scalars",
-            SAMPLES[self.active].0,
-            motion_line(self.motion, reduced, self.progress, self.seed, frame)
+        let caption = crate::l10n::UiCopy::Separated(
+            " · ",
+            vec![
+                SAMPLES[self.active].0.into(),
+                motion_line(self.motion, reduced, self.progress, self.seed, frame),
+                crate::l10n::UiCopy::compose(
+                    |a| crate::l10n::messages::msg_lab_scalar_selection(a[0].clone(), a[1].clone()),
+                    vec![
+                        crate::l10n::UiCopy::numeric(selected_count.to_string()),
+                        crate::l10n::UiCopy::numeric(total.to_string()),
+                    ],
+                ),
+            ],
         );
         let screen = LabScreen::new("typography", self.look.clone())
             .crumb("xgpui-shader", "Typography")
@@ -411,13 +440,28 @@ impl Render for TypographyDemo {
         let screen = screen.control(self.button(Action::Reset));
         let screen = self.presentation_buttons.iter().fold(screen, |screen, button| screen.control(button.clone()));
         let color_status = window.color_status();
-        let presentation_status = format!(
-            "Requested: {:?} · Effective: {:?} · Display wide gamut: {:?} · Scale: {}",
-            color_status.requested(),
-            color_status.effective(),
-            color_status.display_wide_gamut(),
-            window.scale_factor()
-        );
+        let presentation_status = {
+            let __l10n_0 = &(color_status.requested());
+            let __l10n_1 = &(color_status.effective());
+            let __l10n_2 = &(color_status.display_wide_gamut());
+            let __l10n_3 = &(window.scale_factor());
+            crate::l10n::UiCopy::formatted(
+                |args| {
+                    crate::l10n::messages::msg_ui_42dbcf47180e(
+                        args[0].clone(),
+                        args[1].clone(),
+                        args[2].clone(),
+                        args[3].clone(),
+                    )
+                },
+                vec![
+                    format!("{:?}", __l10n_0),
+                    format!("{:?}", __l10n_1),
+                    format!("{:?}", __l10n_2),
+                    format!("{}", __l10n_3),
+                ],
+            )
+        };
         let presentation_note = self.presentation_error.clone().unwrap_or_else(|| {
             if color_status.requested() == WindowColorMode::WideGamutSdr
                 && color_status.effective() != WindowColorMode::WideGamutSdr
@@ -445,7 +489,7 @@ impl Render for TypographyDemo {
                     .iter()
                     .fold(screen, |screen, card| screen.card(card.clone()))
                     .panels(self.motion_panel(), logical)
-                    .note(format!("{presentation_note} {TRY_IT}"))
+                    .note(crate::l10n::UiCopy::Joined(vec![presentation_note.into(), TRY_IT.into()]))
                     .credits(SCOPE),
             )
     }
@@ -472,16 +516,27 @@ impl TypographyDemo {
             .justify_between()
             .gap_4()
             .child(text(&self.look, TextRole::Label, SAMPLES[self.active].2))
-            .child(text(
-                &self.look,
-                TextRole::Label,
-                format!(
-                    "{size:.0} px · {} · {} {:.0} px",
-                    FILLS[self.fill].to_lowercase(),
-                    SHADOWS[self.shadow].to_lowercase(),
-                    SOFTNESS[self.softness]
-                ),
-            ));
+            .child(text(&self.look, TextRole::Label, {
+                let __l10n_0 = &(FILLS[self.fill].to_lowercase());
+                let __l10n_1 = &(SHADOWS[self.shadow].to_lowercase());
+                let __l10n_2 = &(SOFTNESS[self.softness]);
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_a89d3ea3f2b6(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        format!("{:.0}", size),
+                        __l10n_0.to_string(),
+                        __l10n_1.to_string(),
+                        format!("{:.0}", __l10n_2),
+                    ],
+                )
+            }));
         let visual = div()
             .min_h(px(200.))
             .px_6()
@@ -554,10 +609,16 @@ impl TypographyDemo {
             .child(properties(
                 &self.look,
                 [
-                    ("Source", source.to_owned()),
-                    ("Selection", selection),
-                    ("Range", format!("UTF-8 {}..{}", range.start, range.end)),
-                    ("Scalars", format!("{selected_count} of {total}")),
+                    ("Source", crate::l10n::UiCopy::from(source.to_owned())),
+                    ("Selection", crate::l10n::UiCopy::from(selection)),
+                    ("Range", crate::l10n::UiCopy::from(format!("UTF-8 {}..{}", range.start, range.end))),
+                    (
+                        "Scalars",
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_8750b29a9d6d(args[0].clone(), args[1].clone()),
+                            vec![format!("{}", selected_count), format!("{}", total)],
+                        ),
+                    ),
                 ],
             ))
             .child(div().flex().child(self.button(Action::SelectAll)))

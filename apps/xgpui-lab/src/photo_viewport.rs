@@ -244,10 +244,10 @@ impl Render for PhotoViewport {
         self.device_scale = window.scale_factor() as f64;
         let viewport =
             [self.viewport_width, (f32::from(window.viewport_size().height) - 340.).clamp(180., 560.) as f64];
-        let mut status = if self.loading.is_some() {
+        let mut status: crate::l10n::UiCopy = if self.loading.is_some() {
             "Loading photo…".into()
         } else {
-            self.name.clone()
+            crate::l10n::UiCopy::raw(self.name.clone())
         };
         let canvas_entity = cx.entity().downgrade();
         if let (Some(source), Some(canvas)) = (&self.source, &mut self.canvas) {
@@ -266,16 +266,27 @@ impl Render for PhotoViewport {
                 self.error = Some(error.to_string());
             }
             let stats = canvas.stats();
-            status = format!(
-                "{} · {} × {} · {:.0}% · {:+.2} EV · {:.1} MiB source · {:.1} MiB pages",
-                self.name,
-                image.width(),
-                image.height(),
-                self.scale * self.device_scale * 100.,
-                self.exposure,
-                source.source_bytes() as f64 / MIB as f64,
-                stats.gpu_bytes as f64 / MIB as f64
+            status = crate::l10n::UiCopy::compose(
+                |a| {
+                    crate::l10n::messages::msg_lab_photo_status(
+                        a[0].clone(),
+                        a[1].clone(),
+                        a[2].clone(),
+                        a[3].clone(),
+                        a[4].clone(),
+                        a[5].clone(),
+                    )
+                },
+                vec![
+                    crate::l10n::UiCopy::raw(self.name.clone()),
+                    crate::l10n::UiCopy::raw(format!("{} × {}", image.width(), image.height())),
+                    crate::l10n::UiCopy::percentage(format!("{:.0}", self.scale * self.device_scale * 100.), 0),
+                    crate::l10n::UiCopy::numeric(format!("{:+.2}", self.exposure)),
+                    crate::l10n::UiCopy::bytes(source.source_bytes() as u64),
+                    crate::l10n::UiCopy::bytes(stats.gpu_bytes),
+                ],
             );
+
             if !matches!(
                 canvas.status(),
                 ProgressiveStatus::Ready | ProgressiveStatus::Failed(_) | ProgressiveStatus::Cancelled
@@ -379,7 +390,7 @@ impl Render for PhotoViewport {
             .title("Photo Viewer")
             .lede("Explore a photo in detail and adjust its brightness without loading it again.")
             .hero(Hero::full(canvas))
-            .caption(format!("{status} · {output}"))
+            .caption(crate::l10n::UiCopy::Separated(" · ", vec![status, output.into()]))
             .control(self.wide_switch.clone());
         let screen = self.buttons.iter().cloned().fold(screen, LabScreen::action);
         let source = self.source.as_ref();
@@ -387,7 +398,7 @@ impl Render for PhotoViewport {
         screen.notice(self.error.clone())
             .cards([
                 LabCard::new("Photo").subtitle(self.name.clone()).values([("size", source.map_or("—".into(), |source| format!("{}×{}", source.image().width(), source.image().height())))]),
-                LabCard::new("View").values([("physical scale", format!("{:.1}%", self.scale * self.device_scale * 100.)), ("exposure", format!("{:+.2} EV", self.exposure))]),
+                LabCard::new("View").values([("physical scale", crate::l10n::UiCopy::from(format!("{:.1}%", self.scale * self.device_scale * 100.))), ("exposure", { let __l10n_0 = &(self.exposure); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_f6b430a8ae6e(args[0].clone()), vec![format!("{:+.2}", __l10n_0)]) })]),
             ])
             .panels(
                 PanelShell::new("Retained source").child(properties(&self.look, [
@@ -396,8 +407,8 @@ impl Render for PhotoViewport {
                     ("Ready pages", stats.as_ref().map_or("—".into(), |stats| format!("{}/{}", stats.ready_pages, stats.visible_pages))),
                 ])),
                 PanelShell::new("Presentation").child(properties(&self.look, [
-                    ("Output", output.to_string()), ("Device scale", format!("{:.2}×", self.device_scale)),
-                    ("Center", format!("{:.0}, {:.0} px", self.center[0], self.center[1])),
+                    ("Output", crate::l10n::UiCopy::from(output.to_string())), ("Device scale", crate::l10n::UiCopy::from(format!("{:.2}×", self.device_scale))),
+                    ("Center", { let __l10n_0 = &(self.center[0]); let __l10n_1 = &(self.center[1]); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_90ef30b9db81(args[0].clone(), args[1].clone()), vec![format!("{:.0}", __l10n_0), format!("{:.0}", __l10n_1)]) }),
                 ])),
             )
             .note("Drag to pan and wheel to zoom. Fit shows the whole photo; 1:1 maps each source pixel to one physical display pixel. Exposure changes sampling without decoding or uploading the source again.")

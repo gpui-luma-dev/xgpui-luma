@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     let entries: Vec<serde_json::Value> = serde_json::from_str(&fs::read_to_string("locales/copy.json")?)?;
-    let mut bridge = String::from("use xgpui_luma_l10n::Message;\nuse super::super::messages;\nuse super::Pattern;\n");
+    let mut bridge = String::from("use xgpui_luma_l10n::Message;\nuse super::super::messages;\n");
     bridge.push_str("pub fn literal(source: &str) -> Option<Message<'static>> { match source {\n");
     for entry in &entries {
         let source = entry["source"].as_str().ok_or("copy source")?;
@@ -33,40 +33,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     bridge.push_str("_ => None, } }\n");
-    bridge.push_str("pub fn formatted(id: &str, values: &[String]) -> Option<Message<'static>> { match id {\n");
-    for entry in &entries {
-        let Some(parts) = entry["parts"].as_array() else {
-            continue;
-        };
-        let id = entry["id"].as_str().ok_or("copy id")?;
-        let args = (0..parts.len() - 1)
-            .map(|i| {
-                if i == 0 {
-                    "values.first()?.clone()".into()
-                } else {
-                    format!("values.get({i})?.clone()")
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        bridge.push_str(&format!("{id:?} => Some(messages::msg_{}({args})),\n", id.replace('-', "_")));
-    }
-    bridge.push_str("_ => None, } }\n");
-    bridge.push_str("pub static PATTERNS: &[Pattern] = &[\n");
-    let mut patterns: Vec<_> = entries.iter().filter(|entry| entry["parts"].is_array()).collect();
-    patterns.sort_by_key(|entry| {
-        std::cmp::Reverse(
-            entry["parts"].as_array().unwrap().iter().map(|part| part.as_str().unwrap().len()).sum::<usize>(),
-        )
-    });
-    for entry in patterns {
-        bridge.push_str(&format!(
-            "Pattern {{ id: {:?}, parts: &{:?} }},\n",
-            entry["id"].as_str().unwrap(),
-            entry["parts"].as_array().unwrap().iter().map(|p| p.as_str().unwrap()).collect::<Vec<_>>()
-        ));
-    }
-    bridge.push_str("];\n");
     fs::write(out_dir.join("lab_copy.rs"), bridge)?;
     for (tag, rtl) in [("en-XA", false), ("ar-XB", true)] {
         let source = pseudo::resource(&english, rtl)?;

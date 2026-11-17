@@ -60,35 +60,50 @@ impl Control {
             Self::Tree(v) => v.clone().into(),
         }
     }
-    fn state(&self, cx: &gpui::App) -> String {
+    fn state(&self, cx: &gpui::App) -> crate::l10n::UiCopy {
         let table = match self {
             Self::Paging(v) => Some(v.read(cx).list()),
             Self::Scrolling(v) => Some(v),
             Self::Tree(_) => None,
         };
-        if let Some(table) = table {
+        let (page, count, mut selected) = if let Some(table) = table {
             let table = table.read(cx);
-            let selected = table.selected_items().iter().map(|row| row.id.to_string()).collect::<Vec<_>>().join(", ");
-            let selected = if selected.is_empty() { "none" } else { &selected };
-            if table.page_size().is_some() {
-                format!("Page {} of {} · Selected IDs: {selected}", table.current_page() + 1, table.page_count())
-            } else {
-                format!("{} rows · Selected IDs: {selected}", table.items().len())
-            }
-        } else if let Self::Tree(tree) = self {
-            let mut selected = tree.read(cx).selected_ids().iter().map(|id| id.as_ref()).collect::<Vec<_>>();
-            selected.sort_unstable();
-            format!(
-                "Selected: {}",
-                if selected.is_empty() {
-                    "none".to_owned()
-                } else {
-                    selected.join(", ")
-                }
+            (
+                table.page_size().map(|_| (table.current_page() + 1, table.page_count())),
+                table.items().len(),
+                table.selected_items().iter().map(|row| row.id.to_string()).collect::<Vec<_>>(),
             )
+        } else if let Self::Tree(tree) = self {
+            (None, 0, tree.read(cx).selected_ids().iter().map(ToString::to_string).collect::<Vec<_>>())
         } else {
-            String::new()
-        }
+            (None, 0, Vec::new())
+        };
+        selected.sort();
+        let tree = matches!(self, Self::Tree(_));
+        crate::l10n::UiCopy::deferred(move |cx| {
+            let selection = if selected.is_empty() {
+                crate::l10n::UiCopy::state("none").resolve(cx).to_string()
+            } else {
+                cx.try_global::<xgpui_luma_l10n::Localizer>()
+                    .and_then(|localizer| {
+                        localizer.locale().fmt_list(&selected, xgpui_luma_l10n::formatting::ListKind::And).ok()
+                    })
+                    .unwrap_or_else(|| selected.join(", "))
+            };
+            match page {
+                Some((page, pages)) => crate::l10n::messages::msg_lab_page_selected(
+                    crate::l10n::number(&page.to_string(), cx).to_string(),
+                    crate::l10n::number(&pages.to_string(), cx).to_string(),
+                    selection,
+                ),
+                None if tree => crate::l10n::messages::msg_lab_selected(selection),
+                None => crate::l10n::messages::msg_lab_rows_selected(
+                    count as f64,
+                    crate::l10n::number(&count.to_string(), cx).to_string(),
+                    selection,
+                ),
+            }
+        })
     }
 }
 pub(super) struct CollectionSample {
@@ -257,7 +272,7 @@ mod tests {
             assert_eq!(table.read(cx).scroll_mode(), table::TableScrollMode::ScrollSmooth);
             assert_eq!(table.read(cx).active_index(), Some(47));
             assert_eq!(table.read(cx).selected_indices(), [47]);
-            assert_eq!(sample.read(cx).control.state(cx), "48 rows · Selected IDs: 48");
+            assert_eq!(sample.read(cx).control.state(cx).test_display(cx), "48 rows · Selected IDs: 48");
         });
         workshop.update(cx, |v, cx| {
             v.select("button", cx);
@@ -288,7 +303,7 @@ mod tests {
             assert_eq!(pager.read(cx).current_page(), 5);
             assert_eq!(pager.read(cx).page_count(), 6);
             assert_eq!(table.read(cx).selected_indices(), [47]);
-            assert_eq!(sample.read(cx).control.state(cx), "Page 6 of 6 · Selected IDs: 48");
+            assert_eq!(sample.read(cx).control.state(cx).test_display(cx), "Page 6 of 6 · Selected IDs: 48");
         });
         cx.simulate_keystrokes("home space");
         cx.run_until_parked();
@@ -322,7 +337,7 @@ mod tests {
         cx.update(|_, cx| {
             assert!(tree.read(cx).is_expanded(&"images".into()));
             assert!(tree.read(cx).selected_ids().contains("photo"));
-            assert_eq!(sample.read(cx).control.state(cx), "Selected: photo");
+            assert_eq!(sample.read(cx).control.state(cx).test_display(cx), "Selected: photo");
         });
         select(&workshop, "scrolling-table", cx);
         let retained = select(&workshop, "tree-view", cx);

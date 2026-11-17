@@ -158,3 +158,76 @@ fn fluent_isolates_reach_parley_without_visible_advance_or_out_of_bounds_selecti
         }
     });
 }
+
+#[test]
+fn retained_typed_copy_keeps_ids_numeric_selectors_and_user_data_distinct() {
+    use super::{UiCopy, messages};
+    let app = TestAppContext::single();
+    let count = UiCopy::counted("points", "1".to_owned());
+    let several = UiCopy::counted("points", "3".to_owned());
+    let data = UiCopy::raw("Reset canvas");
+    let state: UiCopy = messages::msg_lab_dialog("open".to_owned()).into();
+    for (tag, one, three, open) in [
+        ("en", "1 point", "3 points", "Open"),
+        ("de", "1 Punkt", "3 Punkte", "Offen"),
+        ("ja", "1 点", "3 点", "開いています"),
+        ("ar-u-nu-arab", "١ نقطة", "٣ نقاط", "مفتوح"),
+    ] {
+        app.update(|cx| {
+            xgpui_luma_l10n::install(super::localizer(tag.parse().unwrap()).unwrap(), cx).unwrap();
+            assert_eq!(count.test_display(cx), one);
+            assert_eq!(several.test_display(cx), three);
+            assert!(state.test_display(cx).contains(open));
+            assert_eq!(data.resolve(cx), "Reset canvas");
+            // Unknown rendered English must never select an arbitrary format ID.
+            assert_eq!(super::resolve("Value: 1234", cx), "Value: 1234");
+        });
+    }
+}
+
+#[test]
+fn composed_counts_percentages_and_qualitative_path_modes_keep_their_meaning() {
+    use super::{UiCopy, messages};
+    let app = TestAppContext::single();
+    let canvas = UiCopy::compose(
+        |a| {
+            messages::msg_ui_2c23a4d296d9(
+                a[0].clone(),
+                a[1].clone(),
+                a[2].clone(),
+                a[3].clone(),
+                a[4].clone(),
+                a[5].clone(),
+                a[6].clone(),
+            )
+        },
+        vec![
+            UiCopy::percentage("125.5".into(), 1),
+            UiCopy::numeric("1".into()),
+            UiCopy::counted("cards", "1".into()),
+            UiCopy::numeric("1".into()),
+            UiCopy::numeric("0".into()),
+            UiCopy::counted("points", "3".into()),
+            UiCopy::numeric("0".into()),
+        ],
+    );
+    let paths = UiCopy::compose(
+        |a| messages::msg_ui_969113efbaf2(a[0].clone(), a[1].clone()),
+        vec![UiCopy::counted("points", "3".into()), messages::msg_lab_path_mode("direct".to_owned()).into()],
+    );
+    for (tag, card, point, path) in [
+        ("en", "1 card", "3 points", "Direct paths"),
+        ("de", "1 Karte", "3 Punkte", "Direkte Pfade"),
+        ("ar-u-nu-arab", "١ بطاقة", "٣ نقاط", "مسارات مباشرة"),
+    ] {
+        app.update(|cx| {
+            xgpui_luma_l10n::install(super::localizer(tag.parse().unwrap()).unwrap(), cx).unwrap();
+            let rendered = canvas.test_display(cx);
+            assert!(rendered.contains(card), "{tag}: {rendered}");
+            assert!(rendered.contains(point), "{tag}: {rendered}");
+            assert!(paths.test_display(cx).contains(path));
+            let expected = cx.global::<xgpui_luma_l10n::Localizer>().locale().fmt_percent(1.255, 1).unwrap();
+            assert!(rendered.contains(&expected), "{tag}: {rendered}");
+        });
+    }
+}

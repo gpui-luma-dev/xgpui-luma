@@ -50,7 +50,10 @@ impl GamutPage {
             .note("Both columns start from the same linear Display P3 samples. The sRGB references clip each converted linear channel to 0–1 before encoding.")
             .credits("Native P3 colors require a wide-gamut window and display. In fallback mode both columns show the same clipped sRGB previews; screenshots do not measure display fidelity.");
         match &self.samples {
-            Err(error) => screen.notice(Some(format!("Samples unavailable: {error}"))),
+            Err(error) => screen.notice(Some(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_0628fb85dfa8(args[0].clone()),
+                vec![format!("{}", error)],
+            ))),
             Ok(samples) => {
                 let column = |native: bool| {
                     div().flex().flex_col().gap_3().children(samples.iter().enumerate().map(|(index, sample)| {

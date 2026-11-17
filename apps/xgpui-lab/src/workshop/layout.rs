@@ -76,18 +76,25 @@ impl Control {
             Self::Split(v) => v.clone().into_any_element(),
         }
     }
-    fn state(&self, cx: &gpui::App) -> String {
+    fn state(&self, cx: &gpui::App) -> crate::l10n::UiCopy {
         match self {
             Self::Dock => "Top, Bottom, Left, Right, then Fill".into(),
-            Self::Resizable(v) => format!(
-                "Pane widths: {}",
-                v.read(cx).panel_sizes_px().iter().map(|v| format!("{v:.0} px")).collect::<Vec<_>>().join(", ")
-            ),
-            Self::Split(v) => format!(
-                "Sidebar: {:.0} px · Collapsed: {}",
-                f32::from(v.read(cx).sidebar_width()),
-                v.read(cx).collapsed()
-            ),
+            Self::Resizable(v) => {
+                let __l10n_0 =
+                    &(v.read(cx).panel_sizes_px().iter().map(|v| format!("{v:.0} px")).collect::<Vec<_>>().join(", "));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_eb4519de9194(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            }
+            Self::Split(v) => {
+                let __l10n_0 = &(f32::from(v.read(cx).sidebar_width()));
+                let __l10n_1 = &(v.read(cx).collapsed());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_35db1c317aa3(args[0].clone(), args[1].clone()),
+                    vec![format!("{:.0}", __l10n_0), format!("{}", __l10n_1)],
+                )
+            }
         }
     }
 }
@@ -263,14 +270,14 @@ mod tests {
             cx.run_until_parked();
             let resized = cx.debug_bounds(first).unwrap().size.width;
             assert!(resized > before.size.width, "{id} divider must resize its native pane");
-            let state = cx.update(|_, cx| sample.read(cx).control.state(cx));
+            let state = cx.update(|_, cx| sample.read(cx).control.state(cx).test_display(cx));
             workshop.update(cx, |v, cx| {
                 v.select("button", cx);
                 v.sync_theme(xgpui_luma::theme::ThemeMode::Light, cx);
             });
             let retained = select(&workshop, id, cx);
             assert_eq!(sample, retained);
-            cx.update(|_, cx| assert_eq!(sample.read(cx).control.state(cx), state));
+            cx.update(|_, cx| assert_eq!(sample.read(cx).control.state(cx).test_display(cx), state));
             assert_eq!(cx.debug_bounds(first).unwrap().size.width, resized);
             if id == "resizable-panels" {
                 let first_bounds = cx.debug_bounds(first).unwrap();
