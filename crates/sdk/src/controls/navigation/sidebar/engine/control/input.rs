@@ -466,35 +466,30 @@ impl SidebarPanelEngine {
     }
 
     pub(super) fn handle_open_submenu(&mut self, _: &OpenSubmenu, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(node_id) = self.focused_target(window) else {
-            return;
-        };
-
-        if self.model.collapsed {
-            return;
-        };
-
-        self.set_node_expanded(node_id, true, cx);
+        self.handle_horizontal_arrow(true, window, cx);
     }
 
     pub(super) fn handle_close_submenu(&mut self, _: &CloseSubmenu, window: &mut Window, cx: &mut Context<Self>) {
+        self.handle_horizontal_arrow(false, window, cx);
+    }
+
+    fn handle_horizontal_arrow(&mut self, right: bool, window: &mut Window, cx: &mut Context<Self>) {
         if !self.model.enabled {
             return;
         }
-
+        let rtl =
+            crate::infra::locale::LocaleContext::current(cx).direction == crate::infra::locale::LayoutDirection::Rtl;
+        let expand = right != rtl;
         if self.model.collapsed {
-            if self.open_rail_submenu.is_some() {
+            if !expand && self.open_rail_submenu.is_some() {
                 self.close_rail_submenu(cx);
                 cx.notify();
             }
             return;
         }
-
-        let Some(node_id) = self.focused_target(window) else {
-            return;
-        };
-
-        self.set_node_expanded(node_id, false, cx);
+        if let Some(node_id) = self.focused_target(window) {
+            self.set_node_expanded(node_id, expand, cx);
+        }
     }
 
     pub(super) fn handle_activate_control(&mut self, _: &ActivateControl, window: &mut Window, cx: &mut Context<Self>) {

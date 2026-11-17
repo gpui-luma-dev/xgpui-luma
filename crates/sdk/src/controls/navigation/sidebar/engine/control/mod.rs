@@ -347,3 +347,6 @@ impl SidebarPanelEngine {
         cx.notify();
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests;

@@ -14,11 +14,11 @@ use crate::controls::floating_menu::{
     FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
     default_floating_menu_template,
 };
-use crate::infra::locale::{LayoutDirection, LocaleContext};
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{ControlSize, InteractionState, LumaTextStyle, LumaTypography};
 use crate::controls::floating_menu::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
-use crate::infra::icon::{DisclosureIcons, render_disclosure_icon, render_icon_source};
+use crate::infra::icon::{DisclosureIcons, render_logical_disclosure_icon};
 use crate::infra::ElementExt;
 use super::{SidebarTheme, default_sidebar_theme};
 
@@ -255,7 +255,12 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
         }
 
         if model.title.is_some() || model.subtitle.is_some() {
-            root = root.child(render_title(model.title, model.subtitle, &self.theme));
+            root = root.child(render_title(
+                model.title,
+                model.subtitle,
+                &self.theme,
+                LocaleContext::current(cx).direction,
+            ));
         }
 
         if !model.header_nodes.is_empty() {
@@ -327,11 +332,17 @@ fn sidebar_subtitle_style(typography: &LumaTypography) -> LumaTextStyle {
     typography.text.scale.sm
 }
 
-fn render_title(title: Option<SharedString>, subtitle: Option<SharedString>, theme: &Arc<dyn SidebarTheme>) -> Div {
+fn render_title(
+    title: Option<SharedString>,
+    subtitle: Option<SharedString>,
+    theme: &Arc<dyn SidebarTheme>,
+    direction: LayoutDirection,
+) -> Div {
     let typography = theme.typography();
     let title_style = sidebar_title_style(&typography);
     let subtitle_style = sidebar_subtitle_style(&typography);
     let mut header = div()
+        .when(direction == LayoutDirection::Rtl, |header| header.text_right())
         .flex()
         .flex_col()
         .gap(px(theme.geometry().title_gap))
@@ -341,6 +352,7 @@ fn render_title(title: Option<SharedString>, subtitle: Option<SharedString>, the
         header = header.child(
             div()
                 .flex()
+                .when(direction == LayoutDirection::Rtl, |title| title.justify_end())
                 .items_center()
                 .text_size(px(title_style.size))
                 .line_height(px(title_style.line_height))
@@ -579,15 +591,19 @@ fn render_row(input: RowRenderInput, handlers: RowHandlers, theme: &Arc<dyn Side
     }
 
     match input.kind {
-        NavNodeKind::Section => render_section_row(input.label.unwrap_or(input.id), theme).into_any_element(),
+        NavNodeKind::Section => {
+            render_section_row(input.label.unwrap_or(input.id), theme, LocaleContext::current(cx).direction)
+                .into_any_element()
+        }
         NavNodeKind::Item => render_item_row(input, handlers, theme, cx),
     }
 }
 
-fn render_section_row(label: SharedString, theme: &Arc<dyn SidebarTheme>) -> Div {
+fn render_section_row(label: SharedString, theme: &Arc<dyn SidebarTheme>, direction: LayoutDirection) -> Div {
     let look = theme.resolve_section();
 
     div()
+        .when(direction == LayoutDirection::Rtl, |row| row.text_right())
         .min_h(px(look.height))
         .pt(px(theme.geometry().section_padding_top))
         .text_size(px(look.typography.size))
@@ -628,8 +644,9 @@ fn render_item_row(
     } else {
         theme.resolve_item(state.selected, interaction, ControlSize::Md)
     };
+    let direction = LocaleContext::current(cx).direction;
     let depth_indent = (look.icon_size + look.gap) * CHILD_DEPTH_INDENT_MULTIPLIER;
-    let padding_left = look.padding_x + state.depth as f32 * depth_indent;
+    let padding_start = look.padding_x + state.depth as f32 * depth_indent;
     let mut row = div()
         .id((id.clone(), 0usize))
         .role(gpui::Role::Button)
@@ -637,10 +654,11 @@ fn render_item_row(
         .w_full()
         .min_h(px(look.height))
         .flex()
+        .flex_row_logical(direction)
         .items_center()
         .gap(px(look.gap))
-        .pl(px(padding_left))
-        .pr(px(look.padding_x))
+        .ps(px(padding_start), direction)
+        .pe(px(look.padding_x), direction)
         .rounded(px(look.radius))
         .text_size(px(look.typography.size))
         .line_height(px(look.typography.line_height))
@@ -651,14 +669,24 @@ fn render_item_row(
         row = row.child(render_lucide_icon(icon, look.icon_color, look.icon_size));
     }
 
-    row = row.child(div().flex_1().child(label.unwrap_or(id)));
+    row = row.child(
+        div()
+            .debug_selector({
+                let id = id.clone();
+                move || format!("sidebar-label-{id}")
+            })
+            .flex_1()
+            .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+            .child(label.unwrap_or(id)),
+    );
 
     if has_children {
-        row = row.child(render_disclosure_icon(
+        row = row.child(render_logical_disclosure_icon(
             &disclosure_icons,
             expansion_progress,
             look.icon_color,
             theme.geometry().disclosure_icon_size,
+            direction,
         ));
     }
 
@@ -716,6 +744,7 @@ fn render_collapsed_rail_node(
     cx: &mut App,
 ) -> AnyElement {
     let RenderedNavNode { id, label, icon, state, focus_handle, has_children, tooltip, .. } = node;
+    let direction = LocaleContext::current(cx).direction;
     let interaction = InteractionState {
         hovered: state.hovered,
         pressed: state.pressed,
@@ -751,7 +780,11 @@ fn render_collapsed_rail_node(
         row = row.child(
             div()
                 .absolute()
-                .left(px(centered_icon_left(look.height, look.icon_size)))
+                .debug_selector({
+                    let id = id.clone();
+                    move || format!("sidebar-rail-icon-{id}")
+                })
+                .start(px(centered_icon_left(look.height, look.icon_size)), direction)
                 .top(px(centered_icon_left(look.height, look.icon_size)))
                 .child(render_lucide_icon(
                     icon.expect("collapsed rail nodes always have icons"),
@@ -762,12 +795,18 @@ fn render_collapsed_rail_node(
         row = row.child(
             div()
                 .absolute()
-                .left(px(rail_branch_indicator_left(look.height, &theme.geometry())))
+                .debug_selector({
+                    let id = id.clone();
+                    move || format!("sidebar-rail-disclosure-{id}")
+                })
+                .start(px(rail_branch_indicator_left(look.height, &theme.geometry())), direction)
                 .top(px(centered_icon_left(look.height, theme.geometry().rail_branch_indicator_size)))
-                .child(render_icon_source(
-                    &disclosure_icons.collapsed,
+                .child(render_logical_disclosure_icon(
+                    disclosure_icons,
+                    0.0,
                     look.icon_color,
                     theme.geometry().rail_branch_indicator_size,
+                    direction,
                 )),
         );
     } else {

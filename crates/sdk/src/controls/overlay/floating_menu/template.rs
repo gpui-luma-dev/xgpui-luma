@@ -724,22 +724,8 @@ fn render_submenu_affordance(
     progress: f32,
     direction: LayoutDirection,
 ) -> AnyElement {
-    if has_submenu
-        && direction == LayoutDirection::Rtl
-        && icons.collapsed.lucide() == Some(lucide_svg_static::Icon::ChevronRight)
-        && icons.expanded.lucide() == Some(lucide_svg_static::Icon::ChevronDown)
-    {
-        return svg()
-            .path(lucide_svg_static::Icon::ChevronLeft.asset_path())
-            .size(px(size))
-            .text_color(color)
-            .with_transformation(gpui::Transformation::rotate(gpui::radians(
-                -progress.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2,
-            )))
-            .into_any_element();
-    }
     if has_submenu {
-        crate::infra::icon::render_disclosure_icon(icons, progress, color, size)
+        crate::infra::icon::render_logical_disclosure_icon(icons, progress, color, size, direction)
     } else {
         div().size(px(size)).into_any_element()
     }

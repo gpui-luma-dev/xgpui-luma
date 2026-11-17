@@ -18,6 +18,30 @@ pub struct DisclosureIcons {
     pub collapsed: IconSource,
 }
 
+/// Locale-aware standard right/down disclosure; custom icon pairs keep their artwork.
+pub(crate) fn render_logical_disclosure_icon(
+    icons: &DisclosureIcons,
+    progress: f32,
+    color: Hsla,
+    size: f32,
+    direction: crate::infra::locale::LayoutDirection,
+) -> AnyElement {
+    if direction == crate::infra::locale::LayoutDirection::Rtl
+        && icons.collapsed.lucide() == Some(LucideIcon::ChevronRight)
+        && icons.expanded.lucide() == Some(LucideIcon::ChevronDown)
+    {
+        return svg()
+            .path(SvgIcon::ChevronLeft.asset_path())
+            .size(px(size))
+            .text_color(color)
+            .with_transformation(Transformation::rotate(radians(
+                -progress.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2,
+            )))
+            .into_any_element();
+    }
+    render_disclosure_icon(icons, progress, color, size)
+}
+
 /// Renders a disclosure affordance with a continuous rotation for the standard
 /// chevron pairs, while preserving icon swapping for custom icon combinations.
 pub fn render_disclosure_icon(icons: &DisclosureIcons, progress: f32, color: Hsla, size: f32) -> AnyElement {
