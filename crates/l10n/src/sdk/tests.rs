@@ -93,6 +93,38 @@ mod headless {
     }
 
     #[test]
+    fn table_strings_follow_locale_and_app_overrides_with_exact_isolated_counts() {
+        let app = TestAppContext::single();
+        app.update(|cx| {
+            crate::install(Localizer::new("en".parse().unwrap()), cx).unwrap();
+            let summary = LocaleContext::current(cx).strings.selection_summary.clone();
+            assert_eq!(summary(0, 1, cx), "Selected rows: \u{2068}0\u{2069} of \u{2068}1\u{2069}");
+            for (tag, label, word) in [
+                ("de", "Zeilen pro Seite", "Ausgewählte Zeilen"),
+                ("ja", "ページあたりの行数", "選択した行"),
+                ("ar-u-nu-arab", "صفوف في الصفحة", "الصفوف المحددة"),
+            ] {
+                assert!(crate::set_locale(tag.parse().unwrap(), cx));
+                let sdk = LocaleContext::current(cx);
+                assert_eq!(sdk.strings.rows_per_page, label);
+                let output = summary(1, usize::MAX, cx);
+                assert!(output.contains(word));
+                let total = sdk.numbers.integer(usize::MAX as u64);
+                assert!(output.contains(&format!("\u{2068}{total}\u{2069}")));
+            }
+            cx.global_mut::<Localizer>()
+                .add_resource(
+                    &"ar".parse().unwrap(),
+                    "sdk-rows-per-page = App rows\nsdk-selection-summary = { $total } / { $selected }",
+                )
+                .unwrap();
+            sync(cx).unwrap();
+            assert_eq!(LocaleContext::current(cx).strings.rows_per_page, "App rows");
+            assert_eq!(summary(1, 3, cx), "\u{2068}٣\u{2069} / \u{2068}١\u{2069}");
+        });
+    }
+
+    #[test]
     fn missing_localizer_is_safe_and_existing_sdk_context_is_untouched() {
         let app = TestAppContext::single();
         app.update(|cx| {
@@ -102,6 +134,7 @@ mod headless {
             assert!(!crate::set_locale("de".parse().unwrap(), cx));
             assert_eq!(LocaleContext::current(cx).language.as_deref(), Some("custom"));
             assert_eq!(page_of(2, 8, cx), "Page 2 of 8");
+            assert_eq!(selection_summary(1, 3, cx), "Selected rows: 1 of 3");
         });
     }
 
@@ -167,6 +200,7 @@ fn english_resources_match_every_static_sdk_default() {
         (&actual.select_placeholder, &expected.select_placeholder),
         (&actual.search_placeholder, &expected.search_placeholder),
         (&actual.selection_search, &expected.selection_search),
+        (&actual.rows_per_page, &expected.rows_per_page),
     ] {
         assert_eq!(actual, expected);
     }

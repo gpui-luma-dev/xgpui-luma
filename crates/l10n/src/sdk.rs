@@ -82,6 +82,18 @@ fn page_of(page: usize, pages: usize, cx: &App) -> SharedString {
     localizer.tr_args("sdk-page-of", &args).into()
 }
 
+fn selection_summary(selected: usize, total: usize, cx: &App) -> SharedString {
+    let Some(localizer) = cx.try_global::<Localizer>() else {
+        return (SdkStrings::default().selection_summary)(selected, total, cx);
+    };
+    let numbers = &LocaleContext::current(cx).numbers;
+    let mut args = FluentArgs::new();
+    // Display strings preserve exact integers and remain isolated in mixed text.
+    args.set("selected", numbers.integer(selected as u64).to_string());
+    args.set("total", numbers.integer(total as u64).to_string());
+    localizer.tr_args("sdk-selection-summary", &args).into()
+}
+
 pub(crate) fn context(localizer: &Localizer) -> LocaleContext {
     let tr = |id| localizer.tr(id).into();
     let strings = SdkStrings {
@@ -96,6 +108,8 @@ pub(crate) fn context(localizer: &Localizer) -> LocaleContext {
         search_placeholder: tr("sdk-search-placeholder"),
         selection_search: tr("sdk-selection-search"),
         page_of: Arc::new(page_of),
+        rows_per_page: tr("sdk-rows-per-page"),
+        selection_summary: Arc::new(selection_summary),
     };
     LocaleContext {
         direction: match localizer.locale().direction() {

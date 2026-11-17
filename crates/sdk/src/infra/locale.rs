@@ -66,6 +66,10 @@ impl NumberFormat for PlainNumberFormat {
 /// capturing stale translations. It must not mutate state or perform I/O.
 pub type PageOfFormatter = Arc<dyn Fn(usize, usize, &App) -> SharedString + Send + Sync>;
 
+/// Built-in table selection summary, invoked with selected and total row counts.
+/// As with [`PageOfFormatter`], adapters may read the active localizer at render time.
+pub type SelectionSummaryFormatter = Arc<dyn Fn(usize, usize, &App) -> SharedString + Send + Sync>;
+
 /// SDK-owned text. App-provided labels/placeholders take precedence when
 /// controls adopt this contract. Dynamic text stays in a formatter so plural
 /// selection and word order can be provided by the localization engine.
@@ -82,6 +86,8 @@ pub struct SdkStrings {
     pub search_placeholder: SharedString,
     pub selection_search: SharedString,
     pub page_of: PageOfFormatter,
+    pub rows_per_page: SharedString,
+    pub selection_summary: SelectionSummaryFormatter,
 }
 
 impl Default for SdkStrings {
@@ -98,6 +104,8 @@ impl Default for SdkStrings {
             search_placeholder: "Search…".into(),
             selection_search: "Selection search".into(),
             page_of: Arc::new(|page, pages, _| format!("Page {page} of {pages}").into()),
+            rows_per_page: "Rows per page".into(),
+            selection_summary: Arc::new(|selected, total, _| format!("Selected rows: {selected} of {total}").into()),
         }
     }
 }
