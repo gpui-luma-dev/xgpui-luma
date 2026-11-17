@@ -152,3 +152,50 @@ fn app_formatters_and_labels_survive_locale_refresh_and_parameter_replacement() 
         assert_eq!(indicators.lock().unwrap().last().unwrap(), "Page 1 of 3");
     }
 }
+
+#[test]
+fn pager_order_tracks_direction_and_clicks_keep_page_targets() {
+    use crate::infra::locale::LayoutDirection;
+    for style in [PagerStyle::Minimal, PagerStyle::MinimalEdge, PagerStyle::Numeric] {
+        let mut app = TestAppContext::single();
+        let (pager, cx) = app.add_window_view(|_, cx| {
+            PagerControl::from_builder(PagerBuilder::new("rtl-pager").style(style).current_page(2).page_count(5), cx)
+        });
+        cx.run_until_parked();
+        let changes = Rc::new(Cell::new(0));
+        let observed = changes.clone();
+        let _subscription = cx.update(|_, cx| {
+            cx.subscribe(&pager, move |_, event: &PagerEvent, _| {
+                if matches!(event, PagerEvent::PageChanged { .. }) {
+                    observed.set(observed.get() + 1);
+                }
+            })
+        });
+        for (index, direction) in
+            [LayoutDirection::Ltr, LayoutDirection::Rtl, LayoutDirection::Ltr].into_iter().enumerate()
+        {
+            pager.update(cx, |view, cx| view.set_page(2, cx));
+            cx.update(|_, cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+            cx.run_until_parked();
+            assert_eq!(changes.get(), index);
+            let prev = cx.debug_bounds("pager-nav-prev-1").unwrap();
+            let next = cx.debug_bounds("pager-nav-next-3").unwrap();
+            assert_eq!(prev.left() < next.left(), direction == LayoutDirection::Ltr);
+            if style != PagerStyle::Minimal {
+                let first = cx.debug_bounds("pager-nav-first-0").unwrap();
+                let last = cx.debug_bounds("pager-nav-last-4").unwrap();
+                assert_eq!(first.left() < prev.left(), direction == LayoutDirection::Ltr);
+                assert_eq!(next.left() < last.left(), direction == LayoutDirection::Ltr);
+            }
+            if style == PagerStyle::Numeric {
+                let one = cx.debug_bounds("pager-page-0").unwrap();
+                let five = cx.debug_bounds("pager-page-4").unwrap();
+                assert_eq!(one.left() < five.left(), direction == LayoutDirection::Ltr);
+            }
+            cx.simulate_click(next.center(), Default::default());
+            cx.run_until_parked();
+            cx.update(|_, cx| assert_eq!(pager.read(cx).current_page(), 3));
+            assert_eq!(changes.get(), index + 1);
+        }
+    }
+}

@@ -7,7 +7,7 @@ use super::theme::{PagerLook, PagerTheme, default_pager_theme};
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonContentContext, ButtonRenderModel, ControlPresenter};
 use crate::infra::icon::{IconSource, render_icon_source};
-use crate::infra::locale::LocaleContext;
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use crate::theme::InteractionState;
 
 pub type PagerOutsideMouseDownHandler = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + Send + Sync + 'static>;
@@ -179,10 +179,12 @@ fn render_minimal_pager(
     window: &mut Window,
     cx: &mut App,
 ) -> Stateful<Div> {
+    let direction = LocaleContext::current(cx).direction;
     div()
         .id(model.id.clone())
         .w_full()
         .flex()
+        .flex_row_logical(direction)
         .items_center()
         .justify_end()
         .gap(px(look.group_gap))
@@ -201,10 +203,12 @@ fn render_minimal_edge_pager(
     window: &mut Window,
     cx: &mut App,
 ) -> Stateful<Div> {
+    let direction = LocaleContext::current(cx).direction;
     div()
         .id(model.id.clone())
         .w_full()
         .flex()
+        .flex_row_logical(direction)
         .items_center()
         .justify_end()
         .gap(px(look.group_gap))
@@ -223,20 +227,24 @@ fn render_numeric_pager(
     window: &mut Window,
     cx: &mut App,
 ) -> Stateful<Div> {
+    let direction = LocaleContext::current(cx).direction;
     let items = numeric_page_items(model.current_page, model.page_count.max(1), model.numeric_slot_count());
     div()
         .id(model.id.clone())
         .w_full()
         .flex()
+        .flex_row_logical(direction)
         .items_center()
         .justify_end()
         .gap(px(look.gap))
         .py(px(look.padding_y))
         .child(render_nav_group_leading(model, look, theme, handlers, true, window, cx))
-        .child(div().flex().items_center().gap(px(look.gap)).children(items.into_iter().map(|item| match item {
-            PagerPageItem::Page(page) => render_page_button(model, look, theme, page, handlers, window, cx),
-            PagerPageItem::Gap { target } => render_gap_button(model, look, theme, target, handlers, window, cx),
-        })))
+        .child(div().flex().flex_row_logical(direction).items_center().gap(px(look.gap)).children(
+            items.into_iter().map(|item| match item {
+                PagerPageItem::Page(page) => render_page_button(model, look, theme, page, handlers, window, cx),
+                PagerPageItem::Gap { target } => render_gap_button(model, look, theme, target, handlers, window, cx),
+            }),
+        ))
         .child(render_nav_group_trailing(model, look, theme, handlers, true, window, cx))
 }
 
@@ -264,6 +272,7 @@ pub(crate) fn render_page_size_select(
     handlers: &PagerTemplateHandlers,
     cx: &App,
 ) -> Div {
+    let direction = LocaleContext::current(cx).direction;
     div()
         .relative()
         .flex_none()
@@ -278,6 +287,7 @@ pub(crate) fn render_page_size_select(
                 .w_full()
                 .h(px(look.control_height))
                 .flex()
+                .flex_row_logical(direction)
                 .items_center()
                 .justify_between()
                 .gap(px(look.gap))
@@ -312,7 +322,7 @@ pub(crate) fn render_page_size_select(
                 div()
                     .absolute()
                     .top(px(look.control_height + look.popup_offset_y))
-                    .left(px(0.0))
+                    .start(px(0.0), direction)
                     .occlude()
                     .flex()
                     .flex_col()
@@ -359,8 +369,10 @@ pub(crate) fn render_nav_group(
     window: &mut Window,
     cx: &mut App,
 ) -> Div {
+    let direction = LocaleContext::current(cx).direction;
     div()
         .flex()
+        .flex_row_logical(direction)
         .items_center()
         .gap(px(look.gap))
         .child(render_nav_group_leading(model, look, theme, handlers, include_edges, window, cx))
@@ -376,7 +388,8 @@ fn render_nav_group_leading(
     window: &mut Window,
     cx: &mut App,
 ) -> Div {
-    let mut group = div().flex().items_center().gap(px(look.gap));
+    let direction = LocaleContext::current(cx).direction;
+    let mut group = div().flex().flex_row_logical(direction).items_center().gap(px(look.gap));
     if include_edges {
         group = group.child(render_nav_button(
             model,
@@ -422,8 +435,9 @@ fn render_nav_group_trailing(
     window: &mut Window,
     cx: &mut App,
 ) -> Div {
+    let direction = LocaleContext::current(cx).direction;
     let last_page = model.page_count.saturating_sub(1);
-    let mut group = div().flex().items_center().gap(px(look.gap)).child(render_nav_button(
+    let mut group = div().flex().flex_row_logical(direction).items_center().gap(px(look.gap)).child(render_nav_button(
         model,
         look,
         theme,
@@ -481,6 +495,22 @@ struct PagerButtonLayout {
     inactive: bool,
 }
 
+fn navigation_icon(icon: &IconSource, direction: LayoutDirection) -> IconSource {
+    use lucide_svg_static::Icon;
+    if direction == LayoutDirection::Ltr {
+        return icon.clone();
+    }
+    match icon {
+        IconSource::Lucide(Icon::ChevronLeft) => Icon::ChevronRight.into(),
+        IconSource::Lucide(Icon::ChevronRight) => Icon::ChevronLeft.into(),
+        IconSource::Lucide(Icon::ChevronsLeft) => Icon::ChevronsRight.into(),
+        IconSource::Lucide(Icon::ChevronsRight) => Icon::ChevronsLeft.into(),
+        IconSource::Lucide(Icon::ArrowLeft) => Icon::ArrowRight.into(),
+        IconSource::Lucide(Icon::ArrowRight) => Icon::ArrowLeft.into(),
+        _ => icon.clone(),
+    }
+}
+
 fn render_nav_button(
     model: &PagerRenderModel<'_>,
     look: &PagerLook,
@@ -490,23 +520,34 @@ fn render_nav_button(
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let direction = LocaleContext::current(cx).direction;
     let has_label = spec.label.is_some();
     let gap = look.gap;
     let icon_color = look.body_text;
     let icon_size = look.typography.size;
-    let icon = spec.icon;
+    let icon = navigation_icon(&spec.icon, direction);
     let label_position = spec.label_position;
     let label = spec.label.cloned();
     let content: ControlPresenter<ButtonContentContext<()>> = Arc::new(move |_, _| {
         let icon_element = render_icon_source(&icon, icon_color, icon_size);
         let label_element = label.as_ref().map(|label| div().child(label.clone()).into_any_element());
         match (label_position, label_element) {
-            (NavLabelPosition::BeforeIcon, Some(label_element)) => {
-                div().flex().items_center().gap(px(gap)).child(label_element).child(icon_element).into_any_element()
-            }
-            (NavLabelPosition::AfterIcon, Some(label_element)) => {
-                div().flex().items_center().gap(px(gap)).child(icon_element).child(label_element).into_any_element()
-            }
+            (NavLabelPosition::BeforeIcon, Some(label_element)) => div()
+                .flex()
+                .flex_row_logical(direction)
+                .items_center()
+                .gap(px(gap))
+                .child(label_element)
+                .child(icon_element)
+                .into_any_element(),
+            (NavLabelPosition::AfterIcon, Some(label_element)) => div()
+                .flex()
+                .flex_row_logical(direction)
+                .items_center()
+                .gap(px(gap))
+                .child(icon_element)
+                .child(label_element)
+                .into_any_element(),
             (_, None) => icon_element,
         }
     });
@@ -669,6 +710,8 @@ fn render_pager_button(
         slot = slot.cursor_pointer();
     }
 
+    #[cfg(feature = "test-support")]
+    let slot = slot.debug_selector(move || format!("pager-{}-{}", spec.id_namespace, spec.identity));
     slot.into_any_element()
 }
 
@@ -756,5 +799,27 @@ mod tests {
                 PagerPageItem::Page(11),
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod direction_tests {
+    use super::*;
+    use lucide_svg_static::Icon;
+
+    #[test]
+    fn navigation_glyphs_swap_but_custom_artwork_is_preserved() {
+        for (left, right) in [
+            (Icon::ChevronLeft, Icon::ChevronRight),
+            (Icon::ChevronsLeft, Icon::ChevronsRight),
+            (Icon::ArrowLeft, Icon::ArrowRight),
+        ] {
+            assert_eq!(navigation_icon(&left.into(), LayoutDirection::Ltr), left.into());
+            assert_eq!(navigation_icon(&left.into(), LayoutDirection::Rtl), right.into());
+            assert_eq!(navigation_icon(&right.into(), LayoutDirection::Rtl), left.into());
+        }
+        for icon in [Icon::Play.into(), Icon::Clock.into(), Icon::ChevronDown.into(), IconSource::from("custom.svg")] {
+            assert_eq!(navigation_icon(&icon, LayoutDirection::Rtl), icon);
+        }
     }
 }
