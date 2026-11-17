@@ -3,6 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{AnyElement, App, Bounds, Pixels, SharedString, anchored, deferred, div, point, prelude::*, px};
 
 use crate::controls::selector_list::SelectorItemsPanelLook;
+use crate::infra::locale::{LayoutDirection, LocaleContext};
 
 use super::behavior::SelectionItem;
 use super::item_template::SearchSelectorItemTemplate;
@@ -76,7 +77,8 @@ where
 }
 
 impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {
-    fn render(&self, model: SearchSelectorPanelRenderModel<'_>, _cx: &mut App) -> AnyElement {
+    fn render(&self, model: SearchSelectorPanelRenderModel<'_>, cx: &mut App) -> AnyElement {
+        let direction = LocaleContext::current(cx).direction;
         let look = model.popup_look;
 
         let panel_content = div()
@@ -90,11 +92,12 @@ impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {
             .child(model.list_content);
 
         if let Some(bounds) = model.popup_bounds {
+            let (anchor, position) = popup_start(bounds, direction);
             return deferred(
                 anchored()
                     .snap_to_window_with_margin(px(look.window_margin))
-                    .anchor(gpui::Anchor::TopLeft)
-                    .position(point(bounds.left(), bounds.bottom()))
+                    .anchor(anchor)
+                    .position(position)
                     .offset(point(px(0.0), px(look.popup_offset_y)))
                     .child(
                         div()
@@ -126,5 +129,23 @@ impl SearchSelectorPanelTemplate for DefaultSearchSelectorPanelTemplate {
             .block_mouse_except_scroll()
             .child(panel_content)
             .into_any_element()
+    }
+}
+
+fn popup_start(bounds: Bounds<Pixels>, direction: LayoutDirection) -> (gpui::Anchor, gpui::Point<Pixels>) {
+    match direction {
+        LayoutDirection::Ltr => (gpui::Anchor::TopLeft, point(bounds.left(), bounds.bottom())),
+        LayoutDirection::Rtl => (gpui::Anchor::TopRight, point(bounds.right(), bounds.bottom())),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn popup_anchors_at_inline_start_without_changing_vertical_position() {
+        let bounds = Bounds::new(point(px(40.), px(30.)), gpui::size(px(180.), px(32.)));
+        assert_eq!(popup_start(bounds, LayoutDirection::Ltr), (gpui::Anchor::TopLeft, point(px(40.), px(62.))));
+        assert_eq!(popup_start(bounds, LayoutDirection::Rtl), (gpui::Anchor::TopRight, point(px(220.), px(62.))));
     }
 }
