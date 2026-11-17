@@ -175,6 +175,7 @@ mod tests {
             allowed_intervals: Vec::new(),
             track_intervals: None,
             reversed: false,
+            reversed_explicit: false,
             wrapping: false,
             enabled: true,
             corner_radius: None,

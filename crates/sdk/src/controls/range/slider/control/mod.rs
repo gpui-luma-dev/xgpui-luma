@@ -3,6 +3,8 @@ mod motion;
 mod pointer;
 mod render;
 mod values;
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests;
 
 use std::sync::Arc;
 
@@ -85,6 +87,7 @@ impl SliderControl {
 
     pub(crate) fn from_builder(builder: SliderBuilder, cx: &mut Context<Self>) -> Self {
         let mut builder = builder;
+        builder.model.resolve_locale_direction(cx);
         builder.model.motion.freeze();
         let motion = builder.model.motion.profile().clone();
         let enabled = builder.model.enabled;

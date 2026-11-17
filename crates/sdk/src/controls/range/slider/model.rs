@@ -181,6 +181,7 @@ pub struct SliderModel {
     /// When unset, [`Self::allowed_intervals`] is used for both interaction and display.
     pub(crate) track_intervals: Option<Vec<RangeInclusive<f32>>>,
     pub(crate) reversed: bool,
+    pub(crate) reversed_explicit: bool,
     pub(crate) wrapping: bool,
     pub(crate) enabled: bool,
     pub(crate) corner_radius: Option<AbsoluteLength>,
@@ -390,6 +391,7 @@ impl SliderBuilder {
                 allowed_intervals: Vec::new(),
                 track_intervals: None,
                 reversed: false,
+                reversed_explicit: false,
                 wrapping: false,
                 enabled: true,
                 corner_radius: None,
@@ -520,7 +522,9 @@ impl SliderBuilder {
         self
     }
 
+    /// Fix physical reversal, overriding locale-driven horizontal defaults.
     pub fn reversed(mut self, reversed: bool) -> Self {
+        self.model.reversed_explicit = true;
         self.model.reversed = reversed;
         self
     }
@@ -705,5 +709,14 @@ mod tests {
             .with_template_modifier(|element, _| element);
 
         assert!(!Arc::ptr_eq(&builder.model.template, &template));
+    }
+}
+
+impl SliderModel {
+    pub(crate) fn resolve_locale_direction(&mut self, cx: &gpui::App) {
+        if !self.reversed_explicit && self.strategy == SliderInputStrategy::Horizontal {
+            self.reversed = crate::infra::locale::LocaleContext::current(cx).direction
+                == crate::infra::locale::LayoutDirection::Rtl;
+        }
     }
 }
