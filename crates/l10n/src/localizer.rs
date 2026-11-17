@@ -12,6 +12,8 @@ use crate::Locale;
 pub enum Error {
     #[error("invalid locale: {0}")]
     InvalidLocale(String),
+    #[error("invalid {origin} locale: {value}")]
+    InvalidLocaleSource { origin: crate::LocaleSource, value: String },
     #[error("invalid Fluent resource for {locale}: {details}")]
     InvalidResource { locale: String, details: String },
 }

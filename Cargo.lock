@@ -7574,6 +7574,7 @@ dependencies = [
  "fluent-bundle",
  "icu_locale",
  "log",
+ "sys-locale",
  "thiserror 2.0.20",
  "xgpui",
 ]

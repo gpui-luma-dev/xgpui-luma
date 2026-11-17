@@ -17,6 +17,7 @@ fluent-bundle = "0.16"
 icu_locale = "2.1"
 thiserror.workspace = true
 log = "0.4"
+sys-locale = "0.3"
 gpui = { workspace = true, optional = true }
 
 [lints]
