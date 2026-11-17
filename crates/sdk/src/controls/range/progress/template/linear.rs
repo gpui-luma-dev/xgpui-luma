@@ -115,8 +115,8 @@ impl ProgressTemplate for LinearProgressTemplate {
                     .relative()
                     .w_full()
                     .h(px(cross_extent))
-                    .child(track_node)
-                    .child(fill_node);
+                    .child(track_node.debug_selector(|| "progress-track".into()))
+                    .child(fill_node.debug_selector(|| "progress-fill".into()));
 
                 if model.show_thumb && !model.indeterminate {
                     let thumb_node =
@@ -126,7 +126,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                         ProgressDirection::RightToLeft => thumb_node.right(relative(percentage)).mr(px(thumb_offset)),
                         _ => thumb_node,
                     };
-                    root = root.child(thumb_node);
+                    root = root.child(thumb_node.debug_selector(|| "progress-thumb".into()));
                 }
 
                 root
@@ -178,8 +178,8 @@ impl ProgressTemplate for LinearProgressTemplate {
                     .relative()
                     .w(px(cross_extent))
                     .h_full()
-                    .child(track_node)
-                    .child(fill_node);
+                    .child(track_node.debug_selector(|| "progress-track".into()))
+                    .child(fill_node.debug_selector(|| "progress-fill".into()));
 
                 if model.show_thumb && !model.indeterminate {
                     let thumb_node =
@@ -189,7 +189,7 @@ impl ProgressTemplate for LinearProgressTemplate {
                         ProgressDirection::TopToBottom => thumb_node.top(relative(percentage)).mt(px(thumb_offset)),
                         _ => thumb_node,
                     };
-                    root = root.child(thumb_node);
+                    root = root.child(thumb_node.debug_selector(|| "progress-thumb".into()));
                 }
 
                 root

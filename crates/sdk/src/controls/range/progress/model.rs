@@ -23,6 +23,7 @@ pub struct ProgressModel {
     pub(crate) size: ControlSize,
     pub(crate) enabled: bool,
     pub(crate) direction: ProgressDirection,
+    pub(crate) direction_explicit: bool,
     pub(crate) show_thumb: bool,
     pub(crate) indeterminate: bool,
     pub(crate) template: Arc<dyn ProgressTemplate>,
@@ -59,6 +60,7 @@ impl ProgressBuilder {
                 size: ControlSize::Md,
                 enabled: true,
                 direction: ProgressDirection::default(),
+                direction_explicit: false,
                 show_thumb: false,
                 indeterminate: false,
                 template: default_progress_template(),
@@ -88,7 +90,9 @@ impl ProgressBuilder {
         self
     }
 
+    /// Fix the physical fill direction, overriding locale-driven defaults.
     pub fn direction(mut self, direction: ProgressDirection) -> Self {
+        self.model.direction_explicit = true;
         self.model.direction = direction;
         self
     }
@@ -194,5 +198,16 @@ mod tests {
     fn indeterminate_builder_flag() {
         assert!(!ProgressBuilder::new("progress-det").model.indeterminate);
         assert!(ProgressBuilder::new("progress-indet").indeterminate(true).model.indeterminate);
+    }
+}
+
+impl ProgressModel {
+    pub(crate) fn resolve_locale_direction(&mut self, cx: &gpui::App) {
+        if !self.direction_explicit && self.direction.orientation() == ProgressOrientation::Horizontal {
+            self.direction = match crate::infra::locale::LocaleContext::current(cx).direction {
+                crate::infra::locale::LayoutDirection::Ltr => ProgressDirection::LeftToRight,
+                crate::infra::locale::LayoutDirection::Rtl => ProgressDirection::RightToLeft,
+            };
+        }
     }
 }
