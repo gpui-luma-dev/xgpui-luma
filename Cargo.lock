@@ -7572,9 +7572,11 @@ name = "xgpui-luma-l10n"
 version = "1.0.2"
 dependencies = [
  "fluent-bundle",
+ "fluent-syntax",
  "icu_locale",
  "log",
  "sys-locale",
+ "tempfile",
  "thiserror 2.0.20",
  "xgpui",
 ]

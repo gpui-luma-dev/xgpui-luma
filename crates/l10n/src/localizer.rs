@@ -5,7 +5,7 @@ use std::{
 
 use fluent_bundle::{concurrent::FluentBundle, FluentArgs, FluentResource};
 
-use crate::Locale;
+use crate::{Locale, Message};
 
 /// Invalid locale or resource input. Invalid resources never partially enter a bundle.
 #[derive(Debug, thiserror::Error)]
@@ -60,32 +60,42 @@ impl Localizer {
     }
 
     pub fn tr(&self, id: &str) -> String {
-        self.translate(id, None)
+        self.translate(id, None, None)
     }
 
     pub fn tr_args(&self, id: &str, args: &FluentArgs<'_>) -> String {
-        self.translate(id, Some(args))
+        self.translate(id, None, Some(args))
     }
 
-    fn translate(&self, id: &str, args: Option<&FluentArgs<'_>>) -> String {
+    /// Format a catalog-generated message, including a Fluent attribute.
+    pub fn format(&self, message: Message<'_>) -> String {
+        self.translate(message.id, message.attribute, Some(&message.args))
+    }
+
+    fn translate(&self, id: &str, attribute: Option<&str>, args: Option<&FluentArgs<'_>>) -> String {
+        let key = attribute.map_or_else(|| id.to_owned(), |attribute| format!("{id}.{attribute}"));
         for tag in self.locale.fallback_chain() {
             let Some(bundle) = self.bundles.get(&tag) else { continue };
             let Some(message) = bundle.get_message(id) else {
                 continue;
             };
-            let Some(pattern) = message.value() else { continue };
+            let pattern = match attribute {
+                Some(attribute) => message.get_attribute(attribute).map(|attribute| attribute.value()),
+                None => message.value(),
+            };
+            let Some(pattern) = pattern else { continue };
             let mut errors = Vec::new();
             let value = bundle.format_pattern(pattern, args, &mut errors);
             if errors.is_empty() {
                 return value.into_owned();
             }
-            self.report_once(format!("{tag}:{id}"), &format!("{errors:?}"));
+            self.report_once(format!("{tag}:{key}"), &format!("{errors:?}"));
         }
-        self.report_once(format!("{}:{id}", self.locale), "message unavailable in fallback chain");
+        self.report_once(format!("{}:{key}", self.locale), "message unavailable in fallback chain");
         if cfg!(debug_assertions) {
-            format!("⟦{id}⟧")
+            format!("⟦{key}⟧")
         } else {
-            id.to_owned()
+            key
         }
     }
 
