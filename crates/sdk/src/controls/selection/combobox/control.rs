@@ -1,4 +1,8 @@
 #[cfg(all(test, feature = "test-support"))]
+#[path = "locale_tests.rs"]
+mod locale_tests;
+
+#[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
 
@@ -68,12 +72,22 @@ impl ComboBoxControl {
 
     crate::motion_snapshot!(super::ComboBoxMotion, model.motion);
 
+    fn sync_locale_defaults(&mut self, cx: &mut Context<Self>) {
+        let previous = self.model.placeholder.clone();
+        self.model.resolve_locale_defaults(cx);
+        if self.model.placeholder != previous {
+            let placeholder = self.model.placeholder.to_string();
+            self.textfield.update(cx, |field, cx| field.set_placeholder(placeholder, cx));
+        }
+    }
+
     pub(crate) fn from_builder(builder: ComboBoxBuilder, cx: &mut Context<Self>) -> Self {
         let mut builder = builder;
         builder.model.motion.freeze();
         let motion = builder.model.motion.profile().clone();
         let motion_enabled = builder.model.motion.enabled();
-        let model = builder.model;
+        let mut model = builder.model;
+        model.resolve_locale_defaults(cx);
 
         let textfield = text_selection::new(format!("{}-textfield", model.id))
             .placeholder(model.placeholder.clone())
@@ -613,6 +627,7 @@ impl ComboBoxControl {
 
 impl Render for ComboBoxControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_locale_defaults(cx);
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
