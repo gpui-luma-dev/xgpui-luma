@@ -181,7 +181,11 @@ impl GamutPage {
         .map(|(action, label)| {
             (
                 action,
-                radix::Button::new(format!("gamut-{action:?}")).look(look.as_ref()).outline().label(label).spawn(cx),
+                radix::Button::new(format!("gamut-{action:?}"))
+                    .look(look.as_ref())
+                    .outline()
+                    .content(crate::l10n::label(label))
+                    .spawn(cx),
             )
         })
         .to_vec();
@@ -191,7 +195,7 @@ impl GamutPage {
                     action,
                     radix::Switch::new(format!("gamut-{action:?}"))
                         .look(look.as_ref())
-                        .label(label)
+                        .content(crate::l10n::label(label))
                         .checked(checked)
                         .on_value_changed(cx, move |this: &mut Self, on, cx| {
                             match action {

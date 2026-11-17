@@ -43,41 +43,45 @@ impl Number {
         let normalize: Normalize = Rc::new(RefCell::new(None));
         let blur = normalize.clone();
         let submit = normalize.clone();
-        let field = radix::TextField::new(format!("{id}-field"))
-            .look(look)
-            .surface()
-            .look_override(value_field_look(look))
-            .full_width(true)
-            .value(format_value(value, decimals, min, max))
-            .select_all_on_tab_focus(true)
-            .validator(Arc::new(move |text| {
-                text.trim().parse::<f32>().is_ok_and(|value| {
-                    value.is_finite()
-                        && ((min..=max).contains(&value) || value == f32::from_bits(validation.load(Ordering::Relaxed)))
+        let field = crate::l10n::localize_field(
+            radix::TextField::new(format!("{id}-field"))
+                .look(look)
+                .surface()
+                .look_override(value_field_look(look))
+                .full_width(true)
+                .value(format_value(value, decimals, min, max))
+                .select_all_on_tab_focus(true)
+                .validator(Arc::new(move |text| {
+                    text.trim().parse::<f32>().is_ok_and(|value| {
+                        value.is_finite()
+                            && ((min..=max).contains(&value)
+                                || value == f32::from_bits(validation.load(Ordering::Relaxed)))
+                    })
+                }))
+                .on_value_changed(cx, move |owner, text, cx| {
+                    if let Ok(value) = text.trim().parse::<f32>()
+                        && value.is_finite()
+                        && (min..=max).contains(&value)
+                    {
+                        let value = edit(owner, value, cx);
+                        state.store(value.to_bits(), Ordering::Relaxed);
+                        peer.update(cx, |slider, cx| slider.set_value(value, cx));
+                        cx.notify();
+                    }
                 })
-            }))
-            .on_value_changed(cx, move |owner, text, cx| {
-                if let Ok(value) = text.trim().parse::<f32>()
-                    && value.is_finite()
-                    && (min..=max).contains(&value)
-                {
-                    let value = edit(owner, value, cx);
-                    state.store(value.to_bits(), Ordering::Relaxed);
-                    peer.update(cx, |slider, cx| slider.set_value(value, cx));
-                    cx.notify();
-                }
-            })
-            .on_focus_changed(cx, move |_, focused, cx| {
-                if !focused && let Some(normalize) = blur.borrow().as_ref() {
-                    normalize(cx);
-                }
-            })
-            .on_submit(cx, move |_, _, cx| {
-                if let Some(normalize) = submit.borrow().as_ref() {
-                    normalize(cx);
-                }
-            })
-            .spawn(cx);
+                .on_focus_changed(cx, move |_, focused, cx| {
+                    if !focused && let Some(normalize) = blur.borrow().as_ref() {
+                        normalize(cx);
+                    }
+                })
+                .on_submit(cx, move |_, _, cx| {
+                    if let Some(normalize) = submit.borrow().as_ref() {
+                        normalize(cx);
+                    }
+                })
+                .spawn(cx),
+            cx,
+        );
         let weak = field.downgrade();
         let formatted = current.clone();
         *normalize.borrow_mut() = Some(Box::new(move |cx| {

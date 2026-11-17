@@ -100,7 +100,7 @@ impl Cache {
         #[cfg(not(target_os = "macos"))]
         {
             let _ = image;
-            div().child("P3 Freeform requires native Metal").into_any_element()
+            div().child(crate::l10n::ui("P3 Freeform requires native Metal")).into_any_element()
         }
     }
 }

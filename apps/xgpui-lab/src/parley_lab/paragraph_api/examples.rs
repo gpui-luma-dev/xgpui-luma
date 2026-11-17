@@ -45,7 +45,7 @@ pub(super) fn tooltip_buttons<M: 'static>(look: &Look, cx: &mut Context<M>) -> V
             xgpui_luma_look_radix::Button::new(format!("rtl-tooltip-{kind}"))
                 .look(look)
                 .outline()
-                .label(format!("{kind} RTL tooltip"))
+                .content(crate::l10n::label(format!("{kind} RTL tooltip")))
                 .spawn(cx)
                 .tooltip(
                     Tooltip::new(WRAPPED).template(move |model| {

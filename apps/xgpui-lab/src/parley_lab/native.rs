@@ -122,7 +122,7 @@ impl NativeText {
                 radix::Button::new(format!("native-text-{id}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.show(id, cx))
                     .spawn(cx)
             })

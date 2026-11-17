@@ -250,7 +250,7 @@ impl Benchmarks {
                 radix::Button::new(format!("gamut-benchmark-{index}"))
                     .look(&look)
                     .outline()
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .on_click(cx, move |this: &mut Self, cx| this.start(case, cx))
                     .spawn(cx)
             })
@@ -258,7 +258,7 @@ impl Benchmarks {
         let reveal = radix::Button::new("gamut-benchmark-reveal")
             .look(&look)
             .outline()
-            .label("Reveal results")
+            .content(crate::l10n::label("Reveal results"))
             .on_click(cx, |this: &mut Self, cx| {
                 if let Some(path) = &this.output {
                     cx.reveal_path(path);
@@ -359,17 +359,17 @@ impl Render for Benchmarks {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div().id("gamut-benchmarks").size_full().overflow_y_scroll().p_4().flex().flex_col().gap_4()
             .text_color(self.look.chrome().body_text)
-            .child("Gamut benchmarks")
+            .child(crate::l10n::ui("Gamut benchmarks"))
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
-            .child("Measures CPU layout/paint and render + readback. PNG encoding and file writes are excluded. These are not GPU execution timings.")
-            .child("Wide cases use the Overlays scene. Current lab controls captures the last Gamut tab and its settings. PNG previews are clipped sRGB; presentation negotiation is recorded separately.")
-            .child(self.status.clone())
-            .when_some(self.output.as_ref(), |root, output| root.child(format!("Results: {}", output.display())).child(self.reveal.clone()))
+            .child(crate::l10n::ui("Measures CPU layout/paint and render + readback. PNG encoding and file writes are excluded. These are not GPU execution timings."))
+            .child(crate::l10n::ui("Wide cases use the Overlays scene. Current lab controls captures the last Gamut tab and its settings. PNG previews are clipped sRGB; presentation negotiation is recorded separately."))
+            .child(crate::l10n::ui(self.status.clone()))
+            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui(format!("Results: {}", output.display()))).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
                 let mut row = div().flex().flex_col().gap_2().child(result["label"].as_str().unwrap_or("Workload").to_owned());
-                if let Some(error) = result["error"].as_str() { return row.child(format!("Failed: {error}")); }
-                row = row.child(format!("{} · requested {} · effective {}", result["outcome"].as_str().unwrap_or("unknown"), result["requested"].as_str().unwrap_or("unknown"), result["effective"].as_str().unwrap_or("unknown")))
-                    .child(format!("Warm median: draw {:.3} ms · render + readback {:.3} ms · {} frames", result["warm_draw_median_ms"].as_f64().unwrap_or(0.), result["warm_render_readback_median_ms"].as_f64().unwrap_or(0.), FRAMES));
+                if let Some(error) = result["error"].as_str() { return row.child(crate::l10n::ui(format!("Failed: {error}"))); }
+                row = row.child(crate::l10n::ui(format!("{} · requested {} · effective {}", result["outcome"].as_str().unwrap_or("unknown"), result["requested"].as_str().unwrap_or("unknown"), result["effective"].as_str().unwrap_or("unknown"))))
+                    .child(crate::l10n::ui(format!("Warm median: draw {:.3} ms · render + readback {:.3} ms · {} frames", result["warm_draw_median_ms"].as_f64().unwrap_or(0.), result["warm_render_readback_median_ms"].as_f64().unwrap_or(0.), FRAMES)));
                 if let (Some(output), Some(case)) = (&self.output, result["case"].as_str()) {
                     row = row.child(img(output.join(format!("{case}.png"))).max_w(px(760.)));
                 }

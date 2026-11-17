@@ -15,10 +15,11 @@ pub struct ButtonControlExposition {
 }
 impl ButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        let button = Button::new("workshop-sdk-button").content(|_, _| div().child("Button")).spawn(cx);
+        let button =
+            Button::new("workshop-sdk-button").content(|_, _| div().child(crate::l10n::ui("Button"))).spawn(cx);
         let enabled_switch = xgpui_luma::controls::switch::new("workshop-sdk-button-enabled")
             .with_data(true)
-            .content(|_, _| div().child("Enabled"))
+            .content(|_, _| div().child(crate::l10n::ui("Enabled")))
             .spawn(cx);
         let event_stream = cx.new(|cx| {
             ControlEventStream::new(

@@ -6,6 +6,7 @@ use xgpui_luma::controls::accordion::*;
 use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
 use xgpui_luma_look_radix::{Look, ScaleFamily};
 use lucide_svg_static::Icon;
+use xgpui_luma::infra::locale::{LocaleContext, LogicalStyled};
 
 struct NavigationTheme {
     look: Look,
@@ -64,13 +65,14 @@ impl AccordionTemplate for NavigationTemplate {
                     .unwrap_or_else(|| item.id.clone());
                 let expanded = item.expanded;
                 let look = self.look.clone();
-                AccordionTrigger::custom(move |_, _| {
+                AccordionTrigger::custom(move |_, cx| {
                     let color = look.resolve_step(ScaleFamily::Gray, 11).hsla();
                     let icon = if expanded { Icon::FolderOpen } else { Icon::FolderClosed };
                     let label_selector = format!("nav-label-{label}");
                     let selector = format!("nav-folder-{}-{}", label, if expanded { "open" } else { "closed" });
                     div()
                         .flex()
+                        .flex_row_logical(LocaleContext::current(cx).direction)
                         .items_center()
                         .gap(px(6.0))
                         .text_color(color)
@@ -80,7 +82,9 @@ impl AccordionTemplate for NavigationTemplate {
                                 .flex_none()
                                 .child(xgpui_luma::infra::icon::lucide_icon(icon, color, 14.0)),
                         )
-                        .child(div().debug_selector(move || label_selector.clone()).child(label.clone()))
+                        .child(
+                            div().debug_selector(move || label_selector.clone()).child(crate::l10n::ui(label.clone())),
+                        )
                         .into_any_element()
                 })
             })

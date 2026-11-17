@@ -161,7 +161,7 @@ impl SeaPane {
                 radix::Button::new(format!("seascape-action-{i}"))
                     .look(look.as_ref())
                     .outline()
-                    .label(*label)
+                    .content(crate::l10n::label(*label))
                     .on_click(cx, move |this: &mut Self, cx| {
                         match i {
                             0 => {
@@ -190,7 +190,7 @@ impl SeaPane {
             .map(|(i, label)| {
                 radix::Switch::new(format!("seascape-switch-{i}"))
                     .look(&look)
-                    .label(label)
+                    .content(crate::l10n::label(label))
                     .checked(i == 2)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
                         match i {

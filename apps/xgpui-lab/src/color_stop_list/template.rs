@@ -69,7 +69,7 @@ impl ColorStopListTemplate for DefaultColorStopListTemplate {
                         .flex_1()
                         .typography_style(model.look.typography_scale(TextSize::Xs))
                         .text_color(chrome.muted_text)
-                        .child(format!("{} colors", model.count)),
+                        .child(crate::l10n::ui(format!("{} colors", model.count))),
                 )
                 .children(model.actions)
         });

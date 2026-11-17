@@ -84,7 +84,9 @@ impl ChoiceSample {
                             "details",
                             accordion::AccordionTrigger::new("Details"),
                             accordion::AccordionContent::custom(|_, _| {
-                                div().child("This content belongs to the first section.").into_any_element()
+                                div()
+                                    .child(crate::l10n::ui("This content belongs to the first section."))
+                                    .into_any_element()
                             }),
                         )
                         .expanded(true),
@@ -92,7 +94,9 @@ impl ChoiceSample {
                             "more",
                             accordion::AccordionTrigger::new("More information"),
                             accordion::AccordionContent::custom(|_, _| {
-                                div().child("Each section retains its expanded state.").into_any_element()
+                                div()
+                                    .child(crate::l10n::ui("Each section retains its expanded state."))
+                                    .into_any_element()
                             }),
                         ),
                     ])
@@ -100,7 +104,9 @@ impl ChoiceSample {
                     .spawn(cx),
             ),
             ChoiceKind::Checkbox => Control::Checkbox(
-                checkbox::new("workshop-sdk-checkbox").content(|_, _| div().child("Accept updates")).spawn(cx),
+                checkbox::new("workshop-sdk-checkbox")
+                    .content(|_, _| div().child(crate::l10n::ui("Accept updates")))
+                    .spawn(cx),
             ),
             ChoiceKind::Pager => Control::Pager(
                 pager::new("workshop-sdk-pager")
@@ -112,7 +118,7 @@ impl ChoiceSample {
             ),
             ChoiceKind::RadioButton => Control::RadioButton(
                 radio_button::new("workshop-sdk-radio-button")
-                    .content(|_, _| div().child("Select option"))
+                    .content(|_, _| div().child(crate::l10n::ui("Select option")))
                     .spawn(cx),
             ),
             ChoiceKind::RadioGroup => Control::RadioGroup(
@@ -130,11 +136,13 @@ impl ChoiceSample {
                     .spawn(cx),
             ),
             ChoiceKind::Switch => Control::Switch(
-                switch::new("workshop-sdk-switch").content(|_, _| div().child("Notifications")).spawn(cx),
+                switch::new("workshop-sdk-switch")
+                    .content(|_, _| div().child(crate::l10n::ui("Notifications")))
+                    .spawn(cx),
             ),
-            ChoiceKind::Toggle => {
-                Control::Toggle(toggle::new("workshop-sdk-toggle").content(|_, _| div().child("Bold")).spawn(cx))
-            }
+            ChoiceKind::Toggle => Control::Toggle(
+                toggle::new("workshop-sdk-toggle").content(|_, _| div().child(crate::l10n::ui("Bold"))).spawn(cx),
+            ),
         };
         // Observe the real SDK event streams; native controls own their state transitions.
         match &control {

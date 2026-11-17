@@ -1385,7 +1385,7 @@ impl Render for ParleyTextField {
                         .flex()
                         .overflow_hidden()
                         .text_color(look.placeholder)
-                        .child(self.placeholder.clone()),
+                        .child(crate::l10n::ui(self.placeholder.clone())),
                 )
             },
         );
@@ -1415,7 +1415,7 @@ impl Render for ParleyTextField {
 
         div()
             .id(self.id.clone())
-            .map(|root| self.accessible(root))
+            .map(|root| self.accessible(root, cx))
             .relative()
             .w_full()
             .p(px(focus_gap))
@@ -1437,7 +1437,7 @@ impl ParleyTextField {
     /// Accessibility of the focused element: the SDK text field's `TextInput`
     /// role (`MultilineTextInput` for a text area), plus the label, the current
     /// text as the value, and the placeholder.
-    fn accessible(&self, root: Stateful<Div>) -> Stateful<Div> {
+    fn accessible(&self, root: Stateful<Div>, cx: &gpui::App) -> Stateful<Div> {
         let role = if self.is_multiline() {
             Role::MultilineTextInput
         } else {
@@ -1445,8 +1445,10 @@ impl ParleyTextField {
         };
         root.role(role)
             .aria_value(self.value())
-            .when(!self.placeholder.is_empty(), |root| root.aria_placeholder(self.placeholder.clone()))
-            .when_some(self.aria_label.clone(), |root, label| root.aria_label(label))
+            .when(!self.placeholder.is_empty(), |root| {
+                root.aria_placeholder(crate::l10n::resolve(&self.placeholder, cx))
+            })
+            .when_some(self.aria_label.clone(), |root, label| root.aria_label(crate::l10n::resolve(&label, cx)))
     }
 
     /// A one-line field: the SDK template draws the chrome (background, border,
@@ -1468,7 +1470,7 @@ impl ParleyTextField {
         let empty = SharedString::default();
         // The template shows its placeholder for an empty value; hide it under real text.
         let placeholder = if self.value.is_empty() {
-            self.placeholder.clone()
+            crate::l10n::resolve(&self.placeholder, cx)
         } else {
             empty.clone()
         };
@@ -1509,7 +1511,7 @@ impl ParleyTextField {
             drag_move: Box::new(|_, _, _| {}),
         };
         // As the SDK text field does, the template's root is the focused element.
-        let chrome = self.accessible(self.template.render(&model, handlers, window, cx).track_focus(&self.focus));
+        let chrome = self.accessible(self.template.render(&model, handlers, window, cx).track_focus(&self.focus), cx);
         let inset = px(focus_gap + look.border_width.max(0.0) + look.padding_x);
         // The template puts a prefix icon before the text, on the left.
         let icon = if self.options.prefix_icon.is_some() {

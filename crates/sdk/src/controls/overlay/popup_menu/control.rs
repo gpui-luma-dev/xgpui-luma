@@ -211,6 +211,11 @@ impl PopupMenu {
         cx.notify();
     }
 
+    /// Clone the active presentation template for decorators that preserve control state.
+    pub fn template(&self) -> std::sync::Arc<dyn super::PopupMenuTemplate> {
+        self.model.template.clone()
+    }
+
     pub fn set_template(&mut self, template: std::sync::Arc<dyn super::PopupMenuTemplate>, cx: &mut Context<Self>) {
         self.model.template = template;
         cx.notify();

@@ -14,7 +14,10 @@ impl Render for ShaderPage {
             return div().size_full().child(self.grid_pane.clone()).into_any_element();
         }
         if self.requires_sdr() && window.color_status().effective() != gpui::WindowColorMode::Default {
-            return div().p_4().child("Preparing SDR presentation for captured effects…").into_any_element();
+            return div()
+                .p_4()
+                .child(crate::l10n::ui("Preparing SDR presentation for captured effects…"))
+                .into_any_element();
         }
         if self.active_tab == "Brushes" {
             return gallery::gallery(self, _cx).into_any_element();

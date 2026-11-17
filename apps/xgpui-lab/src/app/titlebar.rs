@@ -146,6 +146,7 @@ fn open_configured_shell_window(
                                 .items_center()
                                 .gap(px(BUTTON_GAP))
                                 .pr_2()
+                                .child(div().w(px(180.)).child(app.locale.selector.clone()))
                                 .child(titlebar.button("shell-2026-theme", cx, |cx| {
                                     icon_button("shell-2026-theme", Icon::Sun, &app.look)
                                         .content({
@@ -253,7 +254,21 @@ impl TitlebarState {
         cx: &mut Context<XgpuiLabApp>,
         build: impl FnOnce(&mut Context<XgpuiLabApp>) -> Entity<Button>,
     ) -> Entity<Button> {
-        self.buttons.entry(id).or_insert_with(|| build(cx)).clone()
+        self.buttons
+            .entry(id)
+            .or_insert_with(|| {
+                let label = match id {
+                    "shell-2026-back" => "Back",
+                    "shell-2026-forward" => "Forward",
+                    "shell-2026-toggle-sidebar" => "Toggle sidebar",
+                    "shell-2026-theme" => "Toggle theme",
+                    "shell-2026-layout" => "Layout",
+                    "shell-2026-new" => "New window",
+                    _ => "Window action",
+                };
+                crate::l10n::name_button(build(cx), label, cx)
+            })
+            .clone()
     }
 }
 

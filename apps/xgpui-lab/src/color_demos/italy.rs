@@ -227,7 +227,7 @@ impl Render for ItalyLab {
             photo = if native {
                 match view.wide_gamut() {
                     Ok(view) => photo.child(view),
-                    Err(error) => photo.child(format!("Native P3 unavailable: {error}")),
+                    Err(error) => photo.child(crate::l10n::ui(format!("Native P3 unavailable: {error}"))),
                 }
             } else {
                 photo.child(view)

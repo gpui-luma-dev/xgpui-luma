@@ -181,10 +181,10 @@ impl Lab {
         let labels = ["sRGB", "Display P3", "Out of sRGB areas"];
         let mut body = div().id("photo-gamut-scroll").size_full().overflow_y_scroll().p_6().bg(rgb(0x202833)).text_color(rgb(0xe2eaf3)).flex().flex_col().gap_4()
             .when(self.standalone_navigation, |body| body.child(self.button("← Chromaticity & metadata".into(), 27, cx)))
-            .child(div().text_2xl().child("Italy — WebKit photographic gamut comparison"))
+            .child(div().text_2xl().child(crate::l10n::ui("Italy — WebKit photographic gamut comparison")))
             .child(self.window_mode_controls(window,cx))
-            .child("Compare the orange/red umbrellas in sRGB and Display P3. Select Wide gamut to preserve the P3 version’s wider colors; Standard limits output to sRGB. The third image is WebKit’s supplied highlighted version, with the photograph visible around the marked areas. The highlight colors are diagnostic markings baked into WebKit’s third image, so they remain visible in both modes. These are the same three source images used by their web demo.")
-            .child(format!("Currently showing: {} • effective {:?} • display wide gamut {:?}",labels[self.photo_selection],window.color_status().effective(),window.color_status().display_wide_gamut()));
+            .child(crate::l10n::ui("Compare the orange/red umbrellas in sRGB and Display P3. Select Wide gamut to preserve the P3 version’s wider colors; Standard limits output to sRGB. The third image is WebKit’s supplied highlighted version, with the photograph visible around the marked areas. The highlight colors are diagnostic markings baked into WebKit’s third image, so they remain visible in both modes. These are the same three source images used by their web demo."))
+            .child(crate::l10n::ui(format!("Currently showing: {} • effective {:?} • display wide gamut {:?}",labels[self.photo_selection],window.color_status().effective(),window.color_status().display_wide_gamut())));
         if let Some(photo) = &self.photo {
             body = body
                 .child(photo.status.clone())
@@ -215,9 +215,9 @@ impl Lab {
                 .child(photo.error.clone().unwrap_or_default());
         }
         body.child(div().id("webkit-italy-credit").cursor_pointer().text_color(rgb(0x82caff))
-            .child("Italy images courtesy of WebKit’s Wide Gamut demo · original examples and source ↗")
+            .child(crate::l10n::ui("Italy images courtesy of WebKit’s Wide Gamut demo · original examples and source ↗"))
             .on_click(|_, _, cx| cx.open_url(SOURCE)))
-            .child("Original WebKit JPEGs retained; embedded profiles interpreted offline with macOS ColorSync. The lab renders prepared pixels with explicit linear Display P3 metadata. Visible differences depend on window mode and your display; this is SDR, not a monitor measurement.")
+            .child(crate::l10n::ui("Original WebKit JPEGs retained; embedded profiles interpreted offline with macOS ColorSync. The lab renders prepared pixels with explicit linear Display P3 metadata. Visible differences depend on window mode and your display; this is SDR, not a monitor measurement."))
     }
 }
 #[cfg(test)]

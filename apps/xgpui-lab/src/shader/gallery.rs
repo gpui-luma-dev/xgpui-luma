@@ -112,7 +112,7 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                         .min_h(px(96.))
                         .map(|view| TextRole::Title.apply(look, view))
                         .text_brush(brush)
-                        .child("Spatial color across glyphs"),
+                        .child(crate::l10n::ui("Spatial color across glyphs")),
                 )
         })))
         .child(text(look, TextRole::Name, "Brush-painted text · one continuous field across glyphs"))
@@ -123,7 +123,7 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                 .min_h(px(104.))
                 .map(|view| TextRole::Title.apply(look, view))
                 .text_brush(typography.clone())
-                .child("Electric blue to vivid orange · wrapped typography"),
+                .child(crate::l10n::ui("Electric blue to vivid orange · wrapped typography")),
         )
         .child(
             painted()
@@ -132,7 +132,7 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
                 .min_h(px(72.))
                 .map(|view| TextRole::Title.apply(look, view))
                 .text_brush(typography.clone().with_noise(Noise::simplex(0.08, 3, 0.6), BlendMode::Overlay).unwrap())
-                .child("Textured glyphs · native emoji ✨"),
+                .child(crate::l10n::ui("Textured glyphs · native emoji ✨")),
         )
         .child(text(look, TextRole::Name, "Procedural brushes · modulation of the same linear gradient"))
         .child(div().flex().flex_wrap().gap_4().children(procedural.into_iter().map(|(label, noise)| {

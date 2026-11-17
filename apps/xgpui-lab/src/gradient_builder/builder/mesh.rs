@@ -410,7 +410,7 @@ pub(super) fn render_info_row(
         .items_center()
         .justify_between()
         .gap_3()
-        .child(div().typography_style(label_style).text_color(chrome.muted_text).child(label))
+        .child(div().typography_style(label_style).text_color(chrome.muted_text).child(crate::l10n::ui(label)))
         .child(div().typography_style(value_style).text_color(chrome.body_text).child(value.into()))
 }
 

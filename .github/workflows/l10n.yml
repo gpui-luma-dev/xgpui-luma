@@ -41,3 +41,7 @@ jobs:
           --locale ja=apps/xgpui-lab/locales/ja/lab.ftl
           --locale ar=apps/xgpui-lab/locales/ar/lab.ftl
           --used apps/xgpui-lab/locales/used-ids.txt
+      - name: Check Lab source catalog inventory
+        run: |
+          cargo run -p lab-copy-catalog --locked -- /tmp/lab-copy.json
+          python3 scripts/update_lab_copy.py /tmp/lab-copy.json --check

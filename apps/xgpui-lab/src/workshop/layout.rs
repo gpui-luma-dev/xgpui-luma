@@ -53,7 +53,7 @@ fn pane(label: &'static str) -> gpui::Div {
         .p(px(12.))
         .bg(palette.background)
         .text_color(palette.foreground)
-        .child(label)
+        .child(crate::l10n::ui(label))
 }
 fn dock() -> DockPanel {
     DockPanel::new()

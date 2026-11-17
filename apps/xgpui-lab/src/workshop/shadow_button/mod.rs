@@ -64,7 +64,7 @@ impl ShadowButtonSample {
     pub(super) fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let controls = ShadowButtonControls::default();
         let demo = Button::new("workshop-shadow-demo")
-            .content(|_, _| div().child("Floating Action"))
+            .content(|_, _| div().child(crate::l10n::ui("Floating Action")))
             .template(prototype_shadow_button_template(controls, None))
             .on_click(cx, |this: &mut Self, cx| {
                 this.clicks += 1;
@@ -72,12 +72,12 @@ impl ShadowButtonSample {
             })
             .spawn(cx);
         let reset = Button::new("workshop-shadow-reset")
-            .content(|_, _| div().child("Reset Shadow"))
+            .content(|_, _| div().child(crate::l10n::ui("Reset Shadow")))
             .on_click(cx, |this: &mut Self, cx| this.reset_shadow(cx))
             .spawn(cx);
         let bounds_toggle = toggle::new("workshop-shadow-bounds")
             .with_data(true)
-            .content(|_, _| div().child("Show Bounds"))
+            .content(|_, _| div().child(crate::l10n::ui("Show Bounds")))
             .spawn(cx);
         cx.subscribe(&bounds_toggle, |this: &mut Self, _, event: &ToggleEvent, cx| {
             if let ToggleEvent::Change { selected } = event {
@@ -86,10 +86,13 @@ impl ShadowButtonSample {
             }
         })
         .detach();
-        let color_field = textfield::TextFieldBuilder::new("workshop-shadow-color")
-            .placeholder(default_shadow_color_placeholder(resolved_shadow_color()))
-            .validator(Arc::new(|value| value.trim().is_empty() || parse_shadow_color_input(value).is_some()))
-            .spawn(cx);
+        let color_field = crate::l10n::localize_field(
+            textfield::TextFieldBuilder::new("workshop-shadow-color")
+                .placeholder(default_shadow_color_placeholder(resolved_shadow_color()))
+                .validator(Arc::new(|value| value.trim().is_empty() || parse_shadow_color_input(value).is_some()))
+                .spawn(cx),
+            cx,
+        );
         cx.subscribe(&color_field, |this: &mut Self, _, event: &TextFieldEvent, cx| {
             if let TextFieldEvent::Change { value } | TextFieldEvent::Submit { value } = event {
                 let parsed = parse_shadow_color_input(value);
@@ -191,7 +194,10 @@ impl Render for ShadowButtonSample {
             .gap(px(14.))
             .child(self.reset.clone())
             .child(self.bounds_toggle.clone())
-            .child(format!("Shadow color: {} (RGB, rgb(...), or #hex)", format_rgb_triplet(spec.color)))
+            .child(crate::l10n::ui(format!(
+                "Shadow color: {} (RGB, rgb(...), or #hex)",
+                format_rgb_triplet(spec.color)
+            )))
             .child(self.color_field.clone())
             .child(div().text_color(chrome.muted_text).child(if self.color_valid {
                 "Empty uses the SDK-default neutral shadow color."
@@ -203,7 +209,7 @@ impl Render for ShadowButtonSample {
                     .flex()
                     .flex_col()
                     .gap(px(6.))
-                    .child(format!("{}: {:.0}", field.title(), field.value(self.controls)))
+                    .child(crate::l10n::ui(format!("{}: {:.0}", field.title(), field.value(self.controls))))
                     .child(slider.clone())
             }));
         page("workshop-shadow-page", div().w_full().flex().flex_col().items_start().gap(px(28.))
@@ -211,7 +217,7 @@ impl Render for ShadowButtonSample {
                 div().flex().flex_col().items_start().gap(px(16.))
                     .child(div().debug_selector(|| "workshop-shadow-stage".into())
                             .bg(xgpui_luma::theme::ThemeTokens::default().palette.surface.panel.background).border_1().border_color(if self.show_bounds { chrome.border } else { chrome.border.opacity(0.) }).p(px(32.)).child(self.demo.clone()))
-                    .child(format!("Clicks: {}", self.clicks))
+                    .child(crate::l10n::ui(format!("Clicks: {}", self.clicks)))
                     .child(div().font_family(crate::theme::MONO_FAMILY).typography_style(self.look.typography_scale(TextSize::Xs)).child(format_css_box_shadow(spec)))))
             .child(card(&self.look, "workshop-shadow-tuning", "Shadow Tuning", "Adjust the prototype's shadow geometry and color.", 700., tuning))
             .child(self.events.clone()))

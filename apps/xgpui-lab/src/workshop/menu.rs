@@ -68,18 +68,20 @@ pub(super) struct MenuSample {
 impl MenuSample {
     pub(super) fn new(kind: MenuKind, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let control = match kind {
-            MenuKind::Context => Control::Context(
+            MenuKind::Context => Control::Context(crate::l10n::localize_context(
                 context_menu::ContextMenuBuilder::new("workshop-sdk-context-menu")
                     .label("Right-click here")
                     .items(items())
                     .spawn(cx),
-            ),
-            MenuKind::Popup => Control::Popup(
+                cx,
+            )),
+            MenuKind::Popup => Control::Popup(crate::l10n::localize_popup(
                 popup_menu::PopupMenuBuilder::new("workshop-sdk-popup-menu")
                     .label("Document actions")
                     .items(items())
                     .spawn(cx),
-            ),
+                cx,
+            )),
         };
         match &control {
             Control::Context(v) => {
@@ -153,11 +155,11 @@ impl Render for MenuSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(format!(
+                            .child(crate::l10n::ui(format!(
                                 "Menu: {} · Last selection: {}",
                                 if self.open { "open" } else { "closed" },
                                 self.selected
-                            )),
+                            ))),
                     ),
                 ))
                 .child(self.events.clone()),

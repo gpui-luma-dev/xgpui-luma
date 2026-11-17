@@ -346,9 +346,14 @@ fn render_demo_section(
                         .typography_style(title_style)
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(chrome.title_text)
-                        .child(title),
+                        .child(crate::l10n::ui(title)),
                 )
-                .child(div().typography_style(description_style).text_color(chrome.muted_text).child(description)),
+                .child(
+                    div()
+                        .typography_style(description_style)
+                        .text_color(chrome.muted_text)
+                        .child(crate::l10n::ui(description)),
+                ),
         )
         .child(content)
         .into_any_element()
@@ -386,7 +391,7 @@ fn detail_row(look: &Look, label: &'static str, value: String) -> gpui::AnyEleme
                 .typography_style(label_style)
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(chrome.muted_text)
-                .child(label),
+                .child(crate::l10n::ui(label)),
         )
         .child(div().typography_style(label_style).text_color(chrome.body_text).child(value))
         .into_any_element()

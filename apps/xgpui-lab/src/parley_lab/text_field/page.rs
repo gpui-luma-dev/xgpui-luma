@@ -201,7 +201,7 @@ impl TextFieldPage {
         let toggle = radix::Button::new("parley-text-field-toggle-enabled")
             .look(look.as_ref())
             .outline()
-            .label("Enable / disable")
+            .content(crate::l10n::label("Enable / disable"))
             .on_click(cx, |this: &mut Self, cx| {
                 let field = this.fields[DISABLED].clone();
                 field.update(cx, |field, cx| field.set_enabled(!field.is_enabled(), cx));

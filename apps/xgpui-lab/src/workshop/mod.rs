@@ -159,7 +159,7 @@ impl Workshop {
                                     )
                                     .hsla(),
                             )
-                            .child(label)
+                            .child(crate::l10n::ui(label))
                     })
                     .with_template_modifier(|row, _| row.w_full())
                     .on_click(cx, move |this: &mut Self, cx| this.select(id, cx))
@@ -432,7 +432,7 @@ impl Render for Workshop {
                     .child(if let Some(reason) = unavailable_reason {
                         div().debug_selector(|| "workshop-sdk-unavailable".into()).child(reason)
                     } else {
-                        div().child("Sample coming soon")
+                        div().child(crate::l10n::ui("Sample coming soon"))
                     }),
             );
         }

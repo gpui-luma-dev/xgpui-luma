@@ -40,10 +40,13 @@ pub enum TooltipEvent {
     Hidden,
 }
 
+type TextProvider = Arc<dyn Fn(&gpui::App) -> SharedString + Send + Sync>;
+
 /// Configuration is independent of the target control and its button/slider template.
 #[derive(Clone)]
 pub struct Tooltip {
     pub(super) text: SharedString,
+    pub(super) text_provider: Option<TextProvider>,
     pub(super) shortcut: Option<SharedString>,
     pub(super) delay: Duration,
     pub(super) hide_delay: Duration,
@@ -63,6 +66,7 @@ impl Tooltip {
     pub fn new(text: impl Into<SharedString>) -> Self {
         Self {
             text: text.into(),
+            text_provider: None,
             shortcut: None,
             delay: Duration::from_millis(500),
             hide_delay: Duration::from_millis(180),
@@ -100,6 +104,13 @@ impl Tooltip {
     /// while its trigger remains active. Expiry suppresses reopening until leave.
     pub fn duration(mut self, duration: Option<Duration>) -> Self {
         self.duration = duration;
+        self
+    }
+
+    /// Resolve display and accessible help text from the current app state on render.
+    /// Useful for localization without replacing the retained attachment or dismiss history.
+    pub fn text_provider(mut self, provider: impl Fn(&gpui::App) -> SharedString + Send + Sync + 'static) -> Self {
+        self.text_provider = Some(Arc::new(provider));
         self
     }
 

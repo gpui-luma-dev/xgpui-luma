@@ -133,6 +133,11 @@ impl SidebarControl {
         cx.notify();
     }
 
+    /// Clone the active panel presentation without replacing navigation state.
+    pub fn panel_template(&self) -> Arc<dyn SidebarPanelTemplate> {
+        self.model.panel_template.clone()
+    }
+
     pub fn set_panel_template(&mut self, template: Arc<dyn SidebarPanelTemplate>, cx: &mut Context<Self>) {
         self.model.panel_template = template.clone();
         self.panel.update(cx, |panel, cx| panel.set_template(template, cx));

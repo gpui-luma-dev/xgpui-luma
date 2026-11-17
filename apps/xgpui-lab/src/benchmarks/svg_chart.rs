@@ -8,7 +8,6 @@ use gpui::{
     AnyElement, Hsla, InteractiveElement, IntoElement, ParentElement, SharedString, Styled, div,
     prelude::FluentBuilder, px,
 };
-use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma_look_radix::Look;
 use xgpui_luma_plot::{
     Annotation, AnnotationPresentation, Axis, AxisPresentation, AxisSide, BarGrouping, BarLabel, BarLayer, BarLayout,
@@ -261,7 +260,7 @@ fn raster_facet(look: &Look, index: usize, art: &Artwork, cases: &[Case], budget
             let text = group_text(&name, zoom, groups.get(&slot.to_bits()).map_or(&[][..], Vec::as_slice));
             #[cfg(test)]
             LAST_TOOLTIP.with(|last| *last.borrow_mut() = Some(text.clone()));
-            Tooltip::new(text)
+            crate::l10n::tooltip(text)
         })
         .build();
     wrap_dynamic(format!("svg-raster-facet-{index}"), FACET_HEIGHT, chart)
@@ -322,7 +321,7 @@ fn raster_merged(look: &Look, cases: &[Case], artworks: &[Artwork], budgets: &[u
             let text = merged_text(zoom, groups.get(&slot.to_bits()).cloned().unwrap_or_default());
             #[cfg(test)]
             LAST_TOOLTIP.with(|last| *last.borrow_mut() = Some(text.clone()));
-            Tooltip::new(text)
+            crate::l10n::tooltip(text)
         })
         .build();
     let legend =

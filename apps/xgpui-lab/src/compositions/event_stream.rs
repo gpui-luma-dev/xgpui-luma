@@ -69,7 +69,7 @@ impl Render for ControlEventStream {
                             .typography_style(title_style)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(chrome.title_text)
-                            .child("Eventing"),
+                            .child(crate::l10n::ui("Eventing")),
                     )
                     .child(div().w_full().typography_style(body_style).text_color(chrome.muted_text).child(self.intro)),
             )
@@ -85,7 +85,7 @@ impl Render for ControlEventStream {
                             .typography_style(body_style)
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(chrome.title_text)
-                            .child("Event stream"),
+                            .child(crate::l10n::ui("Event stream")),
                     )
                     .child(self.event_log.clone()),
             )

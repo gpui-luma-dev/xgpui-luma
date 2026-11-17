@@ -124,6 +124,15 @@ impl SelectionSample {
             ),
         };
         match &control {
+            Control::Selector(selector) => {
+                crate::l10n::localize_selector(selector.clone(), cx);
+            }
+            Control::SplitButton(button) => {
+                crate::l10n::localize_popup(button.read(cx).inner_popup(), cx);
+            }
+            _ => {}
+        }
+        match &control {
             Control::Autocomplete(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &autocomplete::AutocompleteEvent, cx| {
                     match event {

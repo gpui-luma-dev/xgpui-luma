@@ -244,6 +244,7 @@ struct NavigationEntry {
 }
 
 pub struct XgpuiLabApp {
+    pub(crate) locale: crate::lab_controls::Choice,
     destination: Rc<Cell<Destination>>,
     workshop: Entity<crate::workshop::Workshop>,
     rail_navigation: Entity<xgpui_luma::controls::sidebar::SidebarControl>,
@@ -269,7 +270,12 @@ pub struct XgpuiLabApp {
 }
 
 fn explorer_heading(label: &'static str, look: &Look) -> impl IntoElement {
-    div().px_2().py_3().text_size(px(11.)).text_color(look.chrome().muted_text).child(label)
+    div()
+        .px_2()
+        .py_3()
+        .text_size(px(11.))
+        .text_color(look.chrome().muted_text)
+        .child(crate::l10n::ui(label))
 }
 
 impl XgpuiLabApp {
@@ -288,6 +294,16 @@ impl XgpuiLabApp {
             look.set_mode(theme);
         }
         let start_workspace = start.workspace;
+        let options = crate::l10n::choices(cx);
+        let locale = crate::lab_controls::Choice::new(
+            "shell-locale",
+            "",
+            &look,
+            options.iter().map(|(_, label)| label.clone()).collect(),
+            crate::l10n::selected(cx, &options),
+            cx,
+            |_: &mut Self, index, cx| crate::l10n::choose_locale(index, cx),
+        );
         let nav_look = look.clone();
         sync_color_control_theme(&look);
         let gradient_builder = cx.new(|cx| GradientBuilder::new(look.clone(), cx));
@@ -329,7 +345,7 @@ impl XgpuiLabApp {
                         let step = if label_selected.load(Ordering::Relaxed) { 12 } else { 11 };
                         div()
                             .text_color(label_look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Gray, step).hsla())
-                            .child(title)
+                            .child(crate::l10n::ui(title))
                     })
                     .with_template_modifier(|row, _| row.w_full())
                     .on_click(cx, move |this: &mut Self, cx| this.activate(workspace, page, cx))
@@ -455,6 +471,7 @@ impl XgpuiLabApp {
             }
         });
         let mut this = Self {
+            locale,
             destination,
             workshop,
             rail_navigation,
@@ -631,6 +648,12 @@ impl Render for XgpuiLabApp {
             self.color_gamut = Some(page);
             self.panels.update(_cx, |_, cx| cx.notify());
         }
+        let options = crate::l10n::choices(_cx);
+        self.locale.sync(
+            options.iter().map(|(_, label)| label.clone()).collect(),
+            crate::l10n::selected(_cx, &options),
+            _cx,
+        );
         // Captured effects currently require SDR. Save the user's negotiated
         // request once and restore it when leaving a capture-dependent view.
         let needs_sdr = self.destination.get() == Destination::Explorer
@@ -914,6 +937,39 @@ mod tests {
             cx.debug_bounds("shell-2026-rail-bounds").unwrap().top(),
             cx.debug_bounds("shell-titlebar-bounds").unwrap().bottom()
         );
+    }
+
+    #[test]
+    fn shell_locale_picker_keeps_workspace_route_controls_and_focus() {
+        let app = TestAppContext::single();
+        let (view, mut visual) = shell_test_window(&app);
+        let cx = &mut visual;
+        let (gradients, selector, route, panels) = cx.update(|window, cx| {
+            let focus = view.read(cx).focus_scope.clone();
+            focus.focus(window, cx);
+            let shell = view.read(cx);
+            (
+                shell.gradient_builder.clone(),
+                shell.locale.selector.clone(),
+                (shell.active, shell.active_page),
+                shell.panels.clone(),
+            )
+        });
+        for tag in ["de", "ja", "ar", "en-XA", "ar-XB", "en"] {
+            let index = cx.update(|_, cx| crate::l10n::choices(cx).iter().position(|(id, _)| id == tag).unwrap());
+            view.update(cx, |shell, cx| shell.locale.select(index, cx));
+            cx.run_until_parked();
+            cx.update(|window, cx| {
+                let shell = view.read(cx);
+                assert_eq!(shell.gradient_builder, gradients);
+                assert_eq!(shell.locale.selector, selector);
+                assert_eq!((shell.active, shell.active_page), route);
+                assert_eq!(shell.panels, panels);
+                assert!(shell.focus_scope.is_focused(window));
+                assert_eq!(cx.global::<xgpui_luma_l10n::Localizer>().locale().language_tag(), tag);
+            });
+            assert_aligned(cx);
+        }
     }
 
     #[test]

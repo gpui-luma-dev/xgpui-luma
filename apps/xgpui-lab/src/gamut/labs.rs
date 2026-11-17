@@ -372,7 +372,7 @@ impl GamutPage {
                         .p_4()
                         .bg(rgba(palette::BETWEEN_OVERLAY))
                         .text_color(rgb(palette::DARK_TEXT))
-                        .child("sRGB overlay between P3 surfaces"),
+                        .child(crate::l10n::ui("sRGB overlay between P3 surfaces")),
                 )
             })
             .child(second)
@@ -386,7 +386,7 @@ impl GamutPage {
                         .p_3()
                         .bg(rgba(palette::TOP_OVERLAY))
                         .text_color(rgb(palette::LIGHT_TEXT))
-                        .child("sRGB overlay above both surfaces"),
+                        .child(crate::l10n::ui("sRGB overlay above both surfaces")),
                 )
             });
         Ok(scene.into_any_element())

@@ -100,7 +100,7 @@ impl GradientBuilder {
             .look(look.as_ref())
             .content_only()
             .spawn(cx)
-            .tooltip(Tooltip::new("Randomize point color"), cx);
+            .tooltip(crate::l10n::tooltip("Randomize point color"), cx);
         cx.new(|_| PointEditorExtras { look, spread_slider, randomize_button, spread: 100.0 })
     }
 

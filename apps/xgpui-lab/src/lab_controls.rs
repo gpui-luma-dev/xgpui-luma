@@ -1,6 +1,7 @@
 //! Labeled, directly selectable lab settings. Numeric IDs stay independent of display labels.
 use std::{cell::RefCell, rc::Rc};
 use gpui::{prelude::*, Context, Entity, SharedString, div};
+use xgpui_luma::controls::control_group::ControlGroupItemLike;
 use xgpui_luma::controls::selector::{Selector, SelectorItem};
 use xgpui_luma_look_radix::{Look, Selector as RadixSelector};
 
@@ -35,20 +36,23 @@ impl Choice {
     ) -> Self {
         let labels = Rc::new(RefCell::new(options));
         let callback_labels = labels.clone();
-        let selector = RadixSelector::new(id)
-            .look(look)
-            .enabled(!labels.borrow().is_empty())
-            .items(items(&labels.borrow()))
-            .selected_id(selected.to_string())
-            .on_value_changed(cx, move |owner, id, _, cx| {
-                let count = callback_labels.borrow().len();
-                if let Ok(index) = id.parse::<usize>()
-                    && index < count
-                {
-                    on_change(owner, index, cx);
-                }
-            })
-            .spawn(cx);
+        let selector = crate::l10n::localize_selector(
+            RadixSelector::new(id)
+                .look(look)
+                .enabled(!labels.borrow().is_empty())
+                .items(items(&labels.borrow()))
+                .selected_id(selected.to_string())
+                .on_value_changed(cx, move |owner, id, _, cx| {
+                    let count = callback_labels.borrow().len();
+                    if let Ok(index) = id.parse::<usize>()
+                        && index < count
+                    {
+                        on_change(owner, index, cx);
+                    }
+                })
+                .spawn(cx),
+            cx,
+        );
         Self { selector, label: label.to_owned().into(), labels }
     }
 
@@ -90,9 +94,10 @@ impl Choice {
 }
 
 impl IntoElement for Choice {
-    type Element = gpui::Div;
+    type Element = gpui::AnyElement;
     fn into_element(self) -> Self::Element {
-        div().flex().items_center().gap_2().child(self.label).child(self.selector)
+        crate::l10n::row(div().flex().items_center().gap_2().child(crate::l10n::ui(self.label)).child(self.selector))
+            .into_any_element()
     }
 }
 
@@ -117,6 +122,11 @@ impl Segmented {
         use xgpui_luma::controls::radio_group::{self, RadioGroupItem};
         let count = options.len();
         let accessible_label = SharedString::from(label.to_owned());
+        let base = xgpui_luma_look_radix::segmented_radio_template(look);
+        let template: xgpui_luma::controls::radio_group::RadioGroupTemplate<RadioGroupItem> =
+            std::sync::Arc::new(move |model, handlers, window, cx| {
+                base(model, handlers, window, cx).aria_label(crate::l10n::resolve(&accessible_label, cx))
+            });
         let group = radio_group::horizontal(id)
             .single_required()
             .selection_follows_active(true)
@@ -127,8 +137,10 @@ impl Segmented {
                     .map(|(index, label)| RadioGroupItem::new(index.to_string()).label(*label)),
             )
             .selected(selected.to_string())
-            .template(xgpui_luma_look_radix::segmented_radio_template(look))
-            .with_template_modifier(move |root, _| root.aria_label(accessible_label.clone()))
+            .template(template)
+            .item_template(std::sync::Arc::new(|item, _, _| {
+                crate::l10n::ui(item.item.label().clone()).into_any_element()
+            }))
             .on_value_changed(cx, move |owner, value, cx| {
                 if let Some(index) = value.as_ref().and_then(|id| id.parse::<usize>().ok())
                     && index < count
@@ -156,8 +168,9 @@ impl Segmented {
 }
 
 impl IntoElement for Segmented {
-    type Element = gpui::Div;
+    type Element = gpui::AnyElement;
     fn into_element(self) -> Self::Element {
-        div().flex().items_center().gap_2().child(self.label).child(self.group)
+        crate::l10n::row(div().flex().items_center().gap_2().child(crate::l10n::ui(self.label)).child(self.group))
+            .into_any_element()
     }
 }

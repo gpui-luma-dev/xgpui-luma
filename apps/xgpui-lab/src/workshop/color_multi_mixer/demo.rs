@@ -110,13 +110,13 @@ impl Render for MultiMixerDemo {
                                 .typography_style(look.typography_scale(TextSize::Base))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(look.chrome().title_text)
-                                .child("Mixer Modes"),
+                                .child(crate::l10n::ui("Mixer Modes")),
                         )
                         .child(
                             div()
                                 .typography_style(look.typography_scale(TextSize::Sm))
                                 .text_color(look.chrome().muted_text)
-                                .child("Representative mixers for the upstream mode set."),
+                                .child(crate::l10n::ui("Representative mixers for the upstream mode set.")),
                         ),
                 )
                 .child(

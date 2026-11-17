@@ -74,13 +74,13 @@ pub(super) fn card(
                         .typography_style(look.typography_scale(TextSize::Sm))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(chrome.title_text)
-                        .child(title),
+                        .child(crate::l10n::ui(title)),
                 )
                 .child(
                     div()
                         .typography_style(look.typography_scale(TextSize::Xs))
                         .text_color(chrome.muted_text)
-                        .child(description),
+                        .child(crate::l10n::ui(description)),
                 ),
         )
         .child(div().w_full().min_w_0().child(content))

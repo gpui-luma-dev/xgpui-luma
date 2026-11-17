@@ -258,11 +258,11 @@ impl GradientBuilder {
                     .when(!freeform, |panel| {
                         panel
                             .child(div().flex().items_center().gap_2().child(self.mesh_cycle_button.clone()).child(
-                                div().text_size(px(11.)).child(format!(
+                                div().text_size(px(11.)).child(crate::l10n::ui(format!(
                                     "{} · {}/5",
                                     super::mesh::MESH_PALETTE_NAMES[self.mesh_palette],
                                     self.mesh_palette + 1
-                                )),
+                                ))),
                             ))
                             .child(self.mesh_palette_animate_button.clone())
                             .child(compact_slider_row(

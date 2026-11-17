@@ -279,6 +279,11 @@ impl TextFieldControl {
         cx.notify();
     }
 
+    /// Clone the active presentation template for state-preserving decorators.
+    pub fn template(&self) -> Arc<dyn super::TextFieldTemplate> {
+        self.model.template.clone()
+    }
+
     pub fn set_template(&mut self, template: Arc<dyn super::TextFieldTemplate>, cx: &mut Context<Self>) {
         self.model.template = template;
         self.layout_cache = None;

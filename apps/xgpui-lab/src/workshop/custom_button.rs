@@ -32,8 +32,9 @@ pub struct CustomButtonControlExposition {
 
 impl CustomButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        let modified_button =
-            Button::new("controls-doc-custom-modified").content(|_, _| div().child("New Button")).spawn(cx);
+        let modified_button = Button::new("controls-doc-custom-modified")
+            .content(|_, _| div().child(crate::l10n::ui("New Button")))
+            .spawn(cx);
         let custom_button = Button::new("controls-doc-custom-content")
             .content(|model, _| {
                 div()
@@ -41,7 +42,7 @@ impl CustomButtonControlExposition {
                     .items_center()
                     .gap(px(8.))
                     .child(xgpui_luma::infra::icon::lucide_icon(LucideIcon::Check, model.look.foreground, 16.))
-                    .child("Custom Layout")
+                    .child(crate::l10n::ui("Custom Layout"))
             })
             .spawn(cx);
         let reactive_button = Button::new("controls-doc-custom-reactive")
@@ -52,7 +53,7 @@ impl CustomButtonControlExposition {
                     .items_center()
                     .gap(px(8.))
                     .child(model.data.count.to_string())
-                    .child("Reactive Counter")
+                    .child(crate::l10n::ui("Reactive Counter"))
             })
             .spawn(cx);
 
@@ -66,7 +67,7 @@ impl CustomButtonControlExposition {
                     .flex()
                     .items_center()
                     .gap_2()
-                    .child("Label")
+                    .child(crate::l10n::ui("Label"))
                     .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
             })
             .spawn(cx);
@@ -77,7 +78,7 @@ impl CustomButtonControlExposition {
                     .items_center()
                     .gap_2()
                     .child(render_lucide_icon(LucideIcon::FaceGrinning, model.look.foreground))
-                    .child("Label")
+                    .child(crate::l10n::ui("Label"))
             })
             .spawn(cx);
 
@@ -116,7 +117,8 @@ impl CustomButtonControlExposition {
                 }
                 this.modified_clicks += 1;
                 let label = format!("New Button {}", this.modified_clicks);
-                this.modified_button.update(cx, |button, cx| button.set_label(label, cx));
+                this.modified_button
+                    .update(cx, |button, cx| button.set_presenter(std::sync::Arc::new(crate::l10n::label(label)), cx));
             }
         });
         custom_button.clone().on_event(cx, {
@@ -144,7 +146,7 @@ impl CustomButtonControlExposition {
                                     model.look.foreground,
                                     16.0,
                                 ))
-                                .child(format!("Customized {clicks}"))
+                                .child(crate::l10n::ui(format!("Customized {clicks}")))
                                 .into_any_element()
                         }),
                         cx,

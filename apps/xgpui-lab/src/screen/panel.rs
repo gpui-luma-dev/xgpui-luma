@@ -103,13 +103,15 @@ impl ParametersPanel {
         let min_width = metrics.param_min_width;
         // At most three columns: each parameter grows from a basis just under a third.
         let column = |param: Param| {
-            let label = div()
-                .flex()
-                .items_baseline()
-                .justify_between()
-                .gap_2()
-                .child(text(look, TextRole::Field, param.label))
-                .children(param.range.map(|range| text(look, TextRole::Label, range)));
+            let label = crate::l10n::row(
+                div()
+                    .flex()
+                    .items_baseline()
+                    .justify_between()
+                    .gap_2()
+                    .child(text(look, TextRole::Field, param.label))
+                    .children(param.range.map(|range| text(look, TextRole::Label, range))),
+            );
             vstack! { label, param.input, param.slider }
                 .flex_1()
                 .flex_basis(relative(0.28))
@@ -373,12 +375,14 @@ pub(crate) fn properties<K: Into<SharedString>, V: Into<SharedString>>(
     let key_width = LabMetrics::STANDARD.property_key_width;
     div().flex().flex_col().gap_1().children(rows.into_iter().map(|(key, value)| {
         // Keys align with a value's first line, also when the value wraps.
-        div()
-            .flex()
-            .items_start()
-            .gap_3()
-            .child(text(look, TextRole::Label, key).w(key_width).flex_shrink_0())
-            .child(text(look, TextRole::Value, value).flex_1().min_w_0())
+        crate::l10n::row(
+            div()
+                .flex()
+                .items_start()
+                .gap_3()
+                .child(text(look, TextRole::Label, key).w(key_width).flex_shrink_0())
+                .child(text(look, TextRole::Value, value).flex_1().min_w_0()),
+        )
     }))
 }
 
@@ -409,18 +413,20 @@ pub(crate) fn form_group(look: &Look, title: impl Into<SharedString>, rows: impl
         .child(text(look, TextRole::Label, title))
         .children(rows.into_iter().map(|row| {
             let color = if row.set { chrome.body_text } else { chrome.muted_text };
-            div()
-                .flex()
-                .items_center()
-                .gap_2()
-                .child(
-                    text(look, TextRole::Field, row.label)
-                        .w(metrics.form_label_width)
-                        .flex_shrink_0()
-                        .whitespace_nowrap()
-                        .text_color(color),
-                )
-                .child(row.control)
+            crate::l10n::row(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .child(
+                        text(look, TextRole::Field, row.label)
+                            .w(metrics.form_label_width)
+                            .flex_shrink_0()
+                            .whitespace_nowrap()
+                            .text_color(color),
+                    )
+                    .child(row.control),
+            )
         }))
 }
 

@@ -1,11 +1,10 @@
-//! First localized Lab page and app startup resources. Shell-wide extraction and
-//! SDK mirroring follow the lab-first text/direction prototype (#220).
+//! App localization: generated resources, shell locale selection, and backend demonstrations.
 use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use gpui::{App, Context, Render, SharedString, Window, div, prelude::*, px};
 use xgpui_luma_l10n::{
     LayoutDirection, Locale, Localizer, Message,
-    formatting::{DateStyle, ListKind},
+    formatting::{DateStyle, ListKind, ByteUnits, DurationStyle},
 };
 use xgpui_luma_look_radix::Look;
 use crate::{
@@ -16,7 +15,8 @@ use crate::{
     },
 };
 
-mod messages {
+#[allow(clippy::too_many_arguments)] // Generated constructors mirror the resource argument schema.
+pub(crate) mod messages {
     include!(concat!(env!("OUT_DIR"), "/lab_messages.rs"));
 }
 
@@ -32,6 +32,21 @@ pub(crate) fn localizer(locale: Locale) -> Result<Localizer> {
     for (tag, source) in RESOURCES {
         localizer.add_resource(&tag.parse()?, source)?;
     }
+    for (tag, lab, sdk) in [
+        (
+            "en-XA",
+            include_str!(concat!(env!("OUT_DIR"), "/en-XA-lab.ftl")),
+            include_str!(concat!(env!("OUT_DIR"), "/en-XA-sdk.ftl")),
+        ),
+        (
+            "ar-XB",
+            include_str!(concat!(env!("OUT_DIR"), "/ar-XB-lab.ftl")),
+            include_str!(concat!(env!("OUT_DIR"), "/ar-XB-sdk.ftl")),
+        ),
+    ] {
+        localizer.add_resource(&tag.parse()?, lab)?;
+        localizer.add_resource(&tag.parse()?, sdk)?;
+    }
     Ok(localizer)
 }
 
@@ -39,13 +54,15 @@ fn tr(cx: &App, message: Message<'_>) -> SharedString {
     xgpui_luma_l10n::L10nExt::tr_message(cx, message)
 }
 
-fn choices(cx: &App) -> Vec<(String, String)> {
+pub(crate) fn choices(cx: &App) -> Vec<(String, String)> {
     let mut choices: Vec<_> = [
         ("en", "English"),
         ("de", "Deutsch"),
         ("ja", "日本語"),
         ("ar", "العربية"),
         ("ar-u-nu-arab", "العربية · ٠١٢"),
+        ("en-XA", "Pseudo · expanded"),
+        ("ar-XB", "Pseudo · RTL"),
     ]
     .into_iter()
     .map(|(tag, label)| (tag.to_owned(), format!("{label} ({tag})")))
@@ -59,7 +76,7 @@ fn choices(cx: &App) -> Vec<(String, String)> {
     choices
 }
 
-fn selected(cx: &App, choices: &[(String, String)]) -> usize {
+pub(crate) fn selected(cx: &App, choices: &[(String, String)]) -> usize {
     let tag = cx.try_global::<Localizer>().map(|localizer| localizer.locale().to_string());
     choices.iter().position(|(id, _)| Some(id) == tag.as_ref()).unwrap_or(0)
 }
@@ -98,6 +115,13 @@ fn samples(cx: &App) -> Result<Samples> {
             (
                 tr(cx, messages::msg_l10n_list()),
                 locale.fmt_list(&["Alpha", "日本語", "العربية"], ListKind::And)?.into(),
+            ),
+            (tr(cx, messages::msg_l10n_time()), locale.fmt_time(14, 35, 9)?.into()),
+            (tr(cx, messages::msg_l10n_percent()), locale.fmt_percent(0.125, 1)?.into()),
+            (tr(cx, messages::msg_l10n_bytes()), locale.fmt_bytes(1_572_864, ByteUnits::Binary, 1)?.into()),
+            (
+                tr(cx, messages::msg_l10n_duration()),
+                locale.fmt_duration(std::time::Duration::from_secs(3661), DurationStyle::Long)?.into(),
             ),
         ],
         rtl,
@@ -162,6 +186,46 @@ impl Render for Page {
             Err(error) => return screen.notice(Some(error.to_string())).into_any_element(),
         };
         let label = |role, content: SharedString, kind| localized::text(&self.look, role, content, kind, cx);
+        let comparison_text = sample.saved.clone();
+        let comparison = div()
+            .flex()
+            .flex_wrap()
+            .gap_4()
+            .when(sample.rtl, |row| row.flex_row_reverse())
+            .child(
+                div()
+                    .debug_selector(|| "l10n-native-column".into())
+                    .flex_1()
+                    .min_w(px(260.))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(label(TextRole::Section, tr(cx, messages::msg_l10n_native_label()), TextKind::Ui))
+                    .child(
+                        TextRole::Detail
+                            .apply(&self.look, div())
+                            .when(sample.rtl, |text| text.text_right())
+                            .child(comparison_text.clone()),
+                    ),
+            )
+            .child(
+                div()
+                    .debug_selector(|| "l10n-parley-column".into())
+                    .flex_1()
+                    .min_w(px(260.))
+                    .flex()
+                    .flex_col()
+                    .gap_2()
+                    .child(label(TextRole::Section, tr(cx, messages::msg_l10n_parley_label()), TextKind::Ui))
+                    .child(label(TextRole::Detail, comparison_text, TextKind::Ui))
+                    .when(!crate::parley_lab::paragraph_api::typeset_active(cx), |column| {
+                        column.child(label(
+                            TextRole::Caption,
+                            tr(cx, messages::msg_l10n_parley_inactive()),
+                            TextKind::Ui,
+                        ))
+                    }),
+            );
         let preview = div()
             .flex()
             .flex_col()
@@ -200,6 +264,7 @@ impl Render for Page {
             .child(self.locale.selector.clone());
         screen
             .hero(Hero::full(preview))
+            .section(comparison)
             .control(control)
             .note(tr(cx, messages::msg_l10n_native_note()))
             .notice(self.startup_error.clone())
@@ -209,3 +274,34 @@ impl Render for Page {
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests;
+
+mod copy;
+pub(crate) use copy::{ui, data, label, resolve, number, row};
+
+pub(crate) fn choose_locale(index: usize, cx: &mut App) {
+    let Some((tag, _)) = choices(cx).get(index).cloned() else {
+        return;
+    };
+    match tag.parse() {
+        Ok(locale) if cx.try_global::<Localizer>().is_some() => {
+            xgpui_luma_l10n::set_locale(locale, cx);
+        }
+        Ok(locale) => {
+            match localizer(locale).and_then(|localizer| xgpui_luma_l10n::install(localizer, cx).map_err(Into::into)) {
+                Ok(()) => {}
+                Err(error) => log::error!("Lab locale: {error}"),
+            }
+        }
+        Err(error) => log::error!("Lab locale: {error}"),
+    }
+}
+
+mod controls;
+pub(crate) use controls::{
+    localize_selector, localize_popup, localize_context, localize_field, localize_tabs, localize_sidebar, name_button,
+};
+
+pub(crate) fn tooltip(source: impl Into<SharedString>) -> xgpui_luma::controls::tooltip::Tooltip {
+    let source = source.into();
+    xgpui_luma::controls::tooltip::Tooltip::new(source.clone()).text_provider(move |cx| resolve(&source, cx))
+}

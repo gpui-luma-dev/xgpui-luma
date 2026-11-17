@@ -26,7 +26,6 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::color::{ColorValue, Gamut};
 use xgpui_luma::controls::button::{Button, ButtonEvent};
-use xgpui_luma::controls::tooltip::Tooltip;
 use xgpui_luma::infra::attachments::{TooltipEntityExt, TooltipHandle};
 use xgpui_luma_look_radix as radix;
 
@@ -152,7 +151,7 @@ impl ColorStop {
                 .size(radix::ButtonSize::One)
                 .radius(radix::Radius::Medium)
                 .spawn(cx)
-                .tooltip(Tooltip::new("Remove color"), cx);
+                .tooltip(crate::l10n::tooltip("Remove color"), cx);
             subscriptions.push(cx.subscribe(&button, |_, _, event: &ButtonEvent, cx| {
                 if matches!(event, ButtonEvent::Click) {
                     cx.emit(ColorStopEvent::RemoveRequested);
@@ -431,7 +430,7 @@ impl Focusable for ColorStop {
 fn swatch_tooltips(look: &Look, cx: &mut App) -> [TooltipHandle; 2] {
     let theme = radix::tooltip_theme(look);
     ["Edit color", "Close color editor"]
-        .map(|text| TooltipHandle::new_with_theme(Tooltip::new(text), theme.clone(), cx))
+        .map(|text| TooltipHandle::new_with_theme(crate::l10n::tooltip(text), theme.clone(), cx))
 }
 
 /// CSS `hsl()` text with alpha, e.g. `hsl(312 48% 44% / 100%)`.

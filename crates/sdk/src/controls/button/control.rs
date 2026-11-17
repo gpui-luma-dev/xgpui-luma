@@ -55,6 +55,11 @@ impl<D: Clone + 'static> Button<D> {
         }
     }
 
+    /// Clone the active presentation template for state-preserving decorators.
+    pub fn template(&self) -> Arc<dyn super::ButtonTemplate<D>> {
+        self.model.template.clone()
+    }
+
     pub fn set_presenter(&mut self, content: ControlPresenter<ButtonContentContext<D>>, cx: &mut Context<Self>) {
         self.model.content = content;
         cx.notify();
