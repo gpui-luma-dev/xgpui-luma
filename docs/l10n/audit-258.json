@@ -1,0 +1,331 @@
+{
+  "note": "Text equality and registry membership do not establish translation quality or UI coverage.",
+  "lab": {
+    "reference_message_count": 2352,
+    "locales": {
+      "de": {
+        "message_count": 2352,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": [
+          "l10n-bytes",
+          "ui-00d6991d28d0",
+          "ui-01a15dbf4147",
+          "ui-02693d5af964",
+          "ui-0270aad4af36",
+          "ui-0286249762f7",
+          "ui-04a322f90ce4",
+          "ui-0572d2306d81",
+          "ui-08e397bcd772",
+          "ui-0c081c4fdcf2",
+          "ui-0d1117a6ba96",
+          "ui-0d304d00df77",
+          "ui-0d921ff0dd09",
+          "ui-0f212f15ee89",
+          "ui-10641f1cec1d",
+          "ui-10a8eec8b07a",
+          "ui-15a4968e5857",
+          "ui-1790ca0fac68",
+          "ui-17a12d2e7d38",
+          "ui-1a077172efb5",
+          "ui-1bcd00997798",
+          "ui-1dd10f244a62",
+          "ui-1ff9a5f8b4bd",
+          "ui-26904b8f88c1",
+          "ui-27e355785367",
+          "ui-27e59e4f97cd",
+          "ui-2cc48b15f4ff",
+          "ui-2f5e48f70148",
+          "ui-3150eda2f76d",
+          "ui-316f24288be5",
+          "ui-325e84939c64",
+          "ui-3351ea70a864",
+          "ui-34d85ba0009a",
+          "ui-34f0c125ec0e",
+          "ui-35d8e07ad609",
+          "ui-35db1c317aa3",
+          "ui-39ec98e8804c",
+          "ui-3b69e2ddc982",
+          "ui-3db65f8c2a7d",
+          "ui-425e671ba04b",
+          "ui-444ef7eaa4a1",
+          "ui-46342ec1eec9",
+          "ui-481dac904ce8",
+          "ui-4d489c25ddb2",
+          "ui-509c517ede79",
+          "ui-516daf16a1c4",
+          "ui-5386742240c2",
+          "ui-539fab89e3e0",
+          "ui-53b141de81bb",
+          "ui-53be5ef980e4",
+          "ui-542a181c0d19",
+          "ui-56cbd416cf2b",
+          "ui-58a7a1fdad91",
+          "ui-5975213b61b0",
+          "ui-5ad6a405f686",
+          "ui-5b8b02eaccfb",
+          "ui-5e16857ef038",
+          "ui-5ff11ab00565",
+          "ui-605e38ad3a28",
+          "ui-61ca1557179d",
+          "ui-65911771ad3e",
+          "ui-6725e7bbcd28",
+          "ui-69493e6f1a69",
+          "ui-6b70a552eb10",
+          "ui-6ba3af010e34",
+          "ui-6d031af10da7",
+          "ui-6e03e3236336",
+          "ui-6e57b8fa4e49",
+          "ui-6f2f866b1f21",
+          "ui-705cf66058db",
+          "ui-71988c4d8e08",
+          "ui-7214b54698b1",
+          "ui-75a4ac188959",
+          "ui-77717fbd3d53",
+          "ui-78e7771b8b46",
+          "ui-7a348e8f2454",
+          "ui-7ada6ca19fd8",
+          "ui-7e92839e7006",
+          "ui-801cfe0fa118",
+          "ui-8116cc43119b",
+          "ui-8253bd547ed3",
+          "ui-82c71aab8473",
+          "ui-856589fae2b1",
+          "ui-85794effd6e8",
+          "ui-858e4ba7a29f",
+          "ui-865e89de78d9",
+          "ui-88d759ea02ce",
+          "ui-8967ecc4eea4",
+          "ui-8968a4ca05b1",
+          "ui-8b3fe15711c4",
+          "ui-8bc1d53cc57c",
+          "ui-8f91baf14d1b",
+          "ui-90ef30b9db81",
+          "ui-920e413c7d41",
+          "ui-9361809a28d1",
+          "ui-93da38c47dc2",
+          "ui-9933e48e643b",
+          "ui-99a3beb3ba4b",
+          "ui-9a2cafb653d3",
+          "ui-9b02e6be3c2b",
+          "ui-9b259fa63aba",
+          "ui-9b5718507fab",
+          "ui-9da4cb8248fd",
+          "ui-9ed64f4f4d4b",
+          "ui-9f2e7732a695",
+          "ui-9f52c4142660",
+          "ui-a03a28e01b1a",
+          "ui-a286d15b21dd",
+          "ui-a3702ae29d65",
+          "ui-a511909161e1",
+          "ui-a532140cf0fd",
+          "ui-a5425e95d82c",
+          "ui-a69bfe8650bf",
+          "ui-a7248eeb45eb",
+          "ui-a89d3ea3f2b6",
+          "ui-aa0e7c416e6a",
+          "ui-aa53ccca9ed0",
+          "ui-aac77df34720",
+          "ui-aac7e89fcd0e",
+          "ui-aacae495f881",
+          "ui-aad7e3d8ae81",
+          "ui-abafae32fd8d",
+          "ui-ac1c276faf2e",
+          "ui-ac6197a52d04",
+          "ui-acb412b6c1bf",
+          "ui-ae8419731fb1",
+          "ui-b1a96dd646bc",
+          "ui-b33684732fa0",
+          "ui-b4a531c4a1d5",
+          "ui-b53f9e936a28",
+          "ui-b67c34cc092b",
+          "ui-b7ab2466f39b",
+          "ui-b8e5b9e89192",
+          "ui-b9053f1ab0f6",
+          "ui-bc025bfb0f12",
+          "ui-bd2c79d0a707",
+          "ui-bff5ac1ef389",
+          "ui-c0f03a83c625",
+          "ui-c5163487fc58",
+          "ui-c95b51823bab",
+          "ui-cd1f95635465",
+          "ui-d08b812290df",
+          "ui-d0f283e54770",
+          "ui-d28bfe335ccd",
+          "ui-d3f2e8f027c8",
+          "ui-d486190015c3",
+          "ui-d5cb968264a5",
+          "ui-da68b40489c7",
+          "ui-dcd1d5223f73",
+          "ui-dd063eb26208",
+          "ui-def7e3ad3b00",
+          "ui-df74e16055c3",
+          "ui-e06335048a03",
+          "ui-e202f072edec",
+          "ui-e22ec89b1400",
+          "ui-e268b27b337b",
+          "ui-e625930827ff",
+          "ui-e926f45c9773",
+          "ui-e9481cf86f8e",
+          "ui-e95bb222e07f",
+          "ui-e9de098c7733",
+          "ui-ecb8c8e34f4b",
+          "ui-ecf783a585cb",
+          "ui-f0b0a6115377",
+          "ui-f13024272c38",
+          "ui-f223faa96f22",
+          "ui-f2cc26f906f1",
+          "ui-f37f39e14ea9",
+          "ui-f40a9b2e827f",
+          "ui-f4dbac8b6e12",
+          "ui-f7b43be93c48",
+          "ui-f841c2080740",
+          "ui-f922e0d1e144",
+          "ui-f9572a9f4ab4",
+          "ui-fa93c7f74b6e",
+          "ui-fb8755e2ffda",
+          "ui-fdac99723c5e",
+          "ui-feed44c0bd4e",
+          "ui-ffe7e15bdda8"
+        ]
+      },
+      "ja": {
+        "message_count": 2352,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": [
+          "ui-11b5ac777ee8",
+          "ui-22e997758b6f",
+          "ui-5329c0dd49fe"
+        ]
+      },
+      "ar": {
+        "message_count": 2352,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": [
+          "ui-04a322f90ce4",
+          "ui-516daf16a1c4",
+          "ui-5386742240c2",
+          "ui-75a4ac188959",
+          "ui-9b02e6be3c2b",
+          "ui-ecf783a585cb",
+          "ui-f0b0a6115377",
+          "ui-f37f39e14ea9"
+        ]
+      }
+    },
+    "registry_count": 2330,
+    "formatted_registry_count": 337,
+    "duplicate_capture_groups": [
+      [
+        {
+          "id": "ui-4f8f0dc74c93",
+          "source": "{error:#}. Switch away and back to wgpu to retry."
+        },
+        {
+          "id": "ui-d64786bed417",
+          "source": "{error}. Switch away and back to wgpu to retry."
+        }
+      ],
+      [
+        {
+          "id": "ui-cc375c5cc352",
+          "source": "Case {} of {total} · {id} · {zoom}× · {} MiB"
+        },
+        {
+          "id": "ui-514ef4db5d3d",
+          "source": "Case {} of {total} · {} · {zoom}× · {} MiB"
+        }
+      ],
+      [
+        {
+          "id": "ui-4c92d68526cd",
+          "source": "Export failed: {error:#}"
+        },
+        {
+          "id": "ui-a6d7ef525134",
+          "source": "Export failed: {error}"
+        }
+      ],
+      [
+        {
+          "id": "ui-22d091aab842",
+          "source": "Fill failed: {error:#}"
+        },
+        {
+          "id": "ui-f2c8e260da98",
+          "source": "Fill failed: {error}"
+        }
+      ],
+      [
+        {
+          "id": "ui-f0612f027b21",
+          "source": "SVG lab unavailable: {e:#}"
+        },
+        {
+          "id": "ui-9d21d7c85a1f",
+          "source": "SVG lab unavailable: {error:#}"
+        }
+      ],
+      [
+        {
+          "id": "ui-f7b9e9e29cf8",
+          "source": "Selected: {selected}"
+        },
+        {
+          "id": "ui-e9dd53ab4e4c",
+          "source": "Selected: {}"
+        }
+      ],
+      [
+        {
+          "id": "ui-9e8934dd8d3f",
+          "source": "Value: {:.0}"
+        },
+        {
+          "id": "ui-00ce1da724f5",
+          "source": "Value: {:?}"
+        }
+      ],
+      [
+        {
+          "id": "ui-8a95b6a78d10",
+          "source": "double {:?} · middle {:?} · right {:?}"
+        },
+        {
+          "id": "ui-3e87e5846ee1",
+          "source": "double {} · middle {} · right {}"
+        }
+      ]
+    ],
+    "used_manifest_count": 2352,
+    "manifest_ids_missing_in_english": [],
+    "english_ids_absent_from_manifest": [],
+    "registry_ids_present_in_manifest": 2330,
+    "fluent_select_message_count": 1
+  },
+  "sdk": {
+    "reference_message_count": 16,
+    "locales": {
+      "de": {
+        "message_count": 16,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": []
+      },
+      "ja": {
+        "message_count": 16,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": []
+      },
+      "ar": {
+        "message_count": 16,
+        "missing_ids": [],
+        "unknown_ids": [],
+        "identical_to_english_ids": []
+      }
+    }
+  }
+}

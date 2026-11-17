@@ -209,7 +209,7 @@ impl Render for CollectionSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(self.control.state(cx)),
+                            .child(crate::l10n::ui(self.control.state(cx))),
                     ),
                 ))
                 .child(self.events.clone()),

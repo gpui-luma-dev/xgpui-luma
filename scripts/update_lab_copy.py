@@ -44,7 +44,14 @@ for tag in ('en', 'de', 'ja', 'ar'):
     source = re.sub(r'^ui-[a-f0-9]+ = .*\n(?:[ \t]+.*\n)*', '', source, flags=re.M)
     source = source.replace('# Extracted Lab copy (stable generated IDs; source references in copy.json).\n', '')
     source = source.rstrip()+'\n\n# Extracted Lab copy (stable generated IDs; source references in copy.json).\n'
-    source += '\n'.join(e['id']+' = '+(e['value'] if tag == 'en' else translations.get(e['id'],e['value'])).replace('\n','\n    ') for e in entries)+'\n'
+    def message(entry):
+        # Existing Fluent continuation indentation is already significant. Do
+        # not add another four spaces every time the inventory is refreshed.
+        value = translations.get(entry['id']) if tag != 'en' else None
+        if value is None:
+            value = entry['value'].replace('\n', '\n    ')
+        return entry['id'] + ' = ' + value
+    source += '\n'.join(message(e) for e in entries)+'\n'
     path.write_text(source)
 p = root/'used-ids.txt'
 s = re.sub(r'^ui-[a-f0-9]+\n', '', p.read_text(), flags=re.M).replace('# Extracted Lab copy\n','')

@@ -266,7 +266,7 @@ impl Render for ChoiceSample {
                             .debug_selector(|| "workshop-choice-state".into())
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(self.state.clone()),
+                            .child(crate::l10n::ui(self.state.clone())),
                     ),
                 ))
                 .child(self.events.clone()),

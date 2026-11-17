@@ -1,4 +1,4 @@
-//! Lab-first text prototype for #220; SDK and look templates are not migrated.
+//! Shared Lab text roles with locale-aware UI shaping and automatic data direction.
 use gpui::{App, Div, ParentElement, SharedString, Styled, TextAlign, TextDirection, div};
 use xgpui_luma::infra::locale::LocaleContext;
 use xgpui_luma_look_radix::Look;

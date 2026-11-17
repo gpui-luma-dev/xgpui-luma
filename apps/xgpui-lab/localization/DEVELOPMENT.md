@@ -42,7 +42,8 @@ The updater preserves translated messages by stable ID and leaves new ones in
 English for review. `build.rs` checks locale ID/argument parity, used IDs, and
 pseudo-locale schemas. The opt-in localization workflow also verifies the source
 inventory. Source-only checks cannot prove semantic correctness or UI coverage;
-that independent review remains issue #258.
+the [independent audit #258](../../../docs/l10n/audit-258.md) records remaining
+coverage and semantic-formatting gaps.
 
 ## Translation provenance and review
 

@@ -71,7 +71,9 @@ and focus/selection preservation. It does not require a localization engine.
 Family-specific tests additionally cover tree expansion, table resizing, overlay
 placement, stepper overrides, autocomplete defaults, and existing migrated controls.
 
-Lab string extraction and real pseudo-locale generation belong to #227. The
-independent catalog, clipping, and end-to-end coverage audit is #258. TextField/
-TextArea editing, dock/splitters/panels/title bar are outside #226; this change only
-adapts existing icon consumers and preview model literals where required.
+Lab string extraction and real pseudo-locale generation are documented in
+`apps/xgpui-lab/localization/DEVELOPMENT.md`. The independent
+[audit #258](l10n/audit-258.md) records verified behavior, bounded fixes, and
+remaining completion gaps, including untranslated listbox accessibility defaults.
+Passing the development suites is not a full localization certification.
+TextField/TextArea editing, dock/splitters/panels/title bar remain outside #226.

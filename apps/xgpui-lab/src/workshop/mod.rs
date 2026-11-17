@@ -427,10 +427,10 @@ impl Render for Workshop {
                     .flex()
                     .flex_col()
                     .gap_3()
-                    .child(div().text_size(px(22.)).child(entry.label))
-                    .child(div().text_color(gpui::rgb(0x666666)).child(group.label))
+                    .child(div().text_size(px(22.)).child(crate::l10n::ui(entry.label)))
+                    .child(div().text_color(gpui::rgb(0x666666)).child(crate::l10n::ui(group.label)))
                     .child(if let Some(reason) = unavailable_reason {
-                        div().debug_selector(|| "workshop-sdk-unavailable".into()).child(reason)
+                        div().debug_selector(|| "workshop-sdk-unavailable".into()).child(crate::l10n::ui(reason))
                     } else {
                         div().child(crate::l10n::ui("Sample coming soon"))
                     }),
