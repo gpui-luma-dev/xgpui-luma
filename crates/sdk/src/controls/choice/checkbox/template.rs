@@ -1,3 +1,4 @@
+use crate::infra::locale::{LocaleContext, LogicalStyled};
 use gpui::{AnyElement, App, Div, Hsla, Stateful, Window, div, hsla, px, prelude::*};
 
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
@@ -59,6 +60,7 @@ fn lerp_checkbox_palette(off: &CheckboxPalette, on: &CheckboxPalette, progress: 
 
 impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
     fn render(&self, model: &ButtonRenderModel<CheckboxData>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+        let direction = LocaleContext::current(cx).direction;
         let progress = model.data.progress.clamp(0.0, 1.0);
         let checked = model.data.checked;
         let focused = model.state.focused && !model.state.disabled;
@@ -73,6 +75,7 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
 
         let indicator_visual = {
             let mut indicator = div()
+                .debug_selector(|| "checkbox-indicator".into())
                 .flex()
                 .items_center()
                 .justify_center()
@@ -123,6 +126,7 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
             .id(model.id.clone())
             .relative()
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .text_color(settled_palette.label_color)
             .text_size(px(settled_palette.label_typography.size))
@@ -152,7 +156,10 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
                 shadow: None,
             };
             let content_model = button_content_context(model, content_look);
-            let label = div().mt(px(scale.label_baseline_shift)).child((model.content)(&content_model, cx));
+            let label = div()
+                .debug_selector(|| "checkbox-label".into())
+                .mt(px(scale.label_baseline_shift))
+                .child((model.content)(&content_model, cx));
             control = control
                 .gap(px(scale.gap))
                 .min_h(px(scale.height))
