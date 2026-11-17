@@ -7249,9 +7249,9 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xgpui"
-version = "4.1.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a51cb01ebe27d218611a93aaebbd274f2d1e87e6c9e2be213e0de98df6ddb228"
+checksum = "4739e07ac7ab0bb0893bd9e4fa285833e724fdef50fc08f25a89b61c0934103c"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -7684,9 +7684,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-parley"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2313b31072bbbe9959ad75f91fbceb55897b8fcd66de55c22ca2b536201df750"
+checksum = "c76d93a70353b34efb1f4b394e923b962e69ef737cbc6de9942a93e82b92d1ba"
 dependencies = [
  "anyhow",
  "parley",
