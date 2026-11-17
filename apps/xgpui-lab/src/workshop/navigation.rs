@@ -172,7 +172,13 @@ impl Render for NavigationSample {
                         div()
                             .typography_style(self.look.typography_scale(TextSize::Xs))
                             .text_color(self.look.chrome().muted_text)
-                            .child(crate::l10n::ui(format!("Selected: {}", self.selected))),
+                            .child(crate::l10n::ui({
+                                let __l10n_0 = &(self.selected);
+                                crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_e9dd53ab4e4c(args[0].clone()),
+                                    vec![__l10n_0.to_string()],
+                                )
+                            })),
                     ),
                 ))
                 .child(self.events.clone()),

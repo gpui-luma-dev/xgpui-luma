@@ -75,11 +75,16 @@ pub type SelectionSummaryFormatter = Arc<dyn Fn(usize, usize, &App) -> SharedStr
 pub type AutocompleteStatusFormatter =
     Arc<dyn Fn(&str, Option<&str>, usize, &str, &str, &App) -> (SharedString, SharedString) + Send + Sync>;
 
+/// Accessible list selection policy; the key is a stable semantic identifier.
+pub type SelectionModeFormatter = Arc<dyn Fn(&str, &App) -> SharedString + Send + Sync>;
+
 /// SDK-owned text. App-provided labels/placeholders take precedence when
 /// controls adopt this contract. Dynamic text stays in a formatter so plural
 /// selection and word order can be provided by the localization engine.
 #[derive(Clone)]
 pub struct SdkStrings {
+    pub disabled: SharedString,
+    pub selection_mode: SelectionModeFormatter,
     /// Locale-sensitive autocomplete status and diagnostic framing.
     pub autocomplete_status: AutocompleteStatusFormatter,
     pub cancel: SharedString,
@@ -100,6 +105,17 @@ pub struct SdkStrings {
 impl Default for SdkStrings {
     fn default() -> Self {
         Self {
+            disabled: "Disabled".into(),
+            selection_mode: Arc::new(|mode, _| {
+                let label = match mode {
+                    "none" => "None",
+                    "single-required" => "SingleRequired",
+                    "single-optional" => "SingleAllowNone",
+                    "multiple" => "Multiple",
+                    _ => "Extended",
+                };
+                format!("Selection mode: {label}").into()
+            }),
             autocomplete_status: Arc::new(|status, selected, matches, last, keyboard, _| {
                 (
                     format!("status: {status}").into(),

@@ -9,7 +9,8 @@ fn menu_items(items: &[MenuItem], cx: &App) -> Vec<MenuItem> {
         .map(|item| item.clone().label(resolve(item.label_text(), cx)).submenu(menu_items(item.submenu_items(), cx)))
         .collect()
 }
-struct SelectorCopy(Arc<dyn SelectorTemplate<SelectorItem>>);
+type SelectorLabel = Arc<dyn Fn(&SelectorItem, &App) -> gpui::SharedString + Send + Sync>;
+struct SelectorCopy(Arc<dyn SelectorTemplate<SelectorItem>>, SelectorLabel);
 impl SelectorTemplate<SelectorItem> for SelectorCopy {
     fn resolve_look(
         &self,
@@ -27,12 +28,13 @@ impl SelectorTemplate<SelectorItem> for SelectorCopy {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        let label = resolve(model.label, cx);
-        let items = model
-            .items
-            .iter()
-            .map(|item| item.clone().label(resolve(item.label_text(), cx)))
-            .collect::<Vec<_>>();
+        let items = model.items.iter().map(|item| item.clone().label((self.1)(item, cx))).collect::<Vec<_>>();
+        let label = model
+            .selected_index
+            .filter(|index| model.items.get(*index).is_some_and(|item| item.label_text() == model.label))
+            .and_then(|index| items.get(index))
+            .map(|item| item.label_text().clone())
+            .unwrap_or_else(|| resolve(model.label, cx));
         self.0.render(
             &SelectorRenderModel {
                 id: model.id,
@@ -66,8 +68,11 @@ impl SelectorTemplate<SelectorItem> for SelectorCopy {
     }
 }
 pub(crate) fn localize_selector(view: Entity<Selector>, cx: &mut App) -> Entity<Selector> {
+    localize_selector_with(view, Arc::new(|item, cx| resolve(item.label_text(), cx)), cx)
+}
+pub(crate) fn localize_selector_with(view: Entity<Selector>, labels: SelectorLabel, cx: &mut App) -> Entity<Selector> {
     let base = view.read(cx).template();
-    view.update(cx, |view, cx| view.set_template(Arc::new(SelectorCopy(base)), cx));
+    view.update(cx, |view, cx| view.set_template(Arc::new(SelectorCopy(base, labels)), cx));
     view
 }
 struct PopupCopy(Arc<dyn PopupMenuTemplate>);

@@ -1,5 +1,5 @@
 //! Shared Lab text roles with locale-aware UI shaping and automatic data direction.
-use gpui::{App, Div, ParentElement, SharedString, Styled, TextAlign, TextDirection, div};
+use gpui::{App, Div, ParentElement, Styled, TextAlign, TextDirection, div};
 use xgpui_luma::infra::locale::LocaleContext;
 use xgpui_luma_look_radix::Look;
 use xgpui_parley::{TextLanguage, typeset::typeset};
@@ -34,13 +34,19 @@ pub(crate) fn options(cx: &App, kind: TextKind) -> TextOptions {
 /// container. Parley maps left/right text alignment to logical start/end.
 /// Without TypesetEngine, the same leaf falls back to GPUI StyledText; UI start
 /// alignment follows the locale, but native bidi/language support is limited.
-pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<SharedString>, kind: TextKind, cx: &App) -> Div {
+pub(crate) fn text(
+    look: &Look,
+    role: TextRole,
+    content: impl Into<crate::l10n::UiCopy>,
+    kind: TextKind,
+    cx: &App,
+) -> Div {
     let settings = options(cx, kind);
     let content = content.into();
     let content = if kind == TextKind::Ui {
-        crate::l10n::resolve(&content, cx)
+        content.resolve(cx)
     } else {
-        crate::l10n::number(&content, cx)
+        content.data(cx)
     };
     let mut leaf = typeset(content).direction(settings.direction);
     if let Some(language) = settings.language {

@@ -48,12 +48,36 @@ impl Control {
             Self::TextField(v) => v.clone().into(),
         }
     }
-    fn state(&self, cx: &gpui::App) -> String {
+    fn state(&self, cx: &gpui::App) -> crate::l10n::UiCopy {
         match self {
-            Self::Scrollbar(v) => format!("Offset: {:.0}", v.read(cx).value()),
-            Self::Slider(v) => format!("Value: {:.0}", v.read(cx).value()),
-            Self::TextArea(v) => format!("Value: {:?}", v.read(cx).value()),
-            Self::TextField(v) => format!("Value: {:?}", v.read(cx).value()),
+            Self::Scrollbar(v) => {
+                let __l10n_0 = &(v.read(cx).value());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_77717fbd3d53(args[0].clone()),
+                    vec![format!("{:.0}", __l10n_0)],
+                )
+            }
+            Self::Slider(v) => {
+                let __l10n_0 = &(v.read(cx).value());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_9e8934dd8d3f(args[0].clone()),
+                    vec![format!("{:.0}", __l10n_0)],
+                )
+            }
+            Self::TextArea(v) => {
+                let __l10n_0 = &(v.read(cx).value());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_00ce1da724f5(args[0].clone()),
+                    vec![format!("{:?}", __l10n_0)],
+                )
+            }
+            Self::TextField(v) => {
+                let __l10n_0 = &(v.read(cx).value());
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_00ce1da724f5(args[0].clone()),
+                    vec![format!("{:?}", __l10n_0)],
+                )
+            }
         }
     }
 }
@@ -224,7 +248,7 @@ mod tests {
                 cx.simulate_input("Second");
             }
             cx.run_until_parked();
-            cx.update(|_, cx| assert_eq!(sample.read(cx).control.state(cx), expected));
+            cx.update(|_, cx| assert_eq!(sample.read(cx).control.state(cx).test_display(cx), expected));
             workshop.update(cx, |v, cx| {
                 v.select("button", cx);
                 v.sync_theme(xgpui_luma::theme::ThemeMode::Light, cx);
@@ -236,7 +260,7 @@ mod tests {
                     unreachable!()
                 };
                 assert_eq!(retained, &sample);
-                assert_eq!(sample.read(cx).control.state(cx), expected);
+                assert_eq!(sample.read(cx).control.state(cx).test_display(cx), expected);
             });
         }
     }

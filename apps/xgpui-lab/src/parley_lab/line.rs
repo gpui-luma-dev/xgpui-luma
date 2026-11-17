@@ -186,10 +186,16 @@ impl Render for LinePage {
         let mut details = PanelShell::new("Line geometry").child(properties(
             &self.look,
             [
-                ("Visual rows", rows.len().to_string()),
-                ("Height", format!("{:.1} px", f32::from(height))),
-                ("Resolved runs", run_count.to_string()),
-                ("Hit", format!("{:?}", self.hit)),
+                ("Visual rows", crate::l10n::UiCopy::from(rows.len().to_string())),
+                ("Height", {
+                    let __l10n_0 = &(f32::from(height));
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_f52aff3d3f27(args[0].clone()),
+                        vec![format!("{:.1}", __l10n_0)],
+                    )
+                }),
+                ("Resolved runs", crate::l10n::UiCopy::from(run_count.to_string())),
+                ("Hit", crate::l10n::UiCopy::from(format!("{:?}", self.hit))),
             ],
         ));
         for (y, bytes) in rows {
@@ -201,7 +207,7 @@ impl Render for LinePage {
         }
         let mut root = LabScreen::new("parley-line", self.look.clone()).crumb("xgpui-parley", "Line Layout").title("Line Layout")
             .lede("Explore how text wraps and how the pointer finds a character boundary.")
-            .hero(Hero::full(surface)).caption(format!("{} · {:.0} px wrap · {:.0} px text", paragraph::TEXTS[self.sample].0, self.width, self.size))
+            .hero(Hero::full(surface)).caption({ let __l10n_0 = &(paragraph::TEXTS[self.sample].0); let __l10n_1 = &(self.width); let __l10n_2 = &(self.size); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_d0f283e54770(args[0].clone(), args[1].clone(), args[2].clone()), vec![__l10n_0.to_string(), format!("{:.0}", __l10n_1), format!("{:.0}", __l10n_2)]) })
             .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
             .panels(ParametersPanel::new("Layout parameters").params(self.numbers.iter().map(|n|n.param())), details)
             .note("Move the pointer over the text to inspect cluster boundaries. Width changes reflow the retained source; editing and IME are available in Paragraphs.")

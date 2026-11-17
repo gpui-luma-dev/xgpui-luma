@@ -108,6 +108,11 @@ impl Localizer {
 
     /// Format a catalog-generated message, including a Fluent attribute.
     pub fn format(&self, message: Message<'_>) -> String {
+        self.format_ref(&message)
+    }
+
+    /// Format a retained typed message without consuming its arguments.
+    pub fn format_ref(&self, message: &Message<'_>) -> String {
         self.translate(message.id, message.attribute, Some(&message.args))
     }
 

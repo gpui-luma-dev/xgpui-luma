@@ -215,7 +215,12 @@ impl ParagraphApiPage {
         div()
             .id("paragraph-api-surface")
             .role(gpui::Role::MultilineTextInput)
-            .aria_label(crate::l10n::resolve(&format!("{} paragraph preview", SAMPLES[self.sample].0), cx))
+            .aria_label(
+                crate::l10n::UiCopy::from(crate::l10n::messages::msg_lab_paragraph_preview(
+                    SAMPLES[self.sample].0.to_owned(),
+                ))
+                .resolve(cx),
+            )
             .aria_value(SAMPLES[self.sample].1)
             .aria_description(crate::l10n::resolve(
                 "Read-only paragraph. Left and Right move the caret visually; hold Shift to extend the selection.",
@@ -293,20 +298,23 @@ impl Render for ParagraphApiPage {
         let backend = if self.typeset_active { "Parley" } else { "Native" };
         let mut page = LabScreen::new("parley-paragraph-api", self.look.clone())
             .crumb("xgpui-parley", "Paragraph API")
-            .title(format!("Paragraph API · {backend}"))
+            .title(crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_356acfdc90c6(args[0].clone()), vec![backend.to_string()]))
             .lede(if self.typeset_active {
                 "Running on the Parley text backend. Full bidirectional paragraph layout is enabled."
             } else {
                 "Running on the native text backend. Paragraphs use the native fallback; mixed text has no full paragraph bidi reordering."
             })
-            .caption(format!("{backend} backend · paragraph_support(): {support:?} · {support_note}"))
+            .caption(crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_00dc05fdf5fd(args[0].clone(), args[1].clone(), args[2].clone()), vec![backend.to_string(), format!("{:?}", support), support_note.to_string()]))
             .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.direction_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.width_choice.clone().into_element()));
 
         let readout = match self.lay_out(window) {
             Err(error) => {
-                page = page.notice(Some(format!("Paragraph layout failed: {error:#}")));
+                page = page.notice(Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_32761938e4d7(args[0].clone()),
+                    vec![format!("{:#}", error)],
+                )));
                 vec![("Layout".to_owned(), "failed".to_owned())]
             }
             Ok(laid) => {
@@ -462,7 +470,10 @@ mod tests {
                 assert_eq!(preview.a11y_role(), Some(gpui::Role::MultilineTextInput));
                 let mut node = gpui::accesskit::Node::new(gpui::Role::MultilineTextInput);
                 preview.write_a11y_info(&mut node);
-                assert_eq!(node.label(), Some(format!("{} paragraph preview", SAMPLES[sample].0).as_str()));
+                assert_eq!(
+                    node.label().map(|label| label.replace(['\u{2068}', '\u{2069}'], "")),
+                    Some(format!("{} paragraph preview", SAMPLES[sample].0))
+                );
                 assert_eq!(node.value(), Some(SAMPLES[sample].1));
                 assert!(node.description().unwrap().contains("Shift"));
                 let support = window.text_system().paragraph_support();

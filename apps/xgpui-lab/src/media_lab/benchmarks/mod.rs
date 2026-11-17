@@ -225,7 +225,7 @@ pub(super) struct Benchmarks {
     reveal: Entity<Button>,
     cancel: Arc<AtomicBool>,
     busy: bool,
-    status: String,
+    status: crate::l10n::UiCopy,
     output: Option<PathBuf>,
     results: Vec<Value>,
     quit_on_finish: bool,
@@ -283,7 +283,10 @@ impl Benchmarks {
         ) {
             Ok(output) => output,
             Err(error) => {
-                self.status = format!("Cannot create result folder: {error}");
+                self.status = crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_8d9c0d9fd331(args[0].clone()),
+                    vec![format!("{}", error)],
+                );
                 cx.notify();
                 return;
             }
@@ -302,7 +305,7 @@ impl Benchmarks {
         cx.spawn(async move |this, cx| {
             for case in cases {
                 if cancel.load(Ordering::Relaxed) { break; }
-                if this.update(cx, |this, cx| { this.status = format!("Running {}…", case.label()); cx.notify(); }).is_err() { return; }
+                if this.update(cx, |this, cx| { this.status = { let __l10n_0 = &(case.label()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_b3c4cadb4274(args[0].clone()), vec![__l10n_0.to_string()]) }; cx.notify(); }).is_err() { return; }
                 let case_output = output.join(case.id());
                 let result = if case == Case::Lifecycle {
                     lifecycle::run(&case_output, &cancel, cx).await
@@ -338,12 +341,12 @@ impl Benchmarks {
                 }
                 let failures = this.results.iter().filter(|result| result["outcome"] == "failed").count();
                 let unavailable = this.results.iter().filter(|result| result["outcome"] == "unavailable").count();
-                this.status = format!("{}: {} workloads, {failures} failures, {unavailable} unavailable.", if cancel.load(Ordering::Relaxed) { "Cancelled" } else { "Finished" }, this.results.len());
+                this.status = { let __l10n_0 = &(if cancel.load(Ordering::Relaxed) { "Cancelled" } else { "Finished" }); let __l10n_1 = &(this.results.len()); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_4a91dd67689c(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone()), vec![(__l10n_0.to_string()).into(), crate::l10n::UiCopy::counted("workloads", format!("{}", __l10n_1)), crate::l10n::UiCopy::counted("failures", format!("{}", failures)), crate::l10n::UiCopy::numeric(format!("{}", unavailable))]) };
                 for button in &this.buttons { button.update(cx, |button, cx| button.set_enabled(true, cx)); }
                 cx.notify();
                 if this.quit_on_finish {
 
-                    if failures > 0 || cancel.load(Ordering::Relaxed) { eprintln!("{}", this.status); std::process::exit(1); }
+                    if failures > 0 || cancel.load(Ordering::Relaxed) { eprintln!("{}", this.status.resolve(cx)); std::process::exit(1); }
                     cx.quit();
                 }
             });
@@ -358,17 +361,17 @@ impl Render for Benchmarks {
             .child(crate::l10n::ui("Media benchmarks"))
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()).when(self.busy, |row| row.child(self.cancel_button.clone())))
             .child(crate::l10n::ui("Upload: six 2048×2048 sources, three upload waves, 120 cached frames. Cadence: 180 baseline intervals, a 12-source burst, 180 cached intervals. Scroll: 24 cards, four 3072×2048 sources, 5s baseline / 30s loading / 5s cached."))
-            .child(crate::l10n::ui(format!("Build: {}. Timings describe CPU work and render-start cadence, not GPU execution or proof of displayed frames. Keep measurement windows foreground; debug builds are for functional checks.", profile())))
+            .child(crate::l10n::ui({ let __l10n_0 = &(profile()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_42359595b3f9(args[0].clone()), vec![__l10n_0.to_string()]) }))
             .child(crate::l10n::ui(self.status.clone()))
-            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui(format!("Results: {}", output.display()))).child(self.reveal.clone()))
+            .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui({ let __l10n_0 = &(output.display()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()), vec![format!("{}", __l10n_0)]) })).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
                 let mut row = div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}", result["label"].as_str().unwrap_or("Workload"), result["outcome"].as_str().unwrap_or("unknown"))));
                 if let Some(error) = result["error"].as_str() { row = row.child(error.to_owned()); }
                 if let Some(errors) = result["errors"].as_array() { for error in errors { row = row.child(error.to_string()); } }
                 if let Some(description) = result["description"].as_str() { row = row.child(description.to_owned()); }
-                if let Some(value) = result["upload_render_scene_cpu"]["p95_ms"].as_f64() { row = row.child(crate::l10n::ui(format!("Upload render CPU p95: {value:.3} ms"))); }
-                if result.get("baseline").is_some() { row = row.child(crate::l10n::ui(format!("Cadence p95: baseline {} ms · loading/burst {} ms · cached {} ms", result["baseline"]["p95_ms"], result.get("loading").unwrap_or(&result["burst"])["p95_ms"], result["cached"]["p95_ms"]))); }
-                if let Some(pass) = result["provisional_60hz_pass"].as_bool() { row = row.child(crate::l10n::ui(format!("Provisional release 60 Hz criteria met: {pass}"))); }
+                if let Some(value) = result["upload_render_scene_cpu"]["p95_ms"].as_f64() { row = row.child(crate::l10n::ui(crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_edada715b939(args[0].clone()), vec![format!("{:.3}", value)]))); }
+                if result.get("baseline").is_some() { row = row.child(crate::l10n::ui({ let __l10n_0 = &(result["baseline"]["p95_ms"]); let __l10n_1 = &(result.get("loading").unwrap_or(&result["burst"])["p95_ms"]); let __l10n_2 = &(result["cached"]["p95_ms"]); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_57a5087ec534(args[0].clone(), args[1].clone(), args[2].clone()), vec![format!("{}", __l10n_0), format!("{}", __l10n_1), format!("{}", __l10n_2)]) })); }
+                if let Some(pass) = result["provisional_60hz_pass"].as_bool() { row = row.child(crate::l10n::ui(crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_a92e61a2d18d(args[0].clone()), vec![format!("{}", pass)]))); }
                 if let Some(previews) = result["previews"].as_array() { for path in previews.iter().filter_map(Value::as_str) { row = row.child(img(PathBuf::from(path)).max_w(px(760.))); } }
                 row
             }))
@@ -468,7 +471,7 @@ mod tests {
         cx.update(|_, cx| {
             assert!(!page.read(cx).busy);
             assert_eq!(cx.windows().len(), before);
-            assert!(page.read(cx).status.starts_with("Cancelled"));
+            assert!(page.read(cx).status.test_display(cx).starts_with("Cancelled"));
         });
         assert!(output.path().join("report.json").is_file());
     }

@@ -72,23 +72,43 @@ impl MediaPage {
             .subtitle("Baseline · single level")
             .when(downscaled, |pane| pane.badge(self.badge("Aliasing", false)));
         let media = ComparePane::new("Mipmapped media texture", self.compare_view(true, width, height, true, cx))
-            .subtitle(format!("Trilinear · {levels} levels"))
+            .subtitle(crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_8c7fc3e61bdf(args[0].clone()),
+                vec![crate::l10n::UiCopy::counted("levels", format!("{}", levels))],
+            ))
             .when(downscaled, |pane| pane.badge(self.badge("Filtered", true)));
         Hero::compare(atlas, media)
     }
 
-    fn state_line(&self, scale: Option<f32>) -> String {
+    fn state_line(&self, scale: Option<f32>) -> crate::l10n::UiCopy {
         let Some(sample) = self.fixtures.as_ref().map(|fixtures| &fixtures.samples[self.selected]) else {
             return "Generating test images…".into();
         };
         let active = self.filter_steps().iter().filter(|step| step.2).count();
-        format!(
-            "{} · {}×{} shown at {:.2}× · {active} of 7 filter steps active on the media texture",
-            sample.name,
-            sample.width,
-            sample.height,
-            scale.unwrap_or(0.)
-        )
+        {
+            let __l10n_0 = &(sample.name);
+            let __l10n_1 = &(sample.width);
+            let __l10n_2 = &(sample.height);
+            let __l10n_3 = &(scale.unwrap_or(0.));
+            crate::l10n::UiCopy::formatted(
+                |args| {
+                    crate::l10n::messages::msg_ui_8f79e03f03f3(
+                        args[0].clone(),
+                        args[1].clone(),
+                        args[2].clone(),
+                        args[3].clone(),
+                        args[4].clone(),
+                    )
+                },
+                vec![
+                    __l10n_0.to_string(),
+                    format!("{}", __l10n_1),
+                    format!("{}", __l10n_2),
+                    format!("{:.2}", __l10n_3),
+                    format!("{}", active),
+                ],
+            )
+        }
     }
 
     fn status_cards(&self, scale: Option<f32>) -> [LabCard; 4] {
@@ -133,7 +153,13 @@ impl MediaPage {
                 ]),
             LabCard::new("Tint")
                 .icon(Icon::Droplet)
-                .subtitle(format!("{} preset", TINTS[self.tint_index]))
+                .subtitle({
+                    let __l10n_0 = &(TINTS[self.tint_index]);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_9cb36ec396a5(args[0].clone()),
+                        vec![__l10n_0.to_string()],
+                    )
+                })
                 .badge(self.badge(if tint > 0. { "On" } else { "Off" }, tint > 0.))
                 .values([("mix", format!("{tint:.2}")), ("scope", "media only".into())]),
         ]

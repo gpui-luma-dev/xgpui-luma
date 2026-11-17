@@ -14,9 +14,18 @@ impl Page {
             .child(text(&self.look, TextRole::Label, "Colour"))
             .child(div().flex().flex_wrap().gap_2().children(self.swatches.iter().cloned()));
         for (label, slider) in [
-            format!("Radius {:.0} px", self.settings.radius),
-            format!("Opacity {:.0}%", self.settings.opacity * 100.),
-            format!("Exposure {:+.1}", self.settings.exposure),
+            crate::l10n::UiCopy::compose(
+                |a| crate::l10n::messages::msg_lab_radius(a[0].clone()),
+                vec![crate::l10n::UiCopy::numeric(format!("{:.0}", self.settings.radius))],
+            ),
+            crate::l10n::UiCopy::compose(
+                |a| crate::l10n::messages::msg_lab_opacity(a[0].clone()),
+                vec![crate::l10n::UiCopy::percentage(format!("{:.0}", self.settings.opacity * 100.), 0)],
+            ),
+            crate::l10n::UiCopy::compose(
+                |a| crate::l10n::messages::msg_lab_exposure(a[0].clone()),
+                vec![crate::l10n::UiCopy::numeric(format!("{:+.1}", self.settings.exposure))],
+            ),
         ]
         .into_iter()
         .zip(&self.sliders)

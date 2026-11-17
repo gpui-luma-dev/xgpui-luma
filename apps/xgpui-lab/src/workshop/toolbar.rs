@@ -86,7 +86,13 @@ impl Render for ToolbarExpositionLeftPane {
                             div()
                                 .typography_style(self.look.typography_scale(TextSize::Xs))
                                 .text_color(chrome.muted_text)
-                                .child(crate::l10n::ui(format!("Mode: {}", self.focus_mode))),
+                                .child(crate::l10n::ui({
+                                    let __l10n_0 = &(self.focus_mode);
+                                    crate::l10n::UiCopy::formatted(
+                                        |args| crate::l10n::messages::msg_ui_e7117ea9cdce(args[0].clone()),
+                                        vec![__l10n_0.to_string()],
+                                    )
+                                })),
                         ),
                 ))
                 .child(self.event_stream.clone()),

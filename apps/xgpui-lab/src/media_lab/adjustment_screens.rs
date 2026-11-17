@@ -45,7 +45,19 @@ impl MediaPage {
                     ComparePane::new("Adjusted", self.compare_view(true, width, height, true, cx))
                         .subtitle("Linear sRGB"),
                 ),
-                format!("{name} · shown at {scale:.2}× · exposure {:+.2} EV", self.exposure()),
+                {
+                    let __l10n_0 = &(self.exposure());
+                    crate::l10n::UiCopy::formatted(
+                        |args| {
+                            crate::l10n::messages::msg_ui_8cf2b1db10ac(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                            )
+                        },
+                        vec![name.to_string(), format!("{:.2}", scale), format!("{:+.2}", __l10n_0)],
+                    )
+                },
                 None,
             )
         };
@@ -56,7 +68,12 @@ impl MediaPage {
             .hero(hero)
             .caption(caption)
             .notice(notice)
-            .notice(self.error.as_ref().map(|error| format!("Media error: {error}")));
+            .notice(self.error.as_ref().map(|error| {
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_26dd566faf33(args[0].clone()),
+                    vec![error.to_string()],
+                )
+            }));
         if !float {
             screen = self.screen_choices(screen, &[Action::Sample]);
             screen = self.screen_actions(screen, &[Action::Open, Action::Reload]);
@@ -89,7 +106,7 @@ impl MediaPage {
         width: f32,
         height: f32,
         cx: &mut Context<Self>,
-    ) -> (Hero, String, Option<String>) {
+    ) -> (Hero, crate::l10n::UiCopy, Option<crate::l10n::UiCopy>) {
         let wide = self.wide && window.color_status().effective() == gpui::WindowColorMode::WideGamutSdr;
         let mut notice = None;
         let mut native = false;
@@ -118,7 +135,10 @@ impl MediaPage {
                                     view
                                 }
                                 Err(error) => {
-                                    notice = Some(format!("Wide output unavailable; showing sRGB: {error}"));
+                                    notice = Some(crate::l10n::UiCopy::formatted(
+                                        |args| crate::l10n::messages::msg_ui_6bfd4d71273e(args[0].clone()),
+                                        vec![format!("{}", error)],
+                                    ));
                                     make_view()
                                 }
                             }
@@ -127,7 +147,12 @@ impl MediaPage {
                         };
                         viewport = viewport.child(view);
                     }
-                    Err(error) => notice = Some(format!("Adjustments unavailable: {error}")),
+                    Err(error) => {
+                        notice = Some(crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_e5cded7a79a5(args[0].clone()),
+                            vec![format!("{}", error)],
+                        ))
+                    }
                 }
             }
             viewport
@@ -137,21 +162,38 @@ impl MediaPage {
         } else {
             "sRGB preview"
         };
-        let source = self.float_image.as_ref().map_or_else(
+        let source: crate::l10n::UiCopy = self.float_image.as_ref().map_or_else(
             || {
                 self.float_job
                     .as_ref()
-                    .map_or("Waiting for float source".into(), |job| format!("{:?}", job.status()))
+                    .map_or("Waiting for float source".into(), |job| format!("{:?}", job.status()).into())
             },
             |image| {
-                format!(
-                    "{}×{} · {:?} · {} mip levels · {} uploads · {:?}",
-                    image.width(),
-                    image.height(),
-                    image.format(),
-                    image.mip_count(),
-                    image.upload_count(),
-                    image.upload_status()
+                let __l10n_0 = &(image.width());
+                let __l10n_1 = &(image.height());
+                let __l10n_2 = &(image.format());
+                let __l10n_3 = &(image.mip_count());
+                let __l10n_4 = &(image.upload_count());
+                let __l10n_5 = &(image.upload_status());
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_b9053f1ab0f6(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                            args[4].clone(),
+                            args[5].clone(),
+                        )
+                    },
+                    vec![
+                        format!("{}", __l10n_0),
+                        format!("{}", __l10n_1),
+                        format!("{:?}", __l10n_2),
+                        format!("{}", __l10n_3),
+                        format!("{}", __l10n_4),
+                        format!("{:?}", __l10n_5),
+                    ],
                 )
             },
         );
@@ -160,7 +202,10 @@ impl MediaPage {
                 ComparePane::new("sRGB preview", left),
                 ComparePane::new(if native { "Native Display P3" } else { "sRGB preview" }, right),
             ),
-            format!("{source} · {output} · exposure {:+.2} EV", self.exposure()),
+            crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_b927e9ba53e4(args[0].clone(), args[1].clone(), args[2].clone()),
+                vec![source, output.into(), crate::l10n::UiCopy::numeric(format!("{:+.2}", self.exposure()))],
+            ),
             notice,
         )
     }
@@ -175,8 +220,28 @@ impl MediaPage {
 
     pub(super) fn adjustment_chain(&self) -> ChainPanel {
         ChainPanel::new("Linear-light chain")
-            .step("Exposure", format!("{:+.2} EV", self.exposure()), self.exposure().abs() > f64::EPSILON)
-            .step("Contrast", format!("× {:.2} around 0.18", self.values[10]), self.values[10] != 1.)
+            .step(
+                "Exposure",
+                {
+                    let __l10n_0 = &(self.exposure());
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_f6b430a8ae6e(args[0].clone()),
+                        vec![format!("{:+.2}", __l10n_0)],
+                    )
+                },
+                self.exposure().abs() > f64::EPSILON,
+            )
+            .step(
+                "Contrast",
+                {
+                    let __l10n_0 = &(self.values[10]);
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_06a66f17b325(args[0].clone()),
+                        vec![format!("{:.2}", __l10n_0)],
+                    )
+                },
+                self.values[10] != 1.,
+            )
             .step("Saturation", format!("× {:.2}", self.values[11]), self.values[11] != 1.)
             .step("Vignette", format!("{:.2}", self.values[12]), self.values[12] > 0.)
             .note("Animation adds a changing exposure offset. Identity values leave the image unchanged.")

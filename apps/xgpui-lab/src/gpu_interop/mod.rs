@@ -691,14 +691,31 @@ impl Render for Page {
             .as_ref()
             .map(|s| {
                 let stats = s.stats();
-                format!(
-                    "{:?} · {} presents · {} composites · {} ring-full · {} waiting",
-                    s.desc().format,
-                    stats.presents,
-                    stats.composited,
-                    stats.would_block,
-                    stats.waiting
-                )
+                {
+                    let __l10n_0 = &(s.desc().format);
+                    let __l10n_1 = &(stats.presents);
+                    let __l10n_2 = &(stats.composited);
+                    let __l10n_3 = &(stats.would_block);
+                    let __l10n_4 = &(stats.waiting);
+                    crate::l10n::UiCopy::formatted(
+                        |args| {
+                            crate::l10n::messages::msg_ui_d5c51f93dd61(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                                args[3].clone(),
+                                args[4].clone(),
+                            )
+                        },
+                        vec![
+                            format!("{:?}", __l10n_0),
+                            format!("{}", __l10n_1),
+                            format!("{}", __l10n_2),
+                            format!("{}", __l10n_3),
+                            format!("{}", __l10n_4),
+                        ],
+                    )
+                }
             })
             .unwrap_or_else(|| {
                 if self.runtime.is_some() || self.boids.starting.is_some() {
@@ -789,7 +806,16 @@ impl Render for Page {
             )
         } else {
             Hero::compare(
-                ComparePane::new(format!("Native presentation ({:?})", window.color_status().effective()), stage),
+                ComparePane::new(
+                    {
+                        let __l10n_0 = &(window.color_status().effective());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_6466f734b772(args[0].clone()),
+                            vec![format!("{:?}", __l10n_0)],
+                        )
+                    },
+                    stage,
+                ),
                 ComparePane::new(
                     "sRGB preview",
                     div().debug_selector(|| "interop-srgb-preview".into()).child(self.placement(
@@ -804,11 +830,19 @@ impl Render for Page {
         let mut caption = if self.kind == Kind::Boids {
             detail
         } else {
-            format!(
-                "{detail} · Requested {:?} / Effective {:?} / Display wide gamut {:?}",
-                window.color_status().requested(),
-                window.color_status().effective(),
-                window.color_status().display_wide_gamut()
+            crate::l10n::UiCopy::Separated(
+                " · ",
+                vec![
+                    detail,
+                    crate::l10n::UiCopy::compose(
+                        |a| crate::l10n::messages::msg_lab_color_status(a[1].clone(), a[0].clone(), a[2].clone()),
+                        vec![
+                            crate::l10n::UiCopy::raw(format!("{:?}", window.color_status().requested())),
+                            crate::l10n::UiCopy::raw(format!("{:?}", window.color_status().effective())),
+                            crate::l10n::UiCopy::raw(format!("{:?}", window.color_status().display_wide_gamut())),
+                        ],
+                    ),
+                ],
             )
         };
         if self.kind == Kind::Workbench {
@@ -821,7 +855,7 @@ impl Render for Page {
             } else {
                 "sRGB preview (window fallback)"
             };
-            caption.push_str(&format!(" · Showing {showing}"));
+            caption = crate::l10n::UiCopy::Separated(" · ", vec![caption, showing.into()]);
         }
         let mut screen = LabScreen::new("gpu-interop", self.look.clone()).full_width(self.kind == Kind::Boids).crumb("xgpui-gpu-interop", title).title(title)
             .lede(match self.kind { Kind::Waves => "An independent wgpu device renders waves into a shared surface, composited beside ordinary sRGB controls.", Kind::Boids => "Explore compute capacity, compositor pacing, and UI responsiveness. Increase the flock, compare Own thread with UI thread, then change speed or resize the window under load.", Kind::Workbench => "Paint and inspect a persistent linear-P3 GPU image. Enable Compare wide | sRGB to compare the same region inside the interactive canvas." })
@@ -866,14 +900,26 @@ impl Render for Page {
                     .child(
                         div()
                             .w(px(160.))
-                            .child(crate::l10n::ui(format!("Speed {:.2}×", self.settings.speed)))
+                            .child(crate::l10n::ui({
+                                let __l10n_0 = &(self.settings.speed);
+                                crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_369fe568e689(args[0].clone()),
+                                    vec![format!("{:.2}", __l10n_0)],
+                                )
+                            }))
                             .child(self.sliders[0].clone()),
                     )
                     .child(self.buttons[6].clone()),
             );
         }
         if self.kind == Kind::Workbench {
-            screen = screen.note(format!("Drag to paint · Right-click to inspect 4×4 · Scroll to pan · Ctrl/Cmd-scroll to zoom around the pointer · Zoom {:.2}×.", self.zoom));
+            screen = screen.note({
+                let __l10n_0 = &(self.zoom);
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_14b939c77deb(args[0].clone()),
+                    vec![format!("{:.2}", __l10n_0)],
+                )
+            });
         }
         screen
     }

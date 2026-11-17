@@ -313,15 +313,34 @@ impl Render for TiledDemo {
             .title("Tiled Canvas")
             .lede("Explore a large image that sharpens as you zoom in and move around.")
             .hero(Hero::full(canvas))
-            .caption(format!(
-                "12,000×6,000 · generation {} · {:?} · zoom {:.1}% · mip {} · ready {}/{}",
-                self.generation,
-                self.canvas.status(),
-                scale * 100.,
-                stats.mip,
-                stats.ready_pages,
-                stats.visible_pages
-            ))
+            .caption({
+                let __l10n_0 = &(self.generation);
+                let __l10n_1 = &(self.canvas.status());
+                let __l10n_2 = &(scale * 100.);
+                let __l10n_3 = &(stats.mip);
+                let __l10n_4 = &(stats.ready_pages);
+                let __l10n_5 = &(stats.visible_pages);
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_736deaa74b10(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                            args[4].clone(),
+                            args[5].clone(),
+                        )
+                    },
+                    vec![
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                        crate::l10n::UiCopy::numeric(format!("{:?}", __l10n_1)),
+                        crate::l10n::UiCopy::percentage(format!("{:.1}", __l10n_2), 1),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_4)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_5)),
+                    ],
+                )
+            })
             .control(labeled_control(&self.look, self.blur_choice.clone().into_element()))
             .control(self.pressure_switch.clone())
             .control(self.quality_switch.clone());
@@ -329,16 +348,16 @@ impl Render for TiledDemo {
             .notice(self.error.clone())
             .cards([
                 LabCard::new("Pages").values([("cached", stats.cached_pages.to_string()), ("jobs", stats.active_jobs.to_string())]),
-                LabCard::new("Payload reservations").values([("CPU", format!("{:.2} MiB", mib(stats.cpu_bytes))), ("GPU", format!("{:.2} MiB", mib(stats.gpu_bytes)))]),
+                LabCard::new("Payload reservations").values([("CPU", { let __l10n_0 = &(mib(stats.cpu_bytes)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()), vec![format!("{:.2}", __l10n_0)]) }), ("GPU", { let __l10n_0 = &(mib(stats.gpu_bytes)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()), vec![format!("{:.2}", __l10n_0)]) })]),
                 LabCard::new("Readiness").values([("preview", self.preview_ms.map_or("pending".into(), |v| format!("{v:.1} ms"))), ("view submitted", self.complete_ms.map_or("refining".into(), |v| format!("{v:.1} ms")))]),
             ])
             .panels(
                 PanelShell::new("Transfers and cache").child(properties(&self.look, [
-                    ("Cache budget", format!("{} MiB", if self.pressure {2} else {16})),
-                    ("Pending transfer", format!("{:.2} MiB", mib(stats.pending_staging_bytes))),
-                    ("Upload staging", format!("{:.2} MiB", mib(stats.upload_staging_bytes))),
-                    ("Staging pool", format!("{:.2} MiB", mib(stats.staging_pool_bytes))),
-                    ("Peak CPU / GPU", format!("{:.2} / {:.2} MiB", mib(self.peak_cpu), mib(self.peak_gpu))),
+                    ("Cache budget", { let __l10n_0 = &(if self.pressure {2} else {16}); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_34bf1fee6f9c(args[0].clone()), vec![format!("{}", __l10n_0)]) }),
+                    ("Pending transfer", { let __l10n_0 = &(mib(stats.pending_staging_bytes)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()), vec![format!("{:.2}", __l10n_0)]) }),
+                    ("Upload staging", { let __l10n_0 = &(mib(stats.upload_staging_bytes)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()), vec![format!("{:.2}", __l10n_0)]) }),
+                    ("Staging pool", { let __l10n_0 = &(mib(stats.staging_pool_bytes)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()), vec![format!("{:.2}", __l10n_0)]) }),
+                    ("Peak CPU / GPU", { let __l10n_0 = &(mib(self.peak_cpu)); let __l10n_1 = &(mib(self.peak_gpu)); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_539fab89e3e0(args[0].clone(), args[1].clone()), vec![format!("{:.2}", __l10n_0), format!("{:.2}", __l10n_1)]) }),
                 ])),
                 PanelShell::new("Provider activity").child(properties(&self.look, [
                     ("Requests", stats.requests.to_string()), ("Evictions", stats.evictions.to_string()),

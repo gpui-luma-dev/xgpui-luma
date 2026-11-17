@@ -4,10 +4,11 @@
 //! Slot order is fixed by [`LabScreen`], not by call order:
 //! crumb, title, lede, hero, caption, controls, notices, cards, panels, sections, note, credits.
 //! Empty slots render nothing. Each slot carries the debug selector `"{id}-{slot}"`.
+use crate::l10n::UiCopy;
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, Div, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString, Stateful,
+    AnyElement, App, Div, InteractiveElement, IntoElement, ParentElement, RenderOnce, Stateful,
     StatefulInteractiveElement, Styled, Window, div,
 };
 use gpui::prelude::FluentBuilder;
@@ -41,7 +42,7 @@ enum Section {
 }
 
 enum Notice {
-    Text(SharedString),
+    Text(UiCopy),
     Element(AnyElement),
 }
 
@@ -49,11 +50,11 @@ enum Notice {
 pub(crate) struct LabScreen {
     id: &'static str,
     look: Arc<Look>,
-    crumb: Option<SharedString>,
-    title: Option<SharedString>,
-    lede: Option<SharedString>,
+    crumb: Option<UiCopy>,
+    title: Option<UiCopy>,
+    lede: Option<UiCopy>,
     hero: Option<Hero>,
-    caption: Option<SharedString>,
+    caption: Option<UiCopy>,
     controls: Vec<AnyElement>,
     actions: Vec<AnyElement>,
     notices: Vec<Notice>,
@@ -63,8 +64,8 @@ pub(crate) struct LabScreen {
     equal_panel_widths: bool,
     full_width: bool,
     sections: Vec<Section>,
-    note: Option<SharedString>,
-    credits: Option<SharedString>,
+    note: Option<UiCopy>,
+    credits: Option<UiCopy>,
     localized: bool,
 }
 
@@ -111,12 +112,12 @@ impl LabScreen {
         self
     }
 
-    pub fn title(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn title(mut self, text: impl Into<UiCopy>) -> Self {
         self.title = Some(text.into());
         self
     }
 
-    pub fn lede(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn lede(mut self, text: impl Into<UiCopy>) -> Self {
         self.lede = Some(text.into());
         self
     }
@@ -127,7 +128,7 @@ impl LabScreen {
     }
 
     /// Live state line under the hero.
-    pub fn caption(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn caption(mut self, text: impl Into<UiCopy>) -> Self {
         self.caption = Some(text.into());
         self
     }
@@ -145,7 +146,7 @@ impl LabScreen {
     }
 
     /// Errors and fallbacks, under the controls. `None` adds nothing; may be called repeatedly.
-    pub fn notice(mut self, text: Option<impl Into<SharedString>>) -> Self {
+    pub fn notice(mut self, text: Option<impl Into<UiCopy>>) -> Self {
         self.notices.extend(text.map(|text| Notice::Text(text.into())));
         self
     }
@@ -192,13 +193,13 @@ impl LabScreen {
     }
 
     /// Closing explanation at the end of the content.
-    pub fn note(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn note(mut self, text: impl Into<UiCopy>) -> Self {
         self.note = Some(text.into());
         self
     }
 
     /// Sources, licenses and provenance, last on the page.
-    pub fn credits(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn credits(mut self, text: impl Into<UiCopy>) -> Self {
         self.credits = Some(text.into());
         self
     }
@@ -210,7 +211,7 @@ impl RenderOnce for LabScreen {
         let metrics = LabMetrics::STANDARD;
         let look = &*self.look;
         let id = self.id;
-        let label = |role, content: SharedString| {
+        let label = |role, content: UiCopy| {
             if self.localized {
                 localized::text(look, role, content, localized::TextKind::Ui, _cx)
             } else {
@@ -218,7 +219,7 @@ impl RenderOnce for LabScreen {
             }
         };
         let slot = move |element: Div, name: &'static str| element.debug_selector(move || format!("{id}-{name}"));
-        let caption = |text: SharedString, name| slot(label(TextRole::Caption, text), name);
+        let caption = |text: UiCopy, name| slot(label(TextRole::Caption, text), name);
 
         let crumb = self.crumb.map(|crumb| slot(label(TextRole::Crumb, crumb), "crumb"));
         let title = self.title.map(|title| slot(label(TextRole::Title, title), "title"));

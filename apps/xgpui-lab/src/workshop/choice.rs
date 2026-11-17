@@ -71,7 +71,7 @@ pub(super) struct ChoiceSample {
     kind: ChoiceKind,
     look: Arc<Look>, // Surrounding chrome only; never passed to the SDK samples.
     control: Control,
-    state: String,
+    state: crate::l10n::UiCopy,
     events: Entity<ControlEventStream>,
 }
 impl ChoiceSample {
@@ -149,7 +149,11 @@ impl ChoiceSample {
             Control::Accordion(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &accordion::AccordionEvent, cx| {
                     if let accordion::AccordionEvent::ExpandedChanged { item_id, expanded } = event {
-                        this.state = format!("{item_id}: {}", if *expanded { "expanded" } else { "collapsed" });
+                        this.state = crate::l10n::messages::msg_lab_expanded(
+                            item_id.to_string(),
+                            if *expanded { "expanded" } else { "collapsed" }.to_owned(),
+                        )
+                        .into();
                     }
                     this.record(event, cx);
                 })
@@ -158,7 +162,7 @@ impl ChoiceSample {
             Control::Checkbox(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &checkbox::CheckboxEvent, cx| {
                     if let checkbox::CheckboxEvent::Change { checked } = event {
-                        this.state = format!("Checked: {checked}");
+                        this.state = crate::l10n::messages::msg_lab_checked(checked.to_string()).into();
                     }
                     this.record(event, cx);
                 })
@@ -167,12 +171,14 @@ impl ChoiceSample {
             Control::Pager(v) => {
                 cx.subscribe(v, |this: &mut Self, pager, event: &pager::PagerEvent, cx| {
                     let pager = pager.read(cx);
-                    this.state = format!(
-                        "Page {} of {} · {} per page",
-                        pager.current_page() + 1,
-                        pager.page_count(),
-                        pager.page_size()
-                    );
+                    let (page, pages, size) = (pager.current_page() + 1, pager.page_count(), pager.page_size());
+                    this.state = crate::l10n::UiCopy::deferred(move |cx| {
+                        crate::l10n::messages::msg_lab_pager_status(
+                            crate::l10n::number(&page.to_string(), cx).to_string(),
+                            crate::l10n::number(&pages.to_string(), cx).to_string(),
+                            crate::l10n::number(&size.to_string(), cx).to_string(),
+                        )
+                    });
                     this.record(event, cx);
                 })
                 .detach();
@@ -180,7 +186,7 @@ impl ChoiceSample {
             Control::RadioButton(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &radio_button::RadioButtonEvent, cx| {
                     if let radio_button::RadioButtonEvent::Change { selected } = event {
-                        this.state = format!("Selected: {selected}");
+                        this.state = crate::l10n::messages::msg_lab_selected_state(selected.to_string()).into();
                     }
                     this.record(event, cx);
                 })
@@ -189,7 +195,13 @@ impl ChoiceSample {
             Control::RadioGroup(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &radio_group::RadioGroupEvent, cx| {
                     if let radio_group::RadioGroupEvent::Change { value } = event {
-                        this.state = format!("Selected: {}", value.as_deref().unwrap_or("none"));
+                        this.state = crate::l10n::UiCopy::compose(
+                            |args| crate::l10n::messages::msg_lab_selected(args[0].clone()),
+                            vec![value.as_ref().map_or_else(
+                                || crate::l10n::UiCopy::state("none"),
+                                |value| crate::l10n::UiCopy::raw(value.clone()),
+                            )],
+                        );
                     }
                     this.record(event, cx);
                 })
@@ -198,7 +210,7 @@ impl ChoiceSample {
             Control::Switch(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &switch::SwitchEvent, cx| {
                     if let switch::SwitchEvent::Change { on } = event {
-                        this.state = format!("On: {on}");
+                        this.state = crate::l10n::messages::msg_lab_on(on.to_string()).into();
                     }
                     this.record(event, cx);
                 })
@@ -207,23 +219,26 @@ impl ChoiceSample {
             Control::Toggle(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &toggle::ToggleEvent, cx| {
                     if let toggle::ToggleEvent::Change { selected } = event {
-                        this.state = format!("Pressed: {selected}");
+                        this.state = crate::l10n::messages::msg_lab_pressed(selected.to_string()).into();
                     }
                     this.record(event, cx);
                 })
                 .detach();
             }
         }
-        let state = match kind {
-            ChoiceKind::Accordion => "details: expanded",
-            ChoiceKind::Checkbox => "Checked: false",
-            ChoiceKind::Pager => "Page 1 of 12 · 10 per page",
-            ChoiceKind::RadioButton => "Selected: false",
-            ChoiceKind::RadioGroup => "Selected: medium",
-            ChoiceKind::Switch => "On: false",
-            ChoiceKind::Toggle => "Pressed: false",
-        }
-        .to_owned();
+        let state: crate::l10n::UiCopy = match kind {
+            ChoiceKind::Accordion => {
+                crate::l10n::messages::msg_lab_expanded("details".to_owned(), "expanded".to_owned()).into()
+            }
+            ChoiceKind::Checkbox => crate::l10n::messages::msg_lab_checked("false".to_owned()).into(),
+            ChoiceKind::Pager => {
+                crate::l10n::messages::msg_lab_pager_status("1".to_owned(), "12".to_owned(), "10".to_owned()).into()
+            }
+            ChoiceKind::RadioButton => crate::l10n::messages::msg_lab_selected_state("false".to_owned()).into(),
+            ChoiceKind::RadioGroup => crate::l10n::messages::msg_lab_selected("medium".to_owned()).into(),
+            ChoiceKind::Switch => crate::l10n::messages::msg_lab_on("false".to_owned()).into(),
+            ChoiceKind::Toggle => crate::l10n::messages::msg_lab_pressed("false".to_owned()).into(),
+        };
         let events = cx.new(|cx| {
             ControlEventStream::new(
                 cx,
@@ -317,7 +332,7 @@ mod tests {
             cx.run_until_parked();
             cx.update(|_, cx| {
                 let v = sample.read(cx);
-                assert!(v.state.ends_with("true"), "{id}: {}", v.state);
+                assert!(v.state.test_display(cx).ends_with("Yes"), "{id}: {}", v.state.test_display(cx));
                 let checked = match &v.control {
                     Control::Checkbox(v) => *v.read(cx).data(),
                     Control::RadioButton(v) => *v.read(cx).data(),
@@ -333,7 +348,7 @@ mod tests {
             });
             let retained = select(&workshop, id, cx);
             assert_eq!(sample, retained);
-            cx.update(|_, cx| assert!(sample.read(cx).state.ends_with("true")));
+            cx.update(|_, cx| assert!(sample.read(cx).state.test_display(cx).ends_with("Yes")));
         }
     }
     #[test]
@@ -354,7 +369,7 @@ mod tests {
         cx.run_until_parked();
         cx.update(|_, cx| {
             assert!(accordion.read(cx).is_expanded(&"more".into()));
-            assert_eq!(sample.read(cx).state, "more: expanded");
+            assert_eq!(sample.read(cx).state.test_display(cx), "more: Expanded");
         });
         let radio = select(&workshop, "radio-group", cx);
         let group = cx.update(|_, cx| match &radio.read(cx).control {
@@ -367,7 +382,7 @@ mod tests {
         cx.run_until_parked();
         cx.update(|_, cx| {
             assert_eq!(group.read(cx).selected_id(cx).as_deref(), Some("large"));
-            assert_eq!(radio.read(cx).state, "Selected: large");
+            assert_eq!(radio.read(cx).state.test_display(cx), "Selected: large");
         });
         select(&workshop, "accordion", cx);
         cx.update(|_, cx| assert!(accordion.read(cx).is_expanded(&"more".into())));
@@ -387,10 +402,10 @@ mod tests {
                 unreachable!()
             };
             assert_eq!(pager.read(cx).current_page(), 11);
-            assert_eq!(v.state, "Page 12 of 12 · 10 per page");
+            assert_eq!(v.state.test_display(cx), "Page 12 of 12 · 10 per page");
         });
         select(&workshop, "checkbox", cx);
         select(&workshop, "pager", cx);
-        cx.update(|_, cx| assert_eq!(sample.read(cx).state, "Page 12 of 12 · 10 per page"));
+        cx.update(|_, cx| assert_eq!(sample.read(cx).state.test_display(cx), "Page 12 of 12 · 10 per page"));
     }
 }

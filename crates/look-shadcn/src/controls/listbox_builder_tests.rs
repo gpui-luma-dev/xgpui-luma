@@ -471,3 +471,37 @@ fn raw_composition_rejects_unanswered_proposals_instead_of_reporting_cancellatio
         assert!(matches!(host.events[2], DragDropEvent::DragEnded { reason: DragEndReason::Rejected, .. }));
     });
 }
+
+#[test]
+fn listbox_accessibility_uses_live_locale_copy_and_app_overrides() {
+    use gpui::Element as _;
+    use xgpui_luma::infra::locale::{LocaleContext, SdkStrings, set_locale_context};
+    let app = TestAppContext::single();
+    for (disabled, selection) in [
+        ("[Dîsábléd — expanded]", "[Mültîplé — expanded]"),
+        ("معطّل", "اختيار متعدد"),
+        ("App disabled", "App selection"),
+    ] {
+        app.update(|cx| {
+            set_locale_context(
+                LocaleContext {
+                    strings: Arc::new(SdkStrings {
+                        disabled: disabled.into(),
+                        selection_mode: Arc::new(move |_, _| selection.into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+                cx,
+            );
+            let row = disabled_description(div().id("disabled-row"), cx);
+            let mut node = gpui::accesskit::Node::new(gpui::Role::ListBoxOption);
+            row.write_a11y_info(&mut node);
+            assert_eq!(node.description(), Some(disabled));
+            let list = div().id("list").aria_description(selection_description("multiple", cx));
+            let mut node = gpui::accesskit::Node::new(gpui::Role::ListBox);
+            list.write_a11y_info(&mut node);
+            assert_eq!(node.description(), Some(selection));
+        });
+    }
+}

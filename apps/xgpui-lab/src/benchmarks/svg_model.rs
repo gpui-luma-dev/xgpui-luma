@@ -196,8 +196,8 @@ pub(crate) fn zoom_label(zoom: f64) -> String {
 }
 
 pub(crate) struct Finding {
-    pub headline: String,
-    pub detail: String,
+    pub headline: crate::l10n::UiCopy,
+    pub detail: crate::l10n::UiCopy,
 }
 
 /// Short results computed from finished measurements; empty until something has been measured.
@@ -212,13 +212,21 @@ pub(crate) fn findings(cases: &[Case]) -> Vec<Finding> {
         let ratio = high.cost.unwrap_or(0.) / low.cost.unwrap_or(1.);
         let smaller = matches!((high.input_bytes, low.input_bytes), (Some(h), Some(l)) if h < l);
         out.push(Finding {
-            headline: format!("{ratio:.1}× the cost"),
-            detail: format!(
-                "{} costs {ratio:.1}× as much per megapixel as {}{}.",
-                high.name,
-                low.name,
-                if smaller { " despite a smaller file" } else { "" }
+            headline: crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_6ee520afb4cb(args[0].clone()),
+                vec![format!("{:.1}", ratio)],
             ),
+            detail: {
+                let (higher, lower) = (high.name.clone(), low.name.clone());
+                crate::l10n::UiCopy::deferred(move |cx| {
+                    crate::l10n::messages::msg_lab_relative_cost(
+                        higher.clone(),
+                        lower.clone(),
+                        crate::l10n::number(&format!("{ratio:.1}"), cx).to_string(),
+                        smaller.to_string(),
+                    )
+                })
+            },
         });
     }
     let mut budgets: Vec<u64> = cases.iter().filter(|c| c.measure.is_some()).map(|c| c.budget_mib).collect();
@@ -239,18 +247,41 @@ pub(crate) fn findings(cases: &[Case]) -> Vec<Finding> {
         .collect();
     if let Some(&(_, first, highest)) = caps.first() {
         let headline = first.map_or_else(
-            || format!("No cap to {}", zoom_label(highest)),
-            |zoom| format!("Caps from {}", zoom_label(zoom)),
+            || {
+                let __l10n_0 = &(zoom_label(highest));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_286abb1f1092(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            },
+            |zoom| {
+                let __l10n_0 = &(zoom_label(zoom));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_c312506a4895(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            },
         );
         let detail = caps
             .iter()
             .map(|(budget, first, highest)| match first {
-                Some(zoom) => format!("{budget} MiB caps output from {} up", zoom_label(*zoom)),
-                None => format!("{budget} MiB never caps up to {}", zoom_label(*highest)),
+                Some(zoom) => {
+                    let __l10n_0 = &(zoom_label(*zoom));
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_3fe9700b7c26(args[0].clone(), args[1].clone()),
+                        vec![format!("{}", budget), __l10n_0.to_string()],
+                    )
+                }
+                None => {
+                    let __l10n_0 = &(zoom_label(*highest));
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_72dd21370f0e(args[0].clone(), args[1].clone()),
+                        vec![format!("{}", budget), __l10n_0.to_string()],
+                    )
+                }
             })
-            .collect::<Vec<_>>()
-            .join("; ");
-        out.push(Finding { headline, detail: format!("{detail}.") });
+            .collect::<Vec<_>>();
+        out.push(Finding { headline, detail: crate::l10n::UiCopy::List(detail) });
     }
     if let Some(slow) = artworks
         .iter()
@@ -258,12 +289,20 @@ pub(crate) fn findings(cases: &[Case]) -> Vec<Finding> {
         .max_by(|a, b| a.parse_ms.unwrap_or(0.).total_cmp(&b.parse_ms.unwrap_or(0.)))
     {
         out.push(Finding {
-            headline: format!("{:.1} ms", slow.parse_ms.unwrap_or(0.)),
-            detail: format!(
-                "Slowest parse: {}{}. Parse time does not depend on zoom or budget.",
-                slow.name,
-                slow.input_bytes.map(|b| format!(" ({})", file_size(b))).unwrap_or_default()
-            ),
+            headline: {
+                let __l10n_0 = &(slow.parse_ms.unwrap_or(0.));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_1ef042e3f166(args[0].clone()),
+                    vec![format!("{:.1}", __l10n_0)],
+                )
+            },
+            detail: {
+                let artwork = slow.name.clone();
+                let size = slow.input_bytes.map_or_else(|| crate::l10n::UiCopy::raw("—"), crate::l10n::UiCopy::bytes);
+                crate::l10n::UiCopy::deferred(move |cx| {
+                    crate::l10n::messages::msg_lab_slowest_parse(artwork.clone(), size.resolve(cx).to_string())
+                })
+            },
         });
     }
     out
@@ -342,10 +381,16 @@ mod tests {
         let arts = artworks(&rows);
         assert_eq!(arts[0].cost, Some(1.));
         assert_eq!(arts[1].cost, Some(10.));
-        let found = findings(&rows);
-        assert_eq!(found[0].headline, "10.0× the cost");
-        assert_eq!(found[1].headline, "Caps from 4×");
-        assert_eq!(found[2].headline, "2.0 ms");
+        #[cfg(feature = "test-support")]
+        {
+            let found = findings(&rows);
+            let app = gpui::TestAppContext::single();
+            app.update(|cx| {
+                assert_eq!(found[0].headline.test_display(cx), "10.0× the cost");
+                assert_eq!(found[1].headline.test_display(cx), "Caps from 4×");
+                assert_eq!(found[2].headline.test_display(cx), "2.0 ms");
+            });
+        }
     }
     #[::core::prelude::v1::test]
     fn findings_wait_for_measurements() {

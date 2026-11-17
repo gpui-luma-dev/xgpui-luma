@@ -35,7 +35,26 @@ impl MediaPage {
         let caption = sample.map_or_else(
             || "Generating test images…".into(),
             |sample| {
-                format!("{} · {}×{} · shown at {:.2}×", sample.name, sample.width, sample.height, scale.unwrap_or(0.))
+                let __l10n_0 = &(sample.name);
+                let __l10n_1 = &(sample.width);
+                let __l10n_2 = &(sample.height);
+                let __l10n_3 = &(scale.unwrap_or(0.));
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_7026d002aa7c(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        __l10n_0.to_string(),
+                        format!("{}", __l10n_1),
+                        format!("{}", __l10n_2),
+                        format!("{:.2}", __l10n_3),
+                    ],
+                )
             },
         );
         let mut screen = LabScreen::new(id, self.look.clone())
@@ -66,17 +85,27 @@ impl MediaPage {
                     |image| format!("{:?}", image.upload_status()),
                 ))
                 .values([
-                    ("uploads", image.map_or("—".into(), |image| image.upload_count().to_string())),
+                    (
+                        "uploads",
+                        crate::l10n::UiCopy::from(image.map_or("—".into(), |image| image.upload_count().to_string())),
+                    ),
                     (
                         "source",
-                        image.map_or("—".into(), |image| {
-                            format!("{:.2} MiB", image.payload_bytes() as f64 / MIB as f64)
-                        }),
+                        image.map_or_else(
+                            || crate::l10n::UiCopy::from("—"),
+                            |image| {
+                                let __l10n_0 = &(image.payload_bytes() as f64 / MIB as f64);
+                                crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()),
+                                    vec![format!("{:.2}", __l10n_0)],
+                                )
+                            },
+                        ),
                     ),
                 ]),
         ];
-        let mut details =
-            vec![("Source", sample.map_or("Generating…".into(), |sample| sample.description.to_string()))];
+        let mut details: Vec<(&str, crate::l10n::UiCopy)> =
+            vec![("Source", sample.map_or("Generating…".into(), |sample| sample.description.to_string()).into())];
         if mipmaps {
             let ratio = scale.unwrap_or(0.) * window.scale_factor();
             let levels = image.map_or(0, |image| image.mip_count());
@@ -85,19 +114,29 @@ impl MediaPage {
             } else {
                 0.
             };
-            details.push(("Footprint", format!("{ratio:.4} device pixels / source pixel")));
-            details.push(("Estimated LOD", format!("{lod:.2}")));
+            details.push((
+                "Footprint",
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_5e0f0461ba60(args[0].clone()),
+                    vec![format!("{:.4}", ratio)],
+                ),
+            ));
+            details.push(("Estimated LOD", format!("{lod:.2}").into()));
             if let Some(image) = image {
                 for level in 0..levels {
                     details.push((
                         "Mip",
-                        format!("{level}: {}×{}", (image.width() >> level).max(1), (image.height() >> level).max(1)),
+                        crate::l10n::UiCopy::raw(format!(
+                            "{level}: {}×{}",
+                            (image.width() >> level).max(1),
+                            (image.height() >> level).max(1)
+                        )),
                     ));
                 }
             }
         }
         let screen = screen
-            .notice(self.error.as_ref().map(|error| format!("Media error: {error}")))
+            .notice(self.error.as_ref().map(|error| crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_26dd566faf33(args[0].clone()), vec![error.to_string()])))
             .cards(cards)
             .panels(
                 self.parameter_panel("View parameters", &super::adjustment_screens::VIEW_PARAMETERS).subtitle("Wheel or pinch to zoom; drag to pan."),

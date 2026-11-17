@@ -161,7 +161,7 @@ pub fn gallery(lab: &super::ShaderPage, cx: &mut Context<super::ShaderPage>) -> 
     LabScreen::new("shader-brushes", lab.look.clone()).crumb("xgpui-shader", "Brushes").title("Brushes")
         .lede("Compare color fields and textures across surfaces, borders, shapes and letters.")
         .hero(Hero::full(hero))
-        .caption(format!("Solid, linear and radial · freeform {} points · {} paths", point_count, if lab.direct_paths {"direct"} else {"native"}))
+        .caption({ let __l10n_0 = &(point_count); let __l10n_1 = &(if lab.direct_paths {"direct"} else {"native"}); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_969113efbaf2(args[0].clone(), args[1].clone()), vec![crate::l10n::UiCopy::counted("points", format!("{}", __l10n_0)), crate::l10n::UiCopy::compose(|a| crate::l10n::messages::msg_lab_path_mode(a[0].clone()), vec![crate::l10n::UiCopy::raw(__l10n_1.to_string())])]) })
         .control(lab.gallery_button("freeform-points", "Freeform points", cx))
         .control(lab.gallery_button("path-route", "Direct paths", cx))
         .section_panel(PanelShell::new("Brush comparisons").child(body))
@@ -432,8 +432,22 @@ fn group_filter_demo(lab: &super::ShaderPage, _cx: &mut Context<super::ShaderPag
                         .flex()
                         .flex_col()
                         .gap_2()
-                        .child(text(look, TextRole::Caption, format!("Blend: {blend_label}")))
-                        .child(text(look, TextRole::Caption, format!("Subtree blur: {blur_radius}px")))
+                        .child(text(
+                            look,
+                            TextRole::Caption,
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_bc908ef6346b(args[0].clone()),
+                                vec![blend_label.to_string()],
+                            ),
+                        ))
+                        .child(text(
+                            look,
+                            TextRole::Caption,
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_0161cfbdc114(args[0].clone()),
+                                vec![format!("{}", blur_radius)],
+                            ),
+                        ))
                         .child(
                             div()
                                 .relative()
@@ -697,18 +711,28 @@ pub fn layers(lab: &ShaderPage, cx: &mut Context<ShaderPage>) -> impl IntoElemen
         .title("Layer Effects")
         .lede("Compare effects on a group of shapes with effects applied to each shape separately.")
         .hero(Hero::stage(ComparePane::new("Captured color filters", group_filter_demo(lab, cx))))
-        .caption(format!(
-            "{} · {} blend · {} px subtree blur · {} quality",
-            ["Invert 100%", "Invert 50%", "Saturation 2"][lab.layer_filter_step],
-            ["Normal", "Multiply", "Screen", "Overlay", "Color dodge", "Soft light", "Linear burn"]
-                [lab.layer_blend_step],
-            [0, 4, 8, 16][lab.layer_blur_step],
-            if lab.layer_blur_full_resolution {
+        .caption({
+            let __l10n_0 = &(["Invert 100%", "Invert 50%", "Saturation 2"][lab.layer_filter_step]);
+            let __l10n_1 = &(["Normal", "Multiply", "Screen", "Overlay", "Color dodge", "Soft light", "Linear burn"]
+                [lab.layer_blend_step]);
+            let __l10n_2 = &([0, 4, 8, 16][lab.layer_blur_step]);
+            let __l10n_3 = &(if lab.layer_blur_full_resolution {
                 "full"
             } else {
                 "adaptive"
-            }
-        ));
+            });
+            crate::l10n::UiCopy::formatted(
+                |args| {
+                    crate::l10n::messages::msg_ui_fe0ad4878adc(
+                        args[0].clone(),
+                        args[1].clone(),
+                        args[2].clone(),
+                        args[3].clone(),
+                    )
+                },
+                vec![__l10n_0.to_string(), __l10n_1.to_string(), format!("{}", __l10n_2), __l10n_3.to_string()],
+            )
+        });
     for id in [
         "layer-filter-cycle",
         "layer-blend-cycle",

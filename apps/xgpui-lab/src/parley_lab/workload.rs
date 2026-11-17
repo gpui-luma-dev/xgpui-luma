@@ -298,7 +298,7 @@ impl Render for ScrollLab {
             let mut page = LabScreen::new("parley-scroll", self.look.clone()).crumb("xgpui-parley", "Scrolling").title("Scrolling")
                 .lede("Explore a long text list that builds only the rows in view.")
                 .hero(Hero::full(div().h(px(480.)).w_full().flex().flex_col().overflow_hidden().child(list)))
-                .caption(format!("{} · {} lines · {:.0} px · weight {:.0} · {}", self.name, self.lines.len(), self.size, self.weight, if self.running {"Running"} else {"Paused"}))
+                .caption({ let __l10n_0 = &(self.name); let __l10n_1 = &(self.lines.len()); let __l10n_2 = &(self.size); let __l10n_3 = &(self.weight); let __l10n_4 = &(if self.running {"Running"} else {"Paused"}); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_f55354238d7c(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone(), args[4].clone()), vec![__l10n_0.to_string(), format!("{}", __l10n_1), format!("{:.0}", __l10n_2), format!("{:.0}", __l10n_3), __l10n_4.to_string()]) })
                 .section_panel(PanelShell::new("Scrolling / live").child(properties(&self.look, [
                     ("Run",format!("{} / {}",self.frame,self.limit)),
                     ("Distinct rows", self.seen.iter().filter(|v|**v).count().to_string()),

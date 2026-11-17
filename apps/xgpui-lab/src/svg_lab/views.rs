@@ -84,7 +84,14 @@ impl SvgPage {
         let view = div().id("svg-rendering-comparison").debug_selector(|| "svg-rendering-comparison".into()).w_full();
         let mut panels = div().flex().flex_wrap().gap_4();
         for (mode, label) in [
-            format!("Fixed raster · {}×{} px", i32::from(fixed.width), i32::from(fixed.height)),
+            {
+                let __l10n_0 = &(i32::from(fixed.width));
+                let __l10n_1 = &(i32::from(fixed.height));
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_3f8fb9365e5e(args[0].clone(), args[1].clone()),
+                    vec![format!("{}", __l10n_0), format!("{}", __l10n_1)],
+                )
+            },
             "SVG renderer · display-density raster".into(),
             "Native GPUI paths".into(),
         ]
@@ -246,15 +253,14 @@ impl SvgPage {
         let mut view = div().w_full().flex().flex_col().gap_4();
         for (index, path) in paths.iter().enumerate() {
             view = view
-                .child(crate::screen::text(
-                    &self.look,
-                    crate::screen::TextRole::Name,
-                    format!(
-                        "{} · Measured length {:.2}px",
-                        ["Open Bézier curve", "Closed heart", "Multiple contours"][index],
-                        f32::from(path.length())
-                    ),
-                ))
+                .child(crate::screen::text(&self.look, crate::screen::TextRole::Name, {
+                    let __l10n_0 = &(["Open Bézier curve", "Closed heart", "Multiple contours"][index]);
+                    let __l10n_1 = &(f32::from(path.length()));
+                    crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_f1fc01b91e8b(args[0].clone(), args[1].clone()),
+                        vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1)],
+                    )
+                }))
                 .child(
                     div().flex().flex_wrap().gap_3().children(
                         [
@@ -294,7 +300,12 @@ impl SvgPage {
         if let Some(result) = &self.bench_result {
             match result {
                 Ok(_) => {}
-                Err(error) => view = view.child(crate::l10n::ui(format!("Benchmark failed: {error}"))),
+                Err(error) => {
+                    view = view.child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_4cbe6ff00be0(args[0].clone()),
+                        vec![error.to_string()],
+                    )))
+                }
             }
         }
         view.child(crate::benchmarks::svg_table::view(self.bench_table.clone())).into_any_element()

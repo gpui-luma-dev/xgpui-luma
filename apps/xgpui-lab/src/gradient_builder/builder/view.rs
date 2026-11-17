@@ -537,11 +537,16 @@ impl Render for GradientBuilder {
                             .text_center()
                             .child(self.renderer_note().unwrap_or_default()),
                     )
-                    .child(crate::l10n::ui(format!(
-                        "{:.0} × {:.0}  ·  {}",
-                        self.preview_size.width.as_f32(),
-                        self.preview_size.height.as_f32(),
-                        self.output_status()
+                    .child(crate::l10n::ui(crate::l10n::UiCopy::Separated(
+                        " · ",
+                        vec![
+                            crate::l10n::UiCopy::raw(format!(
+                                "{:.0} × {:.0}",
+                                self.preview_size.width.as_f32(),
+                                self.preview_size.height.as_f32()
+                            )),
+                            self.output_status().into(),
+                        ],
                     ))),
             );
 

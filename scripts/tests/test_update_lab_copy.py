@@ -20,6 +20,7 @@ class CatalogUpdate(unittest.TestCase):
                 (locales/tag).mkdir(parents=True)
                 (locales/tag/'lab.ftl').write_text(
                     f'kept = Independent message\n{message_id} = First line\n    Second line\n'
+                    '    { $count ->\n        [one] One\n       *[other] Other\n}\n'
                 )
             (locales/'used-ids.txt').write_text(f'kept\n{message_id}\n')
             inventory = root/'inventory.json'
@@ -29,7 +30,7 @@ class CatalogUpdate(unittest.TestCase):
                                check=True, capture_output=True)
             update()
             before = {str(p): p.read_bytes() for p in locales.rglob('*') if p.is_file()}
-            self.assertIn(f'{message_id} = First line\n    Second line\n', (locales/'de/lab.ftl').read_text())
+            self.assertIn(f'{message_id} = First line\n    Second line\n    {{ $count ->\n        [one] One\n       *[other] Other\n}}\n', (locales/'de/lab.ftl').read_text())
             update()
             self.assertEqual(before, {str(p): p.read_bytes() for p in locales.rglob('*') if p.is_file()})
 

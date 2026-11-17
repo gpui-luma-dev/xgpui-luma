@@ -34,6 +34,13 @@ type Surface = Stateful<Div>;
 type InputHandler<M, K> = fn(&mut M, ListBoxInput<K>, &mut Window, &mut Context<M>);
 const CORNER_RADIUS: f32 = 8.0;
 
+fn disabled_description(surface: Surface, cx: &App) -> Surface {
+    surface.aria_description(xgpui_luma::infra::locale::LocaleContext::current(cx).strings.disabled.clone())
+}
+fn selection_description(mode: &str, cx: &App) -> gpui::SharedString {
+    (xgpui_luma::infra::locale::LocaleContext::current(cx).strings.selection_mode)(mode, cx)
+}
+
 fn default_layout() -> ListBoxLayout {
     ListBoxLayout { item_height: 36.0, spacing: 4.0, viewport_height: 196.0, inset_x: 8.0, inset_y: 8.0 }
 }
@@ -194,7 +201,13 @@ impl ShadcnLook {
         let layout = flow.layout(padding);
         let content_sized = matches!(flow, ListBoxFlow::VerticalContent { .. });
         let item_label = parts.item_label;
-        let mode = parts.state.selection_mode();
+        let mode = match parts.state.selection_mode() {
+            xgpui_luma::controls::listbox::SelectionMode::None => "none",
+            xgpui_luma::controls::listbox::SelectionMode::SingleRequired => "single-required",
+            xgpui_luma::controls::listbox::SelectionMode::SingleAllowNone => "single-optional",
+            xgpui_luma::controls::listbox::SelectionMode::Multiple => "multiple",
+            xgpui_luma::controls::listbox::SelectionMode::Extended => "extended",
+        };
         let builder = SdkListBoxBuilder::from_parts(id, parts, layout, |surface, item, cx| {
             let model = ListBoxItemRenderModel {
                 item: item.item,
@@ -208,13 +221,13 @@ impl ShadcnLook {
                 .rounded(px(CORNER_RADIUS))
                 .overflow_hidden()
                 .aria_label(item_label(item.item))
-                .when(!item.state.enabled, |surface| surface.aria_description("Disabled"))
+                .when(!item.state.enabled, |surface| disabled_description(surface, cx))
                 .child(template(&model, cx))
         })
         .flow(flow, padding);
         builder
             .build(self.listbox_template().as_ref(), window, cx)
-            .aria_description(format!("Selection mode: {mode:?}"))
+            .aria_description(selection_description(mode, cx))
     }
 }
 

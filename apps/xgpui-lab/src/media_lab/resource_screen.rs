@@ -55,7 +55,13 @@ impl MediaPage {
         let message = if lab.burst.is_empty() {
             "Start a burst to watch 12 fresh snapshots pass through bounded loading and uploads.".into()
         } else if !lab.admission.is_empty() {
-            format!("Backpressure: {}. Completed previews retire to release capacity.", lab.admission)
+            {
+                let __l10n_0 = &(lab.admission);
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_66df6365a43c(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            }
         } else {
             "READY = host-submitted. DONE = a submitted preview retired to make room.".into()
         };
@@ -69,13 +75,28 @@ impl MediaPage {
             .title("Resource Limits")
             .lede("Compare how upload limits spread twelve fresh images across frames.")
             .hero(Hero::stage(ComparePane::new("Upload run / 12 snapshots", run)))
-            .caption(format!(
-                "{} / {} submitted · {} uploads / frame · {} MiB / frame",
-                lab.submitted(),
-                lab.burst.len(),
-                lab.count_limit,
-                lab.byte_limit / MIB
-            ))
+            .caption({
+                let __l10n_0 = &(lab.submitted());
+                let __l10n_1 = &(lab.burst.len());
+                let __l10n_2 = &(lab.count_limit);
+                let __l10n_3 = &(lab.byte_limit / MIB);
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_f0770058f6ad(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                        crate::l10n::UiCopy::counted("uploads", format!("{}", __l10n_2)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                    ],
+                )
+            })
             .notice(self.error.clone())
             .notice(lab.error());
         let screen = self.screen_choices(screen, &[Action::Sample, Action::Jobs, Action::Budget]);
@@ -101,25 +122,31 @@ impl MediaPage {
                     .opacity(self.values[3]),
             );
         }
-        let mib = |bytes: usize| format!("{:.2} MiB", bytes as f64 / MIB as f64);
+        let mib = |bytes: usize| {
+            let __l10n_0 = &(bytes as f64 / MIB as f64);
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_7eb3ea5701fb(args[0].clone()),
+                vec![format!("{:.2}", __l10n_0)],
+            )
+        };
         let screen = screen.cards([
             LabCard::new("Upload policy").subtitle("New sources per frame")
-                .values([("count", lab.count_limit.to_string()), ("bytes", mib(lab.byte_limit))]),
+                .values([("count", crate::l10n::UiCopy::from(lab.count_limit.to_string())), ("bytes", mib(lab.byte_limit))]),
             LabCard::new("Run results").subtitle(if lab.burst.is_empty() { "Ready to run" } else if lab.burst.iter().any(|slot| slot.pending()) { "Running" } else { "Finished" })
                 .values([("submitted", lab.submitted().to_string()), ("failed", lab.burst.iter().filter(|slot| slot.phase == Phase::Failed).count().to_string())]),
             LabCard::new("Primary image").subtitle(lab.primary.phase.label())
                 .values([("payload", lab.primary.image.as_ref().map_or("—".into(), |image| mib(image.payload_bytes())))]),
         ]).panels(
             PanelShell::new("Pipeline / live").child(properties(&self.look, [
-                ("Background staging workers", usage.map_or("—".into(), |usage| format!("{} / {}", usage.active_jobs, UploadLimits::default().max_jobs))),
+                ("Background staging workers", crate::l10n::UiCopy::from(usage.map_or("—".into(), |usage| format!("{} / {}", usage.active_jobs, UploadLimits::default().max_jobs)))),
                 ("Staging reservations", usage.map_or("—".into(), |usage| mib(usage.staging_bytes))),
-                ("Pool allocated / idle", pool.as_ref().map_or("—".into(), |pool| format!("{:.2} / {:.2} MiB", pool.allocated_bytes as f64 / MIB as f64, pool.cached_bytes as f64 / MIB as f64))),
-                ("Buffer allocations / reuse", pool.as_ref().map_or("—".into(), |pool| format!("{} / {}", pool.allocations, pool.reuses))),
-                ("Decode workers", MediaLimits::default().max_jobs.to_string()),
+                ("Pool allocated / idle", pool.as_ref().map_or("—".into(), |pool| { let __l10n_0 = &(pool.allocated_bytes as f64 / MIB as f64); let __l10n_1 = &(pool.cached_bytes as f64 / MIB as f64); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_539fab89e3e0(args[0].clone(), args[1].clone()), vec![format!("{:.2}", __l10n_0), format!("{:.2}", __l10n_1)]) })),
+                ("Buffer allocations / reuse", crate::l10n::UiCopy::from(pool.as_ref().map_or("—".into(), |pool| format!("{} / {}", pool.allocations, pool.reuses)))),
+                ("Decode workers", crate::l10n::UiCopy::from(MediaLimits::default().max_jobs.to_string())),
             ])),
             PanelShell::new("Retained source").child(primary),
         ).section(div().flex().flex_wrap().gap_2().children(lab.burst.iter().enumerate().filter_map(|(index, slot)| {
-            slot.error.as_ref().map(|error| text(&self.look, TextRole::Caption, format!("Snapshot {:02}: {error}", index + 1)))
+            slot.error.as_ref().map(|error| text(&self.look, TextRole::Caption, { let __l10n_0 = &(index + 1); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_2da211370876(args[0].clone(), args[1].clone()), vec![format!("{:02}", __l10n_0), error.to_string()]) }))
         })))
             .note("Click Burst ×12 to start a run. Changing an upload policy reloads the primary and clears the previous burst, as in the original media lab. Final previews remain visible; older ready previews retire only when waiting work needs capacity.")
             .credits("Adapted from xgpui/apps/xgpui-ext-lab/media-lab. READY means host submission, not GPU completion. Limits govern per-frame source count and aligned staging bytes; they do not measure GPU time or total memory. Background decode and staging keep the media library's default limits.");

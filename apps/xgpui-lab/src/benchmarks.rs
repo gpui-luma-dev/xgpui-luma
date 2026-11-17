@@ -309,7 +309,7 @@ pub struct Page {
     svg_tab: svg_screen::Tab,
     svg_progress_bar: xgpui_luma::controls::progress::Progress,
     svg_started: Option<Instant>,
-    status: String,
+    status: crate::l10n::UiCopy,
     output: Option<PathBuf>,
     results: Vec<Value>,
     svg_table: xgpui_luma::controls::table::Table<svg_table::Row>,
@@ -537,9 +537,21 @@ impl Page {
         match loaded {
             Ok(cases) => {
                 self.status = if source == "sample" {
-                    format!("Showing {} made-up sample cases, not measurements.", cases.len())
+                    {
+                        let __l10n_0 = &(cases.len());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_66874c976ba7(args[0].clone()),
+                            vec![format!("{}", __l10n_0)],
+                        )
+                    }
                 } else {
-                    format!("Showing {} saved cases from {source}.", cases.len())
+                    {
+                        let __l10n_0 = &(cases.len());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_b6a1fdf3da49(args[0].clone(), args[1].clone()),
+                            vec![format!("{}", __l10n_0), source.to_string()],
+                        )
+                    }
                 };
                 self.svg_cases = cases;
                 let rows = svg_table::with_thumbnails(svg_table::rows(&self.svg_cases), &self.svg_thumbnails);
@@ -547,7 +559,12 @@ impl Page {
                     let _ = table.set_items(rows, cx);
                 });
             }
-            Err(error) => self.status = format!("Cannot load {source}: {error:#}"),
+            Err(error) => {
+                self.status = crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_8532b39c0a15(args[0].clone(), args[1].clone()),
+                    vec![source.to_string(), format!("{:#}", error)],
+                )
+            }
         }
         cx.notify();
     }
@@ -561,7 +578,7 @@ impl Page {
         self.svg_table.update(cx, |table, cx| {
             let _ = table.set_items(rows, cx);
         });
-        self.status.clear();
+        self.status = "".into();
         cx.notify();
     }
     fn load_thumbnails(&mut self, cx: &mut Context<Self>) {
@@ -616,12 +633,40 @@ impl Page {
                     .await
                     .map(|(json, csv)| {
                         let name = |path: &Path| path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-                        format!("Exported {count} cases to {} and {}.", name(&json), name(&csv))
+                        {
+                            let __l10n_0 = &(name(&json));
+                            let __l10n_1 = &(name(&csv));
+                            crate::l10n::UiCopy::compose(
+                                |args| {
+                                    crate::l10n::messages::msg_ui_8ab25fcb6c81(
+                                        args[0].clone(),
+                                        args[1].clone(),
+                                        args[2].clone(),
+                                    )
+                                },
+                                vec![
+                                    crate::l10n::UiCopy::counted("cases", format!("{}", count)),
+                                    crate::l10n::UiCopy::raw(__l10n_0.to_string()),
+                                    crate::l10n::UiCopy::raw(__l10n_1.to_string()),
+                                ],
+                            )
+                        }
                     })
-                    .unwrap_or_else(|error| format!("Export failed: {error:#}")),
+                    .unwrap_or_else(|error| {
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_4c92d68526cd(args[0].clone()),
+                            vec![format!("{:#}", error)],
+                        )
+                    }),
                 Ok(Ok(None)) => return,
-                Ok(Err(error)) => format!("Export failed: {error:#}"),
-                Err(error) => format!("Export failed: {error}"),
+                Ok(Err(error)) => crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_4c92d68526cd(args[0].clone()),
+                    vec![format!("{:#}", error)],
+                ),
+                Err(error) => crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_a6d7ef525134(args[0].clone()),
+                    vec![format!("{}", error)],
+                ),
             };
             let _ = this.update(cx, |this, cx| {
                 this.status = status;
@@ -661,7 +706,10 @@ impl Page {
                 ) {
                     Ok(output) => output,
                     Err(error) => {
-                        self.status = format!("Cannot create results: {error}");
+                        self.status = crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_30476786af00(args[0].clone()),
+                            vec![format!("{}", error)],
+                        );
                         cx.notify();
                         return;
                     }
@@ -726,9 +774,12 @@ impl Page {
                                 return false;
                             }
                             this.status = if token.load(Ordering::Relaxed) {
-                                format!("Cancelling · {status}")
+                                crate::l10n::UiCopy::formatted(
+                                    |args| crate::l10n::messages::msg_ui_44d139716cbf(args[0].clone()),
+                                    vec![status.to_string()],
+                                )
                             } else {
-                                status
+                                status.into()
                             };
                             if partial != last_rows {
                                 this.svg_cases = partial.clone();
@@ -756,7 +807,13 @@ impl Page {
                 }
                 if this
                     .update(cx, |this, cx| {
-                        this.status = format!("Running {}…", job.label());
+                        this.status = {
+                            let __l10n_0 = &(job.label());
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_b3c4cadb4274(args[0].clone()),
+                                vec![__l10n_0.to_string()],
+                            )
+                        };
                         cx.notify();
                     })
                     .is_err()
@@ -859,17 +916,51 @@ impl Page {
                     let cases = svg_model::cases(&this.svg_cases);
                     let measured = cases.iter().filter(|case| case.measure.is_some()).count();
                     let failed = cases.iter().filter(|case| case.outcome == svg_model::Outcome::Failed).count();
-                    format!(
-                        "{verb} in {:.1}s: {measured} of {} cases measured, {failed} failed.",
-                        progress.elapsed(),
-                        cases.len()
-                    )
+                    {
+                        let __l10n_0 = &(progress.elapsed());
+                        let __l10n_1 = &(cases.len());
+                        crate::l10n::UiCopy::compose(
+                            |args| {
+                                crate::l10n::messages::msg_ui_d8a38680d135(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                    args[3].clone(),
+                                    args[4].clone(),
+                                )
+                            },
+                            vec![
+                                (verb.to_string()).into(),
+                                crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_0)),
+                                crate::l10n::UiCopy::numeric(format!("{}", measured)),
+                                crate::l10n::UiCopy::counted("cases", format!("{}", __l10n_1)),
+                                crate::l10n::UiCopy::numeric(format!("{}", failed)),
+                            ],
+                        )
+                    }
                 } else {
-                    format!(
-                        "{verb} in {:.1}s: {} workloads, {failed} failures, {unavailable} unavailable.",
-                        progress.elapsed(),
-                        this.results.len()
-                    )
+                    {
+                        let __l10n_0 = &(progress.elapsed());
+                        let __l10n_1 = &(this.results.len());
+                        crate::l10n::UiCopy::compose(
+                            |args| {
+                                crate::l10n::messages::msg_ui_6a4ecd4f2c57(
+                                    args[0].clone(),
+                                    args[1].clone(),
+                                    args[2].clone(),
+                                    args[3].clone(),
+                                    args[4].clone(),
+                                )
+                            },
+                            vec![
+                                (verb.to_string()).into(),
+                                crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_0)),
+                                crate::l10n::UiCopy::counted("workloads", format!("{}", __l10n_1)),
+                                crate::l10n::UiCopy::counted("failures", format!("{}", failed)),
+                                crate::l10n::UiCopy::numeric(format!("{}", unavailable)),
+                            ],
+                        )
+                    }
                 };
                 for button in this.buttons.iter().chain([&this.export_button]) {
                     button.update(cx, |button, cx| button.set_enabled(true, cx));
@@ -877,7 +968,7 @@ impl Page {
                 cx.notify();
                 if this.quit_on_finish {
                     if failed > 0 || cancel.load(Ordering::Relaxed) {
-                        eprintln!("{}", this.status);
+                        eprintln!("{}", this.status.resolve(cx));
                         std::process::exit(1);
                     }
                     cx.quit();
@@ -897,12 +988,12 @@ impl Render for Page {
         let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
             .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>""})
-            .child(crate::l10n::ui(self.status.clone())).when_some(self.output.as_ref(),|root,output|root.child(crate::l10n::ui(format!("Results: {}",output.display()))).child(self.reveal.clone()))
+            .child(crate::l10n::ui(self.status.clone())).when_some(self.output.as_ref(),|root,output|root.child(crate::l10n::ui({ let __l10n_0 = &(output.display()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()), vec![format!("{}", __l10n_0)]) })).child(self.reveal.clone()))
             .children(self.results.iter().map(|result|{
                 let mut row=div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown"))));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
                 if let Some(errors)=result["errors"].as_array(){for error in errors{row=row.child(error.to_string());}}
-                if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(crate::l10n::ui(format!("Raster median: {ms:.3} ms · {}×{} pixels",result["pixel_width"],result["pixel_height"])));}
+                if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(crate::l10n::ui({ let __l10n_0 = &(result["pixel_width"]); let __l10n_1 = &(result["pixel_height"]); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_754d93425492(args[0].clone(), args[1].clone(), args[2].clone()), vec![format!("{:.3}", ms), format!("{}", __l10n_0), format!("{}", __l10n_1)]) }));}
                 if let Some(previews)=result["previews"].as_array(){for path in previews.iter().filter_map(Value::as_str){row=row.child(img(PathBuf::from(path)).max_w(px(760.)));}}row
             }));
         div()
@@ -918,11 +1009,14 @@ impl Render for Page {
                     .justify_between()
                     .gap_3()
                     .p_4()
-                    .child(crate::screen::text(
-                        &self.look,
-                        crate::screen::TextRole::Name,
-                        format!("{:?} benchmarks · {} build", self.suite, profile()),
-                    ))
+                    .child(crate::screen::text(&self.look, crate::screen::TextRole::Name, {
+                        let __l10n_0 = &(self.suite);
+                        let __l10n_1 = &(profile());
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_d4eb8112d80a(args[0].clone(), args[1].clone()),
+                            vec![format!("{:?}", __l10n_0), __l10n_1.to_string()],
+                        )
+                    }))
                     .child(self.cancel_button.clone()),
             )
             .child(body)
@@ -1091,14 +1185,14 @@ mod tests {
         cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(page.cancel.load(Ordering::Relaxed));
-            assert_eq!(page.status, "Stopping active workers…");
+            assert_eq!(page.status.test_display(cx), "Stopping active workers…");
         });
         cx.run_until_parked();
         cx.update(|_, cx| {
             let page = page.read(cx);
             assert!(!page.busy);
             assert!(page.output.is_none());
-            assert!(page.status.starts_with("Cancelled"), "{}", page.status);
+            assert!(page.status.test_display(cx).starts_with("Cancelled"), "{}", page.status.test_display(cx));
             assert_eq!(page.svg_table.read(cx).items().len(), 10);
         });
         assert!(

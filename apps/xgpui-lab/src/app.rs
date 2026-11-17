@@ -1296,3 +1296,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(all(test, feature = "test-support"))]
+mod localization_tests;

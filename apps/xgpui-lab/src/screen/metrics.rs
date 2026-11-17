@@ -151,7 +151,7 @@ impl TextRole {
 }
 
 /// A text element in the given role.
-pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<SharedString>) -> Div {
+pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<crate::l10n::UiCopy>) -> Div {
     let content = content.into();
     let leaf = if matches!(role, TextRole::Value) {
         crate::l10n::data(content)
@@ -162,12 +162,12 @@ pub(crate) fn text(look: &Look, role: TextRole, content: impl Into<SharedString>
 }
 
 /// Key/value pairs: keys in `Label` (UI, muted), values in `Value` (mono). An empty key shows the value alone.
-pub(crate) fn readout<K: Into<SharedString>, V: Into<SharedString>>(
+pub(crate) fn readout<K: Into<crate::l10n::UiCopy>, V: Into<crate::l10n::UiCopy>>(
     look: &Look,
     pairs: impl IntoIterator<Item = (K, V)>,
 ) -> Div {
     div().flex().flex_wrap().items_baseline().gap_2().children(pairs.into_iter().map(|(key, value)| {
-        let key: SharedString = key.into();
+        let key: crate::l10n::UiCopy = key.into();
         crate::l10n::row(
             div()
                 .flex()

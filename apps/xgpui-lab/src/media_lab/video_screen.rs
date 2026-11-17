@@ -76,20 +76,37 @@ impl MediaPage {
                     ComparePane::new("Adjusted preview", adjusted).subtitle("Linear light + bounded blur"),
                     ComparePane::new("Original reference", original).subtitle("Same immutable frame"),
                 ))
-                .caption(format!(
-                    "{} · timestamp {:.3} s · {} · blur {} px · {} quality",
-                    self.format.label(),
-                    frame.as_ref().map_or(0., |frame| frame.timestamp().as_secs_f64()),
-                    if self.video_stopped {
+                .caption({
+                    let __l10n_0 = &(self.format.label());
+                    let __l10n_1 = &(frame.as_ref().map_or(0., |frame| frame.timestamp().as_secs_f64()));
+                    let __l10n_2 = &(if self.video_stopped {
                         "stopped"
                     } else if self.video_paused {
                         "paused"
                     } else {
                         "playing"
-                    },
-                    [0, 4, 8, 16][self.blur_index],
-                    if self.full_quality { "full" } else { "adaptive" }
-                ))
+                    });
+                    let __l10n_3 = &([0, 4, 8, 16][self.blur_index]);
+                    let __l10n_4 = &(if self.full_quality { "full" } else { "adaptive" });
+                    crate::l10n::UiCopy::formatted(
+                        |args| {
+                            crate::l10n::messages::msg_ui_5803b486d266(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                                args[3].clone(),
+                                args[4].clone(),
+                            )
+                        },
+                        vec![
+                            __l10n_0.to_string(),
+                            format!("{:.3}", __l10n_1),
+                            __l10n_2.to_string(),
+                            format!("{}", __l10n_3),
+                            __l10n_4.to_string(),
+                        ],
+                    )
+                })
                 .notice(
                     self.video.as_ref().and_then(|video| video.error()).map(|error| format!("Source error: {error}")),
                 )

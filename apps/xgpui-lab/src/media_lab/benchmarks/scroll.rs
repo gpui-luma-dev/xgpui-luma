@@ -327,11 +327,14 @@ impl Render for ScrollPerf {
             } else {
                 0x22303a
             }));
-            card = card.child(div().w(px(150.)).child(crate::l10n::ui(format!(
-                "Card {} · source {}\n3072 × 2048",
-                index + 1,
-                source + 1
-            ))));
+            card = card.child(div().w(px(150.)).child(crate::l10n::ui({
+                let __l10n_0 = &(index + 1);
+                let __l10n_1 = &(source + 1);
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_cea4636f4622(args[0].clone(), args[1].clone()),
+                    vec![format!("{}", __l10n_0), format!("{}", __l10n_1)],
+                )
+            })));
             if let Some(image) = &self.images[source] {
                 card = card.child(image_view(image.clone()).w(px(900.)).h(px(260.)).rounded(px(12.)));
             } else {
@@ -347,13 +350,28 @@ impl Render for ScrollPerf {
             .gap_2()
             .bg(rgb(0x101820))
             .text_color(rgb(0xe8eef4))
-            .child(crate::l10n::ui(format!(
-                "60 Hz baseline · {} · {} replacements · {} errors · {:.1}s",
-                self.phase(),
-                self.report.replacements_completed,
-                self.report.errors.len(),
-                self.started.elapsed().as_secs_f32()
-            )))
+            .child(crate::l10n::ui({
+                let __l10n_0 = &(self.phase());
+                let __l10n_1 = &(self.report.replacements_completed);
+                let __l10n_2 = &(self.report.errors.len());
+                let __l10n_3 = &(self.started.elapsed().as_secs_f32());
+                crate::l10n::UiCopy::compose(
+                    |args| {
+                        crate::l10n::messages::msg_ui_51d49868b37a(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![
+                        (__l10n_0.to_string()).into(),
+                        crate::l10n::UiCopy::counted("replacements", format!("{}", __l10n_1)),
+                        crate::l10n::UiCopy::counted("errors", format!("{}", __l10n_2)),
+                        crate::l10n::UiCopy::numeric(format!("{:.1}", __l10n_3)),
+                    ],
+                )
+            }))
             .child(crate::l10n::ui(
                 "24 scrolling cards · four 3072×2048 sources · one upload / 33 MiB per scene · keep foreground",
             ))

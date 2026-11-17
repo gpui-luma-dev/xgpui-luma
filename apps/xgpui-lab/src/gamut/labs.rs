@@ -94,35 +94,64 @@ impl GamutPage {
             "sRGB fallback preview"
         };
         let caption = if presentation {
-            format!(
-                "{} · {output} · opacity {:.2} · {} background · {} · {}",
-                ["Texture", "Instanced solid", "OkLab gradient"][self.route],
-                if self.half_opacity { 0.5 } else { 1.0 },
-                self.background.label(),
-                if self.overlay {
+            {
+                let __l10n_0 = &(["Texture", "Instanced solid", "OkLab gradient"][self.route]);
+                let __l10n_1 = &(if self.half_opacity { 0.5 } else { 1.0 });
+                let __l10n_2 = &(self.background.label());
+                let __l10n_3 = &(if self.overlay {
                     "overlays shown"
                 } else {
                     "overlays hidden"
-                },
-                if self.reverse {
+                });
+                let __l10n_4 = &(if self.reverse {
                     "reversed order"
                 } else {
                     "original order"
-                }
-            )
+                });
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_0f396ac5ed73(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                            args[4].clone(),
+                            args[5].clone(),
+                        )
+                    },
+                    vec![
+                        __l10n_0.to_string(),
+                        output.to_string(),
+                        format!("{:.2}", __l10n_1),
+                        __l10n_2.to_string(),
+                        __l10n_3.to_string(),
+                        __l10n_4.to_string(),
+                    ],
+                )
+            }
         } else {
-            format!(
-                "{} · {} · end alpha {} · {output}",
-                reference::PRESETS[self.preset],
-                if mapping {
+            {
+                let __l10n_0 = &(reference::PRESETS[self.preset]);
+                let __l10n_1 = &(if mapping {
                     "Clip vs Reduce chroma"
                 } else if self.policy == GamutMapping::Clip {
                     "Clip"
                 } else {
                     "Reduce chroma"
-                },
-                if self.translucent { "25%" } else { "100%" }
-            )
+                });
+                let __l10n_2 = &(if self.translucent { "25%" } else { "100%" });
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_10501a475db4(
+                            args[0].clone(),
+                            args[1].clone(),
+                            args[2].clone(),
+                            args[3].clone(),
+                        )
+                    },
+                    vec![__l10n_0.to_string(), __l10n_1.to_string(), __l10n_2.to_string(), output.to_string()],
+                )
+            }
         };
         let mut screen = LabScreen::new(id, self.look.clone())
             .crumb("xgpui-gamut", self.active_tab.as_ref()).title(self.active_tab.clone()).lede(lede)
@@ -148,7 +177,10 @@ impl GamutPage {
             Ok(view) => screen.hero(Hero::full(view)),
             Err(error) => {
                 self.paint_errors.borrow_mut().push(format!("{error:#}"));
-                screen.notice(Some(format!("Lab unavailable: {error:#}")))
+                screen.notice(Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_cb765b7277b0(args[0].clone()),
+                    vec![format!("{:#}", error)],
+                )))
             }
         }
     }
@@ -211,15 +243,20 @@ impl GamutPage {
         for policy in [GamutMapping::Clip, GamutMapping::ReduceChroma] {
             let rows = reference::rows_in_space(self.preset, policy, self.translucent, RgbSpace::DisplayP3)?;
             for (index, row) in rows.iter().enumerate().skip(1) {
-                view = view.child(text(
-                    &self.look,
-                    TextRole::Detail,
-                    format!(
-                        "{} · {policy:?} · {} source samples outside Display P3",
-                        row.label,
-                        row.outside.iter().filter(|v| **v).count()
-                    ),
-                ));
+                view = view.child(text(&self.look, TextRole::Detail, {
+                    let __l10n_0 = &(row.label);
+                    let __l10n_1 = &(row.outside.iter().filter(|v| **v).count());
+                    crate::l10n::UiCopy::formatted(
+                        |args| {
+                            crate::l10n::messages::msg_ui_4745092bc943(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                            )
+                        },
+                        vec![__l10n_0.to_string(), format!("{:?}", policy), format!("{}", __l10n_1)],
+                    )
+                }));
                 if wide {
                     let decode = |rgba: [f32; 4]| -> anyhow::Result<LinearRgba> {
                         Ok(LinearRgba::new(

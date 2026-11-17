@@ -16,7 +16,7 @@ pub(crate) struct HiddenSymbolLab {
     selected: usize,
     presentation_pending: bool,
     presentation_attempted: bool,
-    presentation_error: Option<String>,
+    presentation_error: Option<crate::l10n::UiCopy>,
     attribution: Entity<Button>,
     thumbnails: Vec<Entity<Button>>,
     thumbnail_wide: bool,
@@ -96,7 +96,10 @@ impl Render for HiddenSymbolLab {
                 this.presentation_error = match window.set_color_mode(desired) {
                     Ok(status) if status.effective() == desired => None,
                     Ok(_) => Some("Wide-gamut output is unavailable; showing an sRGB preview.".into()),
-                    Err(error) => Some(format!("Window output unavailable: {error}")),
+                    Err(error) => Some(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_527707d951e0(args[0].clone()),
+                        vec![format!("{}", error)],
+                    )),
                 };
                 this.presentation_pending = false;
                 this.presentation_attempted = true;
@@ -142,8 +145,7 @@ impl Render for HiddenSymbolLab {
                         vstack! { gap=8; image.clone(), text(&self.look, TextRole::Caption, VIEWS[index]) }.w(px(140.))
                     }))
             }.w_full(), px(520.)))
-            .caption(format!("{} · {} · {display}", VIEWS[self.selected],
-                if wide { "Wide-gamut output (Display P3)" } else { "sRGB output" }))
+            .caption(crate::l10n::UiCopy::Separated(" · ", vec![VIEWS[self.selected].into(), (if wide { "Wide-gamut output (Display P3)" } else { "sRGB output" }).into(), display.into()]))
             .control(self.attribution.clone())
             .notice(self.presentation_error.clone())
             .notice(error)

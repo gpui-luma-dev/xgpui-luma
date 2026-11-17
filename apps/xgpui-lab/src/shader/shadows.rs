@@ -287,7 +287,13 @@ impl Render for ShadowPane {
             for button in self.buttons.iter().take(3) {
                 button.update(cx, |button, cx| {
                     button.set_presenter(
-                        std::sync::Arc::new(crate::l10n::label(format!("Child clicks: {}", self.shadow.clicks))),
+                        std::sync::Arc::new(crate::l10n::label({
+                            let __l10n_0 = &(self.shadow.clicks);
+                            crate::l10n::UiCopy::formatted(
+                                |args| crate::l10n::messages::msg_ui_c83b63073b8f(args[0].clone()),
+                                vec![format!("{}", __l10n_0)],
+                            )
+                        })),
                         cx,
                     )
                 });
@@ -316,7 +322,7 @@ impl Render for ShadowPane {
             LabScreen::new("shader-borders", self.look.clone()).crumb("xgpui-shader", "Borders").title("Borders")
                 .lede("Explore moving highlights around an ordinary interactive button.")
                 .hero(Hero::stage(ComparePane::new("Animated border", div().w_full().min_h(px(280.)).p_8().flex().items_center().justify_center().bg(rgb(palette::BORDER_STAGE)).child(self.shadow.border_button(self.phase, &self.buttons)))))
-                .caption(format!("{} · phase {:.2} · child clicks {}", if self.animated {"Animating"} else {"Paused"}, self.phase, self.shadow.clicks))
+                .caption({ let __l10n_0 = &(if self.animated {"Animating"} else {"Paused"}); let __l10n_1 = &(self.phase); let __l10n_2 = &(self.shadow.clicks); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_fa893ae2075e(args[0].clone(), args[1].clone(), args[2].clone()), vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1), format!("{}", __l10n_2)]) })
                 .control(self.switches[0].clone())
                 .panels(PanelShell::new("Motion").child(properties(&self.look, [("Period", "2.5 s"), ("Highlights", "Soft blue and orange"), ("Interaction", "Retained Luma button")])), PanelShell::new("Child interaction").child(properties(&self.look, [("Clicks", self.shadow.clicks.to_string())])))
                 .note("Click the decorated button to verify child interaction. Pausing retains the phase; reduced motion freezes automatic animation.")
@@ -327,16 +333,37 @@ impl Render for ShadowPane {
                 .title("Shadows")
                 .lede("Compare a standard shadow with a gradient shadow around the same card.")
                 .hero(Hero::full(self.shadow.render(1., &self.buttons, &self.sample_look)))
-                .caption(format!(
-                    "{} · {} · blur {:.1} px · spread {:.1} px · offset {:.1} px · card opacity {} · child clicks {}",
-                    if self.shadow.gradient { "Gradient" } else { "Solid" },
-                    if self.shadow.inset { "inset" } else { "outset" },
-                    self.shadow.blur,
-                    self.shadow.spread,
-                    self.shadow.offset,
-                    if self.shadow.card_dim { "50%" } else { "100%" },
-                    self.shadow.clicks
-                ));
+                .caption({
+                    let __l10n_0 = &(if self.shadow.gradient { "Gradient" } else { "Solid" });
+                    let __l10n_1 = &(if self.shadow.inset { "inset" } else { "outset" });
+                    let __l10n_2 = &(self.shadow.blur);
+                    let __l10n_3 = &(self.shadow.spread);
+                    let __l10n_4 = &(self.shadow.offset);
+                    let __l10n_5 = &(if self.shadow.card_dim { "50%" } else { "100%" });
+                    let __l10n_6 = &(self.shadow.clicks);
+                    crate::l10n::UiCopy::formatted(
+                        |args| {
+                            crate::l10n::messages::msg_ui_93c2402b99cc(
+                                args[0].clone(),
+                                args[1].clone(),
+                                args[2].clone(),
+                                args[3].clone(),
+                                args[4].clone(),
+                                args[5].clone(),
+                                args[6].clone(),
+                            )
+                        },
+                        vec![
+                            __l10n_0.to_string(),
+                            __l10n_1.to_string(),
+                            format!("{:.1}", __l10n_2),
+                            format!("{:.1}", __l10n_3),
+                            format!("{:.1}", __l10n_4),
+                            __l10n_5.to_string(),
+                            format!("{}", __l10n_6),
+                        ],
+                    )
+                });
             for switch in self.switches.iter().skip(1) {
                 screen = screen.control(switch.clone());
             }

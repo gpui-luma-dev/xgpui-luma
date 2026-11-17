@@ -258,10 +258,18 @@ impl GradientBuilder {
                     .when(!freeform, |panel| {
                         panel
                             .child(div().flex().items_center().gap_2().child(self.mesh_cycle_button.clone()).child(
-                                div().text_size(px(11.)).child(crate::l10n::ui(format!(
-                                    "{} · {}/5",
-                                    super::mesh::MESH_PALETTE_NAMES[self.mesh_palette],
-                                    self.mesh_palette + 1
+                                div().text_size(px(11.)).child(crate::l10n::ui(crate::l10n::UiCopy::Separated(
+                                    " · ",
+                                    vec![
+                                        super::mesh::MESH_PALETTE_NAMES[self.mesh_palette].into(),
+                                        crate::l10n::UiCopy::Separated(
+                                            "/",
+                                            vec![
+                                                crate::l10n::UiCopy::numeric((self.mesh_palette + 1).to_string()),
+                                                crate::l10n::UiCopy::numeric("5".to_owned()),
+                                            ],
+                                        ),
+                                    ],
                                 ))),
                             ))
                             .child(self.mesh_palette_animate_button.clone())

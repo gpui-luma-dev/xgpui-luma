@@ -201,7 +201,10 @@ impl Render for Lab {
                     .border_color(rgb(palette::CARD_EDGE))
                     .text_size(px(16. * zoom))
                     .text_color(rgb(palette::CARD_TEXT))
-                    .child(div().absolute().top_0().left_0().child(crate::l10n::ui(format!("Card {id}")))),
+                    .child(div().absolute().top_0().left_0().child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_0c3f66ae5b7f(args[0].clone()),
+                        vec![format!("{}", id)],
+                    )))),
             );
         }
         let full_count = cards.len();

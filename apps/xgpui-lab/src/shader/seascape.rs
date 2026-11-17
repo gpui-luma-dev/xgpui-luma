@@ -318,12 +318,17 @@ impl Render for SeaPane {
             .crumb("xgpui-shader", "Shadertoy: Seascape")
             .title("Shadertoy: Seascape")
             .lede("Explore a moving ocean and compare two ways to draw the same waves.")
-            .caption(format!(
-                "{} · time {:.2} s · 32 trace steps · 3 geometry / {} normal octaves",
-                if self.animated { "Animating" } else { "Paused" },
-                self.parameters.time,
-                if self.parameters.detail > 0.5 { 5 } else { 3 }
-            ));
+            .caption({
+                let __l10n_0 = &(if self.animated { "Animating" } else { "Paused" });
+                let __l10n_1 = &(self.parameters.time);
+                let __l10n_2 = &(if self.parameters.detail > 0.5 { 5 } else { 3 });
+                crate::l10n::UiCopy::formatted(
+                    |args| {
+                        crate::l10n::messages::msg_ui_d7b1ca08b072(args[0].clone(), args[1].clone(), args[2].clone())
+                    },
+                    vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1), format!("{}", __l10n_2)],
+                )
+            });
         for switch in &self.switches {
             screen = screen.control(switch.clone());
         }
@@ -336,7 +341,10 @@ impl Render for SeaPane {
             .credits("Seascape © 2014 Alexander Alekseev / TDM. WGSL adaptation under CC BY-NC-SA 3.0: noncommercial, share alike. Original work and license are linked in the controls.");
         match self.preview() {
             Ok(hero) => screen.hero(hero),
-            Err(e) => screen.notice(Some(format!("Seascape shader error: {e:#}"))),
+            Err(e) => screen.notice(Some(crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_d9b68fadff43(args[0].clone()),
+                vec![format!("{:#}", e)],
+            ))),
         }
     }
 }

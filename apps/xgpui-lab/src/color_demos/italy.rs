@@ -33,7 +33,7 @@ pub(crate) struct ItalyLab {
     loader: anyhow::Result<MediaLoader>,
     images: [Option<MediaImage>; 3],
     jobs: [Option<ImageJob>; 3],
-    error: Option<String>,
+    error: Option<crate::l10n::UiCopy>,
     presentation_requested: bool,
 }
 
@@ -170,7 +170,7 @@ impl ItalyLab {
                 let message = format!("{}: {error}", NAMES[index]);
                 self.thumbnail_state.errors.write().unwrap_or_else(|error| error.into_inner())[index] =
                     Some(message.clone());
-                self.error = Some(message);
+                self.error = Some(crate::l10n::UiCopy::raw(message));
             }
         }
     }
@@ -182,7 +182,10 @@ impl Render for ItalyLab {
             self.presentation_requested = true;
             cx.defer_in(window, |this, window, cx| {
                 if let Err(error) = window.set_color_mode(WindowColorMode::WideGamutSdr) {
-                    this.error = Some(format!("Native P3 unavailable: {error}"));
+                    this.error = Some(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_033204d80de0(args[0].clone()),
+                        vec![format!("{}", error)],
+                    ));
                 }
                 cx.notify();
             });
@@ -198,7 +201,7 @@ impl Render for ItalyLab {
                     let message = format!("{name}: {error}");
                     self.thumbnail_state.errors.write().unwrap_or_else(|error| error.into_inner())[index] =
                         Some(message.clone());
-                    self.error = Some(message);
+                    self.error = Some(crate::l10n::UiCopy::raw(message));
                     self.thumbnails[index].update(cx, |_, cx| cx.notify());
                     self.jobs[index] = None;
                 }
@@ -227,29 +230,43 @@ impl Render for ItalyLab {
             photo = if native {
                 match view.wide_gamut() {
                     Ok(view) => photo.child(view),
-                    Err(error) => photo.child(crate::l10n::ui(format!("Native P3 unavailable: {error}"))),
+                    Err(error) => photo.child(crate::l10n::ui(crate::l10n::UiCopy::formatted(
+                        |args| crate::l10n::messages::msg_ui_033204d80de0(args[0].clone()),
+                        vec![format!("{}", error)],
+                    ))),
                 }
             } else {
                 photo.child(view)
             };
             if let UploadStatus::Failed(error) = image.upload_status() {
-                self.error = Some(format!("Photo upload failed: {error}"));
+                self.error = Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_6a4ba1091cfb(args[0].clone()),
+                    vec![error.to_string()],
+                ));
             }
         } else {
             let error =
                 self.thumbnail_state.errors.read().unwrap_or_else(|error| error.into_inner())[self.selected].clone();
             photo = photo.child(
                 error
-                    .map(|error| format!("Unable to load: {error}"))
-                    .unwrap_or_else(|| "Loading Italy photograph…".to_owned()),
+                    .map(|error| {
+                        crate::l10n::UiCopy::formatted(
+                            |args| crate::l10n::messages::msg_ui_a6513a93f812(args[0].clone()),
+                            vec![error.to_string()],
+                        )
+                    })
+                    .unwrap_or_else(|| "Loading Italy photograph…".into()),
             );
         }
-        let state = format!(
-            "{} · {} · 600 × 400 · Effective window mode: {:?}",
-            NAMES[self.selected],
-            if native { "Native Display P3" } else { "sRGB preview" },
-            window.color_status().effective()
-        );
+        let state = {
+            let __l10n_0 = &(NAMES[self.selected]);
+            let __l10n_1 = &(if native { "Native Display P3" } else { "sRGB preview" });
+            let __l10n_2 = &(window.color_status().effective());
+            crate::l10n::UiCopy::formatted(
+                |args| crate::l10n::messages::msg_ui_fc35556cc7f8(args[0].clone(), args[1].clone(), args[2].clone()),
+                vec![__l10n_0.to_string(), __l10n_1.to_string(), format!("{:?}", __l10n_2)],
+            )
+        };
         let fallback = (!self.preview && !native)
             .then_some("Wide-gamut output is unavailable on this window; showing the sRGB fallback.");
         // Photo selection is through the cards (Luma buttons), so they go in a section, centered under the photo.

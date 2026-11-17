@@ -300,10 +300,17 @@ pub(crate) fn choose_locale(index: usize, cx: &mut App) {
 
 mod controls;
 pub(crate) use controls::{
-    localize_selector, localize_popup, localize_context, localize_field, localize_tabs, localize_sidebar, name_button,
+    localize_selector, localize_selector_with, localize_popup, localize_context, localize_field, localize_tabs,
+    localize_sidebar, name_button,
 };
 
 pub(crate) fn tooltip(source: impl Into<SharedString>) -> xgpui_luma::controls::tooltip::Tooltip {
     let source = source.into();
     xgpui_luma::controls::tooltip::Tooltip::new(source.clone()).text_provider(move |cx| resolve(&source, cx))
 }
+
+mod text;
+pub(crate) use text::UiCopy;
+
+#[cfg(all(test, feature = "test-support"))]
+pub(crate) mod usage;

@@ -500,7 +500,13 @@ impl InteractiveSpaces {
 
     fn parameters(&self) -> ParametersPanel {
         ParametersPanel::new("Color parameters")
-            .subtitle(format!("Adjust encoded {} values (0–1)", NAMES[self.field_settings.source_index()]))
+            .subtitle({
+                let __l10n_0 = &(NAMES[self.field_settings.source_index()]);
+                crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_166f5b87552e(args[0].clone()),
+                    vec![__l10n_0.to_string()],
+                )
+            })
             .params(
                 self.channels
                     .iter()
@@ -527,7 +533,13 @@ impl Render for InteractiveSpaces {
         let preview = coordinates.as_ref().map(|color| color.srgb_reference).unwrap_or_else(|_| rgba(self.rgb));
         let (cards, conversion_error) = match &coordinates {
             Ok(coordinates) => (Some(self.space_cards(coordinates)), None),
-            Err(error) => (None, Some(format!("Color conversion unavailable: {error}"))),
+            Err(error) => (
+                None,
+                Some(crate::l10n::UiCopy::formatted(
+                    |args| crate::l10n::messages::msg_ui_9c1e581510e3(args[0].clone()),
+                    vec![format!("{}", error)],
+                )),
+            ),
         };
         let status = window.color_status();
         let output = if status.effective() == gpui::WindowColorMode::WideGamutSdr {
@@ -546,14 +558,14 @@ impl Render for InteractiveSpaces {
             .title("Color Spaces")
             .lede("Explore color models by comparing one selected color in sRGB, Display P3, OKLCH, and Rec2020.")
             .hero(Hero::full(self.render_field()))
-            .caption(format!("{output} · {display} · Hue across · value down · saturation {:.0}%", self.hsv.s * 100.))
+            .caption({ let __l10n_0 = &(self.hsv.s * 100.); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_c9e687038cef(args[0].clone(), args[1].clone(), args[2].clone()), vec![(output.to_string()).into(), (display.to_string()).into(), crate::l10n::UiCopy::percentage(format!("{:.0}", __l10n_0), 0)]) })
             .control(labeled_control(&self.look, self.source_choice.clone().into_element()))
             .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()))
             .control(self.contour_toggle.clone())
             .control(text(&self.look, TextRole::Caption, "Saturation"))
             .control(div().w(metrics.inline_slider_width).child(self.saturation.clone()))
             .control(self.reset_button.clone())
-            .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| format!("Native color rendering unavailable: {error}")))
+            .notice(self.gpu_error.as_ref().or(self.presentation_error.as_ref()).map(|error| crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_c0f26d39f3a2(args[0].clone()), vec![error.to_string()])))
             .notice(if self.renderer == 1 { self.interop.read(cx).error.clone() } else { None })
             .notice(conversion_error)
             .cards(cards.into_iter().flatten())

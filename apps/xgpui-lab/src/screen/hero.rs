@@ -1,7 +1,8 @@
 //! The screen's main visualization.
 //!
 //! See `docs/lab-screen-api.md`.
-use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, SharedString, Styled, div, px};
+use crate::l10n::UiCopy;
+use gpui::{AnyElement, Div, Hsla, IntoElement, ParentElement, Pixels, Styled, div, px};
 use xgpui_luma_look_radix::Look;
 
 use super::{LabMetrics, TextRole, text};
@@ -69,8 +70,8 @@ impl Hero {
 
 /// One side of a comparison: a one-line heading (title, subtitle, badge) over the visual.
 pub(crate) struct ComparePane {
-    title: SharedString,
-    subtitle: Option<SharedString>,
+    title: UiCopy,
+    subtitle: Option<UiCopy>,
     badge: Option<AnyElement>,
     visual: AnyElement,
 }
@@ -78,11 +79,11 @@ pub(crate) struct ComparePane {
 impl gpui::prelude::FluentBuilder for ComparePane {}
 
 impl ComparePane {
-    pub fn new(title: impl Into<SharedString>, visual: impl IntoElement) -> Self {
+    pub fn new(title: impl Into<UiCopy>, visual: impl IntoElement) -> Self {
         Self { title: title.into(), subtitle: None, badge: None, visual: visual.into_any_element() }
     }
 
-    pub fn subtitle(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn subtitle(mut self, text: impl Into<UiCopy>) -> Self {
         self.subtitle = Some(text.into());
         self
     }
@@ -131,8 +132,8 @@ pub(crate) enum Mark {
 
 struct LegendRow {
     mark: Mark,
-    label: SharedString,
-    value: Option<SharedString>,
+    label: UiCopy,
+    value: Option<UiCopy>,
 }
 
 /// A 12 px cross: 10 px arms, 2 px stroke, over a 1 px halo on every side.
@@ -153,7 +154,7 @@ fn cross(color: Hsla, halo: Hsla) -> Div {
 #[derive(Default)]
 pub(crate) struct Legend {
     items: Vec<LegendRow>,
-    note: Option<SharedString>,
+    note: Option<UiCopy>,
     markers: Vec<LegendRow>,
 }
 
@@ -164,17 +165,17 @@ impl Legend {
         Self::default()
     }
 
-    pub fn item(mut self, mark: Mark, label: impl Into<SharedString>, value: impl Into<SharedString>) -> Self {
+    pub fn item(mut self, mark: Mark, label: impl Into<UiCopy>, value: impl Into<UiCopy>) -> Self {
         self.items.push(LegendRow { mark, label: label.into(), value: Some(value.into()) });
         self
     }
 
-    pub fn note(mut self, text: impl Into<SharedString>) -> Self {
+    pub fn note(mut self, text: impl Into<UiCopy>) -> Self {
         self.note = Some(text.into());
         self
     }
 
-    pub fn marker(mut self, mark: Mark, label: impl Into<SharedString>) -> Self {
+    pub fn marker(mut self, mark: Mark, label: impl Into<UiCopy>) -> Self {
         self.markers.push(LegendRow { mark, label: label.into(), value: None });
         self
     }

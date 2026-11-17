@@ -1,0 +1,8 @@
+{
+  "status": "draft",
+  "locales": ["de", "ja", "ar"],
+  "native_speaker_review": "pending",
+  "scope": "Expanded ui-* messages and new semantic messages",
+  "provenance": "../localization/DEVELOPMENT.md",
+  "note": "Resource parity and render coverage do not constitute linguistic approval."
+}
