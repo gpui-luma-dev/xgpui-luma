@@ -1,3 +1,4 @@
+use crate::infra::locale::{LayoutDirection, LogicalStyled};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, relative, prelude::*, svg};
@@ -19,6 +20,8 @@ pub struct FloatingMenuHighlight {
 
 pub struct FloatingMenuRenderModel<'a> {
     pub id: &'a SharedString,
+    /// Direction of menu chrome and submenu opening; item artwork is unchanged.
+    pub direction: LayoutDirection,
     pub items: &'a [MenuItem],
     pub open_submenu: Option<usize>,
     pub active_path: Option<MenuPath>,
@@ -128,6 +131,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
     fn render(&self, model: &FloatingMenuRenderModel<'_>, handlers: FloatingMenuTemplateHandlers) -> Stateful<Div> {
         let FloatingMenuTemplateHandlers { item_hovers, mut submenu_hovers, controlled_hover, item_clicks } = handlers;
         let look = &model.look;
+        let direction = model.direction;
 
         let mut menu = div()
             .id((model.id.clone(), 0usize))
@@ -160,7 +164,12 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
             let color = paint.foreground;
             let mut row = div()
                 .id((item.id().clone(), 0usize))
+                .debug_selector({
+                    let id = item.id().clone();
+                    move || format!("floating-row-{id}")
+                })
                 .flex()
+                .flex_row_logical(direction)
                 .items_center()
                 .gap(px(look.item_gap))
                 .min_h(px(look.item_height))
@@ -170,8 +179,24 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                 .text_size(px(look.item_typography.size))
                 .line_height(px(look.item_typography.line_height))
                 .font_weight(look.item_typography.weight)
-                .child(render_item_icon(item.icon_ref(), color, look.item_icon_size))
-                .child(div().flex_1().child(item.label_text().clone()));
+                .child(
+                    div()
+                        .debug_selector({
+                            let id = item.id().clone();
+                            move || format!("floating-icon-{id}")
+                        })
+                        .child(render_item_icon(item.icon_ref(), color, look.item_icon_size)),
+                )
+                .child(
+                    div()
+                        .debug_selector({
+                            let id = item.id().clone();
+                            move || format!("floating-label-{id}")
+                        })
+                        .flex_1()
+                        .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+                        .child(item.label_text().clone()),
+                );
 
             if enabled {
                 row = row.cursor_pointer().on_hover(item_hover).child(render_submenu_affordance(
@@ -180,6 +205,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                     look.item_icon_size,
                     model.disclosure_icons,
                     submenu_transition_progress(index, model.open_submenu, model.submenu_transition),
+                    direction,
                 ));
 
                 if item.submenu_items().is_empty() {
@@ -200,6 +226,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                         model.highlight,
                         model.submenu_presence.opacity(),
                         model.disclosure_icons,
+                        direction,
                     ));
                 }
             } else {
@@ -209,6 +236,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                     look.item_icon_size,
                     model.disclosure_icons,
                     submenu_transition_progress(index, model.open_submenu, model.submenu_transition),
+                    direction,
                 ));
             }
 
@@ -331,6 +359,7 @@ pub fn render_floating_menu_with_template(
     let disclosure_icons = DisclosureIcons::default();
     template.render(
         &FloatingMenuRenderModel {
+            direction: LayoutDirection::Ltr,
             id,
             items,
             open_submenu,
@@ -360,6 +389,7 @@ fn render_floating_menu_with_template_and_submenu_presence(
 ) -> Stateful<Div> {
     template.render(
         &FloatingMenuRenderModel {
+            direction: LayoutDirection::Ltr,
             id,
             items,
             open_submenu,
@@ -444,6 +474,7 @@ pub fn render_floating_menu_with_submenu_hovers_and_icons_and_transition(
 ) -> Stateful<Div> {
     default_floating_menu_template().render(
         &FloatingMenuRenderModel {
+            direction: LayoutDirection::Ltr,
             id,
             items,
             open_submenu,
@@ -472,13 +503,17 @@ fn render_floating_submenu(
     highlight: Option<FloatingMenuHighlight>,
     submenu_opacity: f32,
     disclosure_icons: &DisclosureIcons,
+    direction: LayoutDirection,
 ) -> Stateful<Div> {
     let mut submenu = div()
         .id((item.id().clone(), 1usize))
+        .debug_selector({
+            let id = item.id().clone();
+            move || format!("floating-submenu-{id}")
+        })
         .absolute()
         .top(px(look.padding + row_offset(items, index, look)))
-        .left(relative(1.0))
-        .ml(px(0.0))
+        .start(relative(1.0), direction)
         .min_w(px(look.min_width))
         .p(px(look.padding))
         .bg(look.background)
@@ -506,7 +541,12 @@ fn render_floating_submenu(
         let color = paint.foreground;
         let mut row = div()
             .id((submenu_item.id().clone(), 0usize))
+            .debug_selector({
+                let id = submenu_item.id().clone();
+                move || format!("floating-row-{id}")
+            })
             .flex()
+            .flex_row_logical(direction)
             .items_center()
             .gap(px(look.item_gap))
             .min_h(px(look.item_height))
@@ -516,14 +556,31 @@ fn render_floating_submenu(
             .text_size(px(look.item_typography.size))
             .line_height(px(look.item_typography.line_height))
             .font_weight(look.item_typography.weight)
-            .child(render_item_icon(submenu_item.icon_ref(), color, look.item_icon_size))
-            .child(div().flex_1().child(submenu_item.label_text().clone()))
+            .child(
+                div()
+                    .debug_selector({
+                        let id = submenu_item.id().clone();
+                        move || format!("floating-icon-{id}")
+                    })
+                    .child(render_item_icon(submenu_item.icon_ref(), color, look.item_icon_size)),
+            )
+            .child(
+                div()
+                    .debug_selector({
+                        let id = submenu_item.id().clone();
+                        move || format!("floating-label-{id}")
+                    })
+                    .flex_1()
+                    .when(direction == LayoutDirection::Rtl, |label| label.text_right())
+                    .child(submenu_item.label_text().clone()),
+            )
             .child(render_submenu_affordance(
                 !submenu_item.submenu_items().is_empty(),
                 color,
                 look.item_icon_size,
                 disclosure_icons,
                 0.0,
+                direction,
             ));
 
         if enabled && submenu_item.submenu_items().is_empty() {
@@ -665,7 +722,22 @@ fn render_submenu_affordance(
     size: f32,
     icons: &DisclosureIcons,
     progress: f32,
+    direction: LayoutDirection,
 ) -> AnyElement {
+    if has_submenu
+        && direction == LayoutDirection::Rtl
+        && icons.collapsed.lucide() == Some(lucide_svg_static::Icon::ChevronRight)
+        && icons.expanded.lucide() == Some(lucide_svg_static::Icon::ChevronDown)
+    {
+        return svg()
+            .path(lucide_svg_static::Icon::ChevronLeft.asset_path())
+            .size(px(size))
+            .text_color(color)
+            .with_transformation(gpui::Transformation::rotate(gpui::radians(
+                -progress.clamp(0.0, 1.0) * std::f32::consts::FRAC_PI_2,
+            )))
+            .into_any_element();
+    }
     if has_submenu {
         crate::infra::icon::render_disclosure_icon(icons, progress, color, size)
     } else {
