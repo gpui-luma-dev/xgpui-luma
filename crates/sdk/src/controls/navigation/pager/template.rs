@@ -7,6 +7,7 @@ use super::theme::{PagerLook, PagerTheme, default_pager_theme};
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonContentContext, ButtonRenderModel, ControlPresenter};
 use crate::infra::icon::{IconSource, render_icon_source};
+use crate::infra::locale::LocaleContext;
 use crate::theme::InteractionState;
 
 pub type PagerOutsideMouseDownHandler = Arc<dyn Fn(&MouseDownEvent, &mut Window, &mut App) + Send + Sync + 'static>;
@@ -188,7 +189,7 @@ fn render_minimal_pager(
         .py(px(look.padding_y))
         .text_size(px(look.typography.size))
         .line_height(px(look.typography.line_height))
-        .child(render_page_indicator(model, look))
+        .child(render_page_indicator(model, look, cx))
         .child(render_nav_group(model, look, theme, handlers, false, window, cx))
 }
 
@@ -210,7 +211,7 @@ fn render_minimal_edge_pager(
         .py(px(look.padding_y))
         .text_size(px(look.typography.size))
         .line_height(px(look.typography.line_height))
-        .child(render_page_indicator(model, look))
+        .child(render_page_indicator(model, look, cx))
         .child(render_nav_group(model, look, theme, handlers, true, window, cx))
 }
 
@@ -239,12 +240,12 @@ fn render_numeric_pager(
         .child(render_nav_group_trailing(model, look, theme, handlers, true, window, cx))
 }
 
-pub(crate) fn render_page_indicator(model: &PagerRenderModel<'_>, look: &PagerLook) -> Div {
+pub(crate) fn render_page_indicator(model: &PagerRenderModel<'_>, look: &PagerLook, cx: &App) -> Div {
     div()
         .flex_none()
         .text_color(look.body_text)
         .font_weight(gpui::FontWeight::MEDIUM)
-        .child(model.page_indicator())
+        .child(model.page_indicator_with_locale(cx))
 }
 
 pub(crate) fn render_info_slot(model: &PagerRenderModel<'_>, window: &mut Window, cx: &mut App) -> Option<AnyElement> {
@@ -261,6 +262,7 @@ pub(crate) fn render_page_size_select(
     model: &PagerRenderModel<'_>,
     look: &PagerLook,
     handlers: &PagerTemplateHandlers,
+    cx: &App,
 ) -> Div {
     div()
         .relative()
@@ -288,7 +290,7 @@ pub(crate) fn render_page_size_select(
                 .text_size(px(look.typography.size))
                 .line_height(px(look.typography.line_height))
                 .when(model.enabled, |slot| slot.cursor_pointer())
-                .child(format!("{}", model.page_size))
+                .child(LocaleContext::current(cx).numbers.integer(model.page_size as u64))
                 .child(div().text_color(look.muted_text).child(render_icon_source(
                     if model.page_size_open {
                         &model.icons.page_size_open
@@ -336,7 +338,7 @@ pub(crate) fn render_page_size_select(
                             .text_size(px(look.typography.size))
                             .line_height(px(look.typography.line_height))
                             .when(model.enabled, |slot| slot.cursor_pointer())
-                            .child(format!("{option}"))
+                            .child(LocaleContext::current(cx).numbers.integer(option as u64))
                             .when(model.enabled, |slot| {
                                 slot.on_click({
                                     let set_page_size = handlers.set_page_size.clone();
@@ -549,7 +551,7 @@ fn render_page_button(
     cx: &mut App,
 ) -> AnyElement {
     let selected = page == model.current_page.min(model.page_count.saturating_sub(1));
-    let label = SharedString::from(format!("{}", page + 1));
+    let label = LocaleContext::current(cx).numbers.integer(page.saturating_add(1) as u64);
     let content: ControlPresenter<ButtonContentContext<()>> =
         Arc::new(move |_, _| div().child(label.clone()).into_any_element());
 

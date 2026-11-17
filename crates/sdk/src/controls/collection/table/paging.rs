@@ -159,10 +159,10 @@ impl PagerTemplate for TablePagerTemplate {
                                         .child(label.clone()),
                                 )
                             })
-                            .child(render_page_size_select(model, &look, &handlers))
+                            .child(render_page_size_select(model, &look, &handlers, cx))
                         },
                     ))
-                    .child(render_page_indicator(model, &look))
+                    .child(render_page_indicator(model, &look, cx))
                     .child(render_nav_group(model, &look, &self.theme, &handlers, true, window, cx)),
             )
             .into_any_element()
