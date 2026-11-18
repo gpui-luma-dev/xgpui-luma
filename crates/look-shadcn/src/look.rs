@@ -345,14 +345,7 @@ impl ShadcnLook {
 
     /// Resolves border-radius to raw pixels based on the current theme radius.
     pub fn radius(&self, role: ShadcnRadius) -> f32 {
-        let base_radius = self.parse_pixel_token("radius").unwrap_or(8.0);
-        match role {
-            ShadcnRadius::None => 0.0,
-            ShadcnRadius::Sm => (base_radius - 4.0).max(0.0),
-            ShadcnRadius::Md => (base_radius - 2.0).max(0.0),
-            ShadcnRadius::Lg => base_radius,
-            ShadcnRadius::Xl => base_radius + 4.0,
-        }
+        self.mode_tokens().radii.step(role)
     }
 
     /// Resolves custom shadow structures for GPUI box-shadow arrays.

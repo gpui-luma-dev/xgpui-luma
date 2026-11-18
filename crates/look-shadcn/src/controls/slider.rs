@@ -35,7 +35,8 @@ fn resolve_slider_part_radius_preset(
     cross_axis_size: f32,
 ) -> f32 {
     match preset {
-        ButtonRadiusPreset::None | ButtonRadiusPreset::Small => radii.get(preset),
+        // A corner never exceeds half the part, which is already a pill.
+        ButtonRadiusPreset::None | ButtonRadiusPreset::Small => radii.get(preset).min(cross_axis_size / 2.0),
         ButtonRadiusPreset::Medium | ButtonRadiusPreset::Large | ButtonRadiusPreset::Full => cross_axis_size / 2.0,
     }
 }

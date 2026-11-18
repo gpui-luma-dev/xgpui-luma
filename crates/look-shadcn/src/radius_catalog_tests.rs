@@ -48,6 +48,9 @@ fn css_radius_reaches_sdk_controls() {
     assert!(large.toolbar > base.toolbar, "toolbar: {base:?} vs {large:?}");
     assert!(large.overlay_window > base.overlay_window, "overlay window: {base:?} vs {large:?}");
 
-    // `--radius` is Shadcn's medium step.
-    assert_eq!(large.toolbar, 16.0);
+    // `--radius` is Shadcn's large step; the toolbar uses medium (`--radius-md`).
+    assert_eq!(large.toolbar, 14.0);
+    // `ShadcnRadius` and `ShadcnRadii` share one table: both "medium" steps agree.
+    assert_eq!(large.tooltip, large.toolbar);
+    assert_eq!(base.tooltip, base.toolbar);
 }

@@ -88,8 +88,7 @@ fn apply_catalog_metrics(catalog: &CssTokenMap, controls: &mut ShadcnControlMetr
     let Some(base_px) = parse_length_px(radius_raw) else {
         return;
     };
-    let scale = base_px / radii.medium;
-    *radii = radii.scaled_to(base_px);
+    *radii = ShadcnRadii::from_base(base_px);
     // Apply the standard Shadcn/Tailwind offsets:
     // Sm gets rounded-sm (radius - 4px)
     // Md gets rounded-md (radius - 2px)
@@ -97,14 +96,9 @@ fn apply_catalog_metrics(catalog: &CssTokenMap, controls: &mut ShadcnControlMetr
     let sm_radius = (base_px - 4.0).max(0.0);
     let md_radius = (base_px - 2.0).max(0.0);
     let lg_radius = base_px;
-    scale_control_metrics(&mut controls.sm, scale, sm_radius);
-    scale_control_metrics(&mut controls.md, scale, md_radius);
-    scale_control_metrics(&mut controls.lg, scale, lg_radius);
-}
-
-fn scale_control_metrics(metrics: &mut xgpui_luma::theme::ControlMetricTokens, scale: f32, md_radius: f32) {
-    metrics.radius = md_radius;
-    let _ = scale;
+    controls.sm.radius = sm_radius;
+    controls.md.radius = md_radius;
+    controls.lg.radius = lg_radius;
 }
 
 pub(crate) fn typography_from_catalog(catalog: &CssTokenMap, mut scaffold: LumaTypography) -> LumaTypography {
@@ -182,7 +176,7 @@ mod tests {
             ("radius".into(), "0.25rem".into()),
         ]));
         let (metrics, controls, radii) = metrics_from_catalog(&catalog, MetricTokens::default());
-        assert_eq!(radii.medium, 4.0);
+        assert_eq!((radii.small, radii.medium, radii.large, radii.xl), (0.0, 2.0, 4.0, 8.0));
 
         assert_eq!(metrics.control, controls.md);
         assert_eq!(controls.md.padding_x, 14.0);
