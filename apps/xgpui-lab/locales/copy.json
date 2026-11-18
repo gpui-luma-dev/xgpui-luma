@@ -2231,6 +2231,9 @@
     "parts": null,
     "files": [
       "apps/xgpui-lab/src/benchmarks.rs"
+    ],
+    "boundaries": [
+      "apps/xgpui-lab/src/benchmarks.rs"
     ]
   },
   {
@@ -10925,6 +10928,7 @@
     "parts": null,
     "files": [
       "apps/xgpui-lab/src/app.rs",
+      "apps/xgpui-lab/src/app/titlebar.rs",
       "apps/xgpui-lab/src/workshop/toolbar.rs"
     ]
   },
@@ -11379,6 +11383,9 @@
     "parts": null,
     "files": [
       "apps/xgpui-lab/src/benchmarks.rs"
+    ],
+    "boundaries": [
+      "apps/xgpui-lab/src/benchmarks.rs"
     ]
   },
   {
@@ -11582,7 +11589,8 @@
     ],
     "files": [
       "apps/xgpui-lab/src/workshop/custom_button.rs"
-    ]
+    ],
+    "explicit": true
   },
   {
     "id": "ui-1b2684405463",
@@ -20930,7 +20938,9 @@
     "value": "Workload",
     "parts": null,
     "files": [
+      "apps/xgpui-lab/src/benchmarks.rs",
       "apps/xgpui-lab/src/gamut/benchmarks.rs",
+      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs",
       "apps/xgpui-lab/src/shader.rs",
       "apps/xgpui-lab/src/shader/core_screens.rs"
     ],
@@ -23405,6 +23415,15 @@
     ]
   },
   {
+    "id": "ui-b24d6d33736e",
+    "source": "ready",
+    "value": "ready",
+    "parts": null,
+    "files": [
+      "apps/xgpui-lab/src/media_lab/tiled.rs"
+    ]
+  },
+  {
     "id": "ui-6ad974ca0821",
     "source": "reduce chroma",
     "value": "reduce chroma",
@@ -25212,7 +25231,8 @@
     ],
     "files": [
       "apps/xgpui-lab/src/benchmarks/svg_screen.rs"
-    ]
+    ],
+    "explicit": true
   },
   {
     "id": "ui-7c6859a14618",

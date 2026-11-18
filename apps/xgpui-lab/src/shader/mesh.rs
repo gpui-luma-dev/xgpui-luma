@@ -223,7 +223,7 @@ impl Render for MeshPane {
                 let __l10n_4 = &(self.editor.selected / self.editor.side as usize + 1);
                 let __l10n_5 = &(self.editor.selected % self.editor.side as usize + 1);
                 let __l10n_6 = &(if self.editor.edited { "edited" } else { "preset" });
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_58f03ee0b0a7(
                             args[0].clone(),
@@ -236,13 +236,13 @@ impl Render for MeshPane {
                         )
                     },
                     vec![
-                        format!("{}", __l10n_0),
-                        format!("{}", __l10n_1),
-                        format!("{}", __l10n_2),
-                        format!("{}", __l10n_3),
-                        format!("{}", __l10n_4),
-                        format!("{}", __l10n_5),
-                        __l10n_6.to_string(),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_2)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_4)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_5)),
+                        crate::l10n::UiCopy::from(*__l10n_6),
                     ],
                 )
             })

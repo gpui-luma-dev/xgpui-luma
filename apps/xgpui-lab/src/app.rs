@@ -595,7 +595,7 @@ fn spawn_rail(
         ("activity", "Activity", Icon::AtSign),
         ("more", "More", Icon::Ellipsis),
     ] {
-        menu = menu.item(SidebarMenuItemBuilder::new(id, label).icon(icon).help(label));
+        menu = menu.item(SidebarMenuItemBuilder::new(id, label).icon(icon).tooltip(crate::l10n::tooltip(label)));
     }
     let navigation = xgpui_luma_look_radix::sidebar_builder(look, "shell-2026-rail")
         .selected_id("home")
@@ -617,6 +617,7 @@ fn spawn_rail(
                 ),
         )
         .spawn(cx);
+    let navigation = crate::l10n::localize_sidebar(navigation, cx);
     // shell-2026's transparent, square sidebar frame has an 8 px inset.
     let frame = xgpui_luma::controls::frame::FrameBuilder::new("shell-2026-rail-frame")
         .p(px(8.0))

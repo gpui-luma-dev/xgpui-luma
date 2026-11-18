@@ -365,7 +365,7 @@ impl Render for Benchmarks {
             .child(crate::l10n::ui(self.status.clone()))
             .when_some(self.output.as_ref(), |root, output| root.child(crate::l10n::ui({ let __l10n_0 = &(output.display()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()), vec![format!("{}", __l10n_0)]) })).child(self.reveal.clone()))
             .children(self.results.iter().map(|result| {
-                let mut row = div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}", result["label"].as_str().unwrap_or("Workload"), result["outcome"].as_str().unwrap_or("unknown"))));
+                let mut row = div().flex().flex_col().gap_2().child(crate::l10n::ui(crate::l10n::UiCopy::Separated(" · ", vec![result["label"].as_str().unwrap_or("Workload").into(), result["outcome"].as_str().unwrap_or("unknown").into()])));
                 if let Some(error) = result["error"].as_str() { row = row.child(error.to_owned()); }
                 if let Some(errors) = result["errors"].as_array() { for error in errors { row = row.child(error.to_string()); } }
                 if let Some(description) = result["description"].as_str() { row = row.child(description.to_owned()); }

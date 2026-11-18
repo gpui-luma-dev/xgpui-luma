@@ -178,10 +178,13 @@ impl Page {
         } else {
             ("Ready", Status::Neutral)
         };
-        let message = if !self.status.is_empty() {
+        let message: crate::l10n::UiCopy = if !self.status.is_empty() {
             self.status.clone()
         } else {
-            format!("{} cases planned. Run benchmark measures them one at a time.", cases.len()).into()
+            crate::l10n::UiCopy::compose(
+                |args| crate::l10n::messages::msg_ui_e7905ce4cad5(args[0].clone()),
+                vec![crate::l10n::UiCopy::numeric(cases.len().to_string())],
+            )
         };
         let right = estimate.filter(|_| self.busy).unwrap_or_else(|| format!("{settled} / {}", cases.len()));
         let muted = look.chrome().muted_text;

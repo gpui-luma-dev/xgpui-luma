@@ -65,10 +65,15 @@ impl SvgPage {
                                 .flex()
                                 .flex_col()
                                 .gap_2()
-                                .child(crate::l10n::ui(format!(
-                                    "{}: {:.2}",
-                                    parameter.config().0,
-                                    self.values[*parameter as usize]
+                                .child(crate::l10n::ui(crate::l10n::UiCopy::Separated(
+                                    ": ",
+                                    vec![
+                                        parameter.config().0.into(),
+                                        crate::l10n::UiCopy::numeric(format!(
+                                            "{:.2}",
+                                            self.values[*parameter as usize]
+                                        )),
+                                    ],
                                 )))
                                 .child(slider.clone())
                         },
@@ -174,7 +179,7 @@ impl SvgPage {
                 let __l10n_1 = &(self.gallery_docs.len().max(1));
                 let __l10n_2 = &(if self.eager { "eager" } else { "visible + overscan" });
                 let __l10n_3 = &(self.values[0]);
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_2e56146e9fdb(
                             args[0].clone(),
@@ -184,10 +189,10 @@ impl SvgPage {
                         )
                     },
                     vec![
-                        format!("{}", __l10n_0),
-                        format!("{}", __l10n_1),
-                        __l10n_2.to_string(),
-                        format!("{:.2}", __l10n_3),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                        crate::l10n::UiCopy::from(*__l10n_2),
+                        crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_3)),
                     ],
                 )
             }
@@ -350,7 +355,7 @@ impl SvgPage {
                         let __l10n_1 = &(i32::from(r.output.height));
                         let __l10n_2 = &(xgpui_svg::image_bytes(r.output) as f64 / MIB as f64);
                         let __l10n_3 = &(if r.limited() { " · capped" } else { "" });
-                        crate::l10n::UiCopy::formatted(
+                        crate::l10n::UiCopy::compose(
                             |args| {
                                 crate::l10n::messages::msg_ui_3150eda2f76d(
                                     args[0].clone(),
@@ -360,10 +365,10 @@ impl SvgPage {
                                 )
                             },
                             vec![
-                                format!("{}", __l10n_0),
-                                format!("{}", __l10n_1),
-                                format!("{:.2}", __l10n_2),
-                                __l10n_3.to_string(),
+                                crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                                crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                                crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_2)),
+                                crate::l10n::UiCopy::from(*__l10n_3),
                             ],
                         )
                     }),
@@ -406,7 +411,7 @@ impl SvgPage {
                             let __l10n_3 = &(i32::from(r.output.height));
                             let __l10n_4 = &(xgpui_svg::image_bytes(r.output) as f64 / MIB as f64);
                             let __l10n_5 = &(if r.limited() { " · capped" } else { "" });
-                            crate::l10n::UiCopy::formatted(
+                            crate::l10n::UiCopy::compose(
                                 |args| {
                                     crate::l10n::messages::msg_ui_ac1c276faf2e(
                                         args[0].clone(),
@@ -418,12 +423,12 @@ impl SvgPage {
                                     )
                                 },
                                 vec![
-                                    format!("{}", __l10n_0),
-                                    format!("{}", __l10n_1),
-                                    format!("{}", __l10n_2),
-                                    format!("{}", __l10n_3),
-                                    format!("{:.2}", __l10n_4),
-                                    __l10n_5.to_string(),
+                                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
+                                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)),
+                                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_2)),
+                                    crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                                    crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_4)),
+                                    crate::l10n::UiCopy::from(*__l10n_5),
                                 ],
                             )
                         },

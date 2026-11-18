@@ -264,6 +264,7 @@ impl TitlebarState {
                     "shell-2026-theme" => "Toggle theme",
                     "shell-2026-layout" => "Layout",
                     "shell-2026-new" => "New window",
+                    "shell-2026-more" => "More",
                     _ => "Window action",
                 };
                 crate::l10n::name_button(build(cx), label, cx)

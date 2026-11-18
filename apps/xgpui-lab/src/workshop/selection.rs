@@ -1,5 +1,6 @@
 //! Native SDK selection controls, without app-owned item or control templates.
 use std::sync::Arc;
+use xgpui_luma::prelude::HasPresenter;
 use gpui::{AnyView, Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::{
     autocomplete, combobox, search_selector, selector, selection_panel, split_button, context_menu::MenuItem,
@@ -119,6 +120,7 @@ impl SelectionSample {
             SelectionKind::SplitButton => Control::SplitButton(
                 split_button::SplitButtonBuilder::new("workshop-sdk-split-button")
                     .label("Apply")
+                    .content(crate::l10n::label("Apply"))
                     .items(ITEMS.iter().map(|&(id, label, enabled)| MenuItem::new(id).label(label).enabled(enabled)))
                     .spawn(cx),
             ),

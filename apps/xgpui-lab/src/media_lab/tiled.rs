@@ -333,7 +333,7 @@ impl Render for TiledDemo {
                     },
                     vec![
                         crate::l10n::UiCopy::numeric(format!("{}", __l10n_0)),
-                        crate::l10n::UiCopy::numeric(format!("{:?}", __l10n_1)),
+                        crate::l10n::UiCopy::state(status_key(__l10n_1)),
                         crate::l10n::UiCopy::percentage(format!("{:.1}", __l10n_2), 1),
                         crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
                         crate::l10n::UiCopy::numeric(format!("{}", __l10n_4)),
@@ -426,5 +426,17 @@ mod tests {
             cx.run_until_parked();
             cx.update(|_, cx| assert!(page.read(cx).render_scale < 1.));
         }
+    }
+}
+
+/// `lab-state` selector key for the progressive provider status.
+fn status_key(status: &ProgressiveStatus) -> &'static str {
+    match status {
+        ProgressiveStatus::Loading => "loading",
+        ProgressiveStatus::Preview => "preview",
+        ProgressiveStatus::Refining => "refining",
+        ProgressiveStatus::Ready => "ready",
+        ProgressiveStatus::Failed(_) => "failed",
+        ProgressiveStatus::Cancelled => "cancelled",
     }
 }

@@ -231,3 +231,61 @@ fn composed_counts_percentages_and_qualitative_path_modes_keep_their_meaning() {
         });
     }
 }
+
+/// #264: UI words must reach catalog lookup. `UiCopy::formatted` only formats
+/// numbers, and text formatted before `ui`/`label` can never match a message.
+#[test]
+fn ui_words_are_not_formatted_before_catalog_lookup() {
+    fn sources(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            // Standalone developer binaries (and chromaticity.rs, which only
+            // chromaticity-lab includes) keep their own diagnostics text.
+            if path.is_dir() && !path.ends_with("bin") {
+                sources(&path, out);
+            } else if path.extension().is_some_and(|ext| ext == "rs")
+                && !path.ends_with("chromaticity.rs")
+                && !path.ends_with("audit_tests.rs")
+            {
+                out.push(path);
+            }
+        }
+    }
+    fn literal_choice(init: &str) -> bool {
+        let init = init.trim();
+        (init.starts_with("if ") || init.starts_with('['))
+            && init.contains('"')
+            && !["result", "unwrap_or", "format!"].iter().any(|data| init.contains(data))
+    }
+    let mut files = Vec::new();
+    sources(&std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
+    files.sort();
+    let mut failures = Vec::new();
+    for path in files {
+        let source = std::fs::read_to_string(&path).unwrap();
+        let name = path.strip_prefix(env!("CARGO_MANIFEST_DIR")).unwrap().display().to_string();
+        for pattern in ["l10n::ui(format!(", "l10n::label(format!(", "let label = format!(\"New Button"] {
+            if source.contains(pattern) {
+                failures.push(format!("{name}: {pattern}"));
+            }
+        }
+        for (start, _) in source.match_indices("let __l10n_") {
+            let rest = &source[start + 4..];
+            let Some((binding, init)) = rest.split_once(" = &(") else {
+                continue;
+            };
+            let Some(init_end) = init.find(");") else { continue };
+            if !literal_choice(&init[..init_end]) {
+                continue;
+            }
+            let after = &init[init_end..];
+            let Some(next) = after.find("UiCopy::") else { continue };
+            let call = &after[next..];
+            let call = &call[..call.find("\n})").or_else(|| call.find(") })")).unwrap_or(call.len())];
+            if call.starts_with("UiCopy::formatted(") && call.contains(&format!("{binding}.to_string()")) {
+                failures.push(format!("{name}: {binding} is a UI word passed to UiCopy::formatted"));
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

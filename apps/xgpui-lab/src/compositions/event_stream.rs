@@ -71,7 +71,13 @@ impl Render for ControlEventStream {
                             .text_color(chrome.title_text)
                             .child(crate::l10n::ui("Eventing")),
                     )
-                    .child(div().w_full().typography_style(body_style).text_color(chrome.muted_text).child(self.intro)),
+                    .child(
+                        div()
+                            .w_full()
+                            .typography_style(body_style)
+                            .text_color(chrome.muted_text)
+                            .child(crate::l10n::ui(self.intro)),
+                    ),
             )
             .child(
                 div()

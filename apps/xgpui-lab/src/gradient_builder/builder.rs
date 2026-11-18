@@ -308,6 +308,7 @@ impl GradientBuilder {
             .size(ControlSize::Sm)
             .width_mode(TabsWidthMode::Uniform)
             .spawn(cx);
+        let top_tabs = crate::l10n::localize_tabs(top_tabs, cx);
         let type_selector = crate::l10n::localize_selector(
             radix::Selector::new("color-viz-gradient-type")
                 .look(look.as_ref())

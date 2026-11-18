@@ -104,16 +104,24 @@ impl Choice {
     /// Source labels remain event data; retained display messages resolve at render.
     pub fn sync_messages(&self, options: Vec<(String, crate::l10n::UiCopy)>, selected: usize, cx: &mut gpui::App) {
         let (options, display): (Vec<_>, Vec<_>) = options.into_iter().unzip();
-        if let Ok(mut labels) = self.display.lock() {
+        // Display messages can change while source labels stay the same
+        // (e.g. a count inside a label); the selector must repaint then too.
+        let relabeled = self.display.lock().is_ok_and(|mut labels| {
+            let relabeled = labels.len() != display.len()
+                || labels.iter().zip(&display).any(|(old, new)| old.resolve(cx) != new.resolve(cx));
             *labels = display;
-        }
+            relabeled
+        });
         let changed = *self.labels.borrow() != options;
         if changed {
             *self.labels.borrow_mut() = options;
         }
         let id = (selected < self.labels.borrow().len()).then(|| selected.to_string());
-        if changed || self.selector.read(cx).selected_id().map(|id| id.as_ref()) != id.as_deref() {
+        if changed || relabeled || self.selector.read(cx).selected_id().map(|id| id.as_ref()) != id.as_deref() {
             self.selector.update(cx, |selector, cx| {
+                if relabeled {
+                    cx.notify();
+                }
                 if changed {
                     selector.set_items(items(&self.labels.borrow()), cx);
                     selector.set_enabled(!self.labels.borrow().is_empty(), cx);
@@ -217,5 +225,53 @@ impl IntoElement for Segmented {
     fn into_element(self) -> Self::Element {
         crate::l10n::row(div().flex().items_center().gap_2().child(crate::l10n::ui(self.label)).child(self.group))
             .into_any_element()
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod tests {
+    use super::*;
+    use gpui::{TestAppContext, Window};
+
+    struct Owner {
+        choice: Option<Choice>,
+    }
+    impl Render for Owner {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().children(self.choice.as_ref().map(|choice| choice.selector.clone()))
+        }
+    }
+
+    /// #264: a display message can change while the source labels and the
+    /// selection stay the same; the selector must still repaint.
+    #[test]
+    fn choice_repaints_when_only_display_messages_change() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (owner, cx) = app.add_window_view(|_, cx| {
+            let choice = Choice::new(
+                "choice-relabel",
+                "Choice",
+                &crate::theme::default_look(),
+                labels(&["a"]),
+                0,
+                cx,
+                |_: &mut Owner, _, _| {},
+            );
+            Owner { choice: Some(choice) }
+        });
+        let choice = owner.read_with(cx, |owner, _| owner.choice.clone().unwrap());
+        let repaints = Rc::new(RefCell::new(0));
+        let count = repaints.clone();
+        let _subscription = cx.update(|_, cx| cx.observe(&choice.selector, move |_, _| *count.borrow_mut() += 1));
+        let relabel = |text: &'static str, cx: &mut gpui::App| {
+            choice.sync_messages(vec![("a".to_owned(), crate::l10n::UiCopy::raw(text))], 0, cx)
+        };
+        cx.update(|_, cx| relabel("first", cx));
+        let before = *repaints.borrow();
+        cx.update(|_, cx| relabel("first", cx));
+        assert_eq!(*repaints.borrow(), before, "unchanged labels must not repaint");
+        cx.update(|_, cx| relabel("second", cx));
+        assert!(*repaints.borrow() > before, "a changed display message must repaint");
     }
 }

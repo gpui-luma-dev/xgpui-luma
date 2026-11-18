@@ -42,6 +42,11 @@ lab-state = { $state ->
     [failed] 失敗
     [finished] 完了
     [uploading] アップロード中
+    [preview] プレビュー
+    [refining] 精細化中
+    [cancelled] キャンセル済み
+    [roving] ロービング
+    [sequential] 順次
    *[other] { $state }
 }
 lab-colors = { $count ->
@@ -2391,6 +2396,7 @@ ui-6b70a552eb10 = r { $a0 } ピクセル
 ui-f46d6f9e33b7 = 放射性勾配(円、透明0%、透明100%)
 ui-2d8c34599bdb = 放射性勾配(円、{ $a0 })
 ui-5ad74f09f9da = Gamutの実験室ピクセルを読んで下さい
+ui-b24d6d33736e = 準備完了
 ui-6ad974ca0821 = クロマを減らして下さい
 ui-bbcd25c74402 = 自動スクロールを抑制する運動を削減
 ui-834f8a0867e7 = モーションを削減: 静的なソース、アニメーションの要求を完了しません

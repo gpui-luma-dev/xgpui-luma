@@ -40,7 +40,7 @@ impl LinePage {
             radix::Button::new("line-reset")
                 .look(look.as_ref())
                 .outline()
-                .label("Reset layout")
+                .content(crate::l10n::label("Reset layout"))
                 .on_click(cx, |this: &mut Self, cx| {
                     this.width = 320.;
                     this.size = 24.;

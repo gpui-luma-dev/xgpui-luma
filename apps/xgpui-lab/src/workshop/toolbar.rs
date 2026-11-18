@@ -88,9 +88,9 @@ impl Render for ToolbarExpositionLeftPane {
                                 .text_color(chrome.muted_text)
                                 .child(crate::l10n::ui({
                                     let __l10n_0 = &(self.focus_mode);
-                                    crate::l10n::UiCopy::formatted(
+                                    crate::l10n::UiCopy::compose(
                                         |args| crate::l10n::messages::msg_ui_e7117ea9cdce(args[0].clone()),
-                                        vec![__l10n_0.to_string()],
+                                        vec![crate::l10n::UiCopy::state(*__l10n_0)],
                                     )
                                 })),
                         ),
@@ -320,6 +320,7 @@ fn toolbar_selector<T: 'static>(
         .items(items)
         .selected_id(selected)
         .spawn(cx);
+    let selector = crate::l10n::localize_selector(selector, cx);
     ToolbarItem::selector_control(id, selector, cx).label(label)
 }
 fn toolbar_toggle<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {

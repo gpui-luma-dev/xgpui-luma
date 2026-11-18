@@ -116,7 +116,10 @@ impl CustomButtonControlExposition {
                     return;
                 }
                 this.modified_clicks += 1;
-                let label = format!("New Button {}", this.modified_clicks);
+                let label = crate::l10n::UiCopy::compose(
+                    |args| crate::l10n::messages::msg_ui_88791f34df51(args[0].clone()),
+                    vec![crate::l10n::UiCopy::numeric(this.modified_clicks.to_string())],
+                );
                 this.modified_button
                     .update(cx, |button, cx| button.set_presenter(std::sync::Arc::new(crate::l10n::label(label)), cx));
             }

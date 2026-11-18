@@ -43,6 +43,11 @@ lab-state = { $state ->
     [failed] Failed
     [finished] Finished
     [uploading] Uploading
+    [preview] Preview
+    [refining] Refining
+    [cancelled] Cancelled
+    [roving] Roving
+    [sequential] Sequential
    *[other] { $state }
 }
 lab-colors = { $count ->
@@ -2393,6 +2398,7 @@ ui-6b70a552eb10 = r { $a0 } px
 ui-f46d6f9e33b7 = radial-gradient(circle, transparent 0%, transparent 100%)
 ui-2d8c34599bdb = radial-gradient(circle, { $a0 })
 ui-5ad74f09f9da = reading back Gamut lab pixels
+ui-b24d6d33736e = ready
 ui-6ad974ca0821 = reduce chroma
 ui-bbcd25c74402 = reduced motion suppresses automated scrolling
 ui-834f8a0867e7 = reduced motion: complete static source, no animation requests

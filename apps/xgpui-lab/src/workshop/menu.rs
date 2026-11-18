@@ -158,9 +158,12 @@ impl Render for MenuSample {
                             .child(crate::l10n::ui({
                                 let __l10n_0 = &(if self.open { "open" } else { "closed" });
                                 let __l10n_1 = &(self.selected);
-                                crate::l10n::UiCopy::formatted(
+                                crate::l10n::UiCopy::compose(
                                     |args| crate::l10n::messages::msg_ui_d236e3233293(args[0].clone(), args[1].clone()),
-                                    vec![__l10n_0.to_string(), __l10n_1.to_string()],
+                                    vec![
+                                        crate::l10n::UiCopy::from(*__l10n_0),
+                                        crate::l10n::UiCopy::numeric(__l10n_1.to_string()),
+                                    ],
                                 )
                             })),
                     ),

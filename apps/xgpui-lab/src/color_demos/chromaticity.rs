@@ -197,7 +197,7 @@ impl ChromaticityLab {
         let switches = vec![
             radix::Switch::new("chroma-hatching")
                 .look(&look)
-                .label("Hatching")
+                .content(crate::l10n::label("Hatching"))
                 .checked(true)
                 .on_value_changed(cx, |this: &mut Self, value, cx| {
                     this.hatch = value;
@@ -206,7 +206,7 @@ impl ChromaticityLab {
                 .spawn(cx),
             radix::Switch::new("chroma-uv")
                 .look(&look)
-                .label("u′v′")
+                .content(crate::l10n::label("u′v′"))
                 .checked(false)
                 .on_value_changed(cx, |this: &mut Self, value, cx| {
                     this.uv = value;

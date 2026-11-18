@@ -154,7 +154,7 @@ impl ParagraphLab {
             xgpui_luma_look_radix::Button::new("paragraph-control-width")
                 .look(look.as_ref())
                 .outline()
-                .label("Narrow / Wide")
+                .content(crate::l10n::label("Narrow / Wide"))
                 .on_click(cx, |this: &mut Self, cx| {
                     this.wide = !this.wide;
                     this.geometry = None;
@@ -306,7 +306,7 @@ impl Render for ParagraphLab {
         let mut root = LabScreen::new("parley-paragraph", self.look.clone())
             .crumb("xgpui-parley", "Paragraphs").title("Paragraphs")
             .lede("Explore editing, selection and mixed-direction text as a paragraph reflows.")
-            .caption({ let __l10n_0 = &(f32::from(width)); let __l10n_1 = &(self.content.len()); let __l10n_2 = &(if native_atlas {"native glyph atlas"} else {"CPU raster preview"}); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_56cbd416cf2b(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone()), vec![label.to_string(), format!("{:.0}", __l10n_0), format!("{}", __l10n_1), __l10n_2.to_string()]) })
+            .caption({ let __l10n_0 = &(f32::from(width)); let __l10n_1 = &(self.content.len()); let __l10n_2 = &(if native_atlas {"native glyph atlas"} else {"CPU raster preview"}); crate::l10n::UiCopy::compose(|args| crate::l10n::messages::msg_ui_56cbd416cf2b(args[0].clone(), args[1].clone(), args[2].clone(), args[3].clone()), vec![crate::l10n::UiCopy::numeric(label.to_string()), crate::l10n::UiCopy::numeric(format!("{:.0}", __l10n_0)), crate::l10n::UiCopy::numeric(format!("{}", __l10n_1)), crate::l10n::UiCopy::from(*__l10n_2)]) })
             .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
             .panels(PanelShell::new("Selection / live").child(properties(&self.look, [
                 ("Anchor",format!("{} {:?}",self.anchor.byte_index,self.anchor.affinity)),

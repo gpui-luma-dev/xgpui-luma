@@ -322,11 +322,15 @@ impl Render for SeaPane {
                 let __l10n_0 = &(if self.animated { "Animating" } else { "Paused" });
                 let __l10n_1 = &(self.parameters.time);
                 let __l10n_2 = &(if self.parameters.detail > 0.5 { 5 } else { 3 });
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_d7b1ca08b072(args[0].clone(), args[1].clone(), args[2].clone())
                     },
-                    vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1), format!("{}", __l10n_2)],
+                    vec![
+                        crate::l10n::UiCopy::from(*__l10n_0),
+                        crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_1)),
+                        crate::l10n::UiCopy::numeric(format!("{}", __l10n_2)),
+                    ],
                 )
             });
         for switch in &self.switches {

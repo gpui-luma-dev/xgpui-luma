@@ -208,7 +208,7 @@ impl TextFieldPage {
             })
             .spawn(cx);
         let tabs = tab_bar.then(|| {
-            radix::Tabs::new("parley-text-field-screens")
+            let tabs = radix::Tabs::new("parley-text-field-screens")
                 .look(look.as_ref())
                 .line()
                 .items(Screen::ALL.iter().map(|(_, id, label)| TabsItem::new(*id).label(*label)))
@@ -217,7 +217,8 @@ impl TextFieldPage {
                     this.screen = Screen::from_id(id);
                     cx.notify();
                 })
-                .spawn(cx)
+                .spawn(cx);
+            crate::l10n::localize_tabs(tabs, cx)
         });
         Self { look, fields, toggle, tabs, screen: Screen::Fields, last_event: "No events yet".into() }
     }

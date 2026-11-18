@@ -256,9 +256,12 @@ impl SvgPage {
                 .child(crate::screen::text(&self.look, crate::screen::TextRole::Name, {
                     let __l10n_0 = &(["Open Bézier curve", "Closed heart", "Multiple contours"][index]);
                     let __l10n_1 = &(f32::from(path.length()));
-                    crate::l10n::UiCopy::formatted(
+                    crate::l10n::UiCopy::compose(
                         |args| crate::l10n::messages::msg_ui_f1fc01b91e8b(args[0].clone(), args[1].clone()),
-                        vec![__l10n_0.to_string(), format!("{:.2}", __l10n_1)],
+                        vec![
+                            crate::l10n::UiCopy::from(*__l10n_0),
+                            crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_1)),
+                        ],
                     )
                 }))
                 .child(

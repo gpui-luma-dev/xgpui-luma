@@ -262,9 +262,13 @@ impl Render for ItalyLab {
             let __l10n_0 = &(NAMES[self.selected]);
             let __l10n_1 = &(if native { "Native Display P3" } else { "sRGB preview" });
             let __l10n_2 = &(window.color_status().effective());
-            crate::l10n::UiCopy::formatted(
+            crate::l10n::UiCopy::compose(
                 |args| crate::l10n::messages::msg_ui_fc35556cc7f8(args[0].clone(), args[1].clone(), args[2].clone()),
-                vec![__l10n_0.to_string(), __l10n_1.to_string(), format!("{:?}", __l10n_2)],
+                vec![
+                    crate::l10n::UiCopy::numeric(__l10n_0.to_string()),
+                    crate::l10n::UiCopy::from(*__l10n_1),
+                    crate::l10n::UiCopy::numeric(format!("{:?}", __l10n_2)),
+                ],
             )
         };
         let fallback = (!self.preview && !native)

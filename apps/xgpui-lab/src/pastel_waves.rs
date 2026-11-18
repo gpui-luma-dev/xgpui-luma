@@ -298,7 +298,7 @@ impl Render for PastelWaves {
                 let __l10n_1 = &(self.phase);
                 let __l10n_2 = &(if self.direction > 0. { "forward" } else { "reverse" });
                 let __l10n_3 = &(if self.grain { "on" } else { "off" });
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_14684942f056(
                             args[0].clone(),
@@ -307,7 +307,12 @@ impl Render for PastelWaves {
                             args[3].clone(),
                         )
                     },
-                    vec![__l10n_0.to_string(), format!("{:.3}", __l10n_1), __l10n_2.to_string(), __l10n_3.to_string()],
+                    vec![
+                        crate::l10n::UiCopy::from(*__l10n_0),
+                        crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1)),
+                        crate::l10n::UiCopy::from(*__l10n_2),
+                        crate::l10n::UiCopy::from(*__l10n_3),
+                    ],
                 )
             })
             .control(labeled_control(&self.look, self.renderer_choice.clone().into_element()));

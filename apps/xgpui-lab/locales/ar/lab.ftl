@@ -47,6 +47,11 @@ lab-state = { $state ->
     [failed] فشل
     [finished] مكتمل
     [uploading] جارٍ الرفع
+    [preview] معاينة
+    [refining] جارٍ التحسين
+    [cancelled] أُلغي
+    [roving] متنقل
+    [sequential] تسلسلي
    *[other] { $state }
 }
 lab-colors = { $count ->
@@ -2461,6 +2466,7 @@ ui-6b70a552eb10 = ص { $a0 } بكسل
 ui-f46d6f9e33b7 = شعاعي التدرج (دائرة ، شفافة 0 ٪ ، شفافة 100 ٪)
 ui-2d8c34599bdb = شعاعي التدرج (دائرة، { $a0 })
 ui-5ad74f09f9da = قراءة العودة Gamut Lab بكسلات
+ui-b24d6d33736e = جاهز
 ui-6ad974ca0821 = تقليل كروما
 ui-bbcd25c74402 = انخفاض الحركة يقمع التمرير الآلي
 ui-834f8a0867e7 = انخفاض الحركة: مصدر ثابت كامل ، لا طلبات الرسوم المتحركة

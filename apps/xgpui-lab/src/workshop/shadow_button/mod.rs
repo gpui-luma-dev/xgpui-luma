@@ -212,7 +212,13 @@ impl Render for ShadowButtonSample {
                     .flex()
                     .flex_col()
                     .gap(px(6.))
-                    .child(crate::l10n::ui(format!("{}: {:.0}", field.title(), field.value(self.controls))))
+                    .child(crate::l10n::ui(crate::l10n::UiCopy::Separated(
+                        ": ",
+                        vec![
+                            field.title().into(),
+                            crate::l10n::UiCopy::numeric(format!("{:.0}", field.value(self.controls))),
+                        ],
+                    )))
                     .child(slider.clone())
             }));
         page("workshop-shadow-page", div().w_full().flex().flex_col().items_start().gap(px(28.))

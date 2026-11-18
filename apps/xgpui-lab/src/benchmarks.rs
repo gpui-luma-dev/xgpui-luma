@@ -406,7 +406,7 @@ impl Page {
         let svg_baseline = baseline_flag(&std::env::args().collect::<Vec<_>>());
         let svg_baseline_toggle = radix::Toggle::new("svg-baseline")
             .look(&look)
-            .label("256 MiB baseline")
+            .content(crate::l10n::label("256 MiB baseline"))
             .selected(svg_baseline)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.svg_baseline = on;
@@ -428,6 +428,7 @@ impl Page {
                 cx.notify();
             })
             .spawn(cx);
+        let svg_tabs = crate::l10n::localize_tabs(svg_tabs, cx);
         let svg_progress_bar = radix::Progress::new("svg-benchmark-progress").look(&look).value(0.).spawn(cx);
         let (svg_zooms, svg_budgets) =
             (svg_screen::zooms(0), svg_screen::budgets(svg_screen::DEFAULT_BUDGET_CHOICE, svg_baseline));
@@ -987,10 +988,10 @@ impl Render for Page {
         }
         let body=div().id("embedded-benchmarks").flex_1().min_h_0().overflow_y_scroll().p_4().flex().flex_col().gap_4().text_color(self.look.chrome().body_text)
             .child(div().flex().flex_wrap().gap_2().children(self.buttons.clone()))
-            .child(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>""})
+            .child(crate::l10n::ui(match self.suite{Suite::Parley=>"Both text backends use the same embedded samples and fonts. Scroll cases run 600 frames in a temporary window. Backend isolation uses this app’s executable.",Suite::Shader=>"Native pixel checks cover geometry, gradients, alpha, clipping, replay, resize, source reuse and portable WGSL. Timings include readback, not GPU-only time.",Suite::Svg=>""}))
             .child(crate::l10n::ui(self.status.clone())).when_some(self.output.as_ref(),|root,output|root.child(crate::l10n::ui({ let __l10n_0 = &(output.display()); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_8e17c0184d2a(args[0].clone()), vec![format!("{}", __l10n_0)]) })).child(self.reveal.clone()))
             .children(self.results.iter().map(|result|{
-                let mut row=div().flex().flex_col().gap_2().child(crate::l10n::ui(format!("{} · {}",result["label"].as_str().unwrap_or("Workload"),result["outcome"].as_str().unwrap_or("unknown"))));
+                let mut row=div().flex().flex_col().gap_2().child(crate::l10n::ui(crate::l10n::UiCopy::Separated(" · ", vec![result["label"].as_str().unwrap_or("Workload").into(), result["outcome"].as_str().unwrap_or("unknown").into()])));
                 for key in ["error","summary","measurement","stats"]{if let Some(text)=result[key].as_str(){row=row.child(text.to_owned());}}
                 if let Some(errors)=result["errors"].as_array(){for error in errors{row=row.child(error.to_string());}}
                 if let Some(ms)=result["raster"]["median_ms"].as_f64(){row=row.child(crate::l10n::ui({ let __l10n_0 = &(result["pixel_width"]); let __l10n_1 = &(result["pixel_height"]); crate::l10n::UiCopy::formatted(|args| crate::l10n::messages::msg_ui_754d93425492(args[0].clone(), args[1].clone(), args[2].clone()), vec![format!("{:.3}", ms), format!("{}", __l10n_0), format!("{}", __l10n_1)]) }));}

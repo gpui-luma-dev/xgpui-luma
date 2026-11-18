@@ -44,8 +44,9 @@ pub(crate) fn localizer(locale: Locale) -> Result<Localizer> {
             include_str!(concat!(env!("OUT_DIR"), "/ar-XB-sdk.ftl")),
         ),
     ] {
-        localizer.add_resource(&tag.parse()?, lab)?;
+        // SDK first, app last, like the real locales: Lab messages win.
         localizer.add_resource(&tag.parse()?, sdk)?;
+        localizer.add_resource(&tag.parse()?, lab)?;
     }
     Ok(localizer)
 }

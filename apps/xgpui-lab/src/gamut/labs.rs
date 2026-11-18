@@ -108,7 +108,7 @@ impl GamutPage {
                 } else {
                     "original order"
                 });
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_0f396ac5ed73(
                             args[0].clone(),
@@ -120,12 +120,12 @@ impl GamutPage {
                         )
                     },
                     vec![
-                        __l10n_0.to_string(),
-                        output.to_string(),
-                        format!("{:.2}", __l10n_1),
-                        __l10n_2.to_string(),
-                        __l10n_3.to_string(),
-                        __l10n_4.to_string(),
+                        crate::l10n::UiCopy::from(*__l10n_0),
+                        crate::l10n::UiCopy::numeric(output.to_string()),
+                        crate::l10n::UiCopy::numeric(format!("{:.2}", __l10n_1)),
+                        crate::l10n::UiCopy::numeric(__l10n_2.to_string()),
+                        crate::l10n::UiCopy::from(*__l10n_3),
+                        crate::l10n::UiCopy::from(*__l10n_4),
                     ],
                 )
             }
@@ -140,7 +140,7 @@ impl GamutPage {
                     "Reduce chroma"
                 });
                 let __l10n_2 = &(if self.translucent { "25%" } else { "100%" });
-                crate::l10n::UiCopy::formatted(
+                crate::l10n::UiCopy::compose(
                     |args| {
                         crate::l10n::messages::msg_ui_10501a475db4(
                             args[0].clone(),
@@ -149,7 +149,12 @@ impl GamutPage {
                             args[3].clone(),
                         )
                     },
-                    vec![__l10n_0.to_string(), __l10n_1.to_string(), __l10n_2.to_string(), output.to_string()],
+                    vec![
+                        crate::l10n::UiCopy::numeric(__l10n_0.to_string()),
+                        crate::l10n::UiCopy::from(*__l10n_1),
+                        crate::l10n::UiCopy::from(*__l10n_2),
+                        crate::l10n::UiCopy::numeric(output.to_string()),
+                    ],
                 )
             }
         };

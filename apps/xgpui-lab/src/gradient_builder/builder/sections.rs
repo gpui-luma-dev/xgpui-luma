@@ -103,7 +103,7 @@ impl GradientBuilder {
                                     .size(px(12.0))
                                     .text_color(chrome.muted_text),
                             )
-                            .child(display_label)
+                            .child(crate::l10n::ui(display_label))
                             .into_any_element()
                     });
                     let content = AccordionContent::custom(move |window, cx| {

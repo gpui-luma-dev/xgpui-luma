@@ -88,7 +88,7 @@ impl MediaPage {
                     });
                     let __l10n_3 = &([0, 4, 8, 16][self.blur_index]);
                     let __l10n_4 = &(if self.full_quality { "full" } else { "adaptive" });
-                    crate::l10n::UiCopy::formatted(
+                    crate::l10n::UiCopy::compose(
                         |args| {
                             crate::l10n::messages::msg_ui_5803b486d266(
                                 args[0].clone(),
@@ -99,11 +99,11 @@ impl MediaPage {
                             )
                         },
                         vec![
-                            __l10n_0.to_string(),
-                            format!("{:.3}", __l10n_1),
-                            __l10n_2.to_string(),
-                            format!("{}", __l10n_3),
-                            __l10n_4.to_string(),
+                            crate::l10n::UiCopy::numeric(__l10n_0.to_string()),
+                            crate::l10n::UiCopy::numeric(format!("{:.3}", __l10n_1)),
+                            crate::l10n::UiCopy::from(*__l10n_2),
+                            crate::l10n::UiCopy::numeric(format!("{}", __l10n_3)),
+                            crate::l10n::UiCopy::from(*__l10n_4),
                         ],
                     )
                 })
