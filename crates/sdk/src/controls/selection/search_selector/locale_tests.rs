@@ -195,3 +195,40 @@ fn rtl_refresh_mirrors_trigger_and_filtered_rows_without_editing_query_or_select
     }
     assert_eq!(changes.get(), 0);
 }
+
+#[test]
+fn empty_state_row_starts_at_the_logical_start_in_rtl() {
+    use crate::infra::locale::LayoutDirection;
+    for direction in [LayoutDirection::Ltr, LayoutDirection::Rtl] {
+        let mut app = TestAppContext::single();
+        app.update(|cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+        let (selector, cx) = app.add_window_view(|_, cx| {
+            SearchSelectorControl::from_builder(
+                SearchSelectorBuilder::new(
+                    "empty-search",
+                    [super::super::behavior::SelectionItem::new("alpha", "Alpha")],
+                )
+                .motion_enabled(false),
+                cx,
+            )
+        });
+        cx.run_until_parked();
+        cx.simulate_click(gpui::point(px(25.), px(15.)), Default::default());
+        cx.run_until_parked();
+        // Typing closes the popup on no match, so render the empty list directly.
+        selector.update(cx, |view, cx| {
+            view.behavior.state.filtered.clear();
+            cx.notify();
+        });
+        cx.run_until_parked();
+        cx.update(|_, cx| assert!(selector.read(cx).presence.should_paint()));
+        let row = cx.debug_bounds("search-selector-no-matches").unwrap();
+        let label = cx.debug_bounds("search-selector-no-matches-label").unwrap();
+        let (start_gap, end_gap) = if direction == LayoutDirection::Rtl {
+            (row.right() - label.right(), label.left() - row.left())
+        } else {
+            (label.left() - row.left(), row.right() - label.right())
+        };
+        assert!(start_gap < end_gap, "{direction:?}: label {label:?} in row {row:?}");
+    }
+}

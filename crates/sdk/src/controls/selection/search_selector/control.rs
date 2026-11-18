@@ -7,6 +7,7 @@ mod locale_tests;
 mod click_tests;
 
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
+use crate::infra::locale::{LayoutDirection, LocaleContext, LogicalStyled};
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, KeyDownEvent,
     MouseDownEvent, Pixels, Render, ScrollEvent, SharedString, Subscription, TextRun, Window, div, font, prelude::*,
@@ -819,8 +820,12 @@ impl Render for SearchSelectorControl {
             self.popup_surface.sync(cx);
 
             let list_content = if visible_indices.is_empty() {
+                let direction = LocaleContext::current(cx).direction;
                 div()
+                    .debug_selector(|| "search-selector-no-matches".into())
                     .flex()
+                    .flex_row_logical(direction)
+                    .when(direction == LayoutDirection::Rtl, |row| row.text_right())
                     .items_center()
                     .min_h(px(look.item_height))
                     .px(px(look.item_padding_x))
@@ -828,7 +833,11 @@ impl Render for SearchSelectorControl {
                     .line_height(px(look.item_typography.line_height))
                     .font_weight(look.item_typography.weight)
                     .text_color(autocomplete_look.muted_text_color)
-                    .child(self.model.no_matches.clone())
+                    .child(
+                        div()
+                            .debug_selector(|| "search-selector-no-matches-label".into())
+                            .child(self.model.no_matches.clone()),
+                    )
                     .into_any_element()
             } else {
                 self.model

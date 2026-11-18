@@ -66,12 +66,10 @@ fn sidebar_indent_and_expansion_keys_follow_live_direction() {
         cx.update(|window, cx| {
             let focus = engine.read(cx).rail_focus_handles["parent"].clone();
             focus.focus(window, cx);
-            engine.update(cx, |view, cx| {
-                view.set_open_rail_submenu("parent".into(), cx);
-                cx.notify();
-            });
         });
         cx.run_until_parked();
+        cx.update(|_, cx| assert!(engine.read(cx).open_rail_submenu.is_none()));
+        // #266: the expand arrow alone must open the rail parent's submenu.
         cx.simulate_keystrokes(if direction == LayoutDirection::Rtl {
             "left"
         } else {

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use gpui::{Context, SharedString, div, prelude::*};
 use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::checkbox::CheckboxData;
+use xgpui_luma::infra::locale::{LocaleContext, LogicalStyled};
 use xgpui_luma::controls::control_group::{
     self, ControlGroupBuilder, ControlGroupItem, ControlGroupItemLike, ControlGroupItemHandlerExt, ControlGroupLayout,
     ControlGroupTemplate,
@@ -49,6 +50,9 @@ pub fn checkbox_group_template<T: ControlGroupItemLike + 'static>(
             .gap_2()
             .items_start()
             .when(model.layout == ControlGroupLayout::Vertical, |group| group.flex_col())
+            .when(model.layout == ControlGroupLayout::Horizontal, |group| {
+                group.flex_row_logical(LocaleContext::current(cx).direction)
+            })
             .children(rows)
     })
 }
@@ -217,5 +221,42 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         };
         callbacks.bind(&control, cx);
         control
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests {
+    use super::*;
+    use gpui::{Render, TestAppContext, Window, px};
+    use xgpui_luma::infra::locale::{LayoutDirection, set_locale_context};
+
+    struct Harness {
+        group: control_group::ControlGroup<ControlGroupItem>,
+    }
+    impl Render for Harness {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().w(px(400.)).child(self.group.clone())
+        }
+    }
+
+    /// #266: horizontal checkbox groups mirror like the other groups.
+    #[test]
+    fn horizontal_checkbox_group_mirrors_in_rtl() {
+        let mut app = TestAppContext::single();
+        let (_, cx) = app.add_window_view(|_, cx| Harness {
+            group: CheckboxGroup::new("rtl-checks")
+                .look(&Look::built_in())
+                .horizontal()
+                .items([ControlGroupItem::new("first").label("First"), ControlGroupItem::new("last").label("Last")])
+                .motion_enabled(false)
+                .spawn(cx),
+        });
+        for direction in [LayoutDirection::Ltr, LayoutDirection::Rtl, LayoutDirection::Ltr] {
+            cx.update(|_, cx| set_locale_context(LocaleContext { direction, ..Default::default() }, cx));
+            cx.run_until_parked();
+            let first = cx.debug_bounds("rtl-checks-first").unwrap();
+            let last = cx.debug_bounds("rtl-checks-last").unwrap();
+            assert_eq!(first.left() < last.left(), direction == LayoutDirection::Ltr, "{direction:?}");
+        }
     }
 }

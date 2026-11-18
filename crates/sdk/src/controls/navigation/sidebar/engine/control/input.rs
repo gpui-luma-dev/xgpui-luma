@@ -484,6 +484,13 @@ impl SidebarPanelEngine {
             if !expand && self.open_rail_submenu.is_some() {
                 self.close_rail_submenu(cx);
                 cx.notify();
+            } else if expand
+                && let Some(node_id) = self.focused_target(window)
+                && self.find_top_level_main_node(&node_id).is_some_and(|node| node.has_children())
+            {
+                // The expand arrow opens a rail parent's submenu, like Enter.
+                self.set_open_rail_submenu(node_id, cx);
+                cx.notify();
             }
             return;
         }

@@ -369,7 +369,7 @@ mod tests {
             enabled: true,
             tab_stop: true,
             layout: ControlGroupLayout::default(),
-            locale_navigation: false,
+            locale_navigation: true,
             scrollable: false,
             template: default_control_group_template(),
             item_template: None,

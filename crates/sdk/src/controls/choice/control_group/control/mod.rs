@@ -1,3 +1,5 @@
+#[cfg(all(test, feature = "test-support"))]
+mod locale_tests;
 mod input;
 mod render;
 mod selection;
