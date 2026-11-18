@@ -63,3 +63,31 @@ fn startup_identity_is_independent_of_available_translations() {
     assert_eq!(localizer.locale().language_tag(), "ar-EG");
     assert_eq!(localizer.locale().direction(), LayoutDirection::Rtl);
 }
+
+#[test]
+fn posix_and_undetermined_tags_are_not_ui_locales() {
+    // POSIX parses as a five-letter BCP 47 language but names no language.
+    for tag in ["POSIX", "posix", "posix-US"] {
+        assert!(tag.parse::<xgpui_luma_l10n::Locale>().is_err(), "{tag}");
+    }
+    // `und` stays a valid Locale value, but never selects the UI language.
+    assert!("und".parse::<xgpui_luma_l10n::Locale>().is_ok());
+    for tag in ["POSIX", "und", "und-Latn", "UND"] {
+        for (request, origin) in [
+            (LocaleRequest { command_line: Some(tag), setting: Some("de") }, LocaleSource::CommandLine),
+            (LocaleRequest { command_line: None, setting: Some(tag) }, LocaleSource::Setting),
+        ] {
+            let error = request.resolve_with_system(["ja"]).unwrap_err();
+            assert!(
+                matches!(error, Error::InvalidLocaleSource { origin: o, ref value } if o == origin && value == tag),
+                "{tag}: {error:?}"
+            );
+        }
+    }
+    let selected = LocaleRequest::default().resolve_with_system(["und", "und-Latn", "posix-US", "de-AT"]).unwrap();
+    assert_eq!(selected.locale.language_tag(), "de-AT");
+    assert_eq!(selected.source, LocaleSource::System);
+    let selected = LocaleRequest::default().resolve_with_system(["und"]).unwrap();
+    assert_eq!(selected.locale.language_tag(), "en");
+    assert_eq!(selected.source, LocaleSource::Default);
+}

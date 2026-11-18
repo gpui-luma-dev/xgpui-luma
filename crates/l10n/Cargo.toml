@@ -17,7 +17,7 @@ build-support = ["dep:fluent-syntax"]
 formatting = ["format-numbers", "format-percent", "format-duration", "format-datetime", "format-lists"]
 format-numbers = ["dep:icu_decimal", "dep:fixed_decimal"]
 format-percent = ["format-numbers", "dep:icu_experimental"]
-format-duration = ["dep:icu_experimental", "dep:icu_provider"]
+format-duration = ["dep:icu_experimental"]
 format-datetime = ["dep:icu_datetime"]
 format-lists = ["dep:icu_list"]
 
@@ -33,7 +33,9 @@ icu_locale = "2.1"
 icu_decimal = { version = "2.4", features = ["ryu", "alloc"], optional = true }
 fixed_decimal = { version = "0.7", features = ["ryu"], optional = true }
 # Use the application log facade instead of ICU debug-build stderr diagnostics.
-icu_provider = { version = "2.4", features = ["logging"], optional = true }
+# Not optional: every ICU formatter (and `icu_locale`) already depends on it, and
+# the feature must apply to whichever formatting features are enabled.
+icu_provider = { version = "2.4", features = ["logging"] }
 icu_experimental = { version = "=0.7.0", optional = true }
 icu_datetime = { version = "2.4", default-features = false, features = ["compiled_data"], optional = true }
 icu_list = { version = "2.4", features = ["alloc"], optional = true }

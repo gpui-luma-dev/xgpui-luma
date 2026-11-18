@@ -40,9 +40,6 @@ for source, meta in sorted(json.loads(Path(sys.argv[1]).read_text()).items()):
             continue
         escaped = [''.join({'{': '{ "{" }', '}': '{ "}" }'}.get(c, c) for c in part) for part in parts]
         value = ''.join(part + ('{ $a' + str(i) + ' }' if i < len(parts)-1 else '') for i, part in enumerate(escaped))
-    if meta.get('explicit') and source in previous:
-        value = previous[source]['value']
-        parts = previous[source]['parts']
     entries.append(dict(id='ui-' + hashlib.sha256(source.encode()).hexdigest()[:12], source=source,
                         value=value, parts=parts, files=sorted(set(meta['files'])),
                         **({'explicit': True} if meta.get('explicit') else {}),
@@ -70,6 +67,8 @@ for tag in ('en', 'de', 'ja', 'ar'):
     source += '\n'.join(message(e) for e in entries)+'\n'
     path.write_text(source)
 p = root/'used-ids.txt'
-s = re.sub(r'^ui-[a-f0-9]+\n', '', p.read_text(), flags=re.M).replace('# Extracted Lab copy\n','')
+# The final ID may lack a trailing newline; remove it too rather than duplicate it.
+s = re.sub(r'^ui-[a-f0-9]+(?:\n|\Z)', '', p.read_text(), flags=re.M)
+s = re.sub(r'^# Extracted Lab copy(?:\n|\Z)', '', s, flags=re.M)
 p.write_text(s.rstrip()+'\n\n# Extracted Lab copy\n'+'\n'.join(e['id'] for e in entries)+'\n')
 print(f'{len(entries)} catalog entries')

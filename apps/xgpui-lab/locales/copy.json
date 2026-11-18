@@ -14872,6 +14872,9 @@
     "parts": null,
     "files": [
       "apps/xgpui-lab/src/parley_lab/paragraph_api.rs"
+    ],
+    "boundaries": [
+      "apps/xgpui-lab/src/parley_lab/paragraph_api.rs"
     ]
   },
   {
@@ -17144,6 +17147,9 @@
     "value": "Selectable typography demo",
     "parts": null,
     "files": [
+      "apps/xgpui-lab/src/shader/typography.rs"
+    ],
+    "boundaries": [
       "apps/xgpui-lab/src/shader/typography.rs"
     ]
   },
@@ -21265,18 +21271,6 @@
     ]
   },
   {
-    "id": "ui-8ba8496a2525",
-    "source": "baseline",
-    "value": "baseline",
-    "parts": null,
-    "files": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs"
-    ],
-    "boundaries": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs"
-    ]
-  },
-  {
     "id": "ui-51b345ad95ab",
     "source": "benchmark case required",
     "value": "benchmark case required",
@@ -21489,11 +21483,9 @@
     "value": "cached",
     "parts": null,
     "files": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs",
       "apps/xgpui-lab/src/media_lab/tiled.rs"
     ],
     "boundaries": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs",
       "apps/xgpui-lab/src/media_lab/tiled.rs"
     ]
   },
@@ -22201,6 +22193,9 @@
     "value": "in gamut, so both policies agree",
     "parts": null,
     "files": [
+      "apps/xgpui-lab/src/color_lab/views.rs"
+    ],
+    "boundaries": [
       "apps/xgpui-lab/src/color_lab/views.rs"
     ]
   },
@@ -23154,18 +23149,6 @@
     ]
   },
   {
-    "id": "ui-5969d1db90a8",
-    "source": "p95_ms",
-    "value": "p95_ms",
-    "parts": null,
-    "files": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs"
-    ],
-    "boundaries": [
-      "apps/xgpui-lab/src/media_lab/benchmarks/mod.rs"
-    ]
-  },
-  {
     "id": "ui-1cc1f697bd35",
     "source": "painted().shadow_paint(layer)",
     "value": "painted().shadow_paint(layer)",
@@ -23268,30 +23251,6 @@
     ],
     "boundaries": [
       "apps/xgpui-lab/src/photo_viewport.rs"
-    ]
-  },
-  {
-    "id": "ui-dcc5353bc1bc",
-    "source": "pixel_height",
-    "value": "pixel_height",
-    "parts": null,
-    "files": [
-      "apps/xgpui-lab/src/benchmarks.rs"
-    ],
-    "boundaries": [
-      "apps/xgpui-lab/src/benchmarks.rs"
-    ]
-  },
-  {
-    "id": "ui-3f30fff6e29c",
-    "source": "pixel_width",
-    "value": "pixel_width",
-    "parts": null,
-    "files": [
-      "apps/xgpui-lab/src/benchmarks.rs"
-    ],
-    "boundaries": [
-      "apps/xgpui-lab/src/benchmarks.rs"
     ]
   },
   {
@@ -24199,6 +24158,18 @@
     "parts": null,
     "files": [
       "apps/xgpui-lab/src/parley_lab/workload.rs"
+    ]
+  },
+  {
+    "id": "ui-b23a6a8439c0",
+    "source": "unknown",
+    "value": "unknown",
+    "parts": null,
+    "files": [
+      "apps/xgpui-lab/src/gamut/benchmarks.rs"
+    ],
+    "boundaries": [
+      "apps/xgpui-lab/src/gamut/benchmarks.rs"
     ]
   },
   {

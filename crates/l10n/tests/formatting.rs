@@ -43,6 +43,18 @@ mod numbers {
     }
 
     #[test]
+    fn negative_zero_and_negatives_rounding_to_zero_format_without_a_sign() {
+        for tag in ["en", "de", "ar-u-nu-arab"] {
+            let locale = locale(tag);
+            let zero = locale.fmt_float(0.0, 2).unwrap();
+            for (value, digits) in [(-0.0, 2), (-0.004, 2), (-0.4, 0), (-1e-300, 18)] {
+                assert_eq!(locale.fmt_float(value, digits).unwrap(), zero, "{tag} {value} {digits}");
+            }
+        }
+        assert_eq!(locale("en").fmt_float(-0.006, 2).unwrap(), "-0.01");
+    }
+
+    #[test]
     fn byte_sizes_are_exact_at_boundaries_and_promote_after_rounding() {
         let en = locale("en");
         for (bytes, units, digits, expected) in [
@@ -93,6 +105,10 @@ mod percent {
         assert_eq!(locale("en").fmt_percent(-0.125, 1).unwrap(), "-12.5%");
         assert_eq!(locale("en").fmt_percent(0.0, 2).unwrap(), "0%");
         assert!(locale("ar-u-nu-arab").fmt_percent(0.125, 1).unwrap().contains("١٢٫٥"));
+        for (ratio, digits) in [(-0.0, 1), (-0.00004, 2), (-0.004, 0)] {
+            assert_eq!(locale("en").fmt_percent(ratio, digits).unwrap(), "0%", "{ratio} {digits}");
+            assert_eq!(locale("de").fmt_percent(ratio, digits).unwrap(), "0\u{a0}%", "{ratio} {digits}");
+        }
         assert!(matches!(locale("en").fmt_percent(f64::NAN, 1), Err(FormatError::InvalidNumber)));
         assert!(matches!(locale("en").fmt_percent(1.0, 19), Err(FormatError::InvalidPrecision(19))));
     }

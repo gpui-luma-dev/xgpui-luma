@@ -1,4 +1,4 @@
-use fixed_decimal::FloatPrecision;
+use fixed_decimal::{FloatPrecision, Sign};
 use icu_decimal::DecimalFormatter;
 use super::{Decimal, FormatError, icu_error};
 use crate::Locale;
@@ -25,10 +25,15 @@ fn float(value: f64) -> Result<Decimal, FormatError> {
     Decimal::try_from_f64(value, FloatPrecision::RoundTrip).map_err(|_| FormatError::InvalidNumber)
 }
 
+/// Round half to even, trim, and drop the sign of a zero result: `-0.0` and
+/// negatives that round to zero display as `0`, not `-0`.
 fn round(number: &mut Decimal, digits: u8) {
     number.round(-i16::from(digits));
     number.trim_start();
     number.trim_end();
+    if number.absolute.is_zero() {
+        number.sign = Sign::None;
+    }
 }
 
 impl Locale {

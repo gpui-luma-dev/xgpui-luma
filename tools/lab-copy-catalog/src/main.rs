@@ -11,6 +11,9 @@ struct Scan {
     formats: BTreeSet<String>,
     ids: BTreeSet<String>,
     ui: bool,
+    /// UI context inherited from an enclosing boundary through nested calls
+    /// (`.title(Some("..."))`) rather than set by the innermost call itself.
+    nested: bool,
     ui_strings: BTreeSet<String>,
 }
 fn natural(s: &str) -> bool {
@@ -43,10 +46,10 @@ fn natural(s: &str) -> bool {
 }
 impl<'a> Visit<'a> for Scan {
     fn visit_expr_method_call(&mut self, node: &'a syn::ExprMethodCall) {
-        let old = self.ui;
+        let (old, old_nested) = (self.ui, self.nested);
         self.ui = false;
         self.visit_expr(&node.receiver);
-        self.ui = [
+        let boundary = [
             "title",
             "lede",
             "caption",
@@ -62,10 +65,14 @@ impl<'a> Visit<'a> for Scan {
             "values",
         ]
         .contains(&node.method.to_string().as_str());
+        // Nested calls inside a UI boundary stay UI: `.title(Some("..."))`.
+        // Lookup keys (`.get("key")`) never are.
+        self.ui = boundary || old && node.method != "get";
+        self.nested = !boundary && self.ui;
         for arg in &node.args {
             self.visit_expr(arg);
         }
-        self.ui = old;
+        (self.ui, self.nested) = (old, old_nested);
     }
     fn visit_expr_call(&mut self, node: &'a syn::ExprCall) {
         self.visit_expr(&node.func);
@@ -74,8 +81,8 @@ impl<'a> Visit<'a> for Scan {
         } else {
             String::new()
         };
-        let old = self.ui;
-        self.ui = ["text", "readout", "properties"].contains(&name.as_str())
+        let (old, old_nested) = (self.ui, self.nested);
+        let boundary = ["text", "readout", "properties"].contains(&name.as_str())
             || [
                 "l10n::ui",
                 "l10n::label",
@@ -89,10 +96,24 @@ impl<'a> Visit<'a> for Scan {
             ]
             .iter()
             .any(|suffix| name.ends_with(suffix));
-        for arg in &node.args {
+        // `raw` text is never translated; the first argument of these is a
+        // Fluent select key or a separator, not copy.
+        let raw = name.ends_with("UiCopy::raw");
+        let keyed = ["UiCopy::counted", "UiCopy::state", "UiCopy::Separated"].iter().any(|s| name.ends_with(s));
+        for (index, arg) in node.args.iter().enumerate() {
+            self.ui = boundary || old && !raw && !(keyed && index == 0);
+            self.nested = !boundary && self.ui;
             self.visit_expr(arg);
         }
-        self.ui = old;
+        (self.ui, self.nested) = (old, old_nested);
+    }
+    fn visit_expr_index(&mut self, node: &'a syn::ExprIndex) {
+        self.visit_expr(&node.expr);
+        // `result["label"]`: JSON and map keys are data, not copy.
+        let (old, old_nested) = (self.ui, self.nested);
+        (self.ui, self.nested) = (false, false);
+        self.visit_expr(&node.index);
+        (self.ui, self.nested) = (old, old_nested);
     }
     fn visit_path(&mut self, path: &'a syn::Path) {
         if let Some(segment) = path.segments.last() {
@@ -121,7 +142,10 @@ impl<'a> Visit<'a> for Scan {
     }
     fn visit_lit_str(&mut self, n: &'a syn::LitStr) {
         let s = n.value();
-        if self.ui && !s.is_empty() && s.len() < 1400 && !s.contains(['\n', '{', '}']) {
+        // Inherited context needs a letter: separators and placeholders such as
+        // " · " or "—" are not copy.
+        let wording = !self.nested || s.chars().any(char::is_alphabetic);
+        if self.ui && wording && !s.is_empty() && s.len() < 1400 && !s.contains(['\n', '{', '}']) {
             self.ui_strings.insert(s.clone());
             self.strings.insert(s);
         } else if natural(&s) {
@@ -188,9 +212,11 @@ fn strip_fields(s: &str) -> String {
     }
     out
 }
+/// Visit in sorted order so the inventory does not depend on the filesystem.
 fn walk(p: &Path, files: &mut Vec<std::path::PathBuf>) {
-    for e in fs::read_dir(p).unwrap() {
-        let p = e.unwrap().path();
+    let mut entries: Vec<_> = fs::read_dir(p).unwrap().map(|e| e.unwrap().path()).collect();
+    entries.sort();
+    for p in entries {
         if p.is_dir() {
             walk(&p, files);
         } else if p.extension().is_some_and(|s| s == "rs")
@@ -220,6 +246,7 @@ fn main() {
             formats: Default::default(),
             ids: Default::default(),
             ui: false,
+            nested: false,
             ui_strings: Default::default(),
         };
         scan.visit_file(&file);
@@ -282,6 +309,7 @@ mod tests {
             formats: Default::default(),
             ids: Default::default(),
             ui: false,
+            nested: false,
             ui_strings: Default::default(),
         };
         scan.visit_file(&file);
@@ -289,5 +317,72 @@ mod tests {
         assert!(scan.ui_strings.contains("waiting"));
         assert!(scan.ids.contains("ui-012345abcdef"));
         assert!(!scan.ui_strings.contains("data"));
+    }
+
+    fn scan(source: &str) -> Scan {
+        let file = syn::parse_file(source).unwrap();
+        let mut scan = Scan {
+            strings: Default::default(),
+            formats: Default::default(),
+            ids: Default::default(),
+            ui: false,
+            nested: false,
+            ui_strings: Default::default(),
+        };
+        scan.visit_file(&file);
+        scan
+    }
+
+    #[test]
+    fn nested_calls_inside_a_ui_boundary_keep_it() {
+        let scan = scan(
+            r#"
+            fn screen() {
+                let _ = card.title(Some("tiny title"));
+                let _ = card.label(Some(String::from("wrapped")));
+                let _ = crate::l10n::ui(Some("ui wrapped"));
+                let _ = text(&look, TextRole::Caption, Some("caption wrapped"));
+                let _ = Button::new("button-id").label(Some("button label"));
+                let _ = view.caption(UiCopy::compose(f, vec![UiCopy::counted("cells", n), UiCopy::raw(Some("raw data"))]));
+                let _ = view.caption(UiCopy::Separated(" · ", vec![UiCopy::from(Some("first part")), UiCopy::from("—")]));
+                let _ = crate::l10n::ui(result["json-key"].as_str().unwrap_or("unknown outcome"));
+                let _ = crate::l10n::ui(Some(map.get("map-key").unwrap_or("fallback text")));
+            }
+        "#,
+        );
+        for text in [
+            "tiny title",
+            "wrapped",
+            "ui wrapped",
+            "caption wrapped",
+            "button label",
+            "first part",
+            "unknown outcome",
+            "fallback text",
+        ] {
+            assert!(scan.ui_strings.contains(text), "{text}");
+        }
+        for key in ["cells", "raw data", " · ", "—", "json-key", "map-key"] {
+            assert!(!scan.ui_strings.contains(key), "{key}");
+        }
+        // Outside a boundary, call arguments and receivers stay non-UI.
+        assert!(!scan.ui_strings.contains("button-id"));
+    }
+
+    #[test]
+    fn walk_order_is_sorted() {
+        let directory = std::env::temp_dir().join(format!("lab-copy-walk-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&directory);
+        for name in ["b.rs", "a/z.rs", "a/c.rs", "C.rs"] {
+            let path = directory.join(name);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, "").unwrap();
+        }
+        let mut files = Vec::new();
+        walk(&directory, &mut files);
+        let names: Vec<_> =
+            files.iter().map(|p| p.strip_prefix(&directory).unwrap().to_string_lossy().into_owned()).collect();
+        fs::remove_dir_all(&directory).unwrap();
+        assert_eq!(names, ["C.rs", "a/c.rs", "a/z.rs", "b.rs"]);
     }
 }
