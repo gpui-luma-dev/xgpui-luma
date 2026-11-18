@@ -73,7 +73,7 @@ pub(super) fn card(
         .flex()
         .flex_col()
         .gap(px(14.))
-        .rounded(px(look.metrics().radius.xl))
+        .rounded(px(look.radii().xl))
         .border_1()
         .border_color(chrome.border)
         .bg(chrome.panel_background)

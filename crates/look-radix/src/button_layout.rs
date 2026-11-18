@@ -7,7 +7,7 @@
 
 use gpui::FontWeight;
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
-use xgpui_luma::theme::{ControlMetricTokens, LumaTextStyle, MetricTokens, RadiusTokens};
+use xgpui_luma::theme::{ControlMetricTokens, LumaTextStyle, MetricTokens};
 
 /// Radix `size` prop on Button. Default is [`Self::Two`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -125,8 +125,48 @@ pub fn metric_tokens() -> MetricTokens {
             geometry.icon_size,
         );
     }
-    metrics.radius = RadiusTokens { none: 0.0, sm: 3.0, md: 4.0, lg: 6.0, xl: 8.0, pill: 999.0 };
     metrics
+}
+
+/// Radix chrome corner radii in pixels (Radix `--radius-1..4`, plus full).
+///
+/// The SDK has no radius vocabulary; Radix names radii with [`Radius`] and these
+/// steps, and hands SDK controls the resulting pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RadixRadii {
+    pub none: f32,
+    /// `--radius-1`.
+    pub small: f32,
+    /// `--radius-2`.
+    pub medium: f32,
+    /// `--radius-3`.
+    pub large: f32,
+    /// `--radius-4`, used by window-scale chrome (overlay windows).
+    pub xl: f32,
+    /// Fully rounded (pill / circle).
+    pub full: f32,
+}
+
+impl RadixRadii {
+    pub const DEFAULT: Self =
+        Self { none: 0.0, small: 3.0, medium: 4.0, large: 6.0, xl: 8.0, full: xgpui_luma::theme::FULL_RADIUS_PX };
+
+    /// Pixels for a named [`Radius`].
+    pub fn get(&self, radius: Radius) -> f32 {
+        match radius {
+            Radius::None => self.none,
+            Radius::Small => self.small,
+            Radius::Medium => self.medium,
+            Radius::Large => self.large,
+            Radius::Full => self.full,
+        }
+    }
+}
+
+impl Default for RadixRadii {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
 }
 
 pub fn button_box_for(size: ButtonSize, radius: Radius) -> ButtonBox {

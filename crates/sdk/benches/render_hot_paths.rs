@@ -84,7 +84,8 @@ fn main() {
     let theme = default_button_family_theme();
     let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
     let scale = StandardBoxScale::compute(&metrics, 2.0);
-    let mut look = compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, metrics.radius.pill);
+    let mut look =
+        compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, xgpui_luma::theme::FULL_RADIUS_PX);
     measure("Button look/no shadows clone", iterations, || black_box(&look).clone());
     let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
     for count in [0, 1, 2, 8] {

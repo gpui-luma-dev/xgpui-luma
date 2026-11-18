@@ -35,7 +35,7 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
         stylesheet.button.metrics_for_size(size)
     };
     if let Some(rule) = rule {
-        let metrics = resolve_button_metrics_rule(rule, &mode.metrics, &mode.control_sizes, size);
+        let metrics = resolve_button_metrics_rule(rule, &mode.control_sizes, size);
         let base_size = style.size;
         style.size = metrics.font_size;
         let family = if toggle { "toggle" } else { "button" };

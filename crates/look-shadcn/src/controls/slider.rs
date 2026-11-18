@@ -31,12 +31,11 @@ use crate::stylesheet::{
 /// Medium/large/full resolve to a pill/circle for the given cross-axis size.
 fn resolve_slider_part_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &xgpui_luma::theme::MetricTokens,
+    radii: &crate::ShadcnRadii,
     cross_axis_size: f32,
 ) -> f32 {
     match preset {
-        ButtonRadiusPreset::None => metrics.radius.none,
-        ButtonRadiusPreset::Small => metrics.radius.sm,
+        ButtonRadiusPreset::None | ButtonRadiusPreset::Small => radii.get(preset),
         ButtonRadiusPreset::Medium | ButtonRadiusPreset::Large | ButtonRadiusPreset::Full => cross_axis_size / 2.0,
     }
 }
@@ -44,7 +43,7 @@ fn resolve_slider_part_radius_preset(
 /// Thumb corner radius presets for slider controls.
 pub fn resolve_slider_thumb_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &xgpui_luma::theme::MetricTokens,
+    metrics: &crate::ShadcnRadii,
     thumb_size: f32,
 ) -> f32 {
     resolve_slider_part_radius_preset(preset, metrics, thumb_size)
@@ -53,7 +52,7 @@ pub fn resolve_slider_thumb_radius_preset(
 /// Track end-cap radius presets for slider controls.
 pub fn resolve_slider_track_radius_preset(
     preset: ButtonRadiusPreset,
-    metrics: &xgpui_luma::theme::MetricTokens,
+    metrics: &crate::ShadcnRadii,
     track_height: f32,
 ) -> f32 {
     resolve_slider_part_radius_preset(preset, metrics, track_height)
@@ -362,9 +361,7 @@ mod tests {
     #[test]
     fn slider_radius_presets_use_square_and_pill_shapes() {
         use super::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset};
-        use xgpui_luma::theme::MetricTokens;
-
-        let metrics = MetricTokens::default();
+        let metrics = crate::ShadcnRadii::default();
         let thumb_size = 16.0;
         let track_height = 6.0;
         let thumb_circle = thumb_size / 2.0;
@@ -544,9 +541,9 @@ pub(crate) fn slider_geometry_with_stylesheet(
 ) {
     use xgpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
     let mut fallback = SliderGeometry::sdk_default(&mode.metrics_for(size), CommonStylesheet::sdk_default());
-    let mut radius = mode.metrics.radius.pill;
+    let mut radius = mode.radii.full;
     if let Some(rule) = stylesheet.slider.metrics_for_size(size) {
-        let metrics = crate::stylesheet::resolve_slider_metrics(rule, &mode.metrics, &mode.control_sizes, size);
+        let metrics = crate::stylesheet::resolve_slider_metrics(rule, &mode.control_sizes, size);
         fallback.width = metrics.width;
         fallback.height = metrics.height;
         fallback.track_height = metrics.track_height;

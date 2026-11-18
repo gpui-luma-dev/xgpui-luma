@@ -7,7 +7,6 @@ pub struct MetricTokens {
     #[serde(deserialize_with = "crate::theme::stylesheet::required_unit")]
     pub disabled_opacity: f32,
     pub spacing: SpacingTokens,
-    pub radius: RadiusTokens,
     pub border_width: BorderWidthTokens,
     pub focus: FocusMetricTokens,
     /// The SDK control scale; the only size the SDK defines.
@@ -33,22 +32,12 @@ pub struct SpacingTokens {
     pub s6: f32,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct RadiusTokens {
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub none: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub sm: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub md: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub lg: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub xl: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub pill: f32,
-}
+/// Corner radius, in pixels, large enough to fully round any control.
+///
+/// The SDK has no radius vocabulary; looks own named radii (none, small, medium,
+/// large, full) and hand SDK controls plain pixels. Families whose SDK default is
+/// fully rounded use this value.
+pub const FULL_RADIUS_PX: f32 = 999.0;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -112,7 +101,6 @@ impl MetricTokens {
         Self {
             disabled_opacity: 0.56,
             spacing: SpacingTokens { s0: 0.0, s1: 4.0, s2: 6.0, s3: 8.0, s4: 12.0, s5: 16.0, s6: 24.0 },
-            radius: RadiusTokens { none: 0.0, sm: 3.0, md: 6.0, lg: 8.0, xl: 12.0, pill: 999.0 },
             border_width: BorderWidthTokens { hairline: 0.5, default: 1.0, strong: 2.0 },
             focus: FocusMetricTokens { gap: 1.0, width: 1.0, offset: 0.0 },
             control: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),

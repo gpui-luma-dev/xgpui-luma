@@ -766,7 +766,6 @@ impl ShadcnLook {
         let stylesheet = self.stylesheet();
         crate::stylesheet::resolve_sidebar_metrics(
             crate::stylesheet::find_sidebar_metrics(stylesheet.as_ref()),
-            &self.mode_tokens().metrics,
             &self.mode_tokens().control_sizes,
         )
     }

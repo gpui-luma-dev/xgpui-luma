@@ -16,7 +16,6 @@ struct OverlayWindowThemeAdapter {
 impl OverlayWindowTheme for OverlayWindowThemeAdapter {
     fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
         let size = self.look.size();
-        let metrics = self.look.metrics();
         let fallback = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(mode);
         let mut resolved = OverlayWindowLook {
             viewport_padding: fallback.viewport_padding,
@@ -39,7 +38,7 @@ impl OverlayWindowTheme for OverlayWindowThemeAdapter {
                 color: gpui::Hsla { a: 0.22, ..black() },
                 inset: false,
             }],
-            radius: metrics.radius.xl,
+            radius: crate::RadixRadii::DEFAULT.xl,
             padding: self.look.control_sizes().padding_x(size),
             min_width: fallback.min_width,
             max_width: fallback.max_width,

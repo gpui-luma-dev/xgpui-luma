@@ -59,7 +59,7 @@ impl InlineColorPicker {
         cx: &mut App,
     ) -> Entity<Self> {
         let id = id.into();
-        let radius = px(look.metrics().radius.sm);
+        let radius = px(look.radii().small);
         cx.new(|cx| Self::new(id, radius, color, gamut, cx))
     }
 

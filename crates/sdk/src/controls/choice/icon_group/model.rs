@@ -79,7 +79,7 @@ where
                 padding_x: look.padding_x,
                 padding_y: look.padding_y,
                 gap: look.gap,
-                radius: theme.metrics().radius.pill,
+                radius: crate::theme::FULL_RADIUS_PX,
             },
         );
         base(model, handlers, window, cx)

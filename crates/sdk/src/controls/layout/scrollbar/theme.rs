@@ -63,7 +63,6 @@ impl ScrollbarTheme for DefaultScrollbarTheme {
             .scrollbar
             .resolve_geometry(crate::theme::stylesheet::ScrollbarGeometry::default());
         let palette = self.tokens.stylesheet.recipes.palette("scrollbar", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
         let thumb_background = match state.layer() {
             InteractionLayer::Disabled => palette.state.disabled.foreground,
             InteractionLayer::Pressed => palette.state.pressed.background,
@@ -91,7 +90,7 @@ impl ScrollbarTheme for DefaultScrollbarTheme {
             track_thickness: geometry.track_thickness,
             thumb_thickness: geometry.thumb_thickness,
             min_thumb_length: geometry.min_thumb_length,
-            radius: metrics.radius.pill,
+            radius: crate::theme::FULL_RADIUS_PX,
         }
     }
 

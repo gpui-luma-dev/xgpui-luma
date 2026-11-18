@@ -103,7 +103,7 @@ impl TooltipLook {
             foreground: palette.surface.floating.foreground,
             padding: geometry.padding,
             padding_y: geometry.padding_y,
-            radius: tokens.metrics.radius.md,
+            radius: geometry.radius,
             max_width: geometry.max_width,
             text_size: geometry.font_size,
             line_height: geometry.line_height,
@@ -153,7 +153,8 @@ crate::theme::stylesheet::geometry::geometry_family!(
         font_size,
         line_height,
         shortcut_gap,
-        shortcut_font_size
+        shortcut_font_size,
+        radius
     ],
     unit[shortcut_opacity]
 );
@@ -173,6 +174,7 @@ impl TooltipStylesheet {
                 padding: Some(12.0),
                 padding_y: Some(8.0),
                 max_width: Some(260.0),
+                radius: Some(6.0),
                 font_size: Some(14.0),
                 line_height: Some(20.0),
             },

@@ -386,7 +386,7 @@ fn shared_slider_geometry_preserves_all_sizes_styles_and_states() {
                         (painted.width, painted.height, painted.track_height, painted.thumb_size),
                         (260.0, height, track, thumb)
                     );
-                    assert_eq!(painted.radius, look.mode_tokens().metrics.radius.pill);
+                    assert_eq!(painted.radius, look.mode_tokens().radii.full);
                     assert_eq!(inspected.height.value_px, painted.height);
                     assert_eq!(inspected.thumb_size.value_px, painted.thumb_size);
                 }

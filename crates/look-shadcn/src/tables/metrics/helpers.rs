@@ -81,7 +81,7 @@ pub fn radius_metric(catalog: &CssTokenMap, size: ShadcnSize, value_px: f32) -> 
 }
 
 pub fn pill_radius_metric(_catalog: &CssTokenMap, value_px: f32) -> ResolvedMetric {
-    ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "MetricTokens.radius.pill".into() } }
+    ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "ShadcnRadii.full".into() } }
 }
 
 pub fn focus_ring_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {

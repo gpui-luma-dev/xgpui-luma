@@ -826,7 +826,7 @@ mod tests {
             let focus = Look::built_in().resolve_role(SemanticRole::Focus).hsla();
             let metrics = Look::built_in().metrics();
             let width = px(metrics.focus.width);
-            let radius = (px(metrics.radius.md) + width).scale(window.scale_factor());
+            let radius = (px(xgpui_luma_look_radix::RadixRadii::DEFAULT.medium) + width).scale(window.scale_factor());
             let focus_quads: Vec<_> = quads
                 .iter()
                 .filter(|q| q.bounds == focused.dilate(width).scale(window.scale_factor()) && q.border_color == focus)

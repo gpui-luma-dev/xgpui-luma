@@ -77,7 +77,6 @@ struct CacheEntryKey {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 struct ThemeMetricsKey {
     spacing: [u32; 7],
-    radius: [u32; 6],
     border_width: [u32; 3],
     focus: [u32; 3],
     control: [u32; 6],
@@ -94,14 +93,6 @@ impl From<&MetricTokens> for ThemeMetricsKey {
                 metrics.spacing.s4.to_bits(),
                 metrics.spacing.s5.to_bits(),
                 metrics.spacing.s6.to_bits(),
-            ],
-            radius: [
-                metrics.radius.none.to_bits(),
-                metrics.radius.sm.to_bits(),
-                metrics.radius.md.to_bits(),
-                metrics.radius.lg.to_bits(),
-                metrics.radius.xl.to_bits(),
-                metrics.radius.pill.to_bits(),
             ],
             border_width: [
                 metrics.border_width.hairline.to_bits(),

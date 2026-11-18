@@ -59,7 +59,7 @@ mod tests {
         let mode = look.mode_tokens();
         let metrics =
             inspect_badge_metrics(mode.as_ref(), &look, BadgeVariant::Default, ShadcnSize::Md, ThemeMode::Light);
-        assert!(metrics.radius.value_px >= mode.metrics.radius.pill - f32::EPSILON);
+        assert!(metrics.radius.value_px >= mode.radii.full - f32::EPSILON);
     }
 }
 

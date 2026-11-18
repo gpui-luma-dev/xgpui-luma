@@ -75,7 +75,6 @@ pub fn scrollbar_look(
 ) -> ScrollbarLook {
     let ctx = LookContext::new(mode, mode.theme_mode, state);
     let catalog = ctx.catalog();
-    let metrics = ctx.metrics();
     let layer = state.layer();
     let resolver = LookResolver::new(catalog, ctx.theme_mode, "scrollbar").with_stylesheet(mode.stylesheet());
     let colors = resolve_scrollbar_colors(&resolver, style, state.disabled, layer)
@@ -109,7 +108,7 @@ pub fn scrollbar_look(
         track_thickness,
         thumb_thickness,
         min_thumb_length,
-        radius: metrics.radius.pill,
+        radius: mode.radii.full,
     };
     let geometry = mode.stylesheet().common.scrollbar.resolve_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),

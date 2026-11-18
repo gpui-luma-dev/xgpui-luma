@@ -79,14 +79,14 @@ impl ToolbarTheme for DefaultToolbarTheme {
             background,
             border,
             separator: palette.border.default,
-            radius: metrics.radius.md,
+            radius: 6.0,
             padding_x: metrics.spacing.s2,
             padding_y: metrics.spacing.s1,
             gap: control.gap,
             separator_height: control.height,
         };
         crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toolbar, ToolbarGeometry, look,
-            [padding_x => padding_x, padding_y => padding_y, gap => gap, border_width => border_width, separator_width => separator_width]);
+            [padding_x => padding_x, padding_y => padding_y, gap => gap, border_width => border_width, separator_width => separator_width, radius => radius]);
         look
     }
 }
@@ -97,5 +97,5 @@ crate::theme::stylesheet::geometry::geometry_family!(
     ToolbarGeometry,
     ResolvedToolbarGeometry,
     "toolbar",
-    [padding_x, padding_y, gap, border_width, separator_width]
+    [padding_x, padding_y, gap, border_width, separator_width, radius]
 );

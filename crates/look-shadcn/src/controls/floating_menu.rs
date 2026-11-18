@@ -115,7 +115,6 @@ pub fn resolve_ghost_trigger_colors_with_stylesheet(
 pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> FloatingMenuLook {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
     let catalog = ctx.catalog();
-    let metrics = ctx.metrics();
     let typography = ctx.typography();
     let shadow = floating_menu_elevation_shadow(catalog, mode.stylesheet());
     let resolver = LookResolver::new(catalog, ctx.theme_mode, "floating_menu").with_stylesheet(mode.stylesheet());
@@ -148,7 +147,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
         foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),
         shadow,
-        radius: metrics.radius.lg,
+        radius: mode.radii.large,
         padding: ctx.controls().padding_y(size) * recipe.padding_scale.unwrap_or_default(),
         min_width: recipe.min_width.unwrap_or_default(),
         item_disabled_foreground: colors.item_disabled_foreground.hsla(),
@@ -159,7 +158,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
         item_padding_x: ctx.controls().padding_x(size) * recipe.item_padding_scale.unwrap_or_default(),
         item_gap: ctx.controls().gap(size),
         item_icon_size: item_icon_size,
-        item_radius: metrics.radius.sm,
+        item_radius: mode.radii.small,
         disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
         separator_color: colors.border.hsla(),
         separator_thickness: recipe.separator_thickness.unwrap_or_default(),
@@ -171,11 +170,10 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
         mode.stylesheet().floating_menu.metrics.get(crate::tables::metrics::helpers::control_size_key(size))
     {
         look.min_width = rule.min_width;
-        look.radius = crate::stylesheet::resolve_stylesheet_metric(&rule.radius, metrics, ctx.controls(), size)
-            .unwrap_or(look.radius);
-        look.item_radius =
-            crate::stylesheet::resolve_stylesheet_metric(&rule.item_radius, metrics, ctx.controls(), size)
-                .unwrap_or(look.item_radius);
+        look.radius =
+            crate::stylesheet::resolve_stylesheet_metric(&rule.radius, ctx.controls(), size).unwrap_or(look.radius);
+        look.item_radius = crate::stylesheet::resolve_stylesheet_metric(&rule.item_radius, ctx.controls(), size)
+            .unwrap_or(look.item_radius);
         look.item_height = ctx.controls().control_height(size) * rule.item_height_factor;
         look.item_padding_x = ctx.controls().padding_x(size) * rule.item_padding_x_factor;
         look.submenu_offset_x = ctx.controls().gap(size) * rule.submenu_offset_x_factor;

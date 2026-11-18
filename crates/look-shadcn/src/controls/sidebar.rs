@@ -200,7 +200,7 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),
-        radius: mode.metrics.radius.lg,
+        radius: mode.radii.large,
     }
 }
 

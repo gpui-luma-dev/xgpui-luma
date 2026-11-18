@@ -19,6 +19,8 @@ pub struct ShadcnModeTokens {
     pub metrics: MetricTokens,
     /// Shadcn control metrics for each [`crate::ShadcnSize`].
     pub control_sizes: crate::ShadcnControlMetrics,
+    /// Shadcn's named corner radii in pixels.
+    pub radii: crate::ShadcnRadii,
     pub typography: LumaTypography,
     state_colors: StateColorTable,
     shadow_previews: HashMap<String, Vec<gpui::BoxShadow>>,
@@ -55,13 +57,14 @@ impl ShadcnModeTokens {
             stylesheet.common.tokens.source(theme_mode).palette.data.positive,
             xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
-        let (metrics, control_sizes) = metrics_from_catalog(&catalog, MetricTokens::default());
+        let (metrics, control_sizes, radii) = metrics_from_catalog(&catalog, MetricTokens::default());
         let sized_common = Arc::new(crate::ShadcnSize::ALL.map(|size| stylesheet.common.with_size_key(size.key())));
         Ok(Self {
             data_positive,
             theme_mode,
             metrics,
             control_sizes,
+            radii,
             typography: typography_from_catalog(&catalog, LumaTypography::default()),
             state_colors,
             shadow_previews,

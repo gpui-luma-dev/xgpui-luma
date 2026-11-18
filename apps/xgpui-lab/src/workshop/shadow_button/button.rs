@@ -181,9 +181,16 @@ impl PrototypeShadowButtonTemplate {
         let theme = default_button_family_theme();
         let metrics = theme.metrics();
         let scale = StandardBoxScale::compute(&metrics, window.scale_factor());
-        theme.resolve_look(model.role, model.state, &scale, metrics.radius.pill).unwrap_or_else(|| {
-            compose_button_family_look(&theme.resolve(model.role, model.state), model.role, &scale, metrics.radius.pill)
-        })
+        theme
+            .resolve_look(model.role, model.state, &scale, xgpui_luma::theme::FULL_RADIUS_PX)
+            .unwrap_or_else(|| {
+                compose_button_family_look(
+                    &theme.resolve(model.role, model.state),
+                    model.role,
+                    &scale,
+                    xgpui_luma::theme::FULL_RADIUS_PX,
+                )
+            })
     }
 }
 

@@ -265,7 +265,7 @@ mod tests {
         .unwrap();
         let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
         let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-        let radius = tokens.metrics.radius.pill;
+        let radius = crate::theme::FULL_RADIUS_PX;
         let theme = DefaultButtonFamilyTheme::new(tokens);
         let button = theme.resolve_look(ButtonFamilyRole::Text, Default::default(), &scale, radius).unwrap();
         let toggle = theme

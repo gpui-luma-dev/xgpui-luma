@@ -125,7 +125,7 @@ impl ColorPickerDemo {
         let hsv = Hsv { h: 12.0, s: 0.78, v: 0.86, a: 0.92 };
         let metrics = ColorPickerMetrics::new();
 
-        let field_radius = px(look.metrics().radius.sm);
+        let field_radius = px(look.radii().small);
 
         let field = cx.new(move |_| {
             ColorFieldState::saturation_value("controls-doc-color-picker-field", hsv, 20.0)

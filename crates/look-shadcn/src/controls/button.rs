@@ -49,17 +49,10 @@ impl ButtonRadiusPreset {
     }
 }
 
-pub fn resolve_button_radius_preset(
-    preset: ButtonRadiusPreset,
-    metrics: &xgpui_luma::theme::MetricTokens,
-    height: f32,
-) -> f32 {
+pub fn resolve_button_radius_preset(preset: ButtonRadiusPreset, radii: &crate::ShadcnRadii, height: f32) -> f32 {
     match preset {
-        ButtonRadiusPreset::None => metrics.radius.none,
-        ButtonRadiusPreset::Small => metrics.radius.sm,
-        ButtonRadiusPreset::Medium => metrics.radius.md,
-        ButtonRadiusPreset::Large => metrics.radius.lg,
         ButtonRadiusPreset::Full => height / 2.0,
+        preset => radii.get(preset),
     }
 }
 
@@ -162,12 +155,12 @@ pub(crate) fn button_look_with_stylesheet(
     let palette = button_palette(&ctx, stylesheet, style, role, size);
     let scale = button_box_scale(&ctx, stylesheet, size, 1.0);
     let effective_style = effective_button_style(style, role);
-    let mut look = compose_button_family_look(&palette, role, &scale, ctx.metrics().radius.pill);
+    let mut look = compose_button_family_look(&palette, role, &scale, ctx.radii().full);
     if has_family_icon_override(stylesheet, size, false) {
         look.icon_size = scale.icon_size;
     }
     if let Some(radius) = radius {
-        look.radius = resolve_button_radius_preset(radius, ctx.metrics(), look.height);
+        look.radius = resolve_button_radius_preset(radius, ctx.radii(), look.height);
     }
     look.shadow = button_elevation_shadow(&ctx, stylesheet, effective_style);
     look
@@ -250,7 +243,7 @@ pub(crate) fn resolve_family_geometry(
         stylesheet.button.metrics_for_size(size)
     };
     if let Some(rule) = rule {
-        let metrics = resolve_button_metrics_rule(rule, ctx.metrics(), ctx.controls(), size);
+        let metrics = resolve_button_metrics_rule(rule, ctx.controls(), size);
         fallback.height = metrics.height;
         fallback.padding_x = metrics.padding_horizontal;
         fallback.icon_size = metrics.icon_size;
@@ -266,16 +259,13 @@ pub(crate) fn resolve_family_geometry(
     let mut height_source = None;
     if let Some(tokens) = tokens.get(key) {
         if let Some(height) = &tokens.height {
-            if let Some(value) =
-                crate::stylesheet::resolve_stylesheet_metric(height, ctx.metrics(), ctx.controls(), size)
-            {
+            if let Some(value) = crate::stylesheet::resolve_stylesheet_metric(height, ctx.controls(), size) {
                 fallback.height = value;
                 height_source = Some(height);
             }
         }
         if let Some(token) = &tokens.corner_radius {
-            radius = crate::stylesheet::resolve_stylesheet_metric(token, ctx.metrics(), ctx.controls(), size)
-                .unwrap_or(radius);
+            radius = crate::stylesheet::resolve_stylesheet_metric(token, ctx.controls(), size).unwrap_or(radius);
         }
     }
     let mut geometry = if toggle {
@@ -1358,9 +1348,11 @@ pub fn resolve_button_metrics_with_stylesheet(
         } else {
             &stylesheet.button.tokens
         };
-        if let Some(token) = tokens.get(size_key).and_then(|rule| rule.corner_radius.as_ref()).filter(|token| {
-            crate::stylesheet::resolve_stylesheet_metric(token, metrics, &mode.control_sizes, size).is_some()
-        }) {
+        if let Some(token) = tokens
+            .get(size_key)
+            .and_then(|rule| rule.corner_radius.as_ref())
+            .filter(|token| crate::stylesheet::resolve_stylesheet_metric(token, &mode.control_sizes, size).is_some())
+        {
             table.radius = crate::tables::metrics::helpers::derived_metric(
                 format!("stylesheet · {family}.tokens.{size_key}.corner_radius → {token}"),
                 look.radius,

@@ -62,7 +62,7 @@ impl OverlayWindowTheme for DefaultOverlayWindowTheme {
                 .overlay_window
                 .resolve_geometry(crate::theme::stylesheet::OverlayWindowGeometry {
                     padding: metrics.padding_x(),
-                    radius: metrics.radius.xl,
+                    radius: 12.0,
                     font_size: typography.text.body.size,
                     line_height: typography.text.body.line_height,
                     ..Default::default()

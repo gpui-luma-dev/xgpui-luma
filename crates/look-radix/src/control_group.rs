@@ -72,7 +72,7 @@ pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> Co
             .flex()
             .items_center()
             .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
-            .rounded(px(look.metrics().radius.md))
+            .rounded(px(look.radii().medium))
             .bg(look.resolve_role(SemanticRole::Surface).hsla())
             .shadow(vec![BoxShadow {
                 color: gpui::hsla(0.0, 0.0, 0.0, 0.2),
@@ -262,13 +262,13 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             compact: true,
             elevation: false,
             round: false,
-            radius_override: std::cell::Cell::new(Some(self.look.metrics().radius.md)),
+            radius_override: std::cell::Cell::new(Some(self.look.radii().medium)),
             look: Some(Arc::new(move |_| look.clone())),
             ..Default::default()
         };
         let first = self.first;
         let last = self.last;
-        let radius = px(self.look.metrics().radius.md);
+        let radius = px(self.look.radii().medium);
         let separator = !last;
         let vertical = self.layout == ControlGroupLayout::Vertical;
         let border = self.look.resolve_step(ScaleFamily::Gray, 6).hsla();
@@ -488,7 +488,7 @@ mod tests {
                     );
                     cx.update(|window, _| {
                         let quads = window.painted_quads();
-                        let radius = px(look.metrics().radius.md).scale(window.scale_factor());
+                        let radius = px(look.radii().medium).scale(window.scale_factor());
                         let face = |bounds: gpui::Bounds<gpui::Pixels>| {
                             quads
                                 .iter()
@@ -575,7 +575,7 @@ mod tests {
                     cx.update(|window, _| {
                         let width = px(metrics.focus.width);
                         let outer = bounds.dilate(width).scale(window.scale_factor());
-                        let radius = (px(metrics.radius.md) + width).scale(window.scale_factor());
+                        let radius = (px(crate::RadixRadii::DEFAULT.medium) + width).scale(window.scale_factor());
                         let zero = px(0.0).scale(window.scale_factor());
                         let first = index == 0;
                         let last = index + 1 == count;

@@ -175,8 +175,7 @@ line_height = 22
         let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
         let inspect = crate::inspect::ShadcnInspect::new(&look);
         for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon, ButtonFamilyRole::Toggle { selected: true }] {
-            let paint =
-                family.resolve_look(role, InteractionState::default(), &scale, tokens.metrics.radius.pill).unwrap();
+            let paint = family.resolve_look(role, InteractionState::default(), &scale, tokens.radii.full).unwrap();
             let palette = family.resolve(role, InteractionState::default());
             assert_eq!(palette.typography.size, paint.typography.size);
             assert_eq!(palette.typography.line_height, paint.typography.line_height);
@@ -221,7 +220,7 @@ fn existing_button_theme_observes_replacement_without_changing_other_looks() {
         let tokens = look.mode_tokens();
         let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
         family
-            .resolve_look(ButtonFamilyRole::Text, InteractionState::default(), &scale, tokens.metrics.radius.pill)
+            .resolve_look(ButtonFamilyRole::Text, InteractionState::default(), &scale, tokens.radii.full)
             .unwrap()
     };
     let initial = render();

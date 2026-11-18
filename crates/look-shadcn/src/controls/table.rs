@@ -115,17 +115,16 @@ pub fn resolve_table_row_colors_with_stylesheet(
 
 pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: ShadcnSize) -> TableLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
-    let metrics = ctx.metrics();
     let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "table").with_stylesheet(mode.stylesheet());
     let colors =
         resolve_table_surface_colors(&resolver, enabled).unwrap_or_else(|_| TableSurfaceColorTable::fallback());
     let surface_metrics = mode.stylesheet().table.surface.metrics_for_size(size);
     let radius = surface_metrics
-        .and_then(|rule| resolve_stylesheet_metric(&rule.radius, metrics, ctx.controls(), size))
+        .and_then(|rule| resolve_stylesheet_metric(&rule.radius, ctx.controls(), size))
         .unwrap_or(ctx.controls().radius(size));
     let radius = surface_metrics
         .and_then(|rule| rule.max_radius.as_deref())
-        .and_then(|max| resolve_stylesheet_metric(max, metrics, ctx.controls(), size))
+        .and_then(|max| resolve_stylesheet_metric(max, ctx.controls(), size))
         .map_or(radius, |max| radius.min(max));
 
     let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()

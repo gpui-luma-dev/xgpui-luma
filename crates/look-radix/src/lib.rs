@@ -167,7 +167,7 @@ pub use colors::{
 pub use custom_colors::{CustomColors, GeneratedColors, generate_colors};
 pub use semantic::{SemanticMapping, SemanticRole};
 pub use tone::Tone;
-pub use button_layout::{ButtonSize, Radius, button_box_for, metric_tokens, resolve_button_radius};
+pub use button_layout::{ButtonSize, RadixRadii, Radius, button_box_for, metric_tokens, resolve_button_radius};
 pub use size::{RadixControlMetrics, RadixSize};
 
 // Controls and their styling adapters (alphabetical).

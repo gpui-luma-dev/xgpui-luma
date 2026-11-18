@@ -102,7 +102,7 @@ impl Render for ColorSliderExpositionLeftPane {
                             ColorSwatch::new(from_hsla(selected))
                                 .checkerboard(true)
                                 .height(px(44.0))
-                                .rounded(px(self.look.metrics().radius.lg))
+                                .rounded(px(self.look.radii().large))
                                 .into_any_element(),
                         )
                         .child(detail_row(&self.look, "Hex", format_hex_color(selected)))
@@ -363,7 +363,7 @@ fn render_demo_card(look: &Look, width_px: f32, content: impl IntoElement) -> gp
         .flex()
         .flex_col()
         .gap(px(14.0))
-        .rounded(px(look.metrics().radius.xl))
+        .rounded(px(look.radii().xl))
         .border_1()
         .border_color(chrome.border)
         .bg(chrome.panel_background)

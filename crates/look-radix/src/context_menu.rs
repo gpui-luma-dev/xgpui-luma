@@ -57,7 +57,7 @@ impl ContextMenuTheme for ContextMenuThemeAdapter {
                 line_height: geometry.line_height,
                 weight: FontWeight::NORMAL,
             },
-            target_radius: metrics.radius.md,
+            target_radius: crate::RadixRadii::DEFAULT.medium,
             target_padding_x: geometry.padding_x,
             target_padding_y: geometry.padding_y,
             target_min_width: geometry.min_width,

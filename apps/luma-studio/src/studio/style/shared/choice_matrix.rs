@@ -216,7 +216,7 @@ fn render_choice_size_cell(
     let radius_override = radius.map(|preset| {
         let tokens = look.mode_tokens();
         let scale = xgpui_luma_look_shadcn::paint::switch_scale(tokens.as_ref(), look.mode(), style, size, 1.0);
-        xgpui_luma_look_shadcn::paint::resolve_switch_radius_preset(preset, &tokens.metrics, scale.track_height)
+        xgpui_luma_look_shadcn::paint::resolve_switch_radius_preset(preset, &tokens.radii, scale.track_height)
     });
 
     match control {

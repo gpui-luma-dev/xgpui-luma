@@ -86,7 +86,7 @@ impl SliderTheme for DefaultSliderTheme {
             height: geometry.height,
             track_height: geometry.track_height,
             thumb_size: geometry.thumb_size,
-            radius: metrics.radius.pill,
+            radius: crate::theme::FULL_RADIUS_PX,
         }
     }
 }

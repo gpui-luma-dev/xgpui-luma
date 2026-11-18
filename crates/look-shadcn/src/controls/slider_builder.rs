@@ -377,10 +377,10 @@ impl Slider {
                 slider_look(tokens.as_ref(), look.mode(), self.style, self.size, InteractionState::default());
             builder = builder
                 .corner_radius(
-                    px(resolve_slider_track_radius_preset(preset, &tokens.metrics, resolved.track_height)).into(),
+                    px(resolve_slider_track_radius_preset(preset, &tokens.radii, resolved.track_height)).into(),
                 )
                 .thumb_radius(
-                    px(resolve_slider_thumb_radius_preset(preset, &tokens.metrics, resolved.thumb_size)).into(),
+                    px(resolve_slider_thumb_radius_preset(preset, &tokens.radii, resolved.thumb_size)).into(),
                 );
         }
         if let Some(orientation) = self.orientation {

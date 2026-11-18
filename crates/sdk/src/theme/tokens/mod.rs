@@ -282,7 +282,7 @@ mod tests {
         let light = theme.mode(ThemeMode::Light);
         assert_eq!(theme.name, "Structural");
         assert_eq!(theme.version, 1);
-        assert_eq!(light.metrics.radius.pill, 999.0);
+        assert_eq!(light.metrics.radius(), 6.0);
         assert_eq!(light.typography.text.label.weight, gpui::FontWeight::MEDIUM);
         assert!(!light.elevation.menu.layers.is_empty());
     }

@@ -18,12 +18,12 @@ fn resolve_theme_look<D>(
     model: &ButtonRenderModel<D>,
     scale: &StandardBoxScale,
 ) -> ButtonFamilyLook {
-    if let Some(look) = theme.resolve_look(model.role, model.state, scale, theme.metrics().radius.pill) {
+    if let Some(look) = theme.resolve_look(model.role, model.state, scale, crate::theme::FULL_RADIUS_PX) {
         return look;
     }
 
     let palette = theme.resolve(model.role, model.state);
-    compose_button_family_look(&palette, model.role, scale, theme.metrics().radius.pill)
+    compose_button_family_look(&palette, model.role, scale, crate::theme::FULL_RADIUS_PX)
 }
 
 fn resolve_look<D>(

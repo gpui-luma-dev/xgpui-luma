@@ -305,6 +305,11 @@ impl Look {
     }
 
     /// Size used by themes and templates created from this handle.
+    /// Radix chrome corner radii in pixels.
+    pub fn radii(&self) -> crate::RadixRadii {
+        crate::RadixRadii::DEFAULT
+    }
+
     pub fn size(&self) -> crate::RadixSize {
         self.size
     }

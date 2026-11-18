@@ -71,12 +71,12 @@ pub(crate) fn toggle_look_with_stylesheet(
     let ctx = LookContext::new(mode, theme_mode, state);
     let palette = toggle_palette(&ctx, stylesheet, style, selected, size);
     let scale = toggle_box_scale(&ctx, stylesheet, size, 1.0);
-    let mut look = compose_button_family_look(&palette, role, &scale, ctx.metrics().radius.pill);
+    let mut look = compose_button_family_look(&palette, role, &scale, ctx.radii().full);
     if super::button::has_family_icon_override(stylesheet, size, true) {
         look.icon_size = scale.icon_size;
     }
     if let Some(radius) = radius {
-        look.radius = resolve_button_radius_preset(radius, ctx.metrics(), look.height);
+        look.radius = resolve_button_radius_preset(radius, ctx.radii(), look.height);
     }
     look.shadow = toggle_shadow(&ctx, stylesheet, style);
     look
@@ -125,12 +125,12 @@ pub(crate) fn toggle_icon_look_with_stylesheet(
     let mut scale = button_box_scale(&ctx, stylesheet, size, 1.0);
     scale.padding_x = 0.0;
     scale.padding_y = 0.0;
-    let mut look = compose_button_family_look(&palette, role, &scale, ctx.metrics().radius.pill);
+    let mut look = compose_button_family_look(&palette, role, &scale, ctx.radii().full);
     if super::button::has_family_icon_override(stylesheet, size, false) {
         look.icon_size = scale.icon_size;
     }
     if let Some(radius) = radius {
-        look.radius = resolve_button_radius_preset(radius, ctx.metrics(), look.height);
+        look.radius = resolve_button_radius_preset(radius, ctx.radii(), look.height);
     }
     look.shadow = toggle_shadow(&ctx, stylesheet, style);
     look

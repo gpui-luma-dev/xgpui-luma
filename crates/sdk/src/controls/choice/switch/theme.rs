@@ -54,7 +54,7 @@ impl SwitchScale {
                 height * recipe.thumb_scale.or(baseline.thumb_scale).unwrap_or_default(),
                 scale_factor,
             ),
-            track_radius: metrics.radius.pill,
+            track_radius: crate::theme::FULL_RADIUS_PX,
             gap: snap_to_pixel(metrics.gap(), scale_factor),
             label_baseline_shift: label_baseline_shift(stylesheet),
         };

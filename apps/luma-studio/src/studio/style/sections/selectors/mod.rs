@@ -161,7 +161,7 @@ fn selector_preview_typography_for_size(
     let mut typography = base;
     if let Some(rule) = embedded_stylesheet().button.metrics_for_size(size) {
         let tokens = look.mode_tokens();
-        let metrics = resolve_button_metrics_rule(rule, &tokens.metrics, &tokens.control_sizes, size);
+        let metrics = resolve_button_metrics_rule(rule, &tokens.control_sizes, size);
         let base_size = typography.size;
         typography.size = metrics.font_size;
         if base_size > 0.0 {

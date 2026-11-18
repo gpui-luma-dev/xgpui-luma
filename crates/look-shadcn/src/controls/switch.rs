@@ -20,7 +20,6 @@ use xgpui_luma::controls::switch::SwitchScale;
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::MetricTokens;
 use xgpui_luma::theme::ThemeMode;
 
 use super::apply_button_metrics_typography;
@@ -85,8 +84,8 @@ pub fn resolve_switch_colors_with_stylesheet(
 }
 
 /// Corner radius for switch track / thumb (same presets as button / icon button / toggle).
-pub fn resolve_switch_radius_preset(preset: ButtonRadiusPreset, metrics: &MetricTokens, track_height: f32) -> f32 {
-    resolve_button_radius_preset(preset, metrics, track_height)
+pub fn resolve_switch_radius_preset(preset: ButtonRadiusPreset, radii: &crate::ShadcnRadii, track_height: f32) -> f32 {
+    resolve_button_radius_preset(preset, radii, track_height)
 }
 
 /// Switch geometry from the embedded common contract, over the vanilla SDK baseline.
@@ -135,20 +134,19 @@ pub(crate) fn switch_scale_with_stylesheet(
     scale_factor: f32,
 ) -> SwitchScale {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let metrics = ctx.metrics();
     let fallback = SwitchScale::compute(&mode.metrics_for(size), scale_factor);
     let geometry = switch_geometry_with_stylesheet(mode, stylesheet, size, scale_factor);
     let scale = geometry.apply_to(fallback);
-    apply_switch_radius(scale, metrics, radius)
+    apply_switch_radius(scale, ctx.radii(), radius)
 }
 
 fn apply_switch_radius(
     mut scale: SwitchScale,
-    metrics: &MetricTokens,
+    radii: &crate::ShadcnRadii,
     radius: Option<ButtonRadiusPreset>,
 ) -> SwitchScale {
     if let Some(preset) = radius {
-        scale.track_radius = resolve_switch_radius_preset(preset, metrics, scale.track_height);
+        scale.track_radius = resolve_switch_radius_preset(preset, radii, scale.track_height);
     }
     scale
 }
@@ -557,7 +555,7 @@ mod tests {
         use super::{resolve_switch_radius_preset, switch_scale};
 
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let metrics = mode.metrics;
+        let metrics = mode.radii;
         let scale = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, ShadcnSize::Md, 1.0);
 
         assert_eq!(
@@ -566,7 +564,7 @@ mod tests {
                 &metrics,
                 scale.track_height
             ),
-            metrics.radius.none
+            metrics.none
         );
         assert_eq!(
             resolve_switch_radius_preset(

@@ -7,11 +7,10 @@ struct RadixTooltipTheme(Look);
 
 impl TooltipTheme for RadixTooltipTheme {
     fn resolve(&self) -> TooltipLook {
-        let metrics = self.0.metrics();
         let mut resolved = TooltipLook::compact(
             self.0.resolve_role(SemanticRole::Foreground).hsla(),
             self.0.resolve_role(SemanticRole::Background).hsla(),
-            metrics.radius.md,
+            crate::RadixRadii::DEFAULT.medium,
         );
         let geometry =
             self.0.common_stylesheet().tooltip.resolve_geometry(xgpui_luma::theme::stylesheet::TooltipGeometry {

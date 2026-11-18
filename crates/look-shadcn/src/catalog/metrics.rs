@@ -1,5 +1,6 @@
 use xgpui_luma::theme::{LumaTypography, MetricTokens};
 
+use crate::ShadcnRadii;
 use crate::size::{ShadcnControlMetrics, ShadcnSize};
 
 use super::CssTokenMap;
@@ -58,20 +59,26 @@ const GENERIC_FAMILIES: &[&str] = &[
     "fantasy",
 ];
 
-/// Resolve shared metrics and Shadcn's per-size control metrics from the CSS catalog.
-/// The shared `control` scale is the `md` (Shadcn `default`) size.
+/// Resolve shared metrics, Shadcn's per-size control metrics and Shadcn's named radii
+/// from the CSS catalog. The shared `control` scale is the `md` (Shadcn `default`) size.
 pub(crate) fn metrics_from_catalog(
     catalog: &CssTokenMap,
     scaffold: MetricTokens,
-) -> (MetricTokens, ShadcnControlMetrics) {
+) -> (MetricTokens, ShadcnControlMetrics, ShadcnRadii) {
     let mut controls = ShadcnControlMetrics { md: scaffold.control, ..Default::default() };
+    let mut radii = ShadcnRadii::default();
     let mut scaffold = scaffold;
-    apply_catalog_metrics(catalog, &mut scaffold, &mut controls);
+    apply_catalog_metrics(catalog, &mut scaffold, &mut controls, &mut radii);
     scaffold.control = controls.md;
-    (scaffold, controls)
+    (scaffold, controls, radii)
 }
 
-fn apply_catalog_metrics(catalog: &CssTokenMap, scaffold: &mut MetricTokens, controls: &mut ShadcnControlMetrics) {
+fn apply_catalog_metrics(
+    catalog: &CssTokenMap,
+    scaffold: &mut MetricTokens,
+    controls: &mut ShadcnControlMetrics,
+    radii: &mut ShadcnRadii,
+) {
     if let Some(spacing_raw) = catalog.get("spacing") {
         if let Some(spacing_px) = parse_length_px(spacing_raw) {
             for size in ShadcnSize::ALL {
@@ -87,11 +94,8 @@ fn apply_catalog_metrics(catalog: &CssTokenMap, scaffold: &mut MetricTokens, con
     let Some(base_px) = parse_length_px(radius_raw) else {
         return;
     };
-    let scale = base_px / scaffold.radius.md;
-    scaffold.radius.sm *= scale;
-    scaffold.radius.md = base_px;
-    scaffold.radius.lg *= scale;
-    scaffold.radius.xl *= scale;
+    let scale = base_px / radii.medium;
+    *radii = radii.scaled_to(base_px);
     // Apply the standard Shadcn/Tailwind offsets:
     // Sm gets rounded-sm (radius - 4px)
     // Md gets rounded-md (radius - 2px)
@@ -183,7 +187,8 @@ mod tests {
             ("spacing".into(), "0.25rem".into()),
             ("radius".into(), "0.25rem".into()),
         ]));
-        let (metrics, controls) = metrics_from_catalog(&catalog, MetricTokens::default());
+        let (metrics, controls, radii) = metrics_from_catalog(&catalog, MetricTokens::default());
+        assert_eq!(radii.medium, 4.0);
 
         assert_eq!(metrics.control, controls.md);
         assert_eq!(controls.md.padding_x, 14.0);

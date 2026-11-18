@@ -20,9 +20,9 @@ pub use tokens::{
     AppPalette, BorderPalette, BorderWidthTokens, ControlMetricTokens, ControlSizes, DataPalette, FocusMetricTokens,
     FocusPalette, FontFamilyToken, FontTokens, FormInputPalette, FormPalette, LumaElevation, LumaPalette, LumaShadow,
     LumaShadowLayer, LumaTextRole, LumaTextScale, LumaTextStyle, LumaTheme, LumaThemeMode, LumaTypography,
-    MetricTokens, NavigationPalette, RadiusTokens, SpacingTokens, StateBackgroundPalette, StatePalette,
-    StateTonePalette, SurfacePalette, SurfaceTonePalette, SurfaceWithBorderPalette, TextRoleTokens, TextScaleTokens,
-    TextTokens, ThemeMode, ThemeModes, ThemeTokens, SrgbPalette, SrgbElevation,
+    MetricTokens, NavigationPalette, SpacingTokens, StateBackgroundPalette, StatePalette, StateTonePalette,
+    SurfacePalette, SurfaceTonePalette, SurfaceWithBorderPalette, TextRoleTokens, TextScaleTokens, TextTokens,
+    ThemeMode, ThemeModes, ThemeTokens, SrgbPalette, SrgbElevation, FULL_RADIUS_PX,
 };
 
 mod motion;

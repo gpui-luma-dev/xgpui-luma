@@ -12,7 +12,7 @@ use crate::size::ShadcnSize;
 /// Preserve the supplied typography ratio while applying configured button sizes.
 pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &ShadcnModeTokens, size: ShadcnSize) {
     if let Some(rule) = mode.stylesheet().button.metrics_for_size(size) {
-        let metrics = resolve_button_metrics_rule(rule, &mode.metrics, &mode.control_sizes, size);
+        let metrics = resolve_button_metrics_rule(rule, &mode.control_sizes, size);
         let base_size = typography.size;
         typography.size = metrics.font_size;
         if base_size > 0.0 {

@@ -105,7 +105,7 @@ pub(crate) fn default_floating_menu_look(tokens: &ThemeTokens) -> FloatingMenuLo
         foreground: palette.surface.floating.foreground,
         border: palette.surface.floating.border,
         shadow: elevation.menu.to_box_shadows(),
-        radius: metrics.radius.lg,
+        radius: recipe.radius.unwrap_or_default(),
         padding: metrics.padding_y() * recipe.padding_scale.unwrap_or_default(),
         min_width: recipe.min_width.unwrap_or_default(),
         item_disabled_foreground: palette.state.disabled.foreground,
@@ -116,7 +116,7 @@ pub(crate) fn default_floating_menu_look(tokens: &ThemeTokens) -> FloatingMenuLo
         item_padding_x: metrics.padding_x() * recipe.item_padding_scale.unwrap_or_default(),
         item_gap: metrics.gap(),
         item_icon_size: metrics.icon_size(),
-        item_radius: metrics.radius.sm,
+        item_radius: recipe.item_radius.unwrap_or_default(),
         disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
         submenu_offset_x: metrics.gap() * recipe.submenu_offset_scale.unwrap_or_default(),
         separator_color: palette.surface.floating.border,
@@ -181,7 +181,9 @@ crate::theme::stylesheet::geometry::geometry_family!(
         submenu_offset_scale,
         separator_thickness,
         separator_spacing,
-        separator_inset
+        separator_inset,
+        radius,
+        item_radius
     ],
     unit[disabled_opacity]
 );
@@ -192,6 +194,8 @@ impl FloatingMenuStylesheet {
         Self {
             geometry: FloatingMenuGeometryStylesheet {
                 min_width: Some(180.0),
+                radius: Some(8.0),
+                item_radius: Some(3.0),
                 padding_scale: Some(0.5),
                 item_height_scale: Some(0.9),
                 item_padding_scale: Some(0.75),

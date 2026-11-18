@@ -42,7 +42,7 @@ impl ScrollbarTheme for ScrollbarThemeAdapter {
             track_thickness: geometry.track_thickness,
             thumb_thickness: geometry.thumb_thickness,
             min_thumb_length: geometry.min_thumb_length,
-            radius: self.look.metrics().radius.pill,
+            radius: self.look.radii().full,
         }
     }
 

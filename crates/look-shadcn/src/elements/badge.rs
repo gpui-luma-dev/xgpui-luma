@@ -201,7 +201,7 @@ pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.map(|border| border.hsla()),
-        radius: tokens.metrics.radius.pill,
+        radius: tokens.radii.full,
         min_height,
         padding_x: tokens.control_sizes.padding_x(control_size),
         padding_y: ((min_height - typography.line_height) * 0.5).max(0.0),
