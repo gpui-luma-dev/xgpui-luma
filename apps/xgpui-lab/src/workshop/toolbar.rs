@@ -43,7 +43,7 @@ impl ToolbarExpositionLeftPane {
 
 impl Render for ToolbarExpositionLeftPane {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        use super::sample_layout::{card, page};
+        use super::sample_layout::{section, page, sdk_preview};
         use crate::theme::{TextSize, TypographyExt};
         let chrome = self.look.chrome();
         page(
@@ -54,15 +54,18 @@ impl Render for ToolbarExpositionLeftPane {
                 .flex_col()
                 .items_start()
                 .gap(px(28.))
-                .child(card(
+                .child(section(
                     &self.look,
                     "command-toolbar-editing",
                     "Editing toolbar",
                     "Menus, text styles, formatting, and insert commands.",
                     1120.,
-                    div().id("command-toolbar-scroll").w_full().overflow_x_scroll().child(self.toolbar.clone()),
+                    sdk_preview(
+                        "workshop-sdk-toolbar-preview",
+                        div().id("command-toolbar-scroll").w_full().overflow_x_scroll().child(self.toolbar.clone()),
+                    ),
                 ))
-                .child(card(
+                .child(section(
                     &self.look,
                     "command-toolbar-focus",
                     "Keyboard navigation",
@@ -96,10 +99,12 @@ impl Render for ToolbarExpositionLeftPane {
 
 impl ToolbarControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
-        let roving_focus_button = Button::new("controls-doc-toolbar-focus-roving")
+        let roving_focus_button = xgpui_luma_look_radix::Button::new("controls-doc-toolbar-focus-roving")
+            .look(&look)
             .content(|_, _| div().child("Roving focus"))
             .spawn(cx);
-        let sequential_focus_button = Button::new("controls-doc-toolbar-focus-sequential")
+        let sequential_focus_button = xgpui_luma_look_radix::Button::new("controls-doc-toolbar-focus-sequential")
+            .look(&look)
             .content(|_, _| div().child("Sequential focus"))
             .spawn(cx);
 
@@ -183,6 +188,7 @@ impl ToolbarControlExposition {
                 "controls-toolbar-event-log",
                 "Interact with toolbar items; ToolbarEvent variants appear below.",
             )
+            .without_card()
         });
 
         let left_pane = cx.new(|_| ToolbarExpositionLeftPane {
@@ -365,11 +371,18 @@ mod tests {
             workshop.select("toolbar", cx);
         });
         cx.run_until_parked();
-        cx.update(|_, cx| {
-            let pane = pane.read(cx);
-            assert_eq!(pane.focus_mode, "sequential");
-            assert_eq!(pane.toolbar.read(cx).focus_strategy(), ControlGroupFocusStrategy::ActiveDescendant);
-        });
+        for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
+            workshop.update(cx, |workshop, cx| workshop.sync_theme(mode, cx));
+            cx.run_until_parked();
+            assert!(cx.debug_bounds("workshop-sdk-toolbar-preview").is_some());
+            cx.update(|_, cx| {
+                let pane = pane.read(cx);
+                assert_eq!(pane.look.mode(), mode);
+                assert_eq!(pane.focus_mode, "sequential");
+                assert_eq!(pane.toolbar.read(cx).focus_strategy(), ControlGroupFocusStrategy::ActiveDescendant);
+                assert_eq!(workshop.read(cx).page_look.mode(), xgpui_luma::theme::ThemeMode::Light);
+            });
+        }
         let roving = cx.update(|_, cx| pane.read(cx).roving_focus_button.clone());
         roving.update(cx, |_, cx| cx.emit(ButtonEvent::Click));
         cx.run_until_parked();
