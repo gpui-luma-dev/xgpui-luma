@@ -1,0 +1,50 @@
+[package]
+name = "xgpui-luma-l10n"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+description = "Fluent localization and locale handling for XGPUI-Luma"
+
+[features]
+default = ["gpui"]
+gpui = ["dep:gpui"]
+test-support = ["gpui", "gpui/test-support"]
+build-support = ["dep:fluent-syntax"]
+formatting = ["format-numbers", "format-percent", "format-duration", "format-datetime", "format-lists"]
+format-numbers = ["dep:icu_decimal", "dep:fixed_decimal"]
+format-percent = ["format-numbers", "dep:icu_experimental"]
+format-duration = ["dep:icu_experimental"]
+format-datetime = ["dep:icu_datetime"]
+format-lists = ["dep:icu_list"]
+
+[[bin]]
+name = "luma-l10n-check"
+path = "src/bin/check.rs"
+required-features = ["build-support"]
+
+[dependencies]
+fluent-bundle = "0.16"
+fluent-syntax = { version = "0.12", optional = true }
+icu_locale = "2.1"
+icu_decimal = { version = "2.4", features = ["ryu", "alloc"], optional = true }
+fixed_decimal = { version = "0.7", features = ["ryu"], optional = true }
+# Use the application log facade instead of ICU debug-build stderr diagnostics.
+# Not optional: every ICU formatter (and `icu_locale`) already depends on it, and
+# the feature must apply to whichever formatting features are enabled.
+icu_provider = { version = "2.4", features = ["logging"] }
+icu_experimental = { version = "=0.7.0", optional = true }
+icu_datetime = { version = "2.4", default-features = false, features = ["compiled_data"], optional = true }
+icu_list = { version = "2.4", features = ["alloc"], optional = true }
+thiserror.workspace = true
+log = "0.4"
+sys-locale = "0.3"
+gpui = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true
