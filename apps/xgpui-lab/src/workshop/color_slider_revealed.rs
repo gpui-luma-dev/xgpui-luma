@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma_color::color_slider::color_spec::{Hsl, RgbaSpec};
-use xgpui_luma_color::color_slider::{ColorInterpolation, ColorSliderBuilder, SliderThumbSize};
+use xgpui_luma_color::color_slider::{ColorInterpolation, ColorSliderBuilder, ThumbSize};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 
 use super::color_exposition_common::{format_slider_event, render_demo_section, render_field_card, slider_grid_stack};
 use super::event_stream::ControlEventStream;
@@ -44,15 +44,15 @@ pub(super) struct ColorSliderRevealedPane {
 impl ColorSliderRevealedPane {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let size_xsmall = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-size-xsmall", 180.0)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_xsmall()
             .spawn(cx);
         let size_small = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-size-small", 180.0)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .spawn(cx);
         let size_medium = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-size-medium", 180.0).spawn(cx);
         let size_large = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-size-large", 180.0)
-            .size(ControlSize::Lg)
+            .size(ColorControlSize::Large)
             .spawn(cx);
 
         let rounded_full = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-rounded-full", 180.0).spawn(cx);
@@ -80,7 +80,7 @@ impl ColorSliderRevealedPane {
             .edge_to_edge()
             .spawn(cx);
         let edge_large = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-edge-large", 180.0)
-            .size(ControlSize::Lg)
+            .size(ColorControlSize::Large)
             .edge_to_edge()
             .spawn(cx);
 
@@ -112,7 +112,7 @@ impl ColorSliderRevealedPane {
         .spawn(cx);
 
         let delegate_hue = ColorSliderBuilder::hue("controls-doc-color-slider-revealed-delegate-hue", 180.0)
-            .thumb_size(SliderThumbSize::Md)
+            .thumb_size(ThumbSize::Medium)
             .spawn(cx);
         let delegate_alpha = {
             let hsl = Hsl { h: 200.0, s: 0.8, l: 0.5, a: 1.0 };

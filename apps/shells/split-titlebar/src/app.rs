@@ -4,9 +4,7 @@ use gpui::{
     Context, Entity, FocusHandle, Hsla, IntoElement, Render, Window, WindowBackgroundAppearance, div, prelude::*, px,
     rgb, transparent_black,
 };
-use xgpui_luma::controls::resizable_panels::{
-    ResizeHandleSize, ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation,
-};
+use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::focus::LumaFocusScopeExt;
 use xgpui_luma::theme::ThemeMode;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -36,11 +34,11 @@ impl SplitTitlebarShellApp {
         let right_column = cx.new(|_| SplitColumn::new(right_background, false));
 
         let panels = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Md)
             .resizable_panels("shell-full-window")
             .orientation(ResizablePanelsOrientation::Horizontal)
             .show_border(false)
             .show_handle(true)
-            .resize_handle(ResizeHandleSize::Md)
             .handle_grip(true)
             .panels([
                 ResizablePanelSpec::new_render({

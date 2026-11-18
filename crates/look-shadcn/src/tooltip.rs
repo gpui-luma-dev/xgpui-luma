@@ -6,7 +6,7 @@ struct ShadcnTooltipTheme(ShadcnLook);
 impl TooltipTheme for ShadcnTooltipTheme {
     fn resolve(&self) -> TooltipLook {
         let tokens = self.0.mode_tokens();
-        let geometry = tokens.stylesheet().common.tooltip.resolve_geometry(
+        let geometry = tokens.stylesheet().common.tooltip.resolve_geometry_for(
             "default",
             xgpui_luma::theme::stylesheet::TooltipGeometry {
                 padding: 8.0,

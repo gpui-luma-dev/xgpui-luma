@@ -9,7 +9,7 @@ use gpui::{
     AnyElement, App, Context, Entity, FontWeight, Hsla, IntoElement, Render, SharedString, Window, div, prelude::*, px,
 };
 use xgpui_luma::controls::button::ButtonEventExt;
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::button::{Button, ButtonContentContext, ButtonEvent, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::infra::presenter::HasPresenter;
 use xgpui_luma::controls::slider::{Slider, SliderEvent};
@@ -739,7 +739,6 @@ fn render_button_state_sample(
         data: (),
         content,
         role: ButtonFamilyRole::Text,
-        size: ButtonSize::Md,
         state: sample.state,
         round: false,
         radius_override: std::cell::Cell::new(None),

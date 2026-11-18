@@ -9,7 +9,7 @@ use gpui::{AnyElement, Context, Entity, Render, Subscription, Window, div, prelu
 use xgpui_luma::controls::button::ButtonEventExt;
 use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::resizable_panels::{
-    ResizablePanelSpec, ResizablePanels, ResizablePanelsEvent, ResizablePanelsOrientation, ResizeHandleSize,
+    ResizablePanelSpec, ResizablePanels, ResizablePanelsEvent, ResizablePanelsOrientation,
 };
 use xgpui_luma::resizable_panels;
 use xgpui_luma_look_shadcn::prelude::*;
@@ -182,12 +182,13 @@ impl ResizablePanelsControlExposition {
         let entry = *catalog_entry("resizable-panels").expect("resizable-panels catalog entry");
         let demo_theme = look.clone();
 
+        // A Look's Shadcn size selects its resize handle size.
         let horizontal = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Md)
             .resizable_panels("controls-doc-resizable-horizontal")
             .orientation(ResizablePanelsOrientation::Horizontal)
             .size(px(DEMO_WIDTH), px(DEMO_HEIGHT))
             .show_handle(true)
-            .resize_handle(ResizeHandleSize::Md)
             .handle_grip(true)
             .panels([
                 ResizablePanelSpec::new_render({
@@ -207,7 +208,7 @@ impl ResizablePanelsControlExposition {
 
         let vertical = resizable_panels! {
             cx,
-            theme = look.resizable_panels_theme(),
+            theme = look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).resizable_panels_theme(),
             id: "controls-doc-resizable-vertical",
             layout: Vertical,
             size: (px(DEMO_WIDTH), px(DEMO_HEIGHT)),
@@ -234,11 +235,10 @@ impl ResizablePanelsControlExposition {
 
         let controlled = resizable_panels! {
             cx,
-            theme = look.resizable_panels_theme(),
+            theme = look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Lg).resizable_panels_theme(),
             id: "controls-doc-resizable-controlled",
             layout: Horizontal,
             show_handle: true,
-            resize_handle: Lg,
             handle_grip: true,
             size: (px(DEMO_WIDTH), px(DEMO_HEIGHT)),
             panels: [
@@ -292,11 +292,10 @@ impl ResizablePanelsControlExposition {
 
         let animated_panels = resizable_panels! {
             cx,
-            theme = look.resizable_panels_theme(),
+            theme = look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).resizable_panels_theme(),
             id: "controls-doc-resizable-animated",
             layout: Horizontal,
             show_handle: true,
-            resize_handle: Sm,
             handle_grip: true,
             size: (px(DEMO_WIDTH), px(DEMO_HEIGHT)),
             panels: [
@@ -313,11 +312,11 @@ impl ResizablePanelsControlExposition {
         };
 
         let instant_panels = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm)
             .resizable_panels("controls-doc-resizable-instant")
             .orientation(ResizablePanelsOrientation::Horizontal)
             .motion_enabled(false)
             .show_handle(true)
-            .resize_handle(ResizeHandleSize::Sm)
             .handle_grip(true)
             .size(px(DEMO_WIDTH), px(DEMO_HEIGHT))
             .panels([

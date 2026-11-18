@@ -6,7 +6,8 @@ use xgpui_luma::controls::icon_button::IconButton;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::focus::LumaFocusScopeExt;
 use xgpui_luma::shell::TitleBar;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma_look_shadcn::ShadcnSize;
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use xgpui_luma_look_shadcn::{ShadcnLook};
 use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
@@ -104,7 +105,7 @@ fn theme_toggle_presenter(icon: LucideIcon, color: gpui::Hsla) -> ControlPresent
 }
 
 fn shell_icon_color(look: &ShadcnLook) -> gpui::Hsla {
-    look.resolve_content_only_button(ButtonFamilyRole::Icon, ControlSize::Sm, InteractionState::default())
+    look.resolve_content_only_button(ButtonFamilyRole::Icon, ShadcnSize::Sm, InteractionState::default())
         .foreground
 }
 

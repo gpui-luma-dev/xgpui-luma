@@ -49,7 +49,7 @@ impl CardSize {
     pub fn padding(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .card
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .padding
     }
     pub fn radius(self) -> f32 {
@@ -126,7 +126,7 @@ impl Card {
     pub fn resolve_style(&self) -> CardStyle {
         let gray = |step| Tone::Gray.step(&self.look, step);
         let dark = self.look.mode() == ThemeMode::Dark;
-        let geometry = self.look.common_stylesheet().card.resolve_geometry(
+        let geometry = self.look.common_stylesheet().card.resolve_geometry_for(
             self.size.as_str(),
             xgpui_luma::theme::stylesheet::CardGeometry { padding: self.size.padding(), ..Default::default() },
         );

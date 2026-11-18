@@ -18,7 +18,6 @@ use super::template::{
 };
 use super::theme::{ControlGroupItemVisualContext, ControlGroupTheme};
 use crate::infra::state::{CompositeItemState, ControlFocusState};
-use crate::theme::ControlSize;
 
 pub trait ControlGroupItemLike {
     fn id(&self) -> &SharedString;
@@ -655,20 +654,13 @@ where
     {
         {
             let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry();
-            self.with_menu_row_item_content_sized(
-                theme,
-                ControlSize::Sm,
-                geometry.menu_row_height,
-                geometry.menu_row_gap,
-                content,
-            )
+            self.with_menu_row_item_content_sized(theme, geometry.menu_row_height, geometry.menu_row_gap, content)
         }
     }
 
     pub fn with_menu_row_item_content_sized<F>(
         mut self,
         theme: Arc<dyn ControlGroupTheme>,
-        size: ControlSize,
         row_height: f32,
         row_radius: f32,
         content: F,
@@ -687,7 +679,7 @@ where
         let content = Arc::new(content);
         self.model.template = menu_choice_group_template();
         self.model.item_element_template =
-            Some(menu_choice_row_item_element_template(theme, size, row_height, row_radius, content));
+            Some(menu_choice_row_item_element_template(theme, row_height, row_radius, content));
         self
     }
 
@@ -850,7 +842,7 @@ radius=5
         sheet.control_group.geometry.border_width = Some(9.0);
         assert!(group.model.stylesheet_overrides_shell);
         assert_eq!(group.model.stylesheet.control_group.geometry.border_width, Some(0.0));
-        assert_eq!(group.model.stylesheet.radio_group.authored_geometry("vertical").gap, Some(8.0));
+        assert_eq!(group.model.stylesheet.radio_group.authored_geometry_for("vertical").gap, Some(8.0));
         assert_eq!(group.model.stylesheet.icon_group.geometry.padding_x, Some(0.0));
         assert_eq!(group.model.stylesheet.icon_group.geometry.radius, Some(5.0));
         for family in ["control_group", "radio_group"] {

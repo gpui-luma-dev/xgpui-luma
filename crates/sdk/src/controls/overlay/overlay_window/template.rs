@@ -24,8 +24,8 @@ pub struct OverlayWindowTemplateParts {
 
 pub trait OverlayWindowTemplate: Send + Sync {
     /// Resolve shell and placement styling together for the active template.
-    fn resolve_look(&self, size: crate::theme::ControlSize, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        default_overlay_window_theme().resolve(size, mode)
+    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
+        default_overlay_window_theme().resolve(mode)
     }
     fn render(
         &self,
@@ -105,8 +105,8 @@ where
 }
 
 impl OverlayWindowTemplate for ModifiedOverlayWindowTemplate {
-    fn resolve_look(&self, size: crate::theme::ControlSize, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        self.base.resolve_look(size, mode)
+    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
+        self.base.resolve_look(mode)
     }
     fn render(
         &self,
@@ -122,8 +122,8 @@ impl OverlayWindowTemplate for ModifiedOverlayWindowTemplate {
 }
 
 impl OverlayWindowTemplate for ThemedOverlayWindowTemplate {
-    fn resolve_look(&self, size: crate::theme::ControlSize, mode: super::OverlayWindowMode) -> OverlayWindowLook {
-        self.theme.resolve(size, mode)
+    fn resolve_look(&self, mode: super::OverlayWindowMode) -> OverlayWindowLook {
+        self.theme.resolve(mode)
     }
     fn render(
         &self,

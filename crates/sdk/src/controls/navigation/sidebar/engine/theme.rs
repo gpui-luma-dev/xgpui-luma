@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct SidebarSectionLook {
@@ -38,25 +38,25 @@ pub trait SidebarTheme: Send + Sync {
     fn geometry(&self) -> crate::theme::stylesheet::SidebarGeometry {
         crate::theme::stylesheet::CommonStylesheet::sdk_default()
             .sidebar
-            .resolve_geometry("", Default::default())
+            .resolve_geometry(Default::default())
     }
     /// Appearance of native drag previews and insertion feedback.
-    fn resolve_drag(&self, size: ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default(), size);
-        let item = self.resolve_item(true, InteractionState { focused: true, ..Default::default() }, size);
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default());
+        let item = self.resolve_item(true, InteractionState { focused: true, ..Default::default() });
         drag.background = item.background.unwrap_or(drag.background);
         drag.foreground = item.foreground;
         drag.valid_marker = item.focus_border.unwrap_or(item.foreground);
         drag.invalid_marker =
-            self.resolve_item(false, InteractionState { invalid: true, ..Default::default() }, size).foreground;
+            self.resolve_item(false, InteractionState { invalid: true, ..Default::default() }).foreground;
         drag.radius = item.radius;
         drag.typography = item.typography;
         drag
     }
     fn foreground(&self) -> Hsla;
     fn resolve_section(&self) -> SidebarSectionLook;
-    fn resolve_branch(&self, state: InteractionState, size: ControlSize) -> SidebarItemLook;
-    fn resolve_item(&self, selected: bool, state: InteractionState, size: ControlSize) -> SidebarItemLook;
+    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook;
+    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook;
 
     fn metrics(&self) -> MetricTokens {
         MetricTokens::default()
@@ -79,11 +79,11 @@ impl DefaultSidebarTheme {
         Self { tokens }
     }
 
-    fn base_item(&self, state: InteractionState, size: ControlSize) -> SidebarItemLook {
+    fn base_item(&self, state: InteractionState) -> SidebarItemLook {
         let palette = self.tokens.stylesheet.recipes.palette("sidebar", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
         let typography = &self.tokens.typography;
-        let size_metrics = metrics.for_size(size);
+        let size_metrics = metrics.control;
         let foreground = if state.disabled {
             palette.state.disabled.foreground
         } else {
@@ -96,7 +96,7 @@ impl DefaultSidebarTheme {
             foreground,
             icon_color: foreground,
             typography: typography.text.label,
-            radius: metrics.radius(size),
+            radius: metrics.radius(),
             height: self.geometry().engine_item_height,
             padding_x: self.geometry().engine_item_padding_x,
             gap: size_metrics.gap,
@@ -114,10 +114,10 @@ impl SidebarTheme for DefaultSidebarTheme {
     }
 
     fn geometry(&self) -> crate::theme::stylesheet::SidebarGeometry {
-        self.tokens.stylesheet.sidebar.resolve_geometry("", Default::default())
+        self.tokens.stylesheet.sidebar.resolve_geometry(Default::default())
     }
-    fn resolve_drag(&self, size: ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens, size)
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens)
     }
     fn foreground(&self) -> Hsla {
         self.tokens.stylesheet.recipes.palette("sidebar", &self.tokens.palette).navigation.foreground
@@ -137,8 +137,8 @@ impl SidebarTheme for DefaultSidebarTheme {
         }
     }
 
-    fn resolve_branch(&self, state: InteractionState, size: ControlSize) -> SidebarItemLook {
-        let mut look = self.base_item(state, size);
+    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
+        let mut look = self.base_item(state);
         let palette = self.tokens.stylesheet.recipes.palette("sidebar", &self.tokens.palette);
 
         look.background = match state.layer() {
@@ -150,8 +150,8 @@ impl SidebarTheme for DefaultSidebarTheme {
         look
     }
 
-    fn resolve_item(&self, selected: bool, state: InteractionState, size: ControlSize) -> SidebarItemLook {
-        let mut look = self.base_item(state, size);
+    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
+        let mut look = self.base_item(state);
         let palette = self.tokens.stylesheet.recipes.palette("sidebar", &self.tokens.palette);
 
         look.background = match (selected, state.layer()) {

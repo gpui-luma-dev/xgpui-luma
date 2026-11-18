@@ -47,7 +47,7 @@ pub fn default_linear_progress_template() -> Arc<dyn ProgressTemplate> {
 
 impl ProgressTemplate for LinearProgressTemplate {
     fn render(&self, model: &ProgressRenderModel<'_>, _window: &mut Window, _cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.size);
+        let look = self.theme.resolve(model.enabled);
         let percentage = model.percentage.clamp(0.0, 1.0);
         let track_height = look.track_height;
         let thumb_size = look.thumb_size;

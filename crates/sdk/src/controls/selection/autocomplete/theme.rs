@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::Hsla;
 
 use crate::controls::floating_menu::{FloatingMenuLook, default_floating_menu_look};
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct AutocompleteLook {
@@ -17,7 +17,7 @@ pub struct AutocompleteLook {
 }
 
 pub trait AutocompleteTheme: Send + Sync {
-    fn resolve(&self, size: ControlSize) -> AutocompleteLook;
+    fn resolve(&self) -> AutocompleteLook;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -38,29 +38,27 @@ impl DefaultAutocompleteTheme {
 }
 
 impl AutocompleteTheme for DefaultAutocompleteTheme {
-    fn resolve(&self, size: ControlSize) -> AutocompleteLook {
-        default_autocomplete_look(&self.tokens, size)
+    fn resolve(&self) -> AutocompleteLook {
+        default_autocomplete_look(&self.tokens)
     }
 }
 
-pub(crate) fn default_autocomplete_look(tokens: &ThemeTokens, size: ControlSize) -> AutocompleteLook {
+pub(crate) fn default_autocomplete_look(tokens: &ThemeTokens) -> AutocompleteLook {
     let palette = tokens.stylesheet.recipes.palette("autocomplete", &tokens.palette);
     let mut look = AutocompleteLook {
         status_color: palette.state.selected.background,
-        status_typography: tokens.typography.text.scale.sm,
+        // Body weight; pixel size and line height come from autocomplete geometry.
+        status_typography: LumaTextStyle { size: 12.5, line_height: 18.0, ..tokens.typography.text.body },
         muted_text_color: palette.surface.floating.foreground,
         clear_icon_color: palette.surface.floating.foreground,
         clear_icon_hover_color: palette.form.input.foreground,
-        menu: default_floating_menu_look(tokens, size),
+        menu: default_floating_menu_look(tokens),
     };
-    let geometry = tokens.stylesheet.autocomplete.resolve_geometry(
-        size.stylesheet_key(),
-        crate::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: look.status_typography.size,
-            status_line_height: look.status_typography.line_height,
-            ..Default::default()
-        },
-    );
+    let geometry = tokens.stylesheet.autocomplete.resolve_geometry(crate::theme::stylesheet::AutocompleteGeometry {
+        status_font_size: look.status_typography.size,
+        status_line_height: look.status_typography.line_height,
+        ..Default::default()
+    });
     look.status_typography.size = geometry.status_font_size;
     look.status_typography.line_height = geometry.status_line_height;
     look
@@ -81,15 +79,13 @@ mod stylesheet_tests {
         ])
         .unwrap();
         let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        tokens.typography.text.scale.sm.weight = gpui::FontWeight::BOLD;
+        tokens.typography.text.body.weight = gpui::FontWeight::BOLD;
         let theme = DefaultAutocompleteTheme::new(tokens);
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            let look = theme.resolve(size);
-            assert_eq!(
-                (look.status_typography.size, look.status_typography.line_height, look.status_typography.weight),
-                (19.0, 27.0, gpui::FontWeight::BOLD)
-            );
-        }
+        let look = theme.resolve();
+        assert_eq!(
+            (look.status_typography.size, look.status_typography.line_height, look.status_typography.weight),
+            (19.0, 27.0, gpui::FontWeight::BOLD)
+        );
     }
 }
 

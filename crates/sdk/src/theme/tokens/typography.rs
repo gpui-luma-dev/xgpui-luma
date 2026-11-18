@@ -31,27 +31,6 @@ pub enum LumaTextRole {
     P,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum LumaTextScale {
-    Xs,
-    Sm,
-    Md,
-    Lg,
-    Xl,
-    TwoXl,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct TextScaleTokens {
-    pub xs: LumaTextStyle,
-    pub sm: LumaTextStyle,
-    pub md: LumaTextStyle,
-    pub lg: LumaTextStyle,
-    pub xl: LumaTextStyle,
-    pub two_xl: LumaTextStyle,
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct TextRoleTokens {
@@ -70,7 +49,6 @@ pub struct TextTokens {
     pub caption: LumaTextStyle,
     pub title: LumaTextStyle,
     pub code: LumaTextStyle,
-    pub scale: TextScaleTokens,
     pub role: TextRoleTokens,
 }
 
@@ -93,15 +71,12 @@ impl Default for LumaTypography {
 
 impl LumaTypography {
     /// Construct the bundled SDK font families and text styles.
+    ///
+    /// The SDK has no text size scale; looks own their size vocabularies and
+    /// resolve them to [`LumaTextStyle`] pixels.
     pub fn native_default() -> Self {
-        let scale = TextScaleTokens {
-            xs: LumaTextStyle { size: 11.0, line_height: 16.0, weight: FontWeight(500.0) },
-            sm: LumaTextStyle { size: 12.5, line_height: 18.0, weight: FontWeight(400.0) },
-            md: LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight(400.0) },
-            lg: LumaTextStyle { size: 16.0, line_height: 22.0, weight: FontWeight(500.0) },
-            xl: LumaTextStyle { size: 18.0, line_height: 24.0, weight: FontWeight(600.0) },
-            two_xl: LumaTextStyle { size: 20.0, line_height: 28.0, weight: FontWeight(600.0) },
-        };
+        let body = LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight(400.0) };
+        let title = LumaTextStyle { size: 20.0, line_height: 28.0, weight: FontWeight(600.0) };
         Self {
             font: FontTokens {
                 sans: FontFamilyToken { family: "System UI".into() },
@@ -109,33 +84,19 @@ impl LumaTypography {
                 serif: FontFamilyToken { family: "New York".into() },
             },
             text: TextTokens {
-                body: scale.md,
+                body,
                 label: LumaTextStyle { size: 12.5, line_height: 18.0, weight: FontWeight(500.0) },
-                caption: scale.xs,
-                title: scale.two_xl,
+                caption: LumaTextStyle { size: 11.0, line_height: 16.0, weight: FontWeight(500.0) },
+                title,
                 code: LumaTextStyle { size: 13.0, line_height: 18.0, weight: FontWeight(400.0) },
                 role: TextRoleTokens {
                     h1: LumaTextStyle { size: 44.0, line_height: 52.0, weight: FontWeight(700.0) },
                     h2: LumaTextStyle { size: 28.0, line_height: 36.0, weight: FontWeight(600.0) },
-                    h3: scale.two_xl,
-                    h4: scale.lg,
-                    p: scale.md,
+                    h3: title,
+                    h4: LumaTextStyle { size: 16.0, line_height: 22.0, weight: FontWeight(500.0) },
+                    p: body,
                 },
-                scale,
             },
-        }
-    }
-}
-
-impl TextScaleTokens {
-    pub fn style(&self, scale: LumaTextScale) -> LumaTextStyle {
-        match scale {
-            LumaTextScale::Xs => self.xs,
-            LumaTextScale::Sm => self.sm,
-            LumaTextScale::Md => self.md,
-            LumaTextScale::Lg => self.lg,
-            LumaTextScale::Xl => self.xl,
-            LumaTextScale::TwoXl => self.two_xl,
         }
     }
 }
@@ -153,10 +114,6 @@ impl TextRoleTokens {
 }
 
 impl TextTokens {
-    pub fn scale(&self, scale: LumaTextScale) -> LumaTextStyle {
-        self.scale.style(scale)
-    }
-
     pub fn role(&self, role: LumaTextRole) -> LumaTextStyle {
         self.role.style(role)
     }

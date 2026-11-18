@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 use xgpui_luma::controls::autocomplete::AutocompleteLook;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -56,7 +56,7 @@ pub fn resolve_autocomplete_chrome_colors_with_stylesheet(
 pub fn autocomplete_textbox_look(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: crate::ShadcnSize,
 ) -> AutocompleteLook {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
     let resolver =
@@ -64,15 +64,15 @@ pub fn autocomplete_textbox_look(
     let colors = resolve_autocomplete_chrome_colors(&resolver, true)
         .unwrap_or_else(|_| AutocompleteChromeColorTable::fallback());
 
-    let geometry = mode.stylesheet().common.autocomplete.resolve_geometry(
-        size.stylesheet_key(),
+    let geometry = mode.stylesheet().common.autocomplete.resolve_geometry_for(
+        size.key(),
         xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: mode.typography.text.scale.sm.size,
-            status_line_height: mode.typography.text.scale.sm.line_height,
+            status_font_size: crate::ShadcnTextSize::Sm.native_style().size,
+            status_line_height: crate::ShadcnTextSize::Sm.native_style().line_height,
             ..Default::default()
         },
     );
-    let mut status_typography = mode.typography.text.scale.sm;
+    let mut status_typography = crate::ShadcnTextSize::Sm.native_style();
     status_typography.size = geometry.status_font_size;
     status_typography.line_height = geometry.status_line_height;
     AutocompleteLook {
@@ -92,7 +92,7 @@ mod tests {
 
     use xgpui_luma::theme::ThemeMode;
 
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -123,7 +123,7 @@ mod tests {
     fn autocomplete_chrome_uses_primary_and_muted_tokens() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = autocomplete_textbox_look(&mode, ThemeMode::Light, ControlSize::Md);
+        let look = autocomplete_textbox_look(&mode, ThemeMode::Light, ShadcnSize::Md);
         assert_eq!(look.status_color, catalog.color("primary").expect("primary"));
         assert_eq!(look.muted_text_color, catalog.color("muted-foreground").expect("muted-foreground"));
     }

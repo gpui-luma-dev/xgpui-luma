@@ -6,7 +6,7 @@ use xgpui_luma::controls::popup_menu::{
 };
 use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -110,8 +110,6 @@ fn render_split_button_template_cell(
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
         trigger_style: style,
-        trigger_size: ControlSize::Md,
-        menu_size: ControlSize::Md,
         icon_only: false,
         icon: None,
         end_icon: None,

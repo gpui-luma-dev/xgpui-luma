@@ -19,7 +19,7 @@ use gpui::{
 };
 
 use crate::motion::VisualTransition;
-use crate::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 
@@ -281,10 +281,6 @@ impl RadioButtonBuilder {
 
     pub fn tab_stop(self, tab_stop: bool) -> Self {
         Self { button: self.button.tab_stop(tab_stop), ..self }
-    }
-
-    pub fn size(self, size: ButtonSize) -> Self {
-        Self { button: self.button.size(size), ..self }
     }
 
     pub fn role(self, role: ButtonFamilyRole) -> Self {

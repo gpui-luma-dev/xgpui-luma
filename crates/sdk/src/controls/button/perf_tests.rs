@@ -17,9 +17,10 @@ fn measure_shadow_controls() {
     for layers in [0, 1, 2, 8] {
         let metrics = MetricTokens::default();
         let theme = default_button_family_theme();
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
-        let scale = StandardBoxScale::compute(ControlSize::Md, &metrics, 2.0);
-        let mut look = compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, metrics.radius.pill);
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
+        let scale = StandardBoxScale::compute(&metrics, 2.0);
+        let mut look =
+            compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, crate::theme::FULL_RADIUS_PX);
         let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
         look.shadow = Some(vec![layer; layers]);
         let source: super::super::model::ButtonLookSource<()> = Arc::new(move |_| look.clone());

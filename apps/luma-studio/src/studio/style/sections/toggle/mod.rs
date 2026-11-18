@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::controls::tabs::Tabs;
@@ -226,7 +227,7 @@ fn render_toggle_size_radius_cell(
     template: &Arc<dyn ButtonTemplate<ToggleData>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
     icon_only: bool,
     window: &mut Window,
@@ -263,7 +264,6 @@ fn render_toggle_size_radius_cell(
         data: ToggleData::new(selected),
         content,
         role: ButtonFamilyRole::Toggle { selected },
-        size,
         state: InteractionState::default(),
         round: false,
         radius_override: std::cell::Cell::new(None),
@@ -314,7 +314,6 @@ fn render_toggle_state_sample(
         data: ToggleData::new(selected),
         content,
         role: ButtonFamilyRole::Toggle { selected },
-        size: ButtonSize::Md,
         state: sample.state,
         round: icon_only,
         radius_override: std::cell::Cell::new(None),
@@ -348,7 +347,7 @@ fn toggle_icon_look_for_style(
             theme.mode(),
             style,
             model.data.selected,
-            model.size,
+            theme.size(),
             Some(ButtonRadiusPreset::Full),
             model.state,
         )
@@ -358,7 +357,7 @@ fn toggle_icon_look_for_style(
 fn toggle_icon_look_for_semantic(
     theme: Arc<ShadcnLook>,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
     selected: bool,
 ) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
@@ -379,7 +378,7 @@ fn toggle_icon_look_for_semantic(
 fn toggle_look_for_semantic(
     theme: Arc<ShadcnLook>,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
     selected: bool,
 ) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
@@ -410,11 +409,13 @@ fn toggle_button_look_for_style(
     Arc::new(move |model| {
         let role = ButtonFamilyRole::Toggle { selected: model.data.selected };
         match style {
-            ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(role, model.size, model.state),
-            ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(role, model.size, model.state),
-            ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(role, model.size, model.state),
-            ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(role, model.size, model.state),
-            ShadcnButtonStyle::ContentOnly => theme.as_ref().resolve_content_only_button(role, model.size, model.state),
+            ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(role, theme.size(), model.state),
+            ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(role, theme.size(), model.state),
+            ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(role, theme.size(), model.state),
+            ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(role, theme.size(), model.state),
+            ShadcnButtonStyle::ContentOnly => {
+                theme.as_ref().resolve_content_only_button(role, theme.size(), model.state)
+            }
         }
     })
 }

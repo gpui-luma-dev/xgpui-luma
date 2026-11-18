@@ -13,7 +13,7 @@ use xgpui_luma::controls::resizable_panels::{PanelHideMode, ResizablePanelsEvent
 use xgpui_luma::controls::switch::{Switch, SwitchData};
 use xgpui_luma::shell::TitleBar;
 use xgpui_luma::color::ColorValue;
-use xgpui_luma::theme::{ControlSize, InteractionState, LumaThemeSyncExt, ThemeMode};
+use xgpui_luma::theme::{InteractionState, LumaThemeSyncExt, ThemeMode};
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, sync_color_control_theme};
 use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
@@ -264,7 +264,8 @@ impl LumaStudioApp {
     }
 
     fn sync_split_themes(&self, cx: &mut Context<Self>) {
-        let theme = self.look.resizable_panels_theme();
+        // Match the workbench's compact handle size.
+        let theme = self.look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).resizable_panels_theme();
         self.workbench.sync_theme(&theme, cx);
     }
 
@@ -637,8 +638,12 @@ fn titlebar_icon_presenter(icon: ControlIcon, color: gpui::Hsla) -> ControlPrese
 }
 
 fn app_bar_icon_color(look: &ShadcnLook) -> gpui::Hsla {
-    look.resolve_content_only_button(ButtonFamilyRole::Icon, ControlSize::Sm, InteractionState::default())
-        .foreground
+    look.resolve_content_only_button(
+        ButtonFamilyRole::Icon,
+        xgpui_luma_look_shadcn::ShadcnSize::Sm,
+        InteractionState::default(),
+    )
+    .foreground
 }
 
 use super::export::token_css_name;

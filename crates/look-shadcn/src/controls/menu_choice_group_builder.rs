@@ -234,14 +234,13 @@ where
     fn into_sdk_builder(self, look: ShadcnLook) -> ControlGroupBuilder<T> {
         let self_builder = self
             .builder
-            .stylesheet(&look.mode_tokens().stylesheet().common)
+            .stylesheet(look.mode_tokens().common_for(look.size()))
             .motion_defaults(look.motion_defaults().control_group);
         let mut builder = self_builder;
         if let Some(row) = self.menu_row {
             let content = row.content;
             builder = builder.with_menu_row_item_content_sized(
-                look.control_group_theme(),
-                row.size.control_size(),
+                look.with_size(row.size).control_group_theme(),
                 row.row_height,
                 row.row_radius,
                 move |model, visual, window, cx| content(model, visual, window, cx),

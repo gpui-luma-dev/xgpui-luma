@@ -2,7 +2,8 @@ use std::cell::Cell;
 use std::sync::Arc;
 
 use gpui::{Context, Entity, FontWeight, Render, SharedString, Window, div, prelude::*, px, transparent_black};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::checkbox::{Checkbox, CheckboxEvent};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{ControlGroupItemElementTemplate, ControlGroupItemRenderModel};
@@ -193,7 +194,7 @@ fn plan_items() -> [PlanOptionItem; 2] {
 
 fn plan_radio_indicator_template(look: Arc<ShadcnLook>) -> Arc<dyn ButtonTemplate<RadioButtonData>> {
     Arc::new(
-        ThemedRadioButtonTemplate::new(look.radio_button_theme())
+        ThemedRadioButtonTemplate::new(look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).radio_button_theme())
             .with_modifier(|element, _| element.min_h(px(0.0)).px(px(0.0)).py(px(0.0))),
     )
 }
@@ -219,7 +220,6 @@ fn plan_option_item_element_template(look: Arc<ShadcnLook>) -> ControlGroupItemE
             data: RadioButtonData::new(item.selected),
             content: Arc::new(|_, _| div().into_any_element()),
             role: ButtonFamilyRole::Icon,
-            size: ButtonSize::Sm,
             state: interaction,
             round: false,
             radius_override: Cell::new(None),

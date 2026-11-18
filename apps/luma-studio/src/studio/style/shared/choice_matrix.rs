@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::ButtonSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel};
 use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::radio_button::RadioButtonData;
@@ -197,11 +197,14 @@ fn render_choice_size_cell(
     look: &Arc<ShadcnLook>,
     control: ChoiceTemplateControl,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    // Render this cell with a Look sized to its row.
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
     let active = true;
     let id = SharedString::from(format!(
         "luma-studio-choice-size-preview-{}-{}-{}-{}",
@@ -213,7 +216,7 @@ fn render_choice_size_cell(
     let radius_override = radius.map(|preset| {
         let tokens = look.mode_tokens();
         let scale = xgpui_luma_look_shadcn::paint::switch_scale(tokens.as_ref(), look.mode(), style, size, 1.0);
-        xgpui_luma_look_shadcn::paint::resolve_switch_radius_preset(preset, &tokens.metrics, scale.track_height)
+        xgpui_luma_look_shadcn::paint::resolve_switch_radius_preset(preset, &tokens.radii, scale.track_height)
     });
 
     match control {
@@ -223,7 +226,6 @@ fn render_choice_size_cell(
                 data: SwitchData::new(active),
                 content: control.switch_content(),
                 role: control.role(),
-                size,
                 state: InteractionState::default(),
                 round: false,
                 radius_override: std::cell::Cell::new(radius_override),
@@ -247,7 +249,6 @@ fn render_choice_size_cell(
                 data: CheckboxData::new(active),
                 content: control.checkbox_content(),
                 role: control.role(),
-                size,
                 state: InteractionState::default(),
                 round: false,
                 radius_override: std::cell::Cell::new(radius_override),
@@ -271,7 +272,6 @@ fn render_choice_size_cell(
                 data: RadioButtonData::new(active),
                 content: control.radio_content(),
                 role: control.role(),
-                size,
                 state: InteractionState::default(),
                 round: false,
                 radius_override: std::cell::Cell::new(radius_override),
@@ -361,7 +361,6 @@ fn render_choice_variant_state_cell(
                 data: SwitchData::new(active),
                 content: control.switch_content(),
                 role: control.role(),
-                size: ButtonSize::Md,
                 state: sample.state,
                 round: false,
                 radius_override: std::cell::Cell::new(None),
@@ -384,7 +383,6 @@ fn render_choice_variant_state_cell(
                 data: CheckboxData::new(active),
                 content: control.checkbox_content(),
                 role: control.role(),
-                size: ButtonSize::Md,
                 state: sample.state,
                 round: false,
                 radius_override: std::cell::Cell::new(None),
@@ -407,7 +405,6 @@ fn render_choice_variant_state_cell(
                 data: RadioButtonData::new(active),
                 content: control.radio_content(),
                 role: control.role(),
-                size: ButtonSize::Md,
                 state: sample.state,
                 round: false,
                 radius_override: std::cell::Cell::new(None),

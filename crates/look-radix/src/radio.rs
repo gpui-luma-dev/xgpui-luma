@@ -9,7 +9,7 @@ use std::sync::Arc;
 use gpui::{BoxShadow, Hsla, point, px};
 use xgpui_luma::controls::button::ButtonTemplate;
 use xgpui_luma::controls::radio_button::{RadioButtonPalette, RadioButtonTheme, RadioScale, ThemedRadioButtonTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::look::Look;
@@ -55,11 +55,11 @@ impl RadioSize {
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 
@@ -67,7 +67,7 @@ impl RadioSize {
     pub fn box_size(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .radio
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .indicator_size
     }
 
@@ -75,7 +75,7 @@ impl RadioSize {
     pub fn dot_size(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .radio
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .dot_size
     }
 }
@@ -88,8 +88,12 @@ fn radio_scale_with_stylesheet(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
     size: RadioSize,
 ) -> RadioScale {
-    let fallback = RadioScale::compute(size.control_size(), &MetricTokens::default(), 1.0);
-    let geometry = stylesheet.radio.resolve_geometry(
+    let fallback = RadioScale::compute_with_stylesheet(
+        &crate::size::scaffold_metrics(size.control_size()),
+        1.0,
+        crate::size::scaffold_stylesheet(size.control_size()),
+    );
+    let geometry = stylesheet.radio.resolve_geometry_for(
         size.as_str(),
         xgpui_luma::theme::stylesheet::RadioGeometry {
             indicator_size: fallback.indicator_size,
@@ -142,7 +146,8 @@ fn alpha(color: Hsla, a: f32) -> Hsla {
 }
 
 impl RadioButtonTheme for RadioThemeAdapter {
-    fn resolve(&self, checked: bool, state: InteractionState, size: ControlSize) -> RadioButtonPalette {
+    fn resolve(&self, checked: bool, state: InteractionState) -> RadioButtonPalette {
+        let size = self.look.size();
         let look = &self.look;
         let layer = state.layer();
         let high_contrast = self.paint.high_contrast;
@@ -216,15 +221,16 @@ impl RadioButtonTheme for RadioThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> RadioScale {
+    fn scale(&self, scale_factor: f32) -> RadioScale {
+        let size = self.look.size();
         let _ = scale_factor;
         let radix_size = self.size_override.unwrap_or(match size {
-            ControlSize::Sm => RadioSize::One,
-            ControlSize::Md => RadioSize::Two,
-            ControlSize::Lg => RadioSize::Three,
+            crate::RadixSize::One => RadioSize::One,
+            crate::RadixSize::Two => RadioSize::Two,
+            crate::RadixSize::Three => RadioSize::Three,
         });
         radio_scale_with_stylesheet(&self.look.common_stylesheet(), radix_size)
     }
@@ -265,7 +271,7 @@ mod tests {
 
     fn palette(variant: RadioVariant, checked: bool) -> RadioButtonPalette {
         let look = Look::built_in();
-        radio_theme(&look, variant).resolve(checked, InteractionState::default(), ControlSize::Md)
+        radio_theme(&look, variant).resolve(checked, InteractionState::default())
     }
 
     #[test]
@@ -277,31 +283,20 @@ mod tests {
                 for checked in [false, true] {
                     for paint in [Paint::accent(), Paint::gray(), Paint::accent().high_contrast()] {
                         let theme = radio_theme_with(&look, variant, paint);
-                        let focused = theme.resolve(
-                            checked,
-                            InteractionState { focused: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
+                        let focused = theme.resolve(checked, InteractionState { focused: true, ..Default::default() });
                         for hovered in [false, true] {
                             let pressed = theme.resolve(
                                 checked,
                                 InteractionState { focused: true, pressed: true, hovered, ..Default::default() },
-                                ControlSize::Md,
                             );
                             assert_eq!(pressed.indicator_background, focused.indicator_background);
                             assert_eq!(pressed.dot_color, focused.dot_color);
                             assert_eq!(pressed.indicator_border, focused.indicator_border);
                         }
-                        let disabled = theme.resolve(
-                            checked,
-                            InteractionState { disabled: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
-                        let disabled_press = theme.resolve(
-                            checked,
-                            InteractionState { disabled: true, pressed: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
+                        let disabled =
+                            theme.resolve(checked, InteractionState { disabled: true, ..Default::default() });
+                        let disabled_press = theme
+                            .resolve(checked, InteractionState { disabled: true, pressed: true, ..Default::default() });
                         assert_eq!(disabled.indicator_background, disabled_press.indicator_background);
                         assert_eq!(disabled.indicator_border, disabled_press.indicator_border);
                     }
@@ -344,11 +339,7 @@ mod tests {
     fn surface_high_contrast_uses_step_twelve_fill() {
         let look = Look::built_in();
         let paint = Paint::accent().high_contrast();
-        let checked = radio_theme_with(&look, RadioVariant::Surface, paint).resolve(
-            true,
-            InteractionState::default(),
-            ControlSize::Md,
-        );
+        let checked = radio_theme_with(&look, RadioVariant::Surface, paint).resolve(true, InteractionState::default());
         assert_eq!(checked.indicator_background, look.resolve_step(ScaleFamily::Color, 12).hsla());
         assert_eq!(checked.dot_color, look.resolve_step(ScaleFamily::Color, 1).hsla());
     }

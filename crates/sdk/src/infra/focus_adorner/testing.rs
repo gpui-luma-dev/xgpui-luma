@@ -77,7 +77,7 @@ where
 
 pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfield::TextFieldTheme>) {
     use crate::controls::textfield::*;
-    use crate::theme::{ControlSize, StandardBoxScale};
+    use crate::theme::StandardBoxScale;
     for placeholder in ["", "A nonempty placeholder"] {
         for full_width in [false, true] {
             let template = ThemedTextFieldTemplate::new(theme.clone());
@@ -93,13 +93,12 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     invalid: state.invalid,
                     ..Default::default()
                 };
-                let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), window.scale_factor());
+                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
                 let model = TextFieldRenderModel {
                     id: &id,
                     placeholder: &placeholder.into(),
                     value: &empty,
                     prefix_icon: None,
-                    size: ControlSize::Md,
                     enabled,
                     full_width,
                     state,
@@ -107,7 +106,7 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
                     caret_visible: false,
                     horizontal_scroll: 0.,
                     character_offsets: vec![0.],
-                    look: theme.resolve_look(state, enabled, ControlSize::Md, &scale),
+                    look: theme.resolve_look(state, enabled, &scale),
                 };
                 let handlers = TextFieldTemplateHandlers {
                     hover: Box::new(|_, _, _| {}),
@@ -127,7 +126,6 @@ pub fn assert_textfield_layout(theme: std::sync::Arc<dyn crate::controls::textfi
 
 pub fn assert_textarea_layout(theme: std::sync::Arc<dyn crate::controls::textarea::TextAreaTheme>) {
     use crate::controls::textarea::*;
-    use crate::theme::ControlSize;
     for placeholder in ["", "A nonempty placeholder"] {
         for full_width in [false, true] {
             let template = ThemedTextAreaTemplate::new(theme.clone());
@@ -140,7 +138,6 @@ pub fn assert_textarea_layout(theme: std::sync::Arc<dyn crate::controls::textare
                     value: &empty,
                     enabled: !state.disabled,
                     full_width,
-                    size: ControlSize::Md,
                     rows: 3,
                     state: TextAreaState {
                         hovered: state.hovered,
@@ -171,7 +168,6 @@ pub fn assert_textarea_layout(theme: std::sync::Arc<dyn crate::controls::textare
 
 pub fn assert_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {
     use crate::controls::selector::*;
-    use crate::theme::ControlSize;
     for trigger_style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
         let template = ThemedSelectorTemplate::new(
             theme.clone(),
@@ -196,7 +192,6 @@ pub fn assert_selector_layout(theme: std::sync::Arc<dyn crate::controls::selecto
                 initialize_popup_scroll: false,
                 active_path: None,
                 enabled: !state.disabled,
-                size: ControlSize::Md,
                 trigger_style,
                 icons: &icons,
                 without_elevation: true,
@@ -213,7 +208,6 @@ pub fn assert_selector_layout(theme: std::sync::Arc<dyn crate::controls::selecto
 
 pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu::PopupMenuTheme>) {
     use crate::controls::popup_menu::*;
-    use crate::theme::ControlSize;
     use std::sync::Arc;
     for trigger_style in [PopupMenuTriggerStyle::Outline, PopupMenuTriggerStyle::Ghost] {
         for split in [false, true] {
@@ -234,8 +228,6 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
                     trigger_bounds: None,
                     placement: Default::default(),
                     trigger_style,
-                    trigger_size: ControlSize::Md,
-                    menu_size: ControlSize::Md,
                     icon_only: false,
                     icon: None,
                     end_icon: None,
@@ -273,59 +265,54 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
 }
 
 /// SearchSelector uses its own trigger template rather than Selector's template.
-/// Exercise both styles, all sizes, and label/icon positions independently.
+/// Exercise both styles and label/icon positions independently.
 pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>) {
     use crate::controls::search_selector::*;
     use crate::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use crate::theme::{ControlSize, StandardBoxScale};
-    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-        for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
-            let theme = theme.clone();
-            assert_stable_layout_with_content(
-                move |state, selected, window, cx| {
-                    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
-                    let trigger_look = theme.resolve_visual_look(
-                        style,
-                        SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
-                        size,
-                        &scale,
-                        true,
-                    );
-                    let model = SearchSelectorRenderModel {
-                        icons: Default::default(),
-                        geometry: SearchSelectorStylesheet::native_default()
-                            .resolve_geometry(size.stylesheet_key(), Default::default()),
-                        id: "stable-search-selector".into(),
-                        trigger_label: "Choose a value".into(),
-                        trigger_label_is_placeholder: !selected,
-                        trigger_state: crate::controls::textfield::TextFieldState {
-                            hovered: state.hovered,
-                            focused: state.focused,
-                            focus_visible: state.focused,
-                            invalid: state.invalid,
-                            ..Default::default()
-                        },
-                        trigger_look,
-                        trigger_typography_override: None,
-                        enabled: !state.disabled,
-                        size,
-                        full_width: true,
-                        minimum_trigger_width: px(0.),
-                        status_label: "".into(),
-                        status_detail: "".into(),
-                        status_color: gpui::transparent_black(),
-                        muted_text_color: gpui::transparent_black(),
-                        popup_content: None,
-                        presence: Default::default(),
-                        disclosure_progress: 0.,
-                    };
-                    div()
-                        .w(px(300.))
-                        .child(default_search_selector_template().render(model, Default::default(), window, cx))
-                        .into_any_element()
-                },
-                &["search-selector-label", "search-selector-icon"],
-            );
-        }
+    use crate::theme::StandardBoxScale;
+    for style in [SelectorTriggerStyle::Outline, SelectorTriggerStyle::Ghost] {
+        let theme = theme.clone();
+        assert_stable_layout_with_content(
+            move |state, selected, window, cx| {
+                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+                let trigger_look = theme.resolve_visual_look(
+                    style,
+                    SelectorVisualState { interaction: state, invalid: state.invalid, selected, open: false },
+                    &scale,
+                    true,
+                );
+                let model = SearchSelectorRenderModel {
+                    icons: Default::default(),
+                    geometry: SearchSelectorStylesheet::native_default().resolve_geometry(Default::default()),
+                    id: "stable-search-selector".into(),
+                    trigger_label: "Choose a value".into(),
+                    trigger_label_is_placeholder: !selected,
+                    trigger_state: crate::controls::textfield::TextFieldState {
+                        hovered: state.hovered,
+                        focused: state.focused,
+                        focus_visible: state.focused,
+                        invalid: state.invalid,
+                        ..Default::default()
+                    },
+                    trigger_look,
+                    trigger_typography_override: None,
+                    enabled: !state.disabled,
+                    full_width: true,
+                    minimum_trigger_width: px(0.),
+                    status_label: "".into(),
+                    status_detail: "".into(),
+                    status_color: gpui::transparent_black(),
+                    muted_text_color: gpui::transparent_black(),
+                    popup_content: None,
+                    presence: Default::default(),
+                    disclosure_progress: 0.,
+                };
+                div()
+                    .w(px(300.))
+                    .child(default_search_selector_template().render(model, Default::default(), window, cx))
+                    .into_any_element()
+            },
+            &["search-selector-label", "search-selector-icon"],
+        );
     }
 }

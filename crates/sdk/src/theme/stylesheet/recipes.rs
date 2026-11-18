@@ -175,7 +175,7 @@ impl FontFeaturesStylesheet {
 mod tests {
     use crate::{
         color::GamutMapping,
-        theme::{ThemeMode, ControlSize, InteractionState},
+        theme::{ThemeMode, InteractionState},
     };
     use crate::controls::button_family::{ButtonFamilyTheme, ButtonFamilyRole, DefaultButtonFamilyTheme};
     use super::super::CommonStylesheet;
@@ -224,11 +224,7 @@ mod tests {
         let theme = DefaultButtonFamilyTheme::new(tokens);
         assert_eq!(
             theme
-                .resolve(
-                    ButtonFamilyRole::Text,
-                    ControlSize::Md,
-                    InteractionState { hovered: true, ..Default::default() }
-                )
+                .resolve(ButtonFamilyRole::Text, InteractionState { hovered: true, ..Default::default() })
                 .background,
             expected
         );

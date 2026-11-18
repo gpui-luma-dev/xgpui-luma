@@ -155,11 +155,11 @@ impl Toolbar {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ToolbarBuilder {
+        let look = look.with_size(self.size);
         let mut builder = xgpui_luma::controls::toolbar::new(self.id)
             .template(look.toolbar_template())
             .items(self.items)
             .enabled(self.enabled)
-            .size(self.size.control_size())
             .variant(self.variant)
             .focus_strategy(self.focus_strategy);
         for modifier in self.modifiers {

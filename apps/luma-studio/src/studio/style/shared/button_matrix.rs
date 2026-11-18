@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::{ButtonRadiusPreset, ShadcnButtonStyle, ShadcnLook};
@@ -19,8 +20,8 @@ pub(crate) const BUTTON_TABLE_SIZE_HEADER_HEIGHT: f32 = 40.0;
 
 pub(crate) const SIZE_PREVIEW_STYLE: ShadcnButtonStyle = ShadcnButtonStyle::Primary;
 
-pub(crate) const BUTTON_SIZES: [(ButtonSize, &str); 3] =
-    [(ButtonSize::Sm, "Small"), (ButtonSize::Md, "Medium"), (ButtonSize::Lg, "Large")];
+pub(crate) const BUTTON_SIZES: [(ShadcnSize, &str); 3] =
+    [(ShadcnSize::Sm, "Small"), (ShadcnSize::Md, "Medium"), (ShadcnSize::Lg, "Large")];
 
 pub(crate) struct ButtonStyleVariantDef {
     pub label: &'static str,
@@ -154,7 +155,7 @@ fn render_button_size_radius_cell(
     template: &Arc<dyn ButtonTemplate<()>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
     icon_only: bool,
     window: &mut Window,
@@ -187,7 +188,6 @@ fn render_button_size_radius_cell(
         } else {
             ButtonFamilyRole::Text
         },
-        size,
         state: InteractionState::default(),
         round: false,
         radius_override: std::cell::Cell::new(None),
@@ -210,7 +210,7 @@ fn render_button_size_radius_cell(
 pub(crate) fn button_look_for_semantic(
     theme: Arc<ShadcnLook>,
     style: ShadcnButtonStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
 ) -> xgpui_luma::controls::button::ButtonLookSource<()> {
     Arc::new(move |model| {
@@ -232,12 +232,12 @@ pub(crate) fn button_look_for_style(
     style: ShadcnButtonStyle,
 ) -> xgpui_luma::controls::button::ButtonLookSource<()> {
     Arc::new(move |model| match style {
-        ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(model.role, model.size, model.state),
-        ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(model.role, model.size, model.state),
-        ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(model.role, model.size, model.state),
-        ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(model.role, model.size, model.state),
+        ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(model.role, theme.size(), model.state),
+        ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(model.role, theme.size(), model.state),
+        ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(model.role, theme.size(), model.state),
+        ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(model.role, theme.size(), model.state),
         ShadcnButtonStyle::ContentOnly => {
-            theme.as_ref().resolve_content_only_button(model.role, model.size, model.state)
+            theme.as_ref().resolve_content_only_button(model.role, theme.size(), model.state)
         }
     })
 }
@@ -262,11 +262,11 @@ pub(crate) fn shadcn_style_id(style: ShadcnButtonStyle) -> &'static str {
     }
 }
 
-pub(crate) fn button_size_id(size: ButtonSize) -> &'static str {
+pub(crate) fn button_size_id(size: ShadcnSize) -> &'static str {
     match size {
-        ButtonSize::Sm => "sm",
-        ButtonSize::Md => "md",
-        ButtonSize::Lg => "lg",
+        ShadcnSize::Sm => "sm",
+        ShadcnSize::Md => "md",
+        ShadcnSize::Lg => "lg",
     }
 }
 

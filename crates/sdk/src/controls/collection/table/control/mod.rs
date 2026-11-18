@@ -26,7 +26,6 @@ use super::model::{
 };
 use super::template::TableTemplate;
 use super::theme::TableTheme;
-use crate::theme::ControlSize;
 use crate::theme::observe_theme_revision;
 
 use self::selection::normalize_model;
@@ -454,16 +453,6 @@ where
         }
 
         cx.emit(TableEvent::EnabledChanged { enabled });
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.model.size == size {
-            return;
-        }
-
-        self.model.size = size;
-        self.list_state.remeasure();
         cx.notify();
     }
 

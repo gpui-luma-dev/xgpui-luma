@@ -12,7 +12,7 @@ use lucide_svg_static::Icon as LucideIcon;
 use super::{NavNodeKind, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};
 use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use crate::controls::scroll_container::ScrollContainer;
-use crate::theme::{ControlSize, InteractionState, LumaTextStyle, LumaTypography};
+use crate::theme::{InteractionState, LumaTextStyle, LumaTypography};
 use crate::controls::floating_menu::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
 use crate::infra::icon::{DisclosureIcons, render_disclosure_icon, render_icon_source};
 use crate::infra::ElementExt;
@@ -318,8 +318,9 @@ fn sidebar_title_style(typography: &LumaTypography) -> LumaTextStyle {
     typography.text.label
 }
 
+/// Label metrics at body weight.
 fn sidebar_subtitle_style(typography: &LumaTypography) -> LumaTextStyle {
-    typography.text.scale.sm
+    LumaTextStyle { weight: typography.text.body.weight, ..typography.text.label }
 }
 
 fn render_title(title: Option<SharedString>, subtitle: Option<SharedString>, theme: &Arc<dyn SidebarTheme>) -> Div {
@@ -484,7 +485,7 @@ fn render_node(
         binding
             .bind(
                 div().id(gpui::SharedString::from(format!("{id}-drag-row"))).w_full().child(row),
-                theme.resolve_drag(ControlSize::Md),
+                theme.resolve_drag(),
                 cx,
             )
             .into_any_element()
@@ -619,9 +620,9 @@ fn render_item_row(
         invalid: false,
     };
     let look = if has_children {
-        theme.resolve_branch(interaction, ControlSize::Md)
+        theme.resolve_branch(interaction)
     } else {
-        theme.resolve_item(state.selected, interaction, ControlSize::Md)
+        theme.resolve_item(state.selected, interaction)
     };
     let depth_indent = (look.icon_size + look.gap) * CHILD_DEPTH_INDENT_MULTIPLIER;
     let padding_left = look.padding_x + state.depth as f32 * depth_indent;
@@ -719,9 +720,9 @@ fn render_collapsed_rail_node(
         invalid: false,
     };
     let look = if has_children {
-        theme.resolve_branch(interaction, ControlSize::Md)
+        theme.resolve_branch(interaction)
     } else {
-        theme.resolve_item(state.selected, interaction, ControlSize::Md)
+        theme.resolve_item(state.selected, interaction)
     };
     let row_width = if has_children {
         rail_branch_button_width(look.height, &theme.geometry())

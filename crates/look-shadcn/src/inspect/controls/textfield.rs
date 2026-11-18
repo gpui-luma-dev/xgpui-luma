@@ -53,7 +53,7 @@ pub struct TextFieldInspectMetrics {
 pub fn inspect_textfield_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TextFieldInspectMetrics {
     let table = crate::tables::metrics::resolve_textfield_metrics(mode, theme_mode, size);
     table.into()

@@ -78,7 +78,7 @@ impl StepperTemplate for ModifiedStepperTemplate {
 
 impl StepperTemplate for ThemedStepperTemplate {
     fn render(&self, model: &StepperRenderModel<'_>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.size);
+        let look = self.theme.resolve(model.enabled);
         let display_indices = display_indices(model.step_count, model.direction);
         let horizontal = model.direction.orientation() == ProgressOrientation::Horizontal;
 

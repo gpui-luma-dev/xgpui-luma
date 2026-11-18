@@ -126,7 +126,7 @@ impl Render for VisitorsExample {
                 vstack! { gap=0;
                     hstack! { gap=16;
                         vstack! { gap=4;
-                            div().typography_style(typography.text.scale.lg).font_weight(gpui::FontWeight::SEMIBOLD)
+                            div().typography_style(typography.text.role.h4).font_weight(gpui::FontWeight::SEMIBOLD)
                                 .child(if self.area { "Area Chart – Interactive" } else { "Line Chart – Interactive" }),
                             div().typography_style(typography.text.body).text_color(chrome.muted_text).child(caption),
                         }.flex_1().min_w_0(),

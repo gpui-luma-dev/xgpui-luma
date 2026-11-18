@@ -20,7 +20,7 @@ use xgpui_luma::controls::{
     tabs::{DefaultTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
@@ -40,7 +40,7 @@ impl Snapshot {
             scrollbar: DefaultScrollbarTheme::new(tokens.clone()),
             selector: DefaultSelectorTheme::new(tokens.clone()),
             tabs: DefaultTabsTheme::new(tokens.clone()),
-            tooltip: TooltipLook::from_tokens(&tokens, "md"),
+            tooltip: TooltipLook::from_tokens(&tokens, None),
             tokens,
         }
     }
@@ -96,16 +96,15 @@ impl ButtonFamilyTheme for AppTheme {
     fn resolve_look(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
         state: InteractionState,
         scale: &StandardBoxScale,
         pill_radius: f32,
     ) -> Option<ButtonFamilyLook> {
-        self.current().button.resolve_look(role, size, state, scale, pill_radius)
+        self.current().button.resolve_look(role, state, scale, pill_radius)
     }
 
-    fn resolve(&self, role: ButtonFamilyRole, size: ControlSize, state: InteractionState) -> ButtonFamilyPalette {
-        self.current().button.resolve(role, size, state)
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
+        self.current().button.resolve(role, state)
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
@@ -113,27 +112,27 @@ impl ButtonFamilyTheme for AppTheme {
 }
 
 impl RadioButtonTheme for AppTheme {
-    fn resolve(&self, checked: bool, state: InteractionState, size: ControlSize) -> RadioButtonPalette {
-        self.current().radio.resolve(checked, state, size)
+    fn resolve(&self, checked: bool, state: InteractionState) -> RadioButtonPalette {
+        self.current().radio.resolve(checked, state)
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
     }
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> RadioScale {
-        self.current().radio.scale(size, scale_factor)
+    fn scale(&self, scale_factor: f32) -> RadioScale {
+        self.current().radio.scale(scale_factor)
     }
 }
 
 impl TabsTheme for AppTheme {
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        self.current().tabs.resolve_drag(size)
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        self.current().tabs.resolve_drag()
     }
 
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook {
-        self.current().tabs.resolve_list(enabled, size)
+    fn resolve_list(&self, enabled: bool) -> TabsListLook {
+        self.current().tabs.resolve_list(enabled)
     }
-    fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook {
-        self.current().tabs.resolve_item(active, state, size)
+    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
+        self.current().tabs.resolve_item(active, state)
     }
     fn font_family(&self) -> SharedString {
         self.current().tabs.font_family()
@@ -156,21 +155,19 @@ impl SelectorTheme for AppTheme {
         &self,
         style: SelectorTriggerStyle,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        self.current().selector.resolve_look(style, state, size, scale, without_elevation)
+        self.current().selector.resolve_look(style, state, scale, without_elevation)
     }
     fn resolve_visual_look(
         &self,
         style: SelectorTriggerStyle,
         state: SelectorVisualState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        self.current().selector.resolve_visual_look(style, state, size, scale, without_elevation)
+        self.current().selector.resolve_visual_look(style, state, scale, without_elevation)
     }
 }
 
@@ -179,10 +176,9 @@ impl ScrollbarTheme for AppTheme {
         &self,
         state: InteractionState,
         orientation: ScrollbarOrientation,
-        size: ControlSize,
         style: ScrollbarStyle,
     ) -> ScrollbarLook {
-        self.current().scrollbar.resolve(state, orientation, size, style)
+        self.current().scrollbar.resolve(state, orientation, style)
     }
     fn metrics(&self) -> MetricTokens {
         self.metrics()
@@ -218,20 +214,13 @@ mod tests {
                 ThemeMode::Dark => ThemeTokens::dark(),
             };
             let state = InteractionState::default();
-            let button = buttons.resolve(ButtonFamilyRole::Text, ControlSize::Md, state);
-            let expected_button =
-                DefaultButtonFamilyTheme::new(tokens.clone()).resolve(ButtonFamilyRole::Text, ControlSize::Md, state);
+            let button = buttons.resolve(ButtonFamilyRole::Text, state);
+            let expected_button = DefaultButtonFamilyTheme::new(tokens.clone()).resolve(ButtonFamilyRole::Text, state);
             assert_eq!(button.background, expected_button.background);
-            let radio = radios.resolve(true, state, ControlSize::Md);
-            assert_eq!(
-                radio.dot_color,
-                DefaultRadioButtonTheme::new(tokens.clone()).resolve(true, state, ControlSize::Md).dot_color
-            );
-            let tab = tabs.resolve_item(true, state, ControlSize::Md);
-            assert_eq!(
-                tab.label_color,
-                DefaultTabsTheme::new(tokens.clone()).resolve_item(true, state, ControlSize::Md).label_color
-            );
+            let radio = radios.resolve(true, state);
+            assert_eq!(radio.dot_color, DefaultRadioButtonTheme::new(tokens.clone()).resolve(true, state).dot_color);
+            let tab = tabs.resolve_item(true, state);
+            assert_eq!(tab.label_color, DefaultTabsTheme::new(tokens.clone()).resolve_item(true, state).label_color);
             let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
             assert_eq!(
                 selector.trigger_background,
@@ -239,16 +228,15 @@ mod tests {
                     .resolve(SelectorTriggerStyle::default(), state, false)
                     .trigger_background
             );
-            let scrollbar =
-                scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ControlSize::Md, ScrollbarStyle::Soft);
+            let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
             assert_eq!(
                 scrollbar.thumb_background,
                 DefaultScrollbarTheme::new(tokens.clone())
-                    .resolve(state, ScrollbarOrientation::Horizontal, ControlSize::Md, ScrollbarStyle::Soft)
+                    .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
                     .thumb_background
             );
             let tip = tooltip.resolve();
-            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens, "md").background);
+            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens, None).background);
             colors.push([
                 button.foreground,
                 radio.label_color,

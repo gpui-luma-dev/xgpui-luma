@@ -6,9 +6,8 @@ impl crate::controls::checkbox::CheckboxTheme for FocusBorderCheckboxTheme {
         &self,
         checked: bool,
         state: crate::theme::InteractionState,
-        size: crate::theme::ControlSize,
     ) -> crate::controls::checkbox::CheckboxPalette {
-        let mut palette = crate::controls::checkbox::default_checkbox_theme().resolve(checked, state, size);
+        let mut palette = crate::controls::checkbox::default_checkbox_theme().resolve(checked, state);
         palette.control_border = state.focused.then_some(gpui::blue());
         palette
     }
@@ -19,29 +18,26 @@ impl crate::controls::checkbox::CheckboxTheme for FocusBorderCheckboxTheme {
 #[test]
 fn custom_checkbox_focus_border_is_stable() {
     use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
-    for size in [crate::theme::ControlSize::Sm, crate::theme::ControlSize::Md, crate::theme::ControlSize::Lg] {
-        for role in [
-            crate::controls::button_family::ButtonFamilyRole::Text,
-            crate::controls::button_family::ButtonFamilyRole::Icon,
-        ] {
-            let template =
-                crate::controls::checkbox::ThemedCheckboxTemplate::new(std::sync::Arc::new(FocusBorderCheckboxTheme));
-            super::testing::assert_stable_layout(move |state, selected, window, cx| {
-                template
-                    .render(
-                        &ButtonRenderModel {
-                            data: crate::controls::checkbox::CheckboxData::new(selected),
-                            state,
-                            size,
-                            role,
-                            ..Default::default()
-                        },
-                        window,
-                        cx,
-                    )
-                    .into_any_element()
-            });
-        }
+    for role in [
+        crate::controls::button_family::ButtonFamilyRole::Text,
+        crate::controls::button_family::ButtonFamilyRole::Icon,
+    ] {
+        let template =
+            crate::controls::checkbox::ThemedCheckboxTemplate::new(std::sync::Arc::new(FocusBorderCheckboxTheme));
+        super::testing::assert_stable_layout(move |state, selected, window, cx| {
+            template
+                .render(
+                    &ButtonRenderModel {
+                        data: crate::controls::checkbox::CheckboxData::new(selected),
+                        state,
+                        role,
+                        ..Default::default()
+                    },
+                    window,
+                    cx,
+                )
+                .into_any_element()
+        });
     }
 }
 
@@ -51,9 +47,8 @@ impl crate::controls::radio_button::RadioButtonTheme for FocusBorderRadioTheme {
         &self,
         checked: bool,
         state: crate::theme::InteractionState,
-        size: crate::theme::ControlSize,
     ) -> crate::controls::radio_button::RadioButtonPalette {
-        let mut palette = crate::controls::radio_button::default_radio_button_theme().resolve(checked, state, size);
+        let mut palette = crate::controls::radio_button::default_radio_button_theme().resolve(checked, state);
         palette.control_border = state.focused.then_some(gpui::blue());
         palette
     }
@@ -64,30 +59,26 @@ impl crate::controls::radio_button::RadioButtonTheme for FocusBorderRadioTheme {
 #[test]
 fn custom_radio_focus_border_is_stable() {
     use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
-    for size in [crate::theme::ControlSize::Sm, crate::theme::ControlSize::Md, crate::theme::ControlSize::Lg] {
-        for role in [
-            crate::controls::button_family::ButtonFamilyRole::Text,
-            crate::controls::button_family::ButtonFamilyRole::Icon,
-        ] {
-            let template = crate::controls::radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(
-                FocusBorderRadioTheme,
-            ));
-            super::testing::assert_stable_layout(move |state, selected, window, cx| {
-                template
-                    .render(
-                        &ButtonRenderModel {
-                            data: crate::controls::radio_button::RadioButtonData::new(selected),
-                            state,
-                            size,
-                            role,
-                            ..Default::default()
-                        },
-                        window,
-                        cx,
-                    )
-                    .into_any_element()
-            });
-        }
+    for role in [
+        crate::controls::button_family::ButtonFamilyRole::Text,
+        crate::controls::button_family::ButtonFamilyRole::Icon,
+    ] {
+        let template =
+            crate::controls::radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(FocusBorderRadioTheme));
+        super::testing::assert_stable_layout(move |state, selected, window, cx| {
+            template
+                .render(
+                    &ButtonRenderModel {
+                        data: crate::controls::radio_button::RadioButtonData::new(selected),
+                        state,
+                        role,
+                        ..Default::default()
+                    },
+                    window,
+                    cx,
+                )
+                .into_any_element()
+        });
     }
 }
 

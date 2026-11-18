@@ -11,7 +11,7 @@ use gpui::{Context, Entity, Render, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::search_selector::SearchSelector;
 use xgpui_luma::controls::tabs::{Tabs, TabsWidthMode};
 
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::{ShadcnLook};
 use xgpui_luma_look_shadcn as shadcn;
 
@@ -165,7 +165,7 @@ fn sidebar_tabs_builder(
         .look(look.as_ref())
         .size(shadcn::ShadcnSize::Lg)
         .width_mode(TabsWidthMode::Uniform)
-        .template(luma_studio_tabs_template(look, ControlSize::Lg))
+        .template(luma_studio_tabs_template(look, ShadcnSize::Lg))
         .tab_with("colors", "Colors", move |_, _| {
             sidebar_scroll_body().track_scroll(&colors_scroll).child(colors.clone())
         })

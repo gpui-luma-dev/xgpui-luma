@@ -9,7 +9,7 @@ use super::{
     OverlayWindowRenderModel, OverlayWindowTemplateHandlers, OverlayWindowTemplateParts,
 };
 use super::model::ThemeInvalidator;
-use crate::theme::{ControlSize, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 #[derive(Clone)]
 struct OverlayWindowHeaderDrag {
@@ -125,11 +125,6 @@ impl OverlayWindowControl {
         cx.notify();
     }
 
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        cx.notify();
-    }
-
     pub fn is_open(&self) -> bool {
         self.model.open
     }
@@ -141,7 +136,6 @@ impl OverlayWindowControl {
             position: self.model.position,
             dismissible: self.model.dismissible,
             draggable: self.model.draggable,
-            size: self.model.size,
             width: self.model.width,
             focused: self.focus_handle.is_focused(window),
             content: &self.model.content,
@@ -184,7 +178,7 @@ impl OverlayWindowControl {
         }
 
         let viewport = window.viewport_size();
-        let look = self.model.template.resolve_look(self.model.size, self.model.mode);
+        let look = self.model.template.resolve_look(self.model.mode);
         let origin = resolve_overlay_window_origin(self.model.position, viewport, &look, self.model.width);
         self.dragging = Some(OverlayWindowDragState { pointer_origin: event.position, overlay_origin: origin });
     }
@@ -203,7 +197,7 @@ impl OverlayWindowControl {
         };
         let delta = event.event.position - dragging.pointer_origin;
         let origin = point(dragging.overlay_origin.x + delta.x, dragging.overlay_origin.y + delta.y);
-        let look = self.model.template.resolve_look(self.model.size, self.model.mode);
+        let look = self.model.template.resolve_look(self.model.mode);
         self.model.position = OverlayWindowPosition::Absolute(clamp_overlay_window_origin(
             origin,
             _window.viewport_size(),
@@ -268,7 +262,7 @@ impl Render for OverlayWindowControl {
             return div().into_any_element();
         }
 
-        let look = self.model.template.resolve_look(self.model.size, self.model.mode);
+        let look = self.model.template.resolve_look(self.model.mode);
         let model = self.render_model(window);
         let header_drag_handle = self.model.draggable.then(|| {
             div()
@@ -542,8 +536,7 @@ mod geometry_tests {
     use super::*;
     #[test]
     fn placement_and_drag_clamp_use_the_resolved_look() {
-        let mut look =
-            super::super::default_overlay_window_theme().resolve(ControlSize::Md, OverlayWindowMode::Modeless);
+        let mut look = super::super::default_overlay_window_theme().resolve(OverlayWindowMode::Modeless);
         look.min_width = 100.0;
         look.max_width = 100.0;
         look.estimated_height = 80.0;

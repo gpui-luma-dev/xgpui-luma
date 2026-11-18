@@ -277,7 +277,7 @@ impl TextArea {
     }
 
     fn resolved_look(&self, scale: &StandardBoxScale) -> crate::controls::textarea::TextAreaLook {
-        let mut look = self.model.theme.resolve_look(self.state, self.model.enabled, self.model.size, scale);
+        let mut look = self.model.theme.resolve_look(self.state, self.model.enabled, scale);
         if let Some(override_fn) = &self.model.look_override {
             look = override_fn(look);
         }

@@ -48,7 +48,6 @@ impl SdkCartesianStyle {
 }
 impl CartesianStyleProvider for SdkCartesianStyle {
     fn resolve(&self) -> CartesianStyle {
-        let spacing = self.look.metrics().spacing;
         let muted = self.look.tokens().palette.app.muted_foreground;
         let typography = crate::theme::typography();
         let caption = typography.text.caption;
@@ -60,20 +59,21 @@ impl CartesianStyleProvider for SdkCartesianStyle {
         };
         let mut axis = AxisPresentation::new(muted).tick_labels(text.clone());
         axis.title = text;
-        axis.gutter = px(spacing.s6 + spacing.s2);
-        axis.tick_length = px(spacing.s1);
-        axis.label_gap = px(spacing.s1);
+        // Chart spacing in pixels; the SDK has no spacing scale.
+        axis.gutter = px(30.0);
+        axis.tick_length = px(4.0);
+        axis.label_gap = px(4.0);
         let colors = self.colors();
         let defaults = self.series_style(colors[0]);
         let mut style = CartesianStyle::new(axis, defaults.line.expect("adapter supplies a line"));
         style.area = defaults.area.expect("adapter supplies an area");
         style.grid = GridPresentation::new(self.look.tokens().palette.border.default);
         style.metrics = ChartMetrics {
-            plot_padding: px(spacing.s1),
-            legend_gap: px(spacing.s3),
-            legend_item_gap: px(spacing.s1),
-            legend_swatch_width: px(spacing.s5),
-            legend_swatch_height: px(spacing.s0.max(2.0)),
+            plot_padding: px(4.0),
+            legend_gap: px(8.0),
+            legend_item_gap: px(4.0),
+            legend_swatch_width: px(16.0),
+            legend_swatch_height: px(2.0),
         };
         style.empty_state = Some(EmptyStatePresentation::new("No finite samples selected", muted));
         for (id, color) in &self.series {

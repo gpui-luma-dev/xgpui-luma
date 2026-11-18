@@ -5,7 +5,7 @@ use xgpui_luma::controls::button_family::ButtonFamilyLook;
 use xgpui_luma::controls::button_family::ButtonFamilyPalette;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::button_family::compose_button_family_look;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::StandardBoxScale;
@@ -49,17 +49,10 @@ impl ButtonRadiusPreset {
     }
 }
 
-pub fn resolve_button_radius_preset(
-    preset: ButtonRadiusPreset,
-    metrics: &xgpui_luma::theme::MetricTokens,
-    height: f32,
-) -> f32 {
+pub fn resolve_button_radius_preset(preset: ButtonRadiusPreset, radii: &crate::ShadcnRadii, height: f32) -> f32 {
     match preset {
-        ButtonRadiusPreset::None => metrics.radius.none,
-        ButtonRadiusPreset::Small => metrics.radius.sm,
-        ButtonRadiusPreset::Medium => metrics.radius.md,
-        ButtonRadiusPreset::Large => metrics.radius.lg,
         ButtonRadiusPreset::Full => height / 2.0,
+        preset => radii.get(preset),
     }
 }
 
@@ -119,7 +112,7 @@ pub fn button_look(
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
     state: InteractionState,
 ) -> ButtonFamilyLook {
     if let ButtonFamilyRole::Toggle { selected } = role {
@@ -133,7 +126,7 @@ pub fn button_look_semantic(
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     state: InteractionState,
 ) -> ButtonFamilyLook {
@@ -148,7 +141,7 @@ pub(crate) fn button_look_with_stylesheet(
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     state: InteractionState,
 ) -> ButtonFamilyLook {
@@ -162,12 +155,12 @@ pub(crate) fn button_look_with_stylesheet(
     let palette = button_palette(&ctx, stylesheet, style, role, size);
     let scale = button_box_scale(&ctx, stylesheet, size, 1.0);
     let effective_style = effective_button_style(style, role);
-    let mut look = compose_button_family_look(&palette, role, &scale, ctx.metrics().radius.pill);
+    let mut look = compose_button_family_look(&palette, role, &scale, ctx.radii().full);
     if has_family_icon_override(stylesheet, size, false) {
         look.icon_size = scale.icon_size;
     }
     if let Some(radius) = radius {
-        look.radius = resolve_button_radius_preset(radius, ctx.metrics(), look.height);
+        look.radius = resolve_button_radius_preset(radius, ctx.radii(), look.height);
     }
     look.shadow = button_elevation_shadow(&ctx, stylesheet, effective_style);
     look
@@ -197,7 +190,7 @@ pub(crate) fn button_elevation_shadow(
 pub fn button_box_scale(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     scale_factor: f32,
 ) -> StandardBoxScale {
     let (geometry, radius) = resolve_family_geometry(ctx, stylesheet, size, false, scale_factor);
@@ -211,7 +204,7 @@ pub fn button_box_scale(
     }
 }
 
-pub(crate) fn has_family_icon_override(stylesheet: &StylesheetConfig, size: ControlSize, toggle: bool) -> bool {
+pub(crate) fn has_family_icon_override(stylesheet: &StylesheetConfig, size: ShadcnSize, toggle: bool) -> bool {
     let key = crate::tables::metrics::helpers::control_size_key(size);
     if toggle {
         stylesheet.toggle.metrics_for_size(size).is_some()
@@ -227,12 +220,12 @@ pub(crate) fn has_family_icon_override(stylesheet: &StylesheetConfig, size: Cont
 pub(crate) fn resolve_family_geometry(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     toggle: bool,
     scale_factor: f32,
 ) -> (xgpui_luma::theme::stylesheet::ResolvedButtonGeometry, f32) {
     use xgpui_luma::theme::stylesheet::{ButtonGeometry, ResolvedButtonGeometry, ToggleGeometry};
-    let scale = StandardBoxScale::compute(size, ctx.metrics(), scale_factor);
+    let scale = StandardBoxScale::compute(&ctx.tokens.metrics_for(size), scale_factor);
     let typography = ctx.tokens.typography.text.label;
     let mut fallback = ButtonGeometry {
         height: scale.height,
@@ -250,7 +243,7 @@ pub(crate) fn resolve_family_geometry(
         stylesheet.button.metrics_for_size(size)
     };
     if let Some(rule) = rule {
-        let metrics = resolve_button_metrics_rule(rule, ctx.metrics(), size);
+        let metrics = resolve_button_metrics_rule(rule, ctx.controls(), size);
         fallback.height = metrics.height;
         fallback.padding_x = metrics.padding_horizontal;
         fallback.icon_size = metrics.icon_size;
@@ -266,17 +259,17 @@ pub(crate) fn resolve_family_geometry(
     let mut height_source = None;
     if let Some(tokens) = tokens.get(key) {
         if let Some(height) = &tokens.height {
-            if let Some(value) = crate::stylesheet::resolve_stylesheet_metric(height, ctx.metrics(), size) {
+            if let Some(value) = crate::stylesheet::resolve_stylesheet_metric(height, ctx.controls(), size) {
                 fallback.height = value;
                 height_source = Some(height);
             }
         }
         if let Some(token) = &tokens.corner_radius {
-            radius = crate::stylesheet::resolve_stylesheet_metric(token, ctx.metrics(), size).unwrap_or(radius);
+            radius = crate::stylesheet::resolve_stylesheet_metric(token, ctx.controls(), size).unwrap_or(radius);
         }
     }
     let mut geometry = if toggle {
-        let value = stylesheet.common.toggle.inspect_geometry(
+        let value = stylesheet.common.toggle.inspect_geometry_for(
             key,
             ToggleGeometry {
                 height: fallback.height,
@@ -298,7 +291,7 @@ pub(crate) fn resolve_family_geometry(
             line_height: value.line_height,
         }
     } else {
-        stylesheet.common.button.inspect_geometry(key, fallback)
+        stylesheet.common.button.inspect_geometry_for(key, fallback)
     };
     let family = if toggle { "toggle" } else { "button" };
     if matches!(geometry.height.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
@@ -354,7 +347,7 @@ pub fn button_palette(
     stylesheet: &StylesheetConfig,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> ButtonFamilyPalette {
     let colors = resolve_button_palette_with_stylesheet(ctx, stylesheet, style, role);
 
@@ -429,7 +422,7 @@ mod tests {
                 ShadcnButtonStyle::Ghost,
                 ShadcnButtonStyle::ContentOnly,
             ] {
-                for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+                for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
                     for compact in [false, true] {
                         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), theme_mode).unwrap();
                         let template = DefaultButtonTemplate::new(
@@ -446,7 +439,6 @@ mod tests {
                             );
                             let model = ButtonRenderModel::<()> {
                                 state,
-                                size,
                                 compact,
                                 look: Some(Arc::new(move |_| look.clone())),
                                 ..Default::default()
@@ -590,7 +582,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
         let hovered = button_look(
@@ -598,7 +590,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { hovered: true, ..InteractionState::default() },
         );
 
@@ -614,7 +606,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { focused: true, ..InteractionState::default() },
         );
 
@@ -630,7 +622,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { hovered: true, ..InteractionState::default() },
         );
 
@@ -648,7 +640,7 @@ mod tests {
             ThemeMode::Dark,
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { hovered: true, ..InteractionState::default() },
         );
 
@@ -666,7 +658,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Outline,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { hovered: true, ..InteractionState::default() },
         );
 
@@ -684,7 +676,7 @@ mod tests {
             ThemeMode::Dark,
             ShadcnButtonStyle::Outline,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { hovered: true, ..InteractionState::default() },
         );
 
@@ -706,7 +698,7 @@ mod tests {
                 theme_mode,
                 ShadcnButtonStyle::Primary,
                 ButtonFamilyRole::Text,
-                ControlSize::Md,
+                ShadcnSize::Md,
                 InteractionState::default(),
             );
             let hovered = button_look(
@@ -714,7 +706,7 @@ mod tests {
                 theme_mode,
                 ShadcnButtonStyle::Primary,
                 ButtonFamilyRole::Text,
-                ControlSize::Md,
+                ShadcnSize::Md,
                 InteractionState { hovered: true, ..InteractionState::default() },
             );
             assert!((default.background.l - hovered.background.l).abs() < 0.08);
@@ -729,7 +721,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             Some(ButtonRadiusPreset::None),
             InteractionState::default(),
         );
@@ -738,7 +730,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             Some(ButtonRadiusPreset::Full),
             InteractionState::default(),
         );
@@ -755,7 +747,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Sm,
+            ShadcnSize::Sm,
             InteractionState::default(),
         );
         let lg = button_look(
@@ -763,7 +755,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Lg,
+            ShadcnSize::Lg,
             InteractionState::default(),
         );
 
@@ -779,7 +771,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Sm,
+            ShadcnSize::Sm,
             InteractionState::default(),
         );
         let lg = button_look(
@@ -787,7 +779,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Lg,
+            ShadcnSize::Lg,
             InteractionState::default(),
         );
 
@@ -804,7 +796,7 @@ mod tests {
             embedded_stylesheet(),
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Sm,
+            ShadcnSize::Sm,
         );
 
         assert!((palette.typography.size - 12.0).abs() < f32::EPSILON);
@@ -818,7 +810,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Outline,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -833,7 +825,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -848,7 +840,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -864,7 +856,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Icon,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
         let toggle = toggle_look(
@@ -872,7 +864,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Ghost,
             false,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -891,7 +883,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             false,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -909,7 +901,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             true,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
         assert!(
@@ -927,7 +919,7 @@ mod tests {
                 ThemeMode::Light,
                 ShadcnButtonStyle::Primary,
                 ButtonFamilyRole::Toggle { selected },
-                ControlSize::Md,
+                ShadcnSize::Md,
                 InteractionState::default(),
             );
             assert!(
@@ -945,7 +937,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Toggle { selected: true },
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState { disabled: true, ..InteractionState::default() },
         );
 
@@ -968,7 +960,7 @@ mod tests {
                 ThemeMode::Light,
                 ShadcnButtonStyle::ContentOnly,
                 ButtonFamilyRole::Text,
-                ControlSize::Md,
+                ShadcnSize::Md,
                 state,
             );
 
@@ -1138,11 +1130,11 @@ impl ButtonStylesheet {
         self.elevation_rules.iter().find(|rule| rule.style == style)
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&ButtonMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ButtonMetricsRule> {
         let key = match size {
-            ControlSize::Sm => "sm",
-            ControlSize::Md => "md",
-            ControlSize::Lg => "lg",
+            ShadcnSize::Sm => "sm",
+            ShadcnSize::Md => "md",
+            ShadcnSize::Lg => "lg",
         };
         self.metrics.get(key)
     }
@@ -1232,7 +1224,7 @@ pub fn resolve_button_metrics(
     theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
     role: xgpui_luma::controls::button_family::ButtonFamilyRole,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     state: xgpui_luma::theme::InteractionState,
 ) -> ButtonMetricTable {
     resolve_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, role, size, state)
@@ -1244,7 +1236,7 @@ pub fn resolve_button_metrics_with_stylesheet(
     theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
     role: xgpui_luma::controls::button_family::ButtonFamilyRole,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     state: xgpui_luma::theme::InteractionState,
 ) -> ButtonMetricTable {
     let look = crate::controls::button::button_look_with_stylesheet(
@@ -1326,8 +1318,8 @@ pub fn resolve_button_metrics_with_stylesheet(
             stylesheet_metric("corner_radius", look.radius)
         },
         border_width: crate::ResolvedMetric {
-            value_px: metrics.border_width.default,
-            source: crate::MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
+            value_px: metrics.border_width,
+            source: crate::MetricSource::Scaffold { path: "MetricTokens.border_width".into() },
         },
         focus_ring_width: crate::tables::metrics::helpers::focus_ring_width_metric(metrics),
         focus_ring_offset: crate::tables::metrics::helpers::focus_ring_offset_metric(metrics),
@@ -1359,7 +1351,7 @@ pub fn resolve_button_metrics_with_stylesheet(
         if let Some(token) = tokens
             .get(size_key)
             .and_then(|rule| rule.corner_radius.as_ref())
-            .filter(|token| crate::stylesheet::resolve_stylesheet_metric(token, metrics, size).is_some())
+            .filter(|token| crate::stylesheet::resolve_stylesheet_metric(token, &mode.control_sizes, size).is_some())
         {
             table.radius = crate::tables::metrics::helpers::derived_metric(
                 format!("stylesheet · {family}.tokens.{size_key}.corner_radius → {token}"),

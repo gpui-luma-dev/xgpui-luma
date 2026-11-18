@@ -2,9 +2,9 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
-use crate::theme::{ControlSize, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::theme::{LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
 use crate::controls::textarea::TextAreaState;
-use crate::controls::textfield::apply_control_size_typography;
+use crate::controls::textfield::apply_control_typography;
 
 #[derive(Clone, Debug)]
 pub struct TextAreaPalette {
@@ -55,15 +55,8 @@ pub trait TextAreaTheme: Send + Sync {
 
     fn metrics(&self) -> MetricTokens;
 
-    fn resolve_look(
-        &self,
-        state: TextAreaState,
-        enabled: bool,
-        size: ControlSize,
-        scale: &StandardBoxScale,
-    ) -> TextAreaLook {
-        let _ = size;
-        compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width.default)
+    fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
+        compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width)
     }
 }
 
@@ -142,19 +135,13 @@ impl TextAreaTheme for DefaultTextAreaTheme {
         self.tokens.metrics
     }
 
-    fn resolve_look(
-        &self,
-        state: TextAreaState,
-        enabled: bool,
-        size: ControlSize,
-        scale: &StandardBoxScale,
-    ) -> TextAreaLook {
+    fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
         let mut palette = self.resolve(state, enabled);
-        apply_control_size_typography(&mut palette.typography, &self.tokens.typography, size);
-        let mut look = compose_textarea_look(&palette, scale, self.metrics().border_width.default);
+        apply_control_typography(&mut palette.typography, &self.tokens.typography);
+        let mut look = compose_textarea_look(&palette, scale, self.metrics().border_width);
         look.helper_geometry = self.tokens.stylesheet.shared_geometry();
         crate::theme::stylesheet::apply_common_geometry!(
-            self.tokens.stylesheet.textarea, size.stylesheet_key(), TextAreaGeometry, look,
+            self.tokens.stylesheet.textarea, TextAreaGeometry, look,
             [min_height => min_height, padding_x => padding_x, padding_y => padding_y, font_size => typography.size, line_height => typography.line_height, caret_width => caret_width, caret_height_extra => caret_height_extra, disabled_opacity => disabled_opacity]
         );
         look

@@ -7,7 +7,7 @@
 
 use gpui::FontWeight;
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
-use xgpui_luma::theme::{ControlSize, ControlMetricTokens, LumaTextStyle, MetricTokens, RadiusTokens};
+use xgpui_luma::theme::{ControlMetricTokens, LumaTextStyle, MetricTokens};
 
 /// Radix `size` prop on Button. Default is [`Self::Two`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -40,13 +40,13 @@ impl ButtonSize {
         }
     }
 
-    /// Nearest SDK [`ControlSize`] for layout-cache paths (size 4 maps to [`ControlSize::Lg`]
+    /// Nearest SDK [`RadixSize`] for layout-cache paths (size 4 maps to [`RadixSize::Three`]
     /// and must still override geometry via [`button_box_for`]).
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three | Self::Four => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three | Self::Four => crate::RadixSize::Three,
         }
     }
 }
@@ -110,16 +110,13 @@ pub struct ButtonBox {
     pub typography: LumaTextStyle,
 }
 
-/// Metrics for Sm/Md/Lg mapped to Radix sizes 1/2/3 (default look tokens).
+/// Default look metrics; the control scale is Radix size 2. Sizes 1 and 3 live in
+/// [`crate::RadixControlMetrics`].
 pub fn metric_tokens() -> MetricTokens {
     let mut metrics = MetricTokens::default();
-    for (size, control) in [
-        (ButtonSize::One, &mut metrics.control.sm),
-        (ButtonSize::Two, &mut metrics.control.md),
-        (ButtonSize::Three, &mut metrics.control.lg),
-    ] {
-        let geometry = button_box_for(size, Radius::Medium);
-        *control = ControlMetricTokens::new(
+    {
+        let geometry = button_box_for(ButtonSize::Two, Radius::Medium);
+        metrics.control = ControlMetricTokens::new(
             geometry.height,
             geometry.padding_x,
             geometry.padding_y,
@@ -128,8 +125,48 @@ pub fn metric_tokens() -> MetricTokens {
             geometry.icon_size,
         );
     }
-    metrics.radius = RadiusTokens { none: 0.0, sm: 3.0, md: 4.0, lg: 6.0, xl: 8.0, pill: 999.0 };
     metrics
+}
+
+/// Radix chrome corner radii in pixels (Radix `--radius-1..4`, plus full).
+///
+/// The SDK has no radius vocabulary; Radix names radii with [`Radius`] and these
+/// steps, and hands SDK controls the resulting pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RadixRadii {
+    pub none: f32,
+    /// `--radius-1`.
+    pub small: f32,
+    /// `--radius-2`.
+    pub medium: f32,
+    /// `--radius-3`.
+    pub large: f32,
+    /// `--radius-4`, used by window-scale chrome (overlay windows).
+    pub xl: f32,
+    /// Fully rounded (pill / circle).
+    pub full: f32,
+}
+
+impl RadixRadii {
+    pub const DEFAULT: Self =
+        Self { none: 0.0, small: 3.0, medium: 4.0, large: 6.0, xl: 8.0, full: xgpui_luma::theme::FULL_RADIUS_PX };
+
+    /// Pixels for a named [`Radius`].
+    pub fn get(&self, radius: Radius) -> f32 {
+        match radius {
+            Radius::None => self.none,
+            Radius::Small => self.small,
+            Radius::Medium => self.medium,
+            Radius::Large => self.large,
+            Radius::Full => self.full,
+        }
+    }
+}
+
+impl Default for RadixRadii {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
 }
 
 pub fn button_box_for(size: ButtonSize, radius: Radius) -> ButtonBox {
@@ -141,10 +178,9 @@ pub(crate) fn button_box_with_stylesheet(
     size: ButtonSize,
     radius: Radius,
 ) -> ButtonBox {
-    let metrics = MetricTokens::default();
-    let control = metrics.for_size(size.control_size());
+    let control = crate::size::scaffold_metrics(size.control_size()).control;
     let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
-    let geometry = stylesheet.button.resolve_geometry(
+    let geometry = stylesheet.button.resolve_geometry_for(
         size.as_str(),
         xgpui_luma::theme::stylesheet::ButtonGeometry {
             height: control.height,
@@ -193,7 +229,7 @@ pub fn resolve_button_radius(size: ButtonSize, radius: Radius) -> f32 {
 fn button_box_height(size: ButtonSize) -> f32 {
     crate::look::embedded_common_stylesheet()
         .button
-        .resolve_geometry(size.as_str(), Default::default())
+        .resolve_geometry_for(size.as_str(), Default::default())
         .height
 }
 
@@ -250,11 +286,12 @@ mod tests {
     }
 
     #[test]
-    fn metric_tokens_map_sm_md_lg_to_sizes_1_2_3() {
+    fn control_metrics_map_to_sizes_1_2_3() {
         let metrics = metric_tokens();
-        assert_eq!(metrics.control.sm.height, 24.0);
-        assert_eq!(metrics.control.md.height, 32.0);
-        assert_eq!(metrics.control.lg.height, 40.0);
-        assert_eq!(metrics.control.md.radius, 4.0);
+        let controls = crate::RadixControlMetrics::from_button_boxes(metrics.control);
+        assert_eq!(controls.one.height, 24.0);
+        assert_eq!(metrics.control.height, 32.0);
+        assert_eq!(controls.three.height, 40.0);
+        assert_eq!(metrics.control.radius, 4.0);
     }
 }

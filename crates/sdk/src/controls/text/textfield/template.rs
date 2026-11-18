@@ -8,7 +8,7 @@ use gpui::{
 use super::{TextFieldDrag, TextFieldLook, TextFieldRenderModel, TextFieldState};
 use crate::controls::button::ControlIcon;
 use crate::controls::textfield::{TextFieldTheme, default_textfield_theme};
-use crate::theme::{ControlSize, StandardBoxScale};
+use crate::theme::StandardBoxScale;
 
 const CARET_EDGE_OFFSET: f32 = 0.0;
 
@@ -39,12 +39,11 @@ pub type TextFieldTemplateModifier =
     Box<dyn Fn(Stateful<Div>, &TextFieldRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
 
 pub trait TextFieldTemplate: Send + Sync {
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, size: ControlSize) -> TextFieldLook {
+    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
         default_textfield_theme().resolve_look(
             state,
             enabled,
-            size,
-            &StandardBoxScale::compute(size, &default_textfield_theme().metrics(), 1.0),
+            &StandardBoxScale::compute(&default_textfield_theme().metrics(), 1.0),
         )
     }
 
@@ -52,11 +51,10 @@ pub trait TextFieldTemplate: Send + Sync {
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         _scale_factor: f32,
         _cx: &mut App,
     ) -> TextFieldLook {
-        self.resolve_look(state, enabled, size)
+        self.resolve_look(state, enabled)
     }
 
     fn render(
@@ -131,19 +129,18 @@ where
 }
 
 impl TextFieldTemplate for ModifiedTextFieldTemplate {
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, size: ControlSize) -> TextFieldLook {
-        self.base.resolve_look(state, enabled, size)
+    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
+        self.base.resolve_look(state, enabled)
     }
 
     fn resolve_look_with_scale(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale_factor: f32,
         cx: &mut App,
     ) -> TextFieldLook {
-        self.base.resolve_look_with_scale(state, enabled, size, scale_factor, cx)
+        self.base.resolve_look_with_scale(state, enabled, scale_factor, cx)
     }
 
     fn render(
@@ -159,21 +156,19 @@ impl TextFieldTemplate for ModifiedTextFieldTemplate {
 }
 
 impl TextFieldTemplate for ThemedTextFieldTemplate {
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, size: ControlSize) -> TextFieldLook {
-        self.theme
-            .resolve_look(state, enabled, size, &StandardBoxScale::compute(size, &self.theme.metrics(), 1.0))
+    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
+        self.theme.resolve_look(state, enabled, &StandardBoxScale::compute(&self.theme.metrics(), 1.0))
     }
 
     fn resolve_look_with_scale(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale_factor: f32,
         _cx: &mut App,
     ) -> TextFieldLook {
-        let scale = StandardBoxScale::compute(size, &self.theme.metrics(), scale_factor);
-        self.theme.resolve_look(state, enabled, size, &scale)
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
+        self.theme.resolve_look(state, enabled, &scale)
     }
 
     fn render(

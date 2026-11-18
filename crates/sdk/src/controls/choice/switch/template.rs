@@ -53,14 +53,14 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
         let progress = model.data.progress;
         let checked = model.data.checked;
         let focused = model.state.focused && !model.state.disabled;
-        let off_palette = self.theme.resolve(false, model.state, model.size);
-        let on_palette = self.theme.resolve(true, model.state, model.size);
+        let off_palette = self.theme.resolve(false, model.state);
+        let on_palette = self.theme.resolve(true, model.state);
         let palette = lerp_switch_palette(&off_palette, &on_palette, progress);
         let settled_palette = if checked { on_palette } else { off_palette };
         let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
         let focus_ring_extent = focus.extent();
         let scale_factor = window.scale_factor();
-        let mut scale = self.theme.scale(model.size, scale_factor);
+        let mut scale = self.theme.scale(scale_factor);
         if let Some(track_width) = model.switch_track_width {
             scale.track_width = snap_to_pixel(track_width, scale_factor);
         }
@@ -86,15 +86,14 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
                 let thumb_left_on = scale.track_width - scale.thumb_size - scale.track_padding;
                 let thumb_left = snap_to_pixel(lerp_f32(thumb_left_off, thumb_left_on, progress), scale_factor);
                 let thumb_top = snap_to_pixel(
-                    ((scale.track_height - scale.thumb_size) * 0.5 - self.theme.metrics().border_width.default)
-                        .max(0.0),
+                    ((scale.track_height - scale.thumb_size) * 0.5 - self.theme.metrics().border_width).max(0.0),
                     scale_factor,
                 );
                 (thumb_left, thumb_top)
             }
             SwitchOrientation::Vertical => {
                 let thumb_left = snap_to_pixel(
-                    ((scale.track_width - scale.thumb_size) * 0.5 - self.theme.metrics().border_width.default).max(0.0),
+                    ((scale.track_width - scale.thumb_size) * 0.5 - self.theme.metrics().border_width).max(0.0),
                     scale_factor,
                 );
                 let thumb_top_on = scale.track_padding;
@@ -114,7 +113,7 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
             .items_center()
             .justify_center()
             .bg(palette.thumb_background)
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.thumb_border)
             .rounded(px(thumb_radius));
 
@@ -145,7 +144,7 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
             .w(px(scale.track_width))
             .h(px(scale.track_height))
             .bg(palette.track_background)
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.track_border)
             .rounded(px(track_radius));
 

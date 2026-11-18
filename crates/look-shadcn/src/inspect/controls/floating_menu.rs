@@ -1,7 +1,8 @@
 //! Inspect metadata for `floating_menu`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct FloatingMenuInspectPalette {
     pub background: ResolvedColor,
@@ -28,7 +29,7 @@ pub struct FloatingMenuInspectMetrics {
 pub fn inspect_floating_menu_color_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    _size: ControlSize,
+    _size: ShadcnSize,
 ) -> FloatingMenuInspectPalette {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
     let resolver =
@@ -48,7 +49,7 @@ pub fn inspect_floating_menu_color_palette(
 pub fn inspect_floating_menu_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> FloatingMenuInspectMetrics {
     let table = crate::tables::metrics::resolve_floating_menu_metrics(mode, theme_mode, size);
     table.into()

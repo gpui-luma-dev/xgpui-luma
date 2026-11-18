@@ -36,15 +36,7 @@ mod control_defaults;
 
 impl<T: Serialize> Serialize for crate::theme::ControlSizes<T> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        use serde::ser::SerializeMap;
-        let mut sizes = serializer.serialize_map(Some(3 + self.custom.len()))?;
-        sizes.serialize_entry("sm", &self.sm)?;
-        sizes.serialize_entry("md", &self.md)?;
-        sizes.serialize_entry("lg", &self.lg)?;
-        for (key, value) in &self.custom {
-            sizes.serialize_entry(key, value)?;
-        }
-        sizes.end()
+        serializer.collect_map(self.iter())
     }
 }
 
@@ -86,6 +78,17 @@ macro_rules! common_stylesheet {
                 Self {
                     tokens: self.tokens.clone(), motion: self.motion.clone(),
                     $($field: self.$field.clone().with_baseline(&baseline.$field),)+
+                }
+            }
+
+            /// Merge one look-defined size key into each family's general geometry.
+            /// Looks call this with their own size names; SDK controls only read the
+            /// resulting pixel values.
+            pub fn with_size_key(&self, key: &str) -> Self {
+                use $crate::theme::stylesheet::geometry::SelectSizeKey;
+                Self {
+                    tokens: self.tokens.clone(), motion: self.motion.clone(),
+                    $($field: self.$field.select_size_key(key),)+
                 }
             }
 
@@ -248,9 +251,7 @@ impl CommonStylesheet {
                     textarea_scrollbar_inset: Some(2.0),
                     scrollbar_width: Some(12.0),
                     composition_underline_width: Some(1.0),
-                    label_baseline_sm: Some(0.5),
-                    label_baseline_md: Some(1.0),
-                    label_baseline_lg: Some(1.5),
+                    label_baseline: Some(1.0),
                     drag_offset: Some(12.0),
                     drag_preview_width: Some(220.0),
                     drag_padding_x: Some(12.0),
@@ -569,14 +570,14 @@ impl CommonStylesheet {
     /// use xgpui_luma::{
     ///     color::GamutMapping,
     ///     controls::progress::{DefaultProgressTheme, ProgressTheme},
-    ///     theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},
+    ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    ///     sheet.progress.sizes.md.track_height = Some(9.0);
+    ///     sheet.progress.geometry.track_height = Some(9.0);
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
     /// let theme = DefaultProgressTheme::new(tokens);
-    /// assert_eq!(theme.resolve(true, ControlSize::Md).track_height, 9.0);
+    /// assert_eq!(theme.resolve(true).track_height, 9.0);
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(
@@ -617,14 +618,13 @@ impl CommonStylesheet {
         self.shared
             .clone()
             .with_baseline(&Self::sdk_default().shared)
-            .resolve_geometry("", SharedGeometry::default())
+            .resolve_geometry(SharedGeometry::default())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::ControlSize;
     use crate::theme::provenance::ResolvedMetric;
 
     #[test]
@@ -648,36 +648,28 @@ mod tests {
     }
 
     #[test]
-    fn slider_sizes_are_typed_and_custom_keys_remain_distinct() {
+    fn slider_and_switch_size_keys_are_look_defined() {
         use crate::controls::switch::SwitchScale;
-        let mut stylesheet = CommonStylesheet::default();
-        stylesheet.slider.sizes.sm.height = Some(19.0);
-        stylesheet.slider.sizes.md.height = Some(28.0);
-        let fallback = SliderGeometry::default();
-        for (size, height) in [(ControlSize::Sm, 19.0), (ControlSize::Md, 28.0)] {
-            let (geometry, sources) = stylesheet.slider.inspect_geometry(size, None, &fallback);
-            assert_eq!(geometry.height, height);
-            assert!(matches!(sources.height, crate::theme::provenance::MetricSource::Authored { key }
-                if key == format!("common.slider.sizes.{}.height", size.stylesheet_key())));
-        }
         for key in ["1", "4", "compact"] {
             let parsed = CommonStylesheet::parse(&format!("[common.slider.sizes.{key}]\nheight = 16")).unwrap();
-            assert_eq!(parsed.slider.sizes.custom[key].height, Some(16.0));
-            assert_eq!(parsed.slider.sizes.sm.height, None);
+            assert_eq!(parsed.slider.sizes.get(key).unwrap().height, Some(16.0));
+            let (geometry, sources) = parsed.slider.inspect_geometry_for(key, &SliderGeometry::default());
+            assert_eq!(geometry.height, 16.0);
+            assert!(matches!(sources.height, crate::theme::provenance::MetricSource::Authored { key: source }
+                if source == format!("common.slider.sizes.{key}.height")));
+            assert_eq!(parsed.slider.inspect_geometry(&SliderGeometry::default()).0.height, 0.0);
         }
         let stylesheet =
             CommonStylesheet::parse("[common.switch.sizes.\"1\"]\ngap=5\n[common.switch.sizes.compact]\ngap=7")
                 .unwrap();
-        let fallback = SwitchScale::compute(ControlSize::Sm, &Default::default(), 1.0);
-        assert_eq!(stylesheet.switch.inspect_geometry("1", fallback, 1.0).gap.value_px, 5.0);
-        assert_eq!(stylesheet.switch.inspect_geometry("compact", fallback, 1.0).gap.value_px, 7.0);
+        let fallback = SwitchScale::compute(&Default::default(), 1.0);
+        assert_eq!(stylesheet.switch.inspect_geometry_for("1", fallback, 1.0).gap.value_px, 5.0);
+        assert_eq!(stylesheet.switch.inspect_geometry_for("compact", fallback, 1.0).gap.value_px, 7.0);
     }
 
     #[test]
-    fn slider_geometry_validates_values_and_preserves_zero_and_thumb_selection() {
-        use crate::controls::slider::SliderThumbSize;
-        use crate::theme::ControlSize;
-        for size in ["geometry", "sizes.1", "sizes.md", "sizes.custom"] {
+    fn slider_geometry_validates_values_and_preserves_zero() {
+        for size in ["geometry", "sizes.1", "sizes.custom"] {
             for field in ["width", "height", "track_height", "thumb_size"] {
                 for value in ["-1", "nan", "inf", "1e100", "\"4px\""] {
                     assert!(CommonStylesheet::parse(&format!("[common.slider.{size}]\n{field} = {value}")).is_err());
@@ -685,29 +677,25 @@ mod tests {
             }
         }
         assert!(CommonStylesheet::parse("[common.slider.xl]\nwidth = 12").is_err());
-        let stylesheet = CommonStylesheet::parse("[common.slider.geometry]\nwidth = 100\n[common.slider.sizes.md]\nwidth = 0\nthumb_size = 17\n[common.slider.sizes.lg]\nthumb_size = 23").unwrap();
-        let fallback = SliderGeometry::sdk_default(
-            &Default::default(),
-            ControlSize::Md,
-            Some(SliderThumbSize::Lg),
-            CommonStylesheet::sdk_default(),
-        );
-        let (value, sources) = stylesheet.slider.inspect_geometry(ControlSize::Md, Some(ControlSize::Lg), &fallback);
-        assert_eq!(value, stylesheet.slider.resolve_geometry(ControlSize::Md, Some(ControlSize::Lg), &fallback));
+        let stylesheet = CommonStylesheet::parse(
+            "[common.slider.geometry]\nwidth = 100\nthumb_size = 17\n[common.slider.sizes.2]\nwidth = 0\nthumb_size = 23",
+        )
+        .unwrap();
+        let fallback = SliderGeometry::sdk_default(&Default::default(), CommonStylesheet::sdk_default());
+        let (value, sources) = stylesheet.slider.inspect_geometry_for("2", &fallback);
+        assert_eq!(value, stylesheet.slider.resolve_geometry_for("2", &fallback));
         assert_eq!(value.width, 0.0);
         assert_eq!(value.height, fallback.height);
         assert_eq!(value.thumb_size, 23.0);
-        assert!(
-            matches!(sources.thumb_size, crate::theme::provenance::MetricSource::Derived { note } if note.contains("instance thumb_size lg") && note.contains("common.slider.sizes.lg.thumb_size"))
-        );
-        let (value, _) = stylesheet.slider.inspect_geometry(ControlSize::Md, None, &fallback);
-        assert_eq!(value.thumb_size, 17.0);
-        assert_eq!(stylesheet.slider.inspect_geometry(ControlSize::Sm, None, &fallback).0.width, 100.0);
+        assert!(matches!(sources.thumb_size, crate::theme::provenance::MetricSource::Authored { key }
+            if key == "common.slider.sizes.2.thumb_size"));
+        let (value, _) = stylesheet.slider.inspect_geometry(&fallback);
+        assert_eq!((value.width, value.thumb_size), (100.0, 17.0));
     }
 
     #[test]
     fn switch_geometry_rejects_invalid_lengths_and_sizes() {
-        for size in ["geometry", "sizes.1", "sizes.md", "sizes.custom"] {
+        for size in ["geometry", "sizes.1", "sizes.custom"] {
             for field in ["track_width", "track_height", "track_padding", "thumb_size", "gap"] {
                 for value in ["-1", "nan", "inf", "1e100", "\"4px\""] {
                     assert!(CommonStylesheet::parse(&format!("[common.switch.{size}]\n{field} = {value}")).is_err());
@@ -719,19 +707,18 @@ mod tests {
 
     #[test]
     fn switch_size_precedence_zero_fallback_and_pixel_snapping() {
-        use crate::theme::ControlSize;
         use crate::controls::switch::SwitchScale;
-        let stylesheet = CommonStylesheet::parse("[common.switch.geometry]\ngap = 9.0\ntrack_padding = 1.25\n[common.switch.sizes.md]\ngap = 0\ntrack_width = 41.25").unwrap();
-        let fallback = SwitchScale::compute(ControlSize::Md, &Default::default(), 2.0);
-        let geometry = stylesheet.switch.inspect_geometry("md", fallback, 2.0);
+        let stylesheet = CommonStylesheet::parse("[common.switch.geometry]\ngap = 9.0\ntrack_padding = 1.25\n[common.switch.sizes.2]\ngap = 0\ntrack_width = 41.25").unwrap();
+        let fallback = SwitchScale::compute(&Default::default(), 2.0);
+        let geometry = stylesheet.switch.inspect_geometry_for("2", fallback, 2.0);
         assert_eq!(geometry.gap.value_px, 0.0);
         assert_eq!(geometry.track_width.value_px, 41.5);
         assert_eq!(geometry.track_padding.value_px, 1.5);
         assert_eq!(geometry.thumb_size.value_px, fallback.thumb_size);
         assert!(
-            matches!(geometry.gap.source, crate::theme::provenance::MetricSource::Authored { key } if key == "common.switch.sizes.md.gap")
+            matches!(geometry.gap.source, crate::theme::provenance::MetricSource::Authored { key } if key == "common.switch.sizes.2.gap")
         );
-        assert_eq!(stylesheet.switch.inspect_geometry("sm", fallback, 2.0).gap.value_px, 9.0);
+        assert_eq!(stylesheet.switch.inspect_geometry(fallback, 2.0).gap.value_px, 9.0);
     }
 
     #[test]
@@ -770,23 +757,23 @@ mod tests {
     fn slider_overlay_general_geometry_overrides_inherited_sizes() {
         for width in [120.0, 0.0] {
             let mut target = SliderStylesheet::native_default();
-            target.size(ControlSize::Sm, |size| {
+            target.size("1", |size| {
                 size.width(260.0).dimensions(24.0, 4.0, 12.0);
             });
-            target.size(ControlSize::Md, |size| {
+            target.size("2", |size| {
                 size.width(260.0).dimensions(32.0, 6.0, 16.0);
             });
             let mut layer = SliderStylesheet::default();
-            layer.width(width).size(ControlSize::Md, |size| {
+            layer.width(width).size("2", |size| {
                 size.width(180.0);
             });
 
             layer.apply_to(&mut target);
 
-            assert_eq!(target.authored_geometry(ControlSize::Sm).width, Some(width));
-            assert_eq!(target.authored_geometry(ControlSize::Md).width, Some(180.0));
-            assert_eq!(target.authored_geometry(ControlSize::Sm).height, Some(24.0));
-            assert_eq!(target.authored_geometry(ControlSize::Md).thumb_size, Some(16.0));
+            assert_eq!(target.authored_geometry_for("1").width, Some(width));
+            assert_eq!(target.authored_geometry_for("2").width, Some(180.0));
+            assert_eq!(target.authored_geometry_for("1").height, Some(24.0));
+            assert_eq!(target.authored_geometry_for("2").thumb_size, Some(16.0));
             assert_eq!(target.geometry.dial_size, Some(200.0));
         }
     }
@@ -799,26 +786,20 @@ mod tests {
             .width(120.0)
             .height_floor_scale(0.5)
             .thumb_scale(0.5)
-            .size(ControlSize::Sm, |m| {
+            .size("1", |m| {
                 m.dimensions(16.0, 4.0, 12.0);
             })
-            .size(ControlSize::Md, |m| {
+            .size("2", |m| {
                 m.dimensions(20.0, 6.0, 16.0);
             });
 
         assert_eq!(sheet.slider.geometry.width, Some(120.0));
         assert_eq!(sheet.slider.geometry.height_floor_scale, Some(0.5));
-        let size1 = &sheet.slider.sizes.sm;
+        let size1 = sheet.slider.sizes.get("1").unwrap();
         assert_eq!(size1.height, Some(16.0));
         assert_eq!(size1.track_height, Some(4.0));
         assert_eq!(size1.thumb_size, Some(12.0));
-
-        let sheet = CommonStylesheet::default().with(|s| {
-            s.slider.size(ControlSize::Lg, |m| {
-                m.dimensions(24.0, 8.0, 20.0);
-            });
-        });
-        assert_eq!(sheet.slider.sizes.lg.height, Some(24.0));
+        assert_eq!(sheet.slider.sizes.get("2").unwrap().height, Some(20.0));
     }
 
     #[test]
@@ -836,11 +817,11 @@ mod tests {
         assert_eq!(size1.thumb_size, Some(14.0));
 
         let sheet = CommonStylesheet::default().with(|s| {
-            s.switch.size("sm", |m| {
+            s.switch.size("compact", |m| {
                 m.scales(32.0 / 28.0, 13.0 / 28.0, 9.0 / 28.0);
             });
         });
-        assert_eq!(sheet.switch.sizes.get("sm").unwrap().track_width_scale, Some(32.0 / 28.0));
+        assert_eq!(sheet.switch.sizes.get("compact").unwrap().track_width_scale, Some(32.0 / 28.0));
     }
 
     #[test]

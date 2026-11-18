@@ -70,7 +70,7 @@ impl PopoverPanelBuilder {
     crate::motion_methods!(PopoverMotion, model.motion);
 
     pub fn new(id: impl Into<SharedString>) -> Self {
-        let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry("panel");
+        let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
         Self {
             explicit_offset_y: false,
             explicit_window_margin: false,
@@ -94,8 +94,8 @@ impl PopoverPanelBuilder {
 
     /// Capture placement defaults without replacing explicit builder values.
     pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry("panel");
-        let geometry = stylesheet.popover.authored_geometry("panel").with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
+        let geometry = stylesheet.popover.authored_geometry_for("panel").with_fallback(&baseline);
         if !self.explicit_offset_y {
             self.model.offset_y = gpui::px(geometry.offset_y.unwrap_or_default());
         }

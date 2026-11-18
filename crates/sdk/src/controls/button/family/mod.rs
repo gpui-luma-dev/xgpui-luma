@@ -6,7 +6,6 @@ pub use theme::{
 };
 pub use theme::compose_button_family_look;
 
-use crate::theme::{ControlSize, InteractionState};
+use crate::theme::InteractionState;
 
-pub type ButtonSize = ControlSize;
 pub type ButtonInteractionState = InteractionState;

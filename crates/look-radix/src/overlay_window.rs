@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use gpui::{BoxShadow, FontWeight, SharedString, black, point, px};
 use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode, OverlayWindowTheme};
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 
 use crate::look::Look;
 use crate::semantic::SemanticRole;
@@ -14,9 +14,9 @@ struct OverlayWindowThemeAdapter {
 }
 
 impl OverlayWindowTheme for OverlayWindowThemeAdapter {
-    fn resolve(&self, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook {
-        let metrics = self.look.metrics();
-        let fallback = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(size, mode);
+    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
+        let size = self.look.size();
+        let fallback = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(mode);
         let mut resolved = OverlayWindowLook {
             viewport_padding: fallback.viewport_padding,
             window_margin: fallback.window_margin,
@@ -38,8 +38,8 @@ impl OverlayWindowTheme for OverlayWindowThemeAdapter {
                 color: gpui::Hsla { a: 0.22, ..black() },
                 inset: false,
             }],
-            radius: metrics.radius.xl,
-            padding: metrics.padding_x(size),
+            radius: crate::RadixRadii::DEFAULT.xl,
+            padding: self.look.control_sizes().padding_x(size),
             min_width: fallback.min_width,
             max_width: fallback.max_width,
             estimated_height: fallback.estimated_height,
@@ -47,11 +47,11 @@ impl OverlayWindowTheme for OverlayWindowThemeAdapter {
             font_family: SharedString::from("System UI"),
         };
         let key = match size {
-            ControlSize::Sm => "sm",
-            ControlSize::Md => "md",
-            ControlSize::Lg => "lg",
+            crate::RadixSize::One => "sm",
+            crate::RadixSize::Two => "md",
+            crate::RadixSize::Three => "lg",
         };
-        let geometry = self.look.common_stylesheet().overlay_window.resolve_geometry(
+        let geometry = self.look.common_stylesheet().overlay_window.resolve_geometry_for(
             key,
             xgpui_luma::theme::stylesheet::OverlayWindowGeometry {
                 padding: resolved.padding,
@@ -104,7 +104,7 @@ mod tests {
             .unwrap(),
         );
         for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
-            let resolved = overlay_window_theme(&look).resolve(ControlSize::Md, mode);
+            let resolved = overlay_window_theme(&look).resolve(mode);
             assert_eq!((resolved.border_width, resolved.radius), (0.0, 19.0));
         }
     }

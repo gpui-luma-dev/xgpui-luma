@@ -123,7 +123,7 @@ impl RgbChannelControls {
         .horizontal()
         .range(0. ..1.)
         .step(0.001)
-        .size(xgpui_luma::theme::ControlSize::Sm)
+        .size(xgpui_luma_color::ColorControlSize::Small)
         .thumb_small();
         let track = builder.domain_renderer();
         let slider = builder.spawn(cx);
@@ -193,7 +193,7 @@ impl InteractiveSpaces {
                 .expect("valid HSV saturation channel")
                 .horizontal()
                 .step(0.001)
-                .size(xgpui_luma::theme::ControlSize::Sm)
+                .size(xgpui_luma_color::ColorControlSize::Small)
                 .thumb_small();
         let saturation_track = saturation_builder.domain_renderer();
         let saturation = saturation_builder.spawn(cx);

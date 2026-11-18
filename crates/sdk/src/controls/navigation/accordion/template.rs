@@ -32,8 +32,8 @@ pub trait AccordionTemplate: Send + Sync {
     }
 
     /// Appearance used by SDK native handles and previews.
-    fn resolve_drag(&self, size: crate::theme::ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        default_accordion_theme().resolve_drag(size)
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        default_accordion_theme().resolve_drag()
     }
 
     fn render(
@@ -103,8 +103,8 @@ impl AccordionTemplate for ModifiedAccordionTemplate {
         self.base.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self, size: crate::theme::ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        self.base.resolve_drag(size)
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        self.base.resolve_drag()
     }
 
     fn render(
@@ -140,8 +140,8 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         self.theme.drag_tooltip_theme()
     }
 
-    fn resolve_drag(&self, size: crate::theme::ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        self.theme.resolve_drag(size)
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        self.theme.resolve_drag()
     }
 
     fn render(
@@ -152,7 +152,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let scale_factor = window.scale_factor();
-        let scale = self.theme.resolve_scale(model.size, scale_factor);
+        let scale = self.theme.resolve_scale(scale_factor);
 
         let AccordionTemplateHandlers {
             drag,
@@ -197,7 +197,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
             let height_report = content_height_reports.next();
 
             let content_visible = item.expanded || item.progress > 0.0;
-            let trigger_palette = self.theme.resolve_trigger(item.state.interaction_state(), model.size);
+            let trigger_palette = self.theme.resolve_trigger(item.state.interaction_state());
             let content_palette = self.theme.resolve_content(content_visible);
             let trigger_min_height = model.trigger_min_height.unwrap_or(scale.trigger_height);
             let trigger_padding_y = model.trigger_padding_y.unwrap_or(scale.padding_y);
@@ -334,7 +334,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
 
             if model.item_dividers && index + 1 < model.items.len() {
                 item_container = item_container
-                    .border_b(px(self.theme.metrics().border_width.default))
+                    .border_b(px(self.theme.metrics().border_width))
                     .border_color(trigger_palette.border_color);
             }
 

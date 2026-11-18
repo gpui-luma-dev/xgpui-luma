@@ -7,7 +7,7 @@ use gpui::SharedString;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
 use xgpui_luma::controls::autocomplete::{AutocompleteLook, AutocompleteTheme, SelectionItem};
 use xgpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 use crate::{Look, PopupMenuVariant, SemanticRole, TextFieldVariant, Tone};
 
 struct AutocompleteThemeAdapter {
@@ -15,9 +15,10 @@ struct AutocompleteThemeAdapter {
 }
 
 impl AutocompleteTheme for AutocompleteThemeAdapter {
-    fn resolve(&self, size: ControlSize) -> AutocompleteLook {
-        let geometry = self.look.common_stylesheet().autocomplete.resolve_geometry(
-            size.stylesheet_key(),
+    fn resolve(&self) -> AutocompleteLook {
+        let size = self.look.size();
+        let geometry = self.look.common_stylesheet().autocomplete.resolve_geometry_for(
+            size.key(),
             xgpui_luma::theme::stylesheet::AutocompleteGeometry {
                 status_font_size: 12.0,
                 status_line_height: 16.0,
@@ -46,7 +47,7 @@ pub fn autocomplete_theme(look: &Look) -> Arc<dyn AutocompleteTheme> {
 }
 
 /// Radix Autocomplete using the SDK builder and its complete callback/policy API.
-/// Configure `.size(ControlSize)` and other SDK options before `.spawn(cx)`.
+/// Configure `.size(RadixSize)` and other SDK options before `.spawn(cx)`.
 /// Theme changes require notifying the control and owner, as with [`Look`].
 ///
 /// ```no_run
@@ -65,13 +66,13 @@ pub fn autocomplete_builder(
 ) -> autocomplete::AutocompleteBuilder {
     let panel_look = look.clone();
     autocomplete::new(id, items)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().autocomplete)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move |size| {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, size)
+        .popup_look_provider(Arc::new(move || {
+            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
@@ -84,13 +85,13 @@ pub fn combobox_builder(
 ) -> combobox::ComboBoxBuilder {
     let panel_look = look.clone();
     combobox::new(id, items)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().combobox)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move |size| {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, size)
+        .popup_look_provider(Arc::new(move || {
+            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
@@ -103,21 +104,21 @@ pub fn search_selector_builder(
 ) -> search_selector::SearchSelectorBuilder {
     let panel_look = look.clone();
     search_selector::new(id, items)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().search_selector)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .selector_theme(crate::selector_theme(look))
         .autocomplete_theme(autocomplete_theme(look))
         .scrollbar_template(crate::scrollbar_template(look))
-        .popup_look_provider(Arc::new(move |size| {
-            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, size)
+        .popup_look_provider(Arc::new(move || {
+            crate::selector_items_panel_look_for(&panel_look, PopupMenuVariant::Solid, Tone::Accent, panel_look.size())
         }))
 }
 
 /// Inline selection-panel chrome, with selector-list overrides followed by
 /// independent `selection_panel` overrides using Radix size keys `1`–`3`.
 /// Returns a snapshot; resolve again after changing the supplied Look.
-pub fn selection_panel_look(look: &Look, size: ControlSize) -> SelectionPanelLook {
+pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPanelLook {
     let panel = crate::selector_items_panel_look_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
     SelectionPanelLook {
         background: panel.background,
@@ -139,7 +140,7 @@ pub fn selection_panel_look(look: &Look, size: ControlSize) -> SelectionPanelLoo
         item_icon_size: panel.item_icon_size,
         item_radius: panel.item_radius,
     }
-    .with_stylesheet(&look.common_stylesheet().selection_panel, crate::look::sdk_size_key(size))
+    .with_stylesheet(&look.sized_stylesheet(size).selection_panel)
 }
 
 /// Radix SelectionPanel with SDK typed items and embedded/popup interaction policies.
@@ -152,9 +153,9 @@ pub fn selection_panel_builder<T: SelectionPanelItemLike + 'static>(
     let panel_look = look.clone();
     selection_panel::SelectionPanelBuilder::new(id)
         .items(items)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .scrollbar_template(crate::scrollbar_template(look))
-        .look_provider(Arc::new(move |size| selection_panel_look(&panel_look, size)))
+        .look_provider(Arc::new(move || selection_panel_look(&panel_look, panel_look.size())))
 }
 
 #[cfg(test)]
@@ -168,20 +169,20 @@ mod tests {
         let look = Look::built_in();
         let fork = look.fork();
         let theme = autocomplete_theme(&fork);
-        let initial = theme.resolve(ControlSize::Md);
+        let initial = theme.resolve();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             fork.set_mode(mode);
             for accent in [Accent::Red, Accent::Blue] {
                 fork.set_palettes(accent, Gray::Slate);
-                let resolved = theme.resolve(ControlSize::Md);
+                let resolved = theme.resolve();
                 assert_eq!(resolved.status_color, fork.resolve_role(SemanticRole::Primary).hsla());
                 assert_eq!(resolved.clear_icon_color, fork.resolve_role(SemanticRole::MutedForeground).hsla());
                 assert_eq!(resolved.clear_icon_hover_color, fork.resolve_role(SemanticRole::Foreground).hsla());
                 assert_eq!(resolved.menu.item_hover_background, resolved.status_color);
             }
         }
-        assert_eq!(autocomplete_theme(&look).resolve(ControlSize::Md).status_color, initial.status_color);
-        assert_ne!(theme.resolve(ControlSize::Md).status_color, initial.status_color);
+        assert_eq!(autocomplete_theme(&look).resolve().status_color, initial.status_color);
+        assert_ne!(theme.resolve().status_color, initial.status_color);
     }
 
     #[test]
@@ -190,16 +191,18 @@ mod tests {
         let theme = autocomplete_theme(&look);
         let mut sheet = look.common_stylesheet();
         for (size, height) in [("1", 25.0), ("2", 37.0), ("3", 49.0)] {
-            sheet.selector_list.sizes.custom.entry(size.into()).or_default().item_height = Some(height);
-            sheet.selection_panel.sizes.custom.entry(size.into()).or_default().border_width = Some(0.0);
+            sheet.selector_list.sizes.get_or_default(size).item_height = Some(height);
+            sheet.selection_panel.sizes.get_or_default(size).border_width = Some(0.0);
         }
         sheet.autocomplete.geometry.status_font_size = Some(19.0);
         look.set_common_stylesheet(sheet);
-        for (size, height) in [(ControlSize::Sm, 25.0), (ControlSize::Md, 37.0), (ControlSize::Lg, 49.0)] {
+        for (size, height) in
+            [(crate::RadixSize::One, 25.0), (crate::RadixSize::Two, 37.0), (crate::RadixSize::Three, 49.0)]
+        {
             let panel = selection_panel_look(&look, size);
             assert_eq!(panel.item_height, height);
             assert_eq!(panel.border_width, 0.0);
-            assert_eq!(theme.resolve(size).status_typography.size, 19.0);
+            assert_eq!(theme.resolve().status_typography.size, 19.0);
         }
     }
 }

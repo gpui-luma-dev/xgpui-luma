@@ -15,7 +15,8 @@ use xgpui_luma::controls::overlay_window::{
 use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel, ControlGroupItemVisualContext,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, observe_theme_revision};
+use xgpui_luma_look_shadcn::ShadcnSize;
+use xgpui_luma::theme::{InteractionState, LumaTextStyle, observe_theme_revision};
 use xgpui_luma::{GridTrack, grid_layout, hstack, vstack};
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
 use xgpui_luma_look_shadcn as shadcn;
@@ -117,16 +118,16 @@ impl CustomizeLayoutDialog {
         let overlay_look = look.clone();
 
         let overlay = look
+            .with_size(ShadcnSize::Sm)
             .overlay_window("customize-layout")
             .mode(OverlayWindowMode::Modeless)
             .position(OverlayWindowPosition::Center)
             .draggable(true)
-            .size(ControlSize::Sm)
             .dismiss_policy(OverlayWindowDismissPolicy::KeepOpen)
             .width(DIALOG_W)
             .with_template_modifier(move |shell, _| {
                 let dialog_background = overlay_look
-                    .resolve_secondary_button(Default::default(), ControlSize::Sm, InteractionState::default())
+                    .resolve_secondary_button(Default::default(), ShadcnSize::Sm, InteractionState::default())
                     .background;
                 shell.p_0().overflow_hidden().bg(dialog_background)
             })
@@ -301,7 +302,7 @@ fn dialog_header(look: &ShadcnLook, reset_button: IconButton, close_button: Icon
 
 fn sync_header_icon_presenters(close_button: &IconButton, reset_button: &IconButton, look: &ShadcnLook, cx: &mut App) {
     let color = look
-        .resolve_ghost_button(ButtonFamilyRole::Icon, ControlSize::Sm, InteractionState::default())
+        .resolve_ghost_button(ButtonFamilyRole::Icon, ShadcnSize::Sm, InteractionState::default())
         .foreground;
     close_button.update(cx, |button, cx| {
         button.set_presenter(header_icon_presenter(ControlIcon::Lucide(LucideIcon::X), color), cx);

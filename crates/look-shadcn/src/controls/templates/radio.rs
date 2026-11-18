@@ -4,7 +4,7 @@ use xgpui_luma::controls::button::ButtonTemplate;
 use xgpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
 use xgpui_luma::controls::radio_button::{RadioButtonData, RadioButtonTheme, ThemedRadioButtonTemplate};
 use xgpui_luma::controls::radio_group::{RadioGroupLayout, radio_group_buttons_template};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::button::ShadcnButtonStyle;
 use crate::controls::radio::{radio_button_look_with_stylesheet, radio_scale_with_stylesheet};
@@ -20,8 +20,8 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
     ) -> xgpui_luma::controls::radio_button::RadioButtonPalette {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         radio_button_look_with_stylesheet(
             &crate::LookContext::new(tokens.as_ref(), self.theme.mode(), state),
@@ -32,7 +32,8 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
         )
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::radio_button::RadioScale {
+    fn scale(&self, scale_factor: f32) -> xgpui_luma::controls::radio_button::RadioScale {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         radio_scale_with_stylesheet(
             &crate::LookContext::new(tokens.as_ref(), self.theme.mode(), InteractionState::default()),
@@ -44,7 +45,7 @@ impl RadioButtonTheme for ShadcnStyledRadioButtonTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 

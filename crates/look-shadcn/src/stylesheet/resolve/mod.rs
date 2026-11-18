@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use gpui::{FontWeight, px};
 use xgpui_luma::controls::sidebar::SidebarMetricScale;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, LumaTextStyle, MetricTokens};
+use xgpui_luma::theme::{InteractionLayer, LumaTextStyle};
 
 use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
+use crate::size::ShadcnSize;
 
 use super::config::{
     ButtonMetricsRule, ProgressMetricsRule, ScrollbarMetricsRule, SidebarMetricsRule, SliderMetricsRule,
@@ -116,15 +117,15 @@ pub use color_rules::*;
 
 pub fn resolve_slider_metrics(
     rule: &SliderMetricsRule,
-    metrics: &MetricTokens,
-    size: ControlSize,
+    controls: &crate::ShadcnControlMetrics,
+    size: ShadcnSize,
 ) -> ResolvedSliderMetrics {
     ResolvedSliderMetrics {
         width: rule.width,
         height: rule.height,
         track_height: rule.track_height,
         thumb_size: rule.thumb_size,
-        radius: resolve_stylesheet_metric(&rule.radius, metrics, size).unwrap_or(metrics.radius.pill),
+        radius: resolve_stylesheet_metric(&rule.radius, controls, size).unwrap_or(xgpui_luma::theme::FULL_RADIUS_PX),
     }
 }
 
@@ -155,24 +156,28 @@ pub fn resolve_stepper_metrics(rule: &StepperMetricsRule) -> ResolvedStepperMetr
 }
 pub fn resolve_button_metrics_rule(
     rule: &ButtonMetricsRule,
-    metrics: &MetricTokens,
-    size: ControlSize,
+    controls: &crate::ShadcnControlMetrics,
+    size: ShadcnSize,
 ) -> ResolvedButtonMetrics {
     ResolvedButtonMetrics {
-        height: resolve_stylesheet_metric(&rule.height, metrics, size).unwrap_or_else(|| metrics.control_height(size)),
+        height: resolve_stylesheet_metric(&rule.height, controls, size)
+            .unwrap_or_else(|| controls.control_height(size)),
         padding_horizontal: rule.padding_horizontal,
         font_size: rule.font_size,
         icon_size: rule.icon_size,
-        corner_radius: resolve_stylesheet_metric(&rule.corner_radius, metrics, size)
-            .unwrap_or_else(|| metrics.radius(size)),
+        corner_radius: resolve_stylesheet_metric(&rule.corner_radius, controls, size)
+            .unwrap_or_else(|| controls.radius(size)),
     }
 }
 
-pub fn resolve_sidebar_metrics(rule: &SidebarMetricsRule, metrics: &MetricTokens) -> SidebarMetricScale {
+pub fn resolve_sidebar_metrics(
+    rule: &SidebarMetricsRule,
+    controls: &crate::ShadcnControlMetrics,
+) -> SidebarMetricScale {
     let defaults = SidebarMetricScale::default();
-    let size = ControlSize::Md;
+    let size = ShadcnSize::Md;
     let resolve =
-        |raw: &str, fallback: gpui::Pixels| resolve_stylesheet_metric(raw, metrics, size).map(px).unwrap_or(fallback);
+        |raw: &str, fallback: gpui::Pixels| resolve_stylesheet_metric(raw, controls, size).map(px).unwrap_or(fallback);
 
     SidebarMetricScale {
         width_expanded: resolve(&rule.width_expanded, defaults.width_expanded),
@@ -208,13 +213,13 @@ pub fn resolve_typography_rule(rule: &TypographyRule) -> LumaTextStyle {
     LumaTextStyle { size: rule.size, line_height: rule.line_height, weight: FontWeight(rule.weight) }
 }
 
-pub fn resolve_stylesheet_metric(raw: &str, metrics: &MetricTokens, size: ControlSize) -> Option<f32> {
+pub fn resolve_stylesheet_metric(raw: &str, controls: &crate::ShadcnControlMetrics, size: ShadcnSize) -> Option<f32> {
     match raw.trim() {
-        "metrics.control.sm" => Some(metrics.control_height(ControlSize::Sm)),
-        "metrics.control.md" => Some(metrics.control_height(ControlSize::Md)),
-        "metrics.control.lg" => Some(metrics.control_height(ControlSize::Lg)),
-        "radius" => Some(metrics.radius(size)),
-        "radius.pill" => Some(metrics.radius.pill),
+        "metrics.control.sm" => Some(controls.control_height(ShadcnSize::Sm)),
+        "metrics.control.md" => Some(controls.control_height(ShadcnSize::Md)),
+        "metrics.control.lg" => Some(controls.control_height(ShadcnSize::Lg)),
+        "radius" => Some(controls.radius(size)),
+        "radius.full" => Some(xgpui_luma::theme::FULL_RADIUS_PX),
         value => resolve_f32_literal(value).ok(),
     }
 }
@@ -235,7 +240,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use gpui::px;
-    use xgpui_luma::theme::{ControlSize, MetricTokens, ThemeMode};
+    use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
     use crate::provenance::LookResolver;
@@ -271,9 +276,8 @@ mod tests {
     fn resolve_sidebar_metrics_from_rem_literals() {
         use crate::stylesheet::config::SidebarMetricsRule;
 
-        let metrics = MetricTokens::default();
         let rule = SidebarMetricsRule::default();
-        let scale = resolve_sidebar_metrics(&rule, &metrics);
+        let scale = resolve_sidebar_metrics(&rule, &crate::ShadcnControlMetrics::default());
         assert_eq!(scale.width_expanded, px(256.0));
         assert_eq!(scale.width_icon_rail, px(48.0));
         assert_eq!(scale.width_mobile, px(288.0));
@@ -283,14 +287,14 @@ mod tests {
 
     #[test]
     fn metric_token_resolves_control_height_and_radius() {
-        let metrics = MetricTokens::default();
+        let controls = crate::ShadcnControlMetrics::default();
         assert_eq!(
-            resolve_stylesheet_metric("metrics.control.md", &metrics, ControlSize::Md),
-            Some(metrics.control_height(ControlSize::Md))
+            resolve_stylesheet_metric("metrics.control.md", &controls, ShadcnSize::Md),
+            Some(controls.control_height(ShadcnSize::Md))
         );
         assert_eq!(
-            resolve_stylesheet_metric("radius", &metrics, ControlSize::Sm),
-            Some(metrics.radius(ControlSize::Sm))
+            resolve_stylesheet_metric("radius", &controls, ShadcnSize::Sm),
+            Some(controls.radius(ShadcnSize::Sm))
         );
     }
 

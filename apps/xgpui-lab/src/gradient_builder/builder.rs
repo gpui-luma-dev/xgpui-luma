@@ -35,7 +35,7 @@ use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::controls::selector::{Selector, SelectorEvent};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent, SliderThumbPolicy, ThumbId};
 use xgpui_luma::controls::tabs::{Tabs, TabsEvent, TabsWidthMode};
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::ThemeMode;
 use crate::color_stop::ColorStop;
 use crate::color_stop_list::ColorStopList;
 use crate::theme::{Look, TextSize};
@@ -223,7 +223,7 @@ impl GradientBuilder {
             allow_overlap: false,
         })
         .thumb_values([(0.0, Some(start)), (0.5, Some(middle)), (1.0, Some(end))])
-        .size(ControlSize::Sm)
+        .size(xgpui_luma_color::ColorControlSize::Small)
         .thumb_medium()
         .theme_is_dark(theme_is_dark);
         let domain_renderer = slider_builder.domain_renderer();
@@ -300,10 +300,12 @@ impl GradientBuilder {
             .selected_id("rgb")
             .spawn(cx);
         let top_tabs = Tabs::new("color-viz-builder-tabs")
-            .template(crate::studio_tabs::template(look.clone(), true))
+            .template(crate::studio_tabs::template(
+                Arc::new(look.with_size(xgpui_luma_look_radix::RadixSize::One)),
+                true,
+            ))
             .items(builder_tab_items())
             .active("gradients")
-            .size(ControlSize::Sm)
             .width_mode(TabsWidthMode::Uniform)
             .spawn(cx);
         let type_selector = radix::Selector::new("color-viz-gradient-type")

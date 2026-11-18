@@ -20,7 +20,7 @@ use crate::controls::control_group::{
 use crate::infra::icon::{DisclosureIcons, IconSource, render_icon_source, render_disclosure_icon};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::controls::tabs::{TabsItemLook, TabsTheme, default_tabs_theme};
-use crate::theme::{ControlSize, InteractionState};
+use crate::theme::InteractionState;
 
 pub type TabsClickHandler = ControlGroupClickHandler;
 pub type TabsBoundsHandler = ControlGroupBoundsHandler;
@@ -150,16 +150,14 @@ struct TabsButtonData {
 pub struct TabsItemButtonStyle {
     pub look: TabsItemLook,
     pub font_family: SharedString,
-    pub size: ControlSize,
     pub disclosure_icons: DisclosureIcons,
 }
 
 impl TabsItemButtonStyle {
-    pub fn new(look: TabsItemLook, font_family: SharedString, size: ControlSize) -> Self {
+    pub fn new(look: TabsItemLook, font_family: SharedString) -> Self {
         Self {
             look,
             font_family,
-            size,
             disclosure_icons: DisclosureIcons::menu_from_stylesheet(
                 crate::theme::stylesheet::CommonStylesheet::sdk_default(),
             ),
@@ -265,17 +263,15 @@ impl TabsTemplate for ThemedTabsTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        let list_look = self.theme.resolve_list(model.enabled, model.size);
-        let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), model.size, window);
+        let list_look = self.theme.resolve_list(model.enabled);
+        let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), window);
 
         let active_item = model.items.iter().find(|item| item.active);
-        let active_look =
-            active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state(), model.size));
+        let active_look = active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state()));
         if let Some(motion) = model.indicator_motion {
-            let look =
-                active_look.unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default(), model.size));
+            let look = active_look.unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default()));
             motion.set_metrics(
-                self.theme.indicator_inset(model.size).unwrap_or(look.padding_x),
+                self.theme.indicator_inset().unwrap_or(look.padding_x),
                 look.indicator_height,
                 look.indicator,
             );
@@ -318,7 +314,7 @@ impl TabsTemplate for ThemedTabsTemplate {
             root = root.border(px(list_look.border_width)).border_color(border);
         }
 
-        if let Some(baseline) = self.theme.baseline(model.enabled, model.size) {
+        if let Some(baseline) = self.theme.baseline(model.enabled) {
             root = root.child(
                 div()
                     .absolute()
@@ -338,13 +334,13 @@ impl TabsTemplate for ThemedTabsTemplate {
             }
         }
         for (item, item_handlers) in model.items.iter().zip(handlers.into_item_handlers()) {
-            let look = self.theme.resolve_item(item.active, item.state.interaction_state(), model.size);
+            let look = self.theme.resolve_item(item.active, item.state.interaction_state());
             let mut tab = render_tab_button_with_content_padding(
                 model.id,
                 item,
-                TabsItemButtonStyle::new(look, self.theme.font_family(), model.size)
+                TabsItemButtonStyle::new(look, self.theme.font_family())
                     .disclosure_icons(model.disclosure_icons.clone()),
-                self.theme.content_padding(model.size),
+                self.theme.content_padding(),
                 window,
                 cx,
             )
@@ -360,8 +356,7 @@ impl TabsTemplate for ThemedTabsTemplate {
 
             if let Some(owner) = &model.drag_drop {
                 if let Ok(bound) = owner.update(cx, |tabs, cx| {
-                    let bound =
-                        tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.resolve_drag(model.size), cx);
+                    let bound = tabs.bind_tab_drag(tab, item.id, item.label.clone(), self.theme.resolve_drag(), cx);
                     tabs.drop_layout.item(item.id.clone(), bound)
                 }) {
                     root = root.child(bound);
@@ -377,7 +372,7 @@ impl TabsTemplate for ThemedTabsTemplate {
                     root,
                     list_look.gap,
                     list_look.padding + if list_look.border.is_some() { 1.0 } else { 0.0 },
-                    self.theme.resolve_drag(model.size),
+                    self.theme.resolve_drag(),
                     cx,
                 )
             }) {
@@ -409,7 +404,6 @@ impl TabsTemplate for ThemedTabsTemplate {
 pub fn resolve_tabs_uniform_item_width(
     model: &TabsRenderModel<'_>,
     theme: &dyn TabsTheme,
-    size: ControlSize,
     window: &mut Window,
 ) -> Option<f32> {
     if model.width_mode != TabsWidthMode::Uniform {
@@ -420,7 +414,7 @@ pub fn resolve_tabs_uniform_item_width(
     let mut max_width = 0.0_f32;
 
     for item in &model.items {
-        let look = theme.resolve_item(item.active, item.state.interaction_state(), size);
+        let look = theme.resolve_item(item.active, item.state.interaction_state());
         let run = TextRun {
             len: item.label.len(),
             font: {
@@ -573,11 +567,10 @@ pub fn render_tab_button(
     item: &TabsRenderItem<'_>,
     look: TabsItemLook,
     font_family: SharedString,
-    size: ControlSize,
     window: &mut Window,
     cx: &mut App,
 ) -> Stateful<Div> {
-    render_tab_button_with_style(navigation_id, item, TabsItemButtonStyle::new(look, font_family, size), window, cx)
+    render_tab_button_with_style(navigation_id, item, TabsItemButtonStyle::new(look, font_family), window, cx)
 }
 
 pub fn render_tab_button_with_style(
@@ -599,15 +592,7 @@ fn render_tab_button_with_content_padding(
     cx: &mut App,
 ) -> Stateful<Div> {
     tab_button_template().render(
-        &tab_button_model(
-            navigation_id,
-            item,
-            style.look,
-            style.font_family,
-            style.size,
-            style.disclosure_icons,
-            content_padding,
-        ),
+        &tab_button_model(navigation_id, item, style.look, style.font_family, style.disclosure_icons, content_padding),
         window,
         cx,
     )
@@ -618,7 +603,6 @@ fn tab_button_model(
     item: &TabsRenderItem<'_>,
     mut look: TabsItemLook,
     font_family: SharedString,
-    size: ControlSize,
     disclosure_icons: DisclosureIcons,
     content_padding: Option<(f32, f32)>,
 ) -> ButtonRenderModel<TabsButtonData> {
@@ -666,7 +650,6 @@ fn tab_button_model(
             label_content.into_any_element()
         }),
         role: ButtonFamilyRole::Toggle { selected: item.active },
-        size,
         state: item.state.interaction_state(),
         round: false,
         radius_override: Cell::new(Some(look.radius)),
@@ -723,7 +706,6 @@ fn render_tab_icon_source(icon: &IconSource, color: gpui::Hsla, accessory_size: 
 }
 
 pub(crate) fn tabs_control_group_template(
-    size: crate::theme::ControlSize,
     width_mode: TabsWidthMode,
     template: Arc<dyn TabsTemplate>,
     indicator_motion: TabsIndicatorMotion,
@@ -733,7 +715,7 @@ pub(crate) fn tabs_control_group_template(
 ) -> ControlGroupTemplate<TabsItem> {
     Arc::new(move |model, handlers, window, cx| {
         let mut tabs_model =
-            tabs_render_model(model, size, width_mode, &indicator_motion, &disclosure_icons, &disclosure_progress);
+            tabs_render_model(model, width_mode, &indicator_motion, &disclosure_icons, &disclosure_progress);
         tabs_model.drag_drop = Some(owner.clone());
         template.render(&tabs_model, handlers, window, cx)
     })
@@ -741,7 +723,6 @@ pub(crate) fn tabs_control_group_template(
 
 fn tabs_render_model<'a>(
     model: &'a ControlGroupRenderModel<'a, TabsItem>,
-    size: crate::theme::ControlSize,
     width_mode: TabsWidthMode,
     indicator_motion: &'a TabsIndicatorMotion,
     disclosure_icons: &'a crate::infra::icon::DisclosureIcons,
@@ -751,7 +732,6 @@ fn tabs_render_model<'a>(
     TabsRenderModel {
         drag_drop: None,
         id: model.id,
-        size,
         width_mode,
         items: model
             .items

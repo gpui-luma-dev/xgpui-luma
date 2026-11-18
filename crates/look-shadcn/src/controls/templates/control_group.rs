@@ -5,7 +5,7 @@ use xgpui_luma::controls::control_group::{
     ControlGroupItemLike, ControlGroupItemPalette, ControlGroupTemplate, ControlGroupTheme,
     control_group_template_with_theme,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 
 use crate::controls::control_group::control_group_list_look;
 use crate::look::ShadcnLook;
@@ -21,16 +21,16 @@ impl ControlGroupTheme for ShadcnControlGroupTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn default_item_palette(
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
         _scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette {
+        let size = self.theme.size();
         let look = self.theme.resolve_ghost_button(ButtonFamilyRole::Toggle { selected }, size, state);
         let chrome = self.theme.chrome();
 

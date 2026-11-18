@@ -16,9 +16,9 @@ use super::template::{
 use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
 use crate::controls::scrollbar::{ScrollbarTemplate, default_scrollbar_template};
 use crate::controls::textfield::{TextFieldTemplate, default_textfield_template};
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
-pub type AutocompletePopupLookProvider = Arc<dyn Fn(ControlSize) -> SelectorItemsPanelLook + Send + Sync + 'static>;
+pub type AutocompletePopupLookProvider = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct AutocompleteModel {
@@ -32,7 +32,6 @@ pub struct AutocompleteModel {
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
-    pub(crate) size: ControlSize,
     pub(crate) full_width: bool,
     pub(crate) clean_on_escape: bool,
     pub(crate) scrolling: bool,
@@ -173,7 +172,6 @@ impl AutocompleteBuilder {
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
-                size: ControlSize::Md,
                 full_width: true,
                 clean_on_escape: true,
                 scrolling: true,
@@ -182,7 +180,7 @@ impl AutocompleteBuilder {
                 template: default_autocomplete_template(),
                 items_template: default_autocomplete_items_template(),
                 autocomplete_theme: default_autocomplete_theme(),
-                popup_look_provider: Arc::new(|size| default_selector_items_panel_look(&ThemeTokens::default(), size)),
+                popup_look_provider: Arc::new(|| default_selector_items_panel_look(&ThemeTokens::default())),
             },
         }
     }
@@ -231,11 +229,6 @@ impl AutocompleteBuilder {
 
     pub fn invalid(mut self, invalid: bool) -> Self {
         self.model.invalid = invalid;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 
@@ -364,24 +357,15 @@ mod stylesheet_tests {
 
     #[test]
     fn affordance_snapshot_keeps_size_overrides_and_preserves_custom_theme_provider() {
-        let mut sheet = crate::theme::stylesheet::CommonStylesheet::parse(
-            "[common.autocomplete.geometry]\nclear_width=27\n[common.autocomplete.sizes.sm]\nclear_width=0",
-        )
-        .unwrap();
+        let mut sheet =
+            crate::theme::stylesheet::CommonStylesheet::parse("[common.autocomplete.geometry]\nclear_width=27")
+                .unwrap();
         let original = AutocompleteBuilder::new("snapshot", []);
         let theme = original.model.autocomplete_theme.clone();
-        let builder = original.stylesheet(&sheet).size(ControlSize::Sm);
+        let builder = original.stylesheet(&sheet);
         sheet.autocomplete.geometry.clear_width = Some(41.0);
         assert!(Arc::ptr_eq(&theme, &builder.model.autocomplete_theme));
-        assert_eq!(
-            builder
-                .model
-                .stylesheet
-                .resolve_geometry(builder.model.size.stylesheet_key(), Default::default())
-                .clear_width,
-            0.0
-        );
-        assert_eq!(builder.model.stylesheet.resolve_geometry("md", Default::default()).clear_width, 27.0);
-        assert_eq!(builder.model.stylesheet.resolve_geometry("md", Default::default()).clear_icon_size, 12.0);
+        assert_eq!(builder.model.stylesheet.resolve_geometry(Default::default()).clear_width, 27.0);
+        assert_eq!(builder.model.stylesheet.resolve_geometry(Default::default()).clear_icon_size, 12.0);
     }
 }

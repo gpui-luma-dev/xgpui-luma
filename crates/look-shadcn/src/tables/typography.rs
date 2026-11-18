@@ -1,8 +1,9 @@
 //! Resolved runtime text style and its source metadata.
 use gpui::SharedString;
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 use crate::{ShadcnModeTokens, TypographySource};
 use crate::stylesheet::{StylesheetConfig, resolve_button_metrics_rule};
+use crate::size::ShadcnSize;
 
 #[derive(Clone, Debug)]
 pub struct ControlTypographyTable {
@@ -15,14 +16,14 @@ pub struct ControlTypographyTable {
 }
 
 /// Label typography for button-sized controls, including Accordion.
-pub fn resolve_control_typography(mode: &ShadcnModeTokens, size: ControlSize, toggle: bool) -> ControlTypographyTable {
+pub fn resolve_control_typography(mode: &ShadcnModeTokens, size: ShadcnSize, toggle: bool) -> ControlTypographyTable {
     resolve_control_typography_with_stylesheet(mode, mode.stylesheet(), size, toggle)
 }
 
 pub(crate) fn resolve_control_typography_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     toggle: bool,
 ) -> ControlTypographyTable {
     let mut style = mode.typography.text.label;
@@ -34,7 +35,7 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
         stylesheet.button.metrics_for_size(size)
     };
     if let Some(rule) = rule {
-        let metrics = resolve_button_metrics_rule(rule, &mode.metrics, size);
+        let metrics = resolve_button_metrics_rule(rule, &mode.control_sizes, size);
         let base_size = style.size;
         style.size = metrics.font_size;
         let family = if toggle { "toggle" } else { "button" };
@@ -81,7 +82,7 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
 
 pub(crate) fn common_typography_overrides(
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     toggle: bool,
 ) -> (Option<f32>, Option<f32>, String, String) {
     let key = super::metrics::helpers::control_size_key(size);

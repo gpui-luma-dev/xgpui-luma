@@ -117,9 +117,7 @@ fn template_modifier_forwards_look_resolution() {
         let look = crate::theme::default_look();
         let resolve = |mut builder: ParleyTextFieldBuilder, cx: &mut App| {
             let template = builder.take_template(cx);
-            template
-                .resolve_look_with_scale(TextFieldState::default(), true, ControlSize::Md, 1.0, cx)
-                .background
+            template.resolve_look_with_scale(TextFieldState::default(), true, 1.0, cx).background
         };
         let plain = resolve(ParleyTextField::new("plain").look(&look), cx);
         let modified = resolve(ParleyTextField::new("modified").look(&look).with_template_modifier(|root, _| root), cx);

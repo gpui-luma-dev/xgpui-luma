@@ -10,7 +10,7 @@ use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use xgpui_luma::infra::lock;
 use xgpui_luma::color::ColorValue;
 use xgpui_luma::theme::pack::LumaChrome;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle, ThemeMode};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, ThemeMode};
 
 use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
@@ -42,6 +42,8 @@ const GENERIC_FAMILIES: &[&str] = &[
 #[derive(Clone)]
 pub struct ShadcnLook {
     state: Arc<ShadcnLookState>,
+    /// Size selected for themes and templates created from this handle.
+    size: crate::ShadcnSize,
 }
 
 impl Global for ShadcnLook {}
@@ -163,6 +165,17 @@ impl ShadcnLookSnapshot {
 }
 
 impl ShadcnLook {
+    /// A handle to the same look whose themes and templates use `size`.
+    /// The look resolves the size to pixel metrics; SDK controls only see pixels.
+    pub fn with_size(&self, size: crate::ShadcnSize) -> Self {
+        Self { state: self.state.clone(), size }
+    }
+
+    /// Size used by themes and templates created from this handle.
+    pub fn size(&self) -> crate::ShadcnSize {
+        self.size
+    }
+
     /// Bundled fallback theme used when no look is bound and no Global is set.
     pub fn built_in() -> Self {
         static BUILT_IN: std::sync::OnceLock<ShadcnLook> = std::sync::OnceLock::new();
@@ -187,6 +200,7 @@ impl ShadcnLook {
                 )?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
             }),
+            size: crate::ShadcnSize::DEFAULT,
         })
     }
 
@@ -202,6 +216,7 @@ impl ShadcnLook {
                 snapshot: RwLock::new(Arc::new(ShadcnLookSnapshot::new(catalog, stylesheet)?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
             }),
+            size: crate::ShadcnSize::DEFAULT,
         })
     }
 
@@ -330,14 +345,7 @@ impl ShadcnLook {
 
     /// Resolves border-radius to raw pixels based on the current theme radius.
     pub fn radius(&self, role: ShadcnRadius) -> f32 {
-        let base_radius = self.parse_pixel_token("radius").unwrap_or(8.0);
-        match role {
-            ShadcnRadius::None => 0.0,
-            ShadcnRadius::Sm => (base_radius - 4.0).max(0.0),
-            ShadcnRadius::Md => (base_radius - 2.0).max(0.0),
-            ShadcnRadius::Lg => base_radius,
-            ShadcnRadius::Xl => base_radius + 4.0,
-        }
+        self.mode_tokens().radii.step(role)
     }
 
     /// Resolves custom shadow structures for GPUI box-shadow arrays.
@@ -376,10 +384,9 @@ impl ShadcnLook {
     }
 
     pub fn typography_scale(&self, size: ShadcnTextSize) -> LumaTextStyle {
-        let tokens = self.mode_tokens();
         find_typography_scale_rule(self.stylesheet().as_ref(), size)
             .map(resolve_typography_rule)
-            .unwrap_or_else(|| tokens.typography.text.scale(size.into()))
+            .unwrap_or_else(|| size.native_style())
     }
 
     pub fn typography_role(&self, role: ShadcnTextRole) -> LumaTextStyle {
@@ -449,6 +456,7 @@ impl ShadcnLook {
                 snapshot: RwLock::new(Arc::new(next)),
                 mode: AtomicU8::new(self.state.mode.load(Ordering::Relaxed)),
             }),
+            size: crate::ShadcnSize::DEFAULT,
         })
     }
 
@@ -470,7 +478,7 @@ impl ShadcnLook {
     pub fn resolve_primary_button(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
         let tokens = self.mode_tokens();
@@ -480,7 +488,7 @@ impl ShadcnLook {
     pub fn resolve_secondary_button(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
         let tokens = self.mode_tokens();
@@ -490,7 +498,7 @@ impl ShadcnLook {
     pub fn resolve_outline_button(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
         let tokens = self.mode_tokens();
@@ -500,7 +508,7 @@ impl ShadcnLook {
     pub fn resolve_ghost_button(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
         let tokens = self.mode_tokens();
@@ -510,7 +518,7 @@ impl ShadcnLook {
     pub fn resolve_content_only_button(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
         let tokens = self.mode_tokens();
@@ -665,12 +673,12 @@ impl ShadcnLook {
         size: ShadcnSize,
     ) -> xgpui_luma::controls::selector_list::SelectorItemsPanelLook {
         let tokens = self.mode_tokens();
-        selector_items_panel_look(tokens.as_ref(), self.mode(), size.control_size())
+        selector_items_panel_look(tokens.as_ref(), self.mode(), size)
     }
 
     pub fn selection_panel_look(&self, size: ShadcnSize) -> xgpui_luma::controls::selection_panel::SelectionPanelLook {
         let tokens = self.mode_tokens();
-        selection_panel_look(tokens.as_ref(), self.mode(), size.control_size())
+        selection_panel_look(tokens.as_ref(), self.mode(), size)
     }
 
     pub(crate) fn selection_panel_look_provider(
@@ -750,7 +758,7 @@ impl ShadcnLook {
         let stylesheet = self.stylesheet();
         crate::stylesheet::resolve_sidebar_metrics(
             crate::stylesheet::find_sidebar_metrics(stylesheet.as_ref()),
-            &self.mode_tokens().metrics,
+            &self.mode_tokens().control_sizes,
         )
     }
 

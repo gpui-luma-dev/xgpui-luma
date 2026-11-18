@@ -100,13 +100,14 @@ impl Progress {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ProgressBuilder {
+        let look = look.with_size(self.size);
         let self_builder = self.builder.motion_defaults(look.motion_defaults().progress);
         let template = if self.linear {
             look.linear_progress_template()
         } else {
             look.progress_template()
         };
-        self_builder.size(self.size.control_size()).template(template)
+        self_builder.template(template)
     }
 }
 

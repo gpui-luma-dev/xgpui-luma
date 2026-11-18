@@ -3,7 +3,7 @@ use xgpui_luma::controls::button_family::ButtonFamilyLook;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::pager::PagerLook;
 use xgpui_luma::controls::pager::PagerStyle;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 
 use crate::look::ShadcnLook;
@@ -11,11 +11,10 @@ use crate::look::ShadcnLook;
 pub fn pager_look(theme: &ShadcnLook, enabled: bool, style: PagerStyle) -> PagerLook {
     let tokens = theme.mode_tokens();
     let palette = &tokens.palette;
-    let metrics = &tokens.metrics;
     let typography = theme.typography_scale(crate::ShadcnTextSize::Xs);
     let key = style.stylesheet_key();
-    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry(key);
-    let recipe = tokens.stylesheet().common.pager.authored_geometry(key).with_fallback(&baseline);
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry_for(key);
+    let recipe = tokens.stylesheet().common.pager.authored_geometry_for(key).with_fallback(&baseline);
 
     let mut look = PagerLook {
         gap_icon_size: recipe.gap_icon_size.unwrap_or_default(),
@@ -48,17 +47,17 @@ pub fn pager_look(theme: &ShadcnLook, enabled: bool, style: PagerStyle) -> Pager
         hover_background: palette.accent_background,
         shadow: vec![],
         typography,
-        button_size: metrics.control_height(ControlSize::Sm),
-        button_min_width: metrics.control_height(ControlSize::Sm),
-        control_height: metrics.control_height(ControlSize::Sm),
-        radius: metrics.radius(ControlSize::Sm),
-        padding_x: metrics.padding_x(ControlSize::Sm),
-        padding_y: metrics.padding_y(ControlSize::Sm),
-        gap: metrics.gap(ControlSize::Sm),
-        group_gap: metrics.gap(ControlSize::Sm),
+        button_size: tokens.control_sizes.control_height(ShadcnSize::Sm),
+        button_min_width: tokens.control_sizes.control_height(ShadcnSize::Sm),
+        control_height: tokens.control_sizes.control_height(ShadcnSize::Sm),
+        radius: tokens.control_sizes.radius(ShadcnSize::Sm),
+        padding_x: tokens.control_sizes.padding_x(ShadcnSize::Sm),
+        padding_y: tokens.control_sizes.padding_y(ShadcnSize::Sm),
+        gap: tokens.control_sizes.gap(ShadcnSize::Sm),
+        group_gap: tokens.control_sizes.gap(ShadcnSize::Sm),
         disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
     };
-    let geometry = tokens.stylesheet().common.pager.inspect_geometry(
+    let geometry = tokens.stylesheet().common.pager.inspect_geometry_for(
         key,
         xgpui_luma::theme::stylesheet::PagerGeometry {
             button_size: look.button_size,
@@ -99,7 +98,7 @@ pub fn pager_button_look(
     role: ButtonFamilyRole,
     state: InteractionState,
 ) -> ButtonFamilyLook {
-    let mut look = theme.resolve_outline_button(role, ControlSize::Sm, state);
+    let mut look = theme.resolve_outline_button(role, ShadcnSize::Sm, state);
     look.height = pager_look.button_size;
     look.radius = pager_look.radius;
     look.gap = pager_look.gap;
@@ -178,7 +177,7 @@ pub fn resolve_pager_metrics(
     let style_label = pager_style_label(style);
     let button = look.resolve_outline_button(
         xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { selected: false },
-        xgpui_luma::theme::ControlSize::Sm,
+        crate::ShadcnSize::Sm,
         xgpui_luma::theme::InteractionState::default(),
     );
     let reserved_shadow_extent =
@@ -199,7 +198,7 @@ pub fn resolve_pager_metrics(
             source: crate::MetricSource::Derived { note: "button outline shadow projection extent".into() },
         },
     };
-    let geometry = look.mode_tokens().stylesheet().common.pager.inspect_geometry(
+    let geometry = look.mode_tokens().stylesheet().common.pager.inspect_geometry_for(
         style_label,
         xgpui_luma::theme::stylesheet::PagerGeometry {
             control_height: table.control_height.value_px,

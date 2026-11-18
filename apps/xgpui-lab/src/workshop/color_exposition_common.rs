@@ -14,11 +14,11 @@ const SLIDER_GRID_GAP_X: f32 = 12.0;
 const SLIDER_GRID_GAP_Y: f32 = 12.0;
 
 pub(super) fn composition_card_radius(look: &Look) -> f32 {
-    look.metrics().radius.xl
+    look.radii().xl
 }
 
 pub(super) fn composition_inset_radius(look: &Look) -> f32 {
-    look.metrics().radius.lg
+    look.radii().large
 }
 
 pub(super) fn render_demo_section(

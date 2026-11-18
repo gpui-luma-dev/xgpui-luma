@@ -4,9 +4,7 @@ use gpui::{BoxShadow, Hsla, hsla};
 
 use super::PopupMenuTriggerStyle;
 use crate::controls::floating_menu::{FloatingMenuLook, default_floating_menu_look};
-use crate::theme::{
-    ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens,
-};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct PopupMenuPalette {
@@ -45,13 +43,12 @@ impl PopupMenuLook {
     pub fn with_stylesheet(
         mut self,
         stylesheet: &crate::theme::stylesheet::PopupMenuStylesheet,
-        key: &str,
         scale_factor: f32,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popup_menu.authored_geometry(key);
-        let recipe = stylesheet.authored_geometry(key).with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popup_menu.authored_geometry();
+        let recipe = stylesheet.authored_geometry().with_fallback(&baseline);
         self.menu_offset_y = recipe.gap.unwrap_or(self.trigger_gap) * recipe.menu_offset_scale.unwrap_or_default();
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, key, PopupMenuGeometry, self,
+        crate::theme::stylesheet::apply_common_geometry!(stylesheet, PopupMenuGeometry, self,
             [height => trigger_height, padding_x => trigger_padding_x, padding_y => trigger_padding_y,
              gap => trigger_gap, icon_size => trigger_icon_size, radius => trigger_radius,
              font_size => trigger_typography.size, line_height => trigger_typography.line_height,
@@ -67,8 +64,6 @@ impl PopupMenuLook {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PopupMenuTriggerMetrics {
-    pub size: ControlSize,
-    pub menu_size: ControlSize,
     pub without_elevation: bool,
     pub icon_only: bool,
     pub trigger_radius_override: Option<f32>,
@@ -92,7 +87,7 @@ pub trait PopupMenuTheme: Send + Sync {
         scale_factor: f32,
         _cx: &mut gpui::App,
     ) -> PopupMenuLook {
-        let scale = StandardBoxScale::compute(metrics.size, &self.metrics(), scale_factor);
+        let scale = StandardBoxScale::compute(&self.metrics(), scale_factor);
         let mut look = compose_popup_menu_look(&self.resolve(trigger_style, metrics, state), &scale);
         if let Some(radius) = metrics.trigger_radius_override {
             look.trigger_radius = radius;
@@ -124,12 +119,9 @@ impl DefaultPopupMenuTheme {
         state: InteractionState,
         scale_factor: f32,
     ) -> PopupMenuLook {
-        let scale = StandardBoxScale::compute(metrics.size, &self.tokens.metrics, scale_factor);
-        let mut look = compose_popup_menu_look(&self.resolve(trigger_style, metrics, state), &scale).with_stylesheet(
-            &self.tokens.stylesheet.popup_menu,
-            metrics.size.stylesheet_key(),
-            scale_factor,
-        );
+        let scale = StandardBoxScale::compute(&self.tokens.metrics, scale_factor);
+        let mut look = compose_popup_menu_look(&self.resolve(trigger_style, metrics, state), &scale)
+            .with_stylesheet(&self.tokens.stylesheet.popup_menu, scale_factor);
         if let Some(radius) = metrics.trigger_radius_override {
             look.trigger_radius = radius;
         }
@@ -217,7 +209,7 @@ impl PopupMenuTheme for DefaultPopupMenuTheme {
             trigger_border,
             trigger_shadow,
             trigger_typography: typography.text.label,
-            floating_menu: default_floating_menu_look(&self.tokens, metrics.menu_size),
+            floating_menu: default_floating_menu_look(&self.tokens),
         }
     }
 
@@ -282,43 +274,37 @@ radius=11
 font_size=19
 line_height=27
 menu_offset_scale="math(3 / 2)"
-[common.popup_menu.sizes.sm]
-menu_offset_y=0
 "#])
         .unwrap();
         let theme =
             DefaultPopupMenuTheme::new(sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap());
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            let metrics = PopupMenuTriggerMetrics { size, trigger_radius_override: Some(0.0), ..Default::default() };
-            let look = theme.styled_look(PopupMenuTriggerStyle::Outline, metrics, Default::default(), 1.0);
-            assert_eq!(
-                (look.trigger_height, look.trigger_padding_x, look.trigger_icon_size, look.trigger_radius),
-                (51.0, 0.0, 22.0, 0.0)
-            );
-            assert_eq!((look.trigger_typography.size, look.trigger_typography.line_height), (19.0, 27.0));
-            // The proportional offset uses the resolved gap; an explicit offset wins.
-            assert_eq!(look.menu_offset_y, if size == ControlSize::Sm { 0.0 } else { 7.0 * 1.5 });
-        }
+        let metrics = PopupMenuTriggerMetrics { trigger_radius_override: Some(0.0), ..Default::default() };
+        let look = theme.styled_look(PopupMenuTriggerStyle::Outline, metrics, Default::default(), 1.0);
+        assert_eq!(
+            (look.trigger_height, look.trigger_padding_x, look.trigger_icon_size, look.trigger_radius),
+            (51.0, 0.0, 22.0, 0.0)
+        );
+        assert_eq!((look.trigger_typography.size, look.trigger_typography.line_height), (19.0, 27.0));
+        // The proportional offset uses the resolved gap.
+        assert_eq!(look.menu_offset_y, 7.0 * 1.5);
     }
 
     #[test]
     fn default_popup_metrics_retain_fractional_offsets_at_display_scales() {
         let theme = DefaultPopupMenuTheme::default();
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            for factor in [1.0, 1.25, 1.5, 2.0] {
-                let scale = StandardBoxScale::compute(size, &theme.metrics(), factor);
-                let look = theme.styled_look(
-                    PopupMenuTriggerStyle::Outline,
-                    PopupMenuTriggerMetrics { size, ..Default::default() },
-                    Default::default(),
-                    factor,
-                );
-                assert_eq!(
-                    (look.trigger_height, look.trigger_padding_x, look.trigger_icon_size),
-                    (scale.height, scale.padding_x, scale.icon_size)
-                );
-                assert_eq!(look.menu_offset_y, scale.gap * 0.5);
-            }
+        for factor in [1.0, 1.25, 1.5, 2.0] {
+            let scale = StandardBoxScale::compute(&theme.metrics(), factor);
+            let look = theme.styled_look(
+                PopupMenuTriggerStyle::Outline,
+                PopupMenuTriggerMetrics::default(),
+                Default::default(),
+                factor,
+            );
+            assert_eq!(
+                (look.trigger_height, look.trigger_padding_x, look.trigger_icon_size),
+                (scale.height, scale.padding_x, scale.icon_size)
+            );
+            assert_eq!(look.menu_offset_y, scale.gap * 0.5);
         }
     }
 }

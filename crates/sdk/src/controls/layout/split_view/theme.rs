@@ -48,7 +48,7 @@ impl SplitViewTheme for DefaultSplitViewTheme {
         };
 
         SplitViewLook {
-            geometry: self.tokens.stylesheet.split_view.resolve_geometry("", Default::default()),
+            geometry: self.tokens.stylesheet.split_view.resolve_geometry(Default::default()),
             separator,
             separator_hover,
         }

@@ -201,10 +201,11 @@ impl Workshop {
                 }),
             ));
         }
-        let sidebar = xgpui_luma_look_radix::accordion_builder(&shell_look, "control-workshop-catalog")
-            .size(xgpui_luma::theme::ControlSize::Sm)
+        // Radix size 1 is the compact navigation size.
+        let sidebar_look = shell_look.with_size(xgpui_luma_look_radix::RadixSize::One);
+        let sidebar = xgpui_luma_look_radix::accordion_builder(&sidebar_look, "control-workshop-catalog")
             .template(crate::app::nav_accordion::template_with_labels(
-                &shell_look,
+                &sidebar_look,
                 COMPONENT_CATALOG.iter().filter(|g| g.id != "color").map(|g| (g.id, g.label)).collect(),
             ))
             .multiple()

@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonContentContext, ButtonRenderModel, ButtonTemplate, ControlPresenter};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize as SdkButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::infra::icon::lucide_icon;
 use xgpui_luma::{hstack, vstack};
@@ -127,7 +127,6 @@ fn sizes_cell(
         id: SharedString::from(id),
         content: next_content(),
         role: ButtonFamilyRole::Text,
-        size: size.control_size(),
         look: Some(button_look_for(look, def.variant, Paint::accent(), size, radius)),
         ..Default::default()
     };
@@ -183,7 +182,6 @@ fn preview_next(template: &Arc<dyn ButtonTemplate<()>>, id: &str, window: &mut W
         id: SharedString::from(id),
         content: next_content(),
         role: ButtonFamilyRole::Text,
-        size: SdkButtonSize::Md,
         ..Default::default()
     };
     template.render(&model, window, cx).into_any_element()
@@ -253,7 +251,6 @@ fn state_cell(
         id: SharedString::from(format!("style-guide-button-{variant_id}-{}", sample.id)),
         content: Arc::new(|_, _| div().child("Button").into_any_element()),
         role: ButtonFamilyRole::Text,
-        size: SdkButtonSize::Md,
         state: sample.state,
         ..Default::default()
     };

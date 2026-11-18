@@ -1,5 +1,5 @@
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook};
 use xgpui_luma_look_shadcn::inspect::{ButtonInspectMetrics, ShadcnInspect};
 
@@ -14,7 +14,7 @@ pub fn button_layout_section(
     diagram_id: &str,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     state: InteractionState,
 ) -> InspectLayoutSection {
     let metrics = ShadcnInspect::new(look).inspect_button_metrics(style, role, size, state);
@@ -25,7 +25,7 @@ fn button_metrics_layout_section(
     diagram_id: &str,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     state: InteractionState,
     metrics: &ButtonInspectMetrics,
 ) -> InspectLayoutSection {

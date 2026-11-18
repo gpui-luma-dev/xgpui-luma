@@ -83,14 +83,13 @@ impl SearchSelectorControl {
         let motion_enabled = builder.model.motion.enabled();
         let model = builder.model;
         let enabled = model.enabled;
-        let geometry = model.stylesheet.resolve_geometry(model.size.stylesheet_key(), Default::default());
+        let geometry = model.stylesheet.resolve_geometry(Default::default());
         let padding_reduction = geometry.search_padding_reduction;
         let height_floor = geometry.search_input_height_floor;
 
         let popup_search_textfield = text_selection::new(format!("{}-popup-search", model.id))
             .placeholder(model.search_placeholder.clone())
             .enabled(model.enabled)
-            .size(model.size)
             .full_width(true)
             .clean_on_escape(model.clean_on_escape)
             .propagate_home_end_to_parent(true)
@@ -179,12 +178,6 @@ impl SearchSelectorControl {
 
     pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.model.placeholder = placeholder.into();
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        self.popup_search_textfield.update(cx, |textfield, cx| textfield.set_size(size, cx));
         cx.notify();
     }
 
@@ -713,17 +706,16 @@ impl Render for SearchSelectorControl {
         }
 
         let trigger_focused = self.interaction.focus_handle().is_focused(window);
-        let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
-        let geometry = self.model.stylesheet.resolve_geometry(self.model.size.stylesheet_key(), Default::default());
-        let look = (self.model.popup_look_provider)(self.model.size);
+        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let geometry = self.model.stylesheet.resolve_geometry(Default::default());
+        let look = (self.model.popup_look_provider)();
         let selected_label = self
             .committed_selection
             .and_then(|index| self.model.items.get(index))
             .map(|item| item.label.to_string());
 
         let minimum_trigger_width = {
-            let textfield_look =
-                self.model.textfield_template.resolve_look(TextFieldState::default(), true, self.model.size);
+            let textfield_look = self.model.textfield_template.resolve_look(TextFieldState::default(), true);
             let mut text_font = font(".SystemUIFont");
             text_font.weight = textfield_look.typography.weight;
             let placeholder_run = TextRun {
@@ -884,12 +876,7 @@ impl Render for SearchSelectorControl {
                 selected: self.committed_selection.is_some(),
                 invalid: self.model.invalid,
             },
-            self.model.size,
-            &crate::theme::StandardBoxScale::compute(
-                self.model.size,
-                &self.model.selector_theme.metrics(),
-                window.scale_factor(),
-            ),
+            &crate::theme::StandardBoxScale::compute(&self.model.selector_theme.metrics(), window.scale_factor()),
             self.model.without_elevation,
         );
         let render_model = SearchSelectorRenderModel {
@@ -908,7 +895,6 @@ impl Render for SearchSelectorControl {
             trigger_look,
             trigger_typography_override: None,
             enabled: self.model.enabled,
-            size: self.model.size,
             full_width: self.model.full_width,
             minimum_trigger_width,
             status_label,
@@ -1005,10 +991,8 @@ mod geometry_tests {
 
     #[test]
     fn viewport_row_budget_uses_resolved_placement_and_handles_zero_row_height() {
-        let mut look = crate::controls::selector_list::default_selector_items_panel_look(
-            &crate::theme::ThemeTokens::default(),
-            crate::theme::ControlSize::Md,
-        );
+        let mut look =
+            crate::controls::selector_list::default_selector_items_panel_look(&crate::theme::ThemeTokens::default());
         look.item_height = 10.0;
         look.padding = 2.0;
         let trigger = Some(Bounds::new(gpui::point(px(0.0), px(10.0)), gpui::size(px(80.0), px(20.0))));

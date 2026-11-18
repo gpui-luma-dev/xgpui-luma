@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gpui::{App, Div, Stateful, Window, div, prelude::*, px};
 use xgpui_luma::controls::accordion::*;
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 use xgpui_luma_look_radix::{Look, ScaleFamily};
 use lucide_svg_static::Icon;
 
@@ -13,8 +13,8 @@ struct NavigationTheme {
 }
 
 impl AccordionTheme for NavigationTheme {
-    fn resolve_trigger(&self, state: InteractionState, size: ControlSize) -> AccordionPalette {
-        let mut palette = self.radix.resolve_trigger(state, size);
+    fn resolve_trigger(&self, state: InteractionState) -> AccordionPalette {
+        let mut palette = self.radix.resolve_trigger(state);
         palette.foreground = self.look.resolve_step(ScaleFamily::Gray, 11).hsla();
         palette.icon_color = palette.foreground;
         palette
@@ -28,8 +28,8 @@ impl AccordionTheme for NavigationTheme {
         self.radix.metrics()
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> AccordionScale {
-        let mut scale = self.radix.resolve_scale(size, scale_factor);
+    fn resolve_scale(&self, scale_factor: f32) -> AccordionScale {
+        let mut scale = self.radix.resolve_scale(scale_factor);
         // The custom trigger owns the disclosure glyph directly before its label.
         scale.chevron_size = 0.0;
         scale
@@ -107,7 +107,6 @@ impl AccordionTemplate for NavigationTemplate {
                 selection_mode: model.selection_mode,
                 collapsible: model.collapsible,
                 enabled: model.enabled,
-                size: model.size,
                 item_dividers: model.item_dividers,
                 content_padding_y: model.content_padding_y,
                 content_padding_top: model.content_padding_top,

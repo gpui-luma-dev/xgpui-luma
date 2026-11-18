@@ -17,10 +17,9 @@ use std::collections::HashMap;
 
 use xgpui_luma::controls::switch::SwitchPalette;
 use xgpui_luma::controls::switch::SwitchScale;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::MetricTokens;
 use xgpui_luma::theme::ThemeMode;
 
 use super::apply_button_metrics_typography;
@@ -85,8 +84,8 @@ pub fn resolve_switch_colors_with_stylesheet(
 }
 
 /// Corner radius for switch track / thumb (same presets as button / icon button / toggle).
-pub fn resolve_switch_radius_preset(preset: ButtonRadiusPreset, metrics: &MetricTokens, track_height: f32) -> f32 {
-    resolve_button_radius_preset(preset, metrics, track_height)
+pub fn resolve_switch_radius_preset(preset: ButtonRadiusPreset, radii: &crate::ShadcnRadii, track_height: f32) -> f32 {
+    resolve_button_radius_preset(preset, radii, track_height)
 }
 
 /// Switch geometry from the embedded common contract, over the vanilla SDK baseline.
@@ -94,7 +93,7 @@ pub fn switch_scale(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
-    size: ControlSize,
+    size: ShadcnSize,
     scale_factor: f32,
 ) -> SwitchScale {
     switch_scale_with_radius(mode, theme_mode, style, size, None, scale_factor)
@@ -104,7 +103,7 @@ pub fn switch_scale_with_radius(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
-    size: ControlSize,
+    size: ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     scale_factor: f32,
 ) -> SwitchScale {
@@ -114,19 +113,15 @@ pub fn switch_scale_with_radius(
 pub(crate) fn switch_geometry_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     scale_factor: f32,
 ) -> xgpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
-    let fallback = SwitchScale::compute_with_stylesheet(size, &mode.metrics, scale_factor, &stylesheet.common);
-    stylesheet.common.switch.inspect_geometry(
-        match size {
-            ControlSize::Sm => "sm",
-            ControlSize::Md => "md",
-            ControlSize::Lg => "lg",
-        },
-        fallback,
+    let fallback = SwitchScale::compute_with_stylesheet(
+        &mode.metrics_for(size),
         scale_factor,
-    )
+        &mode.sized_common(stylesheet, size),
+    );
+    stylesheet.common.switch.inspect_geometry_for(size.key(), fallback, scale_factor)
 }
 
 pub(crate) fn switch_scale_with_stylesheet(
@@ -134,25 +129,24 @@ pub(crate) fn switch_scale_with_stylesheet(
     stylesheet: &StylesheetConfig,
     theme_mode: ThemeMode,
     _style: ShadcnButtonStyle,
-    size: ControlSize,
+    size: ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     scale_factor: f32,
 ) -> SwitchScale {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let metrics = ctx.metrics();
-    let fallback = SwitchScale::compute(size, metrics, scale_factor);
+    let fallback = SwitchScale::compute(&mode.metrics_for(size), scale_factor);
     let geometry = switch_geometry_with_stylesheet(mode, stylesheet, size, scale_factor);
     let scale = geometry.apply_to(fallback);
-    apply_switch_radius(scale, metrics, radius)
+    apply_switch_radius(scale, ctx.radii(), radius)
 }
 
 fn apply_switch_radius(
     mut scale: SwitchScale,
-    metrics: &MetricTokens,
+    radii: &crate::ShadcnRadii,
     radius: Option<ButtonRadiusPreset>,
 ) -> SwitchScale {
     if let Some(preset) = radius {
-        scale.track_radius = resolve_switch_radius_preset(preset, metrics, scale.track_height);
+        scale.track_radius = resolve_switch_radius_preset(preset, radii, scale.track_height);
     }
     scale
 }
@@ -223,7 +217,7 @@ pub fn switch_look(
     style: ShadcnButtonStyle,
     on: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> SwitchPalette {
     let content_only = style == ShadcnButtonStyle::ContentOnly;
     let ctx = LookContext::new(mode, theme_mode, state);
@@ -272,7 +266,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::controls::button::ShadcnButtonStyle;
     use crate::catalog::CssTokenMap;
@@ -310,7 +304,7 @@ mod tests {
             &stylesheet,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             None,
             1.0,
         );
@@ -320,11 +314,14 @@ mod tests {
             &crate::stylesheet::StylesheetConfig::default(),
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             None,
             1.0,
         );
-        assert_eq!(missing, xgpui_luma::controls::switch::SwitchScale::compute(ControlSize::Md, &mode.metrics, 1.0));
+        assert_eq!(
+            missing,
+            xgpui_luma::controls::switch::SwitchScale::compute(&mode.metrics_for(crate::ShadcnSize::Md), 1.0)
+        );
     }
 
     #[test]
@@ -336,7 +333,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert!(!look.thumb_shadow.is_empty());
@@ -351,7 +348,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { disabled: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert!(look.thumb_shadow.is_empty());
@@ -367,7 +364,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         let input = catalog.color("input").expect("input");
@@ -389,7 +386,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             true,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         let primary = catalog.color("primary").expect("primary");
@@ -410,7 +407,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         let catalog = &theme.mode_tokens().catalog;
@@ -437,7 +434,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         let catalog = &theme.mode_tokens().catalog;
@@ -457,7 +454,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let hovered = switch_look(
             &mode,
@@ -465,7 +462,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { hovered: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let pressed = switch_look(
             &mode,
@@ -473,7 +470,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { hovered: true, pressed: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(default.track_background, hovered.track_background);
@@ -491,7 +488,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let secondary = switch_look(
             &mode,
@@ -499,7 +496,7 @@ mod tests {
             ShadcnButtonStyle::Secondary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(primary.track_background, secondary.track_background);
@@ -508,11 +505,11 @@ mod tests {
 
     #[test]
     fn switch_variants_share_geometry() {
-        use xgpui_luma::theme::ControlSize;
+        use crate::size::ShadcnSize;
         use super::switch_scale;
 
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
             let primary = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, size, 1.0);
             let secondary = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::Secondary, size, 1.0);
             let content_only = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::ContentOnly, size, 1.0);
@@ -536,7 +533,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             true,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let secondary = switch_look(
             &mode,
@@ -544,7 +541,7 @@ mod tests {
             ShadcnButtonStyle::Secondary,
             true,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(primary.track_background, catalog.color("primary").expect("primary"));
@@ -554,12 +551,12 @@ mod tests {
 
     #[test]
     fn switch_radius_presets_match_button_scale() {
-        use xgpui_luma::theme::ControlSize;
+        use crate::size::ShadcnSize;
         use super::{resolve_switch_radius_preset, switch_scale};
 
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let metrics = mode.metrics;
-        let scale = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, ControlSize::Md, 1.0);
+        let metrics = mode.radii;
+        let scale = switch_scale(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, ShadcnSize::Md, 1.0);
 
         assert_eq!(
             resolve_switch_radius_preset(
@@ -567,7 +564,7 @@ mod tests {
                 &metrics,
                 scale.track_height
             ),
-            metrics.radius.none
+            metrics.none
         );
         assert_eq!(
             resolve_switch_radius_preset(
@@ -595,7 +592,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             true,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let content_only = switch_look(
             &mode,
@@ -603,7 +600,7 @@ mod tests {
             ShadcnButtonStyle::ContentOnly,
             true,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(content_only.track_background, primary.track_background);
@@ -630,7 +627,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let unfocused = switch_look(
             &mode,
@@ -638,7 +635,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState::default(),
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(focused.track_border, fallback);
@@ -671,14 +668,14 @@ impl SwitchStylesheet {
             .find(|rule| matches_optional_bool(rule.disabled, disabled) && matches_optional_bool(rule.on, on))
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&SwitchMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&SwitchMetricsRule> {
         self.metrics.get(control_size_key(size))
     }
 
     pub fn metrics_for_style(
         &self,
         _style: crate::controls::ShadcnButtonStyle,
-        size: ControlSize,
+        size: ShadcnSize,
     ) -> Option<&SwitchMetricsRule> {
         self.metrics_for_size(size)
     }
@@ -777,7 +774,7 @@ pub fn resolve_switch_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> SwitchMetricTable {
     resolve_switch_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, size)
 }
@@ -787,7 +784,7 @@ pub fn resolve_switch_metrics_with_stylesheet(
     stylesheet: &crate::stylesheet::StylesheetConfig,
     theme_mode: xgpui_luma::theme::ThemeMode,
     style: crate::ShadcnButtonStyle,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> SwitchMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{

@@ -18,7 +18,7 @@ impl DockSplitterTheme for ShadcnDockSplitterTheme {
         let border = tokens.palette.border_default;
         let disabled = tokens.palette.disabled_foreground;
 
-        let geometry = tokens.stylesheet().common.dock_splitter.resolve_geometry("md", Default::default());
+        let geometry = tokens.stylesheet().common.dock_splitter.resolve_geometry_for("md", Default::default());
         xgpui_luma::controls::dock_splitter::DockSplitterLook {
             line_color: if enabled { border } else { disabled },
             hover_color: if enabled { border } else { disabled },

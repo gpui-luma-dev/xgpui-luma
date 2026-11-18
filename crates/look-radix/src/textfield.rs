@@ -9,7 +9,7 @@ use xgpui_luma::controls::textfield::{
     TextFieldLook, TextFieldPalette, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
     compose_textfield_look,
 };
-use xgpui_luma::theme::{ControlSize, LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
 
 use crate::look::Look;
 use crate::scale::ScaleFamily;
@@ -72,11 +72,11 @@ impl TextFieldSize {
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 }
@@ -92,23 +92,18 @@ impl TextFieldTheme for TextFieldThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
-    fn resolve_look(
-        &self,
-        state: TextFieldState,
-        enabled: bool,
-        size: ControlSize,
-        scale: &StandardBoxScale,
-    ) -> TextFieldLook {
+    fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
+        let size = self.look.size();
         let mut palette = self.resolve(state, enabled);
         palette.typography = typography_for_size(size);
-        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width.default);
+        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width);
         let stylesheet = self.look.stylesheet_snapshot();
         look.helper_geometry = stylesheet.shared_geometry();
-        let geometry = stylesheet.textfield.resolve_geometry(
-            crate::look::sdk_size_key(size),
+        let geometry = stylesheet.textfield.resolve_geometry_for(
+            size.key(),
             xgpui_luma::theme::stylesheet::TextFieldGeometry {
                 min_height: look.min_height,
                 padding_x: look.padding_x,
@@ -187,7 +182,7 @@ pub(crate) fn resolve_text_chrome_palette(
             selection_foreground,
             caret: placeholder,
             shadow: None,
-            typography: typography_for_size(ControlSize::Md),
+            typography: typography_for_size(crate::RadixSize::Two),
             font_family: SharedString::from("System UI"),
         };
     }
@@ -231,7 +226,7 @@ pub(crate) fn resolve_text_chrome_palette(
         selection_foreground,
         caret: foreground,
         shadow,
-        typography: typography_for_size(ControlSize::Md),
+        typography: typography_for_size(crate::RadixSize::Two),
         font_family: SharedString::from("System UI"),
     }
 }
@@ -260,10 +255,10 @@ fn classic_field_shadow(edge: gpui::Hsla, fade: gpui::Hsla) -> Vec<BoxShadow> {
     ]
 }
 
-fn typography_for_size(size: ControlSize) -> LumaTextStyle {
+fn typography_for_size(size: crate::RadixSize) -> LumaTextStyle {
     let geometry = crate::look::embedded_common_stylesheet()
         .textfield
-        .resolve_geometry(crate::look::sdk_size_key(size), Default::default());
+        .resolve_geometry_for(size.key(), Default::default());
     LumaTextStyle { size: geometry.font_size, line_height: geometry.line_height, weight: FontWeight::NORMAL }
 }
 
@@ -277,16 +272,16 @@ mod tests {
         let fork = look.fork();
         let theme = textfield_theme(&look);
         let fork_theme = textfield_theme(&fork);
-        let scale = StandardBoxScale::compute(ControlSize::Md, &look.metrics(), 1.0);
-        let original = fork_theme.resolve_look(TextFieldState::default(), true, ControlSize::Md, &scale);
+        let scale = StandardBoxScale::compute(&look.metrics_for(crate::RadixSize::Two), 1.0);
+        let original = fork_theme.resolve_look(TextFieldState::default(), true, &scale);
         let mut sheet = look.common_stylesheet();
         sheet.textfield.geometry.min_height = Some(73.0);
         look.set_common_stylesheet(sheet);
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
-            assert_eq!(theme.resolve_look(TextFieldState::default(), true, ControlSize::Md, &scale).min_height, 73.0);
+            assert_eq!(theme.resolve_look(TextFieldState::default(), true, &scale).min_height, 73.0);
             assert_eq!(
-                fork_theme.resolve_look(TextFieldState::default(), true, ControlSize::Md, &scale).min_height,
+                fork_theme.resolve_look(TextFieldState::default(), true, &scale).min_height,
                 original.min_height
             );
         }

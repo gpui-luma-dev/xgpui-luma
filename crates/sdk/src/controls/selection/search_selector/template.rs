@@ -13,7 +13,7 @@ use crate::motion::overlay_presence::OverlayPresence;
 use super::behavior::SelectionItem;
 use super::item_template::{SearchSelectorItemRenderModel, SearchSelectorItemTemplate};
 use crate::controls::textfield::TextFieldState;
-use crate::theme::{ControlSize, LumaTextStyle};
+use crate::theme::LumaTextStyle;
 
 pub type SearchSelectorKeyDownHandler = Box<dyn Fn(&KeyDownEvent, &mut Window, &mut App) + 'static>;
 pub type SearchSelectorScrollWheelHandler = Box<dyn Fn(&ScrollEvent, &mut Window, &mut App) + 'static>;
@@ -71,7 +71,6 @@ pub struct SearchSelectorRenderModel {
     pub trigger_look: SelectorLook,
     pub trigger_typography_override: Option<LumaTextStyle>,
     pub enabled: bool,
-    pub size: ControlSize,
     pub full_width: bool,
     pub minimum_trigger_width: Pixels,
     pub status_label: SharedString,

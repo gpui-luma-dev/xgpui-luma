@@ -25,9 +25,9 @@ use crate::controls::scrollbar::{ScrollbarTemplate, default_scrollbar_template};
 use crate::controls::selector::{SelectorTheme, SelectorTriggerStyle, default_selector_theme};
 use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
 use crate::controls::textfield::{TextFieldTemplate, default_textfield_template};
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
-pub type SearchSelectorPopupLookProvider = Arc<dyn Fn(ControlSize) -> SelectorItemsPanelLook + Send + Sync + 'static>;
+pub type SearchSelectorPopupLookProvider = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct SearchSelectorModel {
@@ -41,7 +41,6 @@ pub struct SearchSelectorModel {
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
-    pub(crate) size: ControlSize,
     pub(crate) full_width: bool,
     pub(crate) clean_on_escape: bool,
     pub(crate) scrolling: bool,
@@ -192,7 +191,6 @@ impl SearchSelectorBuilder {
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
-                size: ControlSize::Md,
                 full_width: true,
                 clean_on_escape: true,
                 scrolling: true,
@@ -217,7 +215,7 @@ impl SearchSelectorBuilder {
                 panel_template: default_search_selector_panel_template(),
                 item_template: None,
                 autocomplete_theme: default_autocomplete_theme(),
-                popup_look_provider: Arc::new(|size| default_selector_items_panel_look(&ThemeTokens::default(), size)),
+                popup_look_provider: Arc::new(|| default_selector_items_panel_look(&ThemeTokens::default())),
             },
         }
     }
@@ -277,11 +275,6 @@ impl SearchSelectorBuilder {
 
     pub fn invalid(mut self, invalid: bool) -> Self {
         self.model.invalid = invalid;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 
@@ -518,7 +511,7 @@ mod stylesheet_tests {
     fn search_affordance_snapshot_inherits_and_preserves_zero() {
         let sheet = crate::theme::stylesheet::CommonStylesheet::parse("[common.search_selector.geometry]\nsearch_padding=0\nsearch_separator_height=0\nsearch_icon_size=21\nsearch_chrome_height=0").unwrap();
         let builder = SearchSelectorBuilder::new("geometry", []).stylesheet(&sheet);
-        let geometry = builder.model.stylesheet.resolve_geometry("md", Default::default());
+        let geometry = builder.model.stylesheet.resolve_geometry(Default::default());
         assert_eq!(
             (
                 geometry.search_padding,

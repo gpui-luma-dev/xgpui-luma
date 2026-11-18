@@ -19,7 +19,7 @@ use serde::Deserialize;
 
 use xgpui_luma::controls::sidebar::SidebarItemLook;
 use xgpui_luma::controls::sidebar::SidebarSectionLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
@@ -200,7 +200,7 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),
-        radius: mode.metrics.radius.lg,
+        radius: mode.radii.large,
     }
 }
 
@@ -214,13 +214,13 @@ pub fn sidebar_section_look(theme: &ShadcnLook) -> SidebarSectionLook {
     SidebarSectionLook {
         label_color: colors.label_color.hsla(),
         typography: theme.typography_scale(ShadcnTextSize::Xs),
-        height: crate::tables::metrics::resolve_sidebar_metrics(tokens.as_ref(), theme.mode(), ControlSize::Md)
+        height: crate::tables::metrics::resolve_sidebar_metrics(tokens.as_ref(), theme.mode(), ShadcnSize::Md)
             .section_height
             .value_px,
     }
 }
 
-fn base_item_look(_theme: &ShadcnLook, ctx: &LookContext, size: ControlSize) -> SidebarItemLook {
+fn base_item_look(_theme: &ShadcnLook, ctx: &LookContext, size: ShadcnSize) -> SidebarItemLook {
     let state = ctx.state;
     let typography = ctx.typography();
     let resolved_metrics = crate::tables::metrics::resolve_sidebar_metrics(ctx.tokens, ctx.theme_mode, size);
@@ -243,7 +243,7 @@ fn base_item_look(_theme: &ShadcnLook, ctx: &LookContext, size: ControlSize) -> 
     }
 }
 
-pub fn sidebar_branch_look(theme: &ShadcnLook, state: InteractionState, size: ControlSize) -> SidebarItemLook {
+pub fn sidebar_branch_look(theme: &ShadcnLook, state: InteractionState, size: ShadcnSize) -> SidebarItemLook {
     let tokens = theme.mode_tokens();
     let ctx = LookContext::new(tokens.as_ref(), theme.mode(), state);
     let mut look = base_item_look(theme, &ctx, size);
@@ -263,7 +263,7 @@ pub fn sidebar_item_look(
     theme: &ShadcnLook,
     selected: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> SidebarItemLook {
     let tokens = theme.mode_tokens();
     let ctx = LookContext::new(tokens.as_ref(), theme.mode(), state);
@@ -285,7 +285,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::look::ShadcnLook;
@@ -328,7 +328,7 @@ mod tests {
         ).expect("look");
         let container = sidebar_container_look(&mode);
         let section = sidebar_section_look(&look);
-        let selected = sidebar_item_look(&look, true, InteractionState::default(), ControlSize::Md);
+        let selected = sidebar_item_look(&look, true, InteractionState::default(), crate::ShadcnSize::Md);
 
         assert_eq!(container.background, catalog.color("sidebar").expect("sidebar"));
         assert_eq!(section.label_color, catalog.color("muted-foreground").expect("muted-foreground"));
@@ -348,7 +348,7 @@ mod tests {
             ThemeMode::Light,
             InteractionState { focused: true, ..InteractionState::default() },
         );
-        let look = super::base_item_look(&ShadcnLook::built_in(), &ctx, ControlSize::Md);
+        let look = super::base_item_look(&ShadcnLook::built_in(), &ctx, crate::ShadcnSize::Md);
 
         assert_eq!(look.focus_border, Some(crate::provenance::ResolvedColor::fallback_foreground().hsla()));
     }
@@ -659,24 +659,23 @@ pub struct SidebarMetricTable {
 pub fn resolve_sidebar_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> SidebarMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let metrics = ctx.metrics();
     let catalog = ctx.catalog();
-    let size_metrics = metrics.for_size(size);
+    let size_metrics = ctx.controls().for_size(size);
 
     let mut table = SidebarMetricTable {
         section_height: derived_metric("navigation sidebar section height", 20.0),
         item_height: derived_metric("navigation sidebar item height", 30.0),
         item_padding_x: derived_metric("navigation sidebar item padding x", 8.0),
         item_gap: spacing_control_metric(catalog, size, crate::catalog::SpacingField::Gap, size_metrics.gap),
-        item_radius: radius_metric(catalog, size, metrics.radius(size)),
+        item_radius: radius_metric(catalog, size, ctx.controls().radius(size)),
         item_icon_size: derived_metric("navigation sidebar icon size", 16.0),
     };
-    let geometry = mode.stylesheet().common.sidebar.inspect_geometry(
+    let geometry = mode.stylesheet().common.sidebar.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::SidebarGeometry {
             section_height: table.section_height.value_px,

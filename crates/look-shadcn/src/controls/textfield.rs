@@ -17,7 +17,7 @@ use xgpui_luma::controls::textfield::TextFieldLook;
 use xgpui_luma::controls::textfield::TextFieldPalette;
 use xgpui_luma::controls::textfield::TextFieldState;
 use xgpui_luma::controls::textfield::compose_textfield_look;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::theme::StandardBoxScale;
@@ -155,7 +155,7 @@ pub fn textfield_palette(
     state: TextFieldState,
     enabled: bool,
 ) -> TextFieldPalette {
-    textfield_palette_for_size(mode, theme_mode, style, state, enabled, ControlSize::Md)
+    textfield_palette_for_size(mode, theme_mode, style, state, enabled, ShadcnSize::Md)
 }
 
 pub fn textfield_palette_for_size(
@@ -164,10 +164,10 @@ pub fn textfield_palette_for_size(
     style: ShadcnTextFieldStyle,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TextFieldPalette {
     let mut palette = textfield_palette_base_for_size(mode, theme_mode, style, state, enabled, size);
-    let scale = StandardBoxScale::compute(size, &mode.metrics, 1.0);
+    let scale = StandardBoxScale::compute(&mode.metrics_for(size), 1.0);
     let geometry = textfield_geometry(mode, size, &scale, &palette.typography);
     crate::tables::typography::apply_resolved_geometry_typography(
         &mut palette.typography,
@@ -179,11 +179,11 @@ pub fn textfield_palette_for_size(
 
 pub(crate) fn textfield_geometry(
     mode: &ShadcnModeTokens,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
     typography: &LumaTextStyle,
 ) -> xgpui_luma::theme::stylesheet::ResolvedTextFieldGeometry {
-    mode.stylesheet().common.textfield.inspect_geometry(
+    mode.stylesheet().common.textfield.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::TextFieldGeometry {
             min_height: scale.height,
@@ -204,7 +204,7 @@ pub(crate) fn textfield_palette_base_for_size(
     style: ShadcnTextFieldStyle,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TextFieldPalette {
     let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
     let stylesheet = mode.stylesheet();
@@ -241,7 +241,7 @@ pub(crate) fn textfield_palette_base_for_size(
 pub fn apply_textfield_control_size_typography(
     typography: &mut LumaTextStyle,
     mode: &ShadcnModeTokens,
-    size: ControlSize,
+    size: ShadcnSize,
 ) {
     super::apply_button_metrics_typography(typography, mode, size);
 }
@@ -252,7 +252,7 @@ pub fn textfield_look(
     style: ShadcnTextFieldStyle,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
 ) -> TextFieldLook {
     let palette = textfield_palette_for_size(mode, theme_mode, style, state, enabled, size);
@@ -263,7 +263,7 @@ pub fn textfield_look(
     scale.padding_y = geometry.padding_y.value_px;
     scale.gap = geometry.gap.value_px;
     scale.icon_size = geometry.icon_size.value_px;
-    let mut look = compose_textfield_look(&palette, &scale, mode.metrics.border_width.default);
+    let mut look = compose_textfield_look(&palette, &scale, mode.metrics.border_width);
     look.helper_geometry = mode.stylesheet().common.shared_geometry();
     look.caret_width = geometry.caret_width.value_px;
     look.caret_height_extra = geometry.caret_height_extra.value_px;
@@ -277,7 +277,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use xgpui_luma::controls::textfield::TextFieldState;
-    use xgpui_luma::theme::{ControlSize, ThemeMode};
+    use xgpui_luma::theme::{ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::color::with_alpha;
@@ -429,7 +429,7 @@ mod tests {
             ShadcnTextFieldStyle::Outline,
             TextFieldState::default(),
             true,
-            ControlSize::Sm,
+            crate::ShadcnSize::Sm,
         );
         let md = textfield_palette_for_size(
             &mode,
@@ -437,7 +437,7 @@ mod tests {
             ShadcnTextFieldStyle::Outline,
             TextFieldState::default(),
             true,
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let lg = textfield_palette_for_size(
             &mode,
@@ -445,7 +445,7 @@ mod tests {
             ShadcnTextFieldStyle::Outline,
             TextFieldState::default(),
             true,
-            ControlSize::Lg,
+            crate::ShadcnSize::Lg,
         );
 
         assert!((sm.typography.size - 12.0).abs() < f32::EPSILON);
@@ -571,7 +571,7 @@ pub struct TextFieldMetricTable {
 pub fn resolve_textfield_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TextFieldMetricTable {
     use xgpui_luma::theme::StandardBoxScale;
 
@@ -584,7 +584,7 @@ pub fn resolve_textfield_metrics(
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
     let metrics = ctx.metrics();
-    let scale = StandardBoxScale::compute(size, metrics, 1.0);
+    let scale = StandardBoxScale::compute(&mode.metrics_for(size), 1.0);
 
     let geometry = crate::controls::textfield::textfield_geometry(mode, size, &scale, &mode.typography.text.body);
     let mut table = TextFieldMetricTable {

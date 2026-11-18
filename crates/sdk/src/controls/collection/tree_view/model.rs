@@ -17,7 +17,6 @@ use super::{TreeViewControl, TreeViewTemplate, default_tree_view_template};
 use super::template::modified_tree_view_template;
 use super::state::TreeIndex;
 use super::TreeViewError;
-use crate::theme::ControlSize;
 use crate::infra::icon::DisclosureIcons;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -120,7 +119,6 @@ pub struct FlatTreeNode<'a, T> {
     /// Layout height factor (`0..1`) for clipped expand/collapse of descendant rows.
     pub row_height_factor: f32,
     pub enabled: bool,
-    pub size: ControlSize,
     pub state: crate::infra::state::CompositeItemState,
     pub data: &'a T,
 }
@@ -138,7 +136,6 @@ where
     pub(super) sort: Option<super::projection::Sort<T>>,
     pub(crate) selection_policy: TreeViewSelectionPolicy,
     pub(crate) enabled: bool,
-    pub(crate) size: ControlSize,
     pub(crate) motion_enabled: bool,
     pub(super) drag_drop: Option<super::TreeViewDragDrop<T>>,
     pub(super) branch_content: Option<TreeViewContent<T>>,
@@ -158,7 +155,6 @@ pub struct TreeViewRenderModel<'a> {
     pub id: &'a SharedString,
     pub selection_mode: TreeViewSelectionMode,
     pub enabled: bool,
-    pub size: ControlSize,
     pub focus: crate::infra::state::ControlFocusState,
 }
 
@@ -512,7 +508,6 @@ where
                 sort: None,
                 selection_policy: TreeViewSelectionPolicy::new(TreeViewSelectionMode::Single),
                 enabled: true,
-                size: ControlSize::Md,
                 motion_enabled: true,
                 drag_drop: None,
                 branch_content: None,
@@ -601,11 +596,6 @@ where
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

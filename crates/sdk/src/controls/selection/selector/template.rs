@@ -196,14 +196,9 @@ where
 {
     fn resolve_look(&self, model: &SelectorRenderModel<'_, T>, window: &Window, _cx: &mut App) -> SelectorLook {
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
-        self.theme.resolve_visual_look(
-            model.trigger_style,
-            model.visual_state,
-            model.size,
-            &scale,
-            model.without_elevation,
-        )
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
+        self.theme
+            .resolve_visual_look(model.trigger_style, model.visual_state, &scale, model.without_elevation)
     }
 
     fn render(
@@ -228,14 +223,10 @@ where
             on_item_click,
         } = handlers;
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
-        let mut look = self.theme.resolve_visual_look(
-            model.trigger_style,
-            model.visual_state,
-            model.size,
-            &scale,
-            model.without_elevation,
-        );
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
+        let mut look =
+            self.theme
+                .resolve_visual_look(model.trigger_style, model.visual_state, &scale, model.without_elevation);
         let focused = model.visual_state.interaction.focused
             && !model.visual_state.interaction.disabled
             && !model.visual_state.invalid;
@@ -283,7 +274,7 @@ where
                 crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
             ));
 
-        trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
+        trigger = trigger.border(px(self.theme.metrics().border_width)).border_color(border);
 
         if !model.state.disabled
             && !model.without_elevation
@@ -536,15 +527,14 @@ mod tests {
 
     use super::*;
     use crate::controls::selector::SelectorTriggerStyle;
-    use crate::theme::{ControlSize, InteractionState, StandardBoxScale};
+    use crate::theme::{InteractionState, StandardBoxScale};
 
     fn look() -> SelectorLook {
         let theme = default_selector_theme();
         theme.resolve_look(
             SelectorTriggerStyle::Outline,
             InteractionState::default(),
-            ControlSize::Md,
-            &StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0),
+            &StandardBoxScale::compute(&theme.metrics(), 1.0),
             false,
         )
     }

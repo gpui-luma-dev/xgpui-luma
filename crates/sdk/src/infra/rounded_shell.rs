@@ -31,7 +31,7 @@ pub fn rounded_bordered_frame(id: impl Into<gpui::ElementId>, radius: f32, borde
         .flex()
         .flex_col()
         .rounded(px(radius))
-        .border(px(crate::theme::MetricTokens::default().border_width.default))
+        .border(px(crate::theme::MetricTokens::default().border_width))
         .border_color(border)
         .overflow_hidden()
 }

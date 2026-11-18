@@ -19,7 +19,6 @@ use crate::controls::floating_menu::FloatingMenuHighlight;
 use crate::infra::icon::DisclosureIcons;
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
-use crate::theme::ControlSize;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum PopupMenuPlacement {
@@ -85,8 +84,6 @@ pub struct PopupMenuModel {
     pub(crate) tab_stop: bool,
     pub(crate) placement: PopupMenuPlacement,
     pub(crate) trigger_style: PopupMenuTriggerStyle,
-    pub(crate) trigger_size: ControlSize,
-    pub(crate) menu_size: ControlSize,
     /// Square icon-button chrome (no trailing end icon). Set by the icon face preset.
     pub(crate) icon_only: bool,
     pub(crate) icon: Option<LucideIcon>,
@@ -112,8 +109,6 @@ pub struct PopupMenuRenderModel<'a> {
     pub trigger_bounds: Option<Bounds<Pixels>>,
     pub placement: PopupMenuPlacement,
     pub trigger_style: PopupMenuTriggerStyle,
-    pub trigger_size: ControlSize,
-    pub menu_size: ControlSize,
     pub icon_only: bool,
     pub icon: Option<LucideIcon>,
     pub end_icon: Option<LucideIcon>,
@@ -260,8 +255,6 @@ impl PopupMenuBuilder {
                 tab_stop: true,
                 placement: PopupMenuPlacement::Smart,
                 trigger_style: PopupMenuTriggerStyle::default(),
-                trigger_size: ControlSize::Md,
-                menu_size: ControlSize::Md,
                 icon_only: false,
                 icon: None,
                 end_icon: None,
@@ -365,16 +358,6 @@ impl PopupMenuBuilder {
     /// Uses the trigger as the secondary face of a single-focus split button.
     pub fn split(mut self) -> Self {
         self.model.split = true;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.trigger_size = size;
-        self
-    }
-
-    pub fn menu_size(mut self, size: ControlSize) -> Self {
-        self.model.menu_size = size;
         self
     }
 

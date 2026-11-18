@@ -12,7 +12,7 @@ use xgpui_luma_color::color_slider::{
     ColorSpecification, refresh_color_slider, update_domain_delegate,
 };
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
@@ -189,19 +189,19 @@ impl ColorSliderControlExposition {
         let hsl = Hsl { h: 210.0, s: 0.72, l: 0.52, a: 0.85 };
 
         let hue_slider = ColorSliderBuilder::hue("controls-doc-color-slider-hue", hsl.h)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .spawn(cx);
         let saturation_builder =
             ColorSliderBuilder::channel("controls-doc-color-slider-saturation", hsl.s, hsl, Hsl::SATURATION)
                 .expect("HSL saturation delegate should be valid")
-                .size(ControlSize::Sm)
+                .size(ColorControlSize::Small)
                 .thumb_medium()
                 .edge_to_edge();
         let saturation_domain = saturation_builder.domain_renderer();
         let saturation_slider = saturation_builder.spawn(cx);
         let alpha_builder = ColorSliderBuilder::alpha("controls-doc-color-slider-alpha", hsl.a, hsl)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let alpha_domain = alpha_builder.domain_renderer();

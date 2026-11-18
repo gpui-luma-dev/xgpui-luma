@@ -171,7 +171,7 @@ impl Render for ColorRingExpositionLeftPane {
             div()
                 .size(px(SWATCH_SIZE))
                 .flex_shrink_0()
-                .rounded(px(look.metrics().radius.lg))
+                .rounded(px(look.radii().large))
                 .bg(self.ring_color)
                 .border_1()
                 .border_color(chrome.border),

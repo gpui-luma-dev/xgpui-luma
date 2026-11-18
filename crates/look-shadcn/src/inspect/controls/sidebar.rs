@@ -1,7 +1,8 @@
 //! Inspect metadata for sidebar flush theme tokens.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct SidebarContainerInspectPalette {
     pub background: ResolvedColor,
@@ -100,7 +101,7 @@ pub fn inspect_sidebar_item_color_palette(
 pub fn inspect_sidebar_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> SidebarInspectMetrics {
     let table = crate::tables::metrics::resolve_sidebar_metrics(mode, theme_mode, size);
     table.into()

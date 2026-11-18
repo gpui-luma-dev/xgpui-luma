@@ -1,4 +1,3 @@
-use super::ControlSize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -7,59 +6,20 @@ pub struct MetricTokens {
     /// Default whole-control disabled opacity; family recipes may override it.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_unit")]
     pub disabled_opacity: f32,
-    pub spacing: SpacingTokens,
-    pub radius: RadiusTokens,
-    pub border_width: BorderWidthTokens,
+    /// Standard border width in pixels.
+    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
+    pub border_width: f32,
     pub focus: FocusMetricTokens,
-    pub control: ControlMetricScale,
+    /// The SDK control scale; the only size the SDK defines.
+    pub control: ControlMetricTokens,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct SpacingTokens {
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s0: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s1: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s2: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s3: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s4: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s5: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub s6: f32,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct RadiusTokens {
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub none: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub sm: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub md: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub lg: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub xl: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub pill: f32,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct BorderWidthTokens {
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub hairline: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub default: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub strong: f32,
-}
+/// Corner radius, in pixels, large enough to fully round any control.
+///
+/// The SDK has no radius vocabulary; looks own named radii (none, small, medium,
+/// large, full) and hand SDK controls plain pixels. Families whose SDK default is
+/// fully rounded use this value.
+pub const FULL_RADIUS_PX: f32 = 999.0;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -73,14 +33,6 @@ pub struct FocusMetricTokens {
     /// Additional outward displacement, added to `gap` and clamped at zero.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
     pub offset: f32,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ControlMetricScale {
-    pub sm: ControlMetricTokens,
-    pub md: ControlMetricTokens,
-    pub lg: ControlMetricTokens,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -119,47 +71,33 @@ impl MetricTokens {
     pub fn native_default() -> Self {
         Self {
             disabled_opacity: 0.56,
-            spacing: SpacingTokens { s0: 0.0, s1: 4.0, s2: 6.0, s3: 8.0, s4: 12.0, s5: 16.0, s6: 24.0 },
-            radius: RadiusTokens { none: 0.0, sm: 3.0, md: 6.0, lg: 8.0, xl: 12.0, pill: 999.0 },
-            border_width: BorderWidthTokens { hairline: 0.5, default: 1.0, strong: 2.0 },
+            border_width: 1.0,
             focus: FocusMetricTokens { gap: 1.0, width: 1.0, offset: 0.0 },
-            control: ControlMetricScale {
-                sm: ControlMetricTokens::new(28.0, 10.0, 5.0, 6.0, 5.0, 14.0),
-                md: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
-                lg: ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
-            },
+            control: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
         }
     }
 
-    pub fn for_size(&self, size: ControlSize) -> ControlMetricTokens {
-        match size {
-            ControlSize::Sm => self.control.sm,
-            ControlSize::Md => self.control.md,
-            ControlSize::Lg => self.control.lg,
-        }
+    pub fn radius(&self) -> f32 {
+        self.control.radius
     }
 
-    pub fn radius(&self, size: ControlSize) -> f32 {
-        self.for_size(size).radius
+    pub fn control_height(&self) -> f32 {
+        self.control.control_height
     }
 
-    pub fn control_height(&self, size: ControlSize) -> f32 {
-        self.for_size(size).control_height
+    pub fn padding_x(&self) -> f32 {
+        self.control.padding_x
     }
 
-    pub fn padding_x(&self, size: ControlSize) -> f32 {
-        self.for_size(size).padding_x
+    pub fn padding_y(&self) -> f32 {
+        self.control.padding_y
     }
 
-    pub fn padding_y(&self, size: ControlSize) -> f32 {
-        self.for_size(size).padding_y
+    pub fn gap(&self) -> f32 {
+        self.control.gap
     }
 
-    pub fn gap(&self, size: ControlSize) -> f32 {
-        self.for_size(size).gap
-    }
-
-    pub fn icon_size(&self, size: ControlSize) -> f32 {
-        self.for_size(size).icon_size
+    pub fn icon_size(&self) -> f32 {
+        self.control.icon_size
     }
 }

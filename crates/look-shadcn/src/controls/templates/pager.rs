@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
 use xgpui_luma::controls::pager::{PagerLook, PagerTemplate, PagerTheme, ThemedPagerTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::button::{ShadcnButtonStyle, button_palette};
 use crate::controls::pager::{pager_button_look, pager_look};
@@ -20,7 +20,8 @@ struct ShadcnPagerButtonTheme {
 }
 
 impl ButtonFamilyTheme for ShadcnPagerButtonTheme {
-    fn resolve(&self, role: ButtonFamilyRole, size: ControlSize, state: InteractionState) -> ButtonFamilyPalette {
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let stylesheet = self.theme.stylesheet();
         let ctx = LookContext::new(tokens.as_ref(), self.theme.mode(), state);
@@ -30,7 +31,6 @@ impl ButtonFamilyTheme for ShadcnPagerButtonTheme {
     fn resolve_look(
         &self,
         role: ButtonFamilyRole,
-        _size: ControlSize,
         state: InteractionState,
         _scale: &xgpui_luma::theme::StandardBoxScale,
         _pill_radius: f32,
@@ -39,7 +39,7 @@ impl ButtonFamilyTheme for ShadcnPagerButtonTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 

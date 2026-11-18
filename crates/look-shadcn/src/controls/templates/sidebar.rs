@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::sidebar::{SidebarPanelTemplate, SidebarTheme, ThemedSidebarPanelTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use super::floating_menu::floating_menu_theme;
 use crate::controls::sidebar::{sidebar_branch_look, sidebar_container_look, sidebar_item_look, sidebar_section_look};
@@ -20,9 +20,10 @@ impl SidebarTheme for ShadcnSidebarTheme {
     }
 
     fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
-        self.theme.mode_tokens().stylesheet().common.sidebar.resolve_geometry("", Default::default())
+        self.theme.mode_tokens().stylesheet().common.sidebar.resolve_geometry(Default::default())
     }
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
         xgpui_luma::infra::drag_drop::DragDropLook {
@@ -31,7 +32,7 @@ impl SidebarTheme for ShadcnSidebarTheme {
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
             valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
             invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.metrics.radius(size),
+            radius: tokens.control_sizes.radius(size),
             typography: tokens.typography.text.label,
             font_family: tokens.typography.font.sans.family.clone().into(),
         }
@@ -45,25 +46,18 @@ impl SidebarTheme for ShadcnSidebarTheme {
         sidebar_section_look(&self.theme)
     }
 
-    fn resolve_branch(
-        &self,
-        state: InteractionState,
-        size: ControlSize,
-    ) -> xgpui_luma::controls::sidebar::SidebarItemLook {
+    fn resolve_branch(&self, state: InteractionState) -> xgpui_luma::controls::sidebar::SidebarItemLook {
+        let size = self.theme.size();
         sidebar_branch_look(&self.theme, state, size)
     }
 
-    fn resolve_item(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        size: ControlSize,
-    ) -> xgpui_luma::controls::sidebar::SidebarItemLook {
+    fn resolve_item(&self, selected: bool, state: InteractionState) -> xgpui_luma::controls::sidebar::SidebarItemLook {
+        let size = self.theme.size();
         sidebar_item_look(&self.theme, selected, state, size)
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 

@@ -2,15 +2,15 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::sidebar::*;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
 use crate::{Look, PopupMenuVariant, ScaleFamily, SemanticRole, Tone};
 struct SidebarThemeAdapter {
     look: Look,
 }
 impl SidebarThemeAdapter {
-    fn item(&self, selected: bool, state: InteractionState, size: ControlSize) -> SidebarItemLook {
-        let mut item = DefaultSidebarTheme::new(crate::navigation::geometry_tokens(&self.look))
-            .resolve_item(selected, state, size);
+    fn item(&self, selected: bool, state: InteractionState, size: crate::RadixSize) -> SidebarItemLook {
+        let mut item = DefaultSidebarTheme::new(crate::navigation::geometry_tokens(&self.look.with_size(size)))
+            .resolve_item(selected, state);
         let accent = |step| Tone::Accent.step(&self.look, step);
         item.background = match (selected, state.layer()) {
             (_, InteractionLayer::Disabled) => None,
@@ -44,7 +44,7 @@ impl SidebarTheme for SidebarThemeAdapter {
         self.look.common_stylesheet().font_features.resolve("sidebar_section")
     }
     fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
-        self.look.common_stylesheet().sidebar.resolve_geometry("", Default::default())
+        self.look.common_stylesheet().sidebar.resolve_geometry(Default::default())
     }
     fn foreground(&self) -> gpui::Hsla {
         self.look.resolve_role(SemanticRole::Foreground).hsla()
@@ -54,16 +54,19 @@ impl SidebarTheme for SidebarThemeAdapter {
         section.label_color = self.look.resolve_step(ScaleFamily::Gray, 11).hsla();
         section
     }
-    fn resolve_branch(&self, state: InteractionState, size: ControlSize) -> SidebarItemLook {
+    fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
+        let size = self.look.size();
         self.item(false, state, size)
     }
-    fn resolve_item(&self, selected: bool, state: InteractionState, size: ControlSize) -> SidebarItemLook {
+    fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
+        let size = self.look.size();
         self.item(selected, state, size)
     }
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        let size = self.look.size();
         crate::navigation::drag_look(&self.look, size)
     }
 }
@@ -89,7 +92,7 @@ pub fn sidebar_template(look: &Look) -> Arc<dyn SidebarPanelTemplate> {
 /// Themed SDK sidebar builder. Configure structure, selection, presentation, and callbacks afterward.
 pub fn sidebar_builder(look: &Look, id: impl Into<SharedString>) -> SidebarControlBuilder {
     SidebarControlBuilder::new(id)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().sidebar)
         .panel_template(sidebar_template(look))
         .scrollbar_template(crate::scrollbar_template(look))

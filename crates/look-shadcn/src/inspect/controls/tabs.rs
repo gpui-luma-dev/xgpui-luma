@@ -1,7 +1,8 @@
 //! Inspect metadata for `tabs`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct TabsItemInspectPalette {
     pub label_color: ResolvedColor,
@@ -56,7 +57,7 @@ pub fn inspect_tabs_list_color_palette(
     TabsListInspectPalette { background }
 }
 
-pub fn inspect_tabs_metrics(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ControlSize) -> TabsInspectMetrics {
+pub fn inspect_tabs_metrics(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> TabsInspectMetrics {
     let table = crate::tables::metrics::resolve_tabs_metrics(mode, theme_mode, size);
     table.into()
 }
@@ -90,7 +91,7 @@ pub fn inspect_tabs_list_color_palette_for_look(look: &crate::ShadcnLook, enable
 }
 
 /// Inspect metric values and provenance from the selected look's stylesheet.
-pub fn inspect_tabs_metrics_for_look(look: &crate::ShadcnLook, size: ControlSize) -> TabsInspectMetrics {
+pub fn inspect_tabs_metrics_for_look(look: &crate::ShadcnLook, size: ShadcnSize) -> TabsInspectMetrics {
     crate::tables::metrics::resolve_tabs_metrics_with_stylesheet(
         &look.mode_tokens(),
         &look.stylesheet(),

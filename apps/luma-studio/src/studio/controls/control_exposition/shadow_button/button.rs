@@ -177,7 +177,7 @@ impl PrototypeShadowButtonTemplate {
         if let Some(resolve) = &model.look {
             resolve(model)
         } else {
-            self.look.resolve_primary_button(model.role, model.size, model.state)
+            self.look.resolve_primary_button(model.role, self.look.size(), model.state)
         }
     }
 }

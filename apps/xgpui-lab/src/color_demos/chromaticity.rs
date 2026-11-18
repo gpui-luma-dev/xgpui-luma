@@ -161,7 +161,7 @@ impl ChromaticityLab {
             .horizontal()
             .range(0. ..1.)
             .step(0.001)
-            .size(xgpui_luma::theme::ControlSize::Sm)
+            .size(xgpui_luma_color::ColorControlSize::Small)
             .thumb_small();
             slider_tracks.push(builder.domain_renderer());
             let slider = builder.spawn(cx);

@@ -2,9 +2,8 @@ use std::sync::{Arc, RwLock};
 
 use gpui::{AbsoluteLength, AppContext, CornersRefinement, Entity, SharedString};
 
-use xgpui_luma::controls::slider::{SliderBuilder, SliderControl, SliderThumbSize, new as new_slider};
+use xgpui_luma::controls::slider::{SliderBuilder, SliderControl, new as new_slider};
 use xgpui_luma::infra::value::{ControlRange, value_from_input};
-use xgpui_luma::theme::ControlSize;
 
 use super::color_spec::{ColorSpecification, slider_step_for_channel};
 use super::color_thumb::ThumbShape;
@@ -188,20 +187,14 @@ impl ColorSliderBuilder {
         self
     }
 
-    pub fn size(mut self, size: ControlSize) -> Self {
+    /// Track thickness for this slider (`Small`, `Medium`, or `Large`).
+    pub fn size(self, size: crate::ColorControlSize) -> Self {
         self.template_config.write().expect("color slider template config").size = size;
-        self.slider = self.slider.size(size);
         self
     }
 
-    pub fn thumb_size(mut self, size: SliderThumbSize) -> Self {
-        let mapped = match size {
-            SliderThumbSize::Sm => ThumbSize::Small,
-            SliderThumbSize::Md => ThumbSize::Medium,
-            SliderThumbSize::Lg => ThumbSize::Large,
-        };
-        self.template_config.write().expect("color slider template config").thumb.size = mapped;
-        self.slider = self.slider.thumb_size(size);
+    pub fn thumb_size(self, size: ThumbSize) -> Self {
+        self.template_config.write().expect("color slider template config").thumb.size = size;
         self
     }
 
@@ -211,15 +204,15 @@ impl ColorSliderBuilder {
     }
 
     pub fn thumb_small(self) -> Self {
-        self.thumb_size(SliderThumbSize::Sm)
+        self.thumb_size(ThumbSize::Small)
     }
 
     pub fn thumb_medium(self) -> Self {
-        self.thumb_size(SliderThumbSize::Md)
+        self.thumb_size(ThumbSize::Medium)
     }
 
     pub fn thumb_large(self) -> Self {
-        self.thumb_size(SliderThumbSize::Lg)
+        self.thumb_size(ThumbSize::Large)
     }
 
     pub fn edge_to_edge(self) -> Self {

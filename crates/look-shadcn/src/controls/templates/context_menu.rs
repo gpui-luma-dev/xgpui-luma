@@ -17,7 +17,7 @@ impl ContextMenuTheme for ShadcnContextMenuTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 

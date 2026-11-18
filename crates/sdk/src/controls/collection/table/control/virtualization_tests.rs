@@ -152,7 +152,6 @@ fn fixed_height_column_drag_size_theme_and_custom_content_keep_extents() {
     fixed_extents(&table, cx, 10_000);
     calls.store(0, Ordering::Relaxed);
     table.update(cx, |table, cx| {
-        table.set_size(ControlSize::Lg, cx);
         table.set_theme(Arc::new(DefaultTableTheme::default()), cx);
         table.set_row_template_fn(|_, cells, _, _| div().h(px(80.0)).child(cells), cx);
     });

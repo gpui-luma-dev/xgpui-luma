@@ -1,15 +1,15 @@
 //! Source metadata for canonical runtime metric values.
 
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 
 use crate::catalog::{CssTokenMap, SpacingField};
 use crate::{MetricSource, ResolvedMetric};
 
-pub fn control_size_key(size: ControlSize) -> &'static str {
+pub fn control_size_key(size: ShadcnSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        ShadcnSize::Sm => "sm",
+        ShadcnSize::Md => "md",
+        ShadcnSize::Lg => "lg",
     }
 }
 
@@ -26,7 +26,7 @@ pub fn derived_metric(note: impl Into<String>, value_px: f32) -> ResolvedMetric 
 
 pub fn spacing_control_metric(
     catalog: &CssTokenMap,
-    size: ControlSize,
+    size: ShadcnSize,
     field: SpacingField,
     value_px: f32,
 ) -> ResolvedMetric {
@@ -59,12 +59,12 @@ pub fn spacing_control_metric(
     }
 }
 
-pub fn radius_metric(catalog: &CssTokenMap, size: ControlSize, value_px: f32) -> ResolvedMetric {
+pub fn radius_metric(catalog: &CssTokenMap, size: ShadcnSize, value_px: f32) -> ResolvedMetric {
     if catalog.get("radius").and_then(crate::catalog::parse_length_px).is_some() {
         let (size_label, offset) = match size {
-            ControlSize::Sm => ("sm", 4.0_f32),
-            ControlSize::Md => ("md", 2.0_f32),
-            ControlSize::Lg => ("lg", 0.0_f32),
+            ShadcnSize::Sm => ("sm", 4.0_f32),
+            ShadcnSize::Md => ("md", 2.0_f32),
+            ShadcnSize::Lg => ("lg", 0.0_f32),
         };
         let offset_label = if (offset - offset.round()).abs() < f32::EPSILON {
             format!("{}px", offset.round() as i32)
@@ -81,7 +81,7 @@ pub fn radius_metric(catalog: &CssTokenMap, size: ControlSize, value_px: f32) ->
 }
 
 pub fn pill_radius_metric(_catalog: &CssTokenMap, value_px: f32) -> ResolvedMetric {
-    ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "MetricTokens.radius.pill".into() } }
+    ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "ShadcnRadii.full".into() } }
 }
 
 pub fn focus_ring_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
@@ -100,8 +100,8 @@ pub fn focus_ring_offset_metric(metrics: &xgpui_luma::theme::MetricTokens) -> Re
 
 pub fn border_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     ResolvedMetric {
-        value_px: metrics.border_width.default,
-        source: MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
+        value_px: metrics.border_width,
+        source: MetricSource::Scaffold { path: "MetricTokens.border_width".into() },
     }
 }
 

@@ -13,7 +13,7 @@ use xgpui_luma_color::color_slider::{
     ColorSpecification, refresh_color_slider, update_domain_delegate,
 };
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 
 use super::color_exposition_common::slider_labeled_row;
 use super::event_stream::ControlEventStream;
@@ -102,7 +102,7 @@ impl Render for ColorSliderExpositionLeftPane {
                             ColorSwatch::new(from_hsla(selected))
                                 .checkerboard(true)
                                 .height(px(44.0))
-                                .rounded(px(self.look.metrics().radius.lg))
+                                .rounded(px(self.look.radii().large))
                                 .into_any_element(),
                         )
                         .child(detail_row(&self.look, "Hex", format_hex_color(selected)))
@@ -161,19 +161,19 @@ impl ColorSliderExpositionLeftPane {
         let hsl = Hsl { h: 210.0, s: 0.72, l: 0.52, a: 0.85 };
 
         let hue_slider = ColorSliderBuilder::hue("controls-doc-color-slider-hue", hsl.h)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .spawn(cx);
         let saturation_builder =
             ColorSliderBuilder::channel("controls-doc-color-slider-saturation", hsl.s, hsl, Hsl::SATURATION)
                 .expect("HSL saturation delegate should be valid")
-                .size(ControlSize::Sm)
+                .size(ColorControlSize::Small)
                 .thumb_medium()
                 .edge_to_edge();
         let saturation_domain = saturation_builder.domain_renderer();
         let saturation_slider = saturation_builder.spawn(cx);
         let alpha_builder = ColorSliderBuilder::alpha("controls-doc-color-slider-alpha", hsl.a, hsl)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let alpha_domain = alpha_builder.domain_renderer();
@@ -363,7 +363,7 @@ fn render_demo_card(look: &Look, width_px: f32, content: impl IntoElement) -> gp
         .flex()
         .flex_col()
         .gap(px(14.0))
-        .rounded(px(look.metrics().radius.xl))
+        .rounded(px(look.radii().xl))
         .border_1()
         .border_color(chrome.border)
         .bg(chrome.panel_background)

@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
 #[derive(Clone, Debug)]
 pub struct ProgressLook {
@@ -18,7 +18,7 @@ pub struct ProgressLook {
 }
 
 pub trait ProgressTheme: Send + Sync {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> ProgressLook;
+    fn resolve(&self, enabled: bool) -> ProgressLook;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -39,12 +39,12 @@ impl DefaultProgressTheme {
 }
 
 impl ProgressTheme for DefaultProgressTheme {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> ProgressLook {
+    fn resolve(&self, enabled: bool) -> ProgressLook {
         let geometry = self
             .tokens
             .stylesheet
             .progress
-            .resolve_geometry(size.stylesheet_key(), crate::theme::stylesheet::ProgressGeometry::default());
+            .resolve_geometry(crate::theme::stylesheet::ProgressGeometry::default());
         let palette = self.tokens.stylesheet.recipes.palette("progress", &self.tokens.palette);
 
         let track_color = if enabled {
@@ -93,23 +93,12 @@ impl ProgressStylesheet {
                 shimmer_mid_width: Some(0.6),
                 shimmer_core_offset: Some(0.35),
                 shimmer_core_width: Some(0.3),
-                ..Default::default()
+                track_height: Some(6.0),
+                size: Some(64.0),
+                stroke_width: Some(6.0),
+                thumb_size: Some(16.0),
             },
-            sizes: [("sm", 4.0, 48.0, 5.0, 12.0), ("md", 6.0, 64.0, 6.0, 16.0), ("lg", 8.0, 80.0, 8.0, 20.0)]
-                .into_iter()
-                .map(|(key, track, size, stroke, thumb)| {
-                    (
-                        key.into(),
-                        ProgressGeometryStylesheet {
-                            track_height: Some(track),
-                            size: Some(size),
-                            stroke_width: Some(stroke),
-                            thumb_size: Some(thumb),
-                            ..Default::default()
-                        },
-                    )
-                })
-                .collect(),
+            sizes: Default::default(),
         }
     }
 }

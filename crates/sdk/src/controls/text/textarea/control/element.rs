@@ -55,20 +55,19 @@ impl gpui::Element for TextAreaElement {
         window: &mut Window,
         cx: &mut App,
     ) -> (LayoutId, Self::RequestLayoutState) {
-        let (theme, state, enabled, control_size, rows, look_override) = {
+        let (theme, state, enabled, rows, look_override) = {
             let input = self.input.read(cx);
             (
                 input.model.theme.clone(),
                 input.state,
                 input.model.enabled,
-                input.model.size,
                 input.model.rows.max(1),
                 input.model.look_override.clone(),
             )
         };
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(control_size, &theme.metrics(), scale_factor);
-        let mut look = theme.resolve_look(state, enabled, control_size, &scale);
+        let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
+        let mut look = theme.resolve_look(state, enabled, &scale);
         if let Some(override_fn) = &look_override {
             look = override_fn(look);
         }
@@ -87,20 +86,14 @@ impl gpui::Element for TextAreaElement {
         window: &mut Window,
         cx: &mut App,
     ) -> Self::PrepaintState {
-        let (theme, state, enabled, control_size, look_override) = {
+        let (theme, state, enabled, look_override) = {
             let input = self.input.read(cx);
-            (
-                input.model.theme.clone(),
-                input.state,
-                input.model.enabled,
-                input.model.size,
-                input.model.look_override.clone(),
-            )
+            (input.model.theme.clone(), input.state, input.model.enabled, input.model.look_override.clone())
         };
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(control_size, &theme.metrics(), scale_factor);
+        let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
         let input = self.input.read(cx);
-        let mut look = theme.resolve_look(state, enabled, control_size, &scale);
+        let mut look = theme.resolve_look(state, enabled, &scale);
         if let Some(override_fn) = &look_override {
             look = override_fn(look);
         }

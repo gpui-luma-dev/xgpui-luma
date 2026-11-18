@@ -1,4 +1,4 @@
-use xgpui_luma::theme::{LumaTextRole, LumaTextScale};
+use xgpui_luma::theme::{LumaTextRole, LumaTextStyle};
 
 /// Semantic shadcn color tokens mapped from CSS custom properties.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -219,15 +219,19 @@ impl ShadcnTextSize {
     }
 }
 
-impl From<ShadcnTextSize> for LumaTextScale {
-    fn from(value: ShadcnTextSize) -> Self {
-        match value {
-            ShadcnTextSize::Xs => Self::Xs,
-            ShadcnTextSize::Sm => Self::Sm,
-            ShadcnTextSize::Base => Self::Md,
-            ShadcnTextSize::Lg => Self::Lg,
-            ShadcnTextSize::Xl => Self::Xl,
-            ShadcnTextSize::TwoXl => Self::TwoXl,
-        }
+impl ShadcnTextSize {
+    /// Shadcn's built-in pixels for this size, used when the stylesheet has no
+    /// `typography.scale` rule for it. The SDK has no text size scale.
+    pub fn native_style(self) -> LumaTextStyle {
+        use gpui::FontWeight;
+        let (size, line_height, weight) = match self {
+            Self::Xs => (11.0, 16.0, 500.0),
+            Self::Sm => (12.5, 18.0, 400.0),
+            Self::Base => (14.0, 20.0, 400.0),
+            Self::Lg => (16.0, 22.0, 500.0),
+            Self::Xl => (18.0, 24.0, 600.0),
+            Self::TwoXl => (20.0, 28.0, 600.0),
+        };
+        LumaTextStyle { size, line_height, weight: FontWeight(weight) }
     }
 }

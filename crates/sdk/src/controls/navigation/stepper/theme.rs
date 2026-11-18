@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
 #[derive(Clone, Debug)]
 pub struct StepperLook {
@@ -23,7 +23,7 @@ pub struct StepperLook {
 }
 
 pub trait StepperTheme: Send + Sync {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> StepperLook;
+    fn resolve(&self, enabled: bool) -> StepperLook;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -44,12 +44,12 @@ impl DefaultStepperTheme {
 }
 
 impl StepperTheme for DefaultStepperTheme {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> StepperLook {
+    fn resolve(&self, enabled: bool) -> StepperLook {
         let geometry = self
             .tokens
             .stylesheet
             .stepper
-            .resolve_geometry(size.stylesheet_key(), crate::theme::stylesheet::StepperGeometry::default());
+            .resolve_geometry(crate::theme::stylesheet::StepperGeometry::default());
         let palette = self.tokens.stylesheet.recipes.palette("stepper", &self.tokens.palette);
 
         let track_color = if enabled {
@@ -135,21 +135,10 @@ impl StepperStylesheet {
                 glyph_scale: Some(0.45),
                 number_scale: Some(0.38),
                 border_width: Some(1.0),
-                ..Default::default()
+                step_badge_size: Some(32.0),
+                track_thickness: Some(2.0),
             },
-            sizes: [("sm", 24.0, 2.0), ("md", 32.0, 2.0), ("lg", 40.0, 3.0)]
-                .into_iter()
-                .map(|(key, badge, track)| {
-                    (
-                        key.into(),
-                        StepperGeometryStylesheet {
-                            step_badge_size: Some(badge),
-                            track_thickness: Some(track),
-                            ..Default::default()
-                        },
-                    )
-                })
-                .collect(),
+            sizes: Default::default(),
         }
     }
 }

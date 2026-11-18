@@ -171,7 +171,9 @@ fn spawn_panels(look: &ShadcnLook, cx: &mut Context<Shell2026App>) -> Entity<Res
         .look(look)
         .sidebar(shadcn::Sidebar::panel("shell-2026-sidebar-panel"))
         .spawn(cx);
-    look.resizable_panels("shell-2026-panels")
+    // Compact handle, matching the former SDK builder default.
+    look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm)
+        .resizable_panels("shell-2026-panels")
         .show_border(false)
         .motion_enabled(true)
         .handle_visibility(ResizeHandleVisibility::Hover)

@@ -15,11 +15,12 @@ use serde::Deserialize;
 
 use gpui::{Div, ElementId, Hsla, Stateful, div, px, prelude::*};
 use xgpui_luma::controls::listbox::ListBoxItemState;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::{LookResolver, ResolvedColor};
+use crate::size::ShadcnSize;
 use crate::stylesheet::{
     StylesheetConfig, find_listbox_list_color_rule, find_listbox_row_color_rule, resolve_listbox_list_color_rule,
     resolve_listbox_row_color_rule,
@@ -48,19 +49,19 @@ impl crate::ShadcnLook {
             &mode,
             state.selected,
             InteractionState { disabled: !state.enabled, ..Default::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
         let hover = listbox_row_palette(
             &mode,
             state.selected,
             InteractionState { hovered: true, ..Default::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
         let pressed = listbox_row_palette(
             &mode,
             state.selected,
             InteractionState { pressed: true, ..Default::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
         let border = if state.active && focus_visible {
             crate::focus::focus_ring_or_fallback(&mode.catalog)
@@ -165,7 +166,7 @@ pub fn listbox_row_palette(
     mode: &ShadcnModeTokens,
     selected: bool,
     mut state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> ListBoxRowPalette {
     state.focused |= selected;
     let ctx = LookContext::new(mode, mode.theme_mode, state);
@@ -185,7 +186,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
+    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -219,7 +220,7 @@ mod tests {
             &mode,
             false,
             xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(list.border, catalog.color("input").expect("input"));

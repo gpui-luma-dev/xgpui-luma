@@ -7,7 +7,7 @@ use super::control::Button;
 use super::{ButtonCallbacks, ButtonEvent};
 use super::template::{ButtonTemplate, modified_button_template};
 pub use crate::infra::presenter::{ControlPresenter, HasPresenter};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, ButtonSize};
+use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::theme::InteractionState;
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -31,7 +31,6 @@ pub struct ButtonContentContext<D> {
     pub data: D,
     pub state: InteractionState,
     pub role: ButtonFamilyRole,
-    pub size: ButtonSize,
     pub look: ButtonFamilyLook,
 }
 
@@ -39,14 +38,7 @@ pub fn button_content_context<D: Clone>(
     model: &ButtonRenderModel<D>,
     look: ButtonFamilyLook,
 ) -> ButtonContentContext<D> {
-    ButtonContentContext {
-        id: model.id.clone(),
-        data: model.data.clone(),
-        state: model.state,
-        role: model.role,
-        size: model.size,
-        look,
-    }
+    ButtonContentContext { id: model.id.clone(), data: model.data.clone(), state: model.state, role: model.role, look }
 }
 
 #[derive(Clone)]
@@ -56,7 +48,6 @@ pub struct ButtonModel<D = ()> {
     pub(crate) content: ControlPresenter<ButtonContentContext<D>>,
     pub(crate) icon: Option<ControlIcon>,
     pub(crate) role: ButtonFamilyRole,
-    pub(crate) size: ButtonSize,
     pub(crate) enabled: bool,
     pub(crate) tab_stop: bool,
     pub(crate) round: bool,
@@ -79,7 +70,6 @@ pub struct ButtonRenderModel<D> {
     pub content: ControlPresenter<ButtonContentContext<D>>,
     pub icon: Option<ControlIcon>,
     pub role: ButtonFamilyRole,
-    pub size: ButtonSize,
     pub state: InteractionState,
     pub round: bool,
     pub radius_override: Cell<Option<f32>>,
@@ -103,7 +93,6 @@ impl<D: Default> Default for ButtonRenderModel<D> {
             content: Arc::new(|_, _| div().into_any_element()),
             icon: None,
             role: ButtonFamilyRole::default(),
-            size: ButtonSize::default(),
             state: InteractionState::default(),
             round: false,
             radius_override: Cell::new(None),
@@ -138,7 +127,6 @@ impl ButtonBuilder<()> {
                 content: Arc::new(move |_, _| div().child(id.clone()).into_any_element()),
                 icon: None,
                 role: ButtonFamilyRole::Text,
-                size: ButtonSize::Md,
                 enabled: true,
                 tab_stop: true,
                 round: false,
@@ -192,7 +180,6 @@ impl ButtonBuilder<()> {
                 content: Arc::new(move |_, _| div().child(id.clone()).into_any_element()),
                 icon: old.icon,
                 role: old.role,
-                size: old.size,
                 enabled: old.enabled,
                 tab_stop: old.tab_stop,
                 round: old.round,
@@ -311,11 +298,6 @@ impl<D: Clone + 'static> ButtonBuilder<D> {
         F: Fn(&ButtonRenderModel<D>) -> ButtonFamilyLook + Send + Sync + 'static,
     {
         self.model.look = Some(Arc::new(resolve));
-        self
-    }
-
-    pub fn size(mut self, size: ButtonSize) -> Self {
-        self.model.size = size;
         self
     }
 

@@ -14,7 +14,7 @@ use crate::infra::value::{ControlRange, value_from_input};
 use crate::key_handling::{
     ControlKeyProfile, DecreaseValue, DecreaseValueLarge, IncreaseValue, IncreaseValueLarge, MoveToEnd, MoveToStart,
 };
-use crate::theme::{ControlSize, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 #[derive(Clone, Debug)]
 #[non_exhaustive]
@@ -103,10 +103,6 @@ impl Scrollbar {
 
     pub fn thumb_fraction(&self) -> f32 {
         self.model.thumb_fraction
-    }
-
-    pub fn size(&self) -> ControlSize {
-        self.model.size
     }
 
     pub fn style(&self) -> ScrollbarStyle {
@@ -201,13 +197,6 @@ impl Scrollbar {
         }
     }
 
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.model.size != size {
-            self.model.size = size;
-            cx.notify();
-        }
-    }
-
     pub fn set_style(&mut self, style: ScrollbarStyle, cx: &mut Context<Self>) {
         if self.model.style != style {
             self.model.style = style;
@@ -255,7 +244,6 @@ impl Scrollbar {
             percentage: self.model.range.percentage(self.model.value),
             thumb_fraction: self.model.thumb_fraction,
             length: self.model.length,
-            size: self.model.size,
             style: self.model.style,
             enabled: self.model.enabled,
             state: self.interaction.render_state(self.model.enabled, window),
@@ -373,7 +361,7 @@ impl Scrollbar {
                     self.model.thumb_fraction,
                     crate::theme::stylesheet::CommonStylesheet::sdk_default()
                         .scrollbar
-                        .authored_geometry(self.model.size.stylesheet_key())
+                        .authored_geometry()
                         .min_thumb_length
                         .unwrap_or_default(),
                 )

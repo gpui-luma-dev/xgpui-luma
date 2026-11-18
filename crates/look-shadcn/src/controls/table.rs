@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use xgpui_luma::controls::table::TableLook;
 use xgpui_luma::controls::table::TableRowPalette;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 
@@ -113,25 +113,24 @@ pub fn resolve_table_row_colors_with_stylesheet(
     Ok(TableRowColorTable { background: colors.background, label_color: colors.label_color, divider: colors.divider })
 }
 
-pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: ControlSize) -> TableLook {
+pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: ShadcnSize) -> TableLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
-    let metrics = ctx.metrics();
     let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "table").with_stylesheet(mode.stylesheet());
     let colors =
         resolve_table_surface_colors(&resolver, enabled).unwrap_or_else(|_| TableSurfaceColorTable::fallback());
     let surface_metrics = mode.stylesheet().table.surface.metrics_for_size(size);
     let radius = surface_metrics
-        .and_then(|rule| resolve_stylesheet_metric(&rule.radius, metrics, size))
-        .unwrap_or(metrics.radius(size));
+        .and_then(|rule| resolve_stylesheet_metric(&rule.radius, ctx.controls(), size))
+        .unwrap_or(ctx.controls().radius(size));
     let radius = surface_metrics
         .and_then(|rule| rule.max_radius.as_deref())
-        .and_then(|max| resolve_stylesheet_metric(max, metrics, size))
+        .and_then(|max| resolve_stylesheet_metric(max, ctx.controls(), size))
         .map_or(radius, |max| radius.min(max));
 
     let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .table
-        .authored_geometry(size.stylesheet_key());
-    let recipe = mode.stylesheet().common.table.authored_geometry(size.stylesheet_key()).with_fallback(&baseline);
+        .authored_geometry_for(size.key());
+    let recipe = mode.stylesheet().common.table.authored_geometry_for(size.key()).with_fallback(&baseline);
     let mut look = TableLook {
         row_divider_width: recipe.row_divider_width.unwrap_or_default(),
         column_padding_x: recipe.column_padding_x.unwrap_or_default(),
@@ -149,9 +148,9 @@ pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: 
         header_typography: ctx.typography().text.caption,
         radius,
         padding_x: recipe.padding_x.unwrap_or_default(),
-        padding_y: metrics.padding_y(size) * recipe.padding_y_scale.unwrap_or_default(),
+        padding_y: ctx.controls().padding_y(size) * recipe.padding_y_scale.unwrap_or_default(),
     };
-    let geometry = mode.stylesheet().common.table.resolve_geometry(
+    let geometry = mode.stylesheet().common.table.resolve_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::TableGeometry {
             padding_x: look.padding_x,
@@ -169,7 +168,7 @@ pub fn table_row_palette(
     mode: &ShadcnModeTokens,
     selected: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TableRowPalette {
     let ctx = LookContext::new(mode, mode.theme_mode, state);
     let typography = ctx.typography();
@@ -194,7 +193,7 @@ mod tests {
     use std::collections::BTreeMap;
     use xgpui_luma::theme::ThemeMode;
 
-    use xgpui_luma::theme::{ControlSize, InteractionState};
+    use xgpui_luma::theme::{InteractionState};
 
     use crate::catalog::CssTokenMap;
     use crate::color::with_alpha;
@@ -227,10 +226,18 @@ mod tests {
     fn table_row_hover_uses_accent_whisper_and_selected_uses_muted() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let hover =
-            table_row_palette(&mode, false, InteractionState { hovered: true, ..Default::default() }, ControlSize::Md);
-        let selected =
-            table_row_palette(&mode, true, InteractionState { hovered: true, ..Default::default() }, ControlSize::Md);
+        let hover = table_row_palette(
+            &mode,
+            false,
+            InteractionState { hovered: true, ..Default::default() },
+            crate::ShadcnSize::Md,
+        );
+        let selected = table_row_palette(
+            &mode,
+            true,
+            InteractionState { hovered: true, ..Default::default() },
+            crate::ShadcnSize::Md,
+        );
 
         let accent = catalog.color("accent").expect("accent");
         assert_eq!(hover.background, with_alpha(accent, ROW_HOVER_ACCENT_ALPHA));
@@ -308,11 +315,11 @@ impl TableSurfaceStylesheet {
         find_enabled_color_rule(&self.color_rules, enabled)
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&TableSurfaceMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&TableSurfaceMetricsRule> {
         let key = match size {
-            ControlSize::Sm => "sm",
-            ControlSize::Md => "md",
-            ControlSize::Lg => "lg",
+            ShadcnSize::Sm => "sm",
+            ShadcnSize::Md => "md",
+            ShadcnSize::Lg => "lg",
         };
         self.metrics.get(key)
     }
@@ -400,7 +407,7 @@ pub struct TableMetricTable {
 pub fn resolve_table_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TableMetricTable {
     use xgpui_luma::theme::ListRowScale;
 
@@ -410,10 +417,9 @@ pub fn resolve_table_metrics(
     };
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let metrics = ctx.metrics();
     let catalog = ctx.catalog();
     let look = crate::paint::table_look(mode, true, false, size);
-    let row_scale = ListRowScale::compute(size, metrics, 1.0);
+    let row_scale = ListRowScale::compute(&mode.metrics_for(size), 1.0);
     let size_key = control_size_key(size);
 
     let mut table = TableMetricTable {
@@ -424,7 +430,7 @@ pub fn resolve_table_metrics(
         row_padding_x: spacing_control_metric(catalog, size, SpacingField::PaddingX, row_scale.padding_x),
         row_padding_y: spacing_control_metric(catalog, size, SpacingField::PaddingY, row_scale.padding_y),
     };
-    let geometry = mode.stylesheet().common.table.inspect_geometry(
+    let geometry = mode.stylesheet().common.table.inspect_geometry_for(
         size_key,
         xgpui_luma::theme::stylesheet::TableGeometry {
             padding_x: table.padding_x.value_px,

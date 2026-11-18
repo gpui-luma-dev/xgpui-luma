@@ -5,7 +5,7 @@ use xgpui_luma::controls::textarea::{
     TextAreaLineMetric, TextAreaRenderModel, TextAreaState, TextAreaTemplate, TextAreaTheme, ThemedTextAreaTemplate,
 };
 use xgpui_luma::controls::tabs::Tabs;
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::{StandardBoxScale};
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::style::shared::preview_handlers::input_textarea_handlers;
@@ -160,7 +160,6 @@ fn render_textarea_cell(
         value: &value,
         enabled: sample.enabled,
         full_width: true,
-        size: ControlSize::Md,
         rows: 3,
         state: sample.state,
         caret_visible: sample.state.focused && sample.enabled,
@@ -293,6 +292,6 @@ fn input_textarea_look(
     enabled: bool,
     window: &Window,
 ) -> xgpui_luma::controls::textarea::TextAreaLook {
-    let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, ControlSize::Md, &scale)
+    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+    theme.resolve_look(state, enabled, &scale)
 }

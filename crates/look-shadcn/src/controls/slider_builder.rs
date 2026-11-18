@@ -359,12 +359,12 @@ impl Slider {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SliderBuilder {
+        let look = look.with_size(self.size);
         let template = self.template.unwrap_or_else(|| look.slider_template_with_style(self.style));
         let mut builder = xgpui_luma::controls::slider::new(self.id)
             .motion_defaults(look.motion_defaults().slider)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .range(self.range)
             .step(self.step)
             .enabled(self.enabled)
@@ -373,20 +373,14 @@ impl Slider {
             .reversed(self.reversed);
         if let Some(preset) = self.radius {
             let tokens = look.mode_tokens();
-            let resolved = slider_look(
-                tokens.as_ref(),
-                look.mode(),
-                self.style,
-                self.size.control_size(),
-                None,
-                InteractionState::default(),
-            );
+            let resolved =
+                slider_look(tokens.as_ref(), look.mode(), self.style, self.size, InteractionState::default());
             builder = builder
                 .corner_radius(
-                    px(resolve_slider_track_radius_preset(preset, &tokens.metrics, resolved.track_height)).into(),
+                    px(resolve_slider_track_radius_preset(preset, &tokens.radii, resolved.track_height)).into(),
                 )
                 .thumb_radius(
-                    px(resolve_slider_thumb_radius_preset(preset, &tokens.metrics, resolved.thumb_size)).into(),
+                    px(resolve_slider_thumb_radius_preset(preset, &tokens.radii, resolved.thumb_size)).into(),
                 );
         }
         if let Some(orientation) = self.orientation {

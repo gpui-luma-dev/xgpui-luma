@@ -7,7 +7,6 @@ use xgpui_luma::controls::accordion::{
 };
 use xgpui_luma::infra::state::{CompositeItemState, ControlFocusState};
 use xgpui_luma::controls::tabs::Tabs;
-use xgpui_luma::theme::ControlSize;
 use xgpui_luma_look_shadcn::ShadcnLook;
 use xgpui_luma_look_shadcn as shadcn;
 use lucide_svg_static::Icon as LucideIcon;
@@ -198,7 +197,6 @@ fn render_accordion_state_cell(
         selection_mode: AccordionSelectionMode::Single,
         collapsible: true,
         enabled: true,
-        size: ControlSize::Md,
         item_dividers: true,
         content_padding_y: None,
         content_padding_top: None,

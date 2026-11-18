@@ -20,7 +20,6 @@ use crate::controls::button::{
     Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate, DefaultButtonTemplate,
 };
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
-use crate::theme::ControlSize;
 
 pub type Toggle = Entity<ToggleControl>;
 
@@ -284,10 +283,6 @@ impl ToggleBuilder {
         Self { button: self.button.tab_stop(tab_stop), ..self }
     }
 
-    pub fn size(self, size: ControlSize) -> Self {
-        Self { button: self.button.size(size), ..self }
-    }
-
     pub fn role(self, role: ButtonFamilyRole) -> Self {
         Self { button: self.button.role(role), ..self }
     }
@@ -403,9 +398,8 @@ pub fn default_toggle_template() -> Arc<dyn ButtonTemplate<ToggleData>> {
                 return element;
             }
 
-            let off =
-                button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: false }, model.size, model.state);
-            let on = button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: true }, model.size, model.state);
+            let off = button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
+            let on = button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
             apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
         },
     ))

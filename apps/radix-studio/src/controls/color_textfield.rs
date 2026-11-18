@@ -1,3 +1,4 @@
+use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use xgpui_luma::controls::slider::SliderEventExt;
 use crate::color_hex::format_hex;
@@ -11,7 +12,7 @@ use xgpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, 
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
 use xgpui_luma::controls::textfield::{TextField, TextFieldEvent};
 use xgpui_luma::prelude::{TooltipEntityExt, HasPresenter};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma::infra::attachments::{AttachmentHost, AttachmentTarget};
 use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
 use xgpui_luma_color::color_slider::color_spec::{Hsv, ColorSpecification};
@@ -77,7 +78,7 @@ impl ColorTextField {
                 .rounded(px(0.0))
         });
         let hue_builder = ColorSliderBuilder::hue(format!("{id}-picker-hue"), hsv.h)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let hue_slider = hue_builder.spawn(cx);

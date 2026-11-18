@@ -4,7 +4,7 @@ use gpui::{AnyElement, IntoElement};
 
 use super::model::{ControlGroupItemLike, ControlGroupItemRenderModel};
 use super::template::{ControlGroupItemTemplate, make_control_group_item_template};
-use crate::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
 
 pub fn button_item_template<T>(
@@ -28,7 +28,6 @@ where
                 move |_, _| content_fn(&item_data)
             }),
             role: role_fn(item.selected),
-            size: ButtonSize::Sm,
             state: item.state.interaction_state(),
             round,
             radius_override: std::cell::Cell::new(None),

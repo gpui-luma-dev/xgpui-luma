@@ -248,6 +248,7 @@ impl TextField {
     }
 
     fn into_sdk_builder(self, look: Look) -> TextFieldBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = textfield_template(&look, self.variant);
         let mut builder = xgpui_luma::controls::textfield::new(self.id)
             .template(template)
@@ -255,7 +256,6 @@ impl TextField {
             .value(self.value)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
-            .size(self.size.control_size())
             .full_width(self.full_width)
             .clean_on_escape(self.clean_on_escape)
             .select_all_on_tab_focus(self.select_all_on_tab_focus)
@@ -283,13 +283,13 @@ impl TextField {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(TextField::new("s").size(TextFieldSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(TextField::new("s").size(TextFieldSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(TextField::new("s").size(TextFieldSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(TextField::new("s").size(TextFieldSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(TextField::new("s").size(TextFieldSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(TextField::new("s").size(TextFieldSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 use xgpui_luma::controls::tabs::TabsItemLook;
 use xgpui_luma::controls::tabs::TabsListLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 
@@ -90,7 +90,7 @@ pub fn resolve_tabs_item_colors_with_stylesheet(
     Ok(TabsItemColorTable { label_color: colors.label_color, indicator: colors.indicator })
 }
 
-pub fn tabs_list_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) -> TabsListLook {
+pub fn tabs_list_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> TabsListLook {
     tabs_list_look_with_stylesheet(mode, mode.stylesheet(), enabled, size)
 }
 
@@ -98,7 +98,7 @@ pub fn tabs_list_look_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &StylesheetConfig,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TabsListLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
     let metrics = ctx.metrics();
@@ -108,14 +108,14 @@ pub fn tabs_list_look_with_stylesheet(
 
     let geometry = crate::tables::metrics::resolve_common_tabs_geometry(mode, stylesheet, size);
     TabsListLook {
-        border_width: metrics.border_width.default,
+        border_width: metrics.border_width,
         background: if enabled {
             None
         } else {
             Some(colors.disabled_background.hsla())
         },
         border: None,
-        radius: metrics.radius(size),
+        radius: ctx.controls().radius(size),
         padding: geometry.list_padding.value_px,
         gap: geometry.list_gap.value_px,
     }
@@ -125,7 +125,7 @@ pub fn tabs_item_look(
     mode: &ShadcnModeTokens,
     active: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TabsItemLook {
     tabs_item_look_with_stylesheet(mode, mode.stylesheet(), active, state, size)
 }
@@ -135,19 +135,18 @@ pub fn tabs_item_look_with_stylesheet(
     stylesheet: &StylesheetConfig,
     active: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TabsItemLook {
     let ctx = LookContext::new(mode, mode.theme_mode, state);
-    let metrics = ctx.metrics();
     let typography = ctx.typography();
     let layer = state.layer();
     let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "tabs_item").with_stylesheet(stylesheet);
     let colors = resolve_tabs_item_colors_with_stylesheet(&resolver, stylesheet, active, layer, state.focused)
         .unwrap_or_else(|_| TabsItemColorTable::fallback());
     let label_typography = match size {
-        ControlSize::Sm => typography.text.caption,
-        ControlSize::Md => typography.text.label,
-        ControlSize::Lg => typography.text.body,
+        ShadcnSize::Sm => typography.text.caption,
+        ShadcnSize::Md => typography.text.label,
+        ShadcnSize::Lg => typography.text.body,
     };
 
     let (accessory_size, accessory_gap) = stylesheet.common.tabs.accessory_metrics("");
@@ -158,9 +157,9 @@ pub fn tabs_item_look_with_stylesheet(
         indicator: colors.indicator.map(|color| color.hsla()),
         background: None,
         label_typography,
-        radius: metrics.radius(size),
-        padding_x: metrics.padding_x(size),
-        height: label_typography.line_height + metrics.padding_y(size) * 2.0,
+        radius: ctx.controls().radius(size),
+        padding_x: ctx.controls().padding_x(size),
+        height: label_typography.line_height + ctx.controls().padding_y(size) * 2.0,
         indicator_height: crate::tables::metrics::resolve_common_tabs_geometry(mode, stylesheet, size)
             .indicator_height
             .value_px,
@@ -172,7 +171,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -197,16 +196,16 @@ mod tests {
     #[test]
     fn embedded_tabs_preserve_geometry_across_modes_sizes_and_states() {
         let look = crate::ShadcnLook::built_in();
-        let theme = look.tabs_theme();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             let tokens = look.mode_tokens();
-            for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+            for size in [crate::ShadcnSize::Sm, crate::ShadcnSize::Md, crate::ShadcnSize::Lg] {
+                let theme = look.with_size(size).tabs_theme();
                 for enabled in [true, false] {
-                    let list = theme.resolve_list(enabled, size);
+                    let list = theme.resolve_list(enabled);
                     assert_eq!(list.padding, 0.0);
-                    assert_eq!(list.gap, tokens.metrics.gap(size));
-                    assert_eq!(list.radius, tokens.metrics.radius(size));
+                    assert_eq!(list.gap, tokens.control_sizes.gap(size));
+                    assert_eq!(list.radius, tokens.control_sizes.radius(size));
                 }
                 for bits in 0..16 {
                     let state = InteractionState {
@@ -217,13 +216,13 @@ mod tests {
                         ..Default::default()
                     };
                     for active in [true, false] {
-                        let item = theme.resolve_item(active, state, size);
+                        let item = theme.resolve_item(active, state);
                         assert_eq!(item.indicator_height, 3.0);
-                        assert_eq!(item.padding_x, tokens.metrics.padding_x(size));
-                        assert_eq!(item.radius, tokens.metrics.radius(size));
+                        assert_eq!(item.padding_x, tokens.control_sizes.padding_x(size));
+                        assert_eq!(item.radius, tokens.control_sizes.radius(size));
                         assert_eq!(
                             item.height,
-                            item.label_typography.line_height + tokens.metrics.padding_y(size) * 2.0
+                            item.label_typography.line_height + tokens.control_sizes.padding_y(size) * 2.0
                         );
                     }
                 }
@@ -241,15 +240,15 @@ mod tests {
         }
         let stylesheet = crate::stylesheet::StylesheetConfig::default();
         let look = crate::ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-        assert_eq!(look.tabs_theme().resolve_item(true, Default::default(), ControlSize::Md).indicator_height, 2.0);
+        assert_eq!(look.tabs_theme().resolve_item(true, Default::default()).indicator_height, 2.0);
     }
 
     #[test]
     fn active_and_inactive_tabs_use_foreground() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let active = tabs_item_look(&mode, true, InteractionState::default(), ControlSize::Md);
-        let inactive = tabs_item_look(&mode, false, InteractionState::default(), ControlSize::Md);
+        let active = tabs_item_look(&mode, true, InteractionState::default(), crate::ShadcnSize::Md);
+        let inactive = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Md);
 
         assert_eq!(active.label_color, catalog.color("foreground").expect("foreground"));
         assert_eq!(inactive.label_color, catalog.color("foreground").expect("foreground"));
@@ -265,7 +264,7 @@ mod tests {
             &mode,
             true,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(focused.indicator, Some(catalog.color("primary").expect("primary")));
@@ -275,9 +274,9 @@ mod tests {
     fn tab_typography_changes_with_size() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let small = tabs_item_look(&mode, false, InteractionState::default(), ControlSize::Sm);
-        let medium = tabs_item_look(&mode, false, InteractionState::default(), ControlSize::Md);
-        let large = tabs_item_look(&mode, false, InteractionState::default(), ControlSize::Lg);
+        let small = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Sm);
+        let medium = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Md);
+        let large = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Lg);
 
         assert!(small.label_typography.size < medium.label_typography.size);
         assert!(medium.label_typography.size < large.label_typography.size);
@@ -410,13 +409,13 @@ pub struct TabsMetricTable {
 pub(crate) fn resolve_common_tabs_geometry(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
     use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
     use crate::tables::metrics::helpers::spacing_control_metric;
     let defaults = xgpui_luma::controls::tabs::default_tabs_theme();
-    let default_list = defaults.resolve_list(true, size);
-    let default_item = defaults.resolve_item(true, xgpui_luma::theme::InteractionState::default(), size);
+    let default_list = defaults.resolve_list(true);
+    let default_item = defaults.resolve_item(true, xgpui_luma::theme::InteractionState::default());
     stylesheet.common.tabs.inspect_geometry(
         "default",
         ResolvedTabsGeometry {
@@ -425,7 +424,7 @@ pub(crate) fn resolve_common_tabs_geometry(
                     &mode.catalog,
                     size,
                     crate::catalog::SpacingField::Gap,
-                    mode.metrics.gap(size),
+                    mode.control_sizes.gap(size),
                 );
                 let source = match value.source {
                     crate::MetricSource::Derived { note } => {
@@ -458,7 +457,7 @@ pub(crate) fn resolve_common_tabs_geometry(
 pub fn resolve_tabs_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TabsMetricTable {
     resolve_tabs_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -468,7 +467,7 @@ pub fn resolve_tabs_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TabsMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
     use crate::catalog::SpacingField;
@@ -490,7 +489,7 @@ pub fn resolve_tabs_metrics_with_stylesheet(
         list_gap: crate::tables::metrics::helpers::inspect_shared_metric(geometry.list_gap),
         list_padding: crate::tables::metrics::helpers::inspect_shared_metric(geometry.list_padding),
         item_padding_x: spacing_control_metric(catalog, size, SpacingField::PaddingX, item.padding_x),
-        item_height: derived_metric("label line_height + spacing.s2", item.height),
+        item_height: derived_metric("label line_height + padding_y × 2", item.height),
         item_radius: radius_metric(catalog, size, item.radius),
         indicator_height: crate::tables::metrics::helpers::inspect_shared_metric(geometry.indicator_height),
     }

@@ -2,15 +2,20 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::stepper::*;
-use xgpui_luma::theme::{ControlSize, ThemeTokens};
+use xgpui_luma::theme::{ThemeTokens};
 use crate::{Look, ScaleFamily, SemanticRole, Tone};
 
 // Default SDK resolvers are used only for layout; adapters replace every color.
 pub(crate) fn geometry_tokens(look: &Look) -> ThemeTokens {
-    ThemeTokens { metrics: look.metrics(), stylesheet: look.common_stylesheet().into(), ..Default::default() }
+    // The look's selected size is resolved to pixels before SDK defaults see it.
+    ThemeTokens {
+        metrics: look.metrics_for(look.size()),
+        stylesheet: look.sized_stylesheet(look.size()),
+        ..Default::default()
+    }
 }
-pub(crate) fn drag_look(look: &Look, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
-    let mut drag = xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(look), size);
+pub(crate) fn drag_look(look: &Look, size: crate::RadixSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    let mut drag = xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(&look.with_size(size)));
     drag.background = look.resolve_role(SemanticRole::Surface).hsla();
     drag.foreground = look.resolve_role(SemanticRole::Foreground).hsla();
     drag.valid_marker = look.resolve_role(SemanticRole::Focus).hsla();
@@ -22,8 +27,8 @@ struct StepperThemeAdapter {
     look: Look,
 }
 impl StepperTheme for StepperThemeAdapter {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> StepperLook {
-        let mut resolved = DefaultStepperTheme::new(geometry_tokens(&self.look)).resolve(enabled, size);
+    fn resolve(&self, enabled: bool) -> StepperLook {
+        let mut resolved = DefaultStepperTheme::new(geometry_tokens(&self.look)).resolve(enabled);
         let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
         let accent = |step| Tone::Accent.step(&self.look, step);
         resolved.complete_bg = if enabled { accent(9) } else { gray(3) };
@@ -58,13 +63,12 @@ pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {
 /// ```no_run
 /// use gpui::{Context, IntoElement, ParentElement};
 /// use xgpui_luma::controls::{control_group::{ControlGroupItem, ControlGroupItemLike}, accordion::{AccordionItem, AccordionTrigger, AccordionContent}};
-/// use xgpui_luma::theme::ControlSize;
 /// use xgpui_luma_look_radix::*;
 /// fn navigation<M: 'static>(look: &Look, cx: &mut Context<M>) {
-///     let group = control_group_builder(look, "group", ControlSize::Md)
+///     let group = control_group_builder(look, "group", RadixSize::Two)
 ///         .items([ControlGroupItem::new("day").label("Day")]).horizontal().spawn(cx);
 ///     let icons = icon_group_builder(look, "icons")
-///         .item_template(icon_group_item_template(look, ControlSize::Sm, |item: &ControlGroupItem| {
+///         .item_template(icon_group_item_template(look, RadixSize::One, |item: &ControlGroupItem| {
 ///             gpui::div().child(item.label().clone()).into_any_element()
 ///         }))
 ///         .items([ControlGroupItem::new("bold").label("B")]).multiple().spawn(cx);
@@ -79,7 +83,7 @@ pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {
 /// Radix stepper builder; direction, labels, content, state overrides, and motion remain SDK options.
 pub fn stepper_builder(look: &Look, id: impl Into<SharedString>, step_count: usize) -> StepperBuilder {
     StepperBuilder::new(id, step_count)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().stepper)
         .template(stepper_template(look))
 }

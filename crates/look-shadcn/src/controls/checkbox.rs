@@ -11,7 +11,7 @@ use crate::stylesheet::config::matches_optional_bool;
 use serde::Deserialize;
 
 use xgpui_luma::controls::checkbox::CheckboxPalette;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
@@ -140,7 +140,7 @@ pub fn checkbox_look(
     style: ShadcnButtonStyle,
     checked: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> CheckboxPalette {
     checkbox_look_with_stylesheet(
         &LookContext::new(mode, mode.theme_mode, state),
@@ -156,7 +156,7 @@ pub(crate) fn checkbox_look_with_stylesheet(
     stylesheet: &StylesheetConfig,
     style: ShadcnButtonStyle,
     checked: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> CheckboxPalette {
     let content_only = style == ShadcnButtonStyle::ContentOnly;
     let state = ctx.state;
@@ -202,7 +202,7 @@ fn checkbox_elevation_shadow(
 pub(crate) fn checkbox_scale_with_stylesheet(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     scale_factor: f32,
 ) -> (
     xgpui_luma::controls::checkbox::CheckboxScale,
@@ -210,8 +210,12 @@ pub(crate) fn checkbox_scale_with_stylesheet(
 ) {
     use xgpui_luma::controls::checkbox::CheckboxScale;
     use xgpui_luma::theme::{snap_to_pixel, stylesheet::CheckboxGeometry};
-    let mut scale = CheckboxScale::compute_with_stylesheet(size, ctx.metrics(), scale_factor, &stylesheet.common);
-    let mut geometry = stylesheet.common.checkbox.inspect_geometry(
+    let mut scale = CheckboxScale::compute_with_stylesheet(
+        &ctx.tokens.metrics_for(size),
+        scale_factor,
+        &ctx.tokens.sized_common(stylesheet, size),
+    );
+    let mut geometry = stylesheet.common.checkbox.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         CheckboxGeometry {
             indicator_size: scale.indicator_size,
@@ -274,8 +278,7 @@ mod tests {
     #[test]
     fn checkbox_look_resolves_stylesheet_shadow() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look =
-            checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+        let look = checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
 
         assert!(look.indicator_shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()));
     }
@@ -288,7 +291,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { disabled: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert!(look.indicator_shadow.is_none());
@@ -298,13 +301,13 @@ mod tests {
     fn checkbox_hover_does_not_recolor_indicator_or_label() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let default =
-            checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+            checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
         let hovered = checkbox_look(
             &mode,
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { hovered: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert_eq!(default.indicator_background, hovered.indicator_background);
@@ -316,13 +319,13 @@ mod tests {
     fn content_only_checkbox_keeps_primary_indicator_without_shadow() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let primary =
-            checkbox_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ControlSize::Md);
+            checkbox_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ShadcnSize::Md);
         let content_only = checkbox_look(
             &mode,
             ShadcnButtonStyle::ContentOnly,
             true,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert_eq!(content_only.indicator_background, primary.indicator_background);
@@ -347,10 +350,10 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
         let unfocused =
-            checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+            checkbox_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
 
         assert_eq!(focused.indicator_border, fallback);
         assert_eq!(unfocused.indicator_border, fallback);
@@ -449,7 +452,7 @@ pub struct CheckboxMetricTable {
 pub fn resolve_checkbox_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> CheckboxMetricTable {
     resolve_checkbox_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -458,7 +461,7 @@ pub(crate) fn resolve_checkbox_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> CheckboxMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{

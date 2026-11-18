@@ -32,7 +32,6 @@ pub fn checkbox_group_template<T: ControlGroupItemLike + 'static>(
                     data: CheckboxData::new(item.selected),
                     content: Arc::new(move |_, _| div().child(label.clone()).into_any_element()),
                     state: item.state.interaction_state(),
-                    size: size.control_size(),
                     ..Default::default()
                 };
                 let selector = button.id.to_string();
@@ -210,7 +209,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
             self.builder
-                .stylesheet(&look.common_stylesheet())
+                .stylesheet(&look.sized_stylesheet(look.size()))
                 .motion_defaults(look.motion_defaults().control_group)
                 .template(checkbox_group_template(&look, self.variant, self.paint, self.size, self.radius))
                 .spawn(cx)

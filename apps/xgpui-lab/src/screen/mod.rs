@@ -322,11 +322,8 @@ pub(crate) fn control_row() -> Div {
 
 /// Apply the reference switch label typography to a labeled control.
 pub(crate) fn labeled_control(look: &Look, element: Div) -> Div {
-    let label = xgpui_luma_look_radix::switch_theme(look).resolve(
-        false,
-        xgpui_luma::theme::InteractionState::default(),
-        xgpui_luma::theme::ControlSize::Md,
-    );
+    let label =
+        xgpui_luma_look_radix::switch_theme(look).resolve(false, xgpui_luma::theme::InteractionState::default());
     element
         .typography_style(label.label_typography)
         .font_family(label.label_font_family)

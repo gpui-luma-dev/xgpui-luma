@@ -213,7 +213,8 @@ impl Scrollbar {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ScrollbarBuilder {
-        let builder = self.builder.size(self.size.control_size());
+        let look = look.with_size(self.size);
+        let builder = self.builder;
         if self.custom_template {
             builder
         } else {

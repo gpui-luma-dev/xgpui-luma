@@ -37,14 +37,16 @@ struct Sample {
 fn sample(look: &Look, id: String, sample: Sample, window: &mut Window, cx: &mut App) -> AnyElement {
     let Sample { variant, size, radius, high_contrast, value, enabled, indeterminate } = sample;
     let id = SharedString::from(format!("guide-progress-{id}"));
-    let template =
-        look.progress_template(variant, Paint { tone: xgpui_luma_look_radix::Tone::Accent, high_contrast }, radius);
+    let template = look.with_size(size.control_size()).progress_template(
+        variant,
+        Paint { tone: xgpui_luma_look_radix::Tone::Accent, high_contrast },
+        radius,
+    );
     let model = ProgressRenderModel {
         id: &id,
         range: ControlRange::from(0..100),
         value,
         percentage: value / 100.0,
-        size: size.control_size(),
         enabled,
         direction: ProgressDirection::LeftToRight,
         show_thumb: false,

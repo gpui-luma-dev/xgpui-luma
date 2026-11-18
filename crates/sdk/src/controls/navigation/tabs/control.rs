@@ -12,7 +12,6 @@ use crate::controls::control_group::{ControlGroupControl, ControlGroupEvent, Con
 use crate::controls::tabs::model::TabsWidthMode;
 use crate::infra::lock;
 use crate::motion::{DisclosureMotion, VisualTransition};
-use crate::theme::ControlSize;
 
 #[derive(Clone, Debug)]
 #[non_exhaustive]
@@ -51,7 +50,6 @@ pub struct Tabs {
     pub(super) active_id: Option<SharedString>,
     pending_changed_id: Option<SharedString>,
     pub(super) item_bounds: Vec<Option<Bounds<Pixels>>>,
-    size: ControlSize,
     width_mode: TabsWidthMode,
     pub(super) motion_enabled: bool,
     disclosure_icons: crate::infra::icon::DisclosureIcons,
@@ -152,7 +150,6 @@ impl Tabs {
             active_id,
             pending_changed_id: None,
             item_bounds: Vec::new(),
-            size: builder.model.size,
             width_mode: builder.model.width_mode,
             motion_enabled: builder.model.motion_enabled,
             disclosure_icons: builder.model.disclosure_icons.clone(),
@@ -405,14 +402,6 @@ impl Tabs {
         self.refresh_group_template(cx);
     }
 
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.size == size {
-            return;
-        }
-        self.size = size;
-        self.refresh_group_template(cx);
-    }
-
     pub fn set_width_mode(&mut self, width_mode: TabsWidthMode, cx: &mut Context<Self>) {
         if self.width_mode == width_mode {
             return;
@@ -433,7 +422,6 @@ impl Tabs {
     }
 
     fn refresh_group_template(&mut self, cx: &mut Context<Self>) {
-        let size = self.size;
         let width_mode = self.width_mode;
         let template = self.template.clone();
         let indicator_motion = self.indicator_motion.clone();
@@ -443,7 +431,6 @@ impl Tabs {
         self.group.update(cx, |group, cx| {
             group.set_template(
                 super::template::tabs_control_group_template(
-                    size,
                     width_mode,
                     template,
                     indicator_motion,

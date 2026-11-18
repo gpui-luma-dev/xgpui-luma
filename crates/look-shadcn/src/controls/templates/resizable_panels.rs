@@ -15,11 +15,12 @@ struct ShadcnResizablePanelsTheme {
 }
 
 impl ResizablePanelsTheme for ShadcnResizablePanelsTheme {
-    fn resize_handle_metrics(
-        &self,
-        size: xgpui_luma::controls::resizable_panels::ResizeHandleSize,
-    ) -> xgpui_luma::controls::resizable_panels::ResizeHandleMetrics {
-        size.metrics_with_stylesheet(&self.theme.mode_tokens().stylesheet().common)
+    /// Handle pixels for the Look's Shadcn size.
+    fn resize_handle_metrics(&self) -> xgpui_luma::controls::resizable_panels::ResizeHandleMetrics {
+        let tokens = self.theme.mode_tokens();
+        xgpui_luma::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(
+            &tokens.common_for(self.theme.size()),
+        )
     }
 
     fn resolve(&self, state: InteractionState) -> xgpui_luma::controls::resizable_panels::ResizablePanelsLook {

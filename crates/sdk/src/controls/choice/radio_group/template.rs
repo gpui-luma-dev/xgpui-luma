@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Window, div, px, prelude::*};
 
-use crate::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
 use crate::controls::control_group::{
     self as control_group, ControlGroupItemElementTemplate, ControlGroupItemHandlerExt, ControlGroupItemLike,
@@ -34,7 +34,7 @@ where
             RadioGroupLayout::Vertical => "vertical",
             RadioGroupLayout::Horizontal => "horizontal",
         };
-        let recipe = model.stylesheet.radio_group.authored_geometry(key);
+        let recipe = model.stylesheet.radio_group.authored_geometry_for(key);
         let root = div().id(model.id.clone()).flex().gap(px(recipe.gap.unwrap_or_default()));
         match layout {
             RadioGroupLayout::Vertical => root.flex_col().items_start().children(rows),
@@ -70,7 +70,6 @@ where
             data: RadioButtonData::new(item.selected),
             content: Arc::new(|_, _| div().into_any_element()),
             role: ButtonFamilyRole::Icon,
-            size: ButtonSize::Md,
             state: item.state.interaction_state(),
             round: false,
             radius_override: Cell::new(None),
@@ -89,7 +88,7 @@ where
             .gap(px(item
                 .stylesheet
                 .radio_group
-                .authored_geometry(match item.layout {
+                .authored_geometry_for(match item.layout {
                     ControlGroupLayout::Vertical => "vertical",
                     ControlGroupLayout::Horizontal => "horizontal",
                 })
@@ -106,7 +105,6 @@ where
                 move |_, _| div().child(label.clone()).into_any_element()
             }),
             role: ButtonFamilyRole::Text,
-            size: ButtonSize::Md,
             state: item.state.interaction_state(),
             round: false,
             radius_override: Cell::new(None),
@@ -147,7 +145,7 @@ where
                 model
                     .stylesheet
                     .radio_group
-                    .authored_geometry(match model.layout {
+                    .authored_geometry_for(match model.layout {
                         ControlGroupLayout::Vertical => "vertical",
                         ControlGroupLayout::Horizontal => "horizontal",
                     })

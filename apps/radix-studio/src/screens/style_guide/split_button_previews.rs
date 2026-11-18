@@ -1,4 +1,5 @@
 //! Forced SDK split-face templates at intrinsic control widths.
+use xgpui_luma_look_radix::RadixSize;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::{
@@ -7,7 +8,7 @@ use xgpui_luma::controls::{
     tabs::Tabs,
 };
 use xgpui_luma::infra::{icon::DisclosureIcons, menu_item::MenuItem, state::ControlFocusState};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, SemanticRole, Tone};
 use super::{matrix_grid::*, states};
 
@@ -50,7 +51,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
                             &fork,
                             Cell {
                                 style: *style,
-                                size: ControlSize::Md,
+                                size: RadixSize::Two,
                                 state: Default::default(),
                                 face: Face::Primary,
                                 id: format!("color-{row}-{col}"),
@@ -70,7 +71,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
             }
             for (row, style) in STYLES.iter().enumerate() {
                 grid = grid.child(row_label(style.label, fg), row + 1, 0);
-                for (col, size) in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg].into_iter().enumerate() {
+                for (col, size) in [RadixSize::One, RadixSize::Two, RadixSize::Three].into_iter().enumerate() {
                     grid = grid.child(
                         sample(
                             look,
@@ -102,7 +103,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
                             look,
                             Cell {
                                 style: STYLES[if row < 4 { row } else { 0 }],
-                                size: ControlSize::Md,
+                                size: RadixSize::Two,
                                 state: state.state,
                                 face: match row {
                                     4 => Face::Menu,
@@ -132,12 +133,15 @@ enum Face {
 
 struct Cell {
     style: Style,
-    size: ControlSize,
+    size: RadixSize,
     state: InteractionState,
     face: Face,
     id: String,
 }
 fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElement {
+    // Render this cell with a Look sized to its column.
+    let sized_look = look.with_size(cell.size);
+    let look = &sized_look;
     let id = SharedString::from(format!("guide-split-button-{}", cell.id));
     let label = SharedString::from("Save");
     let items = [
@@ -160,7 +164,7 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
         // GPUI SVGs need an explicit foreground; the SDK icon presenter supplies none.
         let resolved = radix::split_button_theme(look, cell.style.menu, Tone::Accent).resolve_look(
             cell.style.trigger,
-            PopupMenuTriggerMetrics { size: cell.size, menu_size: cell.size, ..Default::default() },
+            PopupMenuTriggerMetrics::default(),
             primary,
             window.scale_factor(),
             cx,
@@ -197,8 +201,6 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
         trigger_style: cell.style.trigger,
-        trigger_size: cell.size,
-        menu_size: cell.size,
         icon_only: false,
         icon: None,
         end_icon: None,

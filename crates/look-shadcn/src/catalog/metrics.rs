@@ -1,4 +1,7 @@
-use xgpui_luma::theme::{ControlSize, LumaTypography, MetricTokens};
+use xgpui_luma::theme::{LumaTypography, MetricTokens};
+
+use crate::ShadcnRadii;
+use crate::size::{ShadcnControlMetrics, ShadcnSize};
 
 use super::CssTokenMap;
 
@@ -8,11 +11,11 @@ struct ControlSpacingScale {
     gap: f32,
 }
 
-fn control_spacing_scale(size: ControlSize) -> ControlSpacingScale {
+fn control_spacing_scale(size: ShadcnSize) -> ControlSpacingScale {
     match size {
-        ControlSize::Sm => ControlSpacingScale { padding_x: 2.5, padding_y: 1.25, gap: 1.5 },
-        ControlSize::Md => ControlSpacingScale { padding_x: 3.5, padding_y: 2.0, gap: 2.0 },
-        ControlSize::Lg => ControlSpacingScale { padding_x: 4.5, padding_y: 2.5, gap: 2.5 },
+        ShadcnSize::Sm => ControlSpacingScale { padding_x: 2.5, padding_y: 1.25, gap: 1.5 },
+        ShadcnSize::Md => ControlSpacingScale { padding_x: 3.5, padding_y: 2.0, gap: 2.0 },
+        ShadcnSize::Lg => ControlSpacingScale { padding_x: 4.5, padding_y: 2.5, gap: 2.5 },
     }
 }
 
@@ -26,7 +29,7 @@ fn apply_spacing_to_control(
     metrics.gap = spacing_px * scale.gap;
 }
 
-pub fn spacing_multiplier(size: ControlSize, field: SpacingField) -> f32 {
+pub fn spacing_multiplier(size: ShadcnSize, field: SpacingField) -> f32 {
     let scale = control_spacing_scale(size);
     match field {
         SpacingField::PaddingX => scale.padding_x,
@@ -56,27 +59,36 @@ const GENERIC_FAMILIES: &[&str] = &[
     "fantasy",
 ];
 
-pub(crate) fn metrics_from_catalog(catalog: &CssTokenMap, mut scaffold: MetricTokens) -> MetricTokens {
+/// Resolve shared metrics, Shadcn's per-size control metrics and Shadcn's named radii
+/// from the CSS catalog. The shared `control` scale is the `md` (Shadcn `default`) size.
+pub(crate) fn metrics_from_catalog(
+    catalog: &CssTokenMap,
+    scaffold: MetricTokens,
+) -> (MetricTokens, ShadcnControlMetrics, ShadcnRadii) {
+    let mut controls = ShadcnControlMetrics { md: scaffold.control, ..Default::default() };
+    let mut radii = ShadcnRadii::default();
+    let mut scaffold = scaffold;
+    apply_catalog_metrics(catalog, &mut controls, &mut radii);
+    scaffold.control = controls.md;
+    (scaffold, controls, radii)
+}
+
+fn apply_catalog_metrics(catalog: &CssTokenMap, controls: &mut ShadcnControlMetrics, radii: &mut ShadcnRadii) {
     if let Some(spacing_raw) = catalog.get("spacing") {
         if let Some(spacing_px) = parse_length_px(spacing_raw) {
-            apply_spacing_to_control(&mut scaffold.control.sm, spacing_px, control_spacing_scale(ControlSize::Sm));
-            apply_spacing_to_control(&mut scaffold.control.md, spacing_px, control_spacing_scale(ControlSize::Md));
-            apply_spacing_to_control(&mut scaffold.control.lg, spacing_px, control_spacing_scale(ControlSize::Lg));
-            scaffold.spacing.s1 = spacing_px;
+            for size in ShadcnSize::ALL {
+                apply_spacing_to_control(controls.get_mut(size), spacing_px, control_spacing_scale(size));
+            }
         }
     }
 
     let Some(radius_raw) = catalog.get("radius") else {
-        return scaffold;
+        return;
     };
     let Some(base_px) = parse_length_px(radius_raw) else {
-        return scaffold;
+        return;
     };
-    let scale = base_px / scaffold.radius.md;
-    scaffold.radius.sm *= scale;
-    scaffold.radius.md = base_px;
-    scaffold.radius.lg *= scale;
-    scaffold.radius.xl *= scale;
+    *radii = ShadcnRadii::from_base(base_px);
     // Apply the standard Shadcn/Tailwind offsets:
     // Sm gets rounded-sm (radius - 4px)
     // Md gets rounded-md (radius - 2px)
@@ -84,15 +96,9 @@ pub(crate) fn metrics_from_catalog(catalog: &CssTokenMap, mut scaffold: MetricTo
     let sm_radius = (base_px - 4.0).max(0.0);
     let md_radius = (base_px - 2.0).max(0.0);
     let lg_radius = base_px;
-    scale_control_metrics(&mut scaffold.control.sm, scale, sm_radius);
-    scale_control_metrics(&mut scaffold.control.md, scale, md_radius);
-    scale_control_metrics(&mut scaffold.control.lg, scale, lg_radius);
-    scaffold
-}
-
-fn scale_control_metrics(metrics: &mut xgpui_luma::theme::ControlMetricTokens, scale: f32, md_radius: f32) {
-    metrics.radius = md_radius;
-    let _ = scale;
+    controls.sm.radius = sm_radius;
+    controls.md.radius = md_radius;
+    controls.lg.radius = lg_radius;
 }
 
 pub(crate) fn typography_from_catalog(catalog: &CssTokenMap, mut scaffold: LumaTypography) -> LumaTypography {
@@ -163,19 +169,21 @@ mod tests {
 
     #[test]
     fn spacing_token_scales_control_padding_and_gap() {
-        use xgpui_luma::theme::ControlSize;
+        use crate::ShadcnSize;
 
         let catalog = CssTokenMap::from_map(std::collections::BTreeMap::from([
             ("spacing".into(), "0.25rem".into()),
             ("radius".into(), "0.25rem".into()),
         ]));
-        let metrics = metrics_from_catalog(&catalog, MetricTokens::default());
+        let (metrics, controls, radii) = metrics_from_catalog(&catalog, MetricTokens::default());
+        assert_eq!((radii.small, radii.medium, radii.large, radii.xl), (0.0, 2.0, 4.0, 8.0));
 
-        assert_eq!(metrics.control.md.padding_x, 14.0);
-        assert_eq!(metrics.control.md.padding_y, 8.0);
-        assert_eq!(metrics.control.md.gap, 8.0);
-        assert_eq!(metrics.control.sm.padding_x, 10.0);
-        assert_eq!(metrics.control.lg.padding_x, 18.0);
-        assert_eq!(spacing_multiplier(ControlSize::Md, SpacingField::PaddingX), 3.5);
+        assert_eq!(metrics.control, controls.md);
+        assert_eq!(controls.md.padding_x, 14.0);
+        assert_eq!(controls.md.padding_y, 8.0);
+        assert_eq!(controls.md.gap, 8.0);
+        assert_eq!(controls.sm.padding_x, 10.0);
+        assert_eq!(controls.lg.padding_x, 18.0);
+        assert_eq!(spacing_multiplier(ShadcnSize::Md, SpacingField::PaddingX), 3.5);
     }
 }

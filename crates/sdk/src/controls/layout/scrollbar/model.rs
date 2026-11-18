@@ -6,7 +6,6 @@ use super::template::template_with_modifier;
 use super::{Scrollbar, ScrollbarTemplate, default_scrollbar_template};
 use crate::theme::InteractionState;
 use crate::infra::value::{ControlRange, normalized_step, value_from_input};
-use crate::theme::ControlSize;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ScrollbarOrientation {
@@ -32,7 +31,6 @@ pub struct ScrollbarModel {
     pub(crate) value: f32,
     pub(crate) thumb_fraction: f32,
     pub(crate) length: Option<f32>,
-    pub(crate) size: ControlSize,
     pub(crate) style: ScrollbarStyle,
     pub(crate) enabled: bool,
     pub(crate) template: Arc<dyn ScrollbarTemplate>,
@@ -96,7 +94,6 @@ pub struct ScrollbarRenderModel<'a> {
     pub percentage: f32,
     pub thumb_fraction: f32,
     pub length: Option<f32>,
-    pub size: ControlSize,
     pub style: ScrollbarStyle,
     pub enabled: bool,
     pub state: InteractionState,
@@ -215,7 +212,6 @@ impl ScrollbarBuilder {
                     .thumb_fraction
                     .unwrap_or_default(),
                 length: None,
-                size: ControlSize::Md,
                 style: ScrollbarStyle::Ghost,
                 enabled: true,
                 template: default_scrollbar_template(),
@@ -288,11 +284,6 @@ impl ScrollbarBuilder {
         self.model.value = viewport.value(self.model.step);
         self.model.thumb_fraction = viewport.thumb_fraction();
         self.model.enabled = self.model.enabled && viewport.scrollable();
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

@@ -181,12 +181,6 @@ impl TextFieldControl {
         cx.notify();
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        self.layout_cache = None;
-        cx.notify();
-    }
-
     pub fn set_value(&mut self, value: impl Into<String>, cx: &mut Context<Self>) {
         self.model.value = value.into().into();
         self.state.cursor = self.model.value.chars().count();
@@ -299,13 +293,10 @@ impl TextFieldControl {
     }
 
     fn resolved_look(&self, window: &Window, cx: &mut Context<Self>) -> TextFieldLook {
-        let mut look = self.model.template.resolve_look_with_scale(
-            self.state,
-            self.model.enabled,
-            self.model.size,
-            window.scale_factor(),
-            cx,
-        );
+        let mut look =
+            self.model
+                .template
+                .resolve_look_with_scale(self.state, self.model.enabled, window.scale_factor(), cx);
         if self.model.compact {
             let geometry = &look.helper_geometry;
             look.padding_y = geometry.compact_textfield_padding_y;
@@ -327,7 +318,6 @@ impl TextFieldControl {
             placeholder: &self.model.placeholder,
             value: &self.model.value,
             prefix_icon: self.model.prefix_icon.as_ref(),
-            size: self.model.size,
             enabled: self.model.enabled,
             full_width: self.model.full_width,
             state: self.state,

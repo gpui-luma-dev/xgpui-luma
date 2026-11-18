@@ -4,9 +4,9 @@ use super::model::{
     StepperBuilder, StepperLabelPlacement, StepperModel, StepperRenderModel, derive_step_states, visual_step_state,
 };
 use super::{StepState, StepperTemplate};
-use crate::motion::{VisualTransition};
+use crate::motion::VisualTransition;
 use crate::controls::progress::ProgressDirection;
-use crate::theme::{ControlSize, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 pub struct StepperControl {
     model: StepperModel,
@@ -67,10 +67,6 @@ impl StepperControl {
 
     pub fn is_enabled(&self) -> bool {
         self.model.enabled
-    }
-
-    pub fn size(&self) -> ControlSize {
-        self.model.size
     }
 
     pub fn direction(&self) -> ProgressDirection {
@@ -136,15 +132,6 @@ impl StepperControl {
         }
 
         self.model.enabled = enabled;
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.model.size == size {
-            return;
-        }
-
-        self.model.size = size;
         cx.notify();
     }
 
@@ -224,7 +211,6 @@ impl StepperControl {
             labels: &self.model.labels,
             label_placement: self.model.label_placement,
             direction: self.model.direction,
-            size: self.model.size,
             enabled: self.model.enabled,
             step_contents: &self.model.step_contents,
             content_height: self.model.content_height,

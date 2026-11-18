@@ -71,13 +71,8 @@ impl From<SliderTemplateHandlers> for (SliderBoundsHandler, SliderInteractionHan
 
 pub trait SliderTemplate: Send + Sync {
     /// Resolve the same geometry for pointer hit testing and painted chrome.
-    fn resolve_look(
-        &self,
-        size: crate::theme::ControlSize,
-        thumb_size: Option<super::SliderThumbSize>,
-        state: crate::theme::InteractionState,
-    ) -> super::SliderLook {
-        super::theme::default_slider_theme().resolve(size, thumb_size, state)
+    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
+        super::theme::default_slider_theme().resolve(state)
     }
 
     fn render(
@@ -121,13 +116,8 @@ where
 }
 
 impl SliderTemplate for ModifiedSliderTemplate {
-    fn resolve_look(
-        &self,
-        size: crate::theme::ControlSize,
-        thumb_size: Option<super::SliderThumbSize>,
-        state: crate::theme::InteractionState,
-    ) -> super::SliderLook {
-        self.base.resolve_look(size, thumb_size, state)
+    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::SliderLook {
+        self.base.resolve_look(state)
     }
 
     fn render(

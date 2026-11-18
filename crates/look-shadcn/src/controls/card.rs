@@ -21,13 +21,12 @@ use gpui::Window;
 use gpui::div;
 use gpui::prelude::*;
 use gpui::px;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::theme::observe_theme_revision;
 
 use crate::look::ShadcnLook;
 use crate::look_context::LookContext;
-use crate::size::ShadcnSize;
 use crate::provenance::ColorSource;
 use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
@@ -100,7 +99,7 @@ pub struct CardLook {
     pub font_family: SharedString,
 }
 
-pub fn card_look(theme: &ShadcnLook, size: ControlSize) -> CardLook {
+pub fn card_look(theme: &ShadcnLook, size: ShadcnSize) -> CardLook {
     let tokens = theme.mode_tokens();
     let colors = resolve_card_colors(theme).unwrap_or_else(|_| CardColorTable::fallback());
     let geometry = crate::tables::metrics::resolve_card_metrics(theme, size);
@@ -120,9 +119,9 @@ pub fn card_look(theme: &ShadcnLook, size: ControlSize) -> CardLook {
         header_gap: geometry.header_gap.value_px,
         body_gap: geometry.body_gap.value_px,
         title: match size {
-            ControlSize::Sm => typography.text.label,
-            ControlSize::Md => theme.typography_role(ShadcnTextRole::H4),
-            ControlSize::Lg => theme.typography_scale(ShadcnTextSize::Xl),
+            ShadcnSize::Sm => typography.text.label,
+            ShadcnSize::Md => theme.typography_role(ShadcnTextRole::H4),
+            ShadcnSize::Lg => theme.typography_scale(ShadcnTextSize::Xl),
         },
         description: typography.text.caption,
         body: typography.text.body,
@@ -286,7 +285,7 @@ impl Render for ShadcnCard {
 }
 
 fn render_card(look: &ShadcnLook, config: &ShadcnCardConfig, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-    let card_look = card_look(look, config.size.control_size());
+    let card_look = card_look(look, config.size);
 
     let mut root = div()
         .id(config.id.clone())
@@ -380,7 +379,7 @@ fn renderer_from_element(element: impl IntoElement + Clone + Send + Sync + 'stat
 
 #[cfg(test)]
 mod tests {
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
 
     use crate::look::ShadcnLook;
     use crate::tokens::ShadcnToken;
@@ -433,14 +432,14 @@ mod tests {
 
     #[test]
     fn card_resolves_stylesheet_shadow() {
-        let look = card_look(&sample_look(), ControlSize::Md);
+        let look = card_look(&sample_look(), ShadcnSize::Md);
         assert!(!look.shadow.is_empty());
     }
 
     #[test]
     fn card_uses_card_tokens() {
         let shadcn = sample_look();
-        let look = card_look(&shadcn, ControlSize::Md);
+        let look = card_look(&shadcn, ShadcnSize::Md);
 
         assert_eq!(look.background, shadcn.color(ShadcnToken::Card));
         assert_eq!(look.title_color, shadcn.color(ShadcnToken::CardForeground));
@@ -495,20 +494,19 @@ pub struct CardMetricTable {
     pub radius: crate::ResolvedMetric,
 }
 
-pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: xgpui_luma::theme::ControlSize) -> CardMetricTable {
+pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: crate::ShadcnSize) -> CardMetricTable {
     let theme_mode = look.mode();
     let mode = look.mode_tokens();
     let ctx = crate::LookContext::new(mode.as_ref(), theme_mode, Default::default());
-    let metrics = ctx.metrics();
     let catalog = ctx.catalog();
-    let base_gap = metrics.gap(size);
+    let base_gap = ctx.controls().gap(size);
 
     let mut table = CardMetricTable {
         padding: crate::tables::metrics::helpers::spacing_control_metric(
             catalog,
             size,
             crate::catalog::SpacingField::PaddingX,
-            metrics.padding_x(size),
+            ctx.controls().padding_x(size),
         ),
         section_gap: crate::tables::metrics::helpers::spacing_control_metric(
             catalog,
@@ -528,7 +526,7 @@ pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: xgpui_luma::theme::C
         ),
         radius: crate::tables::metrics::helpers::radius_metric(catalog, size, look.radius(crate::ShadcnRadius::Lg)),
     };
-    let geometry = mode.stylesheet().common.card.inspect_geometry(
+    let geometry = mode.stylesheet().common.card.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::CardGeometry {
             padding: table.padding.value_px,

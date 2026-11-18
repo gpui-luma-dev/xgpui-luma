@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use gpui::SharedString;
 use xgpui_luma::controls::textarea::TextAreaState;
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::{StandardBoxScale};
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
 
 use super::model::EventLogViewBuilder;
@@ -21,7 +21,6 @@ impl EventLogTheme for ShadcnEventLogTheme {
         let textarea = self.look.textarea_theme().resolve_look(
             TextAreaState { focused, focus_visible: focused, ..Default::default() },
             true,
-            ControlSize::Md,
             scale,
         );
         let typography = self.look.typography_scale(ShadcnTextSize::Xs);

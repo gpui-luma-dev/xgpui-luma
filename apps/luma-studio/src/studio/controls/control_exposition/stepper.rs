@@ -9,7 +9,7 @@ use xgpui_luma::infra::icon::SelectionStatusIcons;
 use xgpui_luma::infra::presenter::HasPresenter;
 use xgpui_luma::controls::progress::ProgressDirection;
 use xgpui_luma::controls::stepper::{StepState, Stepper, StepperLabelPlacement, StepperRenderModel, StepperTemplate};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -34,7 +34,6 @@ const SECTION_WIDTH: f32 = 520.0;
 const VERTICAL_DEMO_HEIGHT: f32 = 260.0;
 const VERTICAL_DEMO_WIDTH: f32 = 200.0;
 const DEMO_CONTENT_HEIGHT: f32 = 96.0;
-const DEMO_SIZE: ControlSize = ControlSize::Md;
 
 pub struct StepperControlExposition {
     look: Arc<ShadcnLook>,
@@ -465,7 +464,6 @@ fn render_stepper_sample(
         labels: &labels,
         label_placement,
         direction,
-        size: DEMO_SIZE,
         enabled,
         step_contents: &empty_contents,
         content_height: None,
