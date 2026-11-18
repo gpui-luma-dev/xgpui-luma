@@ -218,12 +218,12 @@ impl Radio {
     }
 
     fn into_sdk_builder(self, look: Look) -> RadioButtonBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = radio_template_for(&look, self.variant, self.paint, self.size);
         let mut builder = xgpui_luma::controls::radio_button::new(self.id)
             .motion_defaults(look.motion_defaults().radio)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.selected)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -254,13 +254,13 @@ impl HasPresenter<ButtonContentContext<RadioButtonData>> for Radio {
 mod tests {
     use super::*;
     use xgpui_luma::controls::button::HasPresenter;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Radio::new("s").size(RadioSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Radio::new("s").size(RadioSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Radio::new("s").size(RadioSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(Radio::new("s").size(RadioSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Radio::new("s").size(RadioSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Radio::new("s").size(RadioSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

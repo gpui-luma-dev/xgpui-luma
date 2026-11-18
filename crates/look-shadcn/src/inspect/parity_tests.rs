@@ -1,9 +1,10 @@
 //! Inspection regression tests: compare public inspection output to rendered looks.
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{ColorSource, MetricSource, ShadcnButtonStyle, ShadcnLook, ShadcnModeTokens};
 use crate::paint;
 use crate::inspect::*;
+use crate::size::ShadcnSize;
 
 fn states() -> impl Iterator<Item = InteractionState> {
     (0..16).map(|bits| InteractionState {
@@ -33,21 +34,21 @@ fn choice_colors_match_runtime_for_every_state_style_and_fallback() {
                 for state in states() {
                     for selected in [false, true] {
                         let actual = inspect_checkbox_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::checkbox_look(&mode, style, selected, state, ControlSize::Md);
+                        let painted = paint::checkbox_look(&mode, style, selected, state, ShadcnSize::Md);
                         assert_eq!(actual.indicator_background.value, painted.indicator_background);
                         assert_eq!(actual.indicator_border.value, painted.indicator_border);
                         assert_eq!(actual.checkmark_color.value, painted.checkmark_color);
                         assert_eq!(actual.label_color.value, painted.label_color);
 
                         let actual = inspect_radio_button_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::radio_button_look(&mode, style, selected, state, ControlSize::Md);
+                        let painted = paint::radio_button_look(&mode, style, selected, state, ShadcnSize::Md);
                         assert_eq!(actual.indicator_background.value, painted.indicator_background);
                         assert_eq!(actual.indicator_border.value, painted.indicator_border);
                         assert_eq!(actual.dot_color.value, painted.dot_color);
                         assert_eq!(actual.label_color.value, painted.label_color);
 
                         let actual = inspect_switch_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::switch_look(&mode, theme_mode, style, selected, state, ControlSize::Md);
+                        let painted = paint::switch_look(&mode, theme_mode, style, selected, state, ShadcnSize::Md);
                         assert_eq!(actual.track_background.value, painted.track_background);
                         assert_eq!(actual.track_border.value, painted.track_border);
                         assert_eq!(actual.thumb_background.value, painted.thumb_background);
@@ -74,7 +75,7 @@ fn focused_checkbox_provenance_and_hover_policy_match_paint() {
         ShadcnButtonStyle::Primary,
         true,
         InteractionState { focused: true, ..Default::default() },
-        ControlSize::Md,
+        ShadcnSize::Md,
     );
     assert_eq!(painted.focus_border, mode.catalog.color("ring").unwrap());
     let hovered = inspect(InteractionState { hovered: true, ..Default::default() });
@@ -93,7 +94,7 @@ fn button_and_toggle_tables_match_runtime_including_focus_and_typography() {
                 ButtonFamilyRole::Toggle { selected: true },
             ] {
                 for state in states() {
-                    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+                    for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
                         let actual = inspect_button_color_palette(&mode, theme_mode, style, role, state);
                         let painted = paint::button_look(&mode, theme_mode, style, role, size, state);
                         assert_eq!(actual.background.value, painted.background);
@@ -127,10 +128,10 @@ fn accordion_tables_cover_all_scale_fields_and_sources() {
             }
             catalog.tokens.insert("radius".into(), "0.625rem".into());
             let mode = ShadcnModeTokens::from_catalog(catalog, theme_mode).unwrap();
-            for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+            for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
                 for scale_factor in [1.0, 1.25, 1.5, 2.0] {
                     let actual = inspect_accordion_metrics_at_scale(&mode, theme_mode, size, scale_factor);
-                    let painted = AccordionScale::compute(size, &mode.metrics, scale_factor);
+                    let painted = AccordionScale::compute(&mode.metrics_for(size), scale_factor);
                     assert_eq!(actual.trigger_height.value_px, painted.trigger_height);
                     assert_eq!(actual.padding_x.value_px, painted.padding_x);
                     assert_eq!(actual.padding_y.value_px, painted.padding_y);
@@ -166,7 +167,7 @@ fn accordion_tables_cover_all_scale_fields_and_sources() {
 #[test]
 fn sidebar_metrics_and_focus_match_runtime() {
     let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
-    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+    for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
         let actual = ShadcnInspect::new(&look).inspect_sidebar_metrics(size);
         let section = paint::sidebar_section_look(&look);
         assert_eq!(actual.section_height.value_px, section.height);
@@ -192,8 +193,7 @@ fn slider_inspection_matches_paint() {
         let mode = ShadcnModeTokens::from_catalog(crate::inspect::test_support::sample_catalog(), theme_mode).unwrap();
         for state in states() {
             let actual = inspect_slider_color_palette(&mode, theme_mode, state);
-            let painted =
-                paint::slider_look(&mode, theme_mode, ShadcnButtonStyle::Primary, ControlSize::Md, None, state);
+            let painted = paint::slider_look(&mode, theme_mode, ShadcnButtonStyle::Primary, ShadcnSize::Md, state);
             assert_eq!(actual.track_background.value, painted.track_background);
             assert_eq!(actual.fill_background.value, painted.fill_background);
             assert_eq!(actual.thumb_background.value, painted.thumb_background);
@@ -251,11 +251,11 @@ fn incomplete_accordion_and_context_menu_palettes_share_safe_fallbacks() {
     mode.catalog.tokens.clear();
     for state in states() {
         let actual = inspect_accordion_trigger_color_palette(&mode, ThemeMode::Light, state);
-        let painted = paint::accordion_trigger_palette(&mode, ThemeMode::Light, state, ControlSize::Md);
+        let painted = paint::accordion_trigger_palette(&mode, ThemeMode::Light, state, ShadcnSize::Md);
         assert_eq!(actual.foreground.value, painted.foreground);
         assert_eq!(actual.border_color.value, painted.border_color);
         assert_eq!(actual.background.map(|v| v.value), painted.background);
-        let actual = inspect_context_menu_color_palette(&mode, ThemeMode::Light, state, ControlSize::Md);
+        let actual = inspect_context_menu_color_palette(&mode, ThemeMode::Light, state, ShadcnSize::Md);
         let painted = paint::context_menu_look(&mode, ThemeMode::Light, state);
         assert_eq!(actual.target_background.value, painted.target_background);
         assert_eq!(actual.target_foreground.value, painted.target_foreground);
@@ -285,7 +285,7 @@ fn selected_tabs_stylesheet_matches_paint_and_reports_shared_paths() {
     let theme = look.tabs_theme();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
             let inspector = ShadcnInspect::new(&look);
             let actual = inspector.inspect_tabs_metrics(size);
             assert_eq!(actual.list_gap.value_px, 7.0);
@@ -296,7 +296,7 @@ fn selected_tabs_stylesheet_matches_paint_and_reports_shared_paths() {
                     .contains("common.tabs.geometry.indicator_height")
             );
             for enabled in [true, false] {
-                let painted = theme.resolve_list(enabled, size);
+                let painted = theme.resolve_list(enabled);
                 assert_eq!(painted.gap, actual.list_gap.value_px);
                 assert_eq!(painted.padding, actual.list_padding.value_px);
                 assert_eq!(
@@ -306,7 +306,7 @@ fn selected_tabs_stylesheet_matches_paint_and_reports_shared_paths() {
             }
             for state in states() {
                 for active in [false, true] {
-                    let painted = theme.resolve_item(active, state, size);
+                    let painted = theme.resolve_item(active, state);
                     let colors = inspector.inspect_tabs_item_color_palette(active, state);
                     assert_eq!(painted.label_color, colors.label_color.value);
                     assert_eq!(painted.label_color, look.mode_tokens().catalog.color("primary").unwrap());
@@ -329,8 +329,8 @@ fn shared_switch_geometry_matches_selected_stylesheet_and_inspection() {
     let theme = look.switch_theme();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
-        let inspect = ShadcnInspect::new(&look).inspect_switch_metrics(ControlSize::Md);
-        let scale = theme.scale(ControlSize::Md, 1.0);
+        let inspect = ShadcnInspect::new(&look).inspect_switch_metrics(ShadcnSize::Md);
+        let scale = theme.scale(1.0);
         assert_eq!((scale.track_width, scale.track_height, scale.thumb_size, scale.gap), (52.0, 26.0, 22.0, 0.0));
         assert_eq!(inspect.track_width.value_px, scale.track_width);
         assert_eq!(inspect.track_height.value_px, scale.track_height);
@@ -348,14 +348,14 @@ fn shared_switch_geometry_preserves_shadcn_sizes_and_display_snapping() {
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
         for (size, width, height, thumb) in [
-            (ControlSize::Sm, 32.0, 13.0, 9.0),
-            (ControlSize::Md, 40.0, 18.0, 14.0),
-            (ControlSize::Lg, 48.0, 24.0, 20.0),
+            (ShadcnSize::Sm, 32.0, 13.0, 9.0),
+            (ShadcnSize::Md, 40.0, 18.0, 14.0),
+            (ShadcnSize::Lg, 48.0, 24.0, 20.0),
         ] {
             for style in styles() {
-                let theme = crate::controls::templates::switch_theme_with_style(look.clone(), style);
+                let theme = crate::controls::templates::switch_theme_with_style(look.with_size(size), style);
                 for factor in [1.0, 1.25, 2.0] {
-                    let scale = theme.scale(size, factor);
+                    let scale = theme.scale(factor);
                     let snap = |value| xgpui_luma::theme::snap_to_pixel(value, factor);
                     assert_eq!(
                         (scale.track_width, scale.track_height, scale.thumb_size, scale.track_padding),
@@ -368,35 +368,27 @@ fn shared_switch_geometry_preserves_shadcn_sizes_and_display_snapping() {
 }
 
 #[test]
-fn shared_slider_geometry_preserves_all_sizes_styles_states_and_thumbs() {
-    use xgpui_luma::controls::slider::SliderThumbSize;
+fn shared_slider_geometry_preserves_all_sizes_styles_and_states() {
     let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
         for style in styles() {
-            let theme = crate::controls::templates::slider_theme_with_style(look.clone(), style);
             for (size, height, track, thumb) in [
-                (ControlSize::Sm, 24.0, 4.0, 12.0),
-                (ControlSize::Md, 32.0, 6.0, 16.0),
-                (ControlSize::Lg, 40.0, 8.0, 20.0),
+                (ShadcnSize::Sm, 24.0, 4.0, 12.0),
+                (ShadcnSize::Md, 32.0, 6.0, 16.0),
+                (ShadcnSize::Lg, 40.0, 8.0, 20.0),
             ] {
+                let theme = crate::controls::templates::slider_theme_with_style(look.with_size(size), style);
+                let inspected = ShadcnInspect::new(&look).inspect_slider_metrics_for(size);
                 for state in states() {
-                    for (selection, expected) in [
-                        (None, thumb),
-                        (Some(SliderThumbSize::Sm), 12.0),
-                        (Some(SliderThumbSize::Md), 16.0),
-                        (Some(SliderThumbSize::Lg), 20.0),
-                    ] {
-                        let painted = theme.resolve(size, selection, state);
-                        let inspected = ShadcnInspect::new(&look).inspect_slider_metrics_for(size, selection);
-                        assert_eq!(
-                            (painted.width, painted.height, painted.track_height, painted.thumb_size),
-                            (260.0, height, track, expected)
-                        );
-                        assert_eq!(painted.radius, look.mode_tokens().metrics.radius.pill);
-                        assert_eq!(inspected.height.value_px, painted.height);
-                        assert_eq!(inspected.thumb_size.value_px, painted.thumb_size);
-                    }
+                    let painted = theme.resolve(state);
+                    assert_eq!(
+                        (painted.width, painted.height, painted.track_height, painted.thumb_size),
+                        (260.0, height, track, thumb)
+                    );
+                    assert_eq!(painted.radius, look.mode_tokens().radii.full);
+                    assert_eq!(inspected.height.value_px, painted.height);
+                    assert_eq!(inspected.thumb_size.value_px, painted.thumb_size);
                 }
             }
         }
@@ -405,31 +397,29 @@ fn shared_slider_geometry_preserves_all_sizes_styles_states_and_thumbs() {
 
 #[test]
 fn selected_slider_geometry_and_legacy_fallback_have_accurate_provenance() {
-    use xgpui_luma::controls::slider::SliderThumbSize;
     let mut stylesheet = crate::stylesheet::embedded_stylesheet().clone();
-    stylesheet.common.slider.sizes.md.width = Some(300.0);
-    stylesheet.common.slider.sizes.md.height = Some(36.0);
-    stylesheet.common.slider.sizes.lg.thumb_size = Some(25.0);
+    stylesheet.common.slider.sizes.get_or_default("md").width = Some(300.0);
+    stylesheet.common.slider.sizes.get_or_default("md").height = Some(36.0);
+    stylesheet.common.slider.sizes.get_or_default("lg").thumb_size = Some(25.0);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let theme = look.slider_theme();
-    let painted = theme.resolve(ControlSize::Md, Some(SliderThumbSize::Lg), Default::default());
-    let actual = ShadcnInspect::new(&look).inspect_slider_metrics_for(ControlSize::Md, Some(SliderThumbSize::Lg));
-    assert_eq!((painted.width, painted.height, painted.thumb_size), (300.0, 36.0, 25.0));
+    let painted = look.slider_theme().resolve(Default::default());
+    let actual = ShadcnInspect::new(&look).inspect_slider_metrics();
+    assert_eq!((painted.width, painted.height), (300.0, 36.0));
     assert_eq!(actual.width.value_px, painted.width);
-    assert_eq!(actual.thumb_size.value_px, painted.thumb_size);
     assert!(format_inspect_metric_source(&actual.width.source).contains("common.slider.sizes.md.width"));
-    assert!(format_inspect_metric_source(&actual.thumb_size.source).contains("instance thumb_size lg"));
+    let large = look.with_size(ShadcnSize::Lg).slider_theme().resolve(Default::default());
+    assert_eq!(large.thumb_size, 25.0);
+    assert_eq!(ShadcnInspect::new(&look).inspect_slider_metrics_for(ShadcnSize::Lg).thumb_size.value_px, 25.0);
 
     let stylesheet = crate::stylesheet::StylesheetConfig::parse("[slider.metrics.md]\nwidth = 290\nheight = 34\ntrack_height = 7\nthumb_size = 17\nradius = \"2.0\"\n[common.slider.sizes.md]\nwidth = 310").unwrap();
     let legacy = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let painted = legacy.slider_theme().resolve(ControlSize::Md, None, Default::default());
+    let painted = legacy.slider_theme().resolve(Default::default());
     let actual = ShadcnInspect::new(&legacy).inspect_slider_metrics();
     assert_eq!(
         (painted.width, painted.height, painted.track_height, painted.thumb_size, painted.radius),
         (310.0, 34.0, 7.0, 17.0, 2.0)
     );
     assert!(format_inspect_metric_source(&actual.height.source).contains("slider.metrics.md.height"));
-    let selected = ShadcnInspect::new(&legacy).inspect_slider_metrics_for(ControlSize::Sm, Some(SliderThumbSize::Md));
-    assert_eq!(selected.thumb_size.value_px, 17.0);
-    assert!(format_inspect_metric_source(&selected.thumb_size.source).contains("slider.metrics.md.thumb_size"));
+    assert_eq!(actual.thumb_size.value_px, 17.0);
+    assert!(format_inspect_metric_source(&actual.thumb_size.source).contains("slider.metrics.md.thumb_size"));
 }

@@ -516,8 +516,9 @@ where
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> TableBuilder<T> {
+        let look = look.with_size(self.size);
         let self_builder = self.builder.motion_defaults(look.motion_defaults().table);
-        let mut builder = self_builder.size(self.size.control_size());
+        let mut builder = self_builder;
         if !self.custom_theme {
             builder = builder.theme(look.table_theme());
         }

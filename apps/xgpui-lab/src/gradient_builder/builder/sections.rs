@@ -17,7 +17,7 @@ const SECTION_SPACING: f32 = 8.0;
 
 struct SectionTheme(Arc<Look>);
 impl AccordionTheme for SectionTheme {
-    fn resolve_trigger(&self, _: InteractionState, _: ControlSize) -> AccordionPalette {
+    fn resolve_trigger(&self, _: InteractionState) -> AccordionPalette {
         let chrome = self.0.chrome();
         AccordionPalette {
             background: None,
@@ -35,7 +35,7 @@ impl AccordionTheme for SectionTheme {
     fn metrics(&self) -> MetricTokens {
         self.0.metrics()
     }
-    fn resolve_scale(&self, _: ControlSize, _: f32) -> AccordionScale {
+    fn resolve_scale(&self, _: f32) -> AccordionScale {
         AccordionScale {
             drag_handle_padding: 0.0,
             disabled_opacity: self.0.metrics().disabled_opacity,

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::textfield::{TextFieldState, TextFieldTheme, ThemedTextFieldTemplate};
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::{StandardBoxScale};
 
 use crate::look::ShadcnLook;
 
@@ -22,16 +22,16 @@ impl TextFieldTheme for ShadcnTextFieldTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textfield::TextFieldLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -70,16 +70,16 @@ impl TextFieldTheme for ShadcnInputTextFieldTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textfield::TextFieldLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -118,16 +118,16 @@ impl TextFieldTheme for ShadcnSurfaceTextFieldTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textfield::TextFieldLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),
@@ -162,16 +162,16 @@ impl TextFieldTheme for ShadcnPrimaryTextFieldTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textfield::TextFieldLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textfield::textfield_look(
             tokens.as_ref(),

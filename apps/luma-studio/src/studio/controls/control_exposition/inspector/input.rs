@@ -1,4 +1,4 @@
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::ShadcnLook;
 use xgpui_luma_look_shadcn::inspect::{
     AutocompleteChromeInspectPalette, FloatingMenuInspectPalette, OverlayWindowInspectPalette, ShadcnInspect,
@@ -46,7 +46,7 @@ fn textfield_input_color_rows(palette: &TextFieldInspectPalette) -> Vec<InspectC
 }
 
 pub fn floating_menu_color_rows(look: &ShadcnLook) -> Vec<InspectColorRow> {
-    let palette = ShadcnInspect::new(look).inspect_floating_menu_color_palette(ControlSize::Md);
+    let palette = ShadcnInspect::new(look).inspect_floating_menu_color_palette(ShadcnSize::Md);
     floating_menu_palette_rows(&palette)
 }
 

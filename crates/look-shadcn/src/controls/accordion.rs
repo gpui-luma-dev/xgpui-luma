@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 use xgpui_luma::controls::accordion::AccordionContentPalette;
 use xgpui_luma::controls::accordion::AccordionPalette;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
@@ -112,7 +112,7 @@ pub fn accordion_trigger_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> AccordionPalette {
     let ctx = LookContext::new(mode, theme_mode, state);
     let state = ctx.state;
@@ -155,7 +155,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -184,12 +184,13 @@ mod tests {
     fn trigger_uses_paired_accent_hover_like_sidebar() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let default = accordion_trigger_palette(&mode, ThemeMode::Light, InteractionState::default(), ControlSize::Md);
+        let default =
+            accordion_trigger_palette(&mode, ThemeMode::Light, InteractionState::default(), crate::ShadcnSize::Md);
         let hovered = accordion_trigger_palette(
             &mode,
             ThemeMode::Light,
             InteractionState { hovered: true, ..InteractionState::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(default.foreground, catalog.color("foreground").expect("foreground"));
@@ -316,7 +317,7 @@ pub struct AccordionMetricTable {
 pub fn resolve_accordion_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     scale_factor: f32,
 ) -> AccordionMetricTable {
     use xgpui_luma::controls::accordion::AccordionScale;
@@ -327,9 +328,8 @@ pub fn resolve_accordion_metrics(
     };
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let metrics = ctx.metrics();
     let catalog = ctx.catalog();
-    let scale = AccordionScale::compute_with_stylesheet(size, metrics, scale_factor, &mode.stylesheet().common);
+    let scale = AccordionScale::compute_with_stylesheet(&mode.metrics_for(size), scale_factor, mode.common_for(size));
     let size_key = control_size_key(size);
 
     let mut table = AccordionMetricTable {
@@ -348,7 +348,7 @@ pub fn resolve_accordion_metrics(
         icon_size: derived_metric("accordion icon size", scale.icon_size),
         chevron_size: derived_metric("accordion chevron size", scale.chevron_size),
     };
-    let geometry = mode.stylesheet().common.accordion.inspect_geometry(
+    let geometry = mode.stylesheet().common.accordion.inspect_geometry_for(
         size_key,
         xgpui_luma::theme::stylesheet::AccordionGeometry {
             trigger_height: scale.trigger_height,

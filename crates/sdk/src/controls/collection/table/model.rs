@@ -11,7 +11,6 @@ use super::control::TableControl;
 use super::template::{TableTemplate, default_table_template, modified_table_template};
 use super::theme::{TableLook, TableRowLook, TableTheme, default_table_theme};
 use crate::infra::state::ControlFocusState;
-use crate::theme::ControlSize;
 
 pub type TableLabelFn<T> = Arc<dyn Fn(&T) -> SharedString + Send + Sync + 'static>;
 pub type TableEnabledFn<T> = Arc<dyn Fn(&T) -> bool + Send + Sync + 'static>;
@@ -82,7 +81,6 @@ pub struct TableRenderModel<'a> {
     pub page_count: usize,
     pub selected_count: usize,
     pub enabled: bool,
-    pub size: ControlSize,
     pub focus: ControlFocusState,
 }
 
@@ -310,7 +308,6 @@ where
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: ScrollInteraction,
     pub(crate) pointer_focus: crate::interaction::PointerFocusPolicy,
-    pub(crate) size: ControlSize,
     pub(crate) alignment: ListAlignment,
     pub(crate) overdraw: f32,
     pub(crate) row_label: TableLabelFn<T>,
@@ -666,7 +663,6 @@ where
                 enabled: true,
                 scroll_interaction: ScrollInteraction::VIEWPORT,
                 pointer_focus: Default::default(),
-                size: ControlSize::Md,
                 alignment: ListAlignment::Top,
                 overdraw: 480.0,
                 row_label: Arc::new(|_| SharedString::default()),
@@ -770,11 +766,6 @@ where
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

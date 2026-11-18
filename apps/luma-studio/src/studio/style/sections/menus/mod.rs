@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::floating_menu::{
     FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuLook, render_floating_menu,
 };
@@ -83,8 +84,8 @@ const MENU_TRIGGER_TABLE_SIZE_HEADER_HEIGHT: f32 = 40.0;
 
 const MENU_TRIGGER_SIZE_PREVIEW_STYLE: PopupMenuTriggerStyle = PopupMenuTriggerStyle::Outline;
 
-const MENU_TRIGGER_SIZES: [(ButtonSize, &str); 3] =
-    [(ButtonSize::Sm, "Small"), (ButtonSize::Md, "Medium"), (ButtonSize::Lg, "Large")];
+const MENU_TRIGGER_SIZES: [(ShadcnSize, &str); 3] =
+    [(ShadcnSize::Sm, "Small"), (ShadcnSize::Md, "Medium"), (ShadcnSize::Lg, "Large")];
 
 struct MenuTriggerStyleDef {
     label: &'static str,
@@ -155,7 +156,6 @@ fn render_menu_trigger_template_matrix(look: &Arc<ShadcnLook>, window: &mut Wind
 }
 
 fn render_menu_trigger_size_matrix(look: &Arc<ShadcnLook>, window: &mut Window, cx: &mut App) -> AnyElement {
-    let template = look.popup_menu_template();
     let chrome = look.chrome();
 
     VariantStateTable::new(
@@ -172,6 +172,8 @@ fn render_menu_trigger_size_matrix(look: &Arc<ShadcnLook>, window: &mut Window, 
             .map(|preset| render_button_radius_header_cell(preset.label(), chrome.muted_text)),
     )
     .rows(MENU_TRIGGER_SIZES.iter().map(|(size, label)| {
+        // Each size row renders with a Look sized to that row.
+        let template = look.with_size(*size).popup_menu_template();
         VariantStateTableRow {
             label: SharedString::from(*label),
             description: SharedString::from(""),
@@ -216,7 +218,7 @@ fn render_floating_menu_size_matrix(look: &Arc<ShadcnLook>, scroll_wheel: MenuPr
 
 fn render_floating_menu_size_cell(
     look: &Arc<ShadcnLook>,
-    size: ButtonSize,
+    size: ShadcnSize,
     scroll_wheel: MenuPreviewScrollWheelHandler,
 ) -> AnyElement {
     let menu_look = floating_menu_look_for_size(look, size);
@@ -247,7 +249,7 @@ fn render_floating_menu_size_cell(
         .into_any_element()
 }
 
-fn floating_menu_look_for_size(look: &Arc<ShadcnLook>, size: ButtonSize) -> FloatingMenuLook {
+fn floating_menu_look_for_size(look: &Arc<ShadcnLook>, size: ShadcnSize) -> FloatingMenuLook {
     xgpui_luma_look_shadcn::paint::floating_menu_look(look.mode_tokens().as_ref(), look.mode(), size)
 }
 
@@ -281,8 +283,6 @@ fn render_menu_trigger_state_cell(
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
         trigger_style,
-        trigger_size: ButtonSize::Md,
-        menu_size: ButtonSize::Md,
         icon_only: false,
         icon: None,
         end_icon: None,
@@ -315,7 +315,7 @@ fn render_menu_trigger_size_radius_cell(
     template: &Arc<dyn PopupMenuTemplate>,
     look: &ShadcnLook,
     trigger_style: PopupMenuTriggerStyle,
-    size: ButtonSize,
+    size: ShadcnSize,
     radius: ButtonRadiusPreset,
     window: &mut Window,
     cx: &mut App,
@@ -343,8 +343,6 @@ fn render_menu_trigger_size_radius_cell(
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
         trigger_style,
-        trigger_size: size,
-        menu_size: ButtonSize::Md,
         icon_only: false,
         icon: None,
         end_icon: None,
@@ -381,7 +379,7 @@ fn menu_trigger_focus_for_sample(sample: &ButtonStateSample) -> PopupMenuControl
     }
 }
 
-fn menu_trigger_radius_px(look: &ShadcnLook, size: ButtonSize, radius: ButtonRadiusPreset) -> f32 {
+fn menu_trigger_radius_px(look: &ShadcnLook, size: ShadcnSize, radius: ButtonRadiusPreset) -> f32 {
     xgpui_luma_look_shadcn::paint::button_look_semantic(
         look.mode_tokens().as_ref(),
         look.mode(),
@@ -403,11 +401,11 @@ fn menu_trigger_style_id(style: PopupMenuTriggerStyle) -> &'static str {
     }
 }
 
-fn menu_trigger_size_id(size: ButtonSize) -> &'static str {
+fn menu_trigger_size_id(size: ShadcnSize) -> &'static str {
     match size {
-        ButtonSize::Sm => "sm",
-        ButtonSize::Md => "md",
-        ButtonSize::Lg => "lg",
+        ShadcnSize::Sm => "sm",
+        ShadcnSize::Md => "md",
+        ShadcnSize::Lg => "lg",
     }
 }
 
@@ -556,7 +554,7 @@ fn render_floating_menu_template_preview(
     scroll_wheel: MenuPreviewScrollWheelHandler,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let menu_look = floating_menu_look_for_size(look, ButtonSize::Md);
+    let menu_look = floating_menu_look_for_size(look, ShadcnSize::Md);
 
     div()
         .flex()

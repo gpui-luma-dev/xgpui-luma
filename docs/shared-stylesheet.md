@@ -44,10 +44,12 @@ to a look are left for that look's parser.
 
 ## Rust geometry values
 
-Standard geometry sizes use `ControlSizes<T>` with direct `sm`, `md`, and `lg`
-fields. For example, `sheet.progress.sizes.md.track_height = Some(9.0)` edits a
-sparse override. The `custom` entries retain look-specific sizes, including Radix
-numeric ranges and named compact presets; numeric names are not SDK aliases.
+The SDK ships one control scale and has no size vocabulary. Each family's
+`geometry` holds its sparse overrides; for example,
+`sheet.progress.geometry.track_height = Some(9.0)`. `ControlSizes<T>` is a keyed
+map that looks use for their own sizes (Shadcn `sm`/`md`/`lg`, Radix `1`/`2`/`3`,
+named compact presets). A look resolves its size to pixels with
+`CommonStylesheet::with_size_key(key)` before handing the sheet to the SDK.
 
 Controls resolve sparse overrides into concrete geometry containing plain pixel
 values. Inspector projections are obtained separately through `inspect_geometry`;
@@ -190,14 +192,14 @@ logical geometry is snapped only where the existing control recipe requires it.
 use xgpui_luma::{
     color::GamutMapping,
     controls::progress::{DefaultProgressTheme, ProgressTheme},
-    theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},
+    theme::{ThemeMode, stylesheet::CommonStylesheet},
 };
 let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    sheet.progress.sizes.md.track_height = Some(9.0);
+    sheet.progress.geometry.track_height = Some(9.0);
 });
 let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
 let theme = DefaultProgressTheme::new(tokens);
-assert_eq!(theme.resolve(true, ControlSize::Md).track_height, 9.0);
+assert_eq!(theme.resolve(true).track_height, 9.0);
 ```
 
 Use the same resolved common sheet in a custom look, create its theme factories,

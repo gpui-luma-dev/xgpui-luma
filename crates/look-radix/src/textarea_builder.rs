@@ -218,15 +218,15 @@ impl TextArea {
     }
 
     fn into_sdk_builder(self, look: Look) -> TextAreaBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = textarea_template(&look, self.variant);
         let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
-            .stylesheet(&look.common_stylesheet())
+            .stylesheet(&look.sized_stylesheet(look.size()))
             .template(template)
             .placeholder(self.placeholder)
             .value(self.value)
             .enabled(self.enabled)
             .full_width(self.full_width)
-            .size(self.size.control_size())
             .rows(self.rows)
             .clean_on_escape(self.clean_on_escape)
             .select_all_on_tab_focus(self.select_all_on_tab_focus)
@@ -250,13 +250,13 @@ impl TextArea {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(TextArea::new("s").size(TextAreaSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(TextArea::new("s").size(TextAreaSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(TextArea::new("s").size(TextAreaSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(TextArea::new("s").size(TextAreaSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(TextArea::new("s").size(TextAreaSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(TextArea::new("s").size(TextAreaSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

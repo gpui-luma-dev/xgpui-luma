@@ -34,16 +34,16 @@ fn action_button&lt;M: &#x27;static&gt;(cx: &amp;mut Context&lt;M&gt;) -&gt; Ent
 <div class="codebox"><div class="codebar"><span>Rust · SDK theme snapshot</span><button class="copy" aria-label="Copy SDK theme snapshot">Copy</button></div><pre><code class="language-rust">use xgpui_luma::{
     color::GamutMapping,
     controls::progress::{DefaultProgressTheme, ProgressTheme},
-    theme::{ControlSize, ThemeMode, stylesheet::CommonStylesheet},
+    theme::{ThemeMode, stylesheet::CommonStylesheet},
 };
 
 fn configured_progress_theme() -&gt; Result&lt;DefaultProgressTheme, Box&lt;dyn std::error::Error&gt;&gt; {
     let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-        sheet.progress.sizes.md.track_height = Some(9.0);
+        sheet.progress.geometry.track_height = Some(9.0);
     });
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
     let theme = DefaultProgressTheme::new(tokens);
-    assert_eq!(theme.resolve(true, ControlSize::Md).track_height, 9.0);
+    assert_eq!(theme.resolve(true).track_height, 9.0);
     Ok(theme)
 }</code></pre></div>
 <p>Pass the theme to the existing SDK themed template. Existing snapshots keep their styling; rebuild themes after editing configuration. Missing values inherit, while zero remains an explicit override. Palette, metrics, typography and elevation are configured under <code>common.tokens</code>. The complete control/helper inventory records which layout and interaction constants remain in Rust. See the <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/docs/shared-stylesheet.md">stylesheet contract</a> for current coverage.</p><h3>Customize shared styles in Rust</h3>
@@ -56,10 +56,10 @@ fn configured_progress_theme() -&gt; Result&lt;DefaultProgressTheme, Box&lt;dyn 
             PaletteRole::StateSelectedBackground,
         );
         sheet.row_limits.0.entry(&quot;combobox&quot;.into()).or_default().max = Some(10);
-        sheet.switch.sizes.sm.track_width_scale = Some(32.0 / 28.0);
+        sheet.switch.geometry.track_width_scale = Some(32.0 / 28.0);
     })
 }</code></pre></div>
-<p>Use floating-point expressions for ratios. Direct edits change the named fields; changing general geometry does not clear inherited size-specific values. Set the relevant size entries when needed. Explicit consumer icons, geometry and row limits override captured defaults. SDK themes capture snapshots; rebuild them after changing configuration. Motion keeps its existing independent snapshot policy.</p>
+<p>Use floating-point expressions for ratios. Direct edits change the named fields. The SDK has one control scale and reads general geometry; <code>sizes</code> entries are keyed by a Look&#39;s own size names (for example Shadcn <code>sm</code>/<code>md</code>/<code>lg</code> or Radix <code>1</code>–<code>3</code>) and apply only when that Look selects them with <code>CommonStylesheet::with_size_key</code>. Explicit consumer icons, geometry and row limits override captured defaults. SDK themes capture snapshots; rebuild them after changing configuration. Motion keeps its existing independent snapshot policy.</p>
 </section><section id="grow"><h2>Grow it when needed</h2><p>For a worked example of creating a template and adding behavior functions where needed, see <a href="control-specialization.html">How to create a control specialization</a>.</p><p>For live light/dark switching, keep mode state in the application and bind themes that resolve the selected SDK snapshot. Changing a mode variable does not update an existing <code>Default*Theme</code> snapshot. Request an owner redraw and preserve control entities so selection, focus, and scroll state survive. Plot Viz demonstrates this with <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/apps/luma-plot-viz/src/theme/live.rs">application-local SDK theme adapters</a>; chart series colors live in independent named HSLA palettes.</p><p>Add shared palette and metric configuration. Supply theme resolution or your own templates, then expose convenient builders. Keep focus, activation, and events in the SDK.</p><p><a class="source-link" href="architecture.html#template">Template replacement example</a> · <a class="source-link" href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/crates/look-shadcn/src/controls/button_builder.rs">A complete Look adapter</a></p></section><footer data-site-footer></footer></main>
 <nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#start">Start small</a><a href="#baseline">Inherit the SDK baseline</a><a href="#grow">Grow it when needed</a></nav>
 </div>

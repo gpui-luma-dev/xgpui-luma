@@ -18,12 +18,12 @@ fn resolve_theme_look<D>(
     model: &ButtonRenderModel<D>,
     scale: &StandardBoxScale,
 ) -> ButtonFamilyLook {
-    if let Some(look) = theme.resolve_look(model.role, model.size, model.state, scale, theme.metrics().radius.pill) {
+    if let Some(look) = theme.resolve_look(model.role, model.state, scale, crate::theme::FULL_RADIUS_PX) {
         return look;
     }
 
-    let palette = theme.resolve(model.role, model.size, model.state);
-    compose_button_family_look(&palette, model.role, scale, theme.metrics().radius.pill)
+    let palette = theme.resolve(model.role, model.state);
+    compose_button_family_look(&palette, model.role, scale, crate::theme::FULL_RADIUS_PX)
 }
 
 fn resolve_look<D>(
@@ -126,7 +126,7 @@ impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
 impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(model.size, &self.theme.metrics(), scale_factor);
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
         let mut look = resolve_look(&self.theme, model, &scale);
         let presenter_model = presenter_model(model, &look);
         let focused = model.state.focused && !model.state.disabled;
@@ -148,7 +148,7 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
             .font_weight(look.typography.weight)
             .h(px(look.height));
 
-        control = control.border(px(self.theme.metrics().border_width.default)).border_color(border);
+        control = control.border(px(self.theme.metrics().border_width)).border_color(border);
 
         let square_icon_toggle = matches!(model.role, ButtonFamilyRole::Toggle { .. })
             && !model.round
@@ -252,7 +252,7 @@ mod tests {
     use gpui::Hsla;
 
     use super::*;
-    use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonSize};
+    use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
     use crate::theme::{InteractionState, LumaTextStyle};
 
     fn lime_look() -> ButtonFamilyLook {
@@ -282,7 +282,6 @@ mod tests {
             data: (),
             content: Arc::new(|_, _| div().into_any_element()),
             role: ButtonFamilyRole::Text,
-            size: ButtonSize::Md,
             state: InteractionState::default(),
             round: false,
             radius_override: std::cell::Cell::new(None),

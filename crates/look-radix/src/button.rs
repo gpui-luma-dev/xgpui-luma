@@ -7,7 +7,7 @@ use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultBut
 use xgpui_luma::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, compose_button_family_look,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
 
 use crate::button_layout::{ButtonSize, Radius, apply_button_box, button_box_with_stylesheet};
 use crate::look::Look;
@@ -70,25 +70,25 @@ struct ButtonFamilyThemeAdapter {
 }
 
 impl ButtonFamilyTheme for ButtonFamilyThemeAdapter {
-    fn resolve(&self, role: ButtonFamilyRole, _size: ControlSize, state: InteractionState) -> ButtonFamilyPalette {
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
         resolve_button_palette(&self.look, self.variant, self.paint, role, state)
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
     fn resolve_look(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
         state: InteractionState,
         scale: &StandardBoxScale,
         pill_radius: f32,
     ) -> Option<ButtonFamilyLook> {
-        let mut palette = self.resolve(role, size, state);
-        let geometry = self.look.stylesheet_snapshot().button.resolve_geometry(
-            self.size.map(ButtonSize::as_str).unwrap_or_else(|| crate::look::sdk_size_key(size)),
+        let size = self.look.size();
+        let mut palette = self.resolve(role, state);
+        let geometry = self.look.stylesheet_snapshot().button.resolve_geometry_for(
+            self.size.map(ButtonSize::as_str).unwrap_or_else(|| size.key()),
             xgpui_luma::theme::stylesheet::ButtonGeometry {
                 height: scale.height,
                 padding_x: scale.padding_x,
@@ -377,7 +377,7 @@ mod tests {
     fn solid_default_uses_primary_steps() {
         let look = Look::built_in();
         let theme = button_family_theme(&look, ButtonVariant::Solid);
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         let expected_bg = look.resolve_role(SemanticRole::Primary).hsla();
         assert_eq!(palette.background.h, expected_bg.h);
         assert_eq!(palette.background.l, expected_bg.l);
@@ -387,7 +387,7 @@ mod tests {
     fn ghost_default_is_transparent() {
         let look = Look::built_in();
         let theme = button_family_theme(&look, ButtonVariant::Ghost);
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         assert_eq!(palette.background.a, 0.0);
         assert!(palette.border.is_none());
     }
@@ -396,7 +396,7 @@ mod tests {
     fn surface_uses_accent_panel_and_edge() {
         let look = Look::built_in();
         let theme = button_family_theme(&look, ButtonVariant::Surface);
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
         assert_eq!(palette.border, Some(look.resolve_step(ScaleFamily::Color, 7).hsla()));
@@ -407,7 +407,7 @@ mod tests {
     fn solid_high_contrast_uses_step_twelve_on_gray_one() {
         let look = Look::built_in();
         let theme = button_family_theme_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, Tone::Gray.step(&look, 12));
         assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
@@ -417,7 +417,7 @@ mod tests {
     fn classic_high_contrast_uses_step_twelve() {
         let look = Look::built_in();
         let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, Tone::Accent.step(&look, 12));
         assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
@@ -429,8 +429,8 @@ mod tests {
         let normal = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray());
         let hc = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray().high_contrast());
         let state = InteractionState::default();
-        let normal = normal.resolve(ButtonFamilyRole::Text, ControlSize::Md, state);
-        let hc = hc.resolve(ButtonFamilyRole::Text, ControlSize::Md, state);
+        let normal = normal.resolve(ButtonFamilyRole::Text, state);
+        let hc = hc.resolve(ButtonFamilyRole::Text, state);
 
         assert_eq!(hc.background, normal.background);
         assert_eq!(hc.foreground, Tone::Gray.step(&look, 12));
@@ -445,8 +445,8 @@ mod tests {
         let state = InteractionState::default();
 
         assert_ne!(
-            normal.resolve(ButtonFamilyRole::Text, ControlSize::Md, state).background,
-            hc.resolve(ButtonFamilyRole::Text, ControlSize::Md, state).background
+            normal.resolve(ButtonFamilyRole::Text, state).background,
+            hc.resolve(ButtonFamilyRole::Text, state).background
         );
     }
 
@@ -459,7 +459,7 @@ mod tests {
             xgpui_luma::theme::ThemeMode::Light,
         );
         let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent());
-        let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert!(palette.foreground.l < palette.background.l);
         assert_eq!(palette.foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
@@ -471,9 +471,9 @@ mod tests {
         let classic = button_family_theme(&look, ButtonVariant::Classic);
         let solid = button_family_theme(&look, ButtonVariant::Solid);
         let state = InteractionState::default();
-        let palette = classic.resolve(ButtonFamilyRole::Text, ControlSize::Md, state);
+        let palette = classic.resolve(ButtonFamilyRole::Text, state);
 
-        assert_eq!(palette.background, solid.resolve(ButtonFamilyRole::Text, ControlSize::Md, state).background);
+        assert_eq!(palette.background, solid.resolve(ButtonFamilyRole::Text, state).background);
         let border = palette.border.expect("classic keeps a border that delineates the edge");
         assert!(border.l < palette.background.l, "border is darker than the fill");
         assert_eq!(border.h, palette.background.h, "border keeps the accent hue");
@@ -481,9 +481,9 @@ mod tests {
 
     fn classic_shadows(look: &Look, state: InteractionState) -> Vec<BoxShadow> {
         let theme = button_family_theme(&look, ButtonVariant::Classic);
-        let scale = StandardBoxScale::compute(ControlSize::Md, &look.metrics(), 2.0);
+        let scale = StandardBoxScale::compute(&look.metrics_for(crate::RadixSize::Two), 2.0);
         theme
-            .resolve_look(ButtonFamilyRole::Text, ControlSize::Md, state, &scale, 999.0)
+            .resolve_look(ButtonFamilyRole::Text, state, &scale, 999.0)
             .expect("classic look")
             .shadow
             .expect("classic shadows")
@@ -540,8 +540,7 @@ mod tests {
     fn page_toggle_stays_borderless_when_unselected() {
         let look = Look::built_in();
         let theme = button_family_theme(&look, ButtonVariant::Page);
-        let palette =
-            theme.resolve(ButtonFamilyRole::Toggle { selected: false }, ControlSize::Md, InteractionState::default());
+        let palette = theme.resolve(ButtonFamilyRole::Toggle { selected: false }, InteractionState::default());
 
         assert_eq!(palette.background.a, 0.0);
         assert!(palette.border.is_none());
@@ -552,14 +551,10 @@ mod tests {
         let look = Look::built_in();
         let theme = button_family_theme(&look, ButtonVariant::Page);
         let role = ButtonFamilyRole::Toggle { selected: true };
-        let resting = theme.resolve(role, ControlSize::Md, InteractionState::default());
-        let focused = theme.resolve(role, ControlSize::Md, InteractionState { focused: true, ..Default::default() });
-        let pressed = theme.resolve(
-            role,
-            ControlSize::Md,
-            InteractionState { hovered: true, pressed: true, ..Default::default() },
-        );
-        let hovered = theme.resolve(role, ControlSize::Md, InteractionState { hovered: true, ..Default::default() });
+        let resting = theme.resolve(role, InteractionState::default());
+        let focused = theme.resolve(role, InteractionState { focused: true, ..Default::default() });
+        let pressed = theme.resolve(role, InteractionState { hovered: true, pressed: true, ..Default::default() });
+        let hovered = theme.resolve(role, InteractionState { hovered: true, ..Default::default() });
 
         assert!(resting.border.is_none(), "Page face is borderless");
         assert_eq!(resting.focus_border.a, 0.0, "Page explicitly suppresses focus paint");
@@ -587,7 +582,7 @@ mod tests {
                             disabled: bits & 8 != 0,
                             ..Default::default()
                         };
-                        let palette = quiet.resolve(role, ControlSize::Md, state);
+                        let palette = quiet.resolve(role, state);
                         assert_eq!(palette.background.a, 0.0, "{mode:?} {role:?} {state:?}");
                         assert!(palette.border.is_none(), "{mode:?} {role:?} {state:?}");
                     }
@@ -597,11 +592,7 @@ mod tests {
         let ghost = button_family_theme(&look, ButtonVariant::Ghost);
         assert!(
             ghost
-                .resolve(
-                    ButtonFamilyRole::Text,
-                    ControlSize::Md,
-                    InteractionState { hovered: true, ..Default::default() }
-                )
+                .resolve(ButtonFamilyRole::Text, InteractionState { hovered: true, ..Default::default() })
                 .background
                 .a
                 > 0.0

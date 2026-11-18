@@ -179,7 +179,7 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
                 root.when_some(self.scrollbar.clone(), |root, scrollbar| {
                     root.child(
                         div()
-                            .w(px(self.model.template.resolve_scale(self.model.size, 1.0).scrollbar_width))
+                            .w(px(self.model.template.resolve_scale(1.0).scrollbar_width))
                             .h_full()
                             .flex_shrink_0()
                             .when(show_scrollbar, |gutter| {

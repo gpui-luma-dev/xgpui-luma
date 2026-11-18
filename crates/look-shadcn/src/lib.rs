@@ -16,6 +16,7 @@ mod palette;
 mod provenance;
 mod resolve;
 mod shadow;
+mod radius;
 mod size;
 mod state_color;
 pub mod stylesheet;
@@ -48,7 +49,8 @@ pub use look::ShadcnLook;
 pub const FALLBACK_CSS: &str = include_str!("../assets/fallback.css");
 
 pub use shadow::{SHADOW_LADDER_TOKENS, ShadowTokenParts, shadow_ladder_overrides};
-pub use size::ShadcnSize;
+pub use radius::ShadcnRadii;
+pub use size::{ShadcnControlMetrics, ShadcnSize};
 pub use mode::ShadcnModeTokens;
 pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
@@ -79,6 +81,8 @@ mod choice_stylesheet_tests;
 
 #[cfg(test)]
 mod remaining_stylesheet_tests;
+#[cfg(test)]
+mod radius_catalog_tests;
 
 #[cfg(all(test, feature = "test-support"))]
 mod event_callback_tests;

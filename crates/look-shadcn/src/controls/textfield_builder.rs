@@ -252,6 +252,7 @@ impl TextField {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> TextFieldBuilder {
+        let look = look.with_size(self.size);
         let template = match self.style {
             ShadcnTextFieldStyle::Outline => look.textfield_template(),
             ShadcnTextFieldStyle::Input => look.input_textfield_template(),
@@ -264,7 +265,6 @@ impl TextField {
             .value(self.value)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
-            .size(self.size.control_size())
             .full_width(self.full_width)
             .clean_on_escape(self.clean_on_escape)
             .select_all_on_tab_focus(self.select_all_on_tab_focus)

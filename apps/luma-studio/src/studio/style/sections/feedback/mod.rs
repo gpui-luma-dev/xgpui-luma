@@ -3,7 +3,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::progress::{ProgressDirection, ProgressRenderModel, ProgressTemplate};
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn::{ShadcnLook};
 use lucide_svg_static::Icon as LucideIcon;
@@ -13,7 +13,7 @@ use crate::studio::style::shared::shell::section_shell_with_width;
 const LINEAR_DEMO_WIDTH: f32 = 480.0;
 const LINEAR_VERTICAL_HEIGHT: f32 = 200.0;
 const LINEAR_VERTICAL_WIDTH: f32 = 48.0;
-const LINEAR_DEMO_SIZE: ControlSize = ControlSize::Lg;
+const LINEAR_DEMO_SIZE: ShadcnSize = ShadcnSize::Lg;
 
 fn direction_label(direction: ProgressDirection) -> &'static str {
     match direction {
@@ -35,7 +35,7 @@ struct ProgressStateSample {
 pub(crate) fn render_feedback_template_section(look: Arc<ShadcnLook>, window: &mut Window, cx: &mut App) -> AnyElement {
     let chrome = look.chrome();
     let circular_template = look.progress_template();
-    let linear_template = look.linear_progress_template();
+    let linear_template = look.with_size(LINEAR_DEMO_SIZE).linear_progress_template();
 
     section_shell_with_width(
         960.0,
@@ -98,7 +98,6 @@ pub(crate) fn render_feedback_template_section(look: Arc<ShadcnLook>, window: &m
                     render_feedback_progress_sample(
                         &circular_template,
                         sample,
-                        ControlSize::Md,
                         ProgressDirection::LeftToRight,
                         false,
                         chrome.muted_text,
@@ -109,9 +108,8 @@ pub(crate) fn render_feedback_template_section(look: Arc<ShadcnLook>, window: &m
             ))
             .child(div().flex().flex_wrap().items_start().gap(px(12.0)).children([
                 render_feedback_progress_sample(
-                    &circular_template,
+                    &look.with_size(ShadcnSize::Sm).progress_template(),
                     ProgressStateSample { id: "size-sm", label: "Sm", value: 50.0, enabled: true },
-                    ControlSize::Sm,
                     ProgressDirection::LeftToRight,
                     false,
                     chrome.muted_text,
@@ -121,7 +119,6 @@ pub(crate) fn render_feedback_template_section(look: Arc<ShadcnLook>, window: &m
                 render_feedback_progress_sample(
                     &circular_template,
                     ProgressStateSample { id: "size-md", label: "Md", value: 50.0, enabled: true },
-                    ControlSize::Md,
                     ProgressDirection::LeftToRight,
                     false,
                     chrome.muted_text,
@@ -129,9 +126,8 @@ pub(crate) fn render_feedback_template_section(look: Arc<ShadcnLook>, window: &m
                     cx,
                 ),
                 render_feedback_progress_sample(
-                    &circular_template,
+                    &look.with_size(ShadcnSize::Lg).progress_template(),
                     ProgressStateSample { id: "size-lg", label: "Lg", value: 50.0, enabled: true },
-                    ControlSize::Lg,
                     ProgressDirection::LeftToRight,
                     false,
                     chrome.muted_text,
@@ -219,7 +215,6 @@ fn render_feedback_heading(title: &'static str, muted_text: gpui::Hsla) -> AnyEl
 fn render_feedback_progress_sample(
     template: &Arc<dyn ProgressTemplate>,
     sample: ProgressStateSample,
-    size: ControlSize,
     direction: ProgressDirection,
     show_thumb: bool,
     label_color: gpui::Hsla,
@@ -234,7 +229,6 @@ fn render_feedback_progress_sample(
         range,
         value: sample.value,
         percentage,
-        size,
         enabled: sample.enabled,
         direction,
         show_thumb,
@@ -291,7 +285,6 @@ fn render_feedback_linear_sample_with_label(
         range,
         value,
         percentage: range.percentage(value),
-        size: LINEAR_DEMO_SIZE,
         enabled: true,
         direction,
         show_thumb,
@@ -347,7 +340,6 @@ fn render_feedback_linear_vertical_sample_with_label(
         range,
         value,
         percentage: range.percentage(value),
-        size: LINEAR_DEMO_SIZE,
         enabled: true,
         direction,
         show_thumb,

@@ -6,7 +6,6 @@ use super::template::template_with_modifier;
 use super::{TextFieldLook, TextFieldState, TextFieldTemplate, default_textfield_template};
 use super::control::TextFieldControl;
 use crate::controls::button::ControlIcon;
-use crate::theme::ControlSize;
 
 pub type Validator = Arc<dyn Fn(&str) -> bool + Send + Sync>;
 pub type TextFieldLookOverride = Arc<dyn Fn(TextFieldLook) -> TextFieldLook + Send + Sync + 'static>;
@@ -19,7 +18,6 @@ pub struct TextFieldModel {
     pub(crate) prefix_icon: Option<ControlIcon>,
     pub(crate) enabled: bool,
     pub(crate) tab_stop: bool,
-    pub(crate) size: ControlSize,
     pub(crate) compact: bool,
     pub(crate) full_width: bool,
     pub(crate) clean_on_escape: bool,
@@ -36,7 +34,6 @@ pub struct TextFieldRenderModel<'a> {
     pub placeholder: &'a SharedString,
     pub value: &'a SharedString,
     pub prefix_icon: Option<&'a ControlIcon>,
-    pub size: ControlSize,
     pub enabled: bool,
     pub full_width: bool,
     pub state: TextFieldState,
@@ -129,7 +126,6 @@ impl TextFieldBuilder {
                 prefix_icon: None,
                 enabled: true,
                 tab_stop: true,
-                size: ControlSize::Md,
                 compact: false,
                 full_width: false,
                 clean_on_escape: false,
@@ -168,14 +164,8 @@ impl TextFieldBuilder {
         self
     }
 
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
-        self
-    }
-
-    /// Compact layout: maps to [`ControlSize::Sm`] and applies tighter vertical padding.
+    /// Compact layout: applies tighter vertical padding.
     pub fn compact(mut self) -> Self {
-        self.model.size = ControlSize::Sm;
         self.model.compact = true;
         self
     }
@@ -252,7 +242,7 @@ mod tests {
     use crate::controls::textfield::{
         TextFieldPalette, TextFieldState, TextFieldTheme, ThemedTextFieldTemplate, default_textfield_theme,
     };
-    use crate::theme::{ControlSize, MetricTokens, ThemeTokens};
+    use crate::theme::{MetricTokens, ThemeTokens};
     use gpui::hsla;
 
     #[test]
@@ -282,13 +272,13 @@ mod tests {
         }
 
         let base = Arc::new(ThemedTextFieldTemplate::new(Arc::new(MarkerTheme)));
-        let expected = base.resolve_look(TextFieldState::default(), true, ControlSize::Md);
+        let expected = base.resolve_look(TextFieldState::default(), true);
         let modified = TextFieldBuilder::new("textfield-test")
             .template(base)
             .with_template_modifier(|element, _| element)
             .model
             .template;
-        let look = modified.resolve_look(TextFieldState::default(), true, ControlSize::Md);
+        let look = modified.resolve_look(TextFieldState::default(), true);
 
         assert_eq!(look.background, expected.background);
         assert_eq!(look.background, hsla(0.12, 1.0, 0.55, 1.0));

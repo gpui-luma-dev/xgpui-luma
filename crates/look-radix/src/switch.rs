@@ -9,7 +9,7 @@ use std::sync::Arc;
 use gpui::{BoxShadow, Hsla, point, px};
 use xgpui_luma::controls::button::ButtonTemplate;
 use xgpui_luma::controls::switch::{SwitchPalette, SwitchScale, SwitchTheme, ThemedSwitchTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::button_layout::Radius;
@@ -56,11 +56,11 @@ impl SwitchSize {
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 
@@ -92,26 +92,33 @@ pub fn resolve_switch_radius(size: SwitchSize, radius: Radius) -> f32 {
 }
 
 pub fn switch_scale_for(size: SwitchSize, radius: Radius) -> SwitchScale {
-    switch_scale_from_stylesheet(crate::look::embedded_common_stylesheet(), &MetricTokens::default(), size, radius)
+    switch_scale_from_stylesheet(
+        crate::look::embedded_common_stylesheet(),
+        &crate::size::scaffold_metrics(size.control_size()),
+        size,
+        radius,
+    )
 }
 
 fn switch_scale_from_stylesheet(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
+    // Metrics whose `control` scale is already the selected size.
     metrics: &MetricTokens,
     size: SwitchSize,
     radius: Radius,
 ) -> SwitchScale {
-    let mut fallback = SwitchScale::compute(size.control_size(), metrics, 1.0);
+    let mut fallback =
+        SwitchScale::compute_with_stylesheet(metrics, 1.0, crate::size::scaffold_stylesheet(size.control_size()));
     fallback.label_baseline_shift = 0.0;
-    let mut scale = stylesheet.switch.resolve_geometry(size.as_str(), fallback, 1.0);
+    let mut scale = stylesheet.switch.resolve_geometry_for(size.as_str(), fallback, 1.0);
     scale.track_radius = (size.radius_base() * radius.factor()).max(radius_thumb(radius)).min(scale.track_height / 2.0);
     scale
 }
 
 /// Shared authored dimensions and provenance used by the Radix switch adapter.
 pub fn switch_geometry(look: &Look, size: SwitchSize) -> xgpui_luma::theme::stylesheet::ResolvedSwitchGeometry {
-    let fallback = SwitchScale::compute(size.control_size(), &look.metrics(), 1.0);
-    look.stylesheet_snapshot().switch.inspect_geometry(size.as_str(), fallback, 1.0)
+    let fallback = SwitchScale::compute(&look.metrics_for(size.control_size()), 1.0);
+    look.stylesheet_snapshot().switch.inspect_geometry_for(size.as_str(), fallback, 1.0)
 }
 
 struct SwitchThemeAdapter {
@@ -147,7 +154,8 @@ fn thumb_shadow(on: bool) -> Vec<BoxShadow> {
 }
 
 impl SwitchTheme for SwitchThemeAdapter {
-    fn resolve(&self, on: bool, state: InteractionState, size: ControlSize) -> SwitchPalette {
+    fn resolve(&self, on: bool, state: InteractionState) -> SwitchPalette {
+        let size = self.look.size();
         let look = &self.look;
         let high_contrast = self.paint.high_contrast;
         let family = match self.paint.tone {
@@ -203,25 +211,31 @@ impl SwitchTheme for SwitchThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> SwitchScale {
+    fn scale(&self, scale_factor: f32) -> SwitchScale {
+        let size = self.look.size();
         let _ = scale_factor;
         if let Some((radix_size, radius)) = self.geometry {
             return switch_scale_from_stylesheet(
                 &self.look.stylesheet_snapshot(),
-                &self.look.metrics(),
+                &self.look.metrics_for(radix_size.control_size()),
                 radix_size,
                 radius,
             );
         }
         let radix_size = match size {
-            ControlSize::Sm => SwitchSize::One,
-            ControlSize::Md => SwitchSize::Two,
-            ControlSize::Lg => SwitchSize::Three,
+            crate::RadixSize::One => SwitchSize::One,
+            crate::RadixSize::Two => SwitchSize::Two,
+            crate::RadixSize::Three => SwitchSize::Three,
         };
-        switch_scale_from_stylesheet(&self.look.stylesheet_snapshot(), &self.look.metrics(), radix_size, Radius::Medium)
+        switch_scale_from_stylesheet(
+            &self.look.stylesheet_snapshot(),
+            &self.look.metrics_for(radix_size.control_size()),
+            radix_size,
+            Radius::Medium,
+        )
     }
 }
 
@@ -267,7 +281,7 @@ mod tests {
 
     fn palette(variant: SwitchVariant, on: bool) -> SwitchPalette {
         let look = Look::built_in();
-        switch_theme_with(&look, variant, Paint::accent()).resolve(on, InteractionState::default(), ControlSize::Md)
+        switch_theme_with(&look, variant, Paint::accent()).resolve(on, InteractionState::default())
     }
 
     #[test]
@@ -283,7 +297,7 @@ mod tests {
                 for radius in [Radius::None, Radius::Small, Radius::Medium, Radius::Large, Radius::Full] {
                     for variant in [SwitchVariant::Classic, SwitchVariant::Surface, SwitchVariant::Soft] {
                         let theme = switch_theme_for(&look, variant, Paint::accent(), size, radius);
-                        let scale = theme.scale(size.control_size(), 2.0);
+                        let scale = theme.scale(2.0);
                         assert_eq!(
                             (scale.track_width, scale.track_height, scale.thumb_size, scale.track_padding, scale.gap),
                             (width, height, thumb, 1.0, 8.0)
@@ -308,7 +322,7 @@ mod tests {
         config.switch.sizes.get_mut("2").unwrap().thumb_size = Some(28.0);
         config.switch.geometry.gap = Some(0.0);
         look.set_common_stylesheet(config.clone());
-        let scale = theme.scale(ControlSize::Lg, 1.0);
+        let scale = theme.scale(1.0);
         assert_eq!(
             (scale.track_width, scale.track_height, scale.thumb_size, scale.gap, scale.track_radius),
             (50.0, 30.0, 28.0, 0.0, 15.0)
@@ -333,9 +347,9 @@ mod tests {
             ] {
                 for on in [false, true] {
                     look.set_mode(xgpui_luma::theme::ThemeMode::Light);
-                    let light = theme.resolve(on, state, ControlSize::Md);
+                    let light = theme.resolve(on, state);
                     look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
-                    let dark = theme.resolve(on, state, ControlSize::Md);
+                    let dark = theme.resolve(on, state);
                     assert_eq!(light.thumb_background, dark.thumb_background);
                     assert_eq!(light.thumb_border, dark.thumb_border);
                 }
@@ -365,11 +379,7 @@ mod tests {
     fn surface_high_contrast_uses_step_twelve() {
         let look = Look::built_in();
         let paint = Paint::accent().high_contrast();
-        let on = switch_theme_with(&look, SwitchVariant::Surface, paint).resolve(
-            true,
-            InteractionState::default(),
-            ControlSize::Md,
-        );
+        let on = switch_theme_with(&look, SwitchVariant::Surface, paint).resolve(true, InteractionState::default());
         assert_eq!(on.track_background, look.resolve_step(ScaleFamily::Color, 12).hsla());
     }
 

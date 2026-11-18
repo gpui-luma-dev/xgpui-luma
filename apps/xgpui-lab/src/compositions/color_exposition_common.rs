@@ -22,11 +22,11 @@ pub(super) fn composition_card_width(content_width: f32, horizontal_padding: f32
 }
 
 pub(super) fn composition_card_radius(look: &Look) -> f32 {
-    look.metrics().radius.sm
+    look.radii().small
 }
 
 pub(super) fn composition_inset_radius(look: &Look) -> f32 {
-    look.metrics().radius.sm
+    look.radii().small
 }
 
 pub(super) fn render_demo_section(

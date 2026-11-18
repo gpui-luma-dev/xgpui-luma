@@ -225,7 +225,7 @@ impl Render for ColorArcExpositionLeftPane {
                             .child(
                                 div()
                                     .h(px(44.0))
-                                    .rounded(px(look.metrics().radius.lg))
+                                    .rounded(px(look.radii().large))
                                     .border_1()
                                     .border_color(look.chrome().border)
                                     .bg(selected),

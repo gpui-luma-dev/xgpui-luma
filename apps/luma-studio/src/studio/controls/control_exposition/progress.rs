@@ -7,7 +7,7 @@ use xgpui_luma::controls::button::ButtonEventExt;
 use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::progress::{Progress, ProgressDirection, ProgressRenderModel, ProgressTemplate};
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -25,7 +25,7 @@ const LINEAR_VERTICAL_HEIGHT: f32 = 200.0;
 const LINEAR_VERTICAL_WIDTH: f32 = 48.0;
 const LINEAR_TWO_COLUMN_GAP: f32 = 32.0;
 const LINEAR_SECTION_MAX_WIDTH: f32 = LINEAR_DEMO_WIDTH + LINEAR_TWO_COLUMN_GAP + 160.0;
-const LINEAR_DEMO_SIZE: ControlSize = ControlSize::Lg;
+const LINEAR_DEMO_SIZE: ShadcnSize = ShadcnSize::Lg;
 
 pub struct ProgressControlExposition {
     look: Arc<ShadcnLook>,
@@ -73,7 +73,7 @@ impl Render for ProgressExpositionLeftPane {
             let look = &self.look;
             let chrome = look.chrome();
             let circular_template = look.progress_template();
-            let linear_template = look.linear_progress_template();
+            let linear_template = look.with_size(LINEAR_DEMO_SIZE).linear_progress_template();
 
             let preview = div()
                 .w_full()
@@ -326,7 +326,6 @@ fn render_progress_sample(sample: ProgressSample<'_>, window: &mut Window, cx: &
         range,
         value,
         percentage: range.percentage(value),
-        size: ControlSize::Md,
         enabled,
         direction,
         show_thumb,
@@ -393,7 +392,6 @@ fn render_linear_direction_sample_with_label(
         range,
         value,
         percentage: range.percentage(value),
-        size: LINEAR_DEMO_SIZE,
         enabled: true,
         direction,
         show_thumb,

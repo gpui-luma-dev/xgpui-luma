@@ -1,15 +1,15 @@
 //! Shared label typography for radix control themes.
 
 use gpui::{FontWeight, SharedString};
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 
 use crate::look::Look;
 
-pub(crate) fn label_typography(size: ControlSize) -> LumaTextStyle {
+pub(crate) fn label_typography(size: crate::RadixSize) -> LumaTextStyle {
     match size {
-        ControlSize::Sm => LumaTextStyle { size: 12.5, line_height: 18.0, weight: FontWeight::NORMAL },
-        ControlSize::Md => LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight::NORMAL },
-        ControlSize::Lg => LumaTextStyle { size: 16.0, line_height: 22.0, weight: FontWeight::NORMAL },
+        crate::RadixSize::One => LumaTextStyle { size: 12.5, line_height: 18.0, weight: FontWeight::NORMAL },
+        crate::RadixSize::Two => LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight::NORMAL },
+        crate::RadixSize::Three => LumaTextStyle { size: 16.0, line_height: 22.0, weight: FontWeight::NORMAL },
     }
 }
 

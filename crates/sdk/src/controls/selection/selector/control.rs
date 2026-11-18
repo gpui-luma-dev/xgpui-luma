@@ -204,11 +204,6 @@ where
         cx.notify();
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        cx.notify();
-    }
-
     /// Choose how the popup opens. Takes effect on the next opening.
     pub fn set_opening_mode(&mut self, mode: super::SelectorOpeningMode, cx: &mut Context<Self>) {
         self.model.opening_mode = mode;
@@ -272,7 +267,6 @@ where
             initialize_popup_scroll: self.initialize_popup_scroll,
             active_path: self.active_index.map(crate::controls::selector_list::SelectorPath::Item),
             enabled: self.model.enabled,
-            size: self.model.size,
             trigger_style: self.model.trigger_style,
             icons: &self.model.icons,
             without_elevation: self.model.without_elevation,

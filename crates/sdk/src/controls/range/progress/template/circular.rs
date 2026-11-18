@@ -36,7 +36,7 @@ pub fn default_circular_progress_template() -> Arc<dyn ProgressTemplate> {
 
 impl ProgressTemplate for CircularProgressTemplate {
     fn render(&self, model: &ProgressRenderModel<'_>, _window: &mut Window, _cx: &mut App) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.size);
+        let look = self.theme.resolve(model.enabled);
         let percentage = model.percentage.clamp(0.0, 1.0);
         let indeterminate = model.indeterminate;
         let phase = model.phase.clamp(0.0, 1.0);

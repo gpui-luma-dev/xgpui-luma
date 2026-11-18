@@ -14,7 +14,6 @@ pub use crate::controls::selector_list::{
     default_selector_items_template, make_selector_item_template, normalize_selector_items,
 };
 use crate::controls::selector_list::items_template_with_modifier;
-use crate::theme::ControlSize;
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::infra::icon::IconSource;
 
@@ -57,7 +56,6 @@ where
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
     pub(crate) tab_stop: bool,
-    pub(crate) size: ControlSize,
     pub(crate) placement: SelectorPlacement,
     pub(crate) opening_mode: SelectorOpeningMode,
     pub(crate) trigger_style: SelectorTriggerStyle,
@@ -112,7 +110,6 @@ where
     pub initialize_popup_scroll: bool,
     pub active_path: Option<SelectorPath>,
     pub enabled: bool,
-    pub size: ControlSize,
     pub trigger_style: SelectorTriggerStyle,
     pub icons: &'a SelectorIcons,
     pub without_elevation: bool,
@@ -218,7 +215,6 @@ where
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
                 tab_stop: true,
-                size: ControlSize::Md,
                 placement: SelectorPlacement::Smart,
                 opening_mode: SelectorOpeningMode::default(),
                 trigger_style: SelectorTriggerStyle::default(),
@@ -312,11 +308,6 @@ where
 
     pub fn tab_stop(mut self, tab_stop: bool) -> Self {
         self.model.tab_stop = tab_stop;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

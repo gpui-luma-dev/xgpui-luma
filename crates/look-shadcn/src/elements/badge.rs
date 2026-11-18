@@ -192,26 +192,25 @@ pub fn resolve_badge_colors_with_stylesheet(
 
 pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
     let tokens = theme.mode_tokens();
-    let metrics = &tokens.metrics;
-    let control_size = size.control_size();
+    let control_size = size;
     let typography = badge_typography(tokens.as_ref(), theme.stylesheet().as_ref(), size);
-    let min_height = typography.line_height + metrics.padding_y(control_size);
+    let min_height = typography.line_height + tokens.control_sizes.padding_y(control_size);
     let colors = resolve_badge_colors(theme, variant).unwrap_or_else(|_| BadgeColorTable::fallback(theme, variant));
 
     let mut look = BadgeLook {
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.map(|border| border.hsla()),
-        radius: tokens.metrics.radius.pill,
+        radius: tokens.radii.full,
         min_height,
-        padding_x: metrics.padding_x(control_size),
+        padding_x: tokens.control_sizes.padding_x(control_size),
         padding_y: ((min_height - typography.line_height) * 0.5).max(0.0),
-        gap: (metrics.gap(control_size) * 0.75).max(4.0),
+        gap: (tokens.control_sizes.gap(control_size) * 0.75).max(4.0),
         icon_size: typography.size,
         typography,
         font_family: theme.font(ShadcnFont::Sans),
     };
-    let geometry = tokens.stylesheet().common.badge.inspect_geometry(
+    let geometry = tokens.stylesheet().common.badge.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(control_size),
         xgpui_luma::theme::stylesheet::BadgeGeometry {
             padding_x: look.padding_x,
@@ -279,13 +278,8 @@ fn badge_typography(
     stylesheet: &crate::stylesheet::StylesheetConfig,
     size: ShadcnSize,
 ) -> LumaTextStyle {
-    let mut typography = crate::tables::typography::resolve_control_typography_with_stylesheet(
-        tokens,
-        stylesheet,
-        size.control_size(),
-        false,
-    )
-    .style;
+    let mut typography =
+        crate::tables::typography::resolve_control_typography_with_stylesheet(tokens, stylesheet, size, false).style;
     typography.weight = FontWeight::MEDIUM;
     typography
 }
@@ -422,16 +416,16 @@ pub fn resolve_badge_metrics(
     mode: &crate::ShadcnModeTokens,
     look: &crate::ShadcnLook,
     variant: crate::BadgeVariant,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     _theme_mode: xgpui_luma::theme::ThemeMode,
 ) -> BadgeMetricTable {
     let look = crate::badge_look(
         look,
         variant,
         match size {
-            xgpui_luma::theme::ControlSize::Sm => crate::ShadcnSize::Sm,
-            xgpui_luma::theme::ControlSize::Md => crate::ShadcnSize::Md,
-            xgpui_luma::theme::ControlSize::Lg => crate::ShadcnSize::Lg,
+            crate::ShadcnSize::Sm => crate::ShadcnSize::Sm,
+            crate::ShadcnSize::Md => crate::ShadcnSize::Md,
+            crate::ShadcnSize::Lg => crate::ShadcnSize::Lg,
         },
     );
 
@@ -459,7 +453,7 @@ pub fn resolve_badge_metrics(
         ),
         radius: crate::tables::metrics::helpers::pill_radius_metric(&mode.catalog, look.radius),
     };
-    let geometry = mode.stylesheet().common.badge.inspect_geometry(
+    let geometry = mode.stylesheet().common.badge.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::BadgeGeometry {
             min_height: table.min_height.value_px,

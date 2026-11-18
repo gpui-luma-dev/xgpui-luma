@@ -65,7 +65,7 @@ pub fn inspect_accordion_content_color_palette(
 pub fn inspect_accordion_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> AccordionInspectMetrics {
     inspect_accordion_metrics_at_scale(mode, theme_mode, size, 1.0)
 }
@@ -74,7 +74,7 @@ pub fn inspect_accordion_metrics(
 pub fn inspect_accordion_metrics_at_scale(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     scale_factor: f32,
 ) -> AccordionInspectMetrics {
     let table = crate::tables::metrics::resolve_accordion_metrics(mode, theme_mode, size, scale_factor);

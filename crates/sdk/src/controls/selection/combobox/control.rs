@@ -78,7 +78,6 @@ impl ComboBoxControl {
         let textfield = text_selection::new(format!("{}-textfield", model.id))
             .placeholder(model.placeholder.clone())
             .enabled(model.enabled)
-            .size(model.size)
             .full_width(model.full_width)
             .clean_on_escape(model.clean_on_escape)
             .propagate_home_end_to_parent(true)
@@ -508,12 +507,6 @@ impl ComboBoxControl {
         }
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        self.textfield.update(cx, |textfield, cx| textfield.set_size(size, cx));
-        cx.notify();
-    }
-
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;
@@ -615,9 +608,9 @@ impl Render for ComboBoxControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
-        let geometry = self.model.stylesheet.resolve_geometry(self.model.size.stylesheet_key(), Default::default());
-        let look = (self.model.popup_look_provider)(self.model.size);
+        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let geometry = self.model.stylesheet.resolve_geometry(Default::default());
+        let look = (self.model.popup_look_provider)();
         let selected_label = self
             .behavior
             .state
@@ -626,8 +619,7 @@ impl Render for ComboBoxControl {
             .unwrap_or_else(|| "none".to_string());
 
         let minimum_trigger_width = {
-            let textfield_look =
-                self.model.textfield_template.resolve_look(TextFieldState::default(), true, self.model.size);
+            let textfield_look = self.model.textfield_template.resolve_look(TextFieldState::default(), true);
             let mut text_font = font(".SystemUIFont");
             text_font.weight = textfield_look.typography.weight;
             let placeholder_run = TextRun {
@@ -866,21 +858,18 @@ mod geometry_tests {
 
     #[test]
     fn affordance_reservation_retains_defaults_and_grows_with_configured_spacing() {
-        let baseline = CommonStylesheet::sdk_default().combobox.resolve_geometry("md", Default::default());
+        let baseline = CommonStylesheet::sdk_default().combobox.resolve_geometry(Default::default());
         assert_eq!(reserved_affordance_width(&baseline, false, false), 8.0);
         assert_eq!(reserved_affordance_width(&baseline, true, false), 36.0);
         assert_eq!(reserved_affordance_width(&baseline, false, true), 36.0);
         assert_eq!(reserved_affordance_width(&baseline, true, true), 64.0);
         let sheet = CommonStylesheet::resolve_layers(&["[common.combobox.geometry]\naffordance_gap=20"]).unwrap();
-        let geometry = sheet.combobox.resolve_geometry("md", Default::default());
+        let geometry = sheet.combobox.resolve_geometry(Default::default());
         assert_eq!(reserved_affordance_width(&geometry, true, true), 74.0);
         let zero = CommonStylesheet::resolve_layers(&[
             "[common.combobox.geometry]\naffordance_inset=0\naffordance_width=0\naffordance_gap=0\ntrigger_extra_gap=0",
         ])
         .unwrap();
-        assert_eq!(
-            reserved_affordance_width(&zero.combobox.resolve_geometry("md", Default::default()), true, true),
-            0.0
-        );
+        assert_eq!(reserved_affordance_width(&zero.combobox.resolve_geometry(Default::default()), true, true), 0.0);
     }
 }

@@ -99,12 +99,13 @@ impl ColorVizLookExt for Look {
         InteractionColors { selected: gray(3), hovered: gray(4), pressed: gray(5) }
     }
 
+    /// The lab's text sizes in pixels; the SDK has no text size scale.
     fn typography_scale(&self, size: TextSize) -> LumaTextStyle {
-        let scale = LumaTypography::default().text.scale;
+        let text = LumaTypography::default().text;
         match size {
-            TextSize::Xs => scale.xs,
-            TextSize::Sm => scale.sm,
-            TextSize::Base => scale.md,
+            TextSize::Xs => text.caption,
+            TextSize::Sm => LumaTextStyle { weight: text.body.weight, ..text.label },
+            TextSize::Base => text.body,
         }
     }
 
@@ -137,11 +138,10 @@ impl xgpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme 
         &self,
         state: xgpui_luma::theme::InteractionState,
         orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
-        size: xgpui_luma::theme::ControlSize,
         style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
     ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
         use xgpui_luma::controls::scrollbar::{DefaultScrollbarTheme};
-        let mut resolved = DefaultScrollbarTheme::default().resolve(state, orientation, size, style);
+        let mut resolved = DefaultScrollbarTheme::default().resolve(state, orientation, style);
         resolved.track_background = gpui::transparent_black();
         resolved.thumb_background = self
             .0

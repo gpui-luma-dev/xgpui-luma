@@ -8,7 +8,7 @@ use crate::infra::icon::{IconSource, render_icon_source};
 use super::item_template::{SelectorItemRenderModel, SelectorItemTemplate};
 use super::model::{SelectorItemLike, SelectorPath};
 use crate::infra::state::ControlFocusState;
-use crate::theme::{ControlSize, LumaTextStyle, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct SelectorItemsPanelLook {
@@ -40,12 +40,11 @@ pub struct SelectorItemsPanelLook {
     pub item_radius: f32,
 }
 
-pub fn default_selector_items_panel_look(tokens: &ThemeTokens, size: ControlSize) -> SelectorItemsPanelLook {
+pub fn default_selector_items_panel_look(tokens: &ThemeTokens) -> SelectorItemsPanelLook {
     SelectorItemsPanelLook::from_menu(
-        crate::controls::floating_menu::default_floating_menu_look(tokens, size),
+        crate::controls::floating_menu::default_floating_menu_look(tokens),
         &tokens.metrics,
         &tokens.stylesheet,
-        size.stylesheet_key(),
     )
 }
 
@@ -55,16 +54,15 @@ impl SelectorItemsPanelLook {
         menu: crate::controls::floating_menu::FloatingMenuLook,
         metrics: &crate::theme::MetricTokens,
         stylesheet: &crate::theme::stylesheet::CommonStylesheet,
-        key: &str,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry("panel");
-        let placement = stylesheet.popover.authored_geometry("panel").with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
+        let placement = stylesheet.popover.authored_geometry_for("panel").with_fallback(&baseline);
         Self {
             positive: menu.positive,
             background: menu.background,
             foreground: menu.foreground,
             border: menu.border,
-            border_width: metrics.border_width.default,
+            border_width: metrics.border_width,
             disabled_opacity: menu.disabled_opacity,
             popup_offset_y: placement.offset_y.unwrap_or_default(),
             window_margin: placement.window_margin.unwrap_or_default(),
@@ -82,13 +80,13 @@ impl SelectorItemsPanelLook {
             item_icon_size: menu.item_icon_size,
             item_radius: menu.item_radius,
         }
-        .with_stylesheet(&stylesheet.selector_list, key)
+        .with_stylesheet(&stylesheet.selector_list)
     }
 
     /// Apply independent panel overrides after resolving the shared menu baseline.
-    /// Looks use their own semantic size key; consumer look callbacks run afterward.
-    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectorListStylesheet, key: &str) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, key, SelectorListGeometry, self,
+    /// Consumer look callbacks run afterward.
+    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectorListStylesheet) -> Self {
+        crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectorListGeometry, self,
             [padding => padding, min_width => min_width, item_height => item_height,
              item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
              font_size => item_typography.size, line_height => item_typography.line_height,

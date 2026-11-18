@@ -7,14 +7,13 @@ use super::*;
 struct DragPreview<T: Clone + Send + Sync + 'static> {
     label: SharedString,
     template: std::sync::Arc<dyn super::super::TreeViewTemplate<T>>,
-    size: crate::theme::ControlSize,
 }
 impl<T: Clone + Send + Sync + 'static> Render for DragPreview<T> {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("tree-drag-preview")
             .debug_selector(|| "tree-drag-preview".to_owned())
-            .child(self.template.render_drag_preview(self.label.clone(), self.size, window, cx))
+            .child(self.template.render_drag_preview(self.label.clone(), window, cx))
     }
 }
 
@@ -64,8 +63,8 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
         let admit_location = location.clone();
         let style_target = target.clone();
         let style_location = location.clone();
-        let color = self.model.template.drop_color(self.model.size);
-        let scale = self.model.template.resolve_scale(self.model.size, 1.0);
+        let color = self.model.template.drop_color();
+        let scale = self.model.template.resolve_scale(1.0);
         surface
             .can_drop(move |value, window, cx| {
                 if admit_location.anchor_id.is_none()
@@ -169,11 +168,10 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
         };
         if let Some(drag) = TreeDrag::new(config.scope, cx.entity().downgrade(), roots) {
             let template = self.model.template.clone();
-            let size = self.model.size;
             row = bind_drag_source(
                 row,
                 drag,
-                move |_, _, _, cx| cx.new(|_| DragPreview { label: label.clone(), template: template.clone(), size }),
+                move |_, _, _, cx| cx.new(|_| DragPreview { label: label.clone(), template: template.clone() }),
                 cx,
                 Self::native_drag_event,
             );
@@ -199,7 +197,7 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
             let zone = div()
                 .id(("drop-zone", position as usize))
                 .absolute()
-                .left(px(node.depth as f32 * self.model.template.resolve_scale(self.model.size, 1.0).indentation_width))
+                .left(px(node.depth as f32 * self.model.template.resolve_scale(1.0).indentation_width))
                 .right_0()
                 .border_color(gpui::transparent_black());
             #[cfg(any(test, feature = "test-support"))]
@@ -212,17 +210,17 @@ impl<T: Clone + Send + Sync + 'static> TreeViewControl<T> {
                 TreeDropPosition::Before => zone.top_0().bottom(relative(1.0 - boundary)).border_t(px(self
                     .model
                     .template
-                    .resolve_scale(self.model.size, 1.0)
+                    .resolve_scale(1.0)
                     .drag_insert_width)),
                 TreeDropPosition::After => zone.top(relative(1.0 - boundary)).bottom_0().border_b(px(self
                     .model
                     .template
-                    .resolve_scale(self.model.size, 1.0)
+                    .resolve_scale(1.0)
                     .drag_insert_width)),
                 TreeDropPosition::Into => zone.top(relative(boundary)).bottom(relative(boundary)).border(px(self
                     .model
                     .template
-                    .resolve_scale(self.model.size, 1.0)
+                    .resolve_scale(1.0)
                     .drag_marker_width)),
             };
             row = row.child(self.bind_drop_zone(zone, location, cx));

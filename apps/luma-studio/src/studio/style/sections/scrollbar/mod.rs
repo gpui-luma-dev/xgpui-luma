@@ -4,7 +4,7 @@ use gpui::{AnyElement, App, Entity, FontWeight, IntoElement, SharedString, Windo
 use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarRenderModel, ScrollbarStyle, ScrollbarTemplate};
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::style::shared::input_samples::{InputInteractionSample, input_interaction_samples};
@@ -22,7 +22,6 @@ const SCROLLBAR_VERTICAL_COLUMN_WIDTH: f32 = 120.0;
 
 #[derive(Clone, Copy)]
 struct ScrollbarPreviewSample {
-    size: ControlSize,
     id_suffix: &'static str,
     label: &'static str,
     state: xgpui_luma::theme::InteractionState,
@@ -153,7 +152,6 @@ fn render_input_scrollbar_style_row(
                     template,
                     ScrollbarOrientation::Horizontal,
                     ScrollbarPreviewSample {
-                        size: ControlSize::Md,
                         id_suffix: sample.id,
                         label: sample.label,
                         state: sample.state,
@@ -185,13 +183,11 @@ fn render_input_scrollbar_state_header_cell(sample: InputInteractionSample, mute
 }
 
 fn render_input_scrollbar_sizes_body(look: &Arc<ShadcnLook>, window: &mut Window, cx: &mut App) -> AnyElement {
-    let template = look.scrollbar_template();
-
     div()
         .w_full()
         .max_w(px(900.0))
         .child(render_input_scrollbar_size_row(
-            &template,
+            look,
             ScrollbarOrientation::Horizontal,
             look.chrome().muted_text,
             window,
@@ -201,7 +197,7 @@ fn render_input_scrollbar_sizes_body(look: &Arc<ShadcnLook>, window: &mut Window
 }
 
 fn render_input_scrollbar_size_row(
-    template: &Arc<dyn ScrollbarTemplate>,
+    look: &Arc<ShadcnLook>,
     orientation: ScrollbarOrientation,
     label_color: gpui::Hsla,
     window: &mut Window,
@@ -212,13 +208,12 @@ fn render_input_scrollbar_size_row(
         .items_start()
         .justify_center()
         .gap(px(16.0))
-        .children([(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")].into_iter().map(
+        .children([(ShadcnSize::Sm, "Sm"), (ShadcnSize::Md, "Md"), (ShadcnSize::Lg, "Lg")].into_iter().map(
             |(size, label)| {
                 render_input_scrollbar_sample_with_size(
-                    template,
+                    &look.with_size(size).scrollbar_template(),
                     orientation,
                     ScrollbarPreviewSample {
-                        size,
                         id_suffix: label,
                         label,
                         state: Default::default(),
@@ -267,7 +262,6 @@ fn render_input_scrollbar_row(
                     template,
                     orientation,
                     sample,
-                    ControlSize::Md,
                     column_width,
                     length,
                     style,
@@ -284,7 +278,6 @@ fn render_input_scrollbar_sample(
     template: &Arc<dyn ScrollbarTemplate>,
     orientation: ScrollbarOrientation,
     sample: InputInteractionSample,
-    size: ControlSize,
     column_width: f32,
     length: Option<f32>,
     style: ScrollbarStyle,
@@ -296,7 +289,6 @@ fn render_input_scrollbar_sample(
         template,
         orientation,
         ScrollbarPreviewSample {
-            size,
             id_suffix: sample.id,
             label: sample.label,
             state: sample.state,
@@ -343,7 +335,6 @@ fn render_input_scrollbar_sample_control(
         percentage: range.percentage(value),
         thumb_fraction: 0.54,
         length: sample.length,
-        size: sample.size,
         style: sample.style,
         enabled: sample.enabled,
         state: sample.state,

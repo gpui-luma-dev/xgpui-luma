@@ -2,14 +2,15 @@
 
 use xgpui_luma::controls::selection_panel::SelectionPanelLook;
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::{ThemeMode};
 
 use super::selector_items_panel::selector_items_panel_look;
 use crate::mode::ShadcnModeTokens;
+use crate::size::ShadcnSize;
 
-pub fn selection_panel_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ControlSize) -> SelectionPanelLook {
+pub fn selection_panel_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> SelectionPanelLook {
     selection_panel_from_items_panel(selector_items_panel_look(mode, theme_mode, size))
-        .with_stylesheet(&mode.stylesheet().common.selection_panel, size.stylesheet_key())
+        .with_stylesheet(&mode.common_for(size).selection_panel)
 }
 
 pub fn selection_panel_from_items_panel(panel: SelectorItemsPanelLook) -> SelectionPanelLook {

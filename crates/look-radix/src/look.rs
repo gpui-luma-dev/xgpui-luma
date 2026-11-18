@@ -72,6 +72,8 @@ impl PageBackground {
 #[derive(Clone)]
 pub struct Look {
     state: Arc<LookState>,
+    /// Size used by themes and templates created from this handle.
+    size: crate::RadixSize,
 }
 
 impl Global for Look {}
@@ -105,7 +107,7 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    CommonStylesheet {
+    let mut common = CommonStylesheet {
         motion,
         tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
@@ -129,8 +131,12 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         context_menu: crate::context_menu::native_context_menu_stylesheet(),
         radio_group: crate::radio_group::native_radio_group_stylesheet(),
         ..Default::default()
-    }
-    .with_sdk_defaults()
+    };
+    crate::size::apply_size_presets(&mut common);
+    let mut common = common.with_sdk_defaults();
+    // Radix derives the checkbox indicator radius from its `radius` prop.
+    common.checkbox.geometry.indicator_radius = None;
+    common
 }
 
 pub use crate::slider::{native_radix_slider};
@@ -140,12 +146,10 @@ pub(crate) use crate::switch::{apply_radix_switch_stylesheet};
 pub use crate::checkbox::{native_radix_checkbox};
 pub(crate) use crate::checkbox::{apply_radix_checkbox_stylesheet};
 
-pub(crate) fn sdk_size_key(size: xgpui_luma::theme::ControlSize) -> &'static str {
-    match size {
-        xgpui_luma::theme::ControlSize::Sm => "1",
-        xgpui_luma::theme::ControlSize::Md => "2",
-        xgpui_luma::theme::ControlSize::Lg => "3",
-    }
+fn sized_stylesheets(
+    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
+) -> Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]> {
+    Arc::new(crate::RadixSize::ALL.map(|size| Arc::new(stylesheet.with_size_key(size.key()))))
 }
 
 struct LookState {
@@ -155,11 +159,15 @@ struct LookState {
     custom_contrast: RwLock<[Option<(ColorValue, Hsla)>; 2]>,
     custom_inputs: RwLock<[Option<CustomColors>; 2]>,
     metrics: MetricTokens,
+    /// Radix control metrics for sizes 1–3; `metrics.control` is size 2.
+    control_sizes: crate::RadixControlMetrics,
     mode: AtomicU8,
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
     button_recipes: RwLock<Arc<crate::button_recipes::Recipes>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
     common_stylesheet: RwLock<Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>>,
+    /// `common_stylesheet` with each [`crate::RadixSize`] merged into general geometry.
+    sized_stylesheets: RwLock<Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]>>,
     /// Bumped by look setters; polling does not schedule GPUI redraws.
     revision: RwLock<u64>,
 }
@@ -180,7 +188,9 @@ impl Look {
 
     /// Scales without palette identity; both slots report as custom.
     pub fn new(scales: ScalePair, metrics: MetricTokens, mode: ThemeMode) -> Self {
+        let common = Arc::new(embedded_common_stylesheet().clone());
         Self {
+            size: crate::RadixSize::default(),
             state: Arc::new(LookState {
                 motion: RwLock::new(Default::default()),
                 scales: RwLock::new(scales),
@@ -188,11 +198,13 @@ impl Look {
                 custom_contrast: RwLock::new([None; 2]),
                 custom_inputs: RwLock::new([None; 2]),
                 metrics,
+                control_sizes: crate::RadixControlMetrics::from_button_boxes(metrics.control),
                 mode: AtomicU8::new(mode_to_u8(mode)),
                 classic_shadow: RwLock::new(None),
                 button_recipes: RwLock::new(Arc::new(crate::button_recipes::embedded().clone())),
                 tabs_style: RwLock::new(None),
-                common_stylesheet: RwLock::new(Arc::new(embedded_common_stylesheet().clone())),
+                sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
+                common_stylesheet: RwLock::new(common),
                 revision: RwLock::new(0),
             }),
         }
@@ -221,8 +233,7 @@ impl Look {
         }
         *forked.state.custom_inputs.write().unwrap_or_else(|p| p.into_inner()) =
             *self.state.custom_inputs.read().unwrap_or_else(|p| p.into_inner());
-        *forked.state.common_stylesheet.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
-            self.stylesheet_snapshot();
+        forked.store_stylesheet(self.stylesheet_snapshot());
         *forked.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = self.button_recipes();
         forked
     }
@@ -269,21 +280,50 @@ impl Look {
     /// Update shared geometry for subsequent renders and motion for future controls.
     /// Existing motion retains its snapshot. Notify affected views after geometry edits.
     pub fn set_common_stylesheet(&self, stylesheet: xgpui_luma::theme::stylesheet::CommonStylesheet) {
-        // Numeric slider identities belong to Radix; the SDK stores standard sizes directly.
-        let mut stylesheet = stylesheet;
-        let mut numeric = xgpui_luma::theme::stylesheet::SliderStylesheet::default();
-        for (key, size) in [
-            ("1", xgpui_luma::theme::ControlSize::Sm),
-            ("2", xgpui_luma::theme::ControlSize::Md),
-            ("3", xgpui_luma::theme::ControlSize::Lg),
-        ] {
-            if let Some(authored) = stylesheet.slider.sizes.custom.get(key) {
-                *numeric.sizes.get_or_default(size) = authored.clone();
-            }
-        }
-        numeric.apply_to(&mut stylesheet.slider);
-        *self.state.common_stylesheet.write().unwrap_or_else(|poisoned| poisoned.into_inner()) = Arc::new(stylesheet);
+        self.store_stylesheet(Arc::new(stylesheet));
         self.bump_revision();
+    }
+
+    fn store_stylesheet(&self, stylesheet: Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>) {
+        *self.state.sized_stylesheets.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
+            sized_stylesheets(&stylesheet);
+        *self.state.common_stylesheet.write().unwrap_or_else(|poisoned| poisoned.into_inner()) = stylesheet;
+    }
+
+    /// Common stylesheet with `size` merged into general geometry, for SDK controls.
+    pub(crate) fn sized_stylesheet(
+        &self,
+        size: crate::RadixSize,
+    ) -> Arc<xgpui_luma::theme::stylesheet::CommonStylesheet> {
+        self.state.sized_stylesheets.read().unwrap_or_else(|poisoned| poisoned.into_inner())[size.index()].clone()
+    }
+
+    /// A handle to the same look whose themes and templates use `size`.
+    /// The look resolves the size to pixels; SDK controls only see pixels.
+    pub fn with_size(&self, size: crate::RadixSize) -> Self {
+        Self { state: self.state.clone(), size }
+    }
+
+    /// Size used by themes and templates created from this handle.
+    /// Radix chrome corner radii in pixels.
+    pub fn radii(&self) -> crate::RadixRadii {
+        crate::RadixRadii::DEFAULT
+    }
+
+    pub fn size(&self) -> crate::RadixSize {
+        self.size
+    }
+
+    /// Radix control metrics for each size.
+    pub fn control_sizes(&self) -> crate::RadixControlMetrics {
+        self.state.control_sizes
+    }
+
+    /// Shared metrics whose `control` scale is the given Radix size, for SDK geometry.
+    pub fn metrics_for(&self, size: crate::RadixSize) -> MetricTokens {
+        let mut metrics = self.state.metrics;
+        metrics.control = self.state.control_sizes.get(size);
+        metrics
     }
 
     /// Shared tab geometry, baseline, and indicator settings for this look.
@@ -756,6 +796,7 @@ mod tests {
         apply_radix_slider_stylesheet(&mut native);
         apply_radix_switch_stylesheet(&mut native);
         apply_radix_checkbox_stylesheet(&mut native);
+        crate::size::apply_size_presets(&mut native);
         assert_eq!(native.slider, original.slider);
         assert_eq!(native.switch, original.switch);
         assert_eq!(native.checkbox, original.checkbox);
@@ -774,13 +815,9 @@ mod tests {
             old_look.set_mode(mode);
             new_look.set_mode(mode);
             for variant in crate::slider::SliderVariant::ALL {
-                let old_theme = crate::slider::slider_theme_with(&old_look, variant);
-                let new_theme = crate::slider::slider_theme_with(&new_look, variant);
-                for size in [
-                    xgpui_luma::theme::ControlSize::Sm,
-                    xgpui_luma::theme::ControlSize::Md,
-                    xgpui_luma::theme::ControlSize::Lg,
-                ] {
+                for size in crate::RadixSize::ALL {
+                    let old_theme = crate::slider::slider_theme_with(&old_look.with_size(size), variant);
+                    let new_theme = crate::slider::slider_theme_with(&new_look.with_size(size), variant);
                     for bits in 0..32 {
                         let state = xgpui_luma::theme::InteractionState {
                             hovered: bits & 1 != 0,
@@ -789,16 +826,11 @@ mod tests {
                             disabled: bits & 8 != 0,
                             invalid: bits & 16 != 0,
                         };
-                        use xgpui_luma::controls::slider::SliderThumbSize;
-                        for thumb in
-                            [None, Some(SliderThumbSize::Sm), Some(SliderThumbSize::Md), Some(SliderThumbSize::Lg)]
-                        {
-                            assert_eq!(
-                                format!("{:?}", new_theme.resolve(size, thumb, state)),
-                                format!("{:?}", old_theme.resolve(size, thumb, state)),
-                                "{mode:?} {variant:?} {size:?} {thumb:?} {state:?}",
-                            );
-                        }
+                        assert_eq!(
+                            format!("{:?}", new_theme.resolve(state)),
+                            format!("{:?}", old_theme.resolve(state)),
+                            "{mode:?} {variant:?} {size:?} {state:?}",
+                        );
                     }
                 }
             }

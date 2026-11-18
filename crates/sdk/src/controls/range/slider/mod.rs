@@ -16,8 +16,7 @@ pub use domain::DomainTrackRenderer;
 pub use input::{SliderInputStrategy, angle_for_percentage, wrap_and_snap, wrap_value};
 pub use model::{
     RadialHitTarget, SliderBuilder, SliderModel, SliderOrientation, SliderRenderModel, SliderThumbPolicy,
-    SliderThumbSize, SliderThumbRole, SliderThumbValue, SliderValueMapping, ThumbId, TrackPresentation, TrackSegment,
-    TrackSegmentKind,
+    SliderThumbRole, SliderThumbValue, SliderValueMapping, ThumbId, TrackPresentation, TrackSegment, TrackSegmentKind,
 };
 pub use template::{
     SliderBoundsHandler, SliderDragMoveHandler, SliderHoverHandler, SliderMouseDownHandler, SliderMouseMoveHandler,

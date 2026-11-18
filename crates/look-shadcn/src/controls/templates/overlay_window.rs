@@ -3,7 +3,6 @@ use std::sync::Arc;
 use xgpui_luma::controls::overlay_window::{
     OverlayWindowLook, OverlayWindowMode, OverlayWindowTemplate, OverlayWindowTheme, ThemedOverlayWindowTemplate,
 };
-use xgpui_luma::theme::ControlSize;
 
 use crate::controls::overlay_window::overlay_window_look;
 use crate::look::ShadcnLook;
@@ -21,7 +20,8 @@ struct ShadcnOverlayWindowTheme {
 }
 
 impl OverlayWindowTheme for ShadcnOverlayWindowTheme {
-    fn resolve(&self, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook {
+    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
+        let size = self.theme.size();
         overlay_window_look(&self.theme, size, mode)
     }
 }

@@ -141,9 +141,8 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
         _cx: &mut App,
     ) -> Stateful<Div> {
         let scale_factor = window.scale_factor();
-        let size = model.size;
-        let scale = StandardBoxScale::compute(size, &self.theme.metrics(), scale_factor);
-        let mut look = self.theme.resolve_look(model.state, model.enabled, size, &scale);
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
+        let mut look = self.theme.resolve_look(model.state, model.enabled, &scale);
         let show_placeholder = model.value.is_empty() && !model.state.focused;
         let selection = model.state.selection_range();
         let cursor = model.state.cursor.min(model.value.chars().count());

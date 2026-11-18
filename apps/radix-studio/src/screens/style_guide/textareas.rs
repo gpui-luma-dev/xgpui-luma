@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states (incl. invalid)
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
+use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;
 
@@ -14,7 +15,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textarea::{
     TextAreaLineMetric, TextAreaLook, TextAreaRenderModel, TextAreaState, TextAreaTemplate, TextAreaTheme,
 };
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::StandardBoxScale;
 use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textarea_theme_with};
 
 use super::matrix_grid::{
@@ -124,7 +125,7 @@ pub fn tabbed(
 }
 
 pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window, cx: &mut App) -> AnyElement {
-    let sizes = [(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")];
+    let sizes = [(RadixSize::One, "Sm"), (RadixSize::Two, "Md"), (RadixSize::Three, "Lg")];
     let mut grid =
         fixed_grid(equal_data_columns(ROW_LABEL_WIDTH, SIZE_COLUMN_WIDTH, sizes.len()), SIZE_COL_GAP, SIZE_ROW_GAP);
 
@@ -136,16 +137,14 @@ pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window
     for (row, def) in RADIX_VARIANTS.iter().enumerate() {
         let row = row + 1;
         grid = grid.child(row_label(def.label, fg), row, 0);
-        let template = look.textarea_template(def.variant);
-        let theme = textarea_theme_with(look, def.variant);
         for (col, (size, _)) in sizes.iter().enumerate() {
+            // Each size column renders with a Look sized to that column.
+            let sized_look = look.with_size(*size);
+            let template = sized_look.textarea_template(def.variant);
+            let theme = textarea_theme_with(&sized_look, def.variant);
             let sample =
                 AreaSample { id: "size", label: "Size", icon: "home", state: TextAreaState::default(), enabled: true };
-            grid = grid.child(
-                centered(render_area(&template, theme.clone(), sample, def.id, *size, window, cx)),
-                row,
-                col + 1,
-            );
+            grid = grid.child(centered(render_area(&template, theme, sample, def.id, *size, window, cx)), row, col + 1);
         }
     }
 
@@ -185,7 +184,7 @@ pub fn colors_matrix(base_look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut 
                     theme,
                     sample,
                     &format!("colors-{accent_id}-{}", def.id),
-                    ControlSize::Md,
+                    RadixSize::Two,
                     window,
                     cx,
                 )),
@@ -229,7 +228,7 @@ pub fn matrix(
                     .iter()
                     .copied()
                     .map(|sample| {
-                        centered(render_area(&template, theme.clone(), sample, def.id, ControlSize::Md, window, cx))
+                        centered(render_area(&template, theme.clone(), sample, def.id, RadixSize::Two, window, cx))
                     })
                     .collect(),
             }
@@ -273,21 +272,20 @@ fn render_area(
     theme: Arc<dyn TextAreaTheme>,
     sample: AreaSample,
     variant_id: &str,
-    size: ControlSize,
+    size: RadixSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let id = SharedString::from(format!("style-guide-textarea-{variant_id}-{}-{}", sample.id, size_id(size)));
     let placeholder = SharedString::from("Placeholder");
     let value = SharedString::from(SAMPLE_VALUE);
-    let line_metrics = line_metrics(value.as_ref(), theme, sample.state, sample.enabled, size, window);
+    let line_metrics = line_metrics(value.as_ref(), theme, sample.state, sample.enabled, window);
     let model = TextAreaRenderModel {
         id: &id,
         placeholder: &placeholder,
         value: &value,
         enabled: sample.enabled,
         full_width: true,
-        size,
         rows: 3,
         state: sample.state,
         caret_visible: sample.state.focused && sample.enabled,
@@ -309,10 +307,9 @@ fn line_metrics(
     theme: Arc<dyn TextAreaTheme>,
     state: TextAreaState,
     enabled: bool,
-    size: ControlSize,
     window: &mut Window,
 ) -> Vec<TextAreaLineMetric> {
-    let look = area_look(&theme, state, enabled, size, window);
+    let look = area_look(&theme, state, enabled, window);
     let mut metrics = Vec::new();
     let mut start = 0usize;
     let mut current = String::new();
@@ -370,21 +367,15 @@ fn shape_metric(
     }
 }
 
-fn area_look(
-    theme: &Arc<dyn TextAreaTheme>,
-    state: TextAreaState,
-    enabled: bool,
-    size: ControlSize,
-    window: &Window,
-) -> TextAreaLook {
-    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, size, &scale)
+fn area_look(theme: &Arc<dyn TextAreaTheme>, state: TextAreaState, enabled: bool, window: &Window) -> TextAreaLook {
+    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+    theme.resolve_look(state, enabled, &scale)
 }
 
-fn size_id(size: ControlSize) -> &'static str {
+fn size_id(size: RadixSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        RadixSize::One => "sm",
+        RadixSize::Two => "md",
+        RadixSize::Three => "lg",
     }
 }

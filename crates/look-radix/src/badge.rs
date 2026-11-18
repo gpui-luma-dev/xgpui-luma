@@ -49,8 +49,9 @@ impl BadgeSize {
         }
     }
     fn metrics(self) -> (f32, f32, f32, f32, f32) {
-        let geometry =
-            crate::look::embedded_common_stylesheet().badge.resolve_geometry(self.as_str(), Default::default());
+        let geometry = crate::look::embedded_common_stylesheet()
+            .badge
+            .resolve_geometry_for(self.as_str(), Default::default());
         let radius = match self {
             Self::One => 3.0,
             Self::Two | Self::Three => 4.0,
@@ -130,7 +131,7 @@ impl IntoElement for Badge {
     fn into_element(self) -> Div {
         let (background, foreground, border) = self.colors();
         let (font_size, line_height, padding_x, padding_y, radius) = self.size.metrics();
-        let geometry = self.look.common_stylesheet().badge.resolve_geometry(
+        let geometry = self.look.common_stylesheet().badge.resolve_geometry_for(
             self.size.as_str(),
             xgpui_luma::theme::stylesheet::BadgeGeometry {
                 font_size,

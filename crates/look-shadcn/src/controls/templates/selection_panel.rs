@@ -6,8 +6,8 @@ use crate::controls::selection_panel::selection_panel_look;
 use crate::look::ShadcnLook;
 
 pub fn selection_panel_look_provider(theme: ShadcnLook) -> SelectionPanelLookProvider {
-    Arc::new(move |size| {
+    Arc::new(move || {
         let tokens = theme.mode_tokens();
-        selection_panel_look(tokens.as_ref(), theme.mode(), size)
+        selection_panel_look(tokens.as_ref(), theme.mode(), theme.size())
     })
 }

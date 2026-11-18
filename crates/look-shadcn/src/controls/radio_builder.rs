@@ -207,12 +207,12 @@ impl Radio {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> RadioButtonBuilder {
+        let look = look.with_size(self.size);
         let template = look.radio_button_template(self.style);
         let mut builder = xgpui_luma::controls::radio_button::new(self.id)
             .motion_defaults(look.motion_defaults().radio)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.selected)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)

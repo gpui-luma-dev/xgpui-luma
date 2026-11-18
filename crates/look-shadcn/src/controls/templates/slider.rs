@@ -23,12 +23,8 @@ struct ShadcnSliderTheme {
 }
 
 impl SliderTheme for ShadcnSliderTheme {
-    fn resolve(
-        &self,
-        size: xgpui_luma::theme::ControlSize,
-        thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
-        state: InteractionState,
-    ) -> xgpui_luma::controls::slider::SliderLook {
+    fn resolve(&self, state: InteractionState) -> xgpui_luma::controls::slider::SliderLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         slider_look_with_stylesheet(
             tokens.as_ref(),
@@ -36,7 +32,6 @@ impl SliderTheme for ShadcnSliderTheme {
             self.theme.mode(),
             self.style,
             size,
-            thumb_size,
             state,
         )
     }

@@ -7,7 +7,6 @@ use xgpui_luma::controls::tabs::{
     TabsItemState, TabsMouseDownHandler, TabsMouseUpHandler, TabsRenderItem, TabsRenderModel, TabsTemplate,
     TabsTemplateHandlers, TabsWidthMode,
 };
-use xgpui_luma::theme::ControlSize;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::style::shared::preview_handlers::{
@@ -101,7 +100,6 @@ fn render_tabs_state_sample(
     let model = TabsRenderModel {
         drag_drop: None,
         id: &id,
-        size: ControlSize::Md,
         width_mode: TabsWidthMode::Intrinsic,
         items: render_items,
         active_id,

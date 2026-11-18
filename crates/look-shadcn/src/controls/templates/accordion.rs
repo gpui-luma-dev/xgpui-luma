@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::accordion::{AccordionTemplate, AccordionTheme, ThemedAccordionTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::accordion::{accordion_content_palette, accordion_trigger_palette};
 use crate::look::ShadcnLook;
@@ -23,7 +23,8 @@ impl AccordionTheme for ShadcnAccordionTheme {
         crate::tooltip_theme(&self.theme)
     }
 
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
         xgpui_luma::infra::drag_drop::DragDropLook {
@@ -32,17 +33,14 @@ impl AccordionTheme for ShadcnAccordionTheme {
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
             valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
             invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.metrics.radius(size),
+            radius: tokens.control_sizes.radius(size),
             typography: tokens.typography.text.label,
             font_family: tokens.typography.font.sans.family.clone().into(),
         }
     }
 
-    fn resolve_trigger(
-        &self,
-        state: InteractionState,
-        size: ControlSize,
-    ) -> xgpui_luma::controls::accordion::AccordionPalette {
+    fn resolve_trigger(&self, state: InteractionState) -> xgpui_luma::controls::accordion::AccordionPalette {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         accordion_trigger_palette(tokens.as_ref(), self.theme.mode(), state, size)
     }
@@ -52,7 +50,8 @@ impl AccordionTheme for ShadcnAccordionTheme {
         accordion_content_palette(tokens.as_ref(), self.theme.mode(), expanded)
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::accordion::AccordionScale {
+    fn resolve_scale(&self, scale_factor: f32) -> xgpui_luma::controls::accordion::AccordionScale {
+        let size = self.theme.size();
         crate::tables::metrics::resolve_accordion_metrics(
             &self.theme.mode_tokens(),
             self.theme.mode(),
@@ -63,7 +62,7 @@ impl AccordionTheme for ShadcnAccordionTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 
@@ -85,8 +84,8 @@ mod drag_tests {
         let theme = accordion_theme(look.clone());
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let drag = theme.resolve_drag(ControlSize::Md);
-            let expected = super::super::tabs::tabs_theme(look.clone()).resolve_drag(ControlSize::Md);
+            let drag = theme.resolve_drag();
+            let expected = super::super::tabs::tabs_theme(look.clone()).resolve_drag();
             assert_eq!(drag.background, expected.background);
             assert_eq!(drag.foreground, expected.foreground);
             assert_eq!(drag.valid_marker, expected.valid_marker);

@@ -6,7 +6,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{
     TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
 };
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::{StandardBoxScale};
 use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -116,7 +116,15 @@ fn render_textfield_template_body(look: &Arc<ShadcnLook>, window: &mut Window, c
                 .iter()
                 .copied()
                 .map(|sample| {
-                    render_textfield_cell(&template, theme.clone(), sample, style.id, ControlSize::Md, window, cx)
+                    render_textfield_cell(
+                        &template,
+                        theme.clone(),
+                        sample,
+                        style.id,
+                        xgpui_luma_look_shadcn::ShadcnSize::Md,
+                        window,
+                        cx,
+                    )
                 })
                 .collect(),
         }
@@ -128,7 +136,11 @@ fn render_textfield_template_body(look: &Arc<ShadcnLook>, window: &mut Window, c
 
 fn render_textfield_sizes_body(look: &Arc<ShadcnLook>, window: &mut Window, cx: &mut App) -> AnyElement {
     let chrome = look.chrome();
-    let sizes = [(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")];
+    let sizes = [
+        (xgpui_luma_look_shadcn::ShadcnSize::Sm, "Sm"),
+        (xgpui_luma_look_shadcn::ShadcnSize::Md, "Md"),
+        (xgpui_luma_look_shadcn::ShadcnSize::Lg, "Lg"),
+    ];
     let sample = InputTextFieldSample { id: "size", label: "Size", state: TextFieldState::default(), enabled: true };
 
     VariantStateTable::new(
@@ -141,14 +153,17 @@ fn render_textfield_sizes_body(look: &Arc<ShadcnLook>, window: &mut Window, cx: 
     )
     .column_headers(sizes.iter().map(|(_, label)| render_textfield_size_header_cell(label, chrome.muted_text)))
     .rows(TEXTFIELD_STYLE_VARIANTS.iter().map(|style| {
-        let (template, theme) = textfield_style_pair(look, style.id);
         VariantStateTableRow {
             label: SharedString::from(style.label),
             description: SharedString::from(""),
             cells: sizes
                 .iter()
                 .copied()
-                .map(|(size, _)| render_textfield_cell(&template, theme.clone(), sample, style.id, size, window, cx))
+                .map(|(size, _)| {
+                    // Each size column renders with a Look sized to that column.
+                    let (template, theme) = textfield_style_pair(&Arc::new(look.with_size(size)), style.id);
+                    render_textfield_cell(&template, theme, sample, style.id, size, window, cx)
+                })
                 .collect(),
         }
     }))
@@ -204,7 +219,7 @@ fn render_textfield_cell(
     theme: Arc<dyn TextFieldTheme>,
     sample: InputTextFieldSample,
     style_id: &str,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -216,16 +231,15 @@ fn render_textfield_cell(
     ));
     let placeholder = SharedString::from("Placeholder");
     let value = SharedString::from(TEXTFIELD_SAMPLE_TEXT);
-    let look = input_textfield_look(&theme, sample.state, sample.enabled, size, window);
+    let look = input_textfield_look(&theme, sample.state, sample.enabled, window);
     let character_offsets =
-        input_textfield_character_offsets(value.as_ref(), theme, sample.state, sample.enabled, size, window);
+        input_textfield_character_offsets(value.as_ref(), theme, sample.state, sample.enabled, window);
     let prefix_icon = ControlIcon::Lucide(LucideIcon::Search);
     let model = TextFieldRenderModel {
         id: &id,
         placeholder: &placeholder,
         value: &value,
         prefix_icon: Some(&prefix_icon),
-        size,
         enabled: sample.enabled,
         full_width: true,
         state: sample.state,
@@ -292,11 +306,10 @@ fn input_textfield_look(
     theme: &Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
     window: &Window,
 ) -> xgpui_luma::controls::textfield::TextFieldLook {
-    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, size, &scale)
+    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+    theme.resolve_look(state, enabled, &scale)
 }
 
 fn input_textfield_character_offsets(
@@ -304,10 +317,9 @@ fn input_textfield_character_offsets(
     theme: Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = input_textfield_look(&theme, state, enabled, size, window);
+    let look = input_textfield_look(&theme, state, enabled, window);
     let run = TextRun {
         len: value.len(),
         font: {

@@ -39,7 +39,7 @@ impl DefaultDockSplitterTheme {
 impl DockSplitterTheme for DefaultDockSplitterTheme {
     fn resolve(&self, enabled: bool) -> DockSplitterLook {
         let palette = self.tokens.stylesheet.recipes.palette("dock_splitter", &self.tokens.palette);
-        let geometry = self.tokens.stylesheet.dock_splitter.resolve_geometry("md", Default::default());
+        let geometry = self.tokens.stylesheet.dock_splitter.resolve_geometry(Default::default());
 
         DockSplitterLook {
             line_color: if enabled {

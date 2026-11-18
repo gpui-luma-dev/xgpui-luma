@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla, SharedString, black};
 
-use crate::theme::{ControlSize, LumaTextStyle, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 use super::OverlayWindowMode;
 
@@ -30,7 +30,7 @@ pub struct OverlayWindowLook {
 }
 
 pub trait OverlayWindowTheme: Send + Sync {
-    fn resolve(&self, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook;
+    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -51,21 +51,22 @@ impl DefaultOverlayWindowTheme {
 }
 
 impl OverlayWindowTheme for DefaultOverlayWindowTheme {
-    fn resolve(&self, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook {
+    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
         let palette = self.tokens.stylesheet.recipes.palette("overlay_window", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
         let typography = &self.tokens.typography;
         let elevation = &self.tokens.elevation;
-        let geometry = self.tokens.stylesheet.overlay_window.resolve_geometry(
-            size.stylesheet_key(),
-            crate::theme::stylesheet::OverlayWindowGeometry {
-                padding: metrics.padding_x(size),
-                radius: metrics.radius.xl,
-                font_size: typography.text.body.size,
-                line_height: typography.text.body.line_height,
-                ..Default::default()
-            },
-        );
+        let geometry =
+            self.tokens
+                .stylesheet
+                .overlay_window
+                .resolve_geometry(crate::theme::stylesheet::OverlayWindowGeometry {
+                    padding: metrics.padding_x(),
+                    radius: 12.0,
+                    font_size: typography.text.body.size,
+                    line_height: typography.text.body.line_height,
+                    ..Default::default()
+                });
 
         OverlayWindowLook {
             viewport_padding: geometry.viewport_padding,
@@ -129,22 +130,12 @@ impl OverlayWindowStylesheet {
                 drag_header_height: Some(56.0),
                 border_width: Some(1.0),
                 backdrop_opacity: Some(0.44),
+                min_width: Some(400.0),
+                max_width: Some(520.0),
+                estimated_height: Some(228.0),
                 ..Default::default()
             },
-            sizes: [("sm", 320.0, 440.0, 196.0), ("md", 400.0, 520.0, 228.0), ("lg", 480.0, 600.0, 264.0)]
-                .into_iter()
-                .map(|(key, min, max, height)| {
-                    (
-                        key.into(),
-                        OverlayWindowGeometryStylesheet {
-                            min_width: Some(min),
-                            max_width: Some(max),
-                            estimated_height: Some(height),
-                            ..Default::default()
-                        },
-                    )
-                })
-                .collect(),
+            sizes: Default::default(),
         }
     }
 }

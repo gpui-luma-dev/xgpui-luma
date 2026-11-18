@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole};
 use xgpui_luma::controls::switch::SwitchData;
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::{hstack, vstack};
@@ -124,7 +124,6 @@ fn sizes_cell(
     centered(switch_pair(
         &template,
         &format!("sizes-{}-{}-{}", def.id, size.as_str(), radius.as_str()),
-        size.control_size(),
         window,
         cx,
     ))
@@ -168,14 +167,8 @@ fn colors_variant_cell(
 
     centered(
         hstack! { gap=12 align=center; }
-            .child(switch_pair(&default, &format!("colors-{accent_id}-{}-default", def.id), ButtonSize::Md, window, cx))
-            .child(switch_pair(
-                &high_contrast,
-                &format!("colors-{accent_id}-{}-hc", def.id),
-                ButtonSize::Md,
-                window,
-                cx,
-            )),
+            .child(switch_pair(&default, &format!("colors-{accent_id}-{}-default", def.id), window, cx))
+            .child(switch_pair(&high_contrast, &format!("colors-{accent_id}-{}-hc", def.id), window, cx)),
     )
 }
 
@@ -232,7 +225,6 @@ fn state_cell(
             template,
             &format!("style-guide-switch-{variant_id}-{}-{}", sample.id, if on { "on" } else { "off" }),
             on,
-            ButtonSize::Md,
             sample.state,
             window,
             cx,
@@ -243,7 +235,6 @@ fn state_cell(
 fn switch_pair(
     template: &Arc<dyn ButtonTemplate<SwitchData>>,
     id_prefix: &str,
-    size: ButtonSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -256,7 +247,6 @@ fn switch_pair(
                 template,
                 &format!("{id_prefix}-{}", if on { "on" } else { "off" }),
                 on,
-                size,
                 Default::default(),
                 window,
                 cx,
@@ -269,7 +259,6 @@ fn render_switch(
     template: &Arc<dyn ButtonTemplate<SwitchData>>,
     id: &str,
     on: bool,
-    size: ButtonSize,
     state: xgpui_luma::theme::InteractionState,
     window: &mut Window,
     cx: &mut App,
@@ -279,7 +268,6 @@ fn render_switch(
         data: SwitchData::new(on),
         content: Arc::new(|_, _| div().into_any_element()),
         role: ButtonFamilyRole::Icon,
-        size,
         state,
         ..Default::default()
     };

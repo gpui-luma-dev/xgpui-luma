@@ -61,9 +61,9 @@ pub fn segmented_radio_template<T: ControlGroupItemLike + 'static>(look: &Look) 
 }
 
 pub(crate) fn resolve_geometry(look: &Look) -> xgpui_luma::theme::stylesheet::SegmentedGeometry {
-    let control = look.metrics().control.md;
+    let control = look.metrics().control;
     let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
-    look.common_stylesheet().segmented.resolve_geometry(
+    look.common_stylesheet().segmented.resolve_geometry_for(
         "2",
         xgpui_luma::theme::stylesheet::SegmentedGeometry {
             height: control.height,

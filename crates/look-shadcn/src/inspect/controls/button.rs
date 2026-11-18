@@ -1,7 +1,7 @@
 //! Inspect metadata for `button`.
 
 use gpui::{BoxShadow, Hsla};
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{
     LookContext, MetricSource, ResolvedColor, ResolvedMetric, ResolvedTypography, ShadcnButtonStyle, ShadcnModeTokens,
 };
@@ -9,6 +9,7 @@ use crate::stylesheet::{find_button_elevation_rule, resolve_stylesheet_shadow_to
 
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::infra::shadow_layout::shadow_projection_extent;
+use crate::size::ShadcnSize;
 
 pub struct ButtonInspectPalette {
     pub background: ResolvedColor,
@@ -63,7 +64,7 @@ pub fn inspect_button_metrics(
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
     state: InteractionState,
 ) -> ButtonInspectMetrics {
     inspect_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, role, size, state)
@@ -75,7 +76,7 @@ pub(crate) fn inspect_button_metrics_with_stylesheet(
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: ShadcnSize,
     state: InteractionState,
 ) -> ButtonInspectMetrics {
     let table = crate::tables::metrics::resolve_button_metrics_with_stylesheet(
@@ -139,7 +140,7 @@ pub(crate) fn inspect_button_elevation_with_stylesheet(
         theme_mode,
         style,
         role,
-        ControlSize::Md,
+        ShadcnSize::Md,
         None,
         state,
     );
@@ -223,13 +224,13 @@ pub fn format_inspect_box_shadow_layer(layer: &ButtonInspectElevationLayer) -> S
 
 /// Default medium text-button typography. Use the sized variant for other controls.
 pub fn inspect_button_typography(mode: &ShadcnModeTokens, theme_mode: ThemeMode) -> ButtonInspectTypography {
-    inspect_button_typography_for_size(mode, theme_mode, ControlSize::Md, ButtonFamilyRole::Text)
+    inspect_button_typography_for_size(mode, theme_mode, ShadcnSize::Md, ButtonFamilyRole::Text)
 }
 
 pub fn inspect_button_typography_for_size(
     mode: &ShadcnModeTokens,
     _theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
     role: ButtonFamilyRole,
 ) -> ButtonInspectTypography {
     crate::tables::typography::resolve_control_typography(mode, size, matches!(role, ButtonFamilyRole::Toggle { .. }))
@@ -355,7 +356,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
         let metrics = inspect_button_metrics(
@@ -363,7 +364,7 @@ mod tests {
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            ShadcnSize::Md,
             InteractionState::default(),
         );
 

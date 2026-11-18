@@ -2,10 +2,11 @@
 
 use xgpui_luma::controls::textarea::{TextAreaLook, TextAreaPalette, TextAreaState, compose_textarea_look};
 use xgpui_luma::controls::textfield::TextFieldState;
-use xgpui_luma::theme::{ControlSize, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
 
 use super::textfield::{ShadcnTextFieldStyle, textfield_palette_base_for_size};
 use crate::mode::ShadcnModeTokens;
+use crate::size::ShadcnSize;
 
 pub fn textarea_palette(
     mode: &ShadcnModeTokens,
@@ -14,7 +15,7 @@ pub fn textarea_palette(
     state: TextAreaState,
     enabled: bool,
 ) -> TextAreaPalette {
-    textarea_palette_for_size(mode, theme_mode, style, state, enabled, ControlSize::Md)
+    textarea_palette_for_size(mode, theme_mode, style, state, enabled, ShadcnSize::Md)
 }
 
 pub fn textarea_palette_for_size(
@@ -23,7 +24,7 @@ pub fn textarea_palette_for_size(
     style: ShadcnTextFieldStyle,
     state: TextAreaState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TextAreaPalette {
     let mut palette = textarea_from_textfield(textfield_palette_base_for_size(
         mode,
@@ -33,7 +34,7 @@ pub fn textarea_palette_for_size(
         enabled,
         size,
     ));
-    let scale = StandardBoxScale::compute(size, &mode.metrics, 1.0);
+    let scale = StandardBoxScale::compute(&mode.metrics_for(size), 1.0);
     let geometry = textarea_geometry(mode, size, &scale, &palette.typography);
     crate::tables::typography::apply_resolved_geometry_typography(
         &mut palette.typography,
@@ -49,7 +50,7 @@ pub fn textarea_look(
     style: ShadcnTextFieldStyle,
     state: TextAreaState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
 ) -> TextAreaLook {
     let palette = textarea_palette_for_size(mode, theme_mode, style, state, enabled, size);
@@ -58,7 +59,7 @@ pub fn textarea_look(
     scale.height = geometry.min_height.value_px;
     scale.padding_x = geometry.padding_x.value_px;
     scale.padding_y = geometry.padding_y.value_px;
-    let mut look = compose_textarea_look(&palette, &scale, mode.metrics.border_width.default);
+    let mut look = compose_textarea_look(&palette, &scale, mode.metrics.border_width);
     look.helper_geometry = mode.stylesheet().common.shared_geometry();
     look.caret_width = geometry.caret_width.value_px;
     look.caret_height_extra = geometry.caret_height_extra.value_px;
@@ -68,11 +69,11 @@ pub fn textarea_look(
 
 pub(crate) fn textarea_geometry(
     mode: &ShadcnModeTokens,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
     typography: &xgpui_luma::theme::LumaTextStyle,
 ) -> xgpui_luma::theme::stylesheet::ResolvedTextAreaGeometry {
-    mode.stylesheet().common.textarea.inspect_geometry(
+    mode.stylesheet().common.textarea.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::TextAreaGeometry {
             min_height: scale.height,

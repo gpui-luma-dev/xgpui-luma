@@ -9,7 +9,7 @@ struct DockTheme {
 }
 impl DockSplitterTheme for DockTheme {
     fn resolve(&self, enabled: bool) -> DockSplitterLook {
-        let geometry = self.look.common_stylesheet().dock_splitter.resolve_geometry("md", Default::default());
+        let geometry = self.look.common_stylesheet().dock_splitter.resolve_geometry_for("md", Default::default());
         let active = self
             .look
             .resolve_role(if enabled {
@@ -41,7 +41,7 @@ struct SplitTheme {
 impl SplitViewTheme for SplitTheme {
     fn resolve(&self, _: bool, enabled: bool) -> SplitViewLook {
         SplitViewLook {
-            geometry: self.look.common_stylesheet().split_view.resolve_geometry("", Default::default()),
+            geometry: self.look.common_stylesheet().split_view.resolve_geometry(Default::default()),
             separator: if enabled {
                 self.look.resolve_role(SemanticRole::Border).hsla()
             } else {

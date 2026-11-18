@@ -4,7 +4,7 @@ use gpui::{Hsla, hsla};
 
 use crate::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 
-use crate::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionLayer, InteractionState, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ScrollbarLook {
@@ -25,7 +25,6 @@ pub trait ScrollbarTheme: Send + Sync {
         &self,
         state: InteractionState,
         orientation: ScrollbarOrientation,
-        size: ControlSize,
         style: ScrollbarStyle,
     ) -> ScrollbarLook;
 
@@ -56,16 +55,14 @@ impl ScrollbarTheme for DefaultScrollbarTheme {
         &self,
         state: InteractionState,
         orientation: ScrollbarOrientation,
-        size: ControlSize,
         style: ScrollbarStyle,
     ) -> ScrollbarLook {
         let geometry = self
             .tokens
             .stylesheet
             .scrollbar
-            .resolve_geometry(size.stylesheet_key(), crate::theme::stylesheet::ScrollbarGeometry::default());
+            .resolve_geometry(crate::theme::stylesheet::ScrollbarGeometry::default());
         let palette = self.tokens.stylesheet.recipes.palette("scrollbar", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
         let thumb_background = match state.layer() {
             InteractionLayer::Disabled => palette.state.disabled.foreground,
             InteractionLayer::Pressed => palette.state.pressed.background,
@@ -93,7 +90,7 @@ impl ScrollbarTheme for DefaultScrollbarTheme {
             track_thickness: geometry.track_thickness,
             thumb_thickness: geometry.thumb_thickness,
             min_thumb_length: geometry.min_thumb_length,
-            radius: metrics.radius.pill,
+            radius: crate::theme::FULL_RADIUS_PX,
         }
     }
 
@@ -119,25 +116,14 @@ impl ScrollbarStylesheet {
             geometry: ScrollbarGeometryStylesheet {
                 thumb_fraction: Some(0.25),
                 disabled_opacity: Some(0.56),
-                ..Default::default()
+                thickness: Some(12.0),
+                track_thickness: Some(4.0),
+                thumb_thickness: Some(8.0),
+                min_thumb_length: Some(28.0),
+                length_h: Some(260.0),
+                length_v: Some(180.0),
             },
-            sizes: [("sm", 10.0, 3.0, 6.0, 24.0), ("md", 12.0, 4.0, 8.0, 28.0), ("lg", 14.0, 5.0, 10.0, 32.0)]
-                .into_iter()
-                .map(|(key, thickness, track, thumb, min)| {
-                    (
-                        key.into(),
-                        ScrollbarGeometryStylesheet {
-                            thickness: Some(thickness),
-                            track_thickness: Some(track),
-                            thumb_thickness: Some(thumb),
-                            min_thumb_length: Some(min),
-                            length_h: Some(260.0),
-                            length_v: Some(180.0),
-                            ..Default::default()
-                        },
-                    )
-                })
-                .collect(),
+            sizes: Default::default(),
         }
     }
 }

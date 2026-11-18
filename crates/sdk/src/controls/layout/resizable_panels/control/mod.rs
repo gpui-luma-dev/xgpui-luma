@@ -246,14 +246,6 @@ impl ResizablePanels {
         cx.notify();
     }
 
-    pub fn set_resize_handle(&mut self, size: super::model::ResizeHandleSize, cx: &mut Context<Self>) {
-        if self.model.resize_handle == size {
-            return;
-        }
-        self.model.resize_handle = size;
-        cx.notify();
-    }
-
     pub fn set_theme(&mut self, theme: std::sync::Arc<dyn super::theme::ResizablePanelsTheme>, cx: &mut Context<Self>) {
         if std::sync::Arc::ptr_eq(&self.model.theme, &theme) {
             cx.notify();

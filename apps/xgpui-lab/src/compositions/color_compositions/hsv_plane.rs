@@ -8,7 +8,7 @@ use xgpui_luma_color::color_slider::color_spec::Hsv;
 use xgpui_luma_color::color_slider::{ChannelDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value};
 use xgpui_luma_color::composition::ColorCompositionSync;
 use xgpui_luma::controls::slider::SliderControl;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 use crate::theme::{Look, TextSize};
 
 use super::super::color_exposition_common::{
@@ -64,7 +64,7 @@ impl HsvPlaneDemo {
             .rounded(px(0.0))
             .thumb_small()
             .thumb_square()
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .spawn(cx);
         let slider_s_builder =
             ColorSliderBuilder::channel("controls-doc-hsv-plane-s", initial_hsv.s, initial_hsv, Hsv::SATURATION)
@@ -73,7 +73,7 @@ impl HsvPlaneDemo {
                 .rounded(px(0.0))
                 .thumb_small()
                 .thumb_square()
-                .size(ControlSize::Sm);
+                .size(ColorControlSize::Small);
         let slider_s_domain = slider_s_builder.domain_renderer();
         let slider_s = slider_s_builder.spawn(cx);
         let slider_v_builder =
@@ -83,7 +83,7 @@ impl HsvPlaneDemo {
                 .rounded(px(0.0))
                 .thumb_small()
                 .thumb_square()
-                .size(ControlSize::Sm);
+                .size(ColorControlSize::Small);
         let slider_v_domain = slider_v_builder.domain_renderer();
         let slider_v = slider_v_builder.spawn(cx);
 

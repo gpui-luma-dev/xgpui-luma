@@ -24,7 +24,6 @@ use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 use crate::infra::icon::SelectionStatusIcons;
-use crate::theme::ControlSize;
 
 pub type Checkbox = Entity<CheckboxControl>;
 
@@ -292,10 +291,6 @@ impl CheckboxBuilder {
 
     pub fn tab_stop(self, tab_stop: bool) -> Self {
         Self { button: self.button.tab_stop(tab_stop), ..self }
-    }
-
-    pub fn size(self, size: ControlSize) -> Self {
-        Self { button: self.button.size(size), ..self }
     }
 
     /// Renders only the checkbox indicator (no label slot). Use in tables and list rows.

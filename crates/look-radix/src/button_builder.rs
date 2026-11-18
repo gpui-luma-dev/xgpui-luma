@@ -294,6 +294,7 @@ impl<D: Clone + 'static> Button<D> {
     }
 
     fn into_sdk_builder(self, look: Look) -> ButtonBuilder<D> {
+        let look = look.with_size(self.size.control_size());
         let template = button_template(&look, self.variant, self.paint);
         let geometry = self.look_source(&look);
         let mut builder = xgpui_luma::controls::button::Button::new(self.id)
@@ -301,7 +302,6 @@ impl<D: Clone + 'static> Button<D> {
             .with_callbacks(self.callbacks)
             .template(template)
             .with_look(move |model| geometry(model))
-            .size(self.size.control_size())
             .role(self.role)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop);
@@ -333,7 +333,7 @@ mod tests {
     use crate::button_layout::button_box_for;
     use crate::look::resolve_look;
     use xgpui_luma::controls::button::HasPresenter;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     fn primary(look: &Look) -> gpui::Hsla {
         look.resolve_role(crate::semantic::SemanticRole::Primary).hsla()
@@ -402,10 +402,10 @@ mod tests {
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Button::new("s").size(ButtonSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Button::new("s").size(ButtonSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Button::new("s").size(ButtonSize::Three).size.control_size(), ControlSize::Lg);
-        assert_eq!(Button::new("s").size(ButtonSize::Four).size.control_size(), ControlSize::Lg);
+        assert_eq!(Button::new("s").size(ButtonSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Button::new("s").size(ButtonSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Button::new("s").size(ButtonSize::Three).size.control_size(), RadixSize::Three);
+        assert_eq!(Button::new("s").size(ButtonSize::Four).size.control_size(), RadixSize::Three);
     }
 
     #[test]
@@ -413,7 +413,7 @@ mod tests {
         let look = Look::built_in();
         let button = Button::new("sized").size(ButtonSize::Four).radius(Radius::None);
         let geometry = button_look_for::<()>(&look, button.variant, button.paint, button.size, button.radius);
-        let model = ButtonRenderModel::<()> { size: button.size.control_size(), ..Default::default() };
+        let model = ButtonRenderModel::<()>::default();
         let family = geometry(&model);
         assert_eq!(family.radius, button_box_for(ButtonSize::Four, Radius::None).radius);
     }

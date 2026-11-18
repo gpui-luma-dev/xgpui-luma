@@ -196,12 +196,12 @@ impl Toggle {
     }
 
     fn into_sdk_builder(self, look: Look) -> ToggleBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = toggle_template_for_size(&look, self.paint, self.page, self.size);
         let mut builder = xgpui_luma::controls::toggle::new(self.id)
             .motion_defaults(look.motion_defaults().toggle)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.selected)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -235,13 +235,13 @@ impl HasPresenter<ButtonContentContext<ToggleData>> for Toggle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Toggle::new("s").size(ButtonSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Toggle::new("s").size(ButtonSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Toggle::new("s").size(ButtonSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(Toggle::new("s").size(ButtonSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Toggle::new("s").size(ButtonSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Toggle::new("s").size(ButtonSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

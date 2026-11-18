@@ -330,8 +330,7 @@ mod stroke_layout_tests {
     #[test]
     fn shell_height_uses_resolved_strokes_and_header_padding() {
         use crate::controls::table::{DefaultTableTheme, TableTheme};
-        use crate::theme::ControlSize;
-        let mut look = DefaultTableTheme::default().resolve_look(true, false, ControlSize::Md);
+        let mut look = DefaultTableTheme::default().resolve_look(true, false);
         look.border_width = 0.0;
         look.header_divider_width = 3.0;
         look.padding_y = 8.0;

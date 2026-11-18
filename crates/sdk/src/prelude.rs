@@ -5,7 +5,7 @@ pub use crate::infra::presenter::{ControlPresenter, HasPresenter};
 pub use crate::interaction::{
     PointerFocusPolicy, ScrollBoundaryPolicy, ScrollInteraction, WheelFocusScope, WheelScrollPolicy,
 };
-pub use crate::theme::{ControlSize, InteractionState};
+pub use crate::theme::InteractionState;
 
 pub use crate::controls::accordion::{Accordion, AccordionBuilder, AccordionEvent};
 pub use crate::controls::autocomplete::{Autocomplete, AutocompleteBuilder, AutocompleteEvent};

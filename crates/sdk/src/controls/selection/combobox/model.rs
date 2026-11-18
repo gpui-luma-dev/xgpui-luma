@@ -20,9 +20,9 @@ use super::template::{
 use crate::controls::scrollbar::{ScrollbarTemplate, default_scrollbar_template};
 use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
 use crate::controls::textfield::{TextFieldTemplate, default_textfield_template};
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
-pub type ComboBoxPopupLookProvider = Arc<dyn Fn(ControlSize) -> SelectorItemsPanelLook + Send + Sync + 'static>;
+pub type ComboBoxPopupLookProvider = Arc<dyn Fn() -> SelectorItemsPanelLook + Send + Sync + 'static>;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum TypingPolicy {
@@ -42,7 +42,6 @@ pub struct ComboBoxModel {
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
-    pub(crate) size: ControlSize,
     pub(crate) full_width: bool,
     pub(crate) clean_on_escape: bool,
     pub(crate) typing_policy: TypingPolicy,
@@ -189,7 +188,6 @@ impl ComboBoxBuilder {
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
-                size: ControlSize::Md,
                 full_width: true,
                 clean_on_escape: true,
                 typing_policy: TypingPolicy::Flexible,
@@ -213,7 +211,7 @@ impl ComboBoxBuilder {
                 panel_template: default_combobox_panel_template(),
                 item_template: None,
                 autocomplete_theme: default_autocomplete_theme(),
-                popup_look_provider: Arc::new(|size| default_selector_items_panel_look(&ThemeTokens::default(), size)),
+                popup_look_provider: Arc::new(|| default_selector_items_panel_look(&ThemeTokens::default())),
             },
         }
     }
@@ -268,11 +266,6 @@ impl ComboBoxBuilder {
 
     pub fn invalid(mut self, invalid: bool) -> Self {
         self.model.invalid = invalid;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 
@@ -484,10 +477,12 @@ mod stylesheet_tests {
 
     #[test]
     fn combobox_affordances_capture_independent_geometry_and_zero() {
-        let sheet = crate::theme::stylesheet::CommonStylesheet::parse("[common.combobox.geometry]\naffordance_inset=0\naffordance_width=31\n[common.combobox.sizes.lg]\naffordance_icon_size=23").unwrap();
-        let builder = ComboBoxBuilder::new("geometry", []).stylesheet(&sheet).size(ControlSize::Lg);
-        let geometry =
-            builder.model.stylesheet.resolve_geometry(builder.model.size.stylesheet_key(), Default::default());
+        let sheet = crate::theme::stylesheet::CommonStylesheet::parse(
+            "[common.combobox.geometry]\naffordance_inset=0\naffordance_width=31\naffordance_icon_size=23",
+        )
+        .unwrap();
+        let builder = ComboBoxBuilder::new("geometry", []).stylesheet(&sheet);
+        let geometry = builder.model.stylesheet.resolve_geometry(Default::default());
         assert_eq!(
             (geometry.affordance_inset, geometry.affordance_width, geometry.affordance_icon_size),
             (0.0, 31.0, 23.0)

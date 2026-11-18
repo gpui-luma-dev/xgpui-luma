@@ -32,7 +32,7 @@ struct Example {
 impl Example {
     fn new(cx: &amp;mut Context&lt;Self&gt;) -&gt; Self {
         let look = cx.try_global::&lt;radix::Look&gt;().cloned().unwrap_or_else(radix::Look::built_in);
-        let control = radix::control_group_builder::&lt;ControlGroupItem&gt;(&amp;look, "actions", xgpui_luma::theme::ControlSize::Md)
+        let control = radix::control_group_builder::&lt;ControlGroupItem&gt;(&amp;look, "actions", radix::RadixSize::Two)
             .items([ControlGroupItem::new("open").label("Open")])
             .on_value_changed(cx, |app, _, _, selected_ids, cx| {
                 app.selected_tools = selected_ids.clone();

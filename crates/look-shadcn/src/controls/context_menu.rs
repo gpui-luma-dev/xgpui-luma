@@ -6,7 +6,7 @@
 //! | Menu   | floating menu surface              |
 
 use xgpui_luma::controls::context_menu::ContextMenuLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
 
@@ -50,20 +50,14 @@ pub fn resolve_context_menu_colors(
 pub fn context_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, state: InteractionState) -> ContextMenuLook {
     let ctx = LookContext::new(mode, theme_mode, state);
     let state = ctx.state;
-    let metrics = ctx.metrics();
     let typography = ctx.typography();
-    let size = ControlSize::Md;
+    let size = ShadcnSize::Md;
     let colors = resolve_context_menu_colors(mode, theme_mode, state);
 
     let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .context_menu
-        .authored_geometry(size.stylesheet_key());
-    let recipe = mode
-        .stylesheet()
-        .common
-        .context_menu
-        .authored_geometry(size.stylesheet_key())
-        .with_fallback(&baseline);
+        .authored_geometry_for(size.key());
+    let recipe = mode.stylesheet().common.context_menu.authored_geometry_for(size.key()).with_fallback(&baseline);
     let mut look = ContextMenuLook {
         border_width: recipe.border_width.unwrap_or_default(),
         disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
@@ -72,13 +66,13 @@ pub fn context_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, state: 
         target_foreground: colors.foreground.hsla(),
         target_border: colors.border.hsla(),
         target_typography: typography.text.label,
-        target_radius: metrics.radius(size),
-        target_padding_x: metrics.padding_x(size),
-        target_padding_y: metrics.padding_y(size),
+        target_radius: ctx.controls().radius(size),
+        target_padding_x: ctx.controls().padding_x(size),
+        target_padding_y: ctx.controls().padding_y(size),
         target_min_width: 200.0,
         floating_menu: floating_menu_look(ctx.tokens, ctx.theme_mode, size),
     };
-    let geometry = mode.stylesheet().common.context_menu.inspect_geometry(
+    let geometry = mode.stylesheet().common.context_menu.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::ContextMenuGeometry {
             min_width: look.target_min_width,
@@ -173,7 +167,7 @@ pub struct ContextMenuMetricTable {
 pub fn resolve_context_menu_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> ContextMenuMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric, spacing_control_metric};
     use crate::catalog::SpacingField;
@@ -189,7 +183,7 @@ pub fn resolve_context_menu_metrics(
         target_min_width: derived_metric("context menu target min width", look.target_min_width),
         menu: crate::controls::floating_menu::resolve_floating_menu_metrics(mode, theme_mode, size),
     };
-    let geometry = mode.stylesheet().common.context_menu.inspect_geometry(
+    let geometry = mode.stylesheet().common.context_menu.inspect_geometry_for(
         "md",
         xgpui_luma::theme::stylesheet::ContextMenuGeometry {
             min_width: table.target_min_width.value_px,

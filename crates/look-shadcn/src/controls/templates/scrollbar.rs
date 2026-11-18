@@ -19,15 +19,15 @@ impl ScrollbarTheme for ShadcnScrollbarTheme {
         &self,
         state: InteractionState,
         orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
-        size: xgpui_luma::theme::ControlSize,
         style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
     ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         scrollbar_look(tokens.as_ref(), state, orientation, size, style)
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 

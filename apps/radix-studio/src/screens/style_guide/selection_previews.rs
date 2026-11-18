@@ -1,4 +1,5 @@
 //! Forced-state SDK template previews, with palette and size tabs like other controls.
+use xgpui_luma_look_radix::RadixSize;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, Hsla, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, scrollbar, selector};
@@ -6,7 +7,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::TextFieldState;
 use xgpui_luma::infra::{icon::SelectionStatusIcons, state::ControlFocusState, value::ControlRange};
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, PopupMenuVariant, Tone};
 use super::{preview_handlers, states};
 use super::matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label};
@@ -71,10 +72,10 @@ pub(super) fn tabbed(
     let compact_look = (kind == Kind::Autocomplete && active.as_ref() == "template-preview").then(|| {
         let fork = look.fork();
         let mut sheet = fork.common_stylesheet();
-        let field = sheet.textfield.sizes.custom.entry("2".into()).or_default();
+        let field = sheet.textfield.sizes.get_or_default("2");
         field.font_size = Some(12.0);
         field.line_height = Some(16.0);
-        let items = sheet.selector_list.sizes.custom.entry("2".into()).or_default();
+        let items = sheet.selector_list.sizes.get_or_default("2");
         items.font_size = Some(12.0);
         items.line_height = Some(16.0);
         fork.set_common_stylesheet(sheet);
@@ -123,7 +124,7 @@ pub(super) fn tabbed(
                             Preview {
                                 kind,
                                 variant: *variant,
-                                size: ControlSize::Md,
+                                size: RadixSize::Two,
                                 state: InteractionState {
                                     hovered: true,
                                     focused: kind != Kind::Scrollbar,
@@ -141,7 +142,7 @@ pub(super) fn tabbed(
             }
         }
         "all-sizes" => {
-            let sizes = [(ControlSize::Sm, "Size 1"), (ControlSize::Md, "Size 2"), (ControlSize::Lg, "Size 3")];
+            let sizes = [(RadixSize::One, "Size 1"), (RadixSize::Two, "Size 2"), (RadixSize::Three, "Size 3")];
             for (col, (_, label)) in sizes.iter().enumerate() {
                 grid = grid.child(column_header(*label, muted), 0, col + 1);
             }
@@ -180,7 +181,7 @@ pub(super) fn tabbed(
                             Preview {
                                 kind,
                                 variant: *variant,
-                                size: ControlSize::Md,
+                                size: RadixSize::Two,
                                 state: state.state,
                                 id: format!("state-{row}-{col}"),
                             },
@@ -208,12 +209,15 @@ fn preview_width(kind: Kind) -> f32 {
 struct Preview {
     kind: Kind,
     variant: Variant,
-    size: ControlSize,
+    size: RadixSize,
     state: InteractionState,
     id: String,
 }
 fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> AnyElement {
     let Preview { kind, variant, size, state, id } = preview;
+    // Render this cell with a Look sized to its row.
+    let sized_look = look.with_size(size);
+    let look = &sized_look;
     let kind_id = match kind {
         Kind::Autocomplete => "autocomplete",
         Kind::ComboBox => "combobox",
@@ -233,7 +237,6 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             percentage: 0.4,
             thumb_fraction: 0.3,
             length: Some(140.0),
-            size,
             style: if variant.ghost {
                 scrollbar::ScrollbarStyle::Ghost
             } else {
@@ -252,7 +255,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
     if kind == Kind::SelectionPanel {
         return panel(look, &id, size, state, cx);
     }
-    let chrome = radix::autocomplete_theme(look).resolve(size);
+    let chrome = radix::autocomplete_theme(look).resolve();
     let field_state = TextFieldState {
         hovered: state.hovered,
         focused: state.focused,
@@ -267,7 +270,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             .render(
                 autocomplete::AutocompleteRenderModel {
                     icons: sheet.icons.clone(),
-                    geometry: sheet.autocomplete.resolve_geometry(size.stylesheet_key(), Default::default()),
+                    geometry: sheet.autocomplete.resolve_geometry_for(size.key(), Default::default()),
                     id: id.clone(),
                     textfield: super::textfields::selection_field(
                         look,
@@ -298,7 +301,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
         Kind::ComboBox => combobox::default_combobox_template().render(
             combobox::ComboBoxRenderModel {
                 icons: sheet.icons.clone(),
-                geometry: sheet.combobox.resolve_geometry(size.stylesheet_key(), Default::default()),
+                geometry: sheet.combobox.resolve_geometry_for(size.key(), Default::default()),
                 textfield: super::textfields::selection_field(
                     look,
                     &id,
@@ -341,15 +344,14 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                     selected: true,
                     invalid: state.invalid,
                 },
-                size,
-                &StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor()),
+                &StandardBoxScale::compute(&theme.metrics(), window.scale_factor()),
                 false,
             );
             search_selector::default_search_selector_template()
                 .render(
                     search_selector::SearchSelectorRenderModel {
                         icons: sheet.icons.clone(),
-                        geometry: sheet.search_selector.resolve_geometry(size.stylesheet_key(), Default::default()),
+                        geometry: sheet.search_selector.resolve_geometry_for(size.key(), Default::default()),
                         id: id.clone(),
                         trigger_label: "Option one".into(),
                         trigger_label_is_placeholder: false,
@@ -357,7 +359,6 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                         trigger_look,
                         trigger_typography_override: None,
                         enabled: !state.disabled,
-                        size,
                         full_width: true,
                         minimum_trigger_width: px(preview_width(kind)),
                         status_label: "".into(),
@@ -391,7 +392,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
         .into_any_element()
 }
 
-fn panel(look: &Look, id: &SharedString, size: ControlSize, state: InteractionState, cx: &mut App) -> AnyElement {
+fn panel(look: &Look, id: &SharedString, size: RadixSize, state: InteractionState, cx: &mut App) -> AnyElement {
     let items = [
         selection_panel::SelectionPanelItem::new("one").label("Option one"),
         selection_panel::SelectionPanelItem::new("two").label("Option two"),
@@ -431,7 +432,7 @@ fn expanded_panel(
     kind: Kind,
     look: &Look,
     id: &SharedString,
-    size: ControlSize,
+    size: RadixSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -447,7 +448,7 @@ fn expanded_panel(
     }
     let sheet = look.common_stylesheet();
     if kind == Kind::SearchSelector {
-        let geometry = sheet.search_selector.resolve_geometry(size.stylesheet_key(), Default::default());
+        let geometry = sheet.search_selector.resolve_geometry_for(size.key(), Default::default());
         let list = search_selector::default_search_selector_items_template().render(
             &search_selector::SearchSelectorItemsRenderModel {
                 trailing_icon_size: geometry.trailing_icon_size,

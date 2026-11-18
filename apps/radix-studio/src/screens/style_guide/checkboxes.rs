@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole};
 use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::{hstack, vstack};
@@ -114,7 +114,6 @@ fn sizes_cell(
     centered(checkbox_pair(
         &template,
         &format!("sizes-{}-{}-{}", def.id, size.as_str(), radius.as_str()),
-        size.control_size(),
         window,
         cx,
     ))
@@ -158,20 +157,8 @@ fn colors_variant_cell(
 
     centered(
         hstack! { gap=12 align=center; }
-            .child(checkbox_pair(
-                &default,
-                &format!("colors-{accent_id}-{}-default", def.id),
-                ButtonSize::Md,
-                window,
-                cx,
-            ))
-            .child(checkbox_pair(
-                &high_contrast,
-                &format!("colors-{accent_id}-{}-hc", def.id),
-                ButtonSize::Md,
-                window,
-                cx,
-            )),
+            .child(checkbox_pair(&default, &format!("colors-{accent_id}-{}-default", def.id), window, cx))
+            .child(checkbox_pair(&high_contrast, &format!("colors-{accent_id}-{}-hc", def.id), window, cx)),
     )
 }
 
@@ -230,7 +217,6 @@ fn state_cell(
                     template,
                     &format!("style-guide-checkbox-{variant_id}-{}-{}", sample.id, if checked { "on" } else { "off" }),
                     checked,
-                    ButtonSize::Md,
                     sample.state,
                     window,
                     cx,
@@ -242,7 +228,6 @@ fn state_cell(
 fn checkbox_pair(
     template: &Arc<dyn ButtonTemplate<CheckboxData>>,
     id_prefix: &str,
-    size: ButtonSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -255,7 +240,6 @@ fn checkbox_pair(
                 template,
                 &format!("{id_prefix}-{}", if checked { "on" } else { "off" }),
                 checked,
-                size,
                 Default::default(),
                 window,
                 cx,
@@ -268,7 +252,6 @@ fn render_checkbox(
     template: &Arc<dyn ButtonTemplate<CheckboxData>>,
     id: &str,
     checked: bool,
-    size: ButtonSize,
     state: xgpui_luma::theme::InteractionState,
     window: &mut Window,
     cx: &mut App,
@@ -278,7 +261,6 @@ fn render_checkbox(
         data: CheckboxData::new(checked),
         content: Arc::new(|_, _| div().into_any_element()),
         role: ButtonFamilyRole::Icon,
-        size,
         state,
         ..Default::default()
     };

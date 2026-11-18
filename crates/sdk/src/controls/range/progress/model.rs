@@ -12,7 +12,6 @@ use super::template::{default_circular_progress_template, default_linear_progres
 use super::{ProgressTemplate, default_progress_template};
 use super::control::ProgressControl;
 use crate::infra::value::{ControlRange, value_from_input};
-use crate::theme::ControlSize;
 
 #[derive(Clone)]
 pub struct ProgressModel {
@@ -20,7 +19,6 @@ pub struct ProgressModel {
     pub(crate) id: SharedString,
     pub(crate) range: ControlRange,
     pub(crate) value: f32,
-    pub(crate) size: ControlSize,
     pub(crate) enabled: bool,
     pub(crate) direction: ProgressDirection,
     pub(crate) show_thumb: bool,
@@ -33,7 +31,6 @@ pub struct ProgressRenderModel<'a> {
     pub range: ControlRange,
     pub value: f32,
     pub percentage: f32,
-    pub size: ControlSize,
     pub enabled: bool,
     pub direction: ProgressDirection,
     pub show_thumb: bool,
@@ -56,7 +53,6 @@ impl ProgressBuilder {
                 id: id.into(),
                 range: ControlRange::default(),
                 value: 0.0,
-                size: ControlSize::Md,
                 enabled: true,
                 direction: ProgressDirection::default(),
                 show_thumb: false,
@@ -75,11 +71,6 @@ impl ProgressBuilder {
 
     pub fn value(mut self, value: impl Into<f64>) -> Self {
         self.model.value = self.model.range.clamp(value_from_input(value));
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

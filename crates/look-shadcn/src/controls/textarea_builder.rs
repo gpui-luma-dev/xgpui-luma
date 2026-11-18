@@ -251,6 +251,7 @@ impl TextArea {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> TextAreaBuilder {
+        let look = look.with_size(self.size);
         let (template, theme) = match self.style {
             ShadcnTextFieldStyle::Outline => (look.textarea_template(), look.textarea_theme()),
             ShadcnTextFieldStyle::Input => (look.input_textarea_template(), look.input_textarea_theme()),
@@ -263,7 +264,7 @@ impl TextArea {
             }
         };
         let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
-            .stylesheet(&look.stylesheet().common)
+            .stylesheet(look.mode_tokens().common_for(look.size()))
             .template(template)
             .theme(theme)
             .placeholder(self.placeholder)
@@ -274,7 +275,6 @@ impl TextArea {
             .scroll_boundary_policy(self.scroll_interaction.boundary)
             .wheel_focus_scope(self.scroll_interaction.focus_scope)
             .full_width(self.full_width)
-            .size(self.size.control_size())
             .rows(self.rows)
             .clean_on_escape(self.clean_on_escape)
             .select_all_on_tab_focus(self.select_all_on_tab_focus)

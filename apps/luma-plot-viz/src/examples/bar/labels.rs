@@ -62,7 +62,7 @@ pub(super) fn card(data: Dataset, look: &AppTheme, progress: f32, cx: &App) -> i
         .p_6()
         .render(cx)
         .child(vstack! { gap=12;
-            div().typography_style(typography.text.scale.two_xl).child("Bar Chart – Custom Label"),
+            div().typography_style(typography.text.title).child("Bar Chart – Custom Label"),
             div().typography_style(typography.text.body).text_color(chrome.muted_text).child("January – June 2024"),
             div().h(px(340.0)).mt_4().child(chart.draw_progress(progress).build()),
         })

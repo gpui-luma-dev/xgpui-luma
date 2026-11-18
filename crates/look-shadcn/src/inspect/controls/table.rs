@@ -1,7 +1,8 @@
 //! Inspect metadata for `table`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct TableInspectPalette {
     pub background: ResolvedColor,
@@ -58,7 +59,7 @@ pub fn inspect_table_row_color_palette(
     TableRowInspectPalette { background: colors.background, label_color: colors.label_color, divider: colors.divider }
 }
 
-pub fn inspect_table_metrics(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ControlSize) -> TableInspectMetrics {
+pub fn inspect_table_metrics(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> TableInspectMetrics {
     let table = crate::tables::metrics::resolve_table_metrics(mode, theme_mode, size);
     table.into()
 }

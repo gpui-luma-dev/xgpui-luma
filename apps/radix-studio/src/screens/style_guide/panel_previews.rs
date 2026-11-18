@@ -1,8 +1,9 @@
 //! Static, bounded SDK panel surfaces; no live example controls or window overlays.
+use xgpui_luma_look_radix::RadixSize;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Context, Entity, FocusHandle, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::{resizable_panels::*, slide_panel::*, tabs::Tabs};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, ScaleFamily, SemanticRole};
 use super::{matrix_grid::*, preview_handlers, states};
 
@@ -67,7 +68,7 @@ impl Previews {
                                 Cell {
                                     kind,
                                     variant,
-                                    size: ControlSize::Md,
+                                    size: RadixSize::Two,
                                     state: InteractionState { hovered: true, ..Default::default() },
                                     id: format!("color-{row}-{variant}"),
                                 },
@@ -107,9 +108,9 @@ impl Previews {
                                     kind,
                                     variant: row,
                                     size: if sizing {
-                                        [ControlSize::Sm, ControlSize::Md, ControlSize::Lg][col]
+                                        [RadixSize::One, RadixSize::Two, RadixSize::Three][col]
                                     } else {
-                                        ControlSize::Md
+                                        RadixSize::Two
                                     },
                                     state,
                                     id: format!("{}-{row}-{col}", if sizing { "size" } else { "state" }),
@@ -135,9 +136,9 @@ impl Previews {
             let edge = [SlidePanelEdge::Left, SlidePanelEdge::Right, SlidePanelEdge::Top, SlidePanelEdge::Bottom]
                 [cell.variant];
             let extent = match cell.size {
-                ControlSize::Sm => 0.4,
-                ControlSize::Md => 0.5,
-                ControlSize::Lg => 0.65,
+                RadixSize::One => 0.4,
+                RadixSize::Two => 0.5,
+                RadixSize::Three => 0.65,
             };
             let size = if edge.is_horizontal_main_axis() {
                 160.0 * extent
@@ -189,18 +190,14 @@ impl Previews {
 struct Cell {
     kind: Kind,
     variant: usize,
-    size: ControlSize,
+    size: RadixSize,
     state: InteractionState,
     id: String,
 }
 fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
-    let theme = radix::resizable_panels_theme(look);
+    // The cell's Radix size selects the resize handle size.
+    let theme = radix::resizable_panels_theme(&look.with_size(cell.size));
     let resolved = theme.resolve(cell.state);
-    let size = match cell.size {
-        ControlSize::Sm => ResizeHandleSize::Sm,
-        ControlSize::Md => ResizeHandleSize::Md,
-        ControlSize::Lg => ResizeHandleSize::Lg,
-    };
     let orientation = if cell.variant == 0 {
         ResizablePanelsOrientation::Horizontal
     } else {
@@ -226,8 +223,7 @@ fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
         double_click_collapse: None,
         hovered_handle: cell.state.hovered.then_some(0),
         dragging_handle: cell.state.pressed.then_some(0),
-        resize_handle: size,
-        handle_metrics: theme.resize_handle_metrics(size),
+        handle_metrics: theme.resize_handle_metrics(),
         handle_grip: true,
         panel_sizes_px: &sizes,
         panel_hidden: vec![false; 2],

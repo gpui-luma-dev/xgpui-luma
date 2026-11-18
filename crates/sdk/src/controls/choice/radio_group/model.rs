@@ -9,7 +9,6 @@ use crate::controls::control_group::{
     ControlGroupItemTemplate, ControlGroupItemVisualContext, ControlGroupLayout, ControlGroupRenderModel,
     ControlGroupTemplate, ControlGroupTemplateHandlers, ControlGroupTheme, ControlSelectionMode,
 };
-use crate::theme::ControlSize;
 
 use super::control::RadioGroupControl;
 use super::template::radio_group_container_template;
@@ -323,20 +322,13 @@ where
     {
         {
             let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry();
-            self.with_menu_row_item_content_sized(
-                theme,
-                ControlSize::Sm,
-                geometry.menu_row_height,
-                geometry.menu_row_gap,
-                content,
-            )
+            self.with_menu_row_item_content_sized(theme, geometry.menu_row_height, geometry.menu_row_gap, content)
         }
     }
 
     pub fn with_menu_row_item_content_sized<F>(
         self,
         theme: Arc<dyn ControlGroupTheme>,
-        size: ControlSize,
         row_height: f32,
         row_radius: f32,
         content: F,
@@ -352,10 +344,7 @@ where
             + Sync
             + 'static,
     {
-        Self {
-            inner: self.inner.with_menu_row_item_content_sized(theme, size, row_height, row_radius, content),
-            ..self
-        }
+        Self { inner: self.inner.with_menu_row_item_content_sized(theme, row_height, row_radius, content), ..self }
     }
 
     pub fn spawn(mut self, cx: &mut impl AppContext) -> RadioGroup<T> {
@@ -392,7 +381,7 @@ mod stylesheet_tests {
         .unwrap();
         let group = new::<ControlGroupItem>("radio").horizontal().stylesheet(&sheet);
         sheet.radio_group.sizes.get_mut("horizontal").unwrap().gap = Some(23.0);
-        assert_eq!(group.inner.model.stylesheet.radio_group.authored_geometry("horizontal").gap, Some(17.0));
+        assert_eq!(group.inner.model.stylesheet.radio_group.authored_geometry_for("horizontal").gap, Some(17.0));
         assert_eq!(group.inner.model.layout, ControlGroupLayout::Horizontal);
         assert_eq!(group.inner.model.selection_mode, ControlSelectionMode::SingleRequired);
     }

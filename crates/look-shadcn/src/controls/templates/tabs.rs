@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::tabs::{tabs_item_look_with_stylesheet, tabs_list_look_with_stylesheet};
 use crate::look::ShadcnLook;
@@ -11,7 +11,8 @@ struct ShadcnTabsTheme {
 }
 
 impl TabsTheme for ShadcnTabsTheme {
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let palette = &tokens.palette;
         xgpui_luma::infra::drag_drop::DragDropLook {
@@ -20,23 +21,20 @@ impl TabsTheme for ShadcnTabsTheme {
             foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
             valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
             invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.metrics.radius(size),
+            radius: tokens.control_sizes.radius(size),
             typography: tokens.typography.text.label,
             font_family: tokens.typography.font.sans.family.clone().into(),
         }
     }
 
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> xgpui_luma::controls::tabs::TabsListLook {
+    fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::tabs::TabsListLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         tabs_list_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), enabled, size)
     }
 
-    fn resolve_item(
-        &self,
-        active: bool,
-        state: InteractionState,
-        size: ControlSize,
-    ) -> xgpui_luma::controls::tabs::TabsItemLook {
+    fn resolve_item(&self, active: bool, state: InteractionState) -> xgpui_luma::controls::tabs::TabsItemLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         tabs_item_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), active, state, size)
     }
@@ -63,8 +61,8 @@ mod drag_tests {
         let look = crate::test_support::fallback_look();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let tabs = tabs_theme(look.clone()).resolve_drag(ControlSize::Md);
-            let sidebar = super::super::sidebar::sidebar_theme(look.clone()).resolve_drag(ControlSize::Md);
+            let tabs = tabs_theme(look.clone()).resolve_drag();
+            let sidebar = super::super::sidebar::sidebar_theme(look.clone()).resolve_drag();
             let tokens = look.mode_tokens();
             for drag in [tabs, sidebar] {
                 assert_eq!(drag.background, look.token_color("popover").unwrap_or(tokens.palette.panel_background));

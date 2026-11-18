@@ -1,7 +1,8 @@
 //! Inspect metadata for `badge`.
 
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::{ThemeMode};
 use crate::{BadgeVariant, ResolvedColor, ResolvedMetric, ShadcnLook, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct BadgeInspectPalette {
     pub background: ResolvedColor,
@@ -29,7 +30,7 @@ pub fn inspect_badge_metrics(
     mode: &ShadcnModeTokens,
     look: &ShadcnLook,
     variant: BadgeVariant,
-    size: ControlSize,
+    size: ShadcnSize,
     _theme_mode: ThemeMode,
 ) -> BadgeInspectMetrics {
     let table = crate::tables::metrics::resolve_badge_metrics(mode, look, variant, size, _theme_mode);
@@ -57,8 +58,8 @@ mod tests {
         let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled fallback CSS should parse");
         let mode = look.mode_tokens();
         let metrics =
-            inspect_badge_metrics(mode.as_ref(), &look, BadgeVariant::Default, ControlSize::Md, ThemeMode::Light);
-        assert!(metrics.radius.value_px >= mode.metrics.radius.pill - f32::EPSILON);
+            inspect_badge_metrics(mode.as_ref(), &look, BadgeVariant::Default, ShadcnSize::Md, ThemeMode::Light);
+        assert!(metrics.radius.value_px >= mode.radii.full - f32::EPSILON);
     }
 }
 

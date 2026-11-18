@@ -2,9 +2,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, FocusHandle, Hsla, IntoElement, Pixels, SharedString, div, px, prelude::*};
-use xgpui_luma::controls::resizable_panels::{
-    ResizablePanelSpec, ResizablePanels, ResizeHandleSize, ResizeHandleVisibility,
-};
+use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizeHandleVisibility};
 use xgpui_luma::focus::LumaFocusScopeExt;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
@@ -54,11 +52,12 @@ impl WorkbenchLayout {
     ) -> Self {
         let id = id.into();
 
+        // Workbench splitters use the compact Shadcn handle.
         let panels = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm)
             .resizable_panels(format!("{id}-panels"))
             .motion_enabled(true)
             .handle_visibility(ResizeHandleVisibility::Hover)
-            .resize_handle(ResizeHandleSize::Sm)
             .handle_grip(true)
             .show_border(false)
             .panel(sidebar_panel(left_sidebar))

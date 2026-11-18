@@ -62,14 +62,14 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
         let progress = model.data.progress.clamp(0.0, 1.0);
         let checked = model.data.checked;
         let focused = model.state.focused && !model.state.disabled;
-        let off_palette = self.theme.resolve(false, model.state, model.size);
-        let on_palette = self.theme.resolve(true, model.state, model.size);
+        let off_palette = self.theme.resolve(false, model.state);
+        let on_palette = self.theme.resolve(true, model.state);
         let palette = lerp_checkbox_palette(&off_palette, &on_palette, progress);
         let mut settled_palette = if checked { on_palette } else { off_palette };
         let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
         let focus_ring_extent = focus.extent();
         let scale_factor = window.scale_factor();
-        let scale = self.theme.scale(model.size, scale_factor);
+        let scale = self.theme.scale(scale_factor);
 
         let indicator_visual = {
             let mut indicator = div()
@@ -78,7 +78,7 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
                 .justify_center()
                 .size(px(scale.indicator_size))
                 .bg(palette.indicator_background)
-                .border(px(self.theme.metrics().border_width.default))
+                .border(px(self.theme.metrics().border_width))
                 .border_color(palette.indicator_border)
                 .rounded(px(scale.indicator_radius))
                 .child(render_checkmark(
@@ -168,7 +168,7 @@ impl ButtonTemplate<CheckboxData> for ThemedCheckboxTemplate {
 
         // Optional paint must not add/remove a layout border when focus changes.
         control = control
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.control_border.unwrap_or_else(gpui::transparent_black));
 
         let mut root = self.apply_modifiers(control, model);

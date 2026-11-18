@@ -10,7 +10,6 @@ use crate::controls::control_group::ControlGroupItemLike;
 use crate::infra::icon::IconSource;
 use crate::infra::icon::DisclosureIcons;
 use crate::controls::tabs::{ControlFocusState, TabsItemState};
-use crate::theme::ControlSize;
 
 crate::motion_profile!(TabsMotion => tabs {
     drop_layout: crate::motion::Transition,
@@ -193,7 +192,6 @@ impl ControlGroupItemLike for TabsItem {
 pub struct TabsModel {
     pub(crate) reordering: bool,
     pub(crate) id: SharedString,
-    pub(crate) size: ControlSize,
     pub(crate) width_mode: TabsWidthMode,
     pub(crate) items: Vec<TabsItem>,
     pub(crate) active_id: Option<SharedString>,
@@ -224,7 +222,6 @@ pub struct TabsRenderModel<'a> {
     /// Native SDK binding used by themed/custom tab templates.
     pub drag_drop: Option<gpui::WeakEntity<super::Tabs>>,
     pub id: &'a SharedString,
-    pub size: ControlSize,
     pub width_mode: TabsWidthMode,
     pub items: Vec<TabsRenderItem<'a>>,
     pub active_id: Option<&'a SharedString>,
@@ -498,7 +495,6 @@ impl TabsBuilder {
             model: TabsModel {
                 reordering: false,
                 id: id.into(),
-                size: ControlSize::Md,
                 width_mode: TabsWidthMode::Intrinsic,
                 items: Vec::new(),
                 active_id: None,
@@ -571,11 +567,6 @@ impl TabsBuilder {
         self
     }
 
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
-        self
-    }
-
     /// Opt into same-strip keyed reordering; content and active identity survive moves.
     pub fn reordering(mut self, enabled: bool) -> Self {
         self.model.reordering = enabled;
@@ -642,7 +633,6 @@ impl TabsBuilder {
         owner: gpui::WeakEntity<super::Tabs>,
     ) -> crate::controls::control_group::ControlGroupTemplate<TabsItem> {
         tabs_control_group_template(
-            self.model.size,
             self.model.width_mode,
             Arc::clone(&self.model.template),
             indicator_motion,

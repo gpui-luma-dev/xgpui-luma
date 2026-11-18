@@ -8,8 +8,8 @@
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
-use xgpui_luma::controls::slider::{SliderLook, SliderTemplate, SliderTheme, SliderThumbSize, ThemedSliderTemplate};
-use xgpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState};
+use xgpui_luma::controls::slider::{SliderLook, SliderTemplate, SliderTheme, ThemedSliderTemplate};
+use xgpui_luma::theme::{InteractionLayer, InteractionState};
 
 use crate::look::Look;
 use crate::scale::ScaleFamily;
@@ -72,19 +72,19 @@ impl SliderSize {
         }
     }
 
-    fn from_control_size(size: ControlSize) -> Self {
+    fn from_control_size(size: crate::RadixSize) -> Self {
         match size {
-            ControlSize::Sm => Self::One,
-            ControlSize::Md => Self::Two,
-            ControlSize::Lg => Self::Three,
+            crate::RadixSize::One => Self::One,
+            crate::RadixSize::Two => Self::Two,
+            crate::RadixSize::Three => Self::Three,
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 }
@@ -100,7 +100,8 @@ fn alpha(color: Hsla, a: f32) -> Hsla {
 }
 
 impl SliderTheme for SliderThemeAdapter {
-    fn resolve(&self, size: ControlSize, thumb_size: Option<SliderThumbSize>, state: InteractionState) -> SliderLook {
+    fn resolve(&self, state: InteractionState) -> SliderLook {
+        let size = self.look.size();
         let look = &self.look;
         let gray = |n| look.resolve_step(ScaleFamily::Gray, n).hsla();
         let accent = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
@@ -155,10 +156,10 @@ impl SliderTheme for SliderThemeAdapter {
         };
 
         let radix_size = self.size.unwrap_or_else(|| SliderSize::from_control_size(size));
-        let (geometry, _) = slider_geometry(look, radix_size, thumb_size);
+        let (geometry, _) = slider_geometry(look, radix_size);
         SliderLook {
-            thumb_border_width: look.metrics().border_width.default,
-            decoration: look.stylesheet_snapshot().slider.decoration(radix_size.control_size()),
+            thumb_border_width: look.metrics().border_width,
+            decoration: look.sized_stylesheet(radix_size.control_size()).slider.decoration(),
             track_background: track,
             fill_background: fill,
             thumb_background: thumb_bg,
@@ -177,32 +178,14 @@ impl SliderTheme for SliderThemeAdapter {
 pub fn slider_geometry(
     look: &Look,
     size: SliderSize,
-    thumb_size: Option<SliderThumbSize>,
 ) -> (xgpui_luma::theme::stylesheet::SliderGeometry, xgpui_luma::theme::stylesheet::SliderGeometrySources) {
-    use xgpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
-    let fallback =
-        SliderGeometry::sdk_default(&look.metrics(), size.control_size(), thumb_size, CommonStylesheet::sdk_default());
-    let thumb_key = thumb_size.map(|size| match size {
-        SliderThumbSize::Sm => ControlSize::Sm,
-        SliderThumbSize::Md => ControlSize::Md,
-        SliderThumbSize::Lg => ControlSize::Lg,
-    });
-    let (geometry, mut sources) =
-        look.stylesheet_snapshot().slider.inspect_geometry(size.control_size(), thumb_key, &fallback);
-    // Numeric identities belong to Radix, including inspector descriptions.
-    for source in [&mut sources.width, &mut sources.height, &mut sources.track_height, &mut sources.thumb_size] {
-        use xgpui_luma::theme::provenance::MetricSource;
-        let text = match source {
-            MetricSource::Authored { key } => key,
-            MetricSource::Derived { note } => note,
-            MetricSource::Constant { .. } | MetricSource::ScaleStep { .. } | MetricSource::Scaffold { .. } => continue,
-        };
-        for (semantic, numeric) in [("sm", "1"), ("md", "2"), ("lg", "3")] {
-            *text = text
-                .replace(&format!("common.slider.sizes.{semantic}."), &format!("common.slider.sizes.{numeric}."))
-                .replace(&format!("instance thumb_size {semantic}"), &format!("instance thumb_size {numeric}"));
-        }
-    }
+    use xgpui_luma::theme::stylesheet::SliderGeometry;
+    let control = size.control_size();
+    let fallback = SliderGeometry::sdk_default(
+        &look.metrics_for(control),
+        xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default(),
+    );
+    let (geometry, sources) = look.stylesheet_snapshot().slider.inspect_geometry_for(control.key(), &fallback);
     (geometry, sources)
 }
 
@@ -287,7 +270,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn numeric_overrides_reach_typed_sizes_and_explicit_thumbs() {
+    fn numeric_overrides_reach_radix_sizes() {
         let look = Look::built_in();
         let mut stylesheet = look.common_stylesheet();
         let numeric = xgpui_luma::theme::stylesheet::CommonStylesheet::parse(
@@ -296,23 +279,23 @@ mod tests {
         .unwrap();
         numeric.slider.apply_to(&mut stylesheet.slider);
         look.set_common_stylesheet(stylesheet);
-        let (geometry, _) = slider_geometry(&look, SliderSize::One, Some(SliderThumbSize::Lg));
-        assert_eq!(geometry.height, 0.0);
-        assert_eq!(geometry.thumb_size, 31.0);
+        assert_eq!(slider_geometry(&look, SliderSize::One).0.height, 0.0);
+        assert_eq!(slider_geometry(&look, SliderSize::Three).0.thumb_size, 31.0);
     }
 
     #[test]
-    fn shared_slider_geometry_preserves_modes_states_sizes_and_explicit_thumbs() {
+    fn shared_slider_geometry_preserves_modes_states_and_sizes() {
         let look = Look::built_in();
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for variant in SliderVariant::ALL {
-                let theme = slider_theme_with(&look, variant);
                 for (size, height, track, thumb) in [
-                    (ControlSize::Sm, 16.0, 4.0, 12.0),
-                    (ControlSize::Md, 20.0, 6.0, 16.0),
-                    (ControlSize::Lg, 24.0, 8.0, 20.0),
+                    (SliderSize::One, 16.0, 4.0, 12.0),
+                    (SliderSize::Two, 20.0, 6.0, 16.0),
+                    (SliderSize::Three, 24.0, 8.0, 20.0),
                 ] {
+                    let theme = slider_theme_with(&look.with_size(size.control_size()), variant);
+                    let (inspected, _) = slider_geometry(&look, size);
                     for bits in 0..16 {
                         let state = InteractionState {
                             hovered: bits & 1 != 0,
@@ -321,27 +304,13 @@ mod tests {
                             disabled: bits & 8 != 0,
                             ..Default::default()
                         };
-                        for (selection, expected) in [
-                            (None, thumb),
-                            (Some(SliderThumbSize::Sm), 12.0),
-                            (Some(SliderThumbSize::Md), 16.0),
-                            (Some(SliderThumbSize::Lg), 20.0),
-                        ] {
-                            let painted = theme.resolve(size, selection, state);
-                            assert_eq!(
-                                (
-                                    painted.width,
-                                    painted.height,
-                                    painted.track_height,
-                                    painted.thumb_size,
-                                    painted.radius
-                                ),
-                                (120.0, height, track, expected, height / 2.0)
-                            );
-                            let (inspected, _) = slider_geometry(&look, SliderSize::from_control_size(size), selection);
-                            assert_eq!(inspected.width, painted.width);
-                            assert_eq!(inspected.thumb_size, painted.thumb_size);
-                        }
+                        let painted = theme.resolve(state);
+                        assert_eq!(
+                            (painted.width, painted.height, painted.track_height, painted.thumb_size, painted.radius),
+                            (120.0, height, track, thumb, height / 2.0)
+                        );
+                        assert_eq!(inspected.width, painted.width);
+                        assert_eq!(inspected.thumb_size, painted.thumb_size);
                     }
                 }
             }
@@ -353,33 +322,29 @@ mod tests {
         let look = Look::built_in();
         let stylesheet = look.common_stylesheet();
         let sizes = &stylesheet.slider.sizes;
-        assert_eq!(sizes.sm.height, Some(16.0));
-        assert_eq!(sizes.md.height, Some(20.0));
-        assert_eq!(sizes.lg.height, Some(24.0));
+        assert_eq!(sizes.get("1").and_then(|size| size.height), Some(16.0));
+        assert_eq!(sizes.get("2").and_then(|size| size.height), Some(20.0));
+        assert_eq!(sizes.get("3").and_then(|size| size.height), Some(24.0));
         let theme = slider_theme_for(&look, SliderVariant::Surface, SliderSize::One);
-        assert_eq!(theme.resolve(ControlSize::Lg, None, Default::default()).height, 16.0);
-        let (_, sources) = slider_geometry(&look, SliderSize::Two, Some(SliderThumbSize::Lg));
+        assert_eq!(theme.resolve(Default::default()).height, 16.0);
+        let (_, sources) = slider_geometry(&look, SliderSize::Two);
         assert!(matches!(sources.height,
             xgpui_luma::theme::provenance::MetricSource::Authored { key }
             if key == "common.slider.sizes.2.height"));
-        assert!(matches!(sources.thumb_size,
-            xgpui_luma::theme::provenance::MetricSource::Derived { note }
-            if note.contains("common.slider.sizes.3.thumb_size")));
     }
 
     #[test]
     fn shared_slider_geometry_updates_live_themes_without_changing_palettes() {
         let look = Look::built_in();
         let theme = slider_theme(&look);
-        let original = theme.resolve(ControlSize::Md, None, Default::default());
+        let original = theme.resolve(Default::default());
         let mut stylesheet = look.common_stylesheet();
         stylesheet.slider.geometry.width = Some(200.0);
-        stylesheet.slider.sizes.md.height = Some(30.0);
-        stylesheet.slider.sizes.md.thumb_size = Some(27.0);
-        stylesheet.slider.sizes.lg.thumb_size = Some(31.0);
+        stylesheet.slider.sizes.get_or_default("2").height = Some(30.0);
+        stylesheet.slider.sizes.get_or_default("2").thumb_size = Some(27.0);
         look.set_common_stylesheet(stylesheet.clone());
-        let custom = theme.resolve(ControlSize::Md, Some(SliderThumbSize::Lg), Default::default());
-        assert_eq!((custom.width, custom.height, custom.thumb_size, custom.radius), (200.0, 30.0, 31.0, 15.0));
+        let custom = theme.resolve(Default::default());
+        assert_eq!((custom.width, custom.height, custom.thumb_size, custom.radius), (200.0, 30.0, 27.0, 15.0));
         assert_eq!(custom.track_background, original.track_background);
         assert_eq!(custom.fill_background, original.fill_background);
         let fork = look.fork();
@@ -400,9 +365,9 @@ mod tests {
                 InteractionState { disabled: true, ..Default::default() },
             ] {
                 look.set_mode(xgpui_luma::theme::ThemeMode::Light);
-                let light = theme.resolve(ControlSize::Md, None, state);
+                let light = theme.resolve(state);
                 look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
-                let dark = theme.resolve(ControlSize::Md, None, state);
+                let dark = theme.resolve(state);
                 assert_eq!(light.thumb_background, dark.thumb_background);
             }
         }
@@ -412,7 +377,7 @@ mod tests {
     fn surface_fill_uses_primary() {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Surface);
-        let resolved = theme.resolve(ControlSize::Md, None, InteractionState::default());
+        let resolved = theme.resolve(InteractionState::default());
         assert_eq!(resolved.fill_background, look.resolve_role(SemanticRole::Primary).hsla());
     }
 
@@ -420,7 +385,7 @@ mod tests {
     fn soft_uses_gray_track_and_accent_fill() {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Soft);
-        let resolved = theme.resolve(ControlSize::Md, None, InteractionState::default());
+        let resolved = theme.resolve(InteractionState::default());
         assert_eq!(resolved.fill_background, look.resolve_step(ScaleFamily::Color, 6).hsla());
         assert_ne!(
             resolved.track_background,
@@ -432,16 +397,8 @@ mod tests {
     #[test]
     fn classic_thumb_is_more_elevated_than_surface() {
         let look = Look::built_in();
-        let classic = slider_theme_with(&look, SliderVariant::Classic).resolve(
-            ControlSize::Md,
-            None,
-            InteractionState::default(),
-        );
-        let surface = slider_theme_with(&look, SliderVariant::Surface).resolve(
-            ControlSize::Md,
-            None,
-            InteractionState::default(),
-        );
+        let classic = slider_theme_with(&look, SliderVariant::Classic).resolve(InteractionState::default());
+        let surface = slider_theme_with(&look, SliderVariant::Surface).resolve(InteractionState::default());
         assert!(classic.thumb_shadow.len() > surface.thumb_shadow.len());
     }
 }
@@ -451,27 +408,20 @@ pub fn native_radix_slider() -> xgpui_luma::theme::stylesheet::SliderStylesheet 
     use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
     SliderStylesheet {
         geometry: SliderGeometryStylesheet { width: Some(120.0), ..Default::default() },
-        sizes: ControlSizes {
-            sm: SliderGeometryStylesheet {
-                height: Some(16.0),
-                track_height: Some(4.0),
-                thumb_size: Some(12.0),
-                ..Default::default()
-            },
-            md: SliderGeometryStylesheet {
-                height: Some(20.0),
-                track_height: Some(6.0),
-                thumb_size: Some(16.0),
-                ..Default::default()
-            },
-            lg: SliderGeometryStylesheet {
-                height: Some(24.0),
-                track_height: Some(8.0),
-                thumb_size: Some(20.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
+        sizes: [("1", 16.0, 4.0, 12.0), ("2", 20.0, 6.0, 16.0), ("3", 24.0, 8.0, 20.0)]
+            .into_iter()
+            .map(|(key, height, track_height, thumb_size)| {
+                (
+                    key.to_string(),
+                    SliderGeometryStylesheet {
+                        height: Some(height),
+                        track_height: Some(track_height),
+                        thumb_size: Some(thumb_size),
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect(),
     }
 }
 

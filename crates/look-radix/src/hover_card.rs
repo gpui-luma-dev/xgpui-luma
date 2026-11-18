@@ -7,13 +7,13 @@ use gpui::{
 use xgpui_luma::controls::button::{Button, ButtonEvent};
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy};
 use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode};
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::{ThemeMode};
 use crate::{Look, ScaleFamily};
 use crate::look::resolve_look;
 
 /// Raised popup surface, distinct from the gray-step-2 page panels.
 pub fn hover_card_look(look: &Look) -> OverlayWindowLook {
-    let mut style = crate::overlay_window_theme(look).resolve(ControlSize::Md, OverlayWindowMode::Modeless);
+    let mut style = crate::overlay_window_theme(look).resolve(OverlayWindowMode::Modeless);
     style.background = look.resolve_step(ScaleFamily::Gray, if look.mode() == ThemeMode::Dark { 3 } else { 1 }).hsla();
     style
 }
@@ -136,7 +136,7 @@ impl HoverCardBuilder {
                 let weak = cx.entity().downgrade();
                 let trigger = self.trigger.clone();
                 let popup = PopoverButton::new(self.id)
-                    .stylesheet(&look.common_stylesheet())
+                    .stylesheet(&look.sized_stylesheet(look.size()))
                     .motion_defaults(look.motion_defaults().popover)
                     .with_motion_overrides(self.motion)
                     .motion_enabled(self.motion_enabled)

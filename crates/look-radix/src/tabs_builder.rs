@@ -435,11 +435,11 @@ impl Tabs {
     }
 
     fn into_sdk_builder(self, look: Look) -> TabsBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = tabs_template_for(&look, self.variant);
         let mut builder = xgpui_luma::controls::tabs::Tabs::new(self.id)
-            .stylesheet(&look.common_stylesheet())
+            .stylesheet(&look.sized_stylesheet(look.size()))
             .template(template)
-            .size(self.size.control_size())
             .width_mode(self.width_mode)
             .content_layout(self.content_layout)
             .enabled(self.enabled)
@@ -474,7 +474,7 @@ impl Tabs {
 mod tests {
     use super::*;
     use std::time::Duration;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn sdk_motion_roles_inherit_override_and_keep_their_snapshot() {
@@ -517,8 +517,8 @@ mod tests {
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Tabs::new("s").size(TabsSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Tabs::new("s").size(TabsSize::Two).size.control_size(), ControlSize::Md);
+        assert_eq!(Tabs::new("s").size(TabsSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Tabs::new("s").size(TabsSize::Two).size.control_size(), RadixSize::Two);
     }
 
     #[test]

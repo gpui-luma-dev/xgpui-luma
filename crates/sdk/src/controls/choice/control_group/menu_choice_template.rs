@@ -5,7 +5,7 @@ use gpui::{AnyElement, App, Window, div, prelude::*, px};
 use super::model::{ControlGroupItemLike, ControlGroupItemRenderModel};
 use super::template::{ControlGroupItemElementTemplate, ControlGroupTemplate, render_control_group_item_elements};
 use super::theme::{ControlGroupItemVisualContext, ControlGroupTheme};
-use crate::theme::{ControlSize, StandardBoxScale};
+use crate::theme::StandardBoxScale;
 
 pub type MenuChoiceRowContentFn<T> = Arc<
     dyn for<'a> Fn(
@@ -34,7 +34,6 @@ where
 
 pub fn menu_choice_row_item_element_template<T>(
     theme: Arc<dyn ControlGroupTheme>,
-    size: ControlSize,
     row_height: f32,
     row_radius: f32,
     content: MenuChoiceRowContentFn<T>,
@@ -44,15 +43,9 @@ where
 {
     Arc::new(move |item, _item_template, window, cx| {
         let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(size, &theme.metrics(), scale_factor);
-        let visual = theme.resolve_item_visual(
-            item.selected,
-            item.state.interaction_state(),
-            size,
-            &scale,
-            row_height,
-            row_radius,
-        );
+        let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
+        let visual =
+            theme.resolve_item_visual(item.selected, item.state.interaction_state(), &scale, row_height, row_radius);
         let row_content = content(item, &visual, window, cx);
 
         let mut row = div()
@@ -84,7 +77,6 @@ where
 pub fn configure_menu_choice_group<T>(
     template: ControlGroupTemplate<T>,
     theme: Arc<dyn ControlGroupTheme>,
-    size: ControlSize,
     row_height: f32,
     row_radius: f32,
     content: MenuChoiceRowContentFn<T>,
@@ -92,5 +84,5 @@ pub fn configure_menu_choice_group<T>(
 where
     T: ControlGroupItemLike + 'static,
 {
-    (template, menu_choice_row_item_element_template(theme, size, row_height, row_radius, content))
+    (template, menu_choice_row_item_element_template(theme, row_height, row_radius, content))
 }

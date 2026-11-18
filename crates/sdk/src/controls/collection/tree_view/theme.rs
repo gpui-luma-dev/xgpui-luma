@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{Hsla, SharedString};
 
 use crate::theme::scales::snap_to_pixel;
-use crate::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TreeViewScale {
@@ -25,26 +25,18 @@ pub struct TreeViewScale {
 }
 
 impl TreeViewScale {
-    pub fn compute(size: ControlSize, metrics: &MetricTokens, scale_factor: f32) -> Self {
-        Self::compute_with_stylesheet(
-            size,
-            metrics,
-            scale_factor,
-            crate::theme::stylesheet::CommonStylesheet::sdk_default(),
-        )
+    pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
+        Self::compute_with_stylesheet(metrics, scale_factor, crate::theme::stylesheet::CommonStylesheet::sdk_default())
     }
 
     /// Derive the row layout from common appearance and shared metric tokens.
     pub fn compute_with_stylesheet(
-        size: ControlSize,
         metrics: &MetricTokens,
         scale_factor: f32,
         stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .tree_view
-            .authored_geometry(size.stylesheet_key());
-        let geometry = stylesheet.tree_view.authored_geometry(size.stylesheet_key()).with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().tree_view.authored_geometry();
+        let geometry = stylesheet.tree_view.authored_geometry().with_fallback(&baseline);
         Self {
             drag_marker_width: geometry.drag_marker_width.unwrap_or_default(),
             drag_insert_width: geometry.drag_insert_width.unwrap_or_default(),
@@ -56,21 +48,18 @@ impl TreeViewScale {
             row_height: snap_to_pixel(
                 geometry
                     .row_height
-                    .unwrap_or_else(|| metrics.control_height(size) * geometry.row_height_scale.unwrap_or_default()),
+                    .unwrap_or_else(|| metrics.control_height() * geometry.row_height_scale.unwrap_or_default()),
                 scale_factor,
             ),
-            base_padding_x: snap_to_pixel(
-                geometry.base_padding_x.unwrap_or_else(|| metrics.padding_x(size)),
-                scale_factor,
-            ),
+            base_padding_x: snap_to_pixel(geometry.base_padding_x.unwrap_or_else(|| metrics.padding_x()), scale_factor),
             indentation_width: snap_to_pixel(geometry.indentation_width.unwrap_or_default(), scale_factor),
-            inner_gap: snap_to_pixel(geometry.inner_gap.unwrap_or_else(|| metrics.gap(size)), scale_factor),
-            radius: geometry.radius.unwrap_or_else(|| metrics.radius(size)),
-            icon_size: snap_to_pixel(geometry.icon_size.unwrap_or_else(|| metrics.icon_size(size)), scale_factor),
+            inner_gap: snap_to_pixel(geometry.inner_gap.unwrap_or_else(|| metrics.gap()), scale_factor),
+            radius: geometry.radius.unwrap_or_else(|| metrics.radius()),
+            icon_size: snap_to_pixel(geometry.icon_size.unwrap_or_else(|| metrics.icon_size()), scale_factor),
             chevron_size: snap_to_pixel(
                 geometry
                     .chevron_size
-                    .unwrap_or_else(|| (metrics.icon_size(size) - geometry.chevron_inset.unwrap_or_default()).max(0.0)),
+                    .unwrap_or_else(|| (metrics.icon_size() - geometry.chevron_inset.unwrap_or_default()).max(0.0)),
                 scale_factor,
             ),
         }
@@ -97,16 +86,16 @@ pub trait TreeViewTheme: Send + Sync {
     fn icon(&self, role: crate::theme::stylesheet::IconRole) -> crate::infra::icon::IconSource {
         crate::theme::stylesheet::CommonStylesheet::sdk_default().icons.resolve(role)
     }
-    fn resolve_row(&self, state: InteractionState, selected: bool, size: ControlSize) -> TreeViewPalette;
+    fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette;
     /// Optional inset row outline, painted without changing row geometry.
-    fn row_outline(&self, _state: InteractionState, _size: ControlSize) -> Option<Hsla> {
+    fn row_outline(&self, _state: InteractionState) -> Option<Hsla> {
         None
     }
     fn metrics(&self) -> MetricTokens;
 
     /// Resolve row layout; themes may use the same common schema as SDK defaults.
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> TreeViewScale {
-        TreeViewScale::compute(size, &self.metrics(), scale_factor)
+    fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
+        TreeViewScale::compute(&self.metrics(), scale_factor)
     }
 }
 
@@ -135,7 +124,7 @@ impl TreeViewTheme for DefaultTreeViewTheme {
     fn icon(&self, role: crate::theme::stylesheet::IconRole) -> crate::infra::icon::IconSource {
         self.tokens.stylesheet.icons.resolve(role)
     }
-    fn resolve_row(&self, state: InteractionState, selected: bool, size: ControlSize) -> TreeViewPalette {
+    fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
         let palette = self.tokens.stylesheet.recipes.palette("tree_view", &self.tokens.palette);
         let typography = &self.tokens.typography;
         let layer = state.layer();
@@ -157,7 +146,7 @@ impl TreeViewTheme for DefaultTreeViewTheme {
         };
 
         let mut row_typography = typography.text.label;
-        crate::controls::textfield::apply_control_size_typography(&mut row_typography, typography, size);
+        crate::controls::textfield::apply_control_typography(&mut row_typography, typography);
 
         TreeViewPalette {
             background,
@@ -181,15 +170,15 @@ impl TreeViewTheme for DefaultTreeViewTheme {
         self.tokens.metrics
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> TreeViewScale {
-        TreeViewScale::compute_with_stylesheet(size, &self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
+    fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
+        TreeViewScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{DefaultTreeViewTheme, TreeViewScale, TreeViewTheme};
-    use crate::theme::{ControlSize, InteractionState, MetricTokens, ThemeTokens};
+    use crate::theme::{InteractionState, MetricTokens, ThemeTokens};
 
     #[test]
     fn selected_rows_remain_highlighted_without_hover_or_focus() {
@@ -200,32 +189,25 @@ mod tests {
                 InteractionState { hovered: true, ..Default::default() },
                 InteractionState { pressed: true, ..Default::default() },
             ] {
-                let selected = theme.resolve_row(state, true, ControlSize::Md);
+                let selected = theme.resolve_row(state, true);
                 assert_eq!(selected.background, Some(tokens.palette.navigation.selected_background));
                 assert_eq!(selected.foreground, tokens.palette.navigation.selected_foreground);
                 assert_eq!(selected.icon_color, selected.foreground);
                 assert_eq!(selected.chevron_color, selected.foreground);
             }
-            assert_eq!(theme.resolve_row(InteractionState::default(), false, ControlSize::Md).background, None);
+            assert_eq!(theme.resolve_row(InteractionState::default(), false).background, None);
             let disabled = InteractionState { disabled: true, ..Default::default() };
-            assert_eq!(theme.resolve_row(disabled, true, ControlSize::Md).background, None);
-            assert_eq!(
-                theme.resolve_row(disabled, true, ControlSize::Md).foreground,
-                tokens.palette.state.disabled.foreground
-            );
+            assert_eq!(theme.resolve_row(disabled, true).background, None);
+            assert_eq!(theme.resolve_row(disabled, true).foreground, tokens.palette.state.disabled.foreground);
         }
     }
 
     #[test]
-    fn affordance_sizes_follow_control_size_scale() {
-        let metrics = MetricTokens::default();
+    fn affordance_sizes_follow_control_scale() {
+        let scale = TreeViewScale::compute(&MetricTokens::default(), 1.0);
 
-        assert_eq!(TreeViewScale::compute(ControlSize::Sm, &metrics, 1.0).icon_size, 14.0);
-        assert_eq!(TreeViewScale::compute(ControlSize::Sm, &metrics, 1.0).chevron_size, 12.0);
-        assert_eq!(TreeViewScale::compute(ControlSize::Md, &metrics, 1.0).icon_size, 16.0);
-        assert_eq!(TreeViewScale::compute(ControlSize::Md, &metrics, 1.0).chevron_size, 14.0);
-        assert_eq!(TreeViewScale::compute(ControlSize::Lg, &metrics, 1.0).icon_size, 18.0);
-        assert_eq!(TreeViewScale::compute(ControlSize::Lg, &metrics, 1.0).chevron_size, 16.0);
+        assert_eq!(scale.icon_size, 16.0);
+        assert_eq!(scale.chevron_size, 14.0);
     }
 }
 

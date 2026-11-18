@@ -9,7 +9,7 @@ use std::sync::Arc;
 use gpui::{BoxShadow, Hsla, point, px};
 use xgpui_luma::controls::button::ButtonTemplate;
 use xgpui_luma::controls::checkbox::{CheckboxPalette, CheckboxScale, CheckboxTheme, ThemedCheckboxTemplate};
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
 
 use crate::button::Paint;
 use crate::button_layout::Radius;
@@ -60,11 +60,11 @@ impl CheckboxSize {
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 
@@ -72,7 +72,7 @@ impl CheckboxSize {
     pub fn box_size(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .checkbox
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .indicator_size
     }
 
@@ -80,7 +80,7 @@ impl CheckboxSize {
     pub fn glyph_size(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .checkbox
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .glyph_size
     }
 
@@ -116,8 +116,12 @@ fn checkbox_scale_with_stylesheet(
     size: CheckboxSize,
     radius: Radius,
 ) -> CheckboxScale {
-    let fallback = CheckboxScale::compute(size.control_size(), &MetricTokens::default(), 1.0);
-    let geometry = stylesheet.checkbox.resolve_geometry(
+    let fallback = CheckboxScale::compute_with_stylesheet(
+        &crate::size::scaffold_metrics(size.control_size()),
+        1.0,
+        crate::size::scaffold_stylesheet(size.control_size()),
+    );
+    let geometry = stylesheet.checkbox.resolve_geometry_for(
         size.as_str(),
         xgpui_luma::theme::stylesheet::CheckboxGeometry {
             indicator_size: fallback.indicator_size,
@@ -179,7 +183,8 @@ fn alpha(color: Hsla, a: f32) -> Hsla {
 }
 
 impl CheckboxTheme for CheckboxThemeAdapter {
-    fn resolve(&self, checked: bool, state: InteractionState, size: ControlSize) -> CheckboxPalette {
+    fn resolve(&self, checked: bool, state: InteractionState) -> CheckboxPalette {
+        let size = self.look.size();
         let look = &self.look;
         let layer = state.layer();
         let high_contrast = self.paint.high_contrast;
@@ -253,17 +258,18 @@ impl CheckboxTheme for CheckboxThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> CheckboxScale {
+    fn scale(&self, scale_factor: f32) -> CheckboxScale {
+        let size = self.look.size();
         if let Some((radix_size, radius)) = self.geometry {
             return checkbox_scale_with_stylesheet(&self.look.stylesheet_snapshot(), radix_size, radius);
         }
         let radix_size = match size {
-            ControlSize::Sm => CheckboxSize::One,
-            ControlSize::Md => CheckboxSize::Two,
-            ControlSize::Lg => CheckboxSize::Three,
+            crate::RadixSize::One => CheckboxSize::One,
+            crate::RadixSize::Two => CheckboxSize::Two,
+            crate::RadixSize::Three => CheckboxSize::Three,
         };
         let _ = scale_factor;
         checkbox_scale_with_stylesheet(&self.look.stylesheet_snapshot(), radix_size, Radius::Medium)
@@ -313,7 +319,7 @@ mod tests {
 
     fn palette(variant: CheckboxVariant, checked: bool) -> CheckboxPalette {
         let look = Look::built_in();
-        checkbox_theme(&look, variant).resolve(checked, InteractionState::default(), ControlSize::Md)
+        checkbox_theme(&look, variant).resolve(checked, InteractionState::default())
     }
 
     #[test]
@@ -325,31 +331,20 @@ mod tests {
                 for checked in [false, true] {
                     for paint in [Paint::accent(), Paint::gray(), Paint::accent().high_contrast()] {
                         let theme = checkbox_theme_with(&look, variant, paint);
-                        let focused = theme.resolve(
-                            checked,
-                            InteractionState { focused: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
+                        let focused = theme.resolve(checked, InteractionState { focused: true, ..Default::default() });
                         for hovered in [false, true] {
                             let pressed = theme.resolve(
                                 checked,
                                 InteractionState { focused: true, pressed: true, hovered, ..Default::default() },
-                                ControlSize::Md,
                             );
                             assert_eq!(pressed.indicator_background, focused.indicator_background);
                             assert_eq!(pressed.checkmark_color, focused.checkmark_color);
                             assert_eq!(pressed.indicator_border, focused.indicator_border);
                         }
-                        let disabled = theme.resolve(
-                            checked,
-                            InteractionState { disabled: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
-                        let disabled_press = theme.resolve(
-                            checked,
-                            InteractionState { disabled: true, pressed: true, ..Default::default() },
-                            ControlSize::Md,
-                        );
+                        let disabled =
+                            theme.resolve(checked, InteractionState { disabled: true, ..Default::default() });
+                        let disabled_press = theme
+                            .resolve(checked, InteractionState { disabled: true, pressed: true, ..Default::default() });
                         assert_eq!(disabled.indicator_background, disabled_press.indicator_background);
                         assert_eq!(disabled.indicator_border, disabled_press.indicator_border);
                     }
@@ -395,11 +390,8 @@ mod tests {
     fn surface_high_contrast_uses_step_twelve_fill() {
         let look = Look::built_in();
         let paint = Paint::accent().high_contrast();
-        let checked = checkbox_theme_with(&look, CheckboxVariant::Surface, paint).resolve(
-            true,
-            InteractionState::default(),
-            ControlSize::Md,
-        );
+        let checked =
+            checkbox_theme_with(&look, CheckboxVariant::Surface, paint).resolve(true, InteractionState::default());
         assert_eq!(checked.indicator_background, look.resolve_step(ScaleFamily::Color, 12).hsla());
         assert_eq!(checked.checkmark_color, look.resolve_step(ScaleFamily::Color, 1).hsla());
     }
@@ -408,11 +400,8 @@ mod tests {
     fn soft_high_contrast_darkens_the_checkmark_only() {
         let look = Look::built_in();
         let paint = Paint::accent().high_contrast();
-        let checked = checkbox_theme_with(&look, CheckboxVariant::Soft, paint).resolve(
-            true,
-            InteractionState::default(),
-            ControlSize::Md,
-        );
+        let checked =
+            checkbox_theme_with(&look, CheckboxVariant::Soft, paint).resolve(true, InteractionState::default());
         assert_eq!(checked.indicator_background, look.resolve_step(ScaleFamily::Color, 5).hsla());
         assert_eq!(checked.checkmark_color, look.resolve_step(ScaleFamily::Color, 12).hsla());
     }
@@ -451,4 +440,7 @@ pub fn native_radix_checkbox() -> xgpui_luma::theme::stylesheet::CheckboxStylesh
 /// Applies Radix checkbox geometry in Rust.
 pub(crate) fn apply_radix_checkbox_stylesheet(sheet: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
     native_radix_checkbox().apply_to(&mut sheet.checkbox);
+    // Radix derives the indicator radius from its `radius` prop. The SDK's single-scale
+    // recipe must not stand in for a Radix-authored value.
+    sheet.checkbox.geometry.indicator_radius = None;
 }

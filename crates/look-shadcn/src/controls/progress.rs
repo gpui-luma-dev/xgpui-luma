@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use xgpui_luma::controls::progress::ProgressLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
@@ -49,7 +49,7 @@ pub fn resolve_progress_colors_with_stylesheet(
     Ok(ProgressColorTable { track_color: colors.track_color, progress_color: colors.progress_color })
 }
 
-pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) -> ProgressLook {
+pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> ProgressLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
     let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "progress").with_stylesheet(mode.stylesheet());
     let colors = resolve_progress_colors(&resolver, enabled).unwrap_or_else(|_| ProgressColorTable::fallback());
@@ -63,12 +63,12 @@ pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) 
         .unwrap_or_else(|| {
             let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
                 .progress
-                .resolve_geometry(size_key, Default::default());
+                .resolve_geometry_for(size_key, Default::default());
             (baseline.size, baseline.stroke_width, baseline.track_height, baseline.thumb_size)
         });
 
     let mut look = ProgressLook {
-        geometry: mode.stylesheet().common.progress.resolve_geometry(size_key, Default::default()),
+        geometry: mode.stylesheet().common.progress.resolve_geometry_for(size_key, Default::default()),
         track_color: colors.track_color.hsla(),
         progress_color: colors.progress_color.hsla(),
         thumb_color: colors.progress_color.hsla(),
@@ -77,7 +77,7 @@ pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) 
         size,
         stroke_width,
     };
-    let geometry = mode.stylesheet().common.progress.resolve_geometry(
+    let geometry = mode.stylesheet().common.progress.resolve_geometry_for(
         size_key,
         xgpui_luma::theme::stylesheet::ProgressGeometry {
             size: look.size,
@@ -128,7 +128,7 @@ mod tests {
     fn progress_uses_accent_track_and_accent_foreground_fill() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = progress_look(&mode, true, xgpui_luma::theme::ControlSize::Md);
+        let look = progress_look(&mode, true, crate::ShadcnSize::Md);
 
         assert_eq!(look.track_color, catalog.color("accent").expect("accent"));
         assert_eq!(look.progress_color, catalog.color("accent-foreground").expect("accent-foreground"));
@@ -137,9 +137,9 @@ mod tests {
     #[test]
     fn progress_size_changes_metrics() {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let small = progress_look(&mode, true, xgpui_luma::theme::ControlSize::Sm);
-        let medium = progress_look(&mode, true, xgpui_luma::theme::ControlSize::Md);
-        let large = progress_look(&mode, true, xgpui_luma::theme::ControlSize::Lg);
+        let small = progress_look(&mode, true, crate::ShadcnSize::Sm);
+        let medium = progress_look(&mode, true, crate::ShadcnSize::Md);
+        let large = progress_look(&mode, true, crate::ShadcnSize::Lg);
 
         assert!(small.size < medium.size);
         assert!(medium.size < large.size);
@@ -172,7 +172,7 @@ impl ProgressStylesheet {
         }
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&ProgressMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ProgressMetricsRule> {
         self.metrics.get(control_size_key(size))
     }
 
@@ -236,14 +236,14 @@ pub fn resolve_progress_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
 ) -> ProgressMetricTable {
-    resolve_progress_metrics_for_size(mode, theme_mode, xgpui_luma::theme::ControlSize::Md)
+    resolve_progress_metrics_for_size(mode, theme_mode, crate::ShadcnSize::Md)
 }
 
 /// Resolve the selected look's Progress dimensions and their sources for a size.
 pub fn resolve_progress_metrics_for_size(
     mode: &crate::ShadcnModeTokens,
     _theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> ProgressMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
@@ -255,7 +255,7 @@ pub fn resolve_progress_metrics_for_size(
         track_height: derived_metric("progress track height", look.track_height),
         thumb_size: derived_metric("progress thumb size", look.thumb_size),
     };
-    let geometry = mode.stylesheet().common.progress.inspect_geometry(
+    let geometry = mode.stylesheet().common.progress.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::ProgressGeometry {
             size: table.size.value_px,

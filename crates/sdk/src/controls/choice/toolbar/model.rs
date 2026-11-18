@@ -16,7 +16,6 @@ use crate::controls::selector::Selector;
 use crate::infra::state::CompositeItemState;
 use crate::controls::textfield::TextField;
 use crate::controls::toggle::Toggle;
-use crate::theme::ControlSize;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ToolbarItemKind {
@@ -226,7 +225,6 @@ pub(crate) struct ToolbarModel {
     pub(crate) id: SharedString,
     pub(crate) items: Vec<ToolbarItem>,
     pub(crate) enabled: bool,
-    pub(crate) size: ControlSize,
     pub(crate) variant: ToolbarVariant,
     pub(crate) focus_strategy: ControlGroupFocusStrategy,
     pub(crate) template: Arc<dyn ToolbarTemplate>,
@@ -245,7 +243,6 @@ pub struct ToolbarRenderModel<'a> {
     pub id: &'a SharedString,
     pub items: Vec<ToolbarItemRenderModel>,
     pub enabled: bool,
-    pub size: Option<ControlSize>,
     pub variant: ToolbarVariant,
 }
 
@@ -302,7 +299,6 @@ impl ToolbarBuilder {
                 id: id.into(),
                 items: Vec::new(),
                 enabled: true,
-                size: ControlSize::Md,
                 variant: ToolbarVariant::Outline,
                 focus_strategy: ControlGroupFocusStrategy::RovingItemFocus,
                 template: default_toolbar_template(),
@@ -326,11 +322,6 @@ impl ToolbarBuilder {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 
@@ -384,11 +375,7 @@ impl ToolbarBuilder {
     }
 
     pub(crate) fn control_group_template(&self) -> crate::controls::control_group::ControlGroupTemplate<ToolbarItem> {
-        super::template::toolbar_control_group_template(
-            self.model.size,
-            self.model.variant,
-            Arc::clone(&self.model.template),
-        )
+        super::template::toolbar_control_group_template(self.model.variant, Arc::clone(&self.model.template))
     }
 }
 

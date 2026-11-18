@@ -84,7 +84,8 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
 
     pub fn new(id: impl Into<SharedString>) -> Self {
         let id = id.into();
-        let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry("button");
+        let geometry =
+            crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("button");
         Self {
             motion: Default::default(),
             callbacks: Default::default(),
@@ -108,8 +109,9 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
     }
     /// Capture placement defaults; explicit builder offsets and margins win in either order.
     pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry("button");
-        let geometry = stylesheet.popover.authored_geometry("button").with_fallback(&baseline);
+        let baseline =
+            crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("button");
+        let geometry = stylesheet.popover.authored_geometry_for("button").with_fallback(&baseline);
         if !self.explicit_offset_y {
             self.offset_y = px(geometry.offset_y.unwrap_or_default());
         }

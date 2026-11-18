@@ -3,10 +3,8 @@ use std::sync::{Arc, OnceLock};
 use gpui::{BoxShadow, Hsla};
 
 use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
-use crate::controls::textfield::apply_control_size_typography;
-use crate::theme::{
-    ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens,
-};
+use crate::controls::textfield::apply_control_typography;
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
 
 use super::model::SelectorTriggerStyle;
 
@@ -78,7 +76,6 @@ pub trait SelectorTheme: Send + Sync {
         &self,
         trigger_style: SelectorTriggerStyle,
         state: InteractionState,
-        _size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
@@ -89,11 +86,10 @@ pub trait SelectorTheme: Send + Sync {
         &self,
         trigger_style: SelectorTriggerStyle,
         visual_state: SelectorVisualState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        self.resolve_look(trigger_style, visual_state.resolved_interaction(), size, scale, without_elevation)
+        self.resolve_look(trigger_style, visual_state.resolved_interaction(), scale, without_elevation)
     }
 }
 
@@ -154,7 +150,7 @@ impl SelectorTheme for DefaultSelectorTheme {
             trigger_border,
             trigger_shadow: None,
             trigger_typography: typography.text.label,
-            items_panel: default_selector_items_panel_look(&self.tokens, ControlSize::Md),
+            items_panel: default_selector_items_panel_look(&self.tokens),
         }
     }
 
@@ -166,19 +162,17 @@ impl SelectorTheme for DefaultSelectorTheme {
         &self,
         trigger_style: SelectorTriggerStyle,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
         let mut palette = self.resolve(trigger_style, state, without_elevation);
-        apply_control_size_typography(&mut palette.trigger_typography, &self.tokens.typography, size);
-        palette.items_panel = default_selector_items_panel_look(&self.tokens, size);
+        apply_control_typography(&mut palette.trigger_typography, &self.tokens.typography);
+        palette.items_panel = default_selector_items_panel_look(&self.tokens);
         let mut look = compose_selector_look(&palette, scale);
-        let key = size.stylesheet_key();
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().selector.authored_geometry(key);
-        let recipe = self.tokens.stylesheet.selector.authored_geometry(key).with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().selector.authored_geometry();
+        let recipe = self.tokens.stylesheet.selector.authored_geometry().with_fallback(&baseline);
         look.menu_offset_y = recipe.gap.unwrap_or(scale.gap) * recipe.menu_offset_scale.unwrap_or_default();
-        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.selector, key, SelectorGeometry, look,
+        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.selector, SelectorGeometry, look,
             [height => trigger_height, padding_x => trigger_padding_x, padding_y => trigger_padding_y,
              gap => trigger_gap, icon_size => trigger_icon_size, font_size => trigger_typography.size,
              line_height => trigger_typography.line_height, radius => trigger_radius, menu_offset_y => menu_offset_y],
@@ -190,11 +184,10 @@ impl SelectorTheme for DefaultSelectorTheme {
         &self,
         trigger_style: SelectorTriggerStyle,
         visual_state: SelectorVisualState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         without_elevation: bool,
     ) -> SelectorLook {
-        self.resolve_look(trigger_style, visual_state.resolved_interaction(), size, scale, without_elevation)
+        self.resolve_look(trigger_style, visual_state.resolved_interaction(), scale, without_elevation)
     }
 }
 
@@ -278,14 +271,13 @@ mod tests {
         assert_eq!(focused.trigger_border, baseline.trigger_border);
         assert_eq!(focused.trigger_shadow, baseline.trigger_shadow);
 
-        let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0);
+        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let focused_look = theme.resolve_visual_look(
             SelectorTriggerStyle::Outline,
             SelectorVisualState {
                 interaction: InteractionState { focused: true, ..InteractionState::default() },
                 ..Default::default()
             },
-            ControlSize::Md,
             &scale,
             false,
         );
@@ -295,18 +287,16 @@ mod tests {
     #[test]
     fn open_state_matches_hover_and_disabled_open_matches_disabled() {
         let theme = DefaultSelectorTheme::default();
-        let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0);
+        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let open = theme.resolve_visual_look(
             SelectorTriggerStyle::Outline,
             SelectorVisualState { open: true, ..Default::default() },
-            ControlSize::Md,
             &scale,
             false,
         );
         let hover = theme.resolve_look(
             SelectorTriggerStyle::Outline,
             InteractionState { hovered: true, ..Default::default() },
-            ControlSize::Md,
             &scale,
             false,
         );
@@ -317,14 +307,12 @@ mod tests {
                 interaction: InteractionState { disabled: true, ..Default::default() },
                 ..Default::default()
             },
-            ControlSize::Md,
             &scale,
             false,
         );
         let disabled = theme.resolve_look(
             SelectorTriggerStyle::Outline,
             InteractionState { disabled: true, ..Default::default() },
-            ControlSize::Md,
             &scale,
             false,
         );
@@ -338,7 +326,7 @@ mod tests {
     #[test]
     fn invalid_state_uses_destructive_border_and_keeps_it_when_focused() {
         let theme = DefaultSelectorTheme::default();
-        let scale = StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0);
+        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let look = theme.resolve_visual_look(
             SelectorTriggerStyle::Outline,
             SelectorVisualState {
@@ -346,7 +334,6 @@ mod tests {
                 interaction: InteractionState { focused: true, ..Default::default() },
                 ..Default::default()
             },
-            ControlSize::Md,
             &scale,
             false,
         );

@@ -128,6 +128,7 @@ mod radio;
 mod radio_builder;
 mod radio_group;
 mod scale;
+mod size;
 mod segmented;
 mod selector;
 mod selector_list;
@@ -166,7 +167,8 @@ pub use colors::{
 pub use custom_colors::{CustomColors, GeneratedColors, generate_colors};
 pub use semantic::{SemanticMapping, SemanticRole};
 pub use tone::Tone;
-pub use button_layout::{ButtonSize, Radius, button_box_for, metric_tokens, resolve_button_radius};
+pub use button_layout::{ButtonSize, RadixRadii, Radius, button_box_for, metric_tokens, resolve_button_radius};
+pub use size::{RadixControlMetrics, RadixSize};
 
 // Controls and their styling adapters (alphabetical).
 pub use avatar::{Avatar, AvatarSize, AvatarStyle, AvatarVariant};

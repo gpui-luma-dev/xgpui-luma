@@ -65,15 +65,9 @@ where
     }
 
     /// Stable, noninteractive preview; content callbacks are not rebuilt during drag.
-    fn render_drag_preview(
-        &self,
-        label: SharedString,
-        _size: crate::theme::ControlSize,
-        _window: &mut Window,
-        _cx: &mut App,
-    ) -> AnyElement {
+    fn render_drag_preview(&self, label: SharedString, _window: &mut Window, _cx: &mut App) -> AnyElement {
         {
-            let scale = self.resolve_scale(_size, 1.0);
+            let scale = self.resolve_scale(1.0);
             div()
                 .px(px(scale.preview_padding_x))
                 .py(px(scale.preview_padding_y))
@@ -83,12 +77,12 @@ where
     }
 
     /// Resolve all row, preview and insertion chrome through the theme scale.
-    fn resolve_scale(&self, size: crate::theme::ControlSize, scale_factor: f32) -> super::TreeViewScale {
-        super::TreeViewScale::compute(size, &crate::theme::MetricTokens::default(), scale_factor)
+    fn resolve_scale(&self, scale_factor: f32) -> super::TreeViewScale {
+        super::TreeViewScale::compute(&crate::theme::MetricTokens::default(), scale_factor)
     }
 
     /// Color used by the SDK's keyed drop markers and preview outline.
-    fn drop_color(&self, _size: crate::theme::ControlSize) -> gpui::Hsla {
+    fn drop_color(&self) -> gpui::Hsla {
         crate::theme::ThemeTokens::default().palette.app.muted_foreground
     }
 }
@@ -184,20 +178,14 @@ where
     ) -> AnyElement {
         self.base.render_node_with_content(node, handlers, content, window, cx)
     }
-    fn render_drag_preview(
-        &self,
-        label: SharedString,
-        size: crate::theme::ControlSize,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> AnyElement {
-        self.base.render_drag_preview(label, size, window, cx)
+    fn render_drag_preview(&self, label: SharedString, window: &mut Window, cx: &mut App) -> AnyElement {
+        self.base.render_drag_preview(label, window, cx)
     }
-    fn resolve_scale(&self, size: crate::theme::ControlSize, scale_factor: f32) -> super::TreeViewScale {
-        self.base.resolve_scale(size, scale_factor)
+    fn resolve_scale(&self, scale_factor: f32) -> super::TreeViewScale {
+        self.base.resolve_scale(scale_factor)
     }
-    fn drop_color(&self, size: crate::theme::ControlSize) -> gpui::Hsla {
-        self.base.drop_color(size)
+    fn drop_color(&self) -> gpui::Hsla {
+        self.base.drop_color()
     }
 }
 
@@ -234,22 +222,15 @@ where
     ) -> AnyElement {
         self.render_row(node, handlers, Some(content), window, cx)
     }
-    fn render_drag_preview(
-        &self,
-        label: SharedString,
-        size: crate::theme::ControlSize,
-        _window: &mut Window,
-        _cx: &mut App,
-    ) -> AnyElement {
+    fn render_drag_preview(&self, label: SharedString, _window: &mut Window, _cx: &mut App) -> AnyElement {
         let palette =
-            self.theme
-                .resolve_row(crate::theme::InteractionState { hovered: true, ..Default::default() }, true, size);
-        let scale = self.theme.resolve_scale(size, _window.scale_factor());
+            self.theme.resolve_row(crate::theme::InteractionState { hovered: true, ..Default::default() }, true);
+        let scale = self.theme.resolve_scale(_window.scale_factor());
         div()
             .px(px(scale.preview_padding_x))
             .py(px(scale.preview_padding_y))
             .rounded(px(scale.radius))
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.chevron_color)
             .when_some(palette.background, |preview, color| preview.bg(color))
             .text_color(palette.foreground)
@@ -259,11 +240,11 @@ where
             .child(label)
             .into_any_element()
     }
-    fn resolve_scale(&self, size: crate::theme::ControlSize, scale_factor: f32) -> super::TreeViewScale {
-        self.theme.resolve_scale(size, scale_factor)
+    fn resolve_scale(&self, scale_factor: f32) -> super::TreeViewScale {
+        self.theme.resolve_scale(scale_factor)
     }
-    fn drop_color(&self, size: crate::theme::ControlSize) -> gpui::Hsla {
-        self.theme.resolve_row(Default::default(), true, size).chevron_color
+    fn drop_color(&self) -> gpui::Hsla {
+        self.theme.resolve_row(Default::default(), true).chevron_color
     }
 }
 
@@ -277,9 +258,9 @@ impl ThemedTreeViewTemplate {
         _cx: &mut App,
     ) -> AnyElement {
         let scale_factor = window.scale_factor();
-        let scale = self.theme.resolve_scale(node.size, scale_factor);
+        let scale = self.theme.resolve_scale(scale_factor);
 
-        let palette = self.theme.resolve_row(node.state.interaction_state(), node.state.selected, node.size);
+        let palette = self.theme.resolve_row(node.state.interaction_state(), node.state.selected);
         let icon_size = scale.icon_size;
         let chevron_size = scale.chevron_size;
         let left_padding = scale.base_padding_x + (node.depth as f32 * scale.indentation_width);
@@ -371,13 +352,13 @@ impl ThemedTreeViewTemplate {
             None => div().flex_1().truncate().child(node.label.clone()),
         });
 
-        if let Some(color) = self.theme.row_outline(node.state.interaction_state(), node.size) {
+        if let Some(color) = self.theme.row_outline(node.state.interaction_state()) {
             row = row.child(
                 div()
                     .absolute()
                     .inset_0()
                     .rounded(px(scale.radius))
-                    .border(px(self.theme.metrics().border_width.default))
+                    .border(px(self.theme.metrics().border_width))
                     .border_color(color),
             );
         }

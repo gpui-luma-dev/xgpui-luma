@@ -8,8 +8,8 @@ pub(crate) mod theme;
 pub use control::{ResizablePanels, ResizablePanelsEvent, ResizablePanelsHandleDrag};
 pub use model::{
     PanelHideMode, PanelId, PanelLayoutState, PanelRender, PanelSize, ResizeCollapseBehavior, ResizeCollapseDirection,
-    ResizeCollapseMode, ResizeHandleMetrics, ResizeHandleSize, ResizeHandleVisibility, ResizablePanelSpec,
-    ResizablePanelsBuilder, ResizablePanelsModel, ResizablePanelsOrientation, ResizablePanelsRenderModel, render_pane,
+    ResizeCollapseMode, ResizeHandleMetrics, ResizeHandleVisibility, ResizablePanelSpec, ResizablePanelsBuilder,
+    ResizablePanelsModel, ResizablePanelsOrientation, ResizablePanelsRenderModel, render_pane,
 };
 pub use math::{effective_handle_lane_px, handle_hit_target_main_axis_px, handle_layout_main_axis_px};
 pub use template::{

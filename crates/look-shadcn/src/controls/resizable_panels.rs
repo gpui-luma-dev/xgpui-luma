@@ -81,7 +81,7 @@ pub fn resizable_panels_look(
     let colors = resolve_resizable_panels_colors(&resolver, state.disabled, state.layer())
         .unwrap_or_else(|_| ResizablePanelsColorTable::fallback());
 
-    let geometry = mode.stylesheet().common.resizable_panels.resolve_geometry("md", Default::default());
+    let geometry = mode.stylesheet().common.resizable_panels.resolve_geometry_for("md", Default::default());
 
     ResizablePanelsLook {
         border: colors.border.hsla(),
@@ -189,19 +189,17 @@ pub struct ResizablePanelsMetricTable {
 }
 
 pub fn resolve_resizable_panels_metrics(
-    handle_size: xgpui_luma::controls::resizable_panels::ResizeHandleSize,
+    handle_size: crate::ShadcnSize,
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
 ) -> ResizablePanelsMetricTable {
     use crate::tables::metrics::helpers::inspect_shared_metric;
 
-    let metrics = handle_size.metrics_with_stylesheet(stylesheet);
-    let size_label = match handle_size {
-        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Sm => "sm",
-        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Md => "md",
-        xgpui_luma::controls::resizable_panels::ResizeHandleSize::Lg => "lg",
-    };
+    let size_label = handle_size.key();
+    let metrics = xgpui_luma::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(
+        &stylesheet.with_size_key(size_label),
+    );
 
-    let geometry = stylesheet.resizable_panels.inspect_geometry(
+    let geometry = stylesheet.resizable_panels.inspect_geometry_for(
         size_label,
         xgpui_luma::theme::stylesheet::ResizablePanelsGeometry {
             lane_width: metrics.lane_px,

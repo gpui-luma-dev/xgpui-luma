@@ -29,6 +29,16 @@ impl<'a> LookContext<'a> {
         &self.tokens.metrics
     }
 
+    /// Shadcn control metrics for each size.
+    pub fn controls(&self) -> &crate::ShadcnControlMetrics {
+        &self.tokens.control_sizes
+    }
+
+    /// Shadcn's named corner radii in pixels.
+    pub fn radii(&self) -> &crate::ShadcnRadii {
+        &self.tokens.radii
+    }
+
     pub fn typography(&self) -> &LumaTypography {
         &self.tokens.typography
     }

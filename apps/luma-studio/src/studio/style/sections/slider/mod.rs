@@ -9,7 +9,7 @@ use xgpui_luma::controls::slider::{
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 use xgpui_luma_look_shadcn::{ButtonRadiusPreset, ShadcnButtonStyle, ShadcnLook};
 
 use crate::studio::style::sections::slider::customization::SliderCustomizationPreview;
@@ -36,8 +36,11 @@ const SLIDER_TABLE_SIZE_VARIANT_COLUMN_WIDTH: f32 = BUTTON_TABLE_SIZE_VARIANT_CO
 const SLIDER_TABLE_SIZE_HEADER_HEIGHT: f32 = BUTTON_TABLE_SIZE_HEADER_HEIGHT;
 const SLIDER_TABLE_SIZE_HEADER_CORNER_PADDING_BOTTOM: f32 = 8.0;
 
-const SLIDER_SIZES: [(ControlSize, &str); 3] =
-    [(ControlSize::Sm, "Small"), (ControlSize::Md, "Medium"), (ControlSize::Lg, "Large")];
+const SLIDER_SIZES: [(xgpui_luma_look_shadcn::ShadcnSize, &str); 3] = [
+    (xgpui_luma_look_shadcn::ShadcnSize::Sm, "Small"),
+    (xgpui_luma_look_shadcn::ShadcnSize::Md, "Medium"),
+    (xgpui_luma_look_shadcn::ShadcnSize::Lg, "Large"),
+];
 
 pub(crate) fn render_slider_template_section(
     look: Arc<ShadcnLook>,
@@ -130,7 +133,7 @@ fn render_input_slider_states_body(look: &Arc<ShadcnLook>, window: &mut Window, 
                                 look,
                                 InputInteractionSample { label: "", ..sample },
                                 variant.style,
-                                ControlSize::Md,
+                                xgpui_luma_look_shadcn::ShadcnSize::Md,
                                 None,
                                 Some(SLIDER_TEMPLATE_DEMO_WIDTH),
                                 1.0,
@@ -202,7 +205,7 @@ fn render_input_slider_state_cell(
     look: &Arc<ShadcnLook>,
     sample: InputInteractionSample,
     style: ShadcnButtonStyle,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     demo_width: Option<f32>,
     demo_scale: f32,
@@ -236,15 +239,15 @@ fn render_input_slider_state_cell(
 
 fn render_input_slider_size_radius_cell(
     look: &Arc<ShadcnLook>,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     radius: ButtonRadiusPreset,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let sample_id = match size {
-        ControlSize::Sm => "size-sm",
-        ControlSize::Md => "size-md",
-        ControlSize::Lg => "size-lg",
+        xgpui_luma_look_shadcn::ShadcnSize::Sm => "size-sm",
+        xgpui_luma_look_shadcn::ShadcnSize::Md => "size-md",
+        xgpui_luma_look_shadcn::ShadcnSize::Lg => "size-lg",
     };
     let sample = InputInteractionSample { id: sample_id, label: "", state: InteractionState::default() };
 
@@ -266,7 +269,7 @@ fn render_input_slider_sample(
     template: &Arc<dyn SliderTemplate>,
     sample: InputInteractionSample,
     style: ShadcnButtonStyle,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     radius: Option<ButtonRadiusPreset>,
     demo_width: Option<f32>,
     demo_scale: f32,
@@ -294,8 +297,6 @@ fn render_input_slider_sample(
         strategy: SliderInputStrategy::Horizontal,
         orientation: SliderInputStrategy::Horizontal.orientation(),
         presentation: TrackPresentation::Fill,
-        size,
-        thumb_size: None,
         range,
         step: 10.0,
         thumbs: &thumbs,
@@ -331,11 +332,11 @@ fn render_input_slider_sample(
     root.into_any_element()
 }
 
-fn slider_size_id(size: ControlSize) -> &'static str {
+fn slider_size_id(size: xgpui_luma_look_shadcn::ShadcnSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        xgpui_luma_look_shadcn::ShadcnSize::Sm => "sm",
+        xgpui_luma_look_shadcn::ShadcnSize::Md => "md",
+        xgpui_luma_look_shadcn::ShadcnSize::Lg => "lg",
     }
 }
 
@@ -359,24 +360,32 @@ fn slider_radius_id(radius: ButtonRadiusPreset) -> &'static str {
     }
 }
 
-fn slider_thumb_radius_px(look: &ShadcnLook, size: ControlSize, preset: ButtonRadiusPreset) -> f32 {
-    let (metrics, look) = slider_size_metrics(look, size);
-    xgpui_luma_look_shadcn::paint::resolve_slider_thumb_radius_preset(preset, &metrics, look.thumb_size)
+fn slider_thumb_radius_px(
+    look: &ShadcnLook,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
+    preset: ButtonRadiusPreset,
+) -> f32 {
+    let (radii, look) = slider_size_metrics(look, size);
+    xgpui_luma_look_shadcn::paint::resolve_slider_thumb_radius_preset(preset, &radii, look.thumb_size)
 }
 
-fn slider_track_radius_px(look: &ShadcnLook, size: ControlSize, preset: ButtonRadiusPreset) -> f32 {
-    let (metrics, look) = slider_size_metrics(look, size);
-    xgpui_luma_look_shadcn::paint::resolve_slider_track_radius_preset(preset, &metrics, look.track_height)
+fn slider_track_radius_px(
+    look: &ShadcnLook,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
+    preset: ButtonRadiusPreset,
+) -> f32 {
+    let (radii, look) = slider_size_metrics(look, size);
+    xgpui_luma_look_shadcn::paint::resolve_slider_track_radius_preset(preset, &radii, look.track_height)
 }
 
 fn slider_size_metrics(
     look: &ShadcnLook,
-    size: ControlSize,
-) -> (xgpui_luma::theme::MetricTokens, xgpui_luma::controls::slider::SliderLook) {
+    size: xgpui_luma_look_shadcn::ShadcnSize,
+) -> (xgpui_luma_look_shadcn::ShadcnRadii, xgpui_luma::controls::slider::SliderLook) {
     use xgpui_luma_look_shadcn::paint::slider_look;
 
     let tokens = look.mode_tokens();
     let slider_look =
-        slider_look(tokens.as_ref(), look.mode(), ShadcnButtonStyle::Primary, size, None, InteractionState::default());
-    (tokens.metrics, slider_look)
+        slider_look(tokens.as_ref(), look.mode(), ShadcnButtonStyle::Primary, size, InteractionState::default());
+    (tokens.radii, slider_look)
 }

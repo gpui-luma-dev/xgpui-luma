@@ -287,17 +287,17 @@ fn compact_drag_preview_stays_beside_pointer() {
 
 #[test]
 fn neighboring_halves_share_one_gap_marker_and_destination() {
-    use crate::theme::{ControlSize, InteractionState};
+    use crate::theme::InteractionState;
     struct GapTheme(f32);
     impl TabsTheme for GapTheme {
-        fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook {
-            let mut look = DefaultTabsTheme::default().resolve_list(enabled, size);
+        fn resolve_list(&self, enabled: bool) -> TabsListLook {
+            let mut look = DefaultTabsTheme::default().resolve_list(enabled);
             look.gap = self.0;
             look.padding = 6.;
             look
         }
-        fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook {
-            DefaultTabsTheme::default().resolve_item(active, state, size)
+        fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
+            DefaultTabsTheme::default().resolve_item(active, state)
         }
         fn font_family(&self) -> gpui::SharedString {
             DefaultTabsTheme::default().font_family()

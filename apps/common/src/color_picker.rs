@@ -19,7 +19,6 @@ use xgpui_luma_color::color_slider::{
 use xgpui_luma_color::composition::ColorCompositionSync;
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverDismissPolicy, PopoverPlacement};
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use xgpui_luma_look_shadcn as shadcn;
 
@@ -97,12 +96,12 @@ impl ColorPickerPopover {
                 .rounded(px(0.0))
         });
         let hue_slider = ColorSliderBuilder::hue(format!("{instance_id}-hue"), hsv.h)
-            .size(ControlSize::Sm)
+            .size(xgpui_luma_color::ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge()
             .spawn(cx);
         let alpha_builder = ColorSliderBuilder::alpha(format!("{instance_id}-alpha"), hsv.a, hsv)
-            .size(ControlSize::Sm)
+            .size(xgpui_luma_color::ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let alpha_domain = alpha_builder.domain_renderer();

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::textarea::{TextAreaTheme, ThemedTextAreaTemplate};
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::{StandardBoxScale};
 
 use crate::look::ShadcnLook;
 
@@ -26,16 +26,16 @@ impl TextAreaTheme for ShadcnTextAreaTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: xgpui_luma::controls::textarea::TextAreaState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textarea::TextAreaLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textarea::textarea_look(
             tokens.as_ref(),
@@ -78,16 +78,16 @@ impl TextAreaTheme for ShadcnSurfaceTextAreaTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: xgpui_luma::controls::textarea::TextAreaState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textarea::TextAreaLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textarea::textarea_look(
             tokens.as_ref(),
@@ -130,16 +130,16 @@ impl TextAreaTheme for ShadcnInputTextAreaTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: xgpui_luma::controls::textarea::TextAreaState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textarea::TextAreaLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textarea::textarea_look(
             tokens.as_ref(),
@@ -178,16 +178,16 @@ impl TextAreaTheme for ShadcnPrimaryTextAreaTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         state: xgpui_luma::controls::textarea::TextAreaState,
         enabled: bool,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> xgpui_luma::controls::textarea::TextAreaLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::textarea::textarea_look(
             tokens.as_ref(),

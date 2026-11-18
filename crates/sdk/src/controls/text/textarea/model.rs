@@ -7,7 +7,6 @@ use super::template::template_with_modifier;
 use super::{TextArea, TextAreaLook, TextAreaState, TextAreaTemplate, default_textarea_template};
 use crate::controls::textarea::{TextAreaTheme, default_textarea_theme};
 use crate::infra::icon::IconSource;
-use crate::theme::ControlSize;
 
 pub type Validator = Arc<dyn Fn(&str) -> bool + Send + Sync>;
 pub type TextAreaLookOverride = Arc<dyn Fn(TextAreaLook) -> TextAreaLook + Send + Sync + 'static>;
@@ -21,7 +20,6 @@ pub struct TextAreaModel {
     pub(crate) scroll_interaction: ScrollInteraction,
     pub(crate) pointer_focus: crate::interaction::PointerFocusPolicy,
     pub(crate) full_width: bool,
-    pub(crate) size: ControlSize,
     pub(crate) rows: usize,
     pub(crate) clean_on_escape: bool,
     pub(crate) select_all_on_tab_focus: bool,
@@ -50,7 +48,6 @@ pub struct TextAreaRenderModel<'a> {
     pub value: &'a SharedString,
     pub enabled: bool,
     pub full_width: bool,
-    pub size: ControlSize,
     pub rows: usize,
     pub state: TextAreaState,
     pub caret_visible: bool,
@@ -127,7 +124,6 @@ impl TextAreaBuilder {
                 scroll_interaction: ScrollInteraction::DOCUMENT,
                 pointer_focus: Default::default(),
                 full_width: false,
-                size: ControlSize::Md,
                 rows: 4,
                 clean_on_escape: false,
                 select_all_on_tab_focus: false,
@@ -185,11 +181,6 @@ impl TextAreaBuilder {
 
     pub fn full_width(mut self, full_width: bool) -> Self {
         self.model.full_width = full_width;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

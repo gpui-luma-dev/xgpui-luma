@@ -2,7 +2,7 @@ use std::cell::Cell;
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, FontWeight, MouseButton, Stateful, Window, div, hsla, px, prelude::*};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole};
 use xgpui_luma::infra::ElementExt;
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use xgpui_luma::controls::button_family::ButtonFamilyLook;
@@ -204,7 +204,6 @@ where
                 move |_, _| div().child(label.clone()).into_any_element()
             }),
             role: ButtonFamilyRole::Text,
-            size: ButtonSize::Md,
             state: item.state.interaction_state(),
             round: false,
             radius_override: Cell::new(None),

@@ -259,6 +259,7 @@ impl<D: Clone + 'static> Button<D> {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> ButtonBuilder<D> {
+        let look = look.with_size(self.size);
         let style = self.style;
         let radius = self.radius;
         let template = std::sync::Arc::new(DefaultButtonTemplate::new(super::templates::styled_button_family_theme(
@@ -269,7 +270,6 @@ impl<D: Clone + 'static> Button<D> {
             .typed(self.data)
             .with_callbacks(self.callbacks)
             .template(template)
-            .size(self.size.control_size())
             .role(self.role)
             .round(self.round)
             .enabled(self.enabled)
@@ -283,7 +283,7 @@ impl<D: Clone + 'static> Button<D> {
                     geometry_look.mode(),
                     style,
                     model.role,
-                    model.size,
+                    geometry_look.size(),
                     Some(radius),
                     model.state,
                 )

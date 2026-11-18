@@ -10,9 +10,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, IntoElement, Pixels, SharedString, div, px, prelude::*};
-use xgpui_luma::controls::resizable_panels::{
-    PanelId, ResizablePanelSpec, ResizablePanels, ResizeHandleSize, ResizeHandleVisibility,
-};
+use xgpui_luma::controls::resizable_panels::{PanelId, ResizablePanelSpec, ResizablePanels, ResizeHandleVisibility};
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole};
 
 use crate::layout_config::{PanelAlignment, PrimarySideBarPosition};
@@ -93,10 +91,11 @@ impl WorkbenchLayout {
 
         // The workbench has three physical slots. Logical IDs let the shell swap
         // sidebar ownership without rebuilding the panel tree or losing sizes.
+        // Workbench splitters use the compact Shadcn handle.
         let panels = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm)
             .resizable_panels(format!("{id}-panels"))
             .handle_visibility(ResizeHandleVisibility::Hover)
-            .resize_handle(ResizeHandleSize::Sm)
             .handle_grip(true)
             .show_border(false)
             .region(

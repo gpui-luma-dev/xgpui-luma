@@ -2,7 +2,7 @@ use gpui::Hsla;
 use gpui::black;
 use xgpui_luma::controls::overlay_window::OverlayWindowLook;
 use xgpui_luma::controls::overlay_window::OverlayWindowMode;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 
 use crate::look::ShadcnLook;
 use crate::tokens::ShadcnFont;
@@ -10,16 +10,15 @@ use crate::tokens::ShadcnRadius;
 use crate::tokens::ShadcnShadow;
 use crate::tokens::ShadcnToken;
 
-pub fn overlay_window_look(theme: &ShadcnLook, size: ControlSize, mode: OverlayWindowMode) -> OverlayWindowLook {
+pub fn overlay_window_look(theme: &ShadcnLook, size: ShadcnSize, mode: OverlayWindowMode) -> OverlayWindowLook {
     let tokens = theme.mode_tokens();
-    let metrics = &tokens.metrics;
     let typography = &tokens.typography;
     let chrome = theme.chrome();
     let background = theme.token_color("popover").unwrap_or_else(|_| theme.color(ShadcnToken::Card));
     let foreground =
         theme.token_color("popover-foreground").unwrap_or_else(|_| theme.color(ShadcnToken::CardForeground));
     let border = theme.token_color("border").unwrap_or(chrome.border);
-    let baseline = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(size, mode);
+    let baseline = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(mode);
     let mut look = OverlayWindowLook {
         viewport_padding: baseline.viewport_padding,
         window_margin: baseline.window_margin,
@@ -36,14 +35,14 @@ pub fn overlay_window_look(theme: &ShadcnLook, size: ControlSize, mode: OverlayW
         },
         shadow: theme.shadow(ShadcnShadow::Lg),
         radius: theme.radius(ShadcnRadius::Lg),
-        padding: metrics.padding_x(size),
+        padding: tokens.control_sizes.padding_x(size),
         min_width: baseline.min_width,
         max_width: baseline.max_width,
         estimated_height: baseline.estimated_height,
         body: typography.text.body,
         font_family: theme.font(ShadcnFont::Sans),
     };
-    let geometry = tokens.stylesheet().common.overlay_window.inspect_geometry(
+    let geometry = tokens.stylesheet().common.overlay_window.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::OverlayWindowGeometry {
             padding: look.padding,
@@ -106,16 +105,16 @@ pub struct OverlayWindowMetricTable {
 
 pub fn resolve_overlay_window_metrics(
     look: &crate::ShadcnLook,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
     mode: xgpui_luma::controls::overlay_window::OverlayWindowMode,
 ) -> OverlayWindowMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
     let shell = crate::paint::overlay_window_look(look, size, mode);
     let size_key = match size {
-        xgpui_luma::theme::ControlSize::Sm => "sm",
-        xgpui_luma::theme::ControlSize::Md => "md",
-        xgpui_luma::theme::ControlSize::Lg => "lg",
+        crate::ShadcnSize::Sm => "sm",
+        crate::ShadcnSize::Md => "md",
+        crate::ShadcnSize::Lg => "lg",
     };
 
     let mut table = OverlayWindowMetricTable {
@@ -125,7 +124,7 @@ pub fn resolve_overlay_window_metrics(
         max_width: derived_metric(format!("{size_key} overlay max width"), shell.max_width),
         estimated_height: derived_metric(format!("{size_key} overlay estimated height"), shell.estimated_height),
     };
-    let geometry = look.mode_tokens().stylesheet().common.overlay_window.inspect_geometry(
+    let geometry = look.mode_tokens().stylesheet().common.overlay_window.inspect_geometry_for(
         size_key,
         xgpui_luma::theme::stylesheet::OverlayWindowGeometry {
             radius: table.radius.value_px,

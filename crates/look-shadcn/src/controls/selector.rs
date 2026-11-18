@@ -2,13 +2,14 @@
 
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::selector::{SelectorLook, SelectorPalette, SelectorTriggerStyle, SelectorVisualState};
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 
 use super::button::{ShadcnButtonStyle, button_elevation_shadow, button_palette};
 use super::selector_items_panel::selector_items_panel_look;
+use crate::size::ShadcnSize;
 
 fn shadcn_button_style(trigger_style: SelectorTriggerStyle) -> ShadcnButtonStyle {
     match trigger_style {
@@ -27,7 +28,7 @@ pub fn selector_palette(
     let ctx = LookContext::new(mode, theme_mode, state);
     let stylesheet = mode.stylesheet();
     let button_style = shadcn_button_style(trigger_style);
-    let button = button_palette(&ctx, stylesheet, button_style, ButtonFamilyRole::Text, ControlSize::Md);
+    let button = button_palette(&ctx, stylesheet, button_style, ButtonFamilyRole::Text, ShadcnSize::Md);
     let trigger_shadow = if without_elevation {
         None
     } else {
@@ -43,7 +44,7 @@ pub fn selector_palette(
         trigger_border: button.border,
         trigger_shadow,
         trigger_typography: button.typography,
-        items_panel: selector_items_panel_look(mode, theme_mode, ControlSize::Md),
+        items_panel: selector_items_panel_look(mode, theme_mode, ShadcnSize::Md),
     }
 }
 
@@ -52,7 +53,7 @@ pub fn selector_look(
     theme_mode: ThemeMode,
     trigger_style: SelectorTriggerStyle,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
     without_elevation: bool,
 ) -> SelectorLook {
@@ -93,7 +94,7 @@ pub fn selector_look_with_visual_state(
     theme_mode: ThemeMode,
     trigger_style: SelectorTriggerStyle,
     visual_state: SelectorVisualState,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
     without_elevation: bool,
 ) -> SelectorLook {
@@ -108,7 +109,7 @@ pub fn selector_look_with_visual_state(
 
 pub(crate) fn selector_geometry(
     mode: &ShadcnModeTokens,
-    size: ControlSize,
+    size: ShadcnSize,
     scale: &StandardBoxScale,
     typography: &xgpui_luma::theme::LumaTextStyle,
 ) -> xgpui_luma::theme::stylesheet::ResolvedSelectorGeometry {
@@ -121,9 +122,9 @@ pub(crate) fn selector_geometry(
     .icon_size;
     let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .selector
-        .authored_geometry(size.stylesheet_key());
-    let recipe = mode.stylesheet().common.selector.authored_geometry(size.stylesheet_key()).with_fallback(&baseline);
-    mode.stylesheet().common.selector.inspect_geometry(
+        .authored_geometry_for(size.key());
+    let recipe = mode.stylesheet().common.selector.authored_geometry_for(size.key()).with_fallback(&baseline);
+    mode.stylesheet().common.selector.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::SelectorGeometry {
             height: scale.height,
@@ -146,7 +147,7 @@ mod tests {
 
     use xgpui_luma::controls::button_family::ButtonFamilyRole;
     use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::controls::button::{ShadcnButtonStyle, button_palette};
@@ -190,7 +191,7 @@ mod tests {
             embedded_stylesheet(),
             ShadcnButtonStyle::Outline,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(selector.trigger_background, button.background);
@@ -211,7 +212,7 @@ mod tests {
             embedded_stylesheet(),
             ShadcnButtonStyle::Ghost,
             ButtonFamilyRole::Text,
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
 
         assert_eq!(selector.trigger_background, button.background);
@@ -233,13 +234,13 @@ mod tests {
     fn open_trigger_uses_hover_palette_but_disabled_still_wins() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let scale = xgpui_luma::theme::StandardBoxScale::compute(ControlSize::Md, &mode.metrics, 1.0);
+        let scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Md), 1.0);
         let open = selector_look_with_visual_state(
             &mode,
             ThemeMode::Light,
             SelectorTriggerStyle::Outline,
             SelectorVisualState { open: true, ..Default::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             &scale,
             false,
         );
@@ -248,7 +249,7 @@ mod tests {
             ThemeMode::Light,
             SelectorTriggerStyle::Outline,
             InteractionState { hovered: true, ..Default::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             &scale,
             false,
         );
@@ -261,7 +262,7 @@ mod tests {
                 interaction: InteractionState { disabled: true, ..Default::default() },
                 ..Default::default()
             },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             &scale,
             false,
         );
@@ -270,7 +271,7 @@ mod tests {
             ThemeMode::Light,
             SelectorTriggerStyle::Outline,
             InteractionState { disabled: true, ..Default::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
             &scale,
             false,
         );
@@ -295,15 +296,15 @@ mod tests {
     fn selector_trigger_typography_uses_stylesheet_font_size() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let sm_scale = xgpui_luma::theme::StandardBoxScale::compute(ControlSize::Sm, &mode.metrics, 1.0);
-        let lg_scale = xgpui_luma::theme::StandardBoxScale::compute(ControlSize::Lg, &mode.metrics, 1.0);
+        let sm_scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Sm), 1.0);
+        let lg_scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Lg), 1.0);
 
         let sm = selector_look(
             &mode,
             ThemeMode::Light,
             SelectorTriggerStyle::Outline,
             InteractionState::default(),
-            ControlSize::Sm,
+            crate::ShadcnSize::Sm,
             &sm_scale,
             false,
         );
@@ -312,7 +313,7 @@ mod tests {
             ThemeMode::Light,
             SelectorTriggerStyle::Outline,
             InteractionState::default(),
-            ControlSize::Lg,
+            crate::ShadcnSize::Lg,
             &lg_scale,
             false,
         );

@@ -643,7 +643,6 @@ fn render_pager_button(
         data: (),
         content: spec.content,
         role: spec.role,
-        size: crate::controls::button_family::ButtonSize::Sm,
         state: InteractionState { disabled, ..InteractionState::default() },
         round: false,
         radius_override: std::cell::Cell::new(Some(look.radius)),

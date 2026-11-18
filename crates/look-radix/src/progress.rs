@@ -2,7 +2,7 @@
 use std::sync::Arc;
 use gpui::{BoxShadow, div, point, prelude::*, px};
 use xgpui_luma::controls::progress::{ProgressLook, ProgressTemplate, ProgressTheme, ThemedLinearProgressTemplate};
-use xgpui_luma::theme::ControlSize;
+use crate::RadixSize;
 use crate::{Look, Paint, Radius, ScaleFamily, Tone};
 
 /// Radix progress bar variants.
@@ -51,22 +51,22 @@ impl ProgressSize {
             Self::Three => "Size 3",
         }
     }
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => RadixSize::One,
+            Self::Two => RadixSize::Two,
+            Self::Three => RadixSize::Three,
         }
     }
 }
-fn height(size: ControlSize) -> f32 {
+fn height(size: RadixSize) -> f32 {
     crate::look::embedded_common_stylesheet()
         .progress
-        .resolve_geometry(crate::look::sdk_size_key(size), Default::default())
+        .resolve_geometry_for(size.key(), Default::default())
         .track_height
 }
 /// Matches Radix's radius-factor and radius-thumb rules, capped at half the height.
-pub fn resolve_progress_radius(size: ControlSize, radius: Radius) -> f32 {
+pub fn resolve_progress_radius(size: RadixSize, radius: Radius) -> f32 {
     progress_radius_for_height(height(size), radius)
 }
 
@@ -83,7 +83,8 @@ struct ProgressThemeAdapter {
     paint: Paint,
 }
 impl ProgressTheme for ProgressThemeAdapter {
-    fn resolve(&self, enabled: bool, size: ControlSize) -> ProgressLook {
+    fn resolve(&self, enabled: bool) -> ProgressLook {
+        let size = self.look.size();
         let family = match self.paint.tone {
             Tone::Accent => ScaleFamily::Color,
             Tone::Gray => ScaleFamily::Gray,
@@ -108,17 +109,13 @@ impl ProgressTheme for ProgressThemeAdapter {
             .look
             .stylesheet_snapshot()
             .progress
-            .resolve_geometry(
-                crate::look::sdk_size_key(size),
+            .resolve_geometry_for(
+                size.key(),
                 xgpui_luma::theme::stylesheet::ProgressGeometry { track_height: height(size), ..Default::default() },
             )
             .track_height;
         ProgressLook {
-            geometry: self
-                .look
-                .stylesheet_snapshot()
-                .progress
-                .resolve_geometry(size.stylesheet_key(), Default::default()),
+            geometry: self.look.stylesheet_snapshot().progress.resolve_geometry_for(size.key(), Default::default()),
             track_color: track,
             progress_color: fill,
             thumb_color: fill,
@@ -147,7 +144,7 @@ pub fn progress_template(
     if variant == ProgressVariant::Surface {
         let look = look.clone();
         Arc::new(template.with_modifier(move |root, model| {
-            let height = theme.resolve(model.enabled, model.size).track_height;
+            let height = theme.resolve(model.enabled).track_height;
             root.child(div().absolute().inset_0().rounded(px(progress_radius_for_height(height, radius))).shadow(vec![
                 BoxShadow {
                     offset: point(px(0.0), px(0.0)),
@@ -177,7 +174,7 @@ mod tests {
                 assert_eq!(resolve_progress_radius(size, radius), height(size) / 2.0);
             }
         }
-        assert_eq!([height(ControlSize::Sm), height(ControlSize::Md), height(ControlSize::Lg)], [4.0, 6.0, 8.0]);
+        assert_eq!([height(RadixSize::One), height(RadixSize::Two), height(RadixSize::Three)], [4.0, 6.0, 8.0]);
     }
     #[test]
     fn palettes_follow_mode_tone_contrast_and_disabled_state() {
@@ -193,7 +190,7 @@ mod tests {
                     };
                     for high_contrast in [false, true] {
                         let theme = progress_theme_with(&look, variant, Paint { tone, high_contrast });
-                        let normal = theme.resolve(true, ControlSize::Md);
+                        let normal = theme.resolve(true);
                         let step = if high_contrast {
                             12
                         } else if variant == ProgressVariant::Soft {
@@ -202,10 +199,7 @@ mod tests {
                             9
                         };
                         assert_eq!(normal.progress_color, look.resolve_step(family, step).hsla());
-                        assert_eq!(
-                            theme.resolve(false, ControlSize::Md).progress_color,
-                            look.resolve_step(ScaleFamily::Gray, 8).hsla()
-                        );
+                        assert_eq!(theme.resolve(false).progress_color, look.resolve_step(ScaleFamily::Gray, 8).hsla());
                     }
                 }
             }
@@ -235,7 +229,6 @@ mod render_tests {
 
     struct Harness {
         template: Arc<dyn ProgressTemplate>,
-        size: ControlSize,
         direction: ProgressDirection,
         percentage: f32,
     }
@@ -248,7 +241,6 @@ mod render_tests {
                 range: Default::default(),
                 value: self.percentage * 100.0,
                 percentage: self.percentage,
-                size: self.size,
                 enabled: true,
                 direction: self.direction,
                 show_thumb: false,
@@ -275,14 +267,14 @@ mod render_tests {
                         for percentage in [0.0, 0.01, 0.5, 0.99, 1.0] {
                             let mut app = TestAppContext::single();
                             let (_, cx) = app.add_window_view(|_, _| Harness {
-                                template: progress_template(&look, variant, Paint::accent(), radius),
-                                size,
+                                template: progress_template(&look.with_size(size), variant, Paint::accent(), radius),
                                 direction,
                                 percentage,
                             });
                             cx.run_until_parked();
                             cx.update(|window, _| {
-                                let colors = progress_theme_with(&look, variant, Paint::accent()).resolve(true, size);
+                                let colors =
+                                    progress_theme_with(&look.with_size(size), variant, Paint::accent()).resolve(true);
                                 let quads = window.painted_quads();
                                 let track =
                                     quads.iter().find(|q| q.background.as_solid() == Some(colors.track_color)).unwrap();

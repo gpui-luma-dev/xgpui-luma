@@ -12,7 +12,7 @@ use crate::chrome_tokens::swatch_checkerboard_colors;
 use crate::style::ActiveTheme;
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
-use xgpui_luma::theme::ControlSize;
+use crate::size::ColorControlSize;
 
 /// Typed payload for a button-backed color swatch.
 /// The source space/components are retained; rendering resolves a cached sRGB preview.
@@ -111,7 +111,7 @@ impl ButtonTemplate<ColorSwatchData> for ColorSwatchButtonTemplate {
 pub struct ColorSwatch {
     color: ColorValue,
     mapping: GamutMapping,
-    size: ControlSize,
+    size: ColorControlSize,
     custom_height: Option<Pixels>,
     corner_radius: Option<Pixels>,
     checkerboard: bool,
@@ -121,14 +121,14 @@ pub struct ColorSwatch {
 impl ColorSwatch {
     /// Creates a swatch for the given color.
     ///
-    /// The default sizing is `ControlSize::Md`, but callers can override the
+    /// The default sizing is `ColorControlSize::Medium`, but callers can override the
     /// height or rounded radius after construction.
     /// Invalid source values render transparently; validate untrusted input before use.
     pub fn new(color: ColorValue) -> Self {
         Self {
             color,
             mapping: GamutMapping::CssLocalMinde,
-            size: ControlSize::Md,
+            size: ColorControlSize::Medium,
             custom_height: None,
             corner_radius: None,
             checkerboard: false,
@@ -146,7 +146,7 @@ impl ColorSwatch {
     ///
     /// This picks a default height and corner radius from the control-size
     /// scale when the caller has not provided explicit values.
-    pub fn size(mut self, size: ControlSize) -> Self {
+    pub fn size(mut self, size: ColorControlSize) -> Self {
         self.size = size;
         self
     }
@@ -185,19 +185,19 @@ impl ColorSwatch {
         self
     }
 
-    fn height_for_size(size: ControlSize) -> Pixels {
+    fn height_for_size(size: ColorControlSize) -> Pixels {
         match size {
-            ControlSize::Sm => px(28.0),
-            ControlSize::Md => px(36.0),
-            ControlSize::Lg => px(44.0),
+            ColorControlSize::Small => px(28.0),
+            ColorControlSize::Medium => px(36.0),
+            ColorControlSize::Large => px(44.0),
         }
     }
 
-    fn default_radius(size: ControlSize) -> Pixels {
+    fn default_radius(size: ColorControlSize) -> Pixels {
         match size {
-            ControlSize::Sm => px(6.0),
-            ControlSize::Md => px(8.0),
-            ControlSize::Lg => px(12.0),
+            ColorControlSize::Small => px(6.0),
+            ColorControlSize::Medium => px(8.0),
+            ColorControlSize::Large => px(12.0),
         }
     }
 }

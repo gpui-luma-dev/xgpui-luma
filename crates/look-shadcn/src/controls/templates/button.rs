@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
 use xgpui_luma::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
 use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::button::{ShadcnButtonStyle, button_look_with_stylesheet, button_palette};
 use crate::look::ShadcnLook;
@@ -15,7 +15,8 @@ struct ShadcnStyledButtonFamilyTheme {
 }
 
 impl ButtonFamilyTheme for ShadcnStyledButtonFamilyTheme {
-    fn resolve(&self, role: ButtonFamilyRole, size: ControlSize, state: InteractionState) -> ButtonFamilyPalette {
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let stylesheet = self.theme.stylesheet();
         let ctx = LookContext::new(tokens.as_ref(), self.theme.mode(), state);
@@ -25,11 +26,11 @@ impl ButtonFamilyTheme for ShadcnStyledButtonFamilyTheme {
     fn resolve_look(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
         state: InteractionState,
         _scale: &xgpui_luma::theme::StandardBoxScale,
         _pill_radius: f32,
     ) -> Option<xgpui_luma::controls::button_family::ButtonFamilyLook> {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         Some(button_look_with_stylesheet(
             tokens.as_ref(),
@@ -44,7 +45,7 @@ impl ButtonFamilyTheme for ShadcnStyledButtonFamilyTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 
@@ -68,8 +69,8 @@ pub fn toggle_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn B
             return element;
         }
 
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.size, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.size, model.state);
+        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
+        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
         apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
     }))
 }
@@ -87,8 +88,8 @@ pub fn animated_toggle_item_template(
     let button_family_theme = styled_button_family_theme(theme, style);
     let theme_for_mod = Arc::clone(&button_family_theme);
     Arc::new(DefaultButtonTemplate::<ToggleData>::new(button_family_theme).with_modifier(move |element, model| {
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.size, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.size, model.state);
+        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
+        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
         apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
     }))
 }

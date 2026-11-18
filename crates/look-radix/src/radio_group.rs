@@ -158,7 +158,7 @@ impl<T: ControlGroupItemLike + 'static> RadioGroup<T> {
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
             self.builder
-                .stylesheet(&look.common_stylesheet())
+                .stylesheet(&look.sized_stylesheet(look.size()))
                 .motion_defaults(look.motion_defaults().control_group)
                 .template(radio_group_template(&look, self.variant, self.paint, self.size, self.layout))
                 .spawn(cx)
@@ -285,10 +285,9 @@ mod tests {
             });
             cx.update(|window, _| {
                 let theme = radio_theme_for(&Look::built_in(), RadioVariant::Surface, Paint::accent(), RadioSize::Two);
-                let size = RadioSize::Two.control_size();
-                let scale = theme.scale(size, window.scale_factor());
+                let scale = theme.scale(window.scale_factor());
                 let mut expected = theme
-                    .resolve(false, xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() }, size)
+                    .resolve(false, xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() })
                     .indicator_background;
                 expected.a *= scale.disabled_opacity;
                 assert!(
@@ -307,7 +306,7 @@ mod tests {
         let look = Look::built_in();
         for size in RadioSize::ALL {
             let theme = radio_theme_for(&look, RadioVariant::Surface, Paint::accent(), size);
-            let palette = theme.resolve(false, Default::default(), xgpui_luma::theme::ControlSize::Md);
+            let palette = theme.resolve(false, Default::default());
             let expected = crate::typography::label_typography(size.control_size());
             assert_eq!(palette.label_typography.size, expected.size);
             assert_eq!(palette.label_typography.line_height, expected.line_height);

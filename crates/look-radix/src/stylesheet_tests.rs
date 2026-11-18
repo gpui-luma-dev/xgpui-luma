@@ -1,6 +1,6 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 use super::*;
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 use xgpui_luma::controls::{
     button_family::ButtonFamilyRole, textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant,
 };
@@ -26,14 +26,15 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             }
         }
         for (sdk, checkbox_size, radio_size, edge, glyph, font, line, progress_height) in [
-            (ControlSize::Sm, CheckboxSize::One, RadioSize::One, 14.0, 9.0, 12.5, 18.0, 4.0),
-            (ControlSize::Md, CheckboxSize::Two, RadioSize::Two, 16.0, 10.0, 14.0, 20.0, 6.0),
-            (ControlSize::Lg, CheckboxSize::Three, RadioSize::Three, 20.0, 12.0, 16.0, 22.0, 8.0),
+            (RadixSize::One, CheckboxSize::One, RadioSize::One, 14.0, 9.0, 12.5, 18.0, 4.0),
+            (RadixSize::Two, CheckboxSize::Two, RadioSize::Two, 16.0, 10.0, 14.0, 20.0, 6.0),
+            (RadixSize::Three, CheckboxSize::Three, RadioSize::Three, 20.0, 12.0, 16.0, 22.0, 8.0),
         ] {
             for radius in Radius::ALL {
                 for variant in [CheckboxVariant::Classic, CheckboxVariant::Surface, CheckboxVariant::Soft] {
                     let actual =
-                        checkbox_theme_for(&look, variant, Paint::accent(), checkbox_size, radius).scale(sdk, 2.0);
+                        checkbox_theme_for(&look.with_size(sdk), variant, Paint::accent(), checkbox_size, radius)
+                            .scale(2.0);
                     assert_eq!(
                         (actual.indicator_size, actual.glyph_size, actual.height, actual.gap),
                         (edge, glyph, edge, 8.0)
@@ -42,23 +43,22 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
                 }
             }
             for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
-                let actual = radio_theme_for(&look, variant, Paint::accent(), radio_size).scale(sdk, 2.0);
+                let actual = radio_theme_for(&look.with_size(sdk), variant, Paint::accent(), radio_size).scale(2.0);
                 assert_eq!(
                     (actual.indicator_size, actual.dot_size, actual.gap, actual.control_radius),
                     (edge, edge * 0.4, 8.0, edge / 2.0)
                 );
             }
-            let scale = StandardBoxScale::compute(sdk, &look.metrics(), 2.0);
+            let scale = StandardBoxScale::compute(&look.metrics_for(sdk), 2.0);
             for bits in 0..16 {
                 let hovered = bits & 1 != 0;
                 let focused = bits & 2 != 0;
                 let invalid = bits & 4 != 0;
                 let enabled = bits & 8 == 0;
                 for variant in TextFieldVariant::ALL {
-                    let field = textfield_theme_with(&look, variant).resolve_look(
+                    let field = textfield_theme_with(&look.with_size(sdk), variant).resolve_look(
                         TextFieldState { hovered, focused, invalid, ..Default::default() },
                         enabled,
-                        sdk,
                         &scale,
                     );
                     assert_eq!(
@@ -66,10 +66,9 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
                         (scale.height, scale.padding_x, scale.padding_y, scale.radius)
                     );
                     assert_eq!((field.typography.size, field.typography.line_height), (font, line));
-                    let area = textarea_theme_with(&look, variant).resolve_look(
+                    let area = textarea_theme_with(&look.with_size(sdk), variant).resolve_look(
                         TextAreaState { hovered, focused, invalid, ..Default::default() },
                         enabled,
-                        sdk,
                         &scale,
                     );
                     assert_eq!(
@@ -82,7 +81,9 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             for variant in ProgressVariant::ALL {
                 for enabled in [true, false] {
                     assert_eq!(
-                        progress_theme_with(&look, variant, Paint::accent()).resolve(enabled, sdk).track_height,
+                        progress_theme_with(&look.with_size(sdk), variant, Paint::accent())
+                            .resolve(enabled)
+                            .track_height,
                         progress_height
                     );
                 }
@@ -117,7 +118,7 @@ fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
         }
     }
     // SDK helper recipes are inherited alongside Radix's own semantic sizes.
-    assert_eq!(stylesheet.tooltip.sizes.custom.keys().map(String::as_str).collect::<Vec<_>>(), vec!["compact"]);
+    assert_eq!(stylesheet.tooltip.sizes.keys().collect::<Vec<_>>(), vec!["compact"]);
     assert_eq!(stylesheet.toolbar.sizes, Default::default());
 }
 
@@ -155,14 +156,14 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
-    assert_eq!(checkbox.scale(ControlSize::Lg, 1.0).indicator_size, 25.0);
-    assert_eq!(radio.scale(ControlSize::Lg, 1.0).dot_size, 0.0);
-    let scale = StandardBoxScale::compute(ControlSize::Md, &fork.metrics(), 1.0);
-    assert_eq!(field.resolve_look(Default::default(), true, ControlSize::Md, &scale).padding_x, 0.0);
-    assert_eq!(area.resolve_look(Default::default(), true, ControlSize::Md, &scale).min_height, 73.0);
-    assert_eq!(progress.resolve(true, ControlSize::Md).track_height, 11.0);
-    assert_eq!(toolbar.resolve(true, ControlSize::Md, ToolbarVariant::Outline).gap, 0.0);
-    assert_eq!(explicit_toolbar.resolve(true, ControlSize::Md, ToolbarVariant::Outline).gap, 17.0);
+    assert_eq!(checkbox.scale(1.0).indicator_size, 25.0);
+    assert_eq!(radio.scale(1.0).dot_size, 0.0);
+    let scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
+    assert_eq!(field.resolve_look(Default::default(), true, &scale).padding_x, 0.0);
+    assert_eq!(area.resolve_look(Default::default(), true, &scale).min_height, 73.0);
+    assert_eq!(progress.resolve(true).track_height, 11.0);
+    assert_eq!(toolbar.resolve(true, ToolbarVariant::Outline).gap, 0.0);
+    assert_eq!(explicit_toolbar.resolve(true, ToolbarVariant::Outline).gap, 17.0);
     assert_eq!(tooltip.resolve().max_width, 420.0);
     assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (18.0, -18.0));
     assert_eq!(explicit_card.resolve_style().padding, 21.0);
@@ -179,8 +180,8 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
         240.0
     );
     assert_eq!(
-        overlay_window_theme(&fork)
-            .resolve(ControlSize::Sm, xgpui_luma::controls::overlay_window::OverlayWindowMode::Modal)
+        overlay_window_theme(&fork.with_size(RadixSize::One))
+            .resolve(xgpui_luma::controls::overlay_window::OverlayWindowMode::Modal)
             .min_width,
         300.0
     );
@@ -189,13 +190,7 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     assert_eq!((box_.height, box_.radius), (57.0, 28.5));
     assert_eq!(button_box_for(ButtonSize::Three, Radius::Full).height, 40.0);
     let theme = button_family_theme(&fork, ButtonVariant::Soft);
-    assert_eq!(
-        theme
-            .resolve_look(ButtonFamilyRole::Icon, ControlSize::Md, Default::default(), &scale, 999.0)
-            .unwrap()
-            .height,
-        32.0
-    );
+    assert_eq!(theme.resolve_look(ButtonFamilyRole::Icon, Default::default(), &scale, 999.0).unwrap().height, 32.0);
 }
 
 #[test]
@@ -203,9 +198,9 @@ fn toggle_size_four_is_not_collapsed_into_sdk_lg() {
     let look = Look::built_in();
     let theme =
         crate::button::button_family_theme_for_size(&look, ButtonVariant::Soft, Paint::accent(), ButtonSize::Four);
-    let scale = StandardBoxScale::compute(ControlSize::Lg, &look.metrics(), 1.0);
+    let scale = StandardBoxScale::compute(&look.metrics_for(RadixSize::Three), 1.0);
     let resolved = theme
-        .resolve_look(ButtonFamilyRole::Toggle { selected: false }, ControlSize::Lg, Default::default(), &scale, 999.0)
+        .resolve_look(ButtonFamilyRole::Toggle { selected: false }, Default::default(), &scale, 999.0)
         .unwrap();
     assert_eq!((resolved.height, resolved.padding_x, resolved.typography.size), (48.0, 24.0, 18.0));
 }

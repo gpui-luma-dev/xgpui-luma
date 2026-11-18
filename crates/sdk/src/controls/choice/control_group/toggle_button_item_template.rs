@@ -44,7 +44,6 @@ where
                 move |_, _| content_fn(&item_data)
             }),
             role: ButtonFamilyRole::Toggle { selected: item.selected },
-            size: crate::controls::button_family::ButtonSize::Sm,
             state: item.state.interaction_state(),
             round,
             radius_override: std::cell::Cell::new(None),

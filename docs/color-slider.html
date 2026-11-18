@@ -25,7 +25,7 @@
 <section id="use"><h2>Basic use</h2><div class="codebox"><div class="codebar"><span>Hue slider with preview and commit</span><button class="copy" aria-label="Copy Hue slider with preview and commit">Copy</button></div><pre><code class="language-rust" data-live-example="color-slider-basic">use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::slider::{SliderControl, SliderEventExt};
 use xgpui_luma_color::color_slider::ColorSliderBuilder;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 
 struct Example {
     control: Entity&lt;SliderControl&gt;,
@@ -35,7 +35,7 @@ struct Example {
 impl Example {
     fn new(cx: &amp;mut Context&lt;Self&gt;) -&gt; Self {
         let control = ColorSliderBuilder::hue(&quot;hue&quot;, 210.0)
-            .size(ControlSize::Sm).thumb_medium()
+            .size(ColorControlSize::Small).thumb_medium()
             .spawn(cx)
             .on_value_changed(cx, |owner: &amp;mut Self, _, value, cx| {
                 owner.preview = value;
@@ -86,7 +86,7 @@ fn gradient(cx: &amp;mut gpui::Context&lt;Example&gt;)
 </tbody>
 </table>
 </div><p>These are SDK <code>SliderEvent</code> callbacks, available through <code>SliderEventExt</code>. The builders return <code>Entity&lt;SliderControl&gt;</code>. Each callback receives the owner, the listed payload values, and the owner context. Register callbacks after <code>spawn</code>; use <code>on_event</code> or <code>cx.subscribe</code> for the full event stream. See <a href="slider.html#events">Slider events</a>.</p></section>
-<section id="style"><h2>Appearance and synchronization</h2><p>Use <code>horizontal</code>/<code>vertical</code>, <code>size(ControlSize)</code>, <code>thumb_size(SliderThumbSize)</code>, <code>thumb_square</code>, <code>thumb_bar</code>, <code>rounded</code>, and <code>edge_to_edge</code>. Gradient interpolation supports RGB, HSL, and Lab. <code>multi_stop</code>, <code>dual_stop</code>, and <code>thumb_policy</code> configure multiple thumbs.</p><p>Capture <code>domain_renderer()</code> and <code>track_context()</code> before consuming the builder. When a base color changes, replace its delegate with <code>update_domain_delegate</code> and call <code>refresh_color_slider</code> to refresh thumb previews. <code>ColorCompositionSync::sync_color_slider</code> combines these updates. Changing only the numeric slider value does not replace a delegate’s color specification.</p></section>
+<section id="style"><h2>Appearance and synchronization</h2><p>Use <code>horizontal</code>/<code>vertical</code>, <code>size(ColorControlSize)</code>, <code>thumb_size(ThumbSize)</code>, <code>thumb_square</code>, <code>thumb_bar</code>, <code>rounded</code>, and <code>edge_to_edge</code>. Gradient interpolation supports RGB, HSL, and Lab. <code>multi_stop</code>, <code>dual_stop</code>, and <code>thumb_policy</code> configure multiple thumbs.</p><p>Capture <code>domain_renderer()</code> and <code>track_context()</code> before consuming the builder. When a base color changes, replace its delegate with <code>update_domain_delegate</code> and call <code>refresh_color_slider</code> to refresh thumb previews. <code>ColorCompositionSync::sync_color_slider</code> combines these updates. Changing only the numeric slider value does not replace a delegate’s color specification.</p></section>
 <section id="custom-thumbs"><h2>Custom thumb painting</h2><p>Implement <code>ColorSliderDelegate::thumb_painter(&amp;self, context: &amp;ColorSliderTrackContext, position: f32) -&gt; Option&lt;ColorThumbPainter&gt;</code> to supply a custom thumb background for a normalized track position. The default returns <code>None</code>, preserving the normal thumb preview. <code>ColorSliderBuilder::new</code> connects the delegate to the thumb template automatically; track painting and slider behavior remain owned by their existing delegate and SDK control.</p><p><code>ColorThumbPainter</code> is an <code>Arc</code> callback that receives <code>Bounds&lt;Pixels&gt;</code>, a mutable <code>Window</code>, and a mutable <code>App</code>, and returns <code>anyhow::Result&lt;()&gt;</code>. The callback must be <code>Send + Sync</code>. The thumb invokes it inside an inset canvas over the normal background. Paint failures are currently discarded by the thumb renderer, so handle any required diagnostics in the callback.</p><p>For a custom template that constructs its own <code>ColorThumb</code>, attach the painter directly with <code>background_painter</code>:</p><div class="codebox"><div class="codebar"><span>Custom thumb template helper</span><button class="copy" aria-label="Copy custom thumb template helper">Copy</button></div><pre><code class="language-rust">fn custom_thumb(
     painter: xgpui_luma_color::color_slider::color_thumb::ColorThumbPainter,
 ) -&gt; xgpui_luma_color::color_slider::color_thumb::ColorThumb {

@@ -10,7 +10,6 @@ use super::control::StepperControl;
 use super::template::{default_stepper_template, template_with_modifier};
 use super::StepperTemplate;
 use crate::controls::progress::ProgressDirection;
-use crate::theme::ControlSize;
 use crate::infra::icon::SelectionStatusIcons;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -51,7 +50,6 @@ pub struct StepperModel {
     pub(crate) labels: Vec<SharedString>,
     pub(crate) label_placement: StepperLabelPlacement,
     pub(crate) direction: ProgressDirection,
-    pub(crate) size: ControlSize,
     pub(crate) enabled: bool,
     pub(crate) workflow_complete: bool,
     pub(crate) motion_enabled: bool,
@@ -76,7 +74,6 @@ pub struct StepperRenderModel<'a> {
     pub labels: &'a [SharedString],
     pub label_placement: StepperLabelPlacement,
     pub direction: ProgressDirection,
-    pub size: ControlSize,
     pub enabled: bool,
     pub step_contents: &'a [Option<StepperContentRenderer>],
     pub content_height: Option<f32>,
@@ -108,7 +105,6 @@ impl StepperBuilder {
                 labels: Vec::new(),
                 label_placement: StepperLabelPlacement::default(),
                 direction: ProgressDirection::default(),
-                size: ControlSize::Md,
                 enabled: true,
                 workflow_complete: false,
                 motion_enabled: true,
@@ -165,11 +161,6 @@ impl StepperBuilder {
 
     pub fn direction(mut self, direction: ProgressDirection) -> Self {
         self.model.direction = direction;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

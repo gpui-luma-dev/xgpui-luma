@@ -297,23 +297,22 @@ pub struct ToolbarMetricTable {
 pub fn resolve_toolbar_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> ToolbarMetricTable {
     use crate::tables::metrics::helpers::{control_size_key, derived_metric, scaffold_control_metric};
 
     let ctx = crate::LookContext::new(mode, theme_mode, Default::default());
-    let metrics = ctx.metrics();
-    let control = metrics.for_size(size);
+    let control = ctx.controls().for_size(size);
     let size_key = control_size_key(size);
 
     let mut table = ToolbarMetricTable {
-        radius: derived_metric("toolbar radius = radius.md", metrics.radius.md),
+        radius: derived_metric("toolbar radius = radius.medium", ctx.radii().medium),
         padding_x: derived_metric("toolbar padding x = 6px", 6.0),
         padding_y: derived_metric("toolbar padding y = 4px", 4.0),
         gap: derived_metric(format!("{size_key} toolbar gap = control gap"), control.gap),
         separator_height: scaffold_control_metric(size_key, "height", control.height),
     };
-    let geometry = mode.stylesheet().common.toolbar.inspect_geometry(
+    let geometry = mode.stylesheet().common.toolbar.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::ToolbarGeometry {
             padding_x: table.padding_x.value_px,

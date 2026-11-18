@@ -17,17 +17,15 @@ struct ContextMenuThemeAdapter {
 impl ContextMenuTheme for ContextMenuThemeAdapter {
     fn resolve(&self, state: InteractionState) -> ContextMenuLook {
         let metrics = self.look.metrics();
-        let baseline =
-            xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().context_menu.authored_geometry("");
-        let recipe = self.look.common_stylesheet().context_menu.authored_geometry("").with_fallback(&baseline);
+        let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().context_menu.authored_geometry();
+        let recipe = self.look.common_stylesheet().context_menu.authored_geometry().with_fallback(&baseline);
         let geometry = self.look.common_stylesheet().context_menu.resolve_geometry(
-            "",
             xgpui_luma::theme::stylesheet::ContextMenuGeometry {
                 min_width: xgpui_luma::controls::context_menu::default_context_menu_theme()
                     .resolve(state)
                     .target_min_width,
-                padding_x: metrics.control.md.padding_x,
-                padding_y: metrics.control.md.padding_y,
+                padding_x: metrics.control.padding_x,
+                padding_y: metrics.control.padding_y,
                 font_size: xgpui_luma::theme::ThemeTokens::default().typography.text.label.size,
                 line_height: xgpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
                 ..Default::default()
@@ -59,7 +57,7 @@ impl ContextMenuTheme for ContextMenuThemeAdapter {
                 line_height: geometry.line_height,
                 weight: FontWeight::NORMAL,
             },
-            target_radius: metrics.radius.md,
+            target_radius: crate::RadixRadii::DEFAULT.medium,
             target_padding_x: geometry.padding_x,
             target_padding_y: geometry.padding_y,
             target_min_width: geometry.min_width,
@@ -67,7 +65,7 @@ impl ContextMenuTheme for ContextMenuThemeAdapter {
         }
     }
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 }
 pub fn context_menu_theme(look: &Look, variant: ContextMenuVariant, tone: Tone) -> Arc<dyn ContextMenuTheme> {

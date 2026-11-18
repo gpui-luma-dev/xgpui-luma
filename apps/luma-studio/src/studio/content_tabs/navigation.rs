@@ -7,18 +7,21 @@ use xgpui_luma::controls::tabs::{
     TabsIndicatorMotion, TabsRenderModel, TabsTemplate, TabsTemplateHandlers, TabsTheme, render_tab_button,
     resolve_tabs_uniform_item_width,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
-pub fn luma_studio_tabs_template(look: Arc<ShadcnLook>, tab_size: ControlSize) -> Arc<dyn TabsTemplate> {
+pub fn luma_studio_tabs_template(
+    look: Arc<ShadcnLook>,
+    tab_size: xgpui_luma_look_shadcn::ShadcnSize,
+) -> Arc<dyn TabsTemplate> {
     let full_bar_color = look.token_color("border").unwrap_or(look.chrome().border);
-    Arc::new(LumaStudioTabsTemplate { theme: look.tabs_theme(), full_bar_color, tab_size })
+    Arc::new(LumaStudioTabsTemplate { theme: look.with_size(tab_size).tabs_theme(), full_bar_color })
 }
 
 struct LumaStudioTabsTemplate {
+    /// Tabs theme for the selected Shadcn size; the SDK sees resolved pixels only.
     theme: Arc<dyn TabsTheme>,
     full_bar_color: Hsla,
-    tab_size: ControlSize,
 }
 
 impl TabsTemplate for LumaStudioTabsTemplate {
@@ -29,15 +32,13 @@ impl TabsTemplate for LumaStudioTabsTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div> {
-        let list_look = self.theme.resolve_list(model.enabled, self.tab_size);
-        let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), self.tab_size, window);
+        let list_look = self.theme.resolve_list(model.enabled);
+        let uniform_width = resolve_tabs_uniform_item_width(model, self.theme.as_ref(), window);
 
         let active_item = model.items.iter().find(|item| item.active);
-        let active_look =
-            active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state(), self.tab_size));
+        let active_look = active_item.map(|item| self.theme.resolve_item(true, item.state.interaction_state()));
         if let Some(motion) = model.indicator_motion {
-            let look = active_look
-                .unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default(), self.tab_size));
+            let look = active_look.unwrap_or_else(|| self.theme.resolve_item(true, InteractionState::default()));
             motion.set_metrics(look.padding_x, look.indicator_height, look.indicator);
         }
 
@@ -69,8 +70,8 @@ impl TabsTemplate for LumaStudioTabsTemplate {
         }
 
         for (item, item_handlers) in model.items.iter().zip(handlers.into_item_handlers()) {
-            let look = self.theme.resolve_item(item.active, item.state.interaction_state(), self.tab_size);
-            let mut tab = render_tab_button(model.id, item, look, self.theme.font_family(), self.tab_size, window, cx)
+            let look = self.theme.resolve_item(item.active, item.state.interaction_state());
+            let mut tab = render_tab_button(model.id, item, look, self.theme.font_family(), window, cx)
                 .control_group_item_handlers(item_handlers);
 
             if let Some(width) = uniform_width {
@@ -126,7 +127,7 @@ mod tests {
         let (page, cx) = app.add_window_view(|window, cx| {
             window.activate_window();
             let builder = xgpui_luma::controls::tabs::Tabs::new("luma-studio-content-tabs")
-                .template(luma_studio_tabs_template(look.clone(), ControlSize::Lg))
+                .template(luma_studio_tabs_template(look.clone(), xgpui_luma_look_shadcn::ShadcnSize::Lg))
                 .items([TabsItem::new("cards").label("Cards"), TabsItem::new("dashboard").label("Dashboard")])
                 .active("cards");
             Page { tabs: builder.spawn(cx) }

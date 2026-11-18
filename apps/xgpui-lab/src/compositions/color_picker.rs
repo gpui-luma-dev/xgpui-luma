@@ -10,7 +10,7 @@ use xgpui_luma_color::color_slider::color_spec::Hsv;
 use xgpui_luma_color::color_slider::{AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value};
 use xgpui_luma_color::composition::ColorCompositionSync;
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 use crate::theme::{Look, TextSize};
 
 use super::color_exposition_common::{
@@ -125,7 +125,7 @@ impl ColorPickerDemo {
         let hsv = Hsv { h: 12.0, s: 0.78, v: 0.86, a: 0.92 };
         let metrics = ColorPickerMetrics::new();
 
-        let field_radius = px(look.metrics().radius.sm);
+        let field_radius = px(look.radii().small);
 
         let field = cx.new(move |_| {
             ColorFieldState::saturation_value("controls-doc-color-picker-field", hsv, 20.0)
@@ -133,12 +133,12 @@ impl ColorPickerDemo {
                 .vector()
         });
         let hue_slider = ColorSliderBuilder::hue("controls-doc-color-picker-hue", hsv.h)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge()
             .spawn(cx);
         let alpha_builder = ColorSliderBuilder::alpha("controls-doc-color-picker-alpha", hsv.a, hsv)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let alpha_domain = alpha_builder.domain_renderer();

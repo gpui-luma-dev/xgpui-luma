@@ -16,7 +16,7 @@ use crate::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarVisi
 
 use super::template::{SelectionPanelTemplate, default_selection_panel_template};
 use super::theme::{SelectionPanelLook, default_selection_panel_look};
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
 pub trait SelectionPanelItemLike {
     fn id(&self) -> &SharedString;
@@ -111,7 +111,7 @@ impl SelectionPanelPath {
     }
 }
 
-pub type SelectionPanelLookProvider = Arc<dyn Fn(ControlSize) -> SelectionPanelLook + Send + Sync + 'static>;
+pub type SelectionPanelLookProvider = Arc<dyn Fn() -> SelectionPanelLook + Send + Sync + 'static>;
 
 /// Role selects the default hover behavior, not wheel eligibility or focus ownership.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -153,7 +153,6 @@ where
     pub(crate) max_visible_rows_explicit: bool,
     pub(crate) min_visible_rows: usize,
     pub(crate) max_visible_rows: usize,
-    pub(crate) size: ControlSize,
     pub(crate) item_template: Option<SelectionPanelItemTemplate<T>>,
     pub(crate) template: Arc<dyn SelectionPanelTemplate<T>>,
     pub(crate) scrollbar_template: Arc<dyn ScrollbarTemplate>,
@@ -408,11 +407,6 @@ where
         self.max_visible_rows(max_visible_rows)
     }
 
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
-        self
-    }
-
     pub fn item_template(mut self, item_template: SelectionPanelItemTemplate<T>) -> Self {
         self.model.item_template = Some(item_template);
         self
@@ -515,11 +509,10 @@ where
             .row_limits
             .resolve("selection_panel")
             .1,
-        size: ControlSize::Md,
         item_template: None,
         template: default_selection_panel_template(),
         scrollbar_template: default_scrollbar_template(),
-        look_provider: Arc::new(|size| default_selection_panel_look(&ThemeTokens::default(), size)),
+        look_provider: Arc::new(|| default_selection_panel_look(&ThemeTokens::default())),
     }
 }
 

@@ -1,7 +1,8 @@
 //! Inspect metadata for `control_group`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
+use crate::size::ShadcnSize;
 
 pub struct ControlGroupListInspectPalette {
     pub background: ResolvedColor,
@@ -32,7 +33,7 @@ pub fn inspect_control_group_list_color_palette(
 pub fn inspect_control_group_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> ControlGroupInspectMetrics {
     let table = crate::tables::metrics::resolve_control_group_metrics(mode, theme_mode, size);
     table.into()

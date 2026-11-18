@@ -259,7 +259,7 @@ check_look!(
     crate::control_group_builder::<xgpui_luma::controls::control_group::ControlGroupItem>(
         &crate::Look::built_in(),
         "callbacks",
-        xgpui_luma::theme::ControlSize::Md
+        crate::RadixSize::Two
     ),
     on_value_changed(_, _, _),
     xgpui_luma::controls::control_group::ControlGroupEvent::Change {

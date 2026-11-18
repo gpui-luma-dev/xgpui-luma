@@ -16,7 +16,6 @@ use xgpui_luma::{
     },
     controls::button::ControlIcon,
     infra::callbacks::EventCallbacks,
-    theme::ControlSize,
 };
 use xgpui_luma_look_radix::{Look, TextFieldSize, TextFieldVariant, textfield_template, textfield_theme_with};
 
@@ -113,8 +112,13 @@ impl ParleyTextFieldBuilder {
         self
     }
 
+    /// The explicit, ambient or built-in look, sized to this builder's Radix size.
     fn resolve_look(&self, cx: &App) -> Look {
-        self.look.clone().or_else(|| cx.try_global::<Look>().cloned()).unwrap_or_else(Look::built_in)
+        self.look
+            .clone()
+            .or_else(|| cx.try_global::<Look>().cloned())
+            .unwrap_or_else(Look::built_in)
+            .with_size(self.size.control_size())
     }
 
     /// The SDK theme this builder draws with: an explicit theme, else the
@@ -327,19 +331,18 @@ struct ModifiedTemplate {
 }
 
 impl TextFieldTemplate for ModifiedTemplate {
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, size: ControlSize) -> TextFieldLook {
-        self.base.resolve_look(state, enabled, size)
+    fn resolve_look(&self, state: TextFieldState, enabled: bool) -> TextFieldLook {
+        self.base.resolve_look(state, enabled)
     }
 
     fn resolve_look_with_scale(
         &self,
         state: TextFieldState,
         enabled: bool,
-        size: ControlSize,
         scale_factor: f32,
         cx: &mut App,
     ) -> TextFieldLook {
-        self.base.resolve_look_with_scale(state, enabled, size, scale_factor, cx)
+        self.base.resolve_look_with_scale(state, enabled, scale_factor, cx)
     }
 
     fn render(

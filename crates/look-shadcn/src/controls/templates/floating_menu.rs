@@ -12,7 +12,7 @@ struct ShadcnFloatingMenuTheme {
 impl FloatingMenuTheme for ShadcnFloatingMenuTheme {
     fn resolve(&self) -> xgpui_luma::controls::floating_menu::FloatingMenuLook {
         let tokens = self.theme.mode_tokens();
-        floating_menu_look(tokens.as_ref(), self.theme.mode(), xgpui_luma::theme::ControlSize::Md)
+        floating_menu_look(tokens.as_ref(), self.theme.mode(), crate::ShadcnSize::Md)
     }
 }
 

@@ -11,7 +11,7 @@ use crate::stylesheet::config::find_enabled_color_rule;
 use serde::Deserialize;
 
 use xgpui_luma::controls::control_group::ControlGroupListLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 
 use crate::look_context::LookContext;
@@ -54,18 +54,19 @@ pub fn resolve_control_group_list_colors_with_stylesheet(
 
 pub fn control_group_list_look(mode: &ShadcnModeTokens, enabled: bool) -> ControlGroupListLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
-    let metrics = ctx.metrics();
     let resolver =
         LookResolver::new(ctx.catalog(), ctx.theme_mode, "control_group_list").with_stylesheet(mode.stylesheet());
     let colors = resolve_control_group_list_colors(&resolver, enabled)
         .unwrap_or_else(|_| ControlGroupListColorTable::fallback());
 
-    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().control_group.authored_geometry("md");
-    let recipe = mode.stylesheet().common.control_group.authored_geometry("md").with_fallback(&baseline);
+    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
+        .control_group
+        .authored_geometry_for("md");
+    let recipe = mode.stylesheet().common.control_group.authored_geometry_for("md").with_fallback(&baseline);
     ControlGroupListLook {
         background: colors.background.hsla(),
         border: colors.border.hsla(),
-        radius: recipe.radius.unwrap_or(metrics.radius(ControlSize::Md)),
+        radius: recipe.radius.unwrap_or(ctx.controls().radius(ShadcnSize::Md)),
         padding_x: recipe.padding_x.unwrap_or_default(),
         padding_y: recipe.padding_y.unwrap_or_default(),
         gap: recipe.gap.unwrap_or_default(),
@@ -174,7 +175,7 @@ pub struct ControlGroupMetricTable {
 pub fn resolve_control_group_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> ControlGroupMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, radius_metric};
 
@@ -188,7 +189,7 @@ pub fn resolve_control_group_metrics(
         padding_y: derived_metric("control group padding y", look.padding_y),
         gap: derived_metric("control group gap", look.gap),
     };
-    let geometry = mode.stylesheet().common.control_group.inspect_geometry(
+    let geometry = mode.stylesheet().common.control_group.inspect_geometry_for(
         "md",
         xgpui_luma::theme::stylesheet::ControlGroupGeometry {
             padding_x: table.padding_x.value_px,

@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
+use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;
 
@@ -14,7 +15,6 @@ use xgpui_luma::controls::slider::{
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::ControlSize;
 use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, SliderVariant, ScaleFamily};
 
 use super::matrix_grid::{
@@ -65,7 +65,7 @@ pub fn tabbed(
 }
 
 pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window, cx: &mut App) -> AnyElement {
-    let sizes = [(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")];
+    let sizes = [(RadixSize::One, "Sm"), (RadixSize::Two, "Md"), (RadixSize::Three, "Lg")];
     let mut grid =
         fixed_grid(equal_data_columns(ROW_LABEL_WIDTH, SIZE_COLUMN_WIDTH, sizes.len()), SIZE_COL_GAP, SIZE_ROW_GAP);
 
@@ -77,8 +77,9 @@ pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window
     for (row, def) in RADIX_VARIANTS.iter().enumerate() {
         let row = row + 1;
         grid = grid.child(row_label(def.label, fg), row, 0);
-        let template = look.slider_template(def.variant);
         for (col, (size, _)) in sizes.iter().enumerate() {
+            // Each size column renders with a Look sized to that column.
+            let template = look.with_size(*size).slider_template(def.variant);
             let sample = StateSample { id: "size", label: "", icon: "home", state: Default::default() };
             grid = grid.child(centered(render_slider(&template, sample, def.id, *size, window, cx)), row, col + 1);
         }
@@ -112,7 +113,7 @@ pub fn colors_matrix(base_look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut 
                     &template,
                     sample,
                     &format!("colors-{accent_id}-{}", def.id),
-                    ControlSize::Md,
+                    RadixSize::Two,
                     window,
                     cx,
                 )),
@@ -152,7 +153,7 @@ pub fn matrix(
                 description: SharedString::from(description(def, &accent, &gray)),
                 cells: samples
                     .iter()
-                    .map(|sample| centered(render_slider(&template, *sample, def.id, ControlSize::Md, window, cx)))
+                    .map(|sample| centered(render_slider(&template, *sample, def.id, RadixSize::Two, window, cx)))
                     .collect(),
             }
         })
@@ -173,7 +174,7 @@ fn render_slider(
     template: &Arc<dyn SliderTemplate>,
     sample: StateSample,
     variant_id: &str,
-    size: ControlSize,
+    size: RadixSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
@@ -189,8 +190,6 @@ fn render_slider(
         strategy: SliderInputStrategy::Horizontal,
         orientation: SliderInputStrategy::Horizontal.orientation(),
         presentation: TrackPresentation::Fill,
-        size,
-        thumb_size: None,
         range,
         step: 10.0,
         thumbs: &thumbs,
@@ -216,10 +215,10 @@ fn render_slider(
         .into_any_element()
 }
 
-fn size_id(size: ControlSize) -> &'static str {
+fn size_id(size: RadixSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        RadixSize::One => "sm",
+        RadixSize::Two => "md",
+        RadixSize::Three => "lg",
     }
 }

@@ -356,7 +356,7 @@ fn preview_shell(
     let muted_style = look.typography_scale(ShadcnTextSize::Sm);
     let muted = look.token_color("muted-foreground").unwrap_or(chrome.muted_text);
     let sidebar_bg = look.token_color("sidebar").unwrap_or(chrome.panel_background);
-    let content_radius = look.mode_tokens().metrics.radius.lg;
+    let content_radius = look.mode_tokens().radii.large;
 
     div()
         .id("controls-doc-sidebar-preview-shell")

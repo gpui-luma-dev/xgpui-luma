@@ -27,7 +27,7 @@ use xgpui_luma::controls::table::{TableControl, TableMotion};
 use xgpui_luma::controls::tabs::{Tabs, TabsMotion};
 use xgpui_luma::controls::tree_view::{TreeView, TreeViewMotion};
 use xgpui_luma::motion::{Easing, PresenceMotion, Transition, TransitionDescription};
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 use xgpui_luma::{hstack, vstack};
 use xgpui_luma_look_shadcn::tables::typography::resolve_control_typography;
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook};
@@ -677,7 +677,7 @@ fn render_motion_row(look: &Arc<ShadcnLook>, row: &MotionRow) -> gpui::AnyElemen
 
 /// Same size, line height, and weight as the inspector accordion triggers.
 fn motion_text_style(look: &ShadcnLook) -> LumaTextStyle {
-    resolve_control_typography(&look.mode_tokens(), ControlSize::Md, false).style
+    resolve_control_typography(&look.mode_tokens(), xgpui_luma_look_shadcn::ShadcnSize::Md, false).style
 }
 
 /// Caption mono used by the other inspector property values.

@@ -6,7 +6,7 @@ use gpui::{Context, Div, SharedString, div, prelude::*};
 use xgpui_luma::controls::tree_view::{
     TreeNode, TreeViewBuilder, TreeViewPalette, TreeViewTemplate, TreeViewTheme, ThemedTreeViewTemplate,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 
 use crate::{Look, ScaleFamily};
 
@@ -35,7 +35,8 @@ impl TreeViewTheme for RadixTreeViewTheme {
     fn icon(&self, role: xgpui_luma::theme::stylesheet::IconRole) -> xgpui_luma::infra::icon::IconSource {
         self.look.common_stylesheet().icons.resolve(role)
     }
-    fn resolve_row(&self, state: InteractionState, selected: bool, size: ControlSize) -> TreeViewPalette {
+    fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
+        let size = self.look.size();
         let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
         let accent = |step| self.look.resolve_step(ScaleFamily::Color, step).hsla();
         let background = if state.disabled {
@@ -71,21 +72,21 @@ impl TreeViewTheme for RadixTreeViewTheme {
         }
     }
 
-    fn row_outline(&self, state: InteractionState, _size: ControlSize) -> Option<gpui::Hsla> {
+    fn row_outline(&self, state: InteractionState) -> Option<gpui::Hsla> {
         (state.hovered && !state.disabled).then(|| self.look.resolve_step(ScaleFamily::Color, 8).hsla())
     }
 
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> xgpui_luma::controls::tree_view::TreeViewScale {
+    fn resolve_scale(&self, scale_factor: f32) -> xgpui_luma::controls::tree_view::TreeViewScale {
+        let size = self.look.size();
         xgpui_luma::controls::tree_view::TreeViewScale::compute_with_stylesheet(
-            size,
             &self.metrics(),
             scale_factor,
-            &self.look.common_stylesheet(),
+            &self.look.sized_stylesheet(size),
         )
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 }
 
@@ -475,7 +476,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         let control = {
             let look = crate::look::resolve_look(self.look.as_ref(), cx.try_global::<Look>());
             self.builder
-                .stylesheet(&look.common_stylesheet())
+                .stylesheet(&look.sized_stylesheet(look.size()))
                 .motion_defaults(look.motion_defaults().tree_view)
                 .template(tree_view_template(&look))
                 .spawn(cx)
@@ -496,12 +497,12 @@ mod tests {
         let theme = tree_view_theme(&look);
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let selected = theme.resolve_row(Default::default(), true, ControlSize::Md);
+            let selected = theme.resolve_row(Default::default(), true);
             assert_eq!(selected.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));
             assert_eq!(selected.foreground, look.resolve_step(ScaleFamily::Color, 12).hsla());
             let before = selected.background;
             look.set_accent_seed(xgpui_luma::color::gpui_bridge::from_rgba(gpui::rgb(0xd6409f))).unwrap();
-            let custom = theme.resolve_row(Default::default(), true, ControlSize::Md);
+            let custom = theme.resolve_row(Default::default(), true);
             assert_ne!(custom.background, before);
             assert_eq!(custom.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));
             look.set_palettes(crate::Accent::Indigo, crate::Gray::Auto);
@@ -515,17 +516,14 @@ mod tests {
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             let hovered = InteractionState { hovered: true, ..Default::default() };
-            assert_eq!(theme.resolve_row(hovered, false, ControlSize::Md).background, None);
+            assert_eq!(theme.resolve_row(hovered, false).background, None);
             assert_eq!(
-                theme.resolve_row(hovered, true, ControlSize::Md).background,
-                theme.resolve_row(Default::default(), true, ControlSize::Md).background,
+                theme.resolve_row(hovered, true).background,
+                theme.resolve_row(Default::default(), true).background,
             );
-            assert_eq!(
-                theme.row_outline(hovered, ControlSize::Md),
-                Some(look.resolve_step(ScaleFamily::Color, 8).hsla()),
-            );
-            assert_eq!(theme.row_outline(Default::default(), ControlSize::Md), None);
-            assert_eq!(theme.row_outline(InteractionState { disabled: true, ..hovered }, ControlSize::Md), None);
+            assert_eq!(theme.row_outline(hovered), Some(look.resolve_step(ScaleFamily::Color, 8).hsla()),);
+            assert_eq!(theme.row_outline(Default::default()), None);
+            assert_eq!(theme.row_outline(InteractionState { disabled: true, ..hovered }), None);
         }
     }
 
@@ -537,7 +535,7 @@ mod tests {
             look.set_mode(mode);
             let state =
                 InteractionState { disabled: true, hovered: true, pressed: true, focused: true, invalid: false };
-            let row = theme.resolve_row(state, true, ControlSize::Md);
+            let row = theme.resolve_row(state, true);
             assert_eq!(row.background, None);
             assert_eq!(row.foreground, look.resolve_step(ScaleFamily::Gray, 11).hsla());
         }

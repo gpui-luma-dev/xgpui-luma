@@ -284,7 +284,7 @@ pub const CONTROL_CATALOG: &[ControlDocEntry] = &[
         title: "Color Slider",
         description: "Spectrum sliders built on the unified Slider engine with color-specific delegates for hue, saturation, alpha, channel, and gradient interpolation. ColorSliderBuilder returns Slider entities—subscribe to SliderEvent::Change for live preview and SliderEvent::Release to commit values. Linked saturation and alpha tracks refresh when the base color changes.",
         category: ControlCategory::Color,
-        snippet: "let hue_slider = ColorSliderBuilder::hue(\"accent-hue\", 210.0)\n    .size(ControlSize::Sm).thumb_medium().spawn(cx)\n    .on_release(cx, |app: &mut Self, _, value, cx| {\n        app.hue = value;\n        cx.notify();\n    });",
+        snippet: "let hue_slider = ColorSliderBuilder::hue(\"accent-hue\", 210.0)\n    .size(ShadcnSize::Sm).thumb_medium().spawn(cx)\n    .on_release(cx, |app: &mut Self, _, value, cx| {\n        app.hue = value;\n        cx.notify();\n    });",
         section_order: 210,
     },
     ControlDocEntry {
@@ -324,7 +324,7 @@ pub const CONTROL_CATALOG: &[ControlDocEntry] = &[
         title: "Color Slider Revealed",
         description: "Styling survey for the color-slider primitive — scale, corner radius, thumb shapes, edge-to-edge layout, interpolation modes, and delegate families.",
         category: ControlCategory::Color,
-        snippet: "ColorSliderBuilder::hue(\"hue\", 180.0)\n    .size(ControlSize::Lg)\n    .thumb_square()\n    .edge_to_edge()\n    .spawn(cx);",
+        snippet: "ColorSliderBuilder::hue(\"hue\", 180.0)\n    .size(ShadcnSize::Lg)\n    .thumb_square()\n    .edge_to_edge()\n    .spawn(cx);",
         section_order: 221,
     },
     ControlDocEntry {

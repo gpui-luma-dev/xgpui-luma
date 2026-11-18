@@ -28,8 +28,8 @@ use xgpui_luma_look_radix as radix;
 // Retain Radix colors while giving rings their own size and stroke.
 struct CircularTheme(std::sync::Arc&lt;dyn ProgressTheme&gt;);
 impl ProgressTheme for CircularTheme {
-    fn resolve(&amp;self, enabled: bool, size: xgpui_luma::theme::ControlSize) -&gt; ProgressLook {
-        let mut look = self.0.resolve(enabled, size);
+    fn resolve(&amp;self, enabled: bool) -&gt; ProgressLook {
+        let mut look = self.0.resolve(enabled);
         look.size = 48.0;
         look.stroke_width = 4.0;
         look

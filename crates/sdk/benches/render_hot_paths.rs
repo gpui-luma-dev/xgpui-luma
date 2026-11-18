@@ -13,7 +13,7 @@ use xgpui_luma::{
         sidebar::SidebarPanelTemplateHandlers,
         tree_view::TreeViewTemplateHandlers,
     },
-    theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale, ThemeTokens},
+    theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeTokens},
 };
 use smallvec::SmallVec;
 
@@ -28,7 +28,7 @@ fn main() {
     let iterations = 100_000;
     let metrics = MetricTokens::default();
     measure("StandardBoxScale/direct", iterations, || {
-        StandardBoxScale::compute(black_box(ControlSize::Md), black_box(&metrics), black_box(2.0))
+        StandardBoxScale::compute(black_box(&metrics), black_box(2.0))
     });
 
     let id = SharedString::from("benchmark-table");
@@ -82,9 +82,10 @@ fn main() {
     }
 
     let theme = default_button_family_theme();
-    let palette = theme.resolve(ButtonFamilyRole::Text, ControlSize::Md, InteractionState::default());
-    let scale = StandardBoxScale::compute(ControlSize::Md, &metrics, 2.0);
-    let mut look = compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, metrics.radius.pill);
+    let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
+    let scale = StandardBoxScale::compute(&metrics, 2.0);
+    let mut look =
+        compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, xgpui_luma::theme::FULL_RADIUS_PX);
     measure("Button look/no shadows clone", iterations, || black_box(&look).clone());
     let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
     for count in [0, 1, 2, 8] {

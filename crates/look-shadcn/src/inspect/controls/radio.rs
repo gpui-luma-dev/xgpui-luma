@@ -55,7 +55,7 @@ pub struct RadioButtonInspectMetrics {
 pub fn inspect_radio_button_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> RadioButtonInspectMetrics {
     let table = crate::tables::metrics::resolve_radio_button_metrics(mode, theme_mode, size);
     table.into()
@@ -82,12 +82,12 @@ pub(crate) fn inspect_radio_button_elevation_with_stylesheet(
     style: ShadcnButtonStyle,
     selected: bool,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
     use crate::stylesheet::resolve_stylesheet_shadow_token;
     use crate::inspect::controls::button::{button_style_key, inspect_layered_elevation};
 
     let look =
-        crate::controls::radio::radio_button_look_with_stylesheet(ctx, stylesheet, style, selected, ControlSize::Md);
+        crate::controls::radio::radio_button_look_with_stylesheet(ctx, stylesheet, style, selected, ShadcnSize::Md);
     let layer = crate::controls::choice_indicator::choice_indicator_color_layer(ctx.state);
     let rule = (style != ShadcnButtonStyle::ContentOnly)
         .then(|| stylesheet.radio.elevation_rule_for_layer(layer))

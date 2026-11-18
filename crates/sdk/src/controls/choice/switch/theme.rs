@@ -8,7 +8,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{BoxShadow, Hsla, SharedString};
 
 use crate::theme::scales::{label_baseline_shift, snap_to_pixel};
-use crate::theme::{ControlSize, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SwitchScale {
@@ -24,28 +24,21 @@ pub struct SwitchScale {
 }
 
 impl SwitchScale {
-    pub fn compute(size: ControlSize, metrics: &MetricTokens, scale_factor: f32) -> Self {
-        Self::compute_with_stylesheet(
-            size,
-            metrics,
-            scale_factor,
-            crate::theme::stylesheet::CommonStylesheet::sdk_default(),
-        )
+    pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
+        Self::compute_with_stylesheet(metrics, scale_factor, crate::theme::stylesheet::CommonStylesheet::sdk_default())
     }
 
     /// Resolve a snapshot's shared dimensions without changing control behavior.
     pub fn compute_with_stylesheet(
-        size: ControlSize,
         metrics: &MetricTokens,
         scale_factor: f32,
         stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let key = size.stylesheet_key();
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().switch.authored_geometry(key);
-        let recipe = stylesheet.switch.authored_geometry(key);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().switch.authored_geometry();
+        let recipe = stylesheet.switch.authored_geometry();
         // Authored scales are dimension / control height, preserving proportional
         // sizing when metric tokens change. Explicit dimensions take precedence below.
-        let height = metrics.control_height(size);
+        let height = metrics.control_height();
         let fallback = Self {
             disabled_opacity: recipe.disabled_opacity.or(baseline.disabled_opacity).unwrap_or_default(),
             track_width: snap_to_pixel(
@@ -61,11 +54,11 @@ impl SwitchScale {
                 height * recipe.thumb_scale.or(baseline.thumb_scale).unwrap_or_default(),
                 scale_factor,
             ),
-            track_radius: metrics.radius.pill,
-            gap: snap_to_pixel(metrics.gap(size), scale_factor),
-            label_baseline_shift: label_baseline_shift(size, stylesheet),
+            track_radius: crate::theme::FULL_RADIUS_PX,
+            gap: snap_to_pixel(metrics.gap(), scale_factor),
+            label_baseline_shift: label_baseline_shift(stylesheet),
         };
-        stylesheet.switch.resolve_geometry(size, fallback, scale_factor)
+        stylesheet.switch.resolve_geometry(fallback, scale_factor)
     }
 }
 
@@ -86,11 +79,11 @@ pub struct SwitchPalette {
 pub type SwitchLook = SwitchPalette;
 
 pub trait SwitchTheme: Send + Sync {
-    fn resolve(&self, on: bool, state: InteractionState, size: ControlSize) -> SwitchPalette;
+    fn resolve(&self, on: bool, state: InteractionState) -> SwitchPalette;
     fn metrics(&self) -> MetricTokens;
     /// Look-owned geometry for `size`. Defaults to [`SwitchScale::compute`].
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> SwitchScale {
-        SwitchScale::compute(size, &self.metrics(), scale_factor)
+    fn scale(&self, scale_factor: f32) -> SwitchScale {
+        SwitchScale::compute(&self.metrics(), scale_factor)
     }
 }
 
@@ -112,7 +105,7 @@ impl DefaultSwitchTheme {
 }
 
 impl SwitchTheme for DefaultSwitchTheme {
-    fn resolve(&self, on: bool, state: InteractionState, size: ControlSize) -> SwitchPalette {
+    fn resolve(&self, on: bool, state: InteractionState) -> SwitchPalette {
         let palette = self.tokens.stylesheet.recipes.palette("switch", &self.tokens.palette);
         let typography = &self.tokens.typography;
         let elevation = &self.tokens.elevation;
@@ -155,7 +148,7 @@ impl SwitchTheme for DefaultSwitchTheme {
             },
             label_typography: {
                 let mut label_typography = typography.text.label;
-                crate::controls::textfield::apply_control_size_typography(&mut label_typography, typography, size);
+                crate::controls::textfield::apply_control_typography(&mut label_typography, typography);
                 label_typography
             },
             label_font_family: typography.font.sans.family.clone().into(),
@@ -166,8 +159,8 @@ impl SwitchTheme for DefaultSwitchTheme {
         self.tokens.metrics
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> SwitchScale {
-        SwitchScale::compute_with_stylesheet(size, &self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
+    fn scale(&self, scale_factor: f32) -> SwitchScale {
+        SwitchScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
     }
 }
 
@@ -236,18 +229,8 @@ impl SwitchStylesheet {
     /// Construct the SDK switch geometry without parsing bundled data.
     pub fn native_default() -> Self {
         let mut switch = Self::default();
-        switch
-            .disabled_opacity(0.56)
-            .track_padding(2.0)
-            .size("sm", |m| {
-                m.scales(32.0 / 28.0, 13.0 / 28.0, 9.0 / 28.0);
-            })
-            .size("md", |m| {
-                m.scales(40.0 / 36.0, 18.0 / 36.0, 14.0 / 36.0);
-            })
-            .size("lg", |m| {
-                m.scales(48.0 / 44.0, 24.0 / 44.0, 20.0 / 44.0);
-            });
+        switch.disabled_opacity(0.56).track_padding(2.0);
+        switch.geometry.scales(40.0 / 36.0, 18.0 / 36.0, 14.0 / 36.0);
         switch
     }
 
@@ -318,8 +301,13 @@ impl SwitchStylesheet {
         *target = self.clone().with_baseline(target);
     }
 
-    /// Resolve optional dimensions and proportional recipes over general fields.
-    pub fn authored_geometry(&self, key: &str) -> SwitchGeometryStylesheet {
+    /// General authored dimensions and proportional recipes used by the SDK switch.
+    pub fn authored_geometry(&self) -> SwitchGeometryStylesheet {
+        self.geometry.clone()
+    }
+
+    /// Resolve a look-defined size key's dimensions and recipes over general fields.
+    pub fn authored_geometry_for(&self, key: &str) -> SwitchGeometryStylesheet {
         let specific = self.sizes.get(key).cloned().unwrap_or_default();
         macro_rules! field {
             ($name:ident) => {
@@ -340,13 +328,16 @@ impl SwitchStylesheet {
     }
 
     /// Resolve concrete dimensions without allocating inspector source strings.
-    pub fn resolve_geometry<'a>(
-        &self,
-        key: impl Into<crate::theme::SizeKey<'a>>,
-        fallback: SwitchScale,
-        scale_factor: f32,
-    ) -> SwitchScale {
-        let authored = self.authored_geometry(key.into().as_str());
+    pub fn resolve_geometry(&self, fallback: SwitchScale, scale_factor: f32) -> SwitchScale {
+        Self::concrete_geometry(self.authored_geometry(), fallback, scale_factor)
+    }
+
+    /// Resolve concrete dimensions for a look-defined size key.
+    pub fn resolve_geometry_for(&self, key: &str, fallback: SwitchScale, scale_factor: f32) -> SwitchScale {
+        Self::concrete_geometry(self.authored_geometry_for(key), fallback, scale_factor)
+    }
+
+    fn concrete_geometry(authored: SwitchGeometryStylesheet, fallback: SwitchScale, scale_factor: f32) -> SwitchScale {
         let pixel = |value: Option<f32>, baseline| value.map(|v| snap_to_pixel(v, scale_factor)).unwrap_or(baseline);
         SwitchScale {
             disabled_opacity: authored.disabled_opacity.unwrap_or(fallback.disabled_opacity),
@@ -363,12 +354,31 @@ impl SwitchStylesheet {
     /// Authored values are snapped once at the requested display scale factor.
     pub fn inspect_geometry(
         &self,
+        fallback: crate::controls::switch::SwitchScale,
+        scale_factor: f32,
+    ) -> ResolvedSwitchGeometry {
+        self.inspect_geometry_key(None, fallback, scale_factor)
+    }
+
+    /// Inspect a look-defined size key over general geometry and fallbacks.
+    pub fn inspect_geometry_for(
+        &self,
         key: &str,
         fallback: crate::controls::switch::SwitchScale,
         scale_factor: f32,
     ) -> ResolvedSwitchGeometry {
+        self.inspect_geometry_key(Some(key), fallback, scale_factor)
+    }
+
+    fn inspect_geometry_key(
+        &self,
+        key: Option<&str>,
+        fallback: crate::controls::switch::SwitchScale,
+        scale_factor: f32,
+    ) -> ResolvedSwitchGeometry {
         use crate::theme::snap_to_pixel;
-        let specific = self.sizes.get(key).cloned().unwrap_or_default();
+        let specific = key.and_then(|key| self.sizes.get(key)).cloned().unwrap_or_default();
+        let key = key.unwrap_or_default();
         let resolve = |field: &str, specific: Option<f32>, general: Option<f32>, fallback: f32| {
             if let Some(value) = specific {
                 ResolvedMetric::authored(

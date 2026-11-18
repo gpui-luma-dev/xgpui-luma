@@ -299,14 +299,13 @@ impl PopupMenu {
     }
 
     pub(crate) fn into_sdk_builder(self, look: ShadcnLook) -> PopupMenuBuilder {
-        let template = look.popup_menu_template();
+        let look = look.with_size(self.size);
+        let template = super::templates::popup_menu_template_with_menu_size(look.clone(), self.menu_size);
         let mut builder = xgpui_luma::controls::popup_menu::PopupMenu::new(self.id)
             .motion_defaults(look.motion_defaults().popup_menu)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)
             .template(template)
-            .size(self.size.control_size())
-            .menu_size(self.menu_size.control_size())
             .items(self.items)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -666,8 +665,6 @@ mod split_integration_tests {
                         model.split_state.primary.disabled,
                         model.split_state.disclosure.disabled,
                         model.trigger_style,
-                        model.trigger_size,
-                        model.menu_size,
                         model.full_width,
                     ));
                     root
@@ -679,16 +676,13 @@ mod split_integration_tests {
             Preview { control, selected: 0, activated: 0 }
         });
         cx.run_until_parked();
-        assert!(snapshots.lock().unwrap().iter().all(|snapshot| *snapshot
-            == (
-                true,
-                true,
-                false,
-                PopupMenuTriggerStyle::Ghost,
-                xgpui_luma::theme::ControlSize::Sm,
-                xgpui_luma::theme::ControlSize::Lg,
-                true
-            )));
+        assert!(
+            snapshots
+                .lock()
+                .unwrap()
+                .iter()
+                .all(|snapshot| *snapshot == (true, true, false, PopupMenuTriggerStyle::Ghost, true))
+        );
         assert!(!snapshots.lock().unwrap().is_empty());
         cx.simulate_keystrokes("enter space down enter");
         cx.update(|_, app| {

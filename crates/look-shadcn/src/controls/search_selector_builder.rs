@@ -275,20 +275,18 @@ impl SearchSelector {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SearchSelectorBuilder {
+        let look = look.with_size(self.size);
         let self_builder = self
             .builder
-            .stylesheet(&look.mode_tokens().stylesheet().common)
+            .stylesheet(look.mode_tokens().common_for(look.size()))
             .motion_defaults(look.motion_defaults().search_selector);
         let theme = look.clone();
         self_builder
-            .size(self.size.control_size())
             .textfield_template(theme.input_textfield_template())
             .autocomplete_theme(theme.autocomplete_theme())
             .selector_theme(theme.selector_theme())
             .scrollbar_template(theme.scrollbar_template())
-            .popup_look_provider(Arc::new(move |size| {
-                theme.selector_items_panel_look(ShadcnSize::from_control_size(size))
-            }))
+            .popup_look_provider(Arc::new(move || theme.selector_items_panel_look(theme.size())))
     }
 }
 

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use xgpui_luma::controls::stepper::StepperLook;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 
 use crate::controls::progress::ProgressColorTable;
@@ -110,7 +110,7 @@ fn stepper_colors_from_progress(
     })
 }
 
-pub fn stepper_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) -> StepperLook {
+pub fn stepper_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> StepperLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
     let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "stepper").with_stylesheet(mode.stylesheet());
     let colors = resolve_stepper_colors(&resolver, enabled).unwrap_or_else(|_| StepperColorTable::fallback());
@@ -123,13 +123,13 @@ pub fn stepper_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) -
         .unwrap_or_else(|| {
             let base = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
                 .stepper
-                .resolve_geometry(size.stylesheet_key(), Default::default());
+                .resolve_geometry_for(size.key(), Default::default());
             (base.step_badge_size, base.track_thickness)
         });
 
     let mut look = StepperLook {
         number_weight: mode.typography.text.label.weight,
-        geometry: mode.stylesheet().common.stepper.resolve_geometry(size.stylesheet_key(), Default::default()),
+        geometry: mode.stylesheet().common.stepper.resolve_geometry_for(size.key(), Default::default()),
         complete_bg: colors.complete_bg.hsla(),
         complete_fg: colors.complete_fg.hsla(),
         in_progress_bg: colors.in_progress_bg.hsla(),
@@ -142,7 +142,7 @@ pub fn stepper_look(mode: &ShadcnModeTokens, enabled: bool, size: ControlSize) -
         step_badge_size,
         track_thickness,
     };
-    let geometry = mode.stylesheet().common.stepper.resolve_geometry(
+    let geometry = mode.stylesheet().common.stepper.resolve_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::StepperGeometry {
             step_badge_size: look.step_badge_size,
@@ -190,7 +190,7 @@ mod tests {
     fn stepper_uses_accent_track_and_accent_foreground_fill() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = stepper_look(&mode, true, xgpui_luma::theme::ControlSize::Md);
+        let look = stepper_look(&mode, true, crate::ShadcnSize::Md);
 
         assert_eq!(look.complete_bg, catalog.color("accent-foreground").expect("accent-foreground"));
         assert_eq!(look.complete_fg, catalog.color("accent").expect("accent"));
@@ -202,7 +202,7 @@ mod tests {
     fn disabled_stepper_complete_badge_has_checkmark_contrast() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = stepper_look(&mode, false, xgpui_luma::theme::ControlSize::Md);
+        let look = stepper_look(&mode, false, crate::ShadcnSize::Md);
 
         assert_eq!(look.complete_bg, catalog.color("muted").expect("muted"));
         assert_eq!(look.complete_fg, catalog.color("muted-foreground").expect("muted-foreground"));
@@ -212,8 +212,8 @@ mod tests {
     #[test]
     fn stepper_size_changes_badge_metrics() {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let small = stepper_look(&mode, true, xgpui_luma::theme::ControlSize::Sm);
-        let large = stepper_look(&mode, true, xgpui_luma::theme::ControlSize::Lg);
+        let small = stepper_look(&mode, true, crate::ShadcnSize::Sm);
+        let large = stepper_look(&mode, true, crate::ShadcnSize::Lg);
 
         assert!(small.step_badge_size < large.step_badge_size);
     }
@@ -231,7 +231,7 @@ impl StepperStylesheet {
         Self::default()
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&StepperMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&StepperMetricsRule> {
         self.metrics.get(control_size_key(size))
     }
 }
@@ -264,14 +264,14 @@ pub fn resolve_stepper_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
 ) -> StepperMetricTable {
-    resolve_stepper_metrics_for_size(mode, theme_mode, xgpui_luma::theme::ControlSize::Md)
+    resolve_stepper_metrics_for_size(mode, theme_mode, crate::ShadcnSize::Md)
 }
 
 /// Resolve the selected look's Stepper dimensions and their sources for a size.
 pub fn resolve_stepper_metrics_for_size(
     mode: &crate::ShadcnModeTokens,
     _theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> StepperMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
@@ -281,7 +281,7 @@ pub fn resolve_stepper_metrics_for_size(
         step_badge_size: derived_metric("stepper badge size", look.step_badge_size),
         track_thickness: derived_metric("stepper track thickness", look.track_thickness),
     };
-    let geometry = mode.stylesheet().common.stepper.inspect_geometry(
+    let geometry = mode.stylesheet().common.stepper.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::StepperGeometry {
             step_badge_size: table.step_badge_size.value_px,

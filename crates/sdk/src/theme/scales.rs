@@ -1,4 +1,4 @@
-use crate::theme::{ControlSize, MetricTokens};
+use crate::theme::MetricTokens;
 
 /// Rounds a logical length to the nearest physical pixel at the given display scale.
 pub fn snap_to_pixel(value: f32, scale_factor: f32) -> f32 {
@@ -16,16 +16,16 @@ pub struct StandardBoxScale {
 }
 
 impl StandardBoxScale {
-    pub fn compute(size: ControlSize, metrics: &MetricTokens, scale_factor: f32) -> Self {
-        let control_height = metrics.control_height(size);
+    pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
+        let control_height = metrics.control_height();
 
         Self {
             height: snap_to_pixel(control_height, scale_factor),
-            padding_x: snap_to_pixel(metrics.padding_x(size), scale_factor),
-            padding_y: snap_to_pixel(metrics.padding_y(size), scale_factor),
-            gap: snap_to_pixel(metrics.gap(size), scale_factor),
-            radius: metrics.radius(size),
-            icon_size: snap_to_pixel(metrics.icon_size(size), scale_factor),
+            padding_x: snap_to_pixel(metrics.padding_x(), scale_factor),
+            padding_y: snap_to_pixel(metrics.padding_y(), scale_factor),
+            gap: snap_to_pixel(metrics.gap(), scale_factor),
+            radius: metrics.radius(),
+            icon_size: snap_to_pixel(metrics.icon_size(), scale_factor),
         }
     }
 }
@@ -41,25 +41,20 @@ pub struct ListRowScale {
 }
 
 impl ListRowScale {
-    pub fn compute(size: ControlSize, metrics: &MetricTokens, scale_factor: f32) -> Self {
+    pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
         Self {
-            min_height: snap_to_pixel(metrics.control_height(size), scale_factor),
-            padding_x: snap_to_pixel(metrics.padding_x(size), scale_factor),
-            padding_y: snap_to_pixel(metrics.padding_y(size), scale_factor),
-            radius: metrics.radius(size),
-            gap: snap_to_pixel(metrics.gap(size), scale_factor),
-            label_baseline_shift: label_baseline_shift(size, crate::theme::stylesheet::CommonStylesheet::sdk_default()),
+            min_height: snap_to_pixel(metrics.control_height(), scale_factor),
+            padding_x: snap_to_pixel(metrics.padding_x(), scale_factor),
+            padding_y: snap_to_pixel(metrics.padding_y(), scale_factor),
+            radius: metrics.radius(),
+            gap: snap_to_pixel(metrics.gap(), scale_factor),
+            label_baseline_shift: label_baseline_shift(crate::theme::stylesheet::CommonStylesheet::sdk_default()),
         }
     }
 }
 
-pub(crate) fn label_baseline_shift(size: ControlSize, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> f32 {
-    let geometry = stylesheet.shared_geometry();
-    match size {
-        ControlSize::Sm => geometry.label_baseline_sm,
-        ControlSize::Md => geometry.label_baseline_md,
-        ControlSize::Lg => geometry.label_baseline_lg,
-    }
+pub(crate) fn label_baseline_shift(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> f32 {
+    stylesheet.shared_geometry().label_baseline
 }
 
 /// Outer reach of a box shadow layer used to position absolute shadow backing.

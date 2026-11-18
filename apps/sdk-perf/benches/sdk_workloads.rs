@@ -169,7 +169,7 @@ fn run(kind: SceneKind, look: LookKind, count: usize, cycles: usize, out: &mut d
 fn infrastructure(out: &mut dyn Write) -> anyhow::Result<()> {
     use std::hint::black_box;
     use xgpui_luma::{
-        theme::{ControlSize, MetricTokens, StandardBoxScale, ThemeTokens},
+        theme::{MetricTokens, StandardBoxScale, ThemeTokens},
         motion::{MotionState, Transition},
     };
     let metrics = MetricTokens::default();
@@ -177,7 +177,7 @@ fn infrastructure(out: &mut dyn Write) -> anyhow::Result<()> {
     for name in ["layout_scale", "theme_tokens_clone", "motion_start_and_sample"] {
         let stats = measurement::sample(10_000, || match name {
             "layout_scale" => {
-                black_box(StandardBoxScale::compute(black_box(ControlSize::Md), black_box(&metrics), black_box(2.0)));
+                black_box(StandardBoxScale::compute(black_box(&metrics), black_box(2.0)));
             }
             "theme_tokens_clone" => {
                 black_box(black_box(&tokens).clone());

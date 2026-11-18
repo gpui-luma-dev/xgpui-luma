@@ -13,6 +13,8 @@ mod domain_renderer;
 pub mod mouse_behavior;
 pub mod shape;
 pub mod style;
+pub mod size;
 pub mod swatch;
 
+pub use size::ColorControlSize;
 pub use swatch::{ColorSwatch, ColorSwatchButtonTemplate, ColorSwatchData};

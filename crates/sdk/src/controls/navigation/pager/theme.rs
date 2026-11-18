@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::Hsla;
 
 use crate::controls::button::{ButtonTemplate, default_button_template};
-use crate::theme::{ControlSize, LumaTextStyle, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 use super::PagerStyle;
 
@@ -77,19 +77,17 @@ impl PagerTheme for DefaultPagerTheme {
         let metrics = &self.tokens.metrics;
         let typography = self.tokens.typography.text.caption;
         let compact = matches!(style, PagerStyle::Minimal);
-        let control_size = ControlSize::Sm;
-        let control_height = metrics.control_height(control_size);
-        let compact_gap = metrics.spacing.s3;
-        let regular_gap = metrics.spacing.s5;
-        let item_gap = metrics.spacing.s1;
+        let control_height = metrics.control_height();
+        // SDK pixel defaults; looks with their own spacing supply their own pager theme.
+        let compact_gap = 8.0;
+        let regular_gap = 16.0;
+        let item_gap = PAGER_SPACING_UNIT_PX;
         let key = style.stylesheet_key();
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry(key);
-        let recipe = self.tokens.stylesheet.pager.authored_geometry(key).with_fallback(&baseline);
-        let padding_x = (metrics.padding_x(control_size)
-            - metrics.spacing.s1 * recipe.padding_x_inset_scale.unwrap_or_default())
-        .max(0.0);
-        let padding_y = metrics.padding_y(control_size)
-            + metrics.gap(control_size) * recipe.padding_y_gap_scale.unwrap_or_default();
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().pager.authored_geometry_for(key);
+        let recipe = self.tokens.stylesheet.pager.authored_geometry_for(key).with_fallback(&baseline);
+        let padding_x =
+            (metrics.padding_x() - PAGER_SPACING_UNIT_PX * recipe.padding_x_inset_scale.unwrap_or_default()).max(0.0);
+        let padding_y = metrics.padding_y() + metrics.gap() * recipe.padding_y_gap_scale.unwrap_or_default();
 
         let mut look = PagerLook {
             gap_icon_size: recipe.gap_icon_size.unwrap_or_default(),
@@ -123,16 +121,17 @@ impl PagerTheme for DefaultPagerTheme {
             shadow: vec![],
             typography,
             button_size: control_height,
-            button_min_width: control_height + metrics.spacing.s1 * recipe.button_extra_width_scale.unwrap_or_default(),
+            button_min_width: control_height
+                + PAGER_SPACING_UNIT_PX * recipe.button_extra_width_scale.unwrap_or_default(),
             control_height,
-            radius: metrics.radius(control_size),
+            radius: metrics.radius(),
             padding_x,
             padding_y,
             gap: item_gap,
             group_gap: if compact { compact_gap } else { regular_gap },
             disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
         };
-        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.pager, key, PagerGeometry, look,
+        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.pager, key = key, PagerGeometry, look,
             [button_size => button_size, button_min_width => button_min_width, control_height => control_height,
              padding_x => padding_x, padding_y => padding_y, gap => gap, group_gap => group_gap, radius => radius,
              font_size => typography.size, line_height => typography.line_height, disabled_opacity => disabled_opacity],
@@ -140,6 +139,9 @@ impl PagerTheme for DefaultPagerTheme {
         look
     }
 }
+
+/// Pixel unit the pager's scale-based geometry multiplies.
+const PAGER_SPACING_UNIT_PX: f32 = 4.0;
 
 #[cfg(test)]
 mod tests {
@@ -149,25 +151,22 @@ mod tests {
     #[test]
     fn default_pager_fallback_uses_metric_tokens() {
         let mut tokens = ThemeTokens { metrics: MetricTokens::default(), ..Default::default() };
-        tokens.metrics.control.sm = ControlMetricTokens::new(40.0, 18.0, 7.0, 10.0, 9.0, 14.0);
-        tokens.metrics.spacing.s1 = 5.0;
-        tokens.metrics.spacing.s3 = 11.0;
-        tokens.metrics.spacing.s5 = 19.0;
+        tokens.metrics.control = ControlMetricTokens::new(40.0, 18.0, 7.0, 10.0, 9.0, 14.0);
 
         let theme = DefaultPagerTheme::new(tokens);
         let regular = theme.resolve(true, PagerStyle::Numeric);
         let compact = theme.resolve(true, PagerStyle::Minimal);
 
         assert_eq!(regular.button_size, 40.0);
-        assert_eq!(regular.button_min_width, 45.0);
+        assert_eq!(regular.button_min_width, 44.0);
         assert_eq!(regular.control_height, 40.0);
         assert_eq!(regular.radius, 9.0);
-        assert_eq!(regular.padding_x, 15.5);
+        assert_eq!(regular.padding_x, 16.0);
         assert_eq!(regular.padding_y, 12.0);
-        assert_eq!(regular.gap, 5.0);
-        assert_eq!(regular.group_gap, 19.0);
+        assert_eq!(regular.gap, 4.0);
+        assert_eq!(regular.group_gap, 16.0);
         assert_eq!(compact.button_min_width, 40.0);
-        assert_eq!(compact.group_gap, 11.0);
+        assert_eq!(compact.group_gap, 8.0);
     }
 }
 

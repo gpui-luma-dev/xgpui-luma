@@ -412,10 +412,10 @@ impl Tabs {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> TabsBuilder {
+        let look = look.with_size(self.size);
         let template = self.template.unwrap_or_else(|| look.tabs_template());
         let mut builder = xgpui_luma::controls::tabs::Tabs::new(self.id)
             .template(template)
-            .size(self.size.control_size())
             .width_mode(self.width_mode)
             .enabled(self.enabled)
             .reordering(self.reordering)
