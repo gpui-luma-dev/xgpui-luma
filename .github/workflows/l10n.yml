@@ -45,8 +45,10 @@ jobs:
         run: |
           cargo run -p lab-copy-catalog --locked -- /tmp/lab-copy.json
           python3 scripts/update_lab_copy.py /tmp/lab-copy.json --check
-      - name: Test catalog update preservation
-        run: python3 -m unittest discover -s scripts/tests -p 'test_update_lab_copy.py'
+      - name: Test catalog scripts
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+      - name: Lint translations
+        run: python3 scripts/lint_translations.py
       - name: Report translation review candidates
         run: python3 scripts/audit_l10n.py
 

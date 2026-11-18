@@ -36,6 +36,7 @@ cargo run -p lab-copy-catalog -- /tmp/lab-copy.json
 python3 scripts/update_lab_copy.py /tmp/lab-copy.json
 # Translate/review new locale entries, then check without writing:
 python3 scripts/update_lab_copy.py /tmp/lab-copy.json --check
+python3 scripts/lint_translations.py
 cargo test -p xgpui-lab --features test-support
 ```
 
@@ -68,6 +69,16 @@ terms. No application strings were sent to a hosted translation service. These
 expanded translations require native-speaker review, particularly technical
 terminology and grammar around typed arguments. Equal IDs/arguments do not
 establish translation quality.
+
+`scripts/lint_translations.py` rejects mechanical damage in the de, ja, and ar
+catalogs: runaway repetition, dropped symbols (`+ − – × % … · =` and similar) or
+numbers, and altered sample text, emoji, or code. Locale conventions such as
+`...`, decimal commas, `〜` ranges, `・`, and spelled-out small counts pass.
+English texts listed in `apps/xgpui-lab/locales/verbatim.txt` (language autonyms)
+must not be translated at all. A flagged entry is fixed by hand or restored to
+English; #265 restored about 340 entries this way, mostly Arabic. The lint does
+not judge wording, so mistranslations such as #265's "Tierkörperbeseitigung"
+still need native review.
 
 Local models used:
 

@@ -1,0 +1,3 @@
+# English text that stays verbatim in every locale: language autonyms.
+English
+Deutsch
