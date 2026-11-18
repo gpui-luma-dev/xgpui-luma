@@ -219,8 +219,8 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                     let enabled = !model.split_state.primary.disabled;
                     move |builder| split_face_accessibility(builder.parent_node(), enabled, false)
                 })
-                .when(model.split_state.primary.disabled, |face| {
-                    face.aria_description("Primary action unavailable; press Down Arrow for menu options")
+                .when(model.split_state.primary.disabled && !model.split_text.primary_unavailable.is_empty(), |face| {
+                    face.aria_description(model.split_text.primary_unavailable.clone())
                 })
                 .bg(primary_look.trigger_background)
                 .h_full()
@@ -246,7 +246,10 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             let mut secondary = div()
                 .id("secondary-face")
                 .role(gpui::Role::Button)
-                .aria_label(format!("{} menu", model.label))
+                .aria_label(match &model.split_text.menu_label {
+                    Some(menu_label) => menu_label(model.label),
+                    None => model.label.clone(),
+                })
                 .aria_keyshortcuts("ArrowDown ArrowUp")
                 .aria_expanded(model.open)
                 .a11y_synthetic_children({
@@ -366,9 +369,11 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             .items_stretch()
             .relative()
             .when(model.split, |root| {
-                root.role(gpui::Role::Group).aria_label(model.label.clone()).aria_description(
-                    "Enter or Space activates the primary action; Down or Up Arrow opens the menu; Escape dismisses",
-                )
+                root.role(gpui::Role::Group)
+                    .aria_label(model.label.clone())
+                    .when(!model.split_text.usage_hint.is_empty(), |root| {
+                        root.aria_description(model.split_text.usage_hint.clone())
+                    })
             })
             .on_mouse_down_out(root_mouse_down_out);
 

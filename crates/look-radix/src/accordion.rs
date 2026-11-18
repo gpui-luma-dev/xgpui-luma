@@ -75,6 +75,7 @@ pub fn accordion_template(look: &Look) -> Arc<dyn AccordionTemplate> {
 /// Themed SDK builder retaining expansion, focus, reordering, and callback APIs.
 pub fn accordion_builder(look: &Look, id: impl Into<SharedString>) -> AccordionBuilder {
     AccordionBuilder::new(id)
+        .drag_handle_label(crate::text::DRAG_TO_REORDER)
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().accordion)
         .template(accordion_template(look))

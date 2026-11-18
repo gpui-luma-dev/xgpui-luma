@@ -53,7 +53,7 @@ impl Default for PagerTemplateParameters {
     fn default() -> Self {
         Self {
             page_indicator_formatter: Arc::new(|current_page, page_count| {
-                SharedString::from(format!("Page {current_page} of {page_count}"))
+                SharedString::from(format!("{current_page} / {page_count}"))
             }),
             page_size_label: None,
             page_size_trigger_width: crate::theme::stylesheet::CommonStylesheet::sdk_default()

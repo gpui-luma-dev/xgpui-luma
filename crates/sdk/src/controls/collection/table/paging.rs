@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "paging_text_tests.rs"]
+mod paging_text_tests;
+
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Render, Window, div, prelude::*, px};
@@ -16,18 +20,22 @@ pub type PagingTable<T> = Entity<PagingTableControl<T>>;
 pub struct PagingTableControl<T: 'static> {
     list: Entity<TableControl<T>>,
     pager: Entity<PagerControl>,
+    selection_summary: Option<SelectionSummary>,
 }
+
+type SelectionSummary = Arc<dyn Fn(usize, usize) -> gpui::SharedString + 'static>;
 
 impl<T: 'static> PagingTableControl<T> {
     pub fn new(list: Entity<TableControl<T>>, pager: Entity<PagerControl>, cx: &mut Context<Self>) -> Self {
         let pager_clone = pager.clone();
-        cx.subscribe(&list, move |_, list_control, event, cx| {
+        cx.subscribe(&list, move |this, list_control, event, cx| {
             let list = list_control.read(cx);
             match event {
                 TableEvent::SelectionChanged { selected_indices } => {
-                    let count = selected_indices.len();
-                    let total = list.items().len();
-                    pager_clone.update(cx, |pager, cx| pager.set_info_text(Some(selection_summary(count, total)), cx));
+                    if let Some(summary) = &this.selection_summary {
+                        let text = summary(selected_indices.len(), list.items().len());
+                        pager_clone.update(cx, |pager, cx| pager.set_info_text(Some(text), cx));
+                    }
                 }
                 TableEvent::PageChanged { page } => {
                     let page_size = list.page_size().unwrap_or(10);
@@ -70,7 +78,7 @@ impl<T: 'static> PagingTableControl<T> {
         })
         .detach();
 
-        Self { list, pager }
+        Self { list, pager, selection_summary: None }
     }
 
     pub fn list(&self) -> &Entity<TableControl<T>> {
@@ -103,6 +111,15 @@ impl<T: 'static> Render for PagingTableControl<T> {
         } else {
             div().w_full().flex().flex_col().child(list).child(pager)
         }
+    }
+}
+
+impl<T: 'static> PagingTableControl<T> {
+    fn set_selection_summary(&mut self, summary: SelectionSummary, cx: &mut Context<Self>) {
+        let (selected, total) = self.list.read_with(cx, |list, _| (list.selected_indices().len(), list.items().len()));
+        let text = summary(selected, total);
+        self.pager.update(cx, |pager, cx| pager.set_info_text(Some(text), cx));
+        self.selection_summary = Some(summary);
     }
 }
 
@@ -174,6 +191,7 @@ pub struct PagingTableBuilder<T: 'static> {
 
     list_builder: TableBuilder<T>,
     pager_builder: PagerBuilder,
+    selection_summary: Option<SelectionSummary>,
 }
 
 impl<T: 'static> PagingTableBuilder<T> {
@@ -455,7 +473,14 @@ impl<T: 'static> PagingTableBuilder<T> {
     }
 
     pub fn new(list_builder: TableBuilder<T>, pager_builder: PagerBuilder) -> Self {
-        Self { callbacks: Default::default(), list_builder, pager_builder }
+        Self { callbacks: Default::default(), list_builder, pager_builder, selection_summary: None }
+    }
+
+    /// Footer text from the selected and total row counts, shown in the pager's
+    /// info slot and updated as the selection changes. Unset: no summary.
+    pub fn selection_summary(mut self, summary: impl Fn(usize, usize) -> gpui::SharedString + 'static) -> Self {
+        self.selection_summary = Some(Arc::new(summary));
+        self
     }
 
     /// Fill the parent height; see [`TableBuilder::fill_height`].
@@ -476,41 +501,30 @@ impl<T: 'static> PagingTableBuilder<T> {
             let fill_height = self.list_builder.model.fill_height;
             let list = self.list_builder.spawn(cx);
 
-            let (current_page, page_count, page_size, selected_count, total_rows) = list.read_with(cx, |list, _| {
-                (
-                    list.current_page(),
-                    list.page_count(),
-                    list.page_size().unwrap_or(10),
-                    list.selected_indices().len(),
-                    list.items().len(),
-                )
-            });
+            let (current_page, page_count, page_size) =
+                list.read_with(cx, |list, _| (list.current_page(), list.page_count(), list.page_size().unwrap_or(10)));
 
             let mut pager_builder = self.pager_builder;
             // Viewport-driven page size: hide the manual "rows per page" control.
             if fill_height {
                 pager_builder = pager_builder.page_size_options([]);
-            } else if pager_builder.model.template_parameters.page_size_label.is_none() {
-                pager_builder = pager_builder.page_size_label("Rows per page");
             }
             let pager_theme = pager_builder.model.theme.clone().unwrap_or_else(default_pager_theme);
             pager_builder = pager_builder.style(PagerStyle::MinimalEdge);
             pager_builder = pager_builder.template(Arc::new(TablePagerTemplate::new(pager_theme)));
 
-            let pager = pager_builder
-                .current_page(current_page)
-                .page_count(page_count)
-                .page_size(page_size)
-                .info_text(selection_summary(selected_count, total_rows))
-                .spawn(cx);
+            let pager = pager_builder.current_page(current_page).page_count(page_count).page_size(page_size).spawn(cx);
 
-            cx.new(|cx| PagingTableControl::new(list, pager, cx))
+            let selection_summary = self.selection_summary;
+            cx.new(|cx| {
+                let mut control = PagingTableControl::new(list, pager, cx);
+                if let Some(summary) = selection_summary {
+                    control.set_selection_summary(summary, cx);
+                }
+                control
+            })
         };
         callbacks.bind(&control, cx);
         control
     }
-}
-
-fn selection_summary(selected_count: usize, total_rows: usize) -> String {
-    format!("{} of {} row(s) selected.", selected_count, total_rows)
 }

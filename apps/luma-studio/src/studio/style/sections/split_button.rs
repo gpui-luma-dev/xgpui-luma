@@ -122,6 +122,7 @@ fn render_split_button_template_cell(
         full_width: false,
         without_elevation: false,
         split: true,
+        split_text: &Default::default(),
         split_state: xgpui_luma::controls::split_button::SplitButtonState {
             primary: sample.state,
             disclosure: InteractionState {

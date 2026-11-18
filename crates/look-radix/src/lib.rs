@@ -92,6 +92,7 @@
 //! entry points are re-exported here; private modules are implementation details.
 
 mod accordion;
+mod text;
 mod control_group;
 mod navigation;
 mod pager;

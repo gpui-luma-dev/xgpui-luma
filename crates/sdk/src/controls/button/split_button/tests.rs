@@ -215,3 +215,21 @@ fn popup_builder_migration_preserves_existing_and_specialized_callbacks() {
         assert!(log.contains(&"specialized"));
     });
 }
+
+#[test]
+fn split_button_text_is_empty_until_supplied() {
+    let bare = SplitButtonBuilder::new("bare");
+    assert!(bare.model.popup.split_text.usage_hint.is_empty());
+    assert!(bare.model.popup.split_text.primary_unavailable.is_empty());
+    assert!(bare.model.popup.split_text.menu_label.is_none());
+
+    let text = SplitButtonText {
+        usage_hint: "Entrée".into(),
+        primary_unavailable: "Indisponible".into(),
+        menu_label: Some(Arc::new(|label| format!("Menu {label}").into())),
+    };
+    let built = SplitButtonBuilder::new("text").text(text);
+    assert_eq!(built.model.popup.split_text.usage_hint, "Entrée");
+    assert_eq!(built.model.popup.split_text.primary_unavailable, "Indisponible");
+    assert_eq!((built.model.popup.split_text.menu_label.as_ref().unwrap())("Save"), "Menu Save");
+}

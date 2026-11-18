@@ -248,7 +248,11 @@ impl Scene {
                 .spawn(cx),
         );
         self.add(stepper::StepperBuilder::new("stepper", 5).motion_enabled(false).spawn(cx));
-        self.add(pager::PagerBuilder::new("pager").spawn(cx));
+        self.add(
+            pager::PagerBuilder::new("pager")
+                .page_indicator_formatter(|page, pages| format!("Page {page} of {pages}").into())
+                .spawn(cx),
+        );
         self.add(
             popup_menu::PopupMenuBuilder::new("menu")
                 .label("Actions")

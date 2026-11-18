@@ -117,6 +117,7 @@ impl DashboardPanel {
                     .child(cells)
             };
         }
+        .selection_summary(|selected, total| format!("{selected} of {total} row(s) selected.").into())
         .fill_height()
         .column_resizing(true)
         .spawn(cx);

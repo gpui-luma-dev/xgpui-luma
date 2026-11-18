@@ -10,7 +10,7 @@ mod template;
 mod callback;
 
 pub use control::{SplitButton, SplitButtonEvent};
-pub use model::{SplitButtonBuilder, SplitButtonModel, SplitButtonState};
+pub use model::{SplitButtonBuilder, SplitButtonMenuLabel, SplitButtonModel, SplitButtonState, SplitButtonText};
 pub use callback::SplitButtonEventExt;
 pub use template::{SplitButtonTemplate, ThemedSplitButtonTemplate, default_split_button_template};
 pub use crate::controls::popup_menu::SplitFaceHandlers as SplitButtonFaceHandlers;

@@ -33,3 +33,5 @@ pub use range::{progress, slider};
 
 #[cfg(all(test, feature = "test-support"))]
 mod event_callback_tests;
+#[cfg(test)]
+mod text_inputs_tests;

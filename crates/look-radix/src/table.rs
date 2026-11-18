@@ -162,7 +162,8 @@ pub fn paging_table_builder<T: 'static>(
     look: &Look,
     pager_id: impl Into<SharedString>,
 ) -> PagingTableBuilder<T> {
-    PagingTableBuilder::new(table, crate::pager_builder(look, pager_id))
+    PagingTableBuilder::new(table, crate::pager_builder(look, pager_id).page_size_label(crate::text::ROWS_PER_PAGE))
+        .selection_summary(crate::text::rows_selected)
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@
 pub mod inspect;
 
 mod action;
+mod text;
 mod look_context;
 pub mod catalog;
 mod color;

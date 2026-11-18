@@ -134,7 +134,10 @@ impl SearchSelector {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: xgpui_luma::controls::search_selector::new(id, items),
+            builder: xgpui_luma::controls::search_selector::new(id, items)
+                .placeholder(crate::text::SELECT_PLACEHOLDER)
+                .search_placeholder(crate::text::SELECTION_SEARCH)
+                .no_matches(crate::text::NO_MATCHES),
             size: ShadcnSize::Md,
         }
     }
@@ -157,6 +160,12 @@ impl SearchSelector {
 
     pub fn search_placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.builder = self.builder.search_placeholder(placeholder);
+        self
+    }
+
+    /// Popup text when the filter matches nothing. Default: "No matches".
+    pub fn no_matches(mut self, text: impl Into<SharedString>) -> Self {
+        self.builder = self.builder.no_matches(text);
         self
     }
 

@@ -45,7 +45,9 @@ pub fn split_button_builder(
             PopupMenuVariant::Solid => PopupMenuTriggerStyle::Primary,
             PopupMenuVariant::Soft => PopupMenuTriggerStyle::Secondary,
         });
-    SplitButtonBuilder::from_popup_builder(popup).template(split_button_template(look, variant, tone))
+    SplitButtonBuilder::from_popup_builder(popup)
+        .text(crate::text::split_button())
+        .template(split_button_template(look, variant, tone))
 }
 
 #[cfg(test)]

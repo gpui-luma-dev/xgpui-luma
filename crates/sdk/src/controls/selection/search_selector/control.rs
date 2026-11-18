@@ -53,8 +53,6 @@ pub struct SearchSelectorControl {
     interaction: ControlInteraction,
     trigger_bounds: Option<Bounds<Pixels>>,
     presence: OverlayPresence,
-    last_event: SharedString,
-    last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     trigger_toggle_pending: bool,
     disclosure_transition: DisclosureMotion,
@@ -137,8 +135,6 @@ impl SearchSelectorControl {
             interaction: ControlInteraction::new(enabled, cx),
             trigger_bounds: None,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
-            last_event: SharedString::from("none"),
-            last_keyboard_event: SharedString::from("none"),
             committed_selection,
             trigger_toggle_pending: false,
             disclosure_transition: DisclosureMotion::with_transition(0.0, motion_enabled, motion.disclosure.clone()),
@@ -201,7 +197,6 @@ impl SearchSelectorControl {
                     self.behavior.state.open = true;
                 }
                 self.emit_open_changed_if_needed(was_open, false, cx);
-                self.last_event = SharedString::from("search:change");
 
                 if self.behavior.state.filtered.is_empty() {
                     self.clear_committed_selection(cx);
@@ -211,8 +206,7 @@ impl SearchSelectorControl {
                 self.sync_popup_highlight_visibility(cx);
                 cx.notify();
             }
-            TextSelectionEvent::Submit { value } => {
-                self.last_event = SharedString::from(format!("search:submit:{value}"));
+            TextSelectionEvent::Submit => {
                 let result = self.behavior.apply(SelectionEvent::Submit, &self.model.items);
                 self.handle_submit_result(result, cx);
             }
@@ -253,7 +247,6 @@ impl SearchSelectorControl {
     fn handle_submit_result(&mut self, result: SubmitResult, cx: &mut Context<Self>) {
         match result {
             SubmitResult::None => {
-                self.last_event = SharedString::from("submit:no-match");
                 self.clear_committed_selection(cx);
                 cx.notify();
             }
@@ -281,7 +274,6 @@ impl SearchSelectorControl {
 
         self.behavior.select_index(index);
         self.committed_selection = Some(index);
-        self.last_event = SharedString::from(format!("select:{}", item.label));
 
         self.clear_popup_search(cx);
         self.emit_open_changed_if_needed(was_open, false, cx);
@@ -362,8 +354,6 @@ impl SearchSelectorControl {
         if !self.model.enabled {
             return;
         }
-
-        self.last_keyboard_event = SharedString::from(format!("key:{}", event.keystroke.key));
 
         if event.keystroke.modifiers.control || event.keystroke.modifiers.secondary(cx) {
             return;
@@ -767,14 +757,9 @@ impl Render for SearchSelectorControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {} | matches: {} | last: {} | keyboard: {}",
-            selected_label.clone().unwrap_or_else(|| "none".to_string()),
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        // The SDK shows no diagnostic readout; the template fields stay empty.
+        let status_label = SharedString::default();
+        let status_detail = SharedString::default();
 
         let popup_content = if self.model.enabled && self.presence.should_paint() {
             let list_id = SharedString::from("search-selector-menu");
@@ -812,7 +797,7 @@ impl Render for SearchSelectorControl {
                     .line_height(px(look.item_typography.line_height))
                     .font_weight(look.item_typography.weight)
                     .text_color(autocomplete_look.muted_text_color)
-                    .child("No matches")
+                    .child(self.model.no_matches.clone())
                     .into_any_element()
             } else {
                 self.model

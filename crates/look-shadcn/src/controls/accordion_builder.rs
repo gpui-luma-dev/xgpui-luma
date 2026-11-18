@@ -246,7 +246,7 @@ impl Accordion {
             callbacks: Default::default(),
 
             look: None,
-            builder: xgpui_luma::controls::accordion::new(id),
+            builder: xgpui_luma::controls::accordion::new(id).drag_handle_label(crate::text::DRAG_TO_REORDER),
             custom_template: false,
             size: ShadcnSize::Md,
         }
@@ -271,6 +271,12 @@ impl Accordion {
     /// Enable native same-Accordion reordering through header drag handles.
     pub fn reordering(mut self, enabled: bool) -> Self {
         self.builder = self.builder.reordering(enabled);
+        self
+    }
+
+    /// Accessible name of each drag handle. Default: "Drag to reorder".
+    pub fn drag_handle_label(mut self, label: impl Into<SharedString>) -> Self {
+        self.builder = self.builder.drag_handle_label(label);
         self
     }
 

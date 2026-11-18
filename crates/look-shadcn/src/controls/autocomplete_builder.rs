@@ -129,7 +129,7 @@ impl Autocomplete {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: xgpui_luma::controls::autocomplete::new(id, items),
+            builder: xgpui_luma::controls::autocomplete::new(id, items).placeholder(crate::text::FILTER_PLACEHOLDER),
             size: ShadcnSize::Md,
         }
     }

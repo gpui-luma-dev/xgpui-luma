@@ -125,6 +125,7 @@ impl PagingTableControlExposition {
             pager = shadcn::Pager::new("controls-doc-table-paged-pager").look(look.as_ref())
                 .style(PagerStyle::MinimalEdge)
                 .page_size(DEFAULT_PAGE_SIZE)
+                .page_size_label("Rows per page")
                 .into_sdk_builder(cx);
             selection = TableSelectionMode::Extended;
             selected_index = 1;
@@ -179,6 +180,7 @@ impl PagingTableControlExposition {
                     .child(cells)
             };
         }
+        .selection_summary(|selected, total| format!("{selected} of {total} row(s) selected.").into())
         .spawn(cx);
 
         let list = table.read(cx).list().clone();

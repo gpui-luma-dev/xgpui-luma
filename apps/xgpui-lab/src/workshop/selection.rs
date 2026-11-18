@@ -91,13 +91,21 @@ impl SelectionSample {
     pub(super) fn new(kind: SelectionKind, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let control = match kind {
             SelectionKind::Autocomplete => Control::Autocomplete(
-                autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items()).spawn(cx),
+                autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items())
+                    .placeholder(super::sdk_text::FILTER_PLACEHOLDER)
+                    .spawn(cx),
             ),
-            SelectionKind::ComboBox => {
-                Control::ComboBox(combobox::ComboBoxBuilder::new("workshop-sdk-combobox", filter_items()).spawn(cx))
-            }
+            SelectionKind::ComboBox => Control::ComboBox(
+                combobox::ComboBoxBuilder::new("workshop-sdk-combobox", filter_items())
+                    .placeholder(super::sdk_text::SELECT_PLACEHOLDER)
+                    .spawn(cx),
+            ),
             SelectionKind::SearchSelector => Control::SearchSelector(
-                search_selector::SearchSelectorBuilder::new("workshop-sdk-search-selector", filter_items()).spawn(cx),
+                search_selector::SearchSelectorBuilder::new("workshop-sdk-search-selector", filter_items())
+                    .placeholder(super::sdk_text::SELECT_PLACEHOLDER)
+                    .search_placeholder(super::sdk_text::SELECTION_SEARCH)
+                    .no_matches(super::sdk_text::NO_MATCHES)
+                    .spawn(cx),
             ),
             SelectionKind::Selector => Control::Selector(
                 selector::SelectorBuilder::new("workshop-sdk-selector")
@@ -118,6 +126,7 @@ impl SelectionSample {
             ),
             SelectionKind::SplitButton => Control::SplitButton(
                 split_button::SplitButtonBuilder::new("workshop-sdk-split-button")
+                    .text(super::sdk_text::split_button())
                     .label("Apply")
                     .items(ITEMS.iter().map(|&(id, label, enabled)| MenuItem::new(id).label(label).enabled(enabled)))
                     .spawn(cx),

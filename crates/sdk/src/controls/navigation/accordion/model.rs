@@ -104,6 +104,7 @@ pub struct AccordionModel {
     pub(crate) enabled: bool,
     pub(crate) motion_enabled: bool,
     pub(crate) reordering: bool,
+    pub(crate) drag_handle_label: SharedString,
     pub(crate) size: ControlSize,
     pub(crate) item_dividers: bool,
     /// When set, overrides themed vertical padding inside expanded item panels (both edges).
@@ -388,6 +389,7 @@ impl AccordionBuilder {
                 enabled: true,
                 motion_enabled: true,
                 reordering: false,
+                drag_handle_label: SharedString::default(),
                 size: ControlSize::Md,
                 item_dividers: true,
                 content_padding_y: None,
@@ -416,6 +418,12 @@ impl AccordionBuilder {
     /// Enable native same-Accordion reordering through header drag handles.
     pub fn reordering(mut self, enabled: bool) -> Self {
         self.model.reordering = enabled;
+        self
+    }
+
+    /// Accessible name of each drag handle when reordering is on. Empty by default.
+    pub fn drag_handle_label(mut self, label: impl Into<SharedString>) -> Self {
+        self.model.drag_handle_label = label.into();
         self
     }
 

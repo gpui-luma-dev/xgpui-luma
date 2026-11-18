@@ -189,6 +189,7 @@ impl AccordionControl {
             scope,
             self.drag_scroll_pending.clone(),
         );
+        let drag_handle_label = self.model.drag_handle_label.clone();
         let handles = self
             .model
             .items
@@ -207,7 +208,7 @@ impl AccordionControl {
                 let handle = div()
                     .id("drag-handle")
                     .cursor_grab()
-                    .aria_label("Drag to reorder")
+                    .when(!drag_handle_label.is_empty(), |handle| handle.aria_label(drag_handle_label.clone()))
                     .on_hover(cx.listener(move |control, hovered: &bool, _, cx| {
                         if *hovered {
                             control.hovered_drag_handle = Some(hover_id.clone());

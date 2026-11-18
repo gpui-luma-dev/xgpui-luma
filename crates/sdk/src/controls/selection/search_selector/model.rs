@@ -38,6 +38,7 @@ pub struct SearchSelectorModel {
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
     pub(crate) search_placeholder: SharedString,
+    pub(crate) no_matches: SharedString,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
@@ -187,8 +188,9 @@ impl SearchSelectorBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().search_selector.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Select…"),
-                search_placeholder: SharedString::from("Selection search"),
+                placeholder: SharedString::default(),
+                search_placeholder: SharedString::default(),
+                no_matches: SharedString::default(),
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
@@ -244,6 +246,12 @@ impl SearchSelectorBuilder {
 
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.placeholder = placeholder.into();
+        self
+    }
+
+    /// Text shown in the popup when the filter matches no items. Empty by default.
+    pub fn no_matches(mut self, text: impl Into<SharedString>) -> Self {
+        self.model.no_matches = text.into();
         self
     }
 

@@ -80,7 +80,11 @@ impl Pager {
     }
 
     pub fn new(id: impl Into<SharedString>) -> Self {
-        Self { callbacks: Default::default(), look: None, builder: xgpui_luma::controls::pager::new(id) }
+        Self {
+            callbacks: Default::default(),
+            look: None,
+            builder: xgpui_luma::controls::pager::new(id).page_indicator_formatter(crate::text::page_of),
+        }
     }
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.

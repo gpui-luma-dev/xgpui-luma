@@ -104,6 +104,7 @@ impl ChoiceSample {
             ),
             ChoiceKind::Pager => Control::Pager(
                 pager::new("workshop-sdk-pager")
+                    .page_indicator_formatter(super::sdk_text::page_of)
                     .page_count(12)
                     .page_size(10)
                     .page_size_options([10, 25, 50])

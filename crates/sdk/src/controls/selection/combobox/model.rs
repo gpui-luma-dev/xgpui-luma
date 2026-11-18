@@ -185,7 +185,7 @@ impl ComboBoxBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().combobox.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Select…"),
+                placeholder: SharedString::default(),
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,

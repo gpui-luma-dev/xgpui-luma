@@ -45,8 +45,6 @@ pub struct ComboBoxControl {
     model: super::model::ComboBoxModel,
     behavior: SelectionBehavior,
     trigger_bounds: Option<Bounds<Pixels>>,
-    last_event: SharedString,
-    last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     open_popup_on_next_focus: bool,
     presence: OverlayPresence,
@@ -111,8 +109,6 @@ impl ComboBoxControl {
             model,
             behavior: SelectionBehavior::new(),
             trigger_bounds: None,
-            last_event: SharedString::from("none"),
-            last_keyboard_event: SharedString::from("none"),
             committed_selection: None,
             open_popup_on_next_focus: false,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
@@ -129,13 +125,11 @@ impl ComboBoxControl {
             TextSelectionEvent::Change { value } => {
                 let was_open = self.behavior.state.open;
                 self.behavior.set_query(value.clone(), &self.model.items);
-                self.last_event = SharedString::from("change");
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 cx.emit(ComboBoxEvent::Change { query: value.into() });
                 cx.notify();
             }
-            TextSelectionEvent::Submit { value } => {
-                self.last_event = SharedString::from(format!("submit:{value}"));
+            TextSelectionEvent::Submit => {
                 let result = self.behavior.apply(SelectionEvent::Submit, &self.model.items);
                 self.handle_submit_result(result, cx);
             }
@@ -167,7 +161,6 @@ impl ComboBoxControl {
     fn handle_submit_result(&mut self, result: SubmitResult, cx: &mut Context<Self>) {
         match result {
             SubmitResult::None => {
-                self.last_event = SharedString::from("submit:no-match");
                 cx.notify();
             }
             SubmitResult::Select { index, exact_complete } => {
@@ -180,7 +173,6 @@ impl ComboBoxControl {
         let was_open = self.behavior.state.open;
         self.committed_selection = None;
         self.behavior.apply(SelectionEvent::Clear, &self.model.items);
-        self.last_event = SharedString::from("clear");
 
         self.textfield.update(cx, |textfield, cx| textfield.set_value("", cx));
 
@@ -198,7 +190,6 @@ impl ComboBoxControl {
         self.behavior.set_query(label.clone(), &self.model.items);
         self.behavior.select_index(index);
         self.committed_selection = Some(index);
-        self.last_event = SharedString::from(format!("select:{}", item.label));
 
         self.textfield.update(cx, move |textfield, cx| textfield.set_value(label.as_ref(), cx));
 
@@ -219,7 +210,6 @@ impl ComboBoxControl {
         if trimmed_query.is_empty() {
             self.committed_selection = None;
             self.behavior.apply(SelectionEvent::Clear, &self.model.items);
-            self.last_event = SharedString::from("blur:clear-empty");
             self.textfield.update(cx, |textfield, cx| textfield.set_value("", cx));
             return;
         }
@@ -228,7 +218,6 @@ impl ComboBoxControl {
             if let Some(index) = self.behavior.state.selected_item {
                 self.committed_selection = Some(index);
             }
-            self.last_event = SharedString::from("blur:commit");
             return;
         }
 
@@ -237,13 +226,11 @@ impl ComboBoxControl {
             let label = item.label.clone();
             self.behavior.set_query(label.clone(), &self.model.items);
             self.behavior.select_index(index);
-            self.last_event = SharedString::from(format!("blur:revert:{}", item.label));
             self.textfield.update(cx, move |textfield, cx| textfield.set_value(label.as_ref(), cx));
             return;
         }
 
         self.behavior.apply(SelectionEvent::Clear, &self.model.items);
-        self.last_event = SharedString::from("blur:clear-invalid");
         self.textfield.update(cx, |textfield, cx| textfield.set_value("", cx));
     }
 
@@ -304,8 +291,6 @@ impl ComboBoxControl {
         if !self.model.enabled {
             return;
         }
-
-        self.last_keyboard_event = SharedString::from(format!("key:{}", event.keystroke.key));
 
         if event.keystroke.modifiers.control || event.keystroke.modifiers.secondary(cx) {
             return;
@@ -618,13 +603,6 @@ impl Render for ComboBoxControl {
         let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
         let geometry = self.model.stylesheet.resolve_geometry(self.model.size.stylesheet_key(), Default::default());
         let look = (self.model.popup_look_provider)(self.model.size);
-        let selected_label = self
-            .behavior
-            .state
-            .selected_item
-            .map(|index| self.model.items[index].label.to_string())
-            .unwrap_or_else(|| "none".to_string());
-
         let minimum_trigger_width = {
             let textfield_look =
                 self.model.textfield_template.resolve_look(TextFieldState::default(), true, self.model.size);
@@ -670,13 +648,9 @@ impl Render for ComboBoxControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        // The SDK shows no diagnostic readout; the template fields stay empty.
+        let status_label = SharedString::default();
+        let status_detail = SharedString::default();
 
         let popup_content = if self.model.enabled && self.presence.should_paint() && !visible_indices.is_empty() {
             let menu_id = SharedString::from("combobox-menu");

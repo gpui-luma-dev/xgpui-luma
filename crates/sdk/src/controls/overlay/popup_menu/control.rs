@@ -239,6 +239,7 @@ impl PopupMenu {
             without_elevation: self.model.without_elevation,
             split: self.model.split,
             split_state: self.split_state(window),
+            split_text: &self.model.split_text,
             trigger_radius_override: None,
             open_submenu: self.menu_state.open_submenu(),
             active_path: self.menu_state.active_path(),

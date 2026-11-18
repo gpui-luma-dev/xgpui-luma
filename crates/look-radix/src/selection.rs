@@ -65,6 +65,7 @@ pub fn autocomplete_builder(
 ) -> autocomplete::AutocompleteBuilder {
     let panel_look = look.clone();
     autocomplete::new(id, items)
+        .placeholder(crate::text::FILTER_PLACEHOLDER)
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().autocomplete)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
@@ -84,6 +85,7 @@ pub fn combobox_builder(
 ) -> combobox::ComboBoxBuilder {
     let panel_look = look.clone();
     combobox::new(id, items)
+        .placeholder(crate::text::SELECT_PLACEHOLDER)
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().combobox)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
@@ -103,6 +105,9 @@ pub fn search_selector_builder(
 ) -> search_selector::SearchSelectorBuilder {
     let panel_look = look.clone();
     search_selector::new(id, items)
+        .placeholder(crate::text::SELECT_PLACEHOLDER)
+        .search_placeholder(crate::text::SELECTION_SEARCH)
+        .no_matches(crate::text::NO_MATCHES)
         .stylesheet(&look.common_stylesheet())
         .motion_defaults(look.motion_defaults().search_selector)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))

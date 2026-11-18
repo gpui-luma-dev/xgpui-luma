@@ -35,17 +35,6 @@ pub enum SelectionStatus {
     Complete,
 }
 
-impl SelectionStatus {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::Idle => "idle",
-            Self::Searching => "searching",
-            Self::ErrorNoMatch => "error: no match",
-            Self::Complete => "complete",
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum SelectionEvent {

@@ -244,6 +244,7 @@ pub fn assert_popup_layout(theme: std::sync::Arc<dyn crate::controls::popup_menu
                     without_elevation: true,
                     split,
                     split_state: Default::default(),
+                    split_text: &Default::default(),
                     trigger_radius_override: None,
                     open_submenu: None,
                     active_path: None,

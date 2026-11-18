@@ -9,6 +9,20 @@ use crate::infra::{
 use crate::theme::{ControlSize, InteractionState};
 use super::{SplitButton, SplitButtonEvent, SplitButtonTriggerModel, SplitButtonTemplate, default_split_button_template};
 
+/// Accessible name of the menu face, given the split button's label.
+pub type SplitButtonMenuLabel = Arc<dyn Fn(&str) -> SharedString + Send + Sync + 'static>;
+
+/// Screen-reader text for a split button. Empty by default; looks supply it.
+#[derive(Clone, Default)]
+pub struct SplitButtonText {
+    /// Description of the whole button, such as how to reach the menu. Empty: none.
+    pub usage_hint: SharedString,
+    /// Description of the primary face while its action is unavailable. Empty: none.
+    pub primary_unavailable: SharedString,
+    /// Accessible name of the menu face. Unset: the button's label.
+    pub menu_label: Option<SplitButtonMenuLabel>,
+}
+
 /// Retained feedback for both faces; focus belongs to the composite root.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct SplitButtonState {
@@ -172,6 +186,12 @@ impl SplitButtonBuilder {
         self.engine_callbacks = popup.callbacks;
         self
     }
+    /// Screen-reader text; see [`SplitButtonText`].
+    pub fn text(mut self, text: SplitButtonText) -> Self {
+        self.model.popup.split_text = text;
+        self
+    }
+
     pub fn label(self, label: impl Into<SharedString>) -> Self {
         self.map_popup(|popup| popup.label(label))
     }

@@ -103,8 +103,12 @@ impl CollectionSample {
             CollectionKind::PagingTable => Control::Paging(
                 table::PagingTableBuilder::new(
                     table_builder("workshop-sdk-paging-table").paged(8).visible_rows(8),
-                    pager::PagerBuilder::new("workshop-sdk-table-pager").page_size_options([8, 16, 24]),
+                    pager::PagerBuilder::new("workshop-sdk-table-pager")
+                        .page_size_options([8, 16, 24])
+                        .page_size_label(super::sdk_text::ROWS_PER_PAGE)
+                        .page_indicator_formatter(super::sdk_text::page_of),
                 )
+                .selection_summary(super::sdk_text::rows_selected)
                 .spawn(cx),
             ),
             CollectionKind::ScrollingTable => Control::Scrolling(

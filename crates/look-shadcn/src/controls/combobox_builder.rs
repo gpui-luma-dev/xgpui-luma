@@ -132,7 +132,7 @@ impl ComboBox {
         Self {
             callbacks: Default::default(),
             look: None,
-            builder: xgpui_luma::controls::combobox::new(id, items),
+            builder: xgpui_luma::controls::combobox::new(id, items).placeholder(crate::text::SELECT_PLACEHOLDER),
             size: ShadcnSize::Md,
         }
     }

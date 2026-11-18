@@ -50,5 +50,8 @@ pub fn pager_template(look: &Look) -> Arc<dyn PagerTemplate> {
 }
 /// Themed SDK builder retaining pagination, formatter, callback, and template APIs.
 pub fn pager_builder(look: &Look, id: impl Into<SharedString>) -> PagerBuilder {
-    PagerBuilder::new(id).stylesheet(&look.common_stylesheet()).theme(pager_theme(look))
+    PagerBuilder::new(id)
+        .page_indicator_formatter(crate::text::page_of)
+        .stylesheet(&look.common_stylesheet())
+        .theme(pager_theme(look))
 }

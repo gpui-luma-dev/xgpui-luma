@@ -541,7 +541,10 @@ fn pager_matrix(look: &Look, fg: gpui::Hsla, muted: gpui::Hsla, window: &mut Win
 }
 fn pager_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window, cx: &mut App) -> AnyElement {
     let icons = pager::PagerIcons::from_stylesheet(&look.common_stylesheet());
-    let params = pager::PagerTemplateParameters::default().show_first_last(false).numeric_slot_count(3);
+    let params = pager::PagerTemplateParameters::default()
+        .page_indicator_formatter(|page, pages| format!("Page {page} of {pages}").into())
+        .show_first_last(false)
+        .numeric_slot_count(3);
     let model = pager::PagerRenderModel {
         id,
         current_page: match cell.scenario {

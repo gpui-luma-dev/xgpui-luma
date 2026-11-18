@@ -351,6 +351,7 @@ pub struct SplitButton {
 
     inner: PopupMenu,
     primary_enabled: bool,
+    text: xgpui_luma::controls::split_button::SplitButtonText,
     modifiers: Vec<PopupMenuTemplateModifier>,
 }
 
@@ -462,6 +463,7 @@ impl SplitButton {
             callbacks: Default::default(),
             inner: PopupMenu::new(id),
             primary_enabled: true,
+            text: crate::text::split_button(),
             modifiers: Vec::new(),
         }
     }
@@ -517,6 +519,12 @@ impl SplitButton {
     }
 
     /// Keep dropdown actions available when the primary action is unavailable.
+    /// Screen-reader text. Default: the look's English.
+    pub fn text(mut self, text: xgpui_luma::controls::split_button::SplitButtonText) -> Self {
+        self.text = text;
+        self
+    }
+
     pub fn primary_enabled(mut self, enabled: bool) -> Self {
         self.primary_enabled = enabled;
         self
@@ -584,6 +592,7 @@ impl SplitButton {
             self.inner.into_sdk_builder(look),
         )
         .primary_enabled(self.primary_enabled)
+        .text(self.text)
         .template(template);
         for modifier in self.modifiers {
             builder = builder.with_template_modifier(move |root, model| modifier(root, model));

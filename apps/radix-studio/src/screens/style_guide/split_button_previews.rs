@@ -206,6 +206,7 @@ fn sample(look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElem
         full_width: false,
         without_elevation: false,
         split: true,
+        split_text: &Default::default(),
         split_state: SplitButtonState { primary, disclosure },
         trigger_radius_override: None,
         open_submenu: None,

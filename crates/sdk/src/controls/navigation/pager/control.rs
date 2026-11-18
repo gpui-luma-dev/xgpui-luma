@@ -129,6 +129,16 @@ impl PagerControl {
         cx.notify();
     }
 
+    #[cfg(test)]
+    pub(crate) fn info_text_for_test(&self) -> Option<&SharedString> {
+        self.model.info_text.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn page_size_label_for_test(&self) -> Option<&SharedString> {
+        self.model.template_parameters.page_size_label.as_ref()
+    }
+
     pub fn set_info_text(&mut self, info_text: Option<impl Into<SharedString>>, cx: &mut Context<Self>) {
         let next = info_text.map(Into::into);
         if self.model.info_text == next {

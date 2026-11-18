@@ -169,7 +169,7 @@ impl AutocompleteBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().autocomplete.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Type to filter…"),
+                placeholder: SharedString::default(),
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,

@@ -152,6 +152,7 @@ fn state_cell(
         full_width: false,
         without_elevation: false,
         split: false,
+        split_text: &Default::default(),
         split_state: Default::default(),
         trigger_radius_override: None,
         open_submenu: None,
