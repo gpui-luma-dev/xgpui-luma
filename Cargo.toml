@@ -10,6 +10,7 @@ members = [
   "crates/look-shadcn",
   "crates/look-radix",
   "crates/plot",
+  "crates/l10n",
   "apps/common",
   "apps/luma-studio",
   "apps/radix-studio",
