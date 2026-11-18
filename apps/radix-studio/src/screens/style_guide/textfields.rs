@@ -4,6 +4,7 @@
 //! - **Template Preview** — variants × interaction states (incl. invalid)
 //! - **Colors** — accents × variants
 //! - **All Sizes** — Sm / Md / Lg per variant
+use xgpui_luma_look_radix::RadixSize;
 
 use std::sync::Arc;
 
@@ -14,7 +15,7 @@ use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{
     TextFieldLook, TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme,
 };
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::StandardBoxScale;
 use xgpui_luma_look_radix::{Accent, Gray, Look, LookControlExt, TextFieldVariant, ScaleFamily, textfield_theme_with};
 
 use super::matrix_grid::{
@@ -129,7 +130,7 @@ pub fn tabbed(
 }
 
 pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window, cx: &mut App) -> AnyElement {
-    let sizes = [(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")];
+    let sizes = [(RadixSize::One, "Sm"), (RadixSize::Two, "Md"), (RadixSize::Three, "Lg")];
     let mut grid =
         fixed_grid(equal_data_columns(ROW_LABEL_WIDTH, SIZE_COLUMN_WIDTH, sizes.len()), SIZE_COL_GAP, SIZE_ROW_GAP);
 
@@ -141,9 +142,11 @@ pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window
     for (row, def) in RADIX_VARIANTS.iter().enumerate() {
         let row = row + 1;
         grid = grid.child(row_label(def.label, fg), row, 0);
-        let template = look.textfield_template(def.variant);
-        let theme = textfield_theme_with(look, def.variant);
         for (col, (size, _)) in sizes.iter().enumerate() {
+            // Each size column renders with a Look sized to that column.
+            let sized_look = look.with_size(*size);
+            let template = sized_look.textfield_template(def.variant);
+            let theme = textfield_theme_with(&sized_look, def.variant);
             let sample = FieldSample {
                 id: "size",
                 label: "Size",
@@ -151,11 +154,8 @@ pub fn sizes_matrix(look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut Window
                 state: TextFieldState::default(),
                 enabled: true,
             };
-            grid = grid.child(
-                centered(render_field(&template, theme.clone(), sample, def.id, *size, window, cx)),
-                row,
-                col + 1,
-            );
+            grid =
+                grid.child(centered(render_field(&template, theme, sample, def.id, *size, window, cx)), row, col + 1);
         }
     }
 
@@ -195,7 +195,7 @@ pub fn colors_matrix(base_look: &Arc<Look>, fg: Hsla, muted: Hsla, window: &mut 
                     theme,
                     sample,
                     &format!("colors-{accent_id}-{}", def.id),
-                    ControlSize::Md,
+                    RadixSize::Two,
                     window,
                     cx,
                 )),
@@ -239,7 +239,7 @@ pub fn matrix(
                     .iter()
                     .copied()
                     .map(|sample| {
-                        centered(render_field(&template, theme.clone(), sample, def.id, ControlSize::Md, window, cx))
+                        centered(render_field(&template, theme.clone(), sample, def.id, RadixSize::Two, window, cx))
                     })
                     .collect(),
             }
@@ -283,21 +283,20 @@ fn render_field(
     theme: Arc<dyn TextFieldTheme>,
     sample: FieldSample,
     variant_id: &str,
-    size: ControlSize,
+    size: RadixSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let id = SharedString::from(format!("style-guide-textfield-{variant_id}-{}-{}", sample.id, size_id(size)));
     let placeholder = SharedString::from("Placeholder");
     let value = SharedString::from(SAMPLE_TEXT);
-    let look = field_look(&theme, sample.state, sample.enabled, size, window);
-    let character_offsets = character_offsets(value.as_ref(), theme, sample.state, sample.enabled, size, window);
+    let look = field_look(&theme, sample.state, sample.enabled, window);
+    let character_offsets = character_offsets(value.as_ref(), theme, sample.state, sample.enabled, window);
     let model = TextFieldRenderModel {
         id: &id,
         placeholder: &placeholder,
         value: &value,
         prefix_icon: None,
-        size,
         enabled: sample.enabled,
         full_width: true,
         state: sample.state,
@@ -317,15 +316,9 @@ fn render_field(
         .into_any_element()
 }
 
-fn field_look(
-    theme: &Arc<dyn TextFieldTheme>,
-    state: TextFieldState,
-    enabled: bool,
-    size: ControlSize,
-    window: &Window,
-) -> TextFieldLook {
-    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
-    theme.resolve_look(state, enabled, size, &scale)
+fn field_look(theme: &Arc<dyn TextFieldTheme>, state: TextFieldState, enabled: bool, window: &Window) -> TextFieldLook {
+    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+    theme.resolve_look(state, enabled, &scale)
 }
 
 fn character_offsets(
@@ -333,10 +326,9 @@ fn character_offsets(
     theme: Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = field_look(&theme, state, enabled, size, window);
+    let look = field_look(&theme, state, enabled, window);
     let run = TextRun {
         len: value.len(),
         font: {
@@ -362,11 +354,11 @@ fn character_offsets(
     offsets
 }
 
-fn size_id(size: ControlSize) -> &'static str {
+fn size_id(size: RadixSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        RadixSize::One => "sm",
+        RadixSize::Two => "md",
+        RadixSize::Three => "lg",
     }
 }
 
@@ -374,12 +366,14 @@ fn size_id(size: ControlSize) -> &'static str {
 pub(super) fn selection_field(
     look: &Look,
     id: &SharedString,
-    size: ControlSize,
+    size: RadixSize,
     state: TextFieldState,
     enabled: bool,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let sized_look = look.with_size(size);
+    let look = &sized_look;
     let theme = textfield_theme_with(look, TextFieldVariant::Surface);
     let value = SharedString::from("Option one");
     let placeholder = SharedString::from("Choose an option");
@@ -388,15 +382,14 @@ pub(super) fn selection_field(
         placeholder: &placeholder,
         value: &value,
         prefix_icon: None,
-        size,
         enabled,
         full_width: true,
         state,
         marked_range: None,
         caret_visible: state.focused && enabled,
         horizontal_scroll: 0.0,
-        character_offsets: character_offsets(&value, theme.clone(), state, enabled, size, window),
-        look: field_look(&theme, state, enabled, size, window),
+        character_offsets: character_offsets(&value, theme.clone(), state, enabled, window),
+        look: field_look(&theme, state, enabled, window),
     };
     look.textfield_template(TextFieldVariant::Surface)
         .render(&model, preview_handlers::textfield_handlers(), window, cx)

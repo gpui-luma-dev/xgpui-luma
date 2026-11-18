@@ -9,7 +9,6 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Bounds, ClickEvent, IntoElement, MouseDownEvent, MouseUpEvent, Pixels};
 use gpui::{Hsla, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::ButtonSize;
 use xgpui_luma::controls::popup_menu::{
     ControlFocusState, PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTemplate, PopupMenuTemplateHandlers,
     PopupMenuTriggerStyle,
@@ -143,8 +142,6 @@ fn state_cell(
         trigger_bounds: None,
         placement: PopupMenuPlacement::BelowStart,
         trigger_style: def.trigger_style,
-        trigger_size: ButtonSize::Md,
-        menu_size: ButtonSize::Md,
         icon_only: false,
         icon: None,
         end_icon: None,

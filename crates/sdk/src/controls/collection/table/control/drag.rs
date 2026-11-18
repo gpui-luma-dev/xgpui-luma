@@ -46,7 +46,7 @@ impl<T: 'static> TableControl<T> {
             } else {
                 format!("{} rows", drag.keys().len()).into()
             };
-            let look = self.model.theme.resolve_drag(self.model.size);
+            let look = self.model.theme.resolve_drag();
             row = bind_drag_source(
                 row,
                 drag,
@@ -66,7 +66,7 @@ impl<T: 'static> TableControl<T> {
         if self.active_row_drag.as_ref().is_some_and(|drag| drag.accepts(scope)) {
             for (edge, gap) in [(DropEdge::Before, index), (DropEdge::After, index + 1)] {
                 let before = self.row_keys.get(gap).cloned();
-                let look = self.model.theme.resolve_drag(self.model.size);
+                let look = self.model.theme.resolve_drag();
                 let zone = DropZone {
                     axis: Axis::Vertical,
                     edge,

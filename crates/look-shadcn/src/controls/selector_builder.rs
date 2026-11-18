@@ -278,14 +278,14 @@ where
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SelectorBuilder<T> {
+        let look = look.with_size(self.size);
         let mut builder = xgpui_luma::controls::selector::Selector::new_typed(self.id)
-            .stylesheet(&look.stylesheet().common)
+            .stylesheet(look.mode_tokens().common_for(look.size()))
             .motion_defaults(look.motion_defaults().selector)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)
             .template(look.selector_template())
             .items(self.items)
-            .size(self.size.control_size())
             .enabled(self.enabled)
             .wheel_scroll_policy(self.scroll_interaction.wheel)
             .scroll_boundary_policy(self.scroll_interaction.boundary)

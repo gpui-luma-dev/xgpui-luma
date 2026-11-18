@@ -1,7 +1,7 @@
 use gpui::{AnyElement, FontWeight, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::grid_layout;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 use xgpui_luma::GridTrack;
 use xgpui_luma::controls::overlay_window::OverlayWindowEvent;
 use xgpui_luma_look_shadcn::prelude::{LumaTypographyExt, ShadcnTextRole};
@@ -81,8 +81,11 @@ fn render_overlay_dialog_header(
     header_end: Option<impl IntoElement + Clone + 'static>,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let header_action =
-        look.resolve_content_only_button(ButtonFamilyRole::Icon, ControlSize::Md, InteractionState::default());
+    let header_action = look.resolve_content_only_button(
+        ButtonFamilyRole::Icon,
+        xgpui_luma_look_shadcn::ShadcnSize::Md,
+        InteractionState::default(),
+    );
     let header_h = header_action.height;
     let action_w = header_action.height;
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use gpui::SharedString;
 use xgpui_luma::controls::textarea::TextAreaState;
-use xgpui_luma::theme::{ControlSize, StandardBoxScale};
+use xgpui_luma::theme::StandardBoxScale;
 use crate::theme::{Look, ColorVizLookExt, TextSize};
 
 use super::model::EventLogViewBuilder;
@@ -21,7 +21,6 @@ impl EventLogTheme for RadixEventLogTheme {
         let textarea = xgpui_luma_look_radix::textarea_theme(&self.look).resolve_look(
             TextAreaState { focused, focus_visible: focused, ..Default::default() },
             true,
-            ControlSize::Md,
             scale,
         );
         let typography = self.look.typography_scale(TextSize::Xs);

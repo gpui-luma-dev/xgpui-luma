@@ -66,7 +66,6 @@ impl AutocompleteControl {
         let textfield = text_selection::new(format!("{}-textfield", model.id))
             .placeholder(model.placeholder.clone())
             .enabled(model.enabled)
-            .size(model.size)
             .full_width(model.full_width)
             .clean_on_escape(model.clean_on_escape)
             .propagate_home_end_to_parent(true)
@@ -326,12 +325,6 @@ impl AutocompleteControl {
         }
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.model.size = size;
-        self.textfield.update(cx, |textfield, cx| textfield.set_size(size, cx));
-        cx.notify();
-    }
-
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;
@@ -408,19 +401,16 @@ impl Render for AutocompleteControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);
-        let geometry = self.model.stylesheet.resolve_geometry(
-            self.model.size.stylesheet_key(),
-            crate::theme::stylesheet::AutocompleteGeometry {
-                status_font_size: autocomplete_look.status_typography.size,
-                status_line_height: autocomplete_look.status_typography.line_height,
-                ..Default::default()
-            },
-        );
+        let autocomplete_look = self.model.autocomplete_theme.resolve();
+        let geometry = self.model.stylesheet.resolve_geometry(crate::theme::stylesheet::AutocompleteGeometry {
+            status_font_size: autocomplete_look.status_typography.size,
+            status_line_height: autocomplete_look.status_typography.line_height,
+            ..Default::default()
+        });
         let mut status_typography = autocomplete_look.status_typography;
         status_typography.size = geometry.status_font_size;
         status_typography.line_height = geometry.status_line_height;
-        let look = (self.model.popup_look_provider)(self.model.size);
+        let look = (self.model.popup_look_provider)();
         let selected_label = self
             .behavior
             .state

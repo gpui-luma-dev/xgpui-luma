@@ -6,7 +6,7 @@ use xgpui_luma::controls::textarea::{
     TextAreaLook, TextAreaPalette, TextAreaState, TextAreaTemplate, TextAreaTheme, ThemedTextAreaTemplate,
     compose_textarea_look,
 };
-use xgpui_luma::theme::{ControlSize, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{MetricTokens, StandardBoxScale};
 
 use crate::look::Look;
 use crate::textfield::{TextFieldVariant, resolve_text_chrome_palette};
@@ -39,11 +39,11 @@ impl TextAreaSize {
         }
     }
 
-    pub fn control_size(self) -> ControlSize {
+    pub fn control_size(self) -> crate::RadixSize {
         match self {
-            Self::One => ControlSize::Sm,
-            Self::Two => ControlSize::Md,
-            Self::Three => ControlSize::Lg,
+            Self::One => crate::RadixSize::One,
+            Self::Two => crate::RadixSize::Two,
+            Self::Three => crate::RadixSize::Three,
         }
     }
 }
@@ -72,21 +72,16 @@ impl TextAreaTheme for TextAreaThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 
-    fn resolve_look(
-        &self,
-        state: TextAreaState,
-        enabled: bool,
-        size: ControlSize,
-        scale: &StandardBoxScale,
-    ) -> TextAreaLook {
+    fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
+        let size = self.look.size();
         let mut look = compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width.default);
         let stylesheet = self.look.stylesheet_snapshot();
         look.helper_geometry = stylesheet.shared_geometry();
-        let geometry = stylesheet.textarea.resolve_geometry(
-            crate::look::sdk_size_key(size),
+        let geometry = stylesheet.textarea.resolve_geometry_for(
+            size.key(),
             xgpui_luma::theme::stylesheet::TextAreaGeometry {
                 min_height: look.min_height,
                 padding_x: look.padding_x,

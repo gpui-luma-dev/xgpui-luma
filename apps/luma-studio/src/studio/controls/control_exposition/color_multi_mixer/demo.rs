@@ -13,7 +13,7 @@ use xgpui_luma_color::color_slider::{
     primary_slider_value, refresh_color_slider, update_domain_delegate,
 };
 use xgpui_luma::controls::slider::{SliderControl, SliderEvent};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 use xgpui_luma::{wrappanel};
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
@@ -192,7 +192,7 @@ impl<S: ColorSpecification> ColorSpaceMixerState<S> {
             };
             let domain_renderer = builder.domain_renderer();
             let slider = builder
-                .size(ControlSize::Sm)
+                .size(ColorControlSize::Small)
                 .thumb_medium()
                 .edge_to_edge()
                 .range(channel_meta.min..channel_meta.max)

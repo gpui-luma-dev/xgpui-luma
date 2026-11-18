@@ -14,7 +14,7 @@ use crate::stylesheet::config::matches_optional_str;
 use serde::Deserialize;
 
 use xgpui_luma::controls::radio_button::RadioButtonPalette;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
@@ -141,7 +141,7 @@ pub fn radio_button_look(
     style: ShadcnButtonStyle,
     selected: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> RadioButtonPalette {
     radio_button_look_with_stylesheet(
         &LookContext::new(mode, mode.theme_mode, state),
@@ -157,7 +157,7 @@ pub(crate) fn radio_button_look_with_stylesheet(
     stylesheet: &StylesheetConfig,
     style: ShadcnButtonStyle,
     selected: bool,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> RadioButtonPalette {
     let content_only = style == ShadcnButtonStyle::ContentOnly;
     let state = ctx.state;
@@ -203,13 +203,17 @@ fn radio_elevation_shadow(
 pub(crate) fn radio_scale_with_stylesheet(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
     scale_factor: f32,
 ) -> (xgpui_luma::controls::radio_button::RadioScale, xgpui_luma::theme::stylesheet::ResolvedRadioGeometry) {
     use xgpui_luma::controls::radio_button::RadioScale;
     use xgpui_luma::theme::{snap_to_pixel, stylesheet::RadioGeometry};
-    let mut scale = RadioScale::compute_with_stylesheet(size, ctx.metrics(), scale_factor, &stylesheet.common);
-    let mut geometry = stylesheet.common.radio.inspect_geometry(
+    let mut scale = RadioScale::compute_with_stylesheet(
+        &ctx.tokens.metrics_for(size),
+        scale_factor,
+        &ctx.tokens.sized_common(stylesheet, size),
+    );
+    let mut geometry = stylesheet.common.radio.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         RadioGeometry {
             indicator_size: scale.indicator_size,
@@ -272,7 +276,7 @@ mod tests {
     fn radio_look_resolves_stylesheet_shadow() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let look =
-            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
 
         assert!(look.indicator_shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()));
     }
@@ -281,7 +285,7 @@ mod tests {
     fn primary_selected_filled_uses_action_fill_and_foreground_dot() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let look =
-            radio_button_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ShadcnSize::Md);
         let primary = resolve_color(&retro_arcade_catalog(), "primary").expect("primary");
         let primary_fg = resolve_color(&retro_arcade_catalog(), "primary-foreground").expect("primary-foreground");
 
@@ -295,7 +299,7 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let catalog = retro_arcade_catalog();
         let look =
-            radio_button_look(&mode, ShadcnButtonStyle::Secondary, true, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Secondary, true, InteractionState::default(), ShadcnSize::Md);
         let secondary = resolve_color(&catalog, "secondary").expect("secondary");
         let secondary_fg = resolve_color(&catalog, "secondary-foreground").expect("secondary-fg");
         let card = resolve_color(&catalog, "card").expect("card");
@@ -313,7 +317,7 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { disabled: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert!(look.indicator_shadow.is_none());
@@ -323,13 +327,13 @@ mod tests {
     fn radio_hover_does_not_recolor_indicator_or_label() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let default =
-            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
         let hovered = radio_button_look(
             &mode,
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { hovered: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert_eq!(default.indicator_background, hovered.indicator_background);
@@ -341,13 +345,13 @@ mod tests {
     fn content_only_radio_keeps_primary_indicator_without_shadow() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let primary =
-            radio_button_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Primary, true, InteractionState::default(), ShadcnSize::Md);
         let content_only = radio_button_look(
             &mode,
             ShadcnButtonStyle::ContentOnly,
             true,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
 
         assert_eq!(content_only.indicator_background, primary.indicator_background);
@@ -372,10 +376,10 @@ mod tests {
             ShadcnButtonStyle::Primary,
             false,
             InteractionState { focused: true, ..InteractionState::default() },
-            ControlSize::Md,
+            ShadcnSize::Md,
         );
         let unfocused =
-            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ControlSize::Md);
+            radio_button_look(&mode, ShadcnButtonStyle::Primary, false, InteractionState::default(), ShadcnSize::Md);
 
         assert_eq!(focused.indicator_border, fallback);
         assert_eq!(unfocused.indicator_border, fallback);
@@ -521,7 +525,7 @@ pub struct RadioButtonMetricTable {
 pub fn resolve_radio_button_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> RadioButtonMetricTable {
     resolve_radio_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, size)
 }
@@ -530,7 +534,7 @@ pub(crate) fn resolve_radio_button_metrics_with_stylesheet(
     mode: &crate::ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> RadioButtonMetricTable {
     use crate::catalog::SpacingField;
     use crate::tables::metrics::helpers::{

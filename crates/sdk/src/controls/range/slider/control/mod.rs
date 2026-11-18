@@ -14,15 +14,13 @@ use gpui::{
 use super::constraints::normalize_intervals;
 use super::domain::DomainTrackRenderer;
 use super::input::SliderInputStrategy;
-use super::model::{
-    primary_value, SliderBuilder, SliderOrientation, SliderThumbSize, SliderThumbValue, ThumbId, TrackPresentation,
-};
+use super::model::{primary_value, SliderBuilder, SliderOrientation, SliderThumbValue, ThumbId, TrackPresentation};
 use super::thumbs::{insert_thumb, thumb_value};
 use super::model::SliderModel;
 use crate::infra::interaction::ControlInteraction;
 use crate::infra::value::{ControlRange, value_from_input};
 use crate::motion::VisualTransition;
-use crate::theme::{ControlSize, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 use self::motion::{sync_thumb_preview, sync_thumb_previews};
 #[derive(Clone, Debug)]
@@ -140,14 +138,6 @@ impl SliderControl {
 
     pub fn primary_thumb_id(&self) -> ThumbId {
         self.model.thumbs.first().map(|thumb| thumb.id).expect("slider always has a primary thumb")
-    }
-
-    pub fn size(&self) -> ControlSize {
-        self.model.size
-    }
-
-    pub fn thumb_size(&self) -> Option<SliderThumbSize> {
-        self.model.thumb_size
     }
 
     pub fn range(&self) -> ControlRange {

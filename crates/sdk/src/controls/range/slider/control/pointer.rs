@@ -80,10 +80,7 @@ impl SliderControl {
     }
 
     pub(super) fn thumb_size_px(&self) -> f32 {
-        self.model
-            .template
-            .resolve_look(self.model.size, self.model.thumb_size, Default::default())
-            .thumb_size
+        self.model.template.resolve_look(Default::default()).thumb_size
     }
 
     pub(super) fn handle_track_bounds(

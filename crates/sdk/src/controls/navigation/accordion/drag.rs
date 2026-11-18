@@ -175,7 +175,7 @@ impl AccordionControl {
             return None;
         }
         let scope = cx.entity_id();
-        let look = self.model.template.resolve_drag(self.model.size);
+        let look = self.model.template.resolve_drag();
         self.drop_layout.configure_transition(&self.model.motion.profile().drop_layout);
         self.drop_layout.set_motion_enabled(self.model.motion_enabled);
         let mut root = div().id(self.model.id.clone()).cancel_drag_on_escape();

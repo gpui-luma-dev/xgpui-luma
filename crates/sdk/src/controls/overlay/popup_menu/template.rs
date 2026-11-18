@@ -157,8 +157,6 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
         } = handlers;
         let scale_factor = window.scale_factor();
         let metrics = PopupMenuTriggerMetrics {
-            size: model.trigger_size,
-            menu_size: model.menu_size,
             without_elevation: model.without_elevation,
             icon_only: model.icon_only,
             trigger_radius_override: model.trigger_radius_override,
@@ -514,7 +512,7 @@ mod tests {
 
     use super::*;
     use crate::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle, compose_popup_menu_look};
-    use crate::theme::{ControlSize, InteractionState, StandardBoxScale};
+    use crate::theme::{InteractionState, StandardBoxScale};
 
     fn look() -> PopupMenuLook {
         let theme = default_popup_menu_theme();
@@ -524,7 +522,7 @@ mod tests {
                 PopupMenuTriggerMetrics::default(),
                 InteractionState::default(),
             ),
-            &StandardBoxScale::compute(ControlSize::Md, &theme.metrics(), 1.0),
+            &StandardBoxScale::compute(&theme.metrics(), 1.0),
         )
     }
 

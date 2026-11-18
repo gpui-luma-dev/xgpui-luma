@@ -150,7 +150,7 @@ pub use split_button::{SPLIT_BUTTON_INSPECTOR_SPEC, split_button_inspector_resol
 mod context_menu {
     use std::sync::Arc;
 
-    use xgpui_luma::theme::ControlSize;
+    use xgpui_luma_look_shadcn::ShadcnSize;
     use xgpui_luma_look_shadcn::ShadcnLook;
     use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
@@ -208,9 +208,9 @@ mod context_menu {
 
     fn resolve_color_rows(look: &ShadcnLook, selection: InspectorSelection<'_>) -> Vec<InspectColorRow> {
         let size = match selection.size_id {
-            "sm" => ControlSize::Sm,
-            "lg" => ControlSize::Lg,
-            _ => ControlSize::Md,
+            "sm" => ShadcnSize::Sm,
+            "lg" => ShadcnSize::Lg,
+            _ => ShadcnSize::Md,
         };
         let palette =
             ShadcnInspect::new(look).inspect_context_menu_color_palette(interaction_state(selection.state_id), size);
@@ -225,7 +225,7 @@ pub use context_menu::{CONTEXT_MENU_INSPECTOR_SPEC, ContextMenuInspectorAdapter}
 mod floating_menu {
     use std::sync::Arc;
 
-    use xgpui_luma::theme::ControlSize;
+    use xgpui_luma_look_shadcn::ShadcnSize;
     use xgpui_luma_look_shadcn::ShadcnLook;
     use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
@@ -283,9 +283,9 @@ mod floating_menu {
         selection: InspectorSelection<'_>,
     ) -> Vec<super::super::super::schema::InspectColorRow> {
         let size = match selection.size_id {
-            "sm" => ControlSize::Sm,
-            "lg" => ControlSize::Lg,
-            _ => ControlSize::Md,
+            "sm" => ShadcnSize::Sm,
+            "lg" => ShadcnSize::Lg,
+            _ => ShadcnSize::Md,
         };
         let palette = ShadcnInspect::new(look).inspect_floating_menu_color_palette(size);
         floating_menu_palette_rows(&palette)
@@ -297,7 +297,7 @@ mod overlay_window {
     use std::sync::Arc;
 
     use xgpui_luma::controls::overlay_window::OverlayWindowMode;
-    use xgpui_luma::theme::ControlSize;
+    use xgpui_luma_look_shadcn::ShadcnSize;
     use xgpui_luma_look_shadcn::ShadcnLook;
     use xgpui_luma_look_shadcn::inspect::ShadcnInspect;
 
@@ -362,11 +362,11 @@ mod overlay_window {
         overlay_window_palette_rows(&palette)
     }
 
-    fn overlay_window_size(size_id: &str) -> ControlSize {
+    fn overlay_window_size(size_id: &str) -> ShadcnSize {
         match size_id {
-            "sm" => ControlSize::Sm,
-            "lg" => ControlSize::Lg,
-            _ => ControlSize::Md,
+            "sm" => ShadcnSize::Sm,
+            "lg" => ShadcnSize::Lg,
+            _ => ShadcnSize::Md,
         }
     }
 

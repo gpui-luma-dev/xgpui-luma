@@ -4,7 +4,6 @@ use gpui::{AnyElement, App, AppContext, Context, Entity, IntoElement, SharedStri
 
 use super::{OverlayWindowControl, OverlayWindowTemplate, default_overlay_window_template};
 use super::template::modified_overlay_window_template;
-use crate::theme::ControlSize;
 
 pub type OverlayWindowElementRenderer =
     Arc<dyn Fn(&OverlayWindowRenderModel<'_>, &mut Window, &mut App) -> AnyElement + Send + Sync>;
@@ -56,7 +55,6 @@ pub struct OverlayWindowModel {
     pub(crate) dismiss_policy: OverlayWindowDismissPolicy,
     pub(crate) dismissible: bool,
     pub(crate) draggable: bool,
-    pub(crate) size: ControlSize,
     pub(crate) width: Option<f32>,
     pub(crate) template: Arc<dyn OverlayWindowTemplate>,
 }
@@ -67,7 +65,6 @@ pub struct OverlayWindowRenderModel<'a> {
     pub position: OverlayWindowPosition,
     pub dismissible: bool,
     pub draggable: bool,
-    pub size: ControlSize,
     pub width: Option<f32>,
     pub focused: bool,
     pub content: &'a OverlayWindowElementRenderer,
@@ -149,7 +146,6 @@ impl OverlayWindowBuilder {
                 dismiss_policy: OverlayWindowDismissPolicy::KeepOpen,
                 dismissible: true,
                 draggable: false,
-                size: ControlSize::Md,
                 width: None,
                 template: default_overlay_window_template(),
             },
@@ -224,11 +220,6 @@ impl OverlayWindowBuilder {
 
     pub fn draggable(mut self, draggable: bool) -> Self {
         self.model.draggable = draggable;
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
         self
     }
 

@@ -1,4 +1,3 @@
-use super::ControlSize;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -11,7 +10,8 @@ pub struct MetricTokens {
     pub radius: RadiusTokens,
     pub border_width: BorderWidthTokens,
     pub focus: FocusMetricTokens,
-    pub control: ControlMetricScale,
+    /// The SDK control scale; the only size the SDK defines.
+    pub control: ControlMetricTokens,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
@@ -77,14 +77,6 @@ pub struct FocusMetricTokens {
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct ControlMetricScale {
-    pub sm: ControlMetricTokens,
-    pub md: ControlMetricTokens,
-    pub lg: ControlMetricTokens,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct ControlMetricTokens {
     #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
     pub radius: f32,
@@ -123,43 +115,31 @@ impl MetricTokens {
             radius: RadiusTokens { none: 0.0, sm: 3.0, md: 6.0, lg: 8.0, xl: 12.0, pill: 999.0 },
             border_width: BorderWidthTokens { hairline: 0.5, default: 1.0, strong: 2.0 },
             focus: FocusMetricTokens { gap: 1.0, width: 1.0, offset: 0.0 },
-            control: ControlMetricScale {
-                sm: ControlMetricTokens::new(28.0, 10.0, 5.0, 6.0, 5.0, 14.0),
-                md: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
-                lg: ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
-            },
+            control: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
         }
     }
 
-    pub fn for_size(&self, size: ControlSize) -> ControlMetricTokens {
-        match size {
-            ControlSize::Sm => self.control.sm,
-            ControlSize::Md => self.control.md,
-            ControlSize::Lg => self.control.lg,
-        }
+    pub fn radius(&self) -> f32 {
+        self.control.radius
     }
 
-    pub fn radius(&self, size: ControlSize) -> f32 {
-        self.for_size(size).radius
+    pub fn control_height(&self) -> f32 {
+        self.control.control_height
     }
 
-    pub fn control_height(&self, size: ControlSize) -> f32 {
-        self.for_size(size).control_height
+    pub fn padding_x(&self) -> f32 {
+        self.control.padding_x
     }
 
-    pub fn padding_x(&self, size: ControlSize) -> f32 {
-        self.for_size(size).padding_x
+    pub fn padding_y(&self) -> f32 {
+        self.control.padding_y
     }
 
-    pub fn padding_y(&self, size: ControlSize) -> f32 {
-        self.for_size(size).padding_y
+    pub fn gap(&self) -> f32 {
+        self.control.gap
     }
 
-    pub fn gap(&self, size: ControlSize) -> f32 {
-        self.for_size(size).gap
-    }
-
-    pub fn icon_size(&self, size: ControlSize) -> f32 {
-        self.for_size(size).icon_size
+    pub fn icon_size(&self) -> f32 {
+        self.control.icon_size
     }
 }

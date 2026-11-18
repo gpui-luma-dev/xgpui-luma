@@ -6,7 +6,7 @@ use xgpui_luma::controls::checkbox::{CheckboxData, ThemedCheckboxTemplate};
 use xgpui_luma::controls::radio_button::{RadioButtonData, ThemedRadioButtonTemplate};
 use xgpui_luma::controls::switch::{SwitchData, ThemedSwitchTemplate};
 use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::{ThemeMode};
 use crate::*;
 
 #[test]
@@ -22,15 +22,14 @@ fn all_button_variants_keep_control_and_sibling_bounds_across_states() {
             ButtonVariant::GhostQuiet,
             ButtonVariant::Page,
         ] {
-            for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+            for size in [RadixSize::One, RadixSize::Two, RadixSize::Three] {
                 for compact in [false, true] {
                     let look = Look::built_in();
                     look.set_mode(mode);
-                    let template = DefaultButtonTemplate::new(button_family_theme(&look, variant));
+                    let template = DefaultButtonTemplate::new(button_family_theme(&look.with_size(size), variant));
                     assert_stable_layout(move |state, selected, window, cx| {
                         let model = ButtonRenderModel::<()> {
                             id: "variant".into(),
-                            size,
                             compact,
                             role: ButtonFamilyRole::Toggle { selected },
                             state,
@@ -46,14 +45,14 @@ fn all_button_variants_keep_control_and_sibling_bounds_across_states() {
 
 #[test]
 fn choice_indicators_reserve_focus_space_in_every_state() {
-    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+    for size in [RadixSize::One, RadixSize::Two, RadixSize::Three] {
         for variant in [CheckboxVariant::Classic, CheckboxVariant::Surface, CheckboxVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedCheckboxTemplate::new(checkbox_theme(&look, variant));
+            let template = ThemedCheckboxTemplate::new(checkbox_theme(&look.with_size(size), variant));
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
-                        &ButtonRenderModel { data: CheckboxData::new(selected), state, size, ..Default::default() },
+                        &ButtonRenderModel { data: CheckboxData::new(selected), state, ..Default::default() },
                         window,
                         cx,
                     )
@@ -62,11 +61,11 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedRadioButtonTemplate::new(radio_theme(&look, variant));
+            let template = ThemedRadioButtonTemplate::new(radio_theme(&look.with_size(size), variant));
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
-                        &ButtonRenderModel { data: RadioButtonData::new(selected), state, size, ..Default::default() },
+                        &ButtonRenderModel { data: RadioButtonData::new(selected), state, ..Default::default() },
                         window,
                         cx,
                     )
@@ -75,11 +74,12 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [SwitchVariant::Classic, SwitchVariant::Surface, SwitchVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedSwitchTemplate::new(switch_theme_with(&look, variant, Paint::accent()));
+            let template =
+                ThemedSwitchTemplate::new(switch_theme_with(&look.with_size(size), variant, Paint::accent()));
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
-                        &ButtonRenderModel { data: SwitchData::new(selected), state, size, ..Default::default() },
+                        &ButtonRenderModel { data: SwitchData::new(selected), state, ..Default::default() },
                         window,
                         cx,
                     )
@@ -140,11 +140,11 @@ fn composite_item(
         foreground: None,
     };
     if icon {
-        crate::icon_group_item_template(look, ControlSize::Md, |item: &ControlGroupItem| {
+        crate::icon_group_item_template(look, RadixSize::Two, |item: &ControlGroupItem| {
             gpui::div().child(item.label().clone()).into_any_element()
         })(&model, window, cx)
     } else {
-        crate::control_group_item_template(look, ControlSize::Md)(&model, None, window, cx).into_any_element()
+        crate::control_group_item_template(look, RadixSize::Two)(&model, None, window, cx).into_any_element()
     }
 }
 
@@ -166,11 +166,8 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
         for recipe in ["none", "tone.6"] {
             let look = Look::built_in().fork();
             look.set_button_recipes(&format!("[[button_recipes.rules]]\nbackground='transparent'\nforeground='role.foreground'\nborder='gray.7'\nfocus_border='{recipe}'")).unwrap();
-            let palette = crate::button_family_theme(&look, ButtonVariant::Ghost).resolve(
-                ButtonFamilyRole::Text,
-                ControlSize::Md,
-                InteractionState::default(),
-            );
+            let palette = crate::button_family_theme(&look, ButtonVariant::Ghost)
+                .resolve(ButtonFamilyRole::Text, InteractionState::default());
             let expected_focus = if icon {
                 look.resolve_role(SemanticRole::Focus).hsla()
             } else {

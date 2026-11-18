@@ -15,7 +15,6 @@ use gpui::{
 };
 
 use crate::motion::{Transition, VisualTransition};
-use crate::controls::button_family::ButtonSize;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 
@@ -407,10 +406,6 @@ impl SwitchBuilder {
     {
         self.button.model.switch_thumb_content = Some(Arc::new(move |model, cx| builder(model, cx).into_any_element()));
         self
-    }
-
-    pub fn size(self, size: ButtonSize) -> Self {
-        Self { button: self.button.size(size), ..self }
     }
 
     pub fn template(self, template: Arc<dyn ButtonTemplate<SwitchData>>) -> Self {

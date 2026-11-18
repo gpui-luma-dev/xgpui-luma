@@ -30,7 +30,7 @@ use xgpui_luma::controls::selector_list::{
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
 use xgpui_luma::controls::textfield::TextFieldLook;
-use xgpui_luma::theme::{ControlSize, InteractionState, LumaTextStyle, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, LumaTextStyle, StandardBoxScale};
 use xgpui_luma_look_shadcn::stylesheet::{embedded_stylesheet, resolve_button_metrics_rule};
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use lucide_svg_static::Icon as LucideIcon;
@@ -84,7 +84,7 @@ struct SelectorPreviewTextfieldRequest<'a> {
     placeholder: &'a SharedString,
     value: &'a SharedString,
     state: &'a SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
 }
 
 struct SelectorPopupHandlers {
@@ -156,12 +156,12 @@ pub(crate) fn render_selector_templates_section(
 fn selector_preview_typography_for_size(
     look: &Arc<ShadcnLook>,
     base: LumaTextStyle,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> LumaTextStyle {
     let mut typography = base;
     if let Some(rule) = embedded_stylesheet().button.metrics_for_size(size) {
         let tokens = look.mode_tokens();
-        let metrics = resolve_button_metrics_rule(rule, &tokens.metrics, size);
+        let metrics = resolve_button_metrics_rule(rule, &tokens.metrics, &tokens.control_sizes, size);
         let base_size = typography.size;
         typography.size = metrics.font_size;
         if base_size > 0.0 {
@@ -174,7 +174,7 @@ fn selector_preview_typography_for_size(
 fn apply_selector_preview_textfield_size(
     look: &Arc<ShadcnLook>,
     mut textfield_look: TextFieldLook,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TextFieldLook {
     textfield_look.typography = selector_preview_typography_for_size(look, textfield_look.typography, size);
     textfield_look
@@ -279,7 +279,7 @@ fn render_selector_state_row(
                 look,
                 *control,
                 state,
-                ControlSize::Md,
+                ShadcnSize::Md,
                 state.id == "pressed" || state.selector_open,
                 scroll_wheel.clone(),
                 window,
@@ -297,7 +297,7 @@ fn render_selector_sizes_body(
 ) -> AnyElement {
     let chrome = look.chrome();
     let controls = selector_template_controls();
-    let sizes = [(ControlSize::Sm, "Sm"), (ControlSize::Md, "Md"), (ControlSize::Lg, "Lg")];
+    let sizes = [(ShadcnSize::Sm, "Sm"), (ShadcnSize::Md, "Md"), (ShadcnSize::Lg, "Lg")];
     let state = SelectorTemplateStateSample {
         id: "size",
         label: "Size",
@@ -348,7 +348,7 @@ fn render_selector_control_cell(
     look: &Arc<ShadcnLook>,
     control: SelectorTemplateControl,
     state: &SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
     show_popup: bool,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
     window: &mut Window,
@@ -422,23 +422,25 @@ fn render_selector_autocomplete_trigger(
     id: &SharedString,
     placeholder: &'static str,
     state: &SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
     let textfield_template = look.primary_textfield_template();
     let textfield_theme = look.primary_textfield_theme();
     let autocomplete_template = default_autocomplete_template();
     let value = SharedString::from(if state.selector_selected { "California" } else { "" });
     let placeholder = SharedString::from(placeholder);
-    let status_theme = look.autocomplete_theme().resolve(size);
-    let popup_look = look.selector_items_panel_look(shadcn_size(size));
+    let status_theme = look.autocomplete_theme().resolve();
+    let popup_look = look.selector_items_panel_look(size);
 
     let model = AutocompleteRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.autocomplete.resolve_geometry(
-            size.stylesheet_key(),
+        geometry: look.stylesheet().common.autocomplete.resolve_geometry_for(
+            size.key(),
             xgpui_luma::theme::stylesheet::AutocompleteGeometry {
                 status_font_size: status_theme.status_typography.size,
                 status_line_height: status_theme.status_typography.line_height,
@@ -493,25 +495,27 @@ fn render_selector_combobox_trigger(
     id: &SharedString,
     placeholder: &'static str,
     state: &SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
     let textfield_template = look.primary_textfield_template();
     let textfield_theme = look.primary_textfield_theme();
     let combobox_template = default_combobox_template();
     let value = SharedString::from(if state.selector_selected { "California" } else { "" });
     let placeholder = SharedString::from(placeholder);
-    let status_theme = look.autocomplete_theme().resolve(size);
-    let popup_look = look.selector_items_panel_look(shadcn_size(size));
+    let status_theme = look.autocomplete_theme().resolve();
+    let popup_look = look.selector_items_panel_look(size);
     let popup_bounds = (state.id == "pressed" || state.selector_open)
         .then(|| gpui::Bounds::new(gpui::point(px(0.0), px(0.0)), gpui::size(px(SELECTOR_TRIGGER_WIDTH), px(32.0))));
     let popup_open = popup_bounds.is_some();
 
     let model = ComboBoxRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.combobox.resolve_geometry(size.stylesheet_key(), Default::default()),
+        geometry: look.stylesheet().common.combobox.resolve_geometry_for(size.key(), Default::default()),
         textfield: render_selector_preview_textfield(
             SelectorPreviewTextfieldRequest {
                 look,
@@ -561,11 +565,13 @@ fn render_selector_search_selector_trigger(
     id: &SharedString,
     placeholder: &'static str,
     state: &SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
     let search_selector_template = default_search_selector_template();
     let selector_theme = look.selector_theme();
     let interaction = InteractionState {
@@ -582,13 +588,12 @@ fn render_selector_search_selector_trigger(
             selected: state.selector_selected,
             invalid: state.selector_state.invalid,
         },
-        size,
-        &StandardBoxScale::compute(size, &selector_theme.metrics(), window.scale_factor()),
+        &StandardBoxScale::compute(&selector_theme.metrics(), window.scale_factor()),
         false,
     );
     let model = SearchSelectorRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.search_selector.resolve_geometry(size.stylesheet_key(), Default::default()),
+        geometry: look.stylesheet().common.search_selector.resolve_geometry_for(size.key(), Default::default()),
         id: id.clone(),
         trigger_label: if state.selector_selected {
             SharedString::from("California")
@@ -604,7 +609,6 @@ fn render_selector_search_selector_trigger(
             size,
         )),
         enabled: state.textfield_enabled,
-        size,
         full_width: true,
         minimum_trigger_width: px(SELECTOR_TRIGGER_WIDTH),
         status_label: SharedString::from(""),
@@ -634,10 +638,12 @@ fn render_selector_selector_trigger(
     look: &Arc<ShadcnLook>,
     id: &SharedString,
     state: &SelectorTemplateStateSample,
-    size: ControlSize,
+    size: ShadcnSize,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
     let selector_template = look.selector_template();
     let label = SharedString::from("Select state");
     let items = selector_trigger_items().into_iter().collect::<Vec<_>>();
@@ -658,7 +664,6 @@ fn render_selector_selector_trigger(
         initialize_popup_scroll: false,
         active_path: None,
         enabled: state.selector_enabled,
-        size,
         trigger_style: Default::default(),
         icons: &SelectorIcons::default(),
         without_elevation: false,
@@ -704,7 +709,6 @@ fn render_selector_preview_textfield(
         placeholder,
         value,
         prefix_icon: None,
-        size,
         enabled: state.textfield_enabled,
         full_width: true,
         state: state.textfield_state,
@@ -723,12 +727,14 @@ fn render_selector_popup_preview(
     id: &SharedString,
     control: SelectorTemplateControl,
     selected: bool,
-    size: ControlSize,
+    size: ShadcnSize,
     scroll_wheel: SelectorPreviewScrollWheelHandler,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
-    let popup_look = look.selector_items_panel_look(shadcn_size(size));
+    let sized_look = Arc::new(look.with_size(size));
+    let look = &sized_look;
+    let popup_look = look.selector_items_panel_look(size);
     let popup_id = SharedString::from(format!("{id}-popup-preview"));
     let items = selector_popup_items_for_control(control);
     let item_hovers = (0..items.len())
@@ -813,7 +819,6 @@ fn render_selector_popup_preview(
                 placeholder: &search_placeholder,
                 value: &search_value,
                 prefix_icon: None,
-                size,
                 enabled: true,
                 full_width: true,
                 state: search_state,
@@ -842,7 +847,7 @@ fn render_selector_popup_preview(
                         .stylesheet()
                         .common
                         .search_selector
-                        .resolve_geometry(size.stylesheet_key(), Default::default()),
+                        .resolve_geometry_for(size.key(), Default::default()),
                     items: &default_search_selector_items_template(),
                     panel: &default_search_selector_panel_template(),
                 },
@@ -998,7 +1003,7 @@ fn selector_textfield_character_offsets(
     theme: Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
     window: &mut Window,
 ) -> Vec<f32> {
     let look = selector_preview_textfield_look(look, &theme, state, enabled, size, window);
@@ -1040,19 +1045,11 @@ fn selector_preview_textfield_look(
     theme: &Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ControlSize,
+    size: ShadcnSize,
     window: &Window,
 ) -> xgpui_luma::controls::textfield::TextFieldLook {
-    let scale = StandardBoxScale::compute(size, &theme.metrics(), window.scale_factor());
-    apply_selector_preview_textfield_size(look, theme.resolve_look(state, enabled, size, &scale), size)
-}
-
-fn shadcn_size(size: ControlSize) -> ShadcnSize {
-    match size {
-        ControlSize::Sm => ShadcnSize::Sm,
-        ControlSize::Md => ShadcnSize::Md,
-        ControlSize::Lg => ShadcnSize::Lg,
-    }
+    let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
+    apply_selector_preview_textfield_size(look, theme.resolve_look(state, enabled, &scale), size)
 }
 
 fn render_selector_combobox_popup_preview_from_templates(

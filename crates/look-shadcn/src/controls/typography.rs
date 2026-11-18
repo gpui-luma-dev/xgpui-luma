@@ -1,17 +1,18 @@
-//! Shared ControlSize → font-size mapping from common geometry with legacy metric fallback.
+//! Shared ShadcnSize → font-size mapping from common geometry with legacy metric fallback.
 
 use serde::Deserialize;
 use std::collections::HashMap;
 
-use xgpui_luma::theme::{ControlSize, LumaTextStyle};
+use xgpui_luma::theme::{LumaTextStyle};
 
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{resolve_button_metrics_rule};
+use crate::size::ShadcnSize;
 
 /// Preserve the supplied typography ratio while applying configured button sizes.
-pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &ShadcnModeTokens, size: ControlSize) {
+pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &ShadcnModeTokens, size: ShadcnSize) {
     if let Some(rule) = mode.stylesheet().button.metrics_for_size(size) {
-        let metrics = resolve_button_metrics_rule(rule, &mode.metrics, size);
+        let metrics = resolve_button_metrics_rule(rule, &mode.metrics, &mode.control_sizes, size);
         let base_size = typography.size;
         typography.size = metrics.font_size;
         if base_size > 0.0 {
@@ -24,7 +25,7 @@ pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &Sh
 pub(crate) fn apply_common_button_typography(
     typography: &mut LumaTextStyle,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: ControlSize,
+    size: ShadcnSize,
 ) {
     let (font, line, _, _) = crate::tables::typography::common_typography_overrides(stylesheet, size, false);
     if let Some(font) = font {

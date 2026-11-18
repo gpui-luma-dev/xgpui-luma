@@ -229,8 +229,6 @@ impl PopupMenu {
             trigger_bounds: self.lifecycle.trigger_bounds(),
             placement: self.model.placement,
             trigger_style: self.model.trigger_style,
-            trigger_size: self.model.trigger_size,
-            menu_size: self.model.menu_size,
             icon_only: self.model.icon_only,
             icon: self.model.icon,
             end_icon: self.model.end_icon,

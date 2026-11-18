@@ -5,7 +5,7 @@ use gpui::{Hsla, SharedString};
 use crate::controls::button_family::{
     ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme, compose_button_family_look,
 };
-use crate::theme::{ControlSize, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct ControlGroupItemVisualContext {
@@ -37,7 +37,7 @@ pub struct ControlGroupListLook {
 impl ControlGroupListLook {
     /// Apply explicit shared shell geometry before consumer template modifiers.
     pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::ControlGroupStylesheet) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, "md", ControlGroupGeometry, self,
+        crate::theme::stylesheet::apply_common_geometry!(stylesheet, ControlGroupGeometry, self,
             [padding_x => padding_x, padding_y => padding_y, gap => gap, radius => radius, vertical_gap => vertical_gap,
              border_width => border_width, disabled_opacity => disabled_opacity]);
         self
@@ -53,12 +53,11 @@ pub trait ControlGroupTheme: Send + Sync {
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
         row_height: f32,
         row_radius: f32,
     ) -> ControlGroupItemVisualContext {
-        let palette = self.default_item_palette(selected, state, size, scale);
+        let palette = self.default_item_palette(selected, state, scale);
         ControlGroupItemVisualContext {
             foreground: palette.foreground,
             background: palette.background,
@@ -74,7 +73,6 @@ pub trait ControlGroupTheme: Send + Sync {
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette;
 }
@@ -110,13 +108,14 @@ impl ControlGroupTheme for DefaultControlGroupTheme {
         let palette = self.tokens.stylesheet.recipes.palette("control_group", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
 
-        let geometry = self.tokens.stylesheet.control_group.resolve_geometry(
-            "md",
-            crate::theme::stylesheet::ControlGroupGeometry {
-                radius: metrics.radius(ControlSize::Md),
-                ..Default::default()
-            },
-        );
+        let geometry =
+            self.tokens
+                .stylesheet
+                .control_group
+                .resolve_geometry(crate::theme::stylesheet::ControlGroupGeometry {
+                    radius: metrics.radius(),
+                    ..Default::default()
+                });
         ControlGroupListLook {
             background: if enabled {
                 palette.surface.subtle.background
@@ -142,12 +141,11 @@ impl ControlGroupTheme for DefaultControlGroupTheme {
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette {
         let button_theme = DefaultButtonFamilyTheme::new(self.tokens.clone());
         let role = ButtonFamilyRole::Toggle { selected };
-        let palette = button_theme.resolve(role, size, state);
+        let palette = button_theme.resolve(role, state);
         let look = compose_button_family_look(&palette, role, scale, scale.radius);
 
         ControlGroupItemPalette {

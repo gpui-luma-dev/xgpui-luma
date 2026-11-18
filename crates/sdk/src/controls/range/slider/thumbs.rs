@@ -166,8 +166,6 @@ mod tests {
             id: SharedString::from("test"),
             strategy: SliderInputStrategy::Horizontal,
             presentation: super::super::model::TrackPresentation::Fill,
-            size: crate::theme::ControlSize::Md,
-            thumb_size: None,
             range: ControlRange::new(0.0, 100.0),
             step: 1.0,
             keyboard_position_step: None,

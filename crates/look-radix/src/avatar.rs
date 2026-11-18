@@ -56,12 +56,13 @@ impl AvatarSize {
     pub fn diameter(self) -> f32 {
         crate::look::embedded_common_stylesheet()
             .avatar
-            .resolve_geometry(self.as_str(), Default::default())
+            .resolve_geometry_for(self.as_str(), Default::default())
             .diameter
     }
     fn font_size(self, two_letters: bool) -> f32 {
-        let geometry =
-            crate::look::embedded_common_stylesheet().avatar.resolve_geometry(self.as_str(), Default::default());
+        let geometry = crate::look::embedded_common_stylesheet()
+            .avatar
+            .resolve_geometry_for(self.as_str(), Default::default());
         if two_letters {
             geometry.two_letter_font_size
         } else {
@@ -176,7 +177,7 @@ impl Avatar {
         let (background, foreground) = self.colors();
         let stylesheet = self.look.common_stylesheet();
         let diameter = self.size.diameter();
-        let geometry = stylesheet.avatar.resolve_geometry(
+        let geometry = stylesheet.avatar.resolve_geometry_for(
             self.size.as_str(),
             xgpui_luma::theme::stylesheet::AvatarGeometry {
                 diameter,
@@ -185,7 +186,7 @@ impl Avatar {
                 two_letter_font_size: self.size.font_size(true),
             },
         );
-        let icon_size = if stylesheet.avatar.authored_geometry(self.size.as_str()).icon_size.is_none() {
+        let icon_size = if stylesheet.avatar.authored_geometry_for(self.size.as_str()).icon_size.is_none() {
             geometry.diameter * 0.6
         } else {
             geometry.icon_size

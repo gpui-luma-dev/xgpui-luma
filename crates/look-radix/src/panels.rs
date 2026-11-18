@@ -13,7 +13,7 @@ impl ResizablePanelsTheme for PanelsTheme {
         size.metrics_with_stylesheet(&self.look.common_stylesheet())
     }
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let geometry = self.look.common_stylesheet().resizable_panels.resolve_geometry("md", Default::default());
+        let geometry = self.look.common_stylesheet().resizable_panels.resolve_geometry_for("md", Default::default());
         let muted = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
         ResizablePanelsLook {
             border: self.look.resolve_role(SemanticRole::Border).hsla(),
@@ -67,7 +67,7 @@ pub fn resizable_panels_builder(look: &Look, id: impl Into<SharedString>) -> Res
 /// Supply content/focus/resize handlers through the SDK state APIs and render functions.
 pub fn slide_panel_state(look: &Look, anchor: SlidePanelTopAnchor, size: SlidePanelSizeConfig) -> SlidePanelState {
     SlidePanelState::new(anchor, size)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().slide_panel)
 }
 /// Resolve live Radix drawer resize chrome shared with Resizable Panels.
@@ -168,7 +168,7 @@ mod tests {
         let fork = base.fork();
         let theme = resizable_panels_theme(&fork);
         let mut sheet = fork.common_stylesheet();
-        sheet.resizable_panels.sizes.sm.hit_target = Some(25.0);
+        sheet.resizable_panels.sizes.get_or_default("sm").hit_target = Some(25.0);
         sheet.slide_panel.geometry.side_width = Some(280.0);
         fork.set_common_stylesheet(sheet);
         let state =

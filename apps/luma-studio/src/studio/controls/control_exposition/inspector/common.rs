@@ -1,5 +1,5 @@
 use gpui::hsla;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use xgpui_luma_look_shadcn::ShadcnButtonStyle;
 use xgpui_luma_look_shadcn::ShadcnTextFieldStyle;
 
@@ -37,11 +37,11 @@ pub fn interaction_state(state_id: &str) -> InteractionState {
     }
 }
 
-pub fn control_size(size_id: &str) -> ControlSize {
+pub fn control_size(size_id: &str) -> xgpui_luma_look_shadcn::ShadcnSize {
     match size_id {
-        "sm" => ControlSize::Sm,
-        "lg" => ControlSize::Lg,
-        _ => ControlSize::Md,
+        "sm" => xgpui_luma_look_shadcn::ShadcnSize::Sm,
+        "lg" => xgpui_luma_look_shadcn::ShadcnSize::Lg,
+        _ => xgpui_luma_look_shadcn::ShadcnSize::Md,
     }
 }
 

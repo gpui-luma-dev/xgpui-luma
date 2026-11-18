@@ -1,7 +1,8 @@
-use xgpui_luma::theme::{ControlSize, InteractionLayer};
+use xgpui_luma::theme::{InteractionLayer};
 use serde::Deserialize;
 
 use super::selector::interaction_layer_key;
+use crate::size::ShadcnSize;
 
 pub use crate::controls::typography::{TypographyStylesheet, TypographyRule};
 pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule, ButtonElevationRule, ButtonColorRule};
@@ -159,11 +160,11 @@ pub struct LayeredElevationRule {
     pub shadow: String,
 }
 
-pub(crate) fn control_size_key(size: ControlSize) -> &'static str {
+pub(crate) fn control_size_key(size: ShadcnSize) -> &'static str {
     match size {
-        ControlSize::Sm => "sm",
-        ControlSize::Md => "md",
-        ControlSize::Lg => "lg",
+        ShadcnSize::Sm => "sm",
+        ShadcnSize::Md => "md",
+        ShadcnSize::Lg => "lg",
     }
 }
 

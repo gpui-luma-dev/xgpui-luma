@@ -2,15 +2,15 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::accordion::*;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, MetricTokens};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
 use crate::{Look, ScaleFamily, SemanticRole};
 struct AccordionThemeAdapter {
     look: Look,
 }
 impl AccordionTheme for AccordionThemeAdapter {
-    fn resolve_trigger(&self, state: InteractionState, size: ControlSize) -> AccordionPalette {
+    fn resolve_trigger(&self, state: InteractionState) -> AccordionPalette {
         let mut palette =
-            DefaultAccordionTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_trigger(state, size);
+            DefaultAccordionTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_trigger(state);
         palette.background = match state.layer() {
             InteractionLayer::Hovered => Some(self.look.resolve_step(ScaleFamily::Gray, 3).hsla()),
             InteractionLayer::Pressed => Some(self.look.resolve_step(ScaleFamily::Gray, 4).hsla()),
@@ -44,14 +44,14 @@ impl AccordionTheme for AccordionThemeAdapter {
         }
     }
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
-    fn resolve_scale(&self, size: ControlSize, scale_factor: f32) -> AccordionScale {
+    fn resolve_scale(&self, scale_factor: f32) -> AccordionScale {
+        let size = self.look.size();
         AccordionScale::compute_with_stylesheet(
-            size,
-            &self.look.metrics(),
+            &self.look.metrics_for(size),
             scale_factor,
-            &self.look.common_stylesheet(),
+            &self.look.sized_stylesheet(size),
         )
     }
     fn drag_handle_icon(&self) -> xgpui_luma::infra::icon::IconSource {
@@ -60,7 +60,8 @@ impl AccordionTheme for AccordionThemeAdapter {
     fn drag_tooltip_theme(&self) -> Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme> {
         crate::tooltip_theme(&self.look)
     }
-    fn resolve_drag(&self, size: ControlSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
+    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
+        let size = self.look.size();
         crate::navigation::drag_look(&self.look, size)
     }
 }
@@ -75,7 +76,7 @@ pub fn accordion_template(look: &Look) -> Arc<dyn AccordionTemplate> {
 /// Themed SDK builder retaining expansion, focus, reordering, and callback APIs.
 pub fn accordion_builder(look: &Look, id: impl Into<SharedString>) -> AccordionBuilder {
     AccordionBuilder::new(id)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().accordion)
         .template(accordion_template(look))
 }

@@ -15,11 +15,17 @@ pub struct ShadcnModeTokens {
     pub(crate) theme_mode: ThemeMode,
     pub catalog: CssTokenMap,
     pub palette: ShadcnPalette,
+    /// Shared metrics; `control` holds the Shadcn `default` (md) size.
     pub metrics: MetricTokens,
+    /// Shadcn control metrics for each [`crate::ShadcnSize`].
+    pub control_sizes: crate::ShadcnControlMetrics,
     pub typography: LumaTypography,
     state_colors: StateColorTable,
     shadow_previews: HashMap<String, Vec<gpui::BoxShadow>>,
     stylesheet: Arc<crate::stylesheet::StylesheetConfig>,
+    /// Common stylesheet with each Shadcn size merged into general geometry, in
+    /// [`crate::ShadcnSize::ALL`] order. SDK controls only read these pixel values.
+    sized_common: Arc<[xgpui_luma::theme::stylesheet::CommonStylesheet; 3]>,
 }
 
 impl ShadcnModeTokens {
@@ -49,17 +55,48 @@ impl ShadcnModeTokens {
             stylesheet.common.tokens.source(theme_mode).palette.data.positive,
             xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
+        let (metrics, control_sizes) = metrics_from_catalog(&catalog, MetricTokens::default());
+        let sized_common = Arc::new(crate::ShadcnSize::ALL.map(|size| stylesheet.common.with_size_key(size.key())));
         Ok(Self {
             data_positive,
             theme_mode,
-            metrics: metrics_from_catalog(&catalog, MetricTokens::default()),
+            metrics,
+            control_sizes,
             typography: typography_from_catalog(&catalog, LumaTypography::default()),
             state_colors,
             shadow_previews,
             stylesheet,
+            sized_common,
             palette,
             catalog,
         })
+    }
+
+    /// Shared metrics whose `control` scale is the given Shadcn size, for SDK geometry.
+    pub fn metrics_for(&self, size: crate::ShadcnSize) -> MetricTokens {
+        let mut metrics = self.metrics;
+        metrics.control = self.control_sizes.get(size);
+        metrics
+    }
+
+    /// Common stylesheet with `size` merged into general geometry, for SDK controls.
+    pub fn common_for(&self, size: crate::ShadcnSize) -> &xgpui_luma::theme::stylesheet::CommonStylesheet {
+        let index = crate::ShadcnSize::ALL.iter().position(|candidate| *candidate == size).unwrap_or(1);
+        &self.sized_common[index]
+    }
+
+    /// Common stylesheet for `size`, reusing the prepared copy when `stylesheet` is this
+    /// snapshot's own configuration.
+    pub(crate) fn sized_common<'a>(
+        &'a self,
+        stylesheet: &'a crate::stylesheet::StylesheetConfig,
+        size: crate::ShadcnSize,
+    ) -> std::borrow::Cow<'a, xgpui_luma::theme::stylesheet::CommonStylesheet> {
+        if std::ptr::eq(stylesheet, self.stylesheet.as_ref()) {
+            std::borrow::Cow::Borrowed(self.common_for(size))
+        } else {
+            std::borrow::Cow::Owned(stylesheet.common.with_size_key(size.key()))
+        }
     }
 
     /// Standard shadow previews are prepared with this immutable theme snapshot.

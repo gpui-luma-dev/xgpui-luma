@@ -10,11 +10,8 @@ struct ShadcnProgressTheme {
 }
 
 impl ProgressTheme for ShadcnProgressTheme {
-    fn resolve(
-        &self,
-        enabled: bool,
-        size: xgpui_luma::theme::ControlSize,
-    ) -> xgpui_luma::controls::progress::ProgressLook {
+    fn resolve(&self, enabled: bool) -> xgpui_luma::controls::progress::ProgressLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         progress_look(tokens.as_ref(), enabled, size)
     }

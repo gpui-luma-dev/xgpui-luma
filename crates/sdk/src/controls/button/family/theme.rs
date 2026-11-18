@@ -2,9 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla, SharedString};
 
-use crate::theme::{
-    ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens,
-};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ButtonFamilyRole {
@@ -50,14 +48,13 @@ pub struct ButtonFamilyLook {
 }
 
 pub trait ButtonFamilyTheme: Send + Sync {
-    fn resolve(&self, role: ButtonFamilyRole, size: ControlSize, state: InteractionState) -> ButtonFamilyPalette;
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette;
     fn metrics(&self) -> MetricTokens;
 
     /// Optional full look resolution for themes that resolve geometry and elevation together.
     fn resolve_look(
         &self,
         _role: ButtonFamilyRole,
-        _size: ControlSize,
         _state: InteractionState,
         _scale: &StandardBoxScale,
         _pill_radius: f32,
@@ -84,7 +81,7 @@ impl DefaultButtonFamilyTheme {
 }
 
 impl ButtonFamilyTheme for DefaultButtonFamilyTheme {
-    fn resolve(&self, role: ButtonFamilyRole, _size: ControlSize, state: InteractionState) -> ButtonFamilyPalette {
+    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
         native_button_palette(&self.tokens, role, state)
     }
 
@@ -95,17 +92,16 @@ impl ButtonFamilyTheme for DefaultButtonFamilyTheme {
     fn resolve_look(
         &self,
         role: ButtonFamilyRole,
-        size: ControlSize,
         state: InteractionState,
         scale: &StandardBoxScale,
         pill_radius: f32,
     ) -> Option<ButtonFamilyLook> {
-        let palette = self.resolve(role, size, state);
+        let palette = self.resolve(role, state);
         let mut look = compose_button_family_look(&palette, role, scale, pill_radius);
         if matches!(role, ButtonFamilyRole::Toggle { .. }) {
-            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toggle, size.stylesheet_key(), ToggleGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
+            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toggle, ToggleGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
         } else {
-            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.button, size.stylesheet_key(), ButtonGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
+            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.button, ButtonGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
         }
         Some(look)
     }

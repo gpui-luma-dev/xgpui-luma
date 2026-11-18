@@ -103,12 +103,13 @@ impl Progress {
         self
     }
     pub fn spawn<M: 'static>(self, cx: &mut Context<M>) -> xgpui_luma::controls::progress::Progress {
-        let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
-        let mut builder = self
-            .builder
-            .motion_defaults(look.motion_defaults().progress)
-            .size(self.size.control_size())
-            .template(progress_template(&look, self.variant, self.paint, self.radius));
+        let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>()).with_size(self.size.control_size());
+        let mut builder = self.builder.motion_defaults(look.motion_defaults().progress).template(progress_template(
+            &look,
+            self.variant,
+            self.paint,
+            self.radius,
+        ));
         for modifier in self.modifiers {
             builder = builder.with_template_modifier(modifier);
         }

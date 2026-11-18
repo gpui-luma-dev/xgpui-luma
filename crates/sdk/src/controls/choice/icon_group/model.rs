@@ -73,7 +73,7 @@ where
         if let Some(stylesheet) = model.shell_stylesheet {
             look = look.with_stylesheet(&stylesheet.control_group);
         }
-        let geometry = model.stylesheet.icon_group.resolve_geometry(
+        let geometry = model.stylesheet.icon_group.resolve_geometry_for(
             "toolbar",
             crate::theme::stylesheet::IconGroupGeometry {
                 padding_x: look.padding_x,

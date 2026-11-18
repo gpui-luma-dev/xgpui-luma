@@ -16,7 +16,7 @@ where
 {
     pub(super) fn resolve_look(&self, window: &Window) -> TableLook {
         let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
-        let mut look = self.model.theme.resolve_look(self.model.enabled, focus.focused, self.model.size);
+        let mut look = self.model.theme.resolve_look(self.model.enabled, focus.focused);
         if let Some(override_fn) = &self.model.look_override {
             look = override_fn(look);
         }
@@ -26,18 +26,17 @@ where
     pub(super) fn resolve_row_look(&self, window: &Window, _cx: &mut Context<Self>) -> TableRowLook {
         let focus = ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window);
         let scale_factor = window.scale_factor();
-        let scale = ListRowScale::compute(self.model.size, &self.model.theme.metrics(), scale_factor);
+        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
         self.model.theme.resolve_row_look(
             false,
             InteractionState { focused: focus.focused, ..Default::default() },
-            self.model.size,
             &scale,
         )
     }
 
     pub(super) fn resolve_row_look_for_metrics(&self, scale_factor: f32) -> TableRowLook {
-        let scale = ListRowScale::compute(self.model.size, &self.model.theme.metrics(), scale_factor);
-        self.model.theme.resolve_row_look(false, InteractionState::default(), self.model.size, &scale)
+        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
+        self.model.theme.resolve_row_look(false, InteractionState::default(), &scale)
     }
 
     pub(super) fn render_model(&self, window: &Window, cx: &mut Context<Self>) -> TableRenderModel<'_> {
@@ -67,7 +66,6 @@ where
             page_count: self.page_count(),
             selected_count: self.model.selected_indices.len(),
             enabled: self.model.enabled,
-            size: self.model.size,
             focus: ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window),
         }
     }
@@ -98,8 +96,8 @@ where
             invalid: false,
         };
         let scale_factor = window.scale_factor();
-        let scale = ListRowScale::compute(self.model.size, &self.model.theme.metrics(), scale_factor);
-        let mut look = self.model.theme.resolve_row_look(selected, interaction, self.model.size, &scale);
+        let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
+        let mut look = self.model.theme.resolve_row_look(selected, interaction, &scale);
         if let Some(fill_height) = self.fill_row_height {
             look.min_height = fill_height;
         }

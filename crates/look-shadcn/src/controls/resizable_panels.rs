@@ -81,7 +81,7 @@ pub fn resizable_panels_look(
     let colors = resolve_resizable_panels_colors(&resolver, state.disabled, state.layer())
         .unwrap_or_else(|_| ResizablePanelsColorTable::fallback());
 
-    let geometry = mode.stylesheet().common.resizable_panels.resolve_geometry("md", Default::default());
+    let geometry = mode.stylesheet().common.resizable_panels.resolve_geometry_for("md", Default::default());
 
     ResizablePanelsLook {
         border: colors.border.hsla(),
@@ -201,7 +201,7 @@ pub fn resolve_resizable_panels_metrics(
         xgpui_luma::controls::resizable_panels::ResizeHandleSize::Lg => "lg",
     };
 
-    let geometry = stylesheet.resizable_panels.inspect_geometry(
+    let geometry = stylesheet.resizable_panels.inspect_geometry_for(
         size_label,
         xgpui_luma::theme::stylesheet::ResizablePanelsGeometry {
             lane_width: metrics.lane_px,

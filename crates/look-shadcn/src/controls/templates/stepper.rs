@@ -10,11 +10,8 @@ struct ShadcnStepperTheme {
 }
 
 impl StepperTheme for ShadcnStepperTheme {
-    fn resolve(
-        &self,
-        enabled: bool,
-        size: xgpui_luma::theme::ControlSize,
-    ) -> xgpui_luma::controls::stepper::StepperLook {
+    fn resolve(&self, enabled: bool) -> xgpui_luma::controls::stepper::StepperLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         stepper_look(tokens.as_ref(), enabled, size)
     }

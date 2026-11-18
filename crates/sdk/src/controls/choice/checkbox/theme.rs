@@ -6,7 +6,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{BoxShadow, Hsla, SharedString};
 
 use crate::theme::scales::{label_baseline_shift, snap_to_pixel};
-use crate::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CheckboxScale {
@@ -24,42 +24,35 @@ pub struct CheckboxScale {
 }
 
 impl CheckboxScale {
-    pub fn compute(size: ControlSize, metrics: &MetricTokens, scale_factor: f32) -> Self {
-        Self::compute_with_stylesheet(
-            size,
-            metrics,
-            scale_factor,
-            crate::theme::stylesheet::CommonStylesheet::sdk_default(),
-        )
+    pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
+        Self::compute_with_stylesheet(metrics, scale_factor, crate::theme::stylesheet::CommonStylesheet::sdk_default())
     }
 
     /// Resolve shared appearance over the vanilla SDK baseline, then snap once.
     pub fn compute_with_stylesheet(
-        size: ControlSize,
         metrics: &MetricTokens,
         scale_factor: f32,
         stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let key = size.stylesheet_key();
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().checkbox.authored_geometry(key);
-        let geometry = stylesheet.checkbox.authored_geometry(key).with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().checkbox.authored_geometry();
+        let geometry = stylesheet.checkbox.authored_geometry().with_fallback(&baseline);
         let indicator_size = snap_to_pixel(
             geometry
                 .indicator_size
-                .unwrap_or_else(|| metrics.control_height(size) * geometry.indicator_scale.unwrap_or_default()),
+                .unwrap_or_else(|| metrics.control_height() * geometry.indicator_scale.unwrap_or_default()),
             scale_factor,
         );
         let glyph_inset = snap_to_pixel(geometry.glyph_inset.unwrap_or_default(), scale_factor);
 
         Self {
             disabled_opacity: geometry.disabled_opacity.unwrap_or_default(),
-            control_radius: metrics.radius(size),
+            control_radius: metrics.radius(),
             control_padding_x: snap_to_pixel(geometry.control_padding_x.unwrap_or_default(), scale_factor),
             control_padding_y: snap_to_pixel(geometry.control_padding_y.unwrap_or_default(), scale_factor),
             indicator_size,
-            height: snap_to_pixel(metrics.control_height(size), scale_factor),
-            gap: snap_to_pixel(geometry.gap.unwrap_or_else(|| metrics.gap(size)), scale_factor),
-            label_baseline_shift: label_baseline_shift(size, stylesheet),
+            height: snap_to_pixel(metrics.control_height(), scale_factor),
+            gap: snap_to_pixel(geometry.gap.unwrap_or_else(|| metrics.gap()), scale_factor),
+            label_baseline_shift: label_baseline_shift(stylesheet),
             indicator_radius: snap_to_pixel(geometry.indicator_radius.unwrap_or_default(), scale_factor),
             glyph_size: snap_to_pixel(
                 geometry.glyph_size.unwrap_or_else(|| (indicator_size - glyph_inset * 2.0).max(0.0)),
@@ -88,12 +81,12 @@ pub struct CheckboxPalette {
 pub type CheckboxLook = CheckboxPalette;
 
 pub trait CheckboxTheme: Send + Sync {
-    fn resolve(&self, checked: bool, state: InteractionState, size: ControlSize) -> CheckboxPalette;
+    fn resolve(&self, checked: bool, state: InteractionState) -> CheckboxPalette;
     fn metrics(&self) -> MetricTokens;
 
     /// Geometry for the indicator / label row. Defaults to [`CheckboxScale::compute`].
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> CheckboxScale {
-        CheckboxScale::compute(size, &self.metrics(), scale_factor)
+    fn scale(&self, scale_factor: f32) -> CheckboxScale {
+        CheckboxScale::compute(&self.metrics(), scale_factor)
     }
 }
 
@@ -115,7 +108,7 @@ impl DefaultCheckboxTheme {
 }
 
 impl CheckboxTheme for DefaultCheckboxTheme {
-    fn resolve(&self, checked: bool, state: InteractionState, size: ControlSize) -> CheckboxPalette {
+    fn resolve(&self, checked: bool, state: InteractionState) -> CheckboxPalette {
         let palette = self.tokens.stylesheet.recipes.palette("checkbox", &self.tokens.palette);
         let typography = &self.tokens.typography;
         let layer = state.layer();
@@ -157,7 +150,7 @@ impl CheckboxTheme for DefaultCheckboxTheme {
             label_color,
             label_typography: {
                 let mut label_typography = typography.text.label;
-                crate::controls::textfield::apply_control_size_typography(&mut label_typography, typography, size);
+                crate::controls::textfield::apply_control_typography(&mut label_typography, typography);
                 label_typography
             },
             label_font_family: typography.font.sans.family.clone().into(),
@@ -169,8 +162,8 @@ impl CheckboxTheme for DefaultCheckboxTheme {
         self.tokens.metrics
     }
 
-    fn scale(&self, size: ControlSize, scale_factor: f32) -> CheckboxScale {
-        CheckboxScale::compute_with_stylesheet(size, &self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
+    fn scale(&self, scale_factor: f32) -> CheckboxScale {
+        CheckboxScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
     }
 }
 
@@ -197,19 +190,8 @@ impl CheckboxStylesheet {
     /// Construct the SDK checkbox geometry without parsing bundled data.
     pub fn native_default() -> Self {
         let mut checkbox = Self::default();
-        checkbox
-            .disabled_opacity(0.56)
-            .control_padding_x(0.0)
-            .control_padding_y(0.0)
-            .size("sm", |m| {
-                m.indicator(0.45, 2.0, 2.0);
-            })
-            .size("md", |m| {
-                m.indicator(0.5, 4.0, 3.0);
-            })
-            .size("lg", |m| {
-                m.indicator(0.55, 6.0, 4.0);
-            });
+        checkbox.disabled_opacity(0.56).control_padding_x(0.0).control_padding_y(0.0);
+        checkbox.geometry.indicator(0.5, 4.0, 3.0);
         checkbox
     }
 

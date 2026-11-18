@@ -100,9 +100,9 @@ fn labeled_track_content(
     move |model, _| {
         let checked = model.data.checked;
         let tokens = look.mode_tokens();
-        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, model.size);
+        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, look.size());
         let on_palette =
-            switch_look(tokens.as_ref(), look.mode(), style, true, InteractionState::default(), model.size);
+            switch_look(tokens.as_ref(), look.mode(), style, true, InteractionState::default(), look.size());
         let state_label = if checked { "ON" } else { "OFF" };
         let state_label_color = if checked && !model.state.disabled {
             on_palette.thumb_background
@@ -134,7 +134,7 @@ fn icon_thumb_content(
     move |model, _| {
         let checked = model.data.checked;
         let tokens = look.mode_tokens();
-        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, model.size);
+        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, look.size());
         let icon = if checked { LucideIcon::Check } else { LucideIcon::X };
         div()
             .text_color(palette.track_background)

@@ -355,13 +355,6 @@ where
         cx.notify();
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.cancel_position();
-        self.model.size = size;
-        self.list_state.remeasure();
-        cx.notify();
-    }
-
     pub fn set_template(&mut self, template: std::sync::Arc<dyn super::TreeViewTemplate<T>>, cx: &mut Context<Self>) {
         self.cancel_position();
         self.model.template = template;
@@ -803,7 +796,6 @@ where
             disclosure_icons: &self.model.disclosure_icons,
             row_height_factor: node.row_height_factor,
             enabled: item_enabled,
-            size: self.model.size,
             state,
             data: &node.data,
         };
@@ -1180,7 +1172,6 @@ where
             id: &self.model.id,
             selection_mode: self.model.selection_policy.mode,
             enabled: self.model.enabled,
-            size: self.model.size,
             focus: ControlFocusState::from_focus_handle(self.model.enabled, &self.focus_handle, window),
         };
 

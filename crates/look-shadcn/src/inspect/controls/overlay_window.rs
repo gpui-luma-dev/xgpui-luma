@@ -1,7 +1,7 @@
 //! Inspect metadata for `overlay_window`.
 
 use xgpui_luma::controls::overlay_window::OverlayWindowMode;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use crate::{ColorSource, ResolvedColor, ResolvedMetric, ShadcnLook};
 
 #[derive(Clone, Debug)]
@@ -23,7 +23,7 @@ pub struct OverlayWindowInspectMetrics {
 
 pub fn inspect_overlay_window_color_palette(
     look: &ShadcnLook,
-    size: ControlSize,
+    size: ShadcnSize,
     mode: OverlayWindowMode,
 ) -> OverlayWindowInspectPalette {
     let shell = crate::paint::overlay_window_look(look, size, mode);
@@ -40,7 +40,7 @@ pub fn inspect_overlay_window_color_palette(
 
 pub fn inspect_overlay_window_metrics(
     look: &ShadcnLook,
-    size: ControlSize,
+    size: ShadcnSize,
     mode: OverlayWindowMode,
 ) -> OverlayWindowInspectMetrics {
     let table = crate::tables::metrics::resolve_overlay_window_metrics(look, size, mode);

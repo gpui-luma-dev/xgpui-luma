@@ -18,7 +18,7 @@ use gpui::{
 };
 use xgpui_luma::color::{ColorValue, Gamut, GamutMapping};
 use xgpui_luma::controls::slider::SliderControl;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_color::ColorControlSize;
 use xgpui_luma_color::color_field::{ColorFieldEvent, ColorFieldState};
 use xgpui_luma_color::color_slider::color_spec::Hsv;
 use xgpui_luma_color::color_slider::{AlphaDelegate, ColorSliderBuilder, ColorSliderDomainRenderer, primary_slider_value};
@@ -69,12 +69,12 @@ impl InlineColorPicker {
             ColorFieldState::saturation_value(format!("{id}-field"), hsv, FIELD_THUMB).rounded(radius).vector()
         });
         let hue_slider = ColorSliderBuilder::hue(format!("{id}-hue"), hsv.h)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge()
             .spawn(cx);
         let alpha_builder = ColorSliderBuilder::alpha(format!("{id}-alpha"), hsv.a, hsv)
-            .size(ControlSize::Sm)
+            .size(ColorControlSize::Small)
             .thumb_medium()
             .edge_to_edge();
         let alpha_domain = alpha_builder.domain_renderer();

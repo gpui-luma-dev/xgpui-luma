@@ -45,7 +45,7 @@ pub fn inspect_switch_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> SwitchInspectMetrics {
     let table = crate::tables::metrics::resolve_switch_metrics(mode, theme_mode, style, size);
     table.into()
@@ -58,11 +58,11 @@ pub fn inspect_switch_elevation(
     on: bool,
     state: InteractionState,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
     use crate::stylesheet::{resolve_stylesheet_shadow_token};
     use crate::inspect::controls::button::{button_style_key, inspect_layered_elevation};
 
-    let look = crate::paint::switch_look(mode, theme_mode, style, on, state, ControlSize::Md);
+    let look = crate::paint::switch_look(mode, theme_mode, style, on, state, ShadcnSize::Md);
     let layer = state.layer();
     let rule = mode.stylesheet().switch.elevation_rule_for_layer(layer);
     let rule_shadow = rule.map(|rule| rule.shadow.clone()).unwrap_or_else(|| "none".to_string());

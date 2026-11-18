@@ -48,8 +48,8 @@ fn toggle_template_with_family(
         if model.look.is_some() {
             return element;
         }
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.size, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.size, model.state);
+        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
+        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
         apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
     }))
 }

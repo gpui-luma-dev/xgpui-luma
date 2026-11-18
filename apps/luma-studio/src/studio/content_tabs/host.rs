@@ -6,7 +6,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, Bounds, Context, Entity, Focusable, Pixels, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
 use xgpui_luma::controls::tabs::{Tabs, TabsContent, TabsEvent, TabsItem, TabsTemplate, TabsWidthMode};
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::paint::floating_menu_look;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -64,7 +64,7 @@ impl ContentPaneHost {
         let content_host = host.downgrade();
         let tabs = content_tabs_builder(
             board.look.as_ref(),
-            luma_studio_tabs_template(board.look.clone(), ControlSize::Lg),
+            luma_studio_tabs_template(board.look.clone(), ShadcnSize::Lg),
             move |tab, _, cx| {
                 content_host
                     .upgrade()
@@ -181,7 +181,7 @@ impl ContentPaneHost {
 
     pub(super) fn render_catalog_picker(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let menu_look =
-            floating_menu_look(self.board.look.mode_tokens().as_ref(), self.board.look.mode(), ControlSize::Sm);
+            floating_menu_look(self.board.look.mode_tokens().as_ref(), self.board.look.mode(), ShadcnSize::Sm);
         let selected_entry_id = self.controls_panel.read(cx).selected_entry_id();
         render_control_catalog_picker(&menu_look, Some(selected_entry_id), true, cx, |host, exposition_id, _, cx| {
             host.controls_panel.update(cx, |panel, cx| panel.select_entry(exposition_id, cx));
@@ -212,9 +212,8 @@ impl ContentPaneHost {
         let overrides = board.overrides.clone();
         self.board = board;
         self.tabs.update(cx, |tabs, cx| {
-            tabs.set_size(ControlSize::Lg, cx);
             tabs.set_width_mode(TabsWidthMode::Uniform, cx);
-            tabs.set_template(luma_studio_tabs_template(look.clone(), ControlSize::Lg), cx);
+            tabs.set_template(luma_studio_tabs_template(look.clone(), ShadcnSize::Lg), cx);
         });
         self.style_guide_panel.update(cx, |panel, cx| panel.sync_snapshot(look.clone(), cx));
         self.controls_panel.update(cx, |panel, cx| panel.sync_snapshot(look.clone(), cx));
@@ -323,7 +322,7 @@ mod tests {
         let look = Arc::new(ShadcnLook::built_in());
         let (page, cx) = app.add_window_view(|_, cx| {
             let builder =
-                content_tabs_builder(&look, luma_studio_tabs_template(look.clone(), ControlSize::Lg), |tab, _, _| {
+                content_tabs_builder(&look, luma_studio_tabs_template(look.clone(), ShadcnSize::Lg), |tab, _, _| {
                     div().debug_selector(move || format!("panel-{tab:?}")).child("Panel").into_any_element()
                 });
             Page { tabs: builder.spawn(cx) }

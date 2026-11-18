@@ -60,7 +60,7 @@ pub fn split_view_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, _hovered:
     let colors = resolve_split_view_colors(&resolver, enabled).unwrap_or_else(|_| SplitViewColorTable::fallback());
 
     SplitViewLook {
-        geometry: mode.stylesheet().common.split_view.resolve_geometry("", Default::default()),
+        geometry: mode.stylesheet().common.split_view.resolve_geometry(Default::default()),
         separator: colors.separator.hsla(),
         separator_hover: colors.separator_hover.hsla(),
     }
@@ -161,7 +161,7 @@ pub fn resolve_split_view_metrics_with_stylesheet(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
 ) -> SplitViewMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
-    let geometry = stylesheet.split_view.resolve_geometry("", Default::default());
+    let geometry = stylesheet.split_view.resolve_geometry(Default::default());
 
     SplitViewMetricTable {
         separator_hitbox_width: derived_metric("split view separator hitbox width", geometry.hitbox_width),

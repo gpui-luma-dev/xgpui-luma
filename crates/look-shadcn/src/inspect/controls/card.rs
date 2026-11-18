@@ -1,6 +1,6 @@
 //! Inspect metadata for `card`.
 
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use crate::{ResolvedMetric, ShadcnLook};
 
 #[derive(Clone, Debug)]
@@ -12,7 +12,7 @@ pub struct CardInspectMetrics {
     pub radius: ResolvedMetric,
 }
 
-pub fn inspect_card_metrics(look: &ShadcnLook, size: ControlSize) -> CardInspectMetrics {
+pub fn inspect_card_metrics(look: &ShadcnLook, size: ShadcnSize) -> CardInspectMetrics {
     let table = crate::tables::metrics::resolve_card_metrics(look, size);
     table.into()
 }

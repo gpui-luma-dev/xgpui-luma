@@ -13,14 +13,15 @@
 use crate::stylesheet::config::{LayeredElevationRule, matches_optional_layer};
 use serde::Deserialize;
 
-use xgpui_luma::controls::slider::{SliderLook, SliderThumbSize};
-use xgpui_luma::theme::{ControlSize, ControlSizes, InteractionLayer, InteractionState, ThemeMode};
+use xgpui_luma::controls::slider::SliderLook;
+use xgpui_luma::theme::{ControlSizes, InteractionLayer, InteractionState, ThemeMode};
 
 use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::shadow::parse_shadow_token;
+use crate::size::ShadcnSize;
 use crate::stylesheet::{
     StylesheetConfig, find_slider_color_rule, resolve_layered_elevation_shadow, resolve_slider_color_rule,
 };
@@ -113,11 +114,10 @@ pub fn slider_look(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
-    size: ControlSize,
-    thumb_size: Option<SliderThumbSize>,
+    size: ShadcnSize,
     state: InteractionState,
 ) -> SliderLook {
-    slider_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, size, thumb_size, state)
+    slider_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, size, state)
 }
 
 pub(crate) fn slider_look_with_stylesheet(
@@ -125,8 +125,7 @@ pub(crate) fn slider_look_with_stylesheet(
     stylesheet: &StylesheetConfig,
     theme_mode: ThemeMode,
     style: ShadcnButtonStyle,
-    size: ControlSize,
-    thumb_size: Option<SliderThumbSize>,
+    size: ShadcnSize,
     state: InteractionState,
 ) -> SliderLook {
     let ctx = LookContext::new(mode, theme_mode, state);
@@ -136,11 +135,11 @@ pub(crate) fn slider_look_with_stylesheet(
     let thumb_shadow = slider_elevation_shadow(catalog, stylesheet, layer);
     let resolver = LookResolver::new(catalog, ctx.theme_mode, "slider").with_stylesheet(stylesheet);
     let colors = resolve_slider_colors(&resolver, style, layer).unwrap_or_else(|_| SliderColorTable::fallback());
-    let (geometry, _, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size, thumb_size);
+    let (geometry, _, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size);
 
     SliderLook {
         thumb_border_width: mode.metrics.border_width.default,
-        decoration: stylesheet.common.slider.decoration(size),
+        decoration: mode.sized_common(stylesheet, size).slider.decoration(),
         track_background: colors.track_background.hsla(),
         fill_background: colors.fill_background.hsla(),
         thumb_background: colors.thumb_background.hsla(),
@@ -169,13 +168,12 @@ fn slider_elevation_shadow(
 mod tests {
 
     use std::collections::BTreeMap;
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
 
     use super::slider_look;
     use crate::catalog::CssTokenMap;
     use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
     use crate::mode::ShadcnModeTokens;
-    use xgpui_luma::controls::slider::SliderThumbSize;
 
     fn sample_catalog() -> CssTokenMap {
         CssTokenMap::from_map(BTreeMap::from([
@@ -222,8 +220,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -237,8 +234,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState { disabled: true, ..InteractionState::default() },
         );
 
@@ -253,8 +249,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -272,8 +267,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Secondary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -292,16 +286,14 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
         let disabled = slider_look(
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState { disabled: true, ..InteractionState::default() },
         );
 
@@ -317,8 +309,7 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
 
@@ -342,24 +333,21 @@ mod tests {
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Sm,
-            None,
+            crate::ShadcnSize::Sm,
             InteractionState::default(),
         );
         let md = slider_look(
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
+            crate::ShadcnSize::Md,
             InteractionState::default(),
         );
         let lg = slider_look(
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,
-            ControlSize::Lg,
-            None,
+            crate::ShadcnSize::Lg,
             InteractionState::default(),
         );
 
@@ -392,33 +380,6 @@ mod tests {
         assert_eq!(resolve_slider_thumb_radius_preset(ButtonRadiusPreset::Medium, &metrics, thumb_size), thumb_circle);
         assert_eq!(resolve_slider_track_radius_preset(ButtonRadiusPreset::Medium, &metrics, track_height), track_pill);
     }
-
-    #[test]
-    fn slider_thumb_override_changes_thumb_metrics_only() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-
-        let md_default = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            None,
-            InteractionState::default(),
-        );
-        let md_large = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ControlSize::Md,
-            Some(SliderThumbSize::Lg),
-            InteractionState::default(),
-        );
-
-        assert_eq!(md_default.height, md_large.height);
-        assert_eq!(md_default.track_height, md_large.track_height);
-        assert!(md_large.thumb_size > md_default.thumb_size);
-    }
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -446,8 +407,8 @@ impl SliderStylesheet {
         self.elevation_rules.iter().find(|rule| rule.layer.is_none())
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&SliderMetricsRule> {
-        self.metrics.get(size).and_then(Option::as_ref)
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&SliderMetricsRule> {
+        self.metrics.get(size.key()).and_then(Option::as_ref)
     }
 }
 
@@ -475,30 +436,21 @@ pub fn native_shadcn_common_slider() -> xgpui_luma::theme::stylesheet::SliderSty
     use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
     SliderStylesheet {
         geometry: SliderGeometryStylesheet::default(),
-        sizes: ControlSizes {
-            sm: SliderGeometryStylesheet {
-                width: Some(260.0),
-                height: Some(24.0),
-                track_height: Some(4.0),
-                thumb_size: Some(12.0),
-                ..Default::default()
-            },
-            md: SliderGeometryStylesheet {
-                width: Some(260.0),
-                height: Some(32.0),
-                track_height: Some(6.0),
-                thumb_size: Some(16.0),
-                ..Default::default()
-            },
-            lg: SliderGeometryStylesheet {
-                width: Some(260.0),
-                height: Some(40.0),
-                track_height: Some(8.0),
-                thumb_size: Some(20.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
+        sizes: [("sm", 24.0, 4.0, 12.0), ("md", 32.0, 6.0, 16.0), ("lg", 40.0, 8.0, 20.0)]
+            .into_iter()
+            .map(|(key, height, track_height, thumb_size)| {
+                (
+                    key.to_string(),
+                    SliderGeometryStylesheet {
+                        width: Some(260.0),
+                        height: Some(height),
+                        track_height: Some(track_height),
+                        thumb_size: Some(thumb_size),
+                        ..Default::default()
+                    },
+                )
+            })
+            .collect(),
     }
 }
 
@@ -569,78 +521,49 @@ pub struct SliderMetricTable {
 
 /// Default medium slider geometry retained for existing inspection callers.
 pub fn resolve_slider_metrics(mode: &ShadcnModeTokens, theme_mode: ThemeMode) -> SliderMetricTable {
-    resolve_slider_metrics_for_size(mode, theme_mode, ControlSize::Md)
+    resolve_slider_metrics_for_size(mode, theme_mode, ShadcnSize::Md)
 }
 
 pub fn resolve_slider_metrics_for_size(
     mode: &ShadcnModeTokens,
     _theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> SliderMetricTable {
-    resolve_slider_metrics_with_stylesheet(mode, mode.stylesheet(), size, None)
+    resolve_slider_metrics_with_stylesheet(mode, mode.stylesheet(), size)
 }
 
 /// Shared resolved dimensions; legacy metrics remain below common authored fields.
 pub(crate) fn slider_geometry_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: ControlSize,
-    thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
+    size: ShadcnSize,
 ) -> (
     xgpui_luma::theme::stylesheet::SliderGeometry,
     xgpui_luma::theme::stylesheet::SliderGeometrySources,
     f32,
 ) {
-    use xgpui_luma::controls::slider::SliderThumbSize;
     use xgpui_luma::theme::stylesheet::{CommonStylesheet, SliderGeometry};
-    let mut fallback = SliderGeometry::sdk_default(&mode.metrics, size, thumb_size, CommonStylesheet::sdk_default());
+    let mut fallback = SliderGeometry::sdk_default(&mode.metrics_for(size), CommonStylesheet::sdk_default());
     let mut radius = mode.metrics.radius.pill;
     if let Some(rule) = stylesheet.slider.metrics_for_size(size) {
-        let metrics = crate::stylesheet::resolve_slider_metrics(rule, &mode.metrics, size);
+        let metrics = crate::stylesheet::resolve_slider_metrics(rule, &mode.metrics, &mode.control_sizes, size);
         fallback.width = metrics.width;
         fallback.height = metrics.height;
         fallback.track_height = metrics.track_height;
+        fallback.thumb_size = metrics.thumb_size;
         radius = metrics.radius;
-        if thumb_size.is_none() {
-            fallback.thumb_size = metrics.thumb_size;
-        }
     }
-    let mut legacy_thumb_source = None;
-    if let Some(thumb_size) = thumb_size {
-        let (thumb_control_size, common_thumb) = match thumb_size {
-            SliderThumbSize::Sm => (ControlSize::Sm, stylesheet.common.slider.sizes.sm.thumb_size),
-            SliderThumbSize::Md => (ControlSize::Md, stylesheet.common.slider.sizes.md.thumb_size),
-            SliderThumbSize::Lg => (ControlSize::Lg, stylesheet.common.slider.sizes.lg.thumb_size),
-        };
-        if let Some(rule) = stylesheet.slider.metrics_for_size(thumb_control_size) {
-            fallback.thumb_size = rule.thumb_size;
-            if common_thumb.is_none() && stylesheet.common.slider.geometry.thumb_size.is_none() {
-                let key = crate::tables::metrics::helpers::control_size_key(thumb_control_size);
-                legacy_thumb_source =
-                    Some(format!("instance thumb_size {key} → stylesheet · slider.metrics.{key}.thumb_size"));
-            }
-        }
-    }
-    let thumb_key = thumb_size.map(|size| match size {
-        SliderThumbSize::Sm => ControlSize::Sm,
-        SliderThumbSize::Md => ControlSize::Md,
-        SliderThumbSize::Lg => ControlSize::Lg,
-    });
-    let (geometry, mut sources) = stylesheet.common.slider.inspect_geometry(size, thumb_key, &fallback);
-    if let Some(note) = legacy_thumb_source {
-        sources.thumb_size = xgpui_luma::theme::provenance::MetricSource::Derived { note };
-    }
+    let (geometry, sources) = stylesheet.common.slider.inspect_geometry_for(size.key(), &fallback);
     (geometry, sources, radius)
 }
 
 pub fn resolve_slider_metrics_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: ControlSize,
-    thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
+    size: ShadcnSize,
 ) -> SliderMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, inspect_shared_metric, pill_radius_metric};
-    let (geometry, sources, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size, thumb_size);
+    let (geometry, sources, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size);
     let size_key = crate::tables::metrics::helpers::control_size_key(size);
     let legacy = stylesheet.slider.metrics_for_size(size).is_some();
     let metric = |field: &str, value: xgpui_luma::theme::provenance::ResolvedMetric| {

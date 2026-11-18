@@ -120,9 +120,10 @@ impl ResizeHandleSize {
             Self::Md => "md",
             Self::Lg => "lg",
         };
-        let baseline =
-            crate::theme::stylesheet::CommonStylesheet::sdk_default().resizable_panels.authored_geometry(key);
-        let recipe = stylesheet.resizable_panels.authored_geometry(key).with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default()
+            .resizable_panels
+            .authored_geometry_for(key);
+        let recipe = stylesheet.resizable_panels.authored_geometry_for(key).with_fallback(&baseline);
         ResizeHandleMetrics {
             lane_px: recipe.lane_width.unwrap_or_default(),
             hit_target_px: recipe.hit_target.unwrap_or_default(),

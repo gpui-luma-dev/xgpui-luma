@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, FontWeight, Hsla, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::{ButtonFamilyRole};
 use xgpui_luma::hstack;
 use xgpui_luma_look_radix::{Paint, ButtonVariant, Look, LookControlExt};
 
@@ -65,7 +65,6 @@ fn preview_button(template: &Arc<dyn ButtonTemplate<()>>, id: &str, window: &mut
         id: SharedString::from(format!("style-guide-hc-{id}")),
         content: Arc::new(|_, _| div().child("Edit profile").into_any_element()),
         role: ButtonFamilyRole::Text,
-        size: ButtonSize::Md,
         ..Default::default()
     };
     template.render(&model, window, cx).into_any_element()

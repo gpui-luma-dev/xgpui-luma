@@ -148,12 +148,6 @@ impl AccordionControl {
         cx.notify();
     }
 
-    pub fn set_size(&mut self, size: crate::theme::ControlSize, cx: &mut Context<Self>) {
-        self.drop_layout.cancel();
-        self.model.size = size;
-        cx.notify();
-    }
-
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;
@@ -277,7 +271,6 @@ impl AccordionControl {
             selection_mode: self.model.selection_mode,
             collapsible: self.model.collapsible,
             enabled: self.model.enabled,
-            size: self.model.size,
             item_dividers: self.model.item_dividers,
             content_padding_y: self.model.content_padding_y,
             content_padding_top: self.model.content_padding_top,

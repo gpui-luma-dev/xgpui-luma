@@ -133,16 +133,17 @@ impl SlidePanelState {
             resize_handle_hovered: false,
             geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default()
                 .slide_panel
-                .authored_geometry("overlay"),
+                .authored_geometry_for("overlay"),
             handle_metrics: crate::controls::resizable_panels::ResizeHandleSize::Sm.metrics(),
         }
     }
 
     /// Capture visual defaults independently of motion. Explicit size config still wins.
     pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline =
-            crate::theme::stylesheet::CommonStylesheet::sdk_default().slide_panel.authored_geometry("overlay");
-        self.geometry = stylesheet.slide_panel.authored_geometry("overlay").with_fallback(&baseline);
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default()
+            .slide_panel
+            .authored_geometry_for("overlay");
+        self.geometry = stylesheet.slide_panel.authored_geometry_for("overlay").with_fallback(&baseline);
         self.handle_metrics =
             crate::controls::resizable_panels::ResizeHandleSize::Sm.metrics_with_stylesheet(stylesheet);
         self

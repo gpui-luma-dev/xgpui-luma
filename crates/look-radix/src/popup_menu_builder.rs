@@ -12,7 +12,7 @@ use xgpui_luma::infra::presenter::{ControlPresenter, HasPresenter};
 
 use crate::button_layout::ButtonSize;
 use crate::look::{Look, resolve_look};
-use crate::popup_menu::{PopupMenuVariant, popup_menu_template};
+use crate::popup_menu::{PopupMenuVariant};
 use crate::tone::Tone;
 
 enum TriggerFace {
@@ -327,15 +327,19 @@ impl PopupMenu {
     }
 
     fn into_sdk_builder(self, look: Look) -> PopupMenuBuilder {
-        let template = popup_menu_template(&look, self.variant, self.tone);
+        let look = look.with_size(self.size.control_size());
+        let template = crate::popup_menu::popup_menu_template_with_menu_size(
+            &look,
+            self.variant,
+            self.tone,
+            self.menu_size.control_size(),
+        );
         let mut builder = xgpui_luma::controls::popup_menu::PopupMenu::new(self.id)
-            .stylesheet(&look.common_stylesheet())
+            .stylesheet(&look.sized_stylesheet(look.size()))
             .motion_defaults(look.motion_defaults().popup_menu)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)
             .template(template)
-            .size(self.size.control_size())
-            .menu_size(self.menu_size.control_size())
             .items(self.items)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -376,12 +380,12 @@ impl HasPresenter<PopupMenuTriggerModel> for PopupMenu {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(PopupMenu::new("s").size(ButtonSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(PopupMenu::new("s").size(ButtonSize::Two).size.control_size(), ControlSize::Md);
+        assert_eq!(PopupMenu::new("s").size(ButtonSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(PopupMenu::new("s").size(ButtonSize::Two).size.control_size(), RadixSize::Two);
     }
 
     #[test]

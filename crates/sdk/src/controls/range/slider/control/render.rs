@@ -21,8 +21,6 @@ impl SliderControl {
             strategy: self.model.strategy,
             orientation: self.model.strategy.orientation(),
             presentation,
-            size: self.model.size,
-            thumb_size: self.model.thumb_size,
             range: self.model.range,
             step: self.model.step,
             thumbs: &self.display_thumbs,

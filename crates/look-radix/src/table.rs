@@ -2,16 +2,16 @@
 use std::sync::Arc;
 use gpui::{App, AnyElement, SharedString, Stateful, Div, Window, Styled};
 use xgpui_luma::controls::table::*;
-use xgpui_luma::theme::{ControlSize, InteractionLayer, InteractionState, ListRowScale, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{InteractionLayer, InteractionState, ListRowScale, MetricTokens, StandardBoxScale};
 use crate::{Look, ScaleFamily, SemanticRole, Tone};
 
 struct TableThemeAdapter {
     look: Look,
 }
 impl TableTheme for TableThemeAdapter {
-    fn resolve_look(&self, enabled: bool, focused: bool, size: ControlSize) -> TableLook {
+    fn resolve_look(&self, enabled: bool, focused: bool) -> TableLook {
         let mut resolved =
-            DefaultTableTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_look(enabled, focused, size);
+            DefaultTableTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_look(enabled, focused);
         resolved.background = self.look.resolve_role(SemanticRole::Surface).hsla();
         resolved.border = self
             .look
@@ -32,9 +32,10 @@ impl TableTheme for TableThemeAdapter {
             .hsla();
         resolved
     }
-    fn resolve_row(&self, selected: bool, state: InteractionState, size: ControlSize) -> TableRowPalette {
+    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
+        let size = self.look.size();
         let mut resolved =
-            DefaultTableTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_row(selected, state, size);
+            DefaultTableTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_row(selected, state);
         let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
         let accent = |step| Tone::Accent.step(&self.look, step);
         resolved.background = match state.layer() {
@@ -72,41 +73,31 @@ impl TableTheme for TableThemeAdapter {
         };
         resolved.divider = self.look.resolve_role(SemanticRole::Border).hsla();
         let field_theme = crate::textfield_theme(&self.look);
-        let scale = StandardBoxScale::compute(size, &self.look.metrics(), 1.0);
-        resolved.label_typography =
-            field_theme.resolve_look(Default::default(), !state.disabled, size, &scale).typography;
+        let scale = StandardBoxScale::compute(&self.look.metrics_for(size), 1.0);
+        resolved.label_typography = field_theme.resolve_look(Default::default(), !state.disabled, &scale).typography;
         resolved
     }
-    fn resolve_row_look(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        size: ControlSize,
-        scale: &ListRowScale,
-    ) -> TableRowLook {
-        TableRowLook::from_palette(
-            &self.resolve_row(selected, state, size),
-            scale,
-            &self.look.common_stylesheet(),
-            size,
-        )
+    fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
+        let size = self.look.size();
+        TableRowLook::from_palette(&self.resolve_row(selected, state), scale, &self.look.sized_stylesheet(size))
     }
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
-    fn resolve_drag(&self, size: ControlSize) -> TableDragLook {
+    fn resolve_drag(&self) -> TableDragLook {
+        let size = self.look.size();
         TableDragLook {
             geometry: self
                 .look
                 .common_stylesheet()
                 .table
                 .with_sdk_defaults()
-                .resolve_geometry(size.stylesheet_key(), Default::default()),
+                .resolve_geometry_for(size.key(), Default::default()),
             background: self.look.resolve_role(SemanticRole::Surface).hsla(),
             foreground: self.look.resolve_role(SemanticRole::Foreground).hsla(),
             valid_marker: self.look.resolve_role(SemanticRole::Focus).hsla(),
             invalid_marker: self.look.resolve_role(SemanticRole::Destructive).hsla(),
-            radius: self.look.metrics().radius(size),
+            radius: self.look.control_sizes().radius(size),
         }
     }
 }
@@ -173,12 +164,12 @@ mod tests {
     #[test]
     fn table_states_follow_live_look_and_disabled_precedence() {
         let look = Look::built_in();
-        let theme = table_theme(&look);
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             for accent in [Accent::Blue, Accent::Lime] {
                 look.set_palettes(accent, Gray::Auto);
-                for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+                for size in [crate::RadixSize::One, crate::RadixSize::Two, crate::RadixSize::Three] {
+                    let theme = table_theme(&look.with_size(size));
                     for selected in [false, true] {
                         for bits in 0..16 {
                             let state = InteractionState {
@@ -188,7 +179,7 @@ mod tests {
                                 disabled: bits & 8 != 0,
                                 ..Default::default()
                             };
-                            let row = theme.resolve_row(selected, state, size);
+                            let row = theme.resolve_row(selected, state);
                             if state.disabled {
                                 assert_eq!(row.background, gpui::transparent_black());
                                 assert_eq!(row.label_color, look.resolve_role(SemanticRole::MutedForeground).hsla());
@@ -203,7 +194,7 @@ mod tests {
                                 assert_eq!(row.background, Tone::Accent.step(&look, step));
                                 assert_eq!(row.label_color, Tone::Accent.step(&look, 11));
                             }
-                            let shell = theme.resolve_look(!state.disabled, state.focused, size);
+                            let shell = theme.resolve_look(!state.disabled, state.focused);
                             assert_eq!(
                                 shell.border,
                                 look.resolve_role(if !state.disabled && state.focused {
@@ -224,19 +215,16 @@ mod tests {
         let base = Look::built_in();
         let fork = base.fork();
         let theme = table_theme(&fork);
-        let original = table_theme(&base).resolve_look(true, false, ControlSize::Md);
+        let original = table_theme(&base).resolve_look(true, false);
         let mut sheet = fork.common_stylesheet();
         sheet.table.geometry.column_padding_x = Some(23.0);
         fork.set_common_stylesheet(sheet);
         fork.set_mode(ThemeMode::Dark);
-        let changed = theme.resolve_look(true, false, ControlSize::Md);
+        let changed = theme.resolve_look(true, false);
         assert_eq!(changed.column_padding_x, 23.0);
         assert_ne!(changed.background, original.background);
-        assert_eq!(
-            table_theme(&base).resolve_look(true, false, ControlSize::Md).column_padding_x,
-            original.column_padding_x
-        );
-        let drag = theme.resolve_drag(ControlSize::Md);
+        assert_eq!(table_theme(&base).resolve_look(true, false).column_padding_x, original.column_padding_x);
+        let drag = theme.resolve_drag();
         assert_eq!(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
         assert_eq!(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
     }

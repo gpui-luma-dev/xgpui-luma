@@ -4,7 +4,6 @@ use std::sync::Arc;
 use gpui::{Context, Entity, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::selection_panel::{SelectionPanelControl, SelectionPanelEvent, SelectionPanelItem};
 use xgpui_luma::controls::scroll_container::{ScrollbarAutoHideActivate, ScrollbarVisibility};
-use xgpui_luma::theme::ControlSize;
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -78,12 +77,8 @@ impl SelectionPanelControlExposition {
         let entry = *catalog_entry("selection-panel").expect("selection-panel catalog entry");
         let wide_panel_look = Arc::new({
             let active_look = look.clone();
-            move |size: ControlSize| {
-                let mut panel_look = active_look.selection_panel_look(match size {
-                    ControlSize::Sm => ShadcnSize::Sm,
-                    ControlSize::Md => ShadcnSize::Md,
-                    ControlSize::Lg => ShadcnSize::Lg,
-                });
+            move || {
+                let mut panel_look = active_look.selection_panel_look(active_look.size());
                 panel_look.min_width = 280.0;
                 panel_look
             }

@@ -132,7 +132,7 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             drag_move,
             scroll_wheel,
         } = handlers;
-        let look = self.theme.resolve(model.state, model.orientation, model.size, model.style);
+        let look = self.theme.resolve(model.state, model.orientation, model.style);
         let percentage = model.percentage.clamp(0.0, 1.0);
         let thumb_fraction = model.thumb_fraction.clamp(0.05, 1.0);
         let thickness = if look.thickness.is_finite() && look.thickness >= 0.0 {
@@ -140,7 +140,7 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
         } else {
             crate::theme::stylesheet::CommonStylesheet::sdk_default()
                 .scrollbar
-                .authored_geometry(model.size.stylesheet_key())
+                .authored_geometry()
                 .thickness
                 .unwrap_or_default()
         };

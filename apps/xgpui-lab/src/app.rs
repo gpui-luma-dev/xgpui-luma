@@ -365,10 +365,11 @@ impl XgpuiLabApp {
         let split =
             SECTIONS.iter().position(|(workspace, _, _)| *workspace == Workspace::Canvas).unwrap_or(items.len());
         let extension_items = items.split_off(split);
+        // Radix size 1 is the compact navigation size.
+        let nav_size_look = nav_look.with_size(xgpui_luma_look_radix::RadixSize::One);
         let make_accordion = |id, items, cx: &mut Context<Self>| -> Accordion {
-            xgpui_luma_look_radix::accordion_builder(&nav_look, id)
-                .size(xgpui_luma::theme::ControlSize::Sm)
-                .template(nav_accordion::template(&nav_look))
+            xgpui_luma_look_radix::accordion_builder(&nav_size_look, id)
+                .template(nav_accordion::template(&nav_size_look))
                 .multiple()
                 .collapsible(true)
                 .item_dividers(false)

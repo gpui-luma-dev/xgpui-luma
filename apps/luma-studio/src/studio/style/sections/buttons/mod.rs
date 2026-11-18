@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button_family::{ButtonFamilyRole, ButtonSize};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, default_button_template};
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::theme::InteractionState;
@@ -166,7 +166,6 @@ fn render_button_shadow_matrix(
                 data: (),
                 content: ButtonTemplateVariant::TextButton.content(),
                 role: ButtonFamilyRole::Text,
-                size: ButtonSize::Md,
                 state: InteractionState::default(),
                 round: false,
                 radius_override: std::cell::Cell::new(None),
@@ -217,7 +216,6 @@ pub(crate) fn render_button_state_sample(
         } else {
             ButtonFamilyRole::Text
         },
-        size: ButtonSize::Md,
         state: sample.state,
         round: variant.round(),
         radius_override: std::cell::Cell::new(None),

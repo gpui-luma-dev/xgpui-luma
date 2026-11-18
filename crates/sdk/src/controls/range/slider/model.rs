@@ -16,7 +16,6 @@ use super::segments::build_track_segments;
 use super::template::{SliderTemplate, default_slider_template, modified_slider_template};
 use crate::theme::InteractionState;
 use crate::infra::value::{ControlRange, normalized_step, value_from_input};
-use crate::theme::ControlSize;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ThumbId(u64);
@@ -146,32 +145,12 @@ pub enum SliderOrientation {
     Vertical,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum SliderThumbSize {
-    Sm,
-    #[default]
-    Md,
-    Lg,
-}
-
-impl From<ControlSize> for SliderThumbSize {
-    fn from(value: ControlSize) -> Self {
-        match value {
-            ControlSize::Sm => Self::Sm,
-            ControlSize::Md => Self::Md,
-            ControlSize::Lg => Self::Lg,
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct SliderModel {
     pub(crate) motion: crate::motion::MotionConfig<SliderMotion>,
     pub(crate) id: SharedString,
     pub(crate) strategy: SliderInputStrategy,
     pub(crate) presentation: TrackPresentation,
-    pub(crate) size: ControlSize,
-    pub(crate) thumb_size: Option<SliderThumbSize>,
     pub(crate) range: ControlRange,
     pub(crate) step: f32,
     pub(crate) keyboard_position_step: Option<f32>,
@@ -197,8 +176,6 @@ pub struct SliderRenderModel<'a> {
     pub strategy: SliderInputStrategy,
     pub orientation: SliderOrientation,
     pub presentation: TrackPresentation,
-    pub size: ControlSize,
-    pub thumb_size: Option<SliderThumbSize>,
     pub range: ControlRange,
     pub step: f32,
     pub thumbs: &'a [SliderThumbValue],
@@ -376,8 +353,6 @@ impl SliderBuilder {
                 id: id.into(),
                 strategy: SliderInputStrategy::Horizontal,
                 presentation: TrackPresentation::Fill,
-                size: ControlSize::Md,
-                thumb_size: None,
                 range: ControlRange::default(),
                 step: 1.0,
                 keyboard_position_step: None,
@@ -466,21 +441,6 @@ impl SliderBuilder {
 
     pub fn radial_hit_target(mut self, target: Arc<dyn RadialHitTarget>) -> Self {
         self.model.radial_hit_target = Some(target);
-        self
-    }
-
-    pub fn size(mut self, size: ControlSize) -> Self {
-        self.model.size = size;
-        self
-    }
-
-    pub fn thumb_size(mut self, size: SliderThumbSize) -> Self {
-        self.model.thumb_size = Some(size);
-        self
-    }
-
-    pub fn clear_thumb_size(mut self) -> Self {
-        self.model.thumb_size = None;
         self
     }
 

@@ -1,9 +1,10 @@
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 
 use crate::controls::button::{ButtonRadiusPreset, button_look_with_stylesheet};
 use crate::stylesheet::{StylesheetConfig, embedded_stylesheet};
 use crate::{ShadcnButtonStyle, ShadcnLook};
+use crate::size::ShadcnSize;
 
 fn legacy_stylesheet() -> StylesheetConfig {
     let mut stylesheet = embedded_stylesheet().clone();
@@ -50,7 +51,7 @@ fn migrated_button_and_toggle_match_legacy_output_across_axes() {
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             let tokens = look.mode_tokens();
-            for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+            for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
                 for style in [
                     ShadcnButtonStyle::Primary,
                     ShadcnButtonStyle::Secondary,
@@ -109,7 +110,7 @@ fn common_geometry_beats_legacy_and_unset_keeps_role_fallbacks() {
         look.mode(),
         ShadcnButtonStyle::Primary,
         ButtonFamilyRole::Text,
-        ControlSize::Md,
+        ShadcnSize::Md,
         Some(ButtonRadiusPreset::Full),
         InteractionState::default(),
     );
@@ -122,7 +123,7 @@ fn common_geometry_beats_legacy_and_unset_keeps_role_fallbacks() {
         look.mode(),
         ShadcnButtonStyle::Primary,
         ButtonFamilyRole::Text,
-        ControlSize::Md,
+        ShadcnSize::Md,
         None,
         InteractionState::default(),
     );
@@ -171,19 +172,18 @@ line_height = 22
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
         let tokens = look.mode_tokens();
-        let scale = StandardBoxScale::compute(ControlSize::Md, &tokens.metrics, 1.0);
+        let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
         let inspect = crate::inspect::ShadcnInspect::new(&look);
         for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon, ButtonFamilyRole::Toggle { selected: true }] {
-            let paint = family
-                .resolve_look(role, ControlSize::Md, InteractionState::default(), &scale, tokens.metrics.radius.pill)
-                .unwrap();
-            let palette = family.resolve(role, ControlSize::Md, InteractionState::default());
+            let paint =
+                family.resolve_look(role, InteractionState::default(), &scale, tokens.metrics.radius.pill).unwrap();
+            let palette = family.resolve(role, InteractionState::default());
             assert_eq!(palette.typography.size, paint.typography.size);
             assert_eq!(palette.typography.line_height, paint.typography.line_height);
             let metrics = inspect.inspect_button_metrics(
                 ShadcnButtonStyle::Primary,
                 role,
-                ControlSize::Md,
+                ShadcnSize::Md,
                 InteractionState::default(),
             );
             assert_eq!(metrics.height.value_px, paint.height);
@@ -192,7 +192,7 @@ line_height = 22
             assert_eq!(metrics.radius.value_px, paint.radius);
             assert_eq!(metrics.gap.value_px, paint.gap);
             assert!(format!("{:?}", metrics.height.source).contains("common."));
-            let typography = inspect.inspect_button_typography_for_size(ControlSize::Md, role);
+            let typography = inspect.inspect_button_typography_for_size(ShadcnSize::Md, role);
             assert_eq!(typography.font_size.value.parse::<f32>().unwrap(), paint.typography.size);
             assert_eq!(typography.line_height.value.parse::<f32>().unwrap(), paint.typography.line_height);
             let colors =
@@ -219,15 +219,9 @@ fn existing_button_theme_observes_replacement_without_changing_other_looks() {
     let family = look.button_family_theme();
     let render = || {
         let tokens = look.mode_tokens();
-        let scale = StandardBoxScale::compute(ControlSize::Md, &tokens.metrics, 1.0);
+        let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
         family
-            .resolve_look(
-                ButtonFamilyRole::Text,
-                ControlSize::Md,
-                InteractionState::default(),
-                &scale,
-                tokens.metrics.radius.pill,
-            )
+            .resolve_look(ButtonFamilyRole::Text, InteractionState::default(), &scale, tokens.metrics.radius.pill)
             .unwrap()
     };
     let initial = render();
@@ -243,7 +237,7 @@ fn existing_button_theme_observes_replacement_without_changing_other_looks() {
         independent.mode(),
         ShadcnButtonStyle::Secondary,
         ButtonFamilyRole::Text,
-        ControlSize::Md,
+        ShadcnSize::Md,
         None,
         InteractionState::default(),
     );

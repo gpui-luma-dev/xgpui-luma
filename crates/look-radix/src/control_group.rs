@@ -7,21 +7,21 @@ use xgpui_luma::controls::control_group::*;
 use xgpui_luma::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, compose_button_family_look,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
 use crate::{ButtonVariant, Look, ScaleFamily, SemanticRole};
 
 fn item_look(
     look: &Look,
     selected: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: crate::RadixSize,
     scale: &StandardBoxScale,
 ) -> ButtonFamilyLook {
-    let theme = crate::button_family_theme(look, ButtonVariant::Ghost);
+    let theme = crate::button_family_theme(&look.with_size(size), ButtonVariant::Ghost);
     let role = ButtonFamilyRole::Toggle { selected };
     theme
-        .resolve_look(role, size, state, scale, scale.radius)
-        .unwrap_or_else(|| compose_button_family_look(&theme.resolve(role, size, state), role, scale, scale.radius))
+        .resolve_look(role, state, scale, scale.radius)
+        .unwrap_or_else(|| compose_button_family_look(&theme.resolve(role, state), role, scale, scale.radius))
 }
 
 struct GroupTheme {
@@ -36,15 +36,15 @@ impl ControlGroupTheme for GroupTheme {
         shell
     }
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
     fn default_item_palette(
         &self,
         selected: bool,
         state: InteractionState,
-        size: ControlSize,
         scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette {
+        let size = self.look.size();
         let palette = item_look(&self.look, selected, state, size, scale);
         ControlGroupItemPalette {
             foreground: palette.foreground,
@@ -88,12 +88,11 @@ pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> Co
 
 fn item_template<T: ControlGroupItemLike + 'static>(
     look: &Look,
-    size: ControlSize,
+    size: crate::RadixSize,
 ) -> ControlGroupItemElementTemplate<T> {
     let look = look.clone();
     Arc::new(move |item, custom, window, cx| {
-        let metrics = look.metrics();
-        let scale = StandardBoxScale::compute(size, &metrics, window.scale_factor());
+        let scale = StandardBoxScale::compute(&look.metrics_for(size), window.scale_factor());
         let state = InteractionState { focused: item.state.focus_visible, ..item.state.interaction_state() };
         let palette = item_look(&look, item.selected, state, size, &scale);
         let content = match custom {
@@ -138,7 +137,7 @@ fn item_template<T: ControlGroupItemLike + 'static>(
             .border_color(palette.border.unwrap_or_else(gpui::transparent_black))
             .when(!item.state.disabled, |row| row.cursor_pointer())
             .child(content)
-            .child(xgpui_luma::infra::focus_adorner::FocusAdorner::new(metrics.focus).overlay(
+            .child(xgpui_luma::infra::focus_adorner::FocusAdorner::new(look.metrics().focus).overlay(
                 palette.focus_border,
                 item.state.focus_visible && !item.state.disabled,
                 radius,
@@ -149,7 +148,7 @@ fn item_template<T: ControlGroupItemLike + 'static>(
 /// Radix toggle row; SDK item-content overrides are retained inside this chrome.
 pub fn control_group_item_template<T: ControlGroupItemLike + 'static>(
     look: &Look,
-    size: ControlSize,
+    size: crate::RadixSize,
 ) -> ControlGroupItemElementTemplate<T> {
     item_template(look, size)
 }
@@ -158,16 +157,16 @@ pub fn control_group_item_template<T: ControlGroupItemLike + 'static>(
 /// text, icons, or both; the SDK renders adjoining rectangular toggle faces.
 pub fn icon_group_item_template<T>(
     look: &Look,
-    size: ControlSize,
+    size: crate::RadixSize,
     content: impl Fn(&T) -> AnyElement + Send + Sync + 'static,
 ) -> ControlGroupItemTemplate<T>
 where
     T: ControlGroupItemLike + Clone + Send + Sync + 'static,
 {
     let size = match size {
-        ControlSize::Sm => crate::ButtonSize::One,
-        ControlSize::Md => crate::ButtonSize::Two,
-        ControlSize::Lg => crate::ButtonSize::Three,
+        crate::RadixSize::One => crate::ButtonSize::One,
+        crate::RadixSize::Two => crate::ButtonSize::Two,
+        crate::RadixSize::Three => crate::ButtonSize::Three,
     };
     let look = look.clone();
     let content = Arc::new(content);
@@ -195,11 +194,8 @@ struct IconGroupToggleTemplate {
 }
 
 fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> ButtonFamilyPalette {
-    let mut palette = crate::button_family_theme(look, ButtonVariant::Ghost).resolve(
-        ButtonFamilyRole::Toggle { selected },
-        ControlSize::Md,
-        state,
-    );
+    let mut palette =
+        crate::button_family_theme(look, ButtonVariant::Ghost).resolve(ButtonFamilyRole::Toggle { selected }, state);
     let accent = |step| look.resolve_step(ScaleFamily::Color, step).hsla();
     let gray = |step| look.resolve_step(ScaleFamily::Gray, step).hsla();
     palette.background = if state.disabled {
@@ -262,7 +258,6 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             data: model.data,
             content: model.content.clone(),
             role: model.role,
-            size: self.size.control_size(),
             state: model.state,
             compact: true,
             elevation: false,
@@ -314,10 +309,10 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
 pub fn control_group_builder<T: ControlGroupItemLike + 'static>(
     look: &Look,
     id: impl Into<SharedString>,
-    size: ControlSize,
+    size: crate::RadixSize,
 ) -> ControlGroupBuilder<T> {
     ControlGroupBuilder::new(id)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().control_group)
         .template(control_group_template(look))
         .item_element_template(control_group_item_template(look, size))
@@ -332,7 +327,7 @@ pub fn icon_group_builder<T: ControlGroupItemLike + 'static>(
     xgpui_luma::controls::icon_group::new(id)
         .horizontal()
         .template(icon_group_template(look))
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().control_group)
 }
 
@@ -354,7 +349,7 @@ mod tests {
     #[test]
     fn icon_groups_compose_sdk_toggles_with_custom_content_and_group_input() {
         for multiple in [false, true] {
-            for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+            for size in [crate::RadixSize::One, crate::RadixSize::Two, crate::RadixSize::Three] {
                 let mut app = TestAppContext::single();
                 let (view, cx) = app.add_window_view(|window, cx| {
                     window.activate_window();
@@ -410,9 +405,9 @@ mod tests {
                 cx.update(|window, _| {
                     let height = crate::button_box_for(
                         match size {
-                            ControlSize::Sm => crate::ButtonSize::One,
-                            ControlSize::Md => crate::ButtonSize::Two,
-                            ControlSize::Lg => crate::ButtonSize::Three,
+                            crate::RadixSize::One => crate::ButtonSize::One,
+                            crate::RadixSize::Two => crate::ButtonSize::Two,
+                            crate::RadixSize::Three => crate::ButtonSize::Three,
                         },
                         crate::Radius::Full,
                     )
@@ -442,8 +437,10 @@ mod tests {
                     let mut app = TestAppContext::single();
                     let paint_look = look.clone();
                     let (_, cx) = app.add_window_view(|_, cx| {
-                        let template =
-                            icon_group_item_template(&paint_look, ControlSize::Md, move |item: &ControlGroupItem| {
+                        let template = icon_group_item_template(
+                            &paint_look,
+                            crate::RadixSize::Two,
+                            move |item: &ControlGroupItem| {
                                 let selector = format!("content-{}", item.id());
                                 div()
                                     .id(item.id().clone())
@@ -454,7 +451,8 @@ mod tests {
                                     .when(content_kind != 1, |row| row.child(div().size(px(15.0))))
                                     .when(content_kind != 0, |row| row.child(item.label().clone()))
                                     .into_any_element()
-                            });
+                            },
+                        );
                         let mut builder = icon_group_builder(&paint_look, "joined")
                             .items([
                                 ControlGroupItem::new("a").label("Align left"),
@@ -559,9 +557,11 @@ mod tests {
                             .items(["a", "b", "c"].into_iter().take(count).map(ControlGroupItem::new))
                             .active(id)
                             .selected(id)
-                            .item_template(icon_group_item_template(&look, ControlSize::Md, |_: &ControlGroupItem| {
-                                div().size(px(16.0)).into_any_element()
-                            }))
+                            .item_template(icon_group_item_template(
+                                &look,
+                                crate::RadixSize::Two,
+                                |_: &ControlGroupItem| div().size(px(16.0)).into_any_element(),
+                            ))
                             .with_template_modifier(|root, _| root.m(px(8.0)));
                         if vertical {
                             builder = builder.vertical();

@@ -214,10 +214,10 @@ impl Switch {
     }
 
     fn into_sdk_builder(self, look: Look) -> SwitchBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = switch_template_for(&look, self.variant, self.paint, self.size, self.radius);
         let mut builder = xgpui_luma::controls::switch::new(self.id)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.checked)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -253,7 +253,7 @@ impl HasPresenter<ButtonContentContext<SwitchData>> for Switch {
 mod tests {
     use super::*;
     use xgpui_luma::controls::button::HasPresenter;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn independent_look_copy_keeps_its_motion_defaults() {
@@ -303,9 +303,9 @@ mod tests {
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Switch::new("s").size(SwitchSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Switch::new("s").size(SwitchSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Switch::new("s").size(SwitchSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(Switch::new("s").size(SwitchSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Switch::new("s").size(SwitchSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Switch::new("s").size(SwitchSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

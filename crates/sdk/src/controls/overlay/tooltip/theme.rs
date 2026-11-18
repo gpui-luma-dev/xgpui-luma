@@ -24,7 +24,7 @@ impl Default for TooltipPlacementGeometry {
     fn default() -> Self {
         (&crate::theme::stylesheet::CommonStylesheet::sdk_default()
             .tooltip
-            .resolve_geometry("", Default::default()))
+            .resolve_geometry(Default::default()))
             .into()
     }
 }
@@ -54,7 +54,7 @@ impl TooltipLook {
     pub fn compact(background: Hsla, foreground: Hsla, radius: f32) -> Self {
         let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default()
             .tooltip
-            .resolve_geometry("compact", crate::theme::stylesheet::TooltipGeometry::default());
+            .resolve_geometry_for("compact", crate::theme::stylesheet::TooltipGeometry::default());
         Self {
             placement: (&geometry).into(),
             shortcut_gap: geometry.shortcut_gap,
@@ -85,11 +85,14 @@ impl TooltipTheme for TooltipLook {
 
 impl TooltipLook {
     /// Capture complete tooltip styling from a resolved SDK/common token snapshot.
-    pub fn from_tokens(tokens: &ThemeTokens, key: &str) -> Self {
-        let geometry = tokens
-            .stylesheet
-            .tooltip
-            .resolve_geometry(key, crate::theme::stylesheet::TooltipGeometry::default());
+    /// `key` selects a look-defined tooltip size; `None` uses the general geometry.
+    pub fn from_tokens(tokens: &ThemeTokens, key: Option<&str>) -> Self {
+        let fallback = crate::theme::stylesheet::TooltipGeometry::default();
+        let tooltip = &tokens.stylesheet.tooltip;
+        let geometry = match key {
+            Some(key) => tooltip.resolve_geometry_for(key, fallback),
+            None => tooltip.resolve_geometry(fallback),
+        };
         let palette = tokens.stylesheet.recipes.palette("tooltip", &tokens.palette);
         Self {
             placement: (&geometry).into(),
@@ -110,7 +113,7 @@ impl TooltipLook {
 }
 
 pub fn default_tooltip_theme() -> Arc<dyn TooltipTheme> {
-    Arc::new(TooltipLook::from_tokens(&ThemeTokens::default(), "md"))
+    Arc::new(TooltipLook::from_tokens(&ThemeTokens::default(), None))
 }
 
 /// Presentation-only input, resolved from the explicitly bound draft look on every frame.

@@ -29,15 +29,12 @@ pub fn callout(look: &Look, text: impl Into<SharedString>, icon: impl Into<Contr
 pub(crate) fn resolve_geometry(look: &Look) -> xgpui_luma::theme::stylesheet::CalloutGeometry {
     let metrics = look.metrics();
     let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
-    look.common_stylesheet().callout.resolve_geometry(
-        "",
-        xgpui_luma::theme::stylesheet::CalloutGeometry {
-            padding: metrics.spacing.s4,
-            gap: metrics.control.md.gap,
-            icon_size: metrics.control.md.icon_size,
-            font_size: typography.size,
-        },
-    )
+    look.common_stylesheet().callout.resolve_geometry(xgpui_luma::theme::stylesheet::CalloutGeometry {
+        padding: metrics.spacing.s4,
+        gap: metrics.control.gap,
+        icon_size: metrics.control.icon_size,
+        font_size: typography.size,
+    })
 }
 
 /// Native common geometry owned by this control.

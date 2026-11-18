@@ -3,11 +3,10 @@ use std::collections::HashMap;
 
 use gpui::{BorrowAppContext, Global};
 
-use crate::theme::{ControlSize, MetricTokens};
+use crate::theme::MetricTokens;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct LayoutCacheKey {
-    pub size: ControlSize,
     pub scale_factor_bits: u32,
 }
 
@@ -81,9 +80,7 @@ struct ThemeMetricsKey {
     radius: [u32; 6],
     border_width: [u32; 3],
     focus: [u32; 3],
-    control_sm: [u32; 6],
-    control_md: [u32; 6],
-    control_lg: [u32; 6],
+    control: [u32; 6],
 }
 
 impl From<&MetricTokens> for ThemeMetricsKey {
@@ -112,9 +109,7 @@ impl From<&MetricTokens> for ThemeMetricsKey {
                 metrics.border_width.strong.to_bits(),
             ],
             focus: [metrics.focus.gap.to_bits(), metrics.focus.width.to_bits(), metrics.focus.offset.to_bits()],
-            control_sm: control_metric_key(metrics.control.sm),
-            control_md: control_metric_key(metrics.control.md),
-            control_lg: control_metric_key(metrics.control.lg),
+            control: control_metric_key(metrics.control),
         }
     }
 }
@@ -133,7 +128,7 @@ fn control_metric_key(tokens: crate::theme::ControlMetricTokens) -> [u32; 6] {
 #[cfg(test)]
 mod tests {
     use super::{CacheEntryKey, LayoutCacheKey, LumaLayoutCacheRegistry, ThemeMetricsKey};
-    use crate::theme::{ControlSize, MetricTokens};
+    use crate::theme::MetricTokens;
     use std::any::TypeId;
 
     #[test]
@@ -150,7 +145,7 @@ mod tests {
         let metrics_key = ThemeMetricsKey::from(&metrics);
         let entry_key = CacheEntryKey {
             metrics_key,
-            layout_key: LayoutCacheKey { size: ControlSize::Md, scale_factor_bits: 1.0f32.to_bits() },
+            layout_key: LayoutCacheKey { scale_factor_bits: 1.0f32.to_bits() },
             value_type: TypeId::of::<u32>(),
         };
 
@@ -165,13 +160,13 @@ mod tests {
     fn registry_clears_entries_when_metrics_change() {
         let metrics = MetricTokens::default();
         let mut other_metrics = MetricTokens::default();
-        other_metrics.control.md.control_height += 2.0;
+        other_metrics.control.control_height += 2.0;
 
         let metrics_key = ThemeMetricsKey::from(&metrics);
         let other_key = ThemeMetricsKey::from(&other_metrics);
         let entry_key = CacheEntryKey {
             metrics_key,
-            layout_key: LayoutCacheKey { size: ControlSize::Md, scale_factor_bits: 2.0f32.to_bits() },
+            layout_key: LayoutCacheKey { scale_factor_bits: 2.0f32.to_bits() },
             value_type: TypeId::of::<u32>(),
         };
 

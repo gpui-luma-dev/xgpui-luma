@@ -20,7 +20,6 @@ use crate::key_handling::{
     ActivateControl, ControlKeyProfile, DecreaseValueLarge, IncreaseValueLarge, SelectFirstItem, SelectLastItem,
     SelectNextItem, SelectPreviousItem,
 };
-use crate::theme::ControlSize;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -242,14 +241,6 @@ where
 
         self.model.min_visible_rows = min_visible_rows;
         self.model.max_visible_rows = max_visible_rows;
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.model.size == size {
-            return;
-        }
-        self.model.size = size;
         cx.notify();
     }
 
@@ -685,7 +676,7 @@ where
             self.focus_out_subscription = Some(cx.on_focus_out(&self.focus_handle, window, Self::handle_focus_out));
         }
 
-        let look = (self.model.look_provider)(self.model.size);
+        let look = (self.model.look_provider)();
         let panel_min_width = look.min_width;
 
         let item_count = self.model.visible_indices.len();

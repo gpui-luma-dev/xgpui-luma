@@ -137,11 +137,10 @@ impl xgpui_luma::controls::scrollbar::ScrollbarTheme for ColorVizScrollbarTheme 
         &self,
         state: xgpui_luma::theme::InteractionState,
         orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
-        size: xgpui_luma::theme::ControlSize,
         style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
     ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
         use xgpui_luma::controls::scrollbar::{DefaultScrollbarTheme};
-        let mut resolved = DefaultScrollbarTheme::default().resolve(state, orientation, size, style);
+        let mut resolved = DefaultScrollbarTheme::default().resolve(state, orientation, style);
         resolved.track_background = gpui::transparent_black();
         resolved.thumb_background = self
             .0

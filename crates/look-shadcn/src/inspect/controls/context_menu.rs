@@ -1,7 +1,8 @@
 //! Inspect metadata for `context_menu`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::ShadcnModeTokens;
+use crate::size::ShadcnSize;
 
 pub struct ContextMenuInspectPalette {
     pub target_background: crate::ResolvedColor,
@@ -23,7 +24,7 @@ pub fn inspect_context_menu_color_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> ContextMenuInspectPalette {
     let colors = crate::tables::resolve_context_menu_colors(mode, theme_mode, state);
     let menu = crate::inspect::controls::floating_menu::inspect_floating_menu_color_palette(mode, theme_mode, size);
@@ -38,7 +39,7 @@ pub fn inspect_context_menu_color_palette(
 pub fn inspect_context_menu_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> ContextMenuInspectMetrics {
     let table = crate::tables::metrics::resolve_context_menu_metrics(mode, theme_mode, size);
     table.into()

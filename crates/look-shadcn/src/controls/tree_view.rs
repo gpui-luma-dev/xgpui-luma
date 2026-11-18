@@ -13,7 +13,7 @@ use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
 use xgpui_luma::controls::tree_view::TreeViewPalette;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 
@@ -75,7 +75,7 @@ pub fn tree_view_row_palette(
     mode: &ShadcnModeTokens,
     selected: bool,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> TreeViewPalette {
     let ctx = LookContext::new(mode, mode.theme_mode, state);
     let typography = ctx.typography();
@@ -118,7 +118,7 @@ mod tests {
 
     use std::collections::BTreeMap;
 
-    use xgpui_luma::theme::{ControlSize, InteractionLayer, ThemeMode};
+    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -153,7 +153,7 @@ mod tests {
             &mode,
             false,
             xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-            ControlSize::Md,
+            crate::ShadcnSize::Md,
         );
         let resolver = LookResolver::new(&catalog, ThemeMode::Light, "test");
         let expected = resolve_tree_view_row_colors(&resolver, false, InteractionLayer::Hovered)
@@ -172,17 +172,17 @@ mod tests {
                 xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
                 xgpui_luma::theme::InteractionState { pressed: true, ..Default::default() },
             ] {
-                let selected = tree_view_row_palette(&mode, true, state, ControlSize::Md);
+                let selected = tree_view_row_palette(&mode, true, state, crate::ShadcnSize::Md);
                 assert_eq!(selected.background, Some(mode.palette.selected_background));
                 assert_eq!(selected.foreground, mode.palette.selected_foreground);
                 assert_eq!(selected.icon_color, selected.foreground);
                 assert_eq!(selected.chevron_color, selected.foreground);
             }
-            let idle = tree_view_row_palette(&mode, false, Default::default(), ControlSize::Md);
+            let idle = tree_view_row_palette(&mode, false, Default::default(), crate::ShadcnSize::Md);
             assert_eq!(idle.background, None);
             let disabled = xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() };
-            let selected = tree_view_row_palette(&mode, true, disabled, ControlSize::Md);
-            let unselected = tree_view_row_palette(&mode, false, disabled, ControlSize::Md);
+            let selected = tree_view_row_palette(&mode, true, disabled, crate::ShadcnSize::Md);
+            let unselected = tree_view_row_palette(&mode, false, disabled, crate::ShadcnSize::Md);
             assert_eq!(selected.background, unselected.background);
             assert_eq!(selected.foreground, unselected.foreground);
         }
@@ -271,7 +271,7 @@ pub struct TreeViewMetricTable {
 pub fn resolve_tree_view_metrics(
     mode: &crate::ShadcnModeTokens,
     theme_mode: xgpui_luma::theme::ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> TreeViewMetricTable {
     use xgpui_luma::controls::tree_view::TreeViewScale;
 
@@ -279,9 +279,8 @@ pub fn resolve_tree_view_metrics(
     use crate::tables::metrics::helpers::{control_size_key, derived_metric, radius_metric, spacing_control_metric};
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let metrics = ctx.metrics();
     let catalog = ctx.catalog();
-    let scale = TreeViewScale::compute_with_stylesheet(size, metrics, 1.0, &mode.stylesheet().common);
+    let scale = TreeViewScale::compute_with_stylesheet(&mode.metrics_for(size), 1.0, mode.common_for(size));
     let size_key = control_size_key(size);
 
     let mut table = TreeViewMetricTable {
@@ -293,7 +292,7 @@ pub fn resolve_tree_view_metrics(
         icon_size: derived_metric("tree icon size", scale.icon_size),
         chevron_size: derived_metric("tree chevron size", scale.chevron_size),
     };
-    let geometry = mode.stylesheet().common.tree_view.inspect_geometry(
+    let geometry = mode.stylesheet().common.tree_view.inspect_geometry_for(
         size_key,
         xgpui_luma::theme::stylesheet::TreeViewGeometry {
             row_height: scale.row_height,

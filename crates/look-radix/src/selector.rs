@@ -50,7 +50,7 @@ impl SelectorTheme for SelectorThemeAdapter {
     }
 
     fn metrics(&self) -> MetricTokens {
-        self.look.metrics()
+        self.look.metrics_for(self.look.size())
     }
 }
 
@@ -70,6 +70,7 @@ pub struct Selector<T: SelectorItemLike + 'static = SelectorItem> {
     callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::selector::SelectorEvent>,
 
     look: Option<Look>,
+    size: ButtonSize,
     builder: SelectorBuilder<T>,
 }
 
@@ -144,7 +145,12 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
     }
 
     pub fn new_typed(id: impl Into<SharedString>) -> Self {
-        Self { callbacks: Default::default(), look: None, builder: SelectorBuilder::new(id) }
+        Self {
+            callbacks: Default::default(),
+            look: None,
+            size: ButtonSize::default(),
+            builder: SelectorBuilder::new(id),
+        }
     }
 
     pub fn look(mut self, look: &Look) -> Self {
@@ -178,7 +184,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
     }
 
     pub fn size(mut self, size: ButtonSize) -> Self {
-        self.builder = self.builder.size(size.control_size());
+        self.size = size;
         self
     }
 
@@ -190,8 +196,11 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
     pub fn spawn<M: 'static>(mut self, cx: &mut Context<M>) -> Entity<xgpui_luma::controls::selector::Selector<T>> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
-            let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
-            self.builder.stylesheet(&look.common_stylesheet()).template(selector_template(&look)).spawn(cx)
+            let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>()).with_size(self.size.control_size());
+            self.builder
+                .stylesheet(&look.sized_stylesheet(look.size()))
+                .template(selector_template(&look))
+                .spawn(cx)
         };
         callbacks.bind(&control, cx);
         control

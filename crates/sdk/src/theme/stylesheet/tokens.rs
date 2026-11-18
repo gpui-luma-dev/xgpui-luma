@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn native_defaults_produce_both_mode_snapshots() {
         let native = TokenStylesheet::default();
-        assert_eq!(native.metrics.control.md.height, 36.0);
+        assert_eq!(native.metrics.control.height, 36.0);
         assert_eq!(native.typography.text.label.weight, gpui::FontWeight::MEDIUM);
         assert_eq!(native.elevation.dark.menu.layers.len(), 2);
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
@@ -149,7 +149,7 @@ mod tests {
     fn native_tokens_round_trip_through_the_external_format_adapter() {
         let native = TokenStylesheet::default();
         let mut edited = native.clone();
-        edited.metrics.control.md.padding_x = 0.0;
+        edited.metrics.control.padding_x = 0.0;
         edited.palette.light.app.background = crate::color::ColorValue::display_p3(1.15, -0.1, 0.2, 0.37);
         edited.elevation.dark.menu.layers[0].color = crate::color::ColorValue::oklch(0.7, 0.4, 725.0, 0.25);
         for tokens in [native, edited] {
@@ -175,9 +175,9 @@ mod tests {
 
     #[test]
     fn sparse_token_tables_inherit_and_zero_survives() {
-        let sheet = CommonStylesheet::parse("[common.tokens.metrics.control.md]\npadding_x = 0").unwrap();
-        assert_eq!(sheet.tokens.metrics.control.md.padding_x, 0.0);
-        assert_eq!(sheet.tokens.metrics.control.md.height, 36.0);
+        let sheet = CommonStylesheet::parse("[common.tokens.metrics.control]\npadding_x = 0").unwrap();
+        assert_eq!(sheet.tokens.metrics.control.padding_x, 0.0);
+        assert_eq!(sheet.tokens.metrics.control.height, 36.0);
         assert_eq!(sheet.tokens.typography, LumaTypography::default());
         assert_eq!(sheet.tokens.palette.light, LumaPalette::light());
         assert_eq!(sheet.tokens.elevation.dark, LumaElevation::dark());
@@ -187,10 +187,10 @@ mod tests {
     fn token_validation_rejects_unknown_fields_and_invalid_values() {
         for source in [
             "[common.tokens]\nunknown = 1",
-            "[common.tokens.metrics.control.md]\nheight = -1",
-            "[common.tokens.metrics.control.md]\nheight = nan",
-            "[common.tokens.metrics.control.md]\nheight = 1e100",
-            "[common.tokens.metrics.control.md]\nheigth = 20",
+            "[common.tokens.metrics.control]\nheight = -1",
+            "[common.tokens.metrics.control]\nheight = nan",
+            "[common.tokens.metrics.control]\nheight = 1e100",
+            "[common.tokens.metrics.control]\nheigth = 20",
             "[common.tokens.typography.text.label]\nweight = 1001",
             "[common.tokens.typography.text.label]\nline_height = -1",
             "[common.tokens.palette.light.app]\nbackground = 'hsla(0, 0%, 0%, 2)'",
@@ -207,21 +207,21 @@ mod tests {
     #[test]
     fn layer_order_outranks_specificity_in_an_earlier_layer() {
         let sheet = CommonStylesheet::resolve_layers(&[
-            "[common.progress.sizes.md]\ntrack_height = 9",
+            "[common.progress.sizes.1]\ntrack_height = 9",
             "[common.progress.geometry]\ntrack_height = 0",
         ])
         .unwrap();
-        let geometry = sheet.progress.resolve_geometry("md", Default::default());
+        let geometry = sheet.progress.resolve_geometry_for("1", Default::default());
         assert_eq!(geometry.track_height, 0.0);
-        assert!(matches!(sheet.progress.inspect_geometry("md", Default::default()).track_height.source,
+        assert!(matches!(sheet.progress.inspect_geometry_for("1", Default::default()).track_height.source,
             crate::theme::provenance::MetricSource::Authored { key }
                 if key == "common.progress.geometry.track_height"));
         assert_eq!(geometry.size, 64.0);
         let sheet = CommonStylesheet::resolve_layers(&[
-            "[common.progress.geometry]\ntrack_height = 0\n[common.progress.sizes.md]\ntrack_height = 7",
+            "[common.progress.geometry]\ntrack_height = 0\n[common.progress.sizes.1]\ntrack_height = 7",
         ])
         .unwrap();
-        assert_eq!(sheet.progress.resolve_geometry("md", Default::default()).track_height, 7.0);
+        assert_eq!(sheet.progress.resolve_geometry_for("1", Default::default()).track_height, 7.0);
     }
 
     #[test]
@@ -241,44 +241,35 @@ mod tests {
     #[test]
     fn sdk_control_snapshots_keep_styles_and_programmatic_edits() {
         use crate::controls::progress::{DefaultProgressTheme, ProgressTheme};
-        use crate::theme::ControlSize;
-        let mut sheet = CommonStylesheet::resolve_layers(&["[common.progress.sizes.md]\ntrack_height = 11"]).unwrap();
-        sheet.progress.sizes.get_mut("md").unwrap().track_height = Some(0.0);
+        let mut sheet = CommonStylesheet::resolve_layers(&["[common.progress.geometry]\ntrack_height = 11"]).unwrap();
+        sheet.progress.geometry.track_height = Some(0.0);
         let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        sheet.progress.sizes.get_mut("md").unwrap().track_height = Some(30.0);
+        sheet.progress.geometry.track_height = Some(30.0);
         let theme = DefaultProgressTheme::new(tokens);
-        assert_eq!(theme.resolve(true, ControlSize::Md).track_height, 0.0);
-        assert_eq!(theme.resolve(true, ControlSize::Md).size, 64.0);
+        assert_eq!(theme.resolve(true).track_height, 0.0);
+        assert_eq!(theme.resolve(true).size, 64.0);
         let fresh =
             DefaultProgressTheme::new(sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap());
-        assert_eq!(fresh.resolve(true, ControlSize::Md).track_height, 30.0);
+        assert_eq!(fresh.resolve(true).track_height, 30.0);
     }
 
     #[test]
     fn sdk_button_family_resolves_independent_button_and_toggle_geometry() {
         use crate::{
             controls::button_family::{ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme},
-            theme::{ControlSize, StandardBoxScale},
+            theme::StandardBoxScale,
         };
         let sheet = CommonStylesheet::resolve_layers(&[
             "[common.button.geometry]\npadding_x = 0\nheight = 50\n[common.toggle.geometry]\nheight = 21",
         ])
         .unwrap();
         let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        let scale = StandardBoxScale::compute(ControlSize::Md, &tokens.metrics, 1.0);
+        let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
         let radius = tokens.metrics.radius.pill;
         let theme = DefaultButtonFamilyTheme::new(tokens);
-        let button = theme
-            .resolve_look(ButtonFamilyRole::Text, ControlSize::Md, Default::default(), &scale, radius)
-            .unwrap();
+        let button = theme.resolve_look(ButtonFamilyRole::Text, Default::default(), &scale, radius).unwrap();
         let toggle = theme
-            .resolve_look(
-                ButtonFamilyRole::Toggle { selected: true },
-                ControlSize::Md,
-                Default::default(),
-                &scale,
-                radius,
-            )
+            .resolve_look(ButtonFamilyRole::Toggle { selected: true }, Default::default(), &scale, radius)
             .unwrap();
         assert_eq!((button.height, button.padding_x), (50.0, 0.0));
         assert_eq!(toggle.height, 21.0);

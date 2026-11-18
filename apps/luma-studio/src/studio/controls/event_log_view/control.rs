@@ -155,8 +155,7 @@ impl EventLogView {
 
     fn scroll_wheel_step(&self, window: &Window, _cx: &mut Context<Self>) -> f32 {
         let scale_factor = window.scale_factor();
-        let scale =
-            StandardBoxScale::compute(xgpui_luma::theme::ControlSize::Md, &self.model.theme.metrics(), scale_factor);
+        let scale = StandardBoxScale::compute(&self.model.theme.metrics(), scale_factor);
         self.resolved_look(&scale, false).typography.line_height
     }
 
@@ -192,8 +191,7 @@ impl Render for EventLogView {
         }
         let focused = self.focus_handle.contains_focused(window, cx);
         let scale_factor = window.scale_factor();
-        let scale =
-            StandardBoxScale::compute(xgpui_luma::theme::ControlSize::Md, &self.model.theme.metrics(), scale_factor);
+        let scale = StandardBoxScale::compute(&self.model.theme.metrics(), scale_factor);
         let look = self.resolved_look(&scale, focused);
 
         self.scroll.sync_scrollbar(cx);

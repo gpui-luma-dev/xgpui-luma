@@ -35,7 +35,7 @@ use xgpui_luma::{
             TextFieldTemplateHandlers, TextFieldTheme, Validator,
         },
     },
-    theme::{ControlSize, StandardBoxScale},
+    theme::StandardBoxScale,
 };
 
 /// Keep this much room between the caret and the viewport edge when scrolling.
@@ -143,7 +143,6 @@ pub struct ParleyTextField {
     theme: Arc<dyn TextFieldTheme>,
     /// Draws a one-line field's chrome; a text area still draws its own.
     template: Arc<dyn TextFieldTemplate>,
-    size: ControlSize,
     font: Font,
     /// Visible lines of a text area; `None` for a one-line field.
     rows: Option<usize>,
@@ -275,7 +274,6 @@ impl ParleyTextField {
             id: builder.id,
             theme,
             template,
-            size: builder.size.control_size(),
             font: builder.font,
             rows: builder.rows,
             direction: builder.direction,
@@ -377,12 +375,6 @@ impl ParleyTextField {
 
     pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.placeholder = placeholder.into();
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        self.size = size;
-        self.geometry = None;
         cx.notify();
     }
 
@@ -491,9 +483,9 @@ impl ParleyTextField {
     }
 
     fn look(&self, window: &Window) -> TextFieldLook {
-        let scale = StandardBoxScale::compute(self.size, &self.theme.metrics(), window.scale_factor());
+        let scale = StandardBoxScale::compute(&self.theme.metrics(), window.scale_factor());
         let state = TextFieldState { hovered: self.hovered, invalid: self.invalid, ..TextFieldState::default() };
-        let mut look = self.theme.resolve_look(state, self.enabled, self.size, &scale);
+        let mut look = self.theme.resolve_look(state, self.enabled, &scale);
         if self.options.compact {
             look.padding_y = look.helper_geometry.compact_textfield_padding_y;
             look.min_height = look.helper_geometry.compact_textfield_height;
@@ -1484,7 +1476,6 @@ impl ParleyTextField {
             placeholder: &placeholder,
             value: &empty,
             prefix_icon: self.options.prefix_icon.as_ref(),
-            size: self.size,
             enabled: self.enabled,
             full_width: self.options.full_width,
             state,

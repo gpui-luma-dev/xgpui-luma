@@ -4,7 +4,7 @@ use gpui::BoxShadow;
 use gpui::SharedString;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::theme::shadow::shadow_projection_insets;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, paint};
 
 use super::box_model::{InspectEdgeInsets, InspectOccupationSnapshot};
@@ -21,22 +21,40 @@ pub struct InspectMetricPropertyData {
 pub fn radio_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
     let state = InteractionState::default();
     let tokens = look.mode_tokens();
-    let palette = paint::radio_button_look(tokens.as_ref(), ShadcnButtonStyle::Primary, false, state, ControlSize::Md);
+    let palette = paint::radio_button_look(
+        tokens.as_ref(),
+        ShadcnButtonStyle::Primary,
+        false,
+        state,
+        xgpui_luma_look_shadcn::ShadcnSize::Md,
+    );
     choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
 }
 
 pub fn checkbox_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
     let state = InteractionState::default();
     let tokens = look.mode_tokens();
-    let palette = paint::checkbox_look(tokens.as_ref(), ShadcnButtonStyle::Primary, false, state, ControlSize::Md);
+    let palette = paint::checkbox_look(
+        tokens.as_ref(),
+        ShadcnButtonStyle::Primary,
+        false,
+        state,
+        xgpui_luma_look_shadcn::ShadcnSize::Md,
+    );
     choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
 }
 
 pub fn switch_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
     let state = InteractionState::default();
     let tokens = look.mode_tokens();
-    let palette =
-        paint::switch_look(tokens.as_ref(), look.mode(), ShadcnButtonStyle::Primary, true, state, ControlSize::Md);
+    let palette = paint::switch_look(
+        tokens.as_ref(),
+        look.mode(),
+        ShadcnButtonStyle::Primary,
+        true,
+        state,
+        xgpui_luma_look_shadcn::ShadcnSize::Md,
+    );
     let shadows = if palette.thumb_shadow.is_empty() {
         None
     } else {
@@ -66,7 +84,7 @@ pub fn button_family_occupation(
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     role: ButtonFamilyRole,
-    size: ControlSize,
+    size: xgpui_luma_look_shadcn::ShadcnSize,
     state: InteractionState,
     focus_oversize: f32,
 ) -> InspectOccupationSnapshot {

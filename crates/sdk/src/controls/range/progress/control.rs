@@ -5,7 +5,7 @@ use super::{ProgressBuilder, ProgressRenderModel};
 use crate::motion::{ContinuousPhase, VisualTransition};
 use crate::controls::progress::model::ProgressModel;
 use crate::infra::value::{ControlRange, value_from_input};
-use crate::theme::{ControlSize, observe_theme_revision};
+use crate::theme::observe_theme_revision;
 
 pub struct ProgressControl {
     model: ProgressModel,
@@ -49,10 +49,6 @@ impl ProgressControl {
         self.model.enabled
     }
 
-    pub fn size(&self) -> ControlSize {
-        self.model.size
-    }
-
     pub fn direction(&self) -> ProgressDirection {
         self.model.direction
     }
@@ -83,15 +79,6 @@ impl ProgressControl {
         if !self.model.indeterminate {
             self.transition.set_target(self.model.range.percentage(self.model.value));
         }
-        cx.notify();
-    }
-
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.model.size == size {
-            return;
-        }
-
-        self.model.size = size;
         cx.notify();
     }
 
@@ -171,7 +158,6 @@ impl ProgressControl {
             range: self.model.range,
             value: self.model.value,
             percentage,
-            size: self.model.size,
             enabled: self.model.enabled,
             direction: self.model.direction,
             show_thumb: self.model.show_thumb,

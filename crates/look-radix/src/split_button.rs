@@ -39,7 +39,7 @@ pub fn split_button_builder(
     tone: Tone,
 ) -> SplitButtonBuilder {
     let popup = PopupMenuBuilder::new(id)
-        .stylesheet(&look.common_stylesheet())
+        .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().popup_menu)
         .trigger_style(match variant {
             PopupMenuVariant::Solid => PopupMenuTriggerStyle::Primary,
@@ -53,12 +53,11 @@ mod tests {
     use super::*;
     use crate::{Accent, Gray, SemanticRole};
     use xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics;
-    use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
     #[test]
     fn split_faces_and_menu_follow_the_bound_look() {
         let base = Look::built_in();
         let fork = base.fork();
-        let theme = split_button_theme(&fork, PopupMenuVariant::Solid, Tone::Accent);
         let before = split_button_theme(&base, PopupMenuVariant::Solid, Tone::Accent).resolve(
             PopupMenuTriggerStyle::Primary,
             Default::default(),
@@ -68,7 +67,8 @@ mod tests {
             fork.set_mode(mode);
             for accent in [Accent::Blue, Accent::Lime] {
                 fork.set_palettes(accent, Gray::Auto);
-                for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+                for size in [crate::RadixSize::One, crate::RadixSize::Two, crate::RadixSize::Three] {
+                    let theme = split_button_theme(&fork.with_size(size), PopupMenuVariant::Solid, Tone::Accent);
                     for bits in 0..16 {
                         let state = InteractionState {
                             hovered: bits & 1 != 0,
@@ -77,11 +77,8 @@ mod tests {
                             disabled: bits & 8 != 0,
                             ..Default::default()
                         };
-                        let palette = theme.resolve(
-                            PopupMenuTriggerStyle::Primary,
-                            PopupMenuTriggerMetrics { size, ..Default::default() },
-                            state,
-                        );
+                        let palette =
+                            theme.resolve(PopupMenuTriggerStyle::Primary, PopupMenuTriggerMetrics::default(), state);
                         if state.disabled {
                             assert_eq!(
                                 palette.trigger_foreground,

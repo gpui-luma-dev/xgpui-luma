@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
 
-use crate::theme::{ControlSize, InteractionLayer, InteractionState, LumaTextStyle, ThemeTokens};
+use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TabsListLook {
@@ -48,34 +48,34 @@ pub struct TabsBaseline {
 
 pub trait TabsTheme: Send + Sync {
     /// Appearance of native drag previews and insertion feedback.
-    fn resolve_drag(&self, size: ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default(), size);
-        let list = self.resolve_list(true, size);
-        let item = self.resolve_item(true, Default::default(), size);
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        let mut drag = crate::infra::drag_drop::DragDropLook::from_tokens(&ThemeTokens::default());
+        let list = self.resolve_list(true);
+        let item = self.resolve_item(true, Default::default());
         drag.background = list.background.or(item.background).unwrap_or(drag.background);
         drag.foreground = item.label_color;
         drag.valid_marker = item.indicator.unwrap_or(item.label_color);
         drag.invalid_marker =
-            self.resolve_item(false, InteractionState { invalid: true, ..Default::default() }, size).label_color;
+            self.resolve_item(false, InteractionState { invalid: true, ..Default::default() }).label_color;
         drag.radius = list.radius;
         drag.typography = item.label_typography;
         drag.font_family = self.font_family();
         drag
     }
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook;
-    fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook;
+    fn resolve_list(&self, enabled: bool) -> TabsListLook;
+    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook;
     fn font_family(&self) -> SharedString;
     /// Optional horizontal/vertical padding for an inset label background.
     /// Horizontal padding is taken from the trigger padding, preserving its width.
-    fn content_padding(&self, _size: ControlSize) -> Option<(f32, f32)> {
+    fn content_padding(&self) -> Option<(f32, f32)> {
         None
     }
     /// Independent of the selected-tab indicator. Absent by default.
-    fn baseline(&self, _enabled: bool, _size: ControlSize) -> Option<TabsBaseline> {
+    fn baseline(&self, _enabled: bool) -> Option<TabsBaseline> {
         None
     }
     /// Override the active indicator's inset; `None` retains the item padding inset.
-    fn indicator_inset(&self, _size: ControlSize) -> Option<f32> {
+    fn indicator_inset(&self) -> Option<f32> {
         None
     }
 }
@@ -98,10 +98,10 @@ impl DefaultTabsTheme {
 }
 
 impl TabsTheme for DefaultTabsTheme {
-    fn resolve_drag(&self, size: ControlSize) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens, size)
+    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
+        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens)
     }
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook {
+    fn resolve_list(&self, enabled: bool) -> TabsListLook {
         let palette = self.tokens.stylesheet.recipes.palette("tabs", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
 
@@ -109,22 +109,18 @@ impl TabsTheme for DefaultTabsTheme {
             border_width: metrics.border_width.default,
             background: (!enabled).then_some(palette.state.disabled.background),
             border: None,
-            radius: metrics.radius(size),
+            radius: metrics.radius(),
             padding: self.tokens.stylesheet.tabs.geometry.list_padding.unwrap_or_default(),
-            gap: self.tokens.stylesheet.tabs.geometry.list_gap.unwrap_or_else(|| metrics.gap(size)),
+            gap: self.tokens.stylesheet.tabs.geometry.list_gap.unwrap_or_else(|| metrics.gap()),
         }
     }
 
-    fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook {
+    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
         let palette = self.tokens.stylesheet.recipes.palette("tabs", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
         let typography = &self.tokens.typography;
         let layer = state.layer();
-        let label_typography = match size {
-            ControlSize::Sm => typography.text.caption,
-            ControlSize::Md => typography.text.label,
-            ControlSize::Lg => typography.text.body,
-        };
+        let label_typography = typography.text.label;
 
         let active_color = match layer {
             InteractionLayer::Disabled => palette.state.disabled.foreground,
@@ -149,9 +145,9 @@ impl TabsTheme for DefaultTabsTheme {
             }),
             background: None,
             label_typography,
-            radius: metrics.radius(size),
-            padding_x: metrics.padding_x(size),
-            height: label_typography.line_height + metrics.padding_y(size) * 2.0,
+            radius: metrics.radius(),
+            padding_x: metrics.padding_x(),
+            height: label_typography.line_height + metrics.padding_y() * 2.0,
             indicator_height: self.tokens.stylesheet.tabs.geometry.indicator_height.unwrap_or_default(),
         }
     }
@@ -169,15 +165,12 @@ mod state_audit_tests {
     fn disabled_active_tab_does_not_paint_a_focus_indicator() {
         let tokens = ThemeTokens::default();
         let theme = DefaultTabsTheme::new(tokens.clone());
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            let look = theme.resolve_item(
-                true,
-                InteractionState { disabled: true, focused: true, hovered: true, pressed: true, ..Default::default() },
-                size,
-            );
-            assert_eq!(look.label_color, tokens.palette.state.disabled.foreground);
-            assert_eq!(look.indicator, Some(tokens.palette.state.disabled.foreground));
-        }
+        let look = theme.resolve_item(
+            true,
+            InteractionState { disabled: true, focused: true, hovered: true, pressed: true, ..Default::default() },
+        );
+        assert_eq!(look.label_color, tokens.palette.state.disabled.foreground);
+        assert_eq!(look.indicator, Some(tokens.palette.state.disabled.foreground));
     }
 }
 

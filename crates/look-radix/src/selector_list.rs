@@ -19,7 +19,7 @@ use crate::{Look, PopupMenuVariant, Tone, floating_menu_look_for};
 /// assert!(panel.item_height > 0.0);
 /// ```
 pub fn selector_items_panel_look(look: &Look, variant: PopupMenuVariant, tone: Tone) -> SelectorItemsPanelLook {
-    selector_items_panel_look_for(look, variant, tone, xgpui_luma::theme::ControlSize::Md)
+    selector_items_panel_look_for(look, variant, tone, crate::RadixSize::Two)
 }
 
 /// Size-aware selector row/panel chrome using Radix stylesheet keys `1`–`3`.
@@ -28,13 +28,12 @@ pub fn selector_items_panel_look_for(
     look: &Look,
     variant: PopupMenuVariant,
     tone: Tone,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::RadixSize,
 ) -> SelectorItemsPanelLook {
     SelectorItemsPanelLook::from_menu(
         floating_menu_look_for(look, variant, tone, size),
-        &look.metrics(),
-        &look.common_stylesheet(),
-        crate::look::sdk_size_key(size),
+        &look.metrics_for(size),
+        &look.sized_stylesheet(size),
     )
 }
 

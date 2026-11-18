@@ -7,7 +7,7 @@ use gpui::{AnyElement, App, Context, Entity, Hsla, IntoElement, SharedString, di
 use xgpui_luma::controls::tabs::{
     Tabs, TabsEvent, TabsItem, TabsTheme, TabsListLook, TabsItemLook, TabsBaseline, ThemedTabsTemplate,
 };
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_radix::{Accent, Gray, Look, ScaleFamily, TabsSize};
 
 use super::matrix_grid::{preview_tabbed, fixed_grid, equal_data_columns};
@@ -130,30 +130,30 @@ struct ContrastTabsTheme {
 }
 
 impl TabsTheme for ContrastTabsTheme {
-    fn resolve_list(&self, enabled: bool, size: ControlSize) -> TabsListLook {
-        self.base.resolve_list(enabled, size)
+    fn resolve_list(&self, enabled: bool) -> TabsListLook {
+        self.base.resolve_list(enabled)
     }
 
-    fn resolve_item(&self, active: bool, state: InteractionState, size: ControlSize) -> TabsItemLook {
-        let mut item = self.base.resolve_item(active, state, size);
+    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
+        let mut item = self.base.resolve_item(active, state);
         if item.indicator.is_some() {
             item.indicator = Some(self.look.resolve_step(ScaleFamily::Color, 12).hsla());
         }
         item
     }
 
-    fn content_padding(&self, size: ControlSize) -> Option<(f32, f32)> {
-        self.base.content_padding(size)
+    fn content_padding(&self) -> Option<(f32, f32)> {
+        self.base.content_padding()
     }
 
     fn font_family(&self) -> SharedString {
         self.base.font_family()
     }
-    fn baseline(&self, enabled: bool, size: ControlSize) -> Option<TabsBaseline> {
-        self.base.baseline(enabled, size)
+    fn baseline(&self, enabled: bool) -> Option<TabsBaseline> {
+        self.base.baseline(enabled)
     }
-    fn indicator_inset(&self, size: ControlSize) -> Option<f32> {
-        self.base.indicator_inset(size)
+    fn indicator_inset(&self) -> Option<f32> {
+        self.base.indicator_inset()
     }
 }
 
@@ -186,13 +186,13 @@ mod tests {
             look.set_palettes(accent, Gray::Auto);
             for mode in [ThemeMode::Light, ThemeMode::Dark] {
                 look.set_mode(mode);
-                let normal = base.resolve_item(true, InteractionState::default(), ControlSize::Md);
-                let high = contrast.resolve_item(true, InteractionState::default(), ControlSize::Md);
+                let normal = base.resolve_item(true, InteractionState::default());
+                let high = contrast.resolve_item(true, InteractionState::default());
                 assert_eq!(high.indicator, Some(look.resolve_step(ScaleFamily::Color, 12).hsla()));
                 assert_ne!(normal.indicator, high.indicator);
                 assert_eq!(normal.label_color, high.label_color);
                 assert_eq!(normal.height, high.height);
-                assert!(contrast.resolve_item(false, InteractionState::default(), ControlSize::Md).indicator.is_none());
+                assert!(contrast.resolve_item(false, InteractionState::default()).indicator.is_none());
             }
         }
     }

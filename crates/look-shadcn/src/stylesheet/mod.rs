@@ -3,6 +3,7 @@ mod find;
 mod metadata;
 mod resolve;
 mod selector;
+mod size_presets;
 
 pub fn embedded_stylesheet() -> &'static StylesheetConfig {
     embedded()
@@ -46,7 +47,7 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    CommonStylesheet {
+    let mut common = CommonStylesheet {
         motion,
         slider: native_shadcn_common_slider(),
         switch: native_shadcn_common_switch(),
@@ -63,8 +64,9 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
         overlay_window: crate::controls::overlay_window::native_overlay_window_stylesheet(),
         pager: crate::controls::pager::native_pager_stylesheet(),
         ..Default::default()
-    }
-    .with_sdk_defaults()
+    };
+    size_presets::apply_size_presets(&mut common);
+    common.with_sdk_defaults()
 }
 
 pub use crate::controls::slider::{native_shadcn_common_slider, native_shadcn_slider, define_shadcn_slider};
@@ -179,6 +181,7 @@ mod tests {
         define_shadcn_slider(&mut native);
         define_shadcn_switch(&mut native);
         define_shadcn_checkbox(&mut native);
+        size_presets::apply_size_presets(&mut native.common);
         assert_eq!(native.common.slider, original.common.slider);
         assert_eq!(native.common.switch, original.common.switch);
         assert_eq!(native.common.checkbox, original.common.checkbox);
@@ -197,11 +200,7 @@ mod tests {
             look.set_mode(mode);
             let tokens = look.mode_tokens();
             for style in [crate::controls::ShadcnButtonStyle::Primary, crate::controls::ShadcnButtonStyle::Secondary] {
-                for size in [
-                    xgpui_luma::theme::ControlSize::Sm,
-                    xgpui_luma::theme::ControlSize::Md,
-                    xgpui_luma::theme::ControlSize::Lg,
-                ] {
+                for size in [crate::ShadcnSize::Sm, crate::ShadcnSize::Md, crate::ShadcnSize::Lg] {
                     for bits in 0..32 {
                         let state = xgpui_luma::theme::InteractionState {
                             hovered: bits & 1 != 0,
@@ -210,22 +209,13 @@ mod tests {
                             disabled: bits & 8 != 0,
                             invalid: bits & 16 != 0,
                         };
-                        use xgpui_luma::controls::slider::SliderThumbSize;
-                        for thumb in
-                            [None, Some(SliderThumbSize::Sm), Some(SliderThumbSize::Md), Some(SliderThumbSize::Lg)]
-                        {
-                            let old = crate::controls::slider::slider_look_with_stylesheet(
-                                &tokens, &original, mode, style, size, thumb, state,
-                            );
-                            let new = crate::controls::slider::slider_look_with_stylesheet(
-                                &tokens, &native, mode, style, size, thumb, state,
-                            );
-                            assert_eq!(
-                                format!("{new:?}"),
-                                format!("{old:?}"),
-                                "{mode:?} {style:?} {size:?} {thumb:?} {state:?}"
-                            );
-                        }
+                        let old = crate::controls::slider::slider_look_with_stylesheet(
+                            &tokens, &original, mode, style, size, state,
+                        );
+                        let new = crate::controls::slider::slider_look_with_stylesheet(
+                            &tokens, &native, mode, style, size, state,
+                        );
+                        assert_eq!(format!("{new:?}"), format!("{old:?}"), "{mode:?} {style:?} {size:?} {state:?}");
                     }
                 }
             }

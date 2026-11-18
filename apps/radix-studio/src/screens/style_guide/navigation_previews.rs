@@ -1,4 +1,5 @@
 //! Presentation-only SDK template matrices for groups and navigation.
+use xgpui_luma_look_radix::RadixSize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 use gpui::{AnyElement, App, Context, Entity, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::control_group::ControlGroupItemLike;
@@ -8,7 +9,7 @@ use xgpui_luma::infra::{
     icon::{DisclosureIcons, SelectionStatusIcons},
     state::{CompositeItemState, ControlFocusState},
 };
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::InteractionState;
 use xgpui_luma::GridTrack;
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, ScaleFamily, SemanticRole};
 use super::{
@@ -136,7 +137,7 @@ impl Previews {
                                 Cell {
                                     kind,
                                     variant: col,
-                                    size: ControlSize::Md,
+                                    size: RadixSize::Two,
                                     state: InteractionState { focused: true, ..Default::default() },
                                     scenario: 1,
                                     id: format!("color-{row}-{col}"),
@@ -162,7 +163,7 @@ impl Previews {
                 }
                 for (row, label) in labels.iter().enumerate() {
                     grid = grid.child(row_label(*label, fg), row + 1, 0);
-                    for (col, size) in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg].into_iter().enumerate() {
+                    for (col, size) in [RadixSize::One, RadixSize::Two, RadixSize::Three].into_iter().enumerate() {
                         grid = grid.child(
                             self.sample(
                                 look,
@@ -211,7 +212,7 @@ impl Previews {
                                 Cell {
                                     kind,
                                     variant: row,
-                                    size: ControlSize::Md,
+                                    size: RadixSize::Two,
                                     state: state.state,
                                     scenario: col,
                                     id: format!("state-{row}-{col}"),
@@ -229,6 +230,9 @@ impl Previews {
         preview_tabbed(tabs, border, grid.into_any_element())
     }
     fn sample(&self, look: &Look, cell: Cell, window: &mut Window, cx: &mut App) -> AnyElement {
+        // Render each cell with a Look sized to its column.
+        let sized_look = look.with_size(cell.size);
+        let look = &sized_look;
         let id = SharedString::from(format!("guide-{}-{}", cell.kind.key(), cell.id));
         let content = match cell.kind {
             Kind::IconGroup | Kind::ToggleGroup => group_sample(look, &id, &cell, window, cx),
@@ -260,7 +264,7 @@ impl Previews {
 struct Cell {
     kind: Kind,
     variant: usize,
-    size: ControlSize,
+    size: RadixSize,
     state: InteractionState,
     scenario: usize,
     id: String,
@@ -486,7 +490,6 @@ fn accordion_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Wi
         selection_mode: accordion::AccordionSelectionMode::Single,
         collapsible: true,
         enabled: !cell.state.disabled,
-        size: cell.size,
         item_dividers: true,
         content_padding_y: None,
         content_padding_top: None,
@@ -520,7 +523,7 @@ fn pager_matrix(look: &Look, fg: gpui::Hsla, muted: gpui::Hsla, window: &mut Win
             let cell = Cell {
                 kind: Kind::Pager,
                 variant: col,
-                size: ControlSize::Md,
+                size: RadixSize::Two,
                 state: InteractionState { disabled: scenario == 4, ..Default::default() },
                 scenario,
                 id: String::new(),
@@ -588,7 +591,6 @@ fn stepper_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Wind
         } else {
             ProgressDirection::TopToBottom
         },
-        size: cell.size,
         enabled: !cell.state.disabled,
         step_contents: &[],
         content_height: None,

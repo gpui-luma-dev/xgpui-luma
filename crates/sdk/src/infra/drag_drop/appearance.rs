@@ -1,6 +1,6 @@
 //! Theme-owned compact preview and valid/invalid insertion feedback.
 use gpui::{Context, Hsla, IntoElement, Pixels, Point, Render, SharedString, Window, div, prelude::*, px};
-use crate::theme::{ControlSize, LumaTextStyle, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct DragDropLook {
@@ -14,7 +14,7 @@ pub struct DragDropLook {
     pub font_family: SharedString,
 }
 impl DragDropLook {
-    pub fn from_tokens(tokens: &ThemeTokens, size: ControlSize) -> Self {
+    pub fn from_tokens(tokens: &ThemeTokens) -> Self {
         let palette = tokens.stylesheet.recipes.palette("drag_drop", &tokens.palette);
         Self {
             geometry: tokens.stylesheet.shared_geometry(),
@@ -22,7 +22,7 @@ impl DragDropLook {
             foreground: palette.surface.floating.foreground,
             valid_marker: palette.focus.ring,
             invalid_marker: palette.form.input.invalid_border,
-            radius: tokens.metrics.radius(size),
+            radius: tokens.metrics.radius(),
             typography: tokens.typography.text.label,
             font_family: tokens.typography.font.sans.family.clone().into(),
         }

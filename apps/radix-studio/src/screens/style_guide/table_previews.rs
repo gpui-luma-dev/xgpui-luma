@@ -1,10 +1,11 @@
 //! Static SDK table templates with shared column layout and native row sizing.
+use xgpui_luma_look_radix::RadixSize;
 use std::sync::Arc;
 use gpui::{AnyElement, App, Entity, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::{GridLayout, GridTrack};
 use xgpui_luma::controls::{table::*, tabs::Tabs};
 use xgpui_luma::infra::state::ControlFocusState;
-use xgpui_luma::theme::{ControlSize, InteractionState, ListRowScale};
+use xgpui_luma::theme::{InteractionState, ListRowScale};
 use xgpui_luma_look_radix::{self as radix, Accent, Gray, Look, SemanticRole};
 use super::{
     matrix_grid::{centered, column_header, empty_corner, equal_data_columns, fixed_grid, preview_tabbed, row_label},
@@ -30,7 +31,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
                 let fork = look.fork();
                 fork.set_palettes(*accent, Gray::Auto);
                 grid = grid.child(row_label(super::palettes::title_case(accent.as_str()), fg), row + 1, 0).child(
-                    sample(&fork, format!("color-{row}"), ControlSize::Md, Default::default(), true, window, cx),
+                    sample(&fork, format!("color-{row}"), RadixSize::Two, Default::default(), true, window, cx),
                     row + 1,
                     1,
                 );
@@ -39,7 +40,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
         "all-sizes" => {
             grid = grid.child(row_label("Table", fg), 1, 0);
             for (col, (size, label)) in
-                [(ControlSize::Sm, "Size 1"), (ControlSize::Md, "Size 2"), (ControlSize::Lg, "Size 3")]
+                [(RadixSize::One, "Size 1"), (RadixSize::Two, "Size 2"), (RadixSize::Three, "Size 3")]
                     .into_iter()
                     .enumerate()
             {
@@ -58,7 +59,7 @@ pub(super) fn tabbed(look: &Arc<Look>, tabs: Entity<Tabs>, window: &mut Window, 
                 grid = grid.child(row_label(label, fg), row + 1, 0);
                 for (col, state) in states.iter().enumerate() {
                     grid = grid.child(
-                        sample(look, format!("state-{row}-{col}"), ControlSize::Md, state.state, selected, window, cx),
+                        sample(look, format!("state-{row}-{col}"), RadixSize::Two, state.state, selected, window, cx),
                         row + 1,
                         col + 1,
                     );
@@ -84,17 +85,18 @@ fn column_grid(cells: impl IntoIterator<Item = AnyElement>, padding: f32) -> Any
 fn sample(
     look: &Look,
     name: String,
-    size: ControlSize,
+    size: RadixSize,
     state: InteractionState,
     selected: bool,
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
     let id = SharedString::from(format!("guide-table-{name}"));
-    let theme = radix::table_theme(look);
-    let shell = theme.resolve_look(!state.disabled, state.focused, size);
-    let scale = ListRowScale::compute(size, &theme.metrics(), window.scale_factor());
-    let row_look = theme.resolve_row_look(false, Default::default(), size, &scale);
+    // Render this sample with a Look sized to its row.
+    let theme = radix::table_theme(&look.with_size(size));
+    let shell = theme.resolve_look(!state.disabled, state.focused);
+    let scale = ListRowScale::compute(&theme.metrics(), window.scale_factor());
+    let row_look = theme.resolve_row_look(false, Default::default(), &scale);
     let row_height = default_row_height(&row_look);
     let body_height = body_rows_height(3, row_height, shell.row_divider_width);
     let shell_height = compute_shell_height(3, row_height, &shell, true);
@@ -112,7 +114,7 @@ fn sample(
         } else {
             InteractionState { disabled: !enabled, ..Default::default() }
         };
-        let mut resolved = theme.resolve_row_look(selected && index == 0, interaction, size, &scale);
+        let mut resolved = theme.resolve_row_look(selected && index == 0, interaction, &scale);
         // As in the SDK grid view, columns own horizontal insets and alignment.
         resolved.padding_x = 0.0;
         let model = TableRowRenderModel {
@@ -161,7 +163,6 @@ fn sample(
         page_count: 1,
         selected_count: usize::from(selected),
         enabled: !state.disabled,
-        size,
         focus: ControlFocusState { focused: state.focused, focus_visible: state.focused },
     };
     let selector = id.to_string();

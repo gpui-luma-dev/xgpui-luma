@@ -1,9 +1,10 @@
 //! Inspect metadata for `autocomplete`.
 
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
 use super::floating_menu::{FloatingMenuInspectMetrics, FloatingMenuInspectPalette};
+use crate::size::ShadcnSize;
 
 pub struct AutocompleteChromeInspectPalette {
     pub status_color: ResolvedColor,
@@ -38,7 +39,7 @@ pub fn inspect_autocomplete_chrome_color_palette(
 pub fn inspect_autocomplete_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> AutocompleteInspectMetrics {
     AutocompleteInspectMetrics {
         textfield: crate::inspect::controls::textfield::inspect_textfield_metrics(mode, theme_mode, size),
@@ -49,7 +50,7 @@ pub fn inspect_autocomplete_metrics(
 pub fn inspect_autocomplete_menu_color_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> FloatingMenuInspectPalette {
     crate::inspect::controls::floating_menu::inspect_floating_menu_color_palette(mode, theme_mode, size)
 }

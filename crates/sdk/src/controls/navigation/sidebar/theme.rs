@@ -29,8 +29,8 @@ impl Default for SidebarMetricScale {
 impl SidebarMetricScale {
     /// Capture resolved sidebar dimensions; explicit host metrics can be edited afterward.
     pub fn from_stylesheet(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let base = crate::theme::stylesheet::CommonStylesheet::sdk_default().sidebar.authored_geometry("md");
-        let geometry = stylesheet.sidebar.authored_geometry("md").with_fallback(&base);
+        let base = crate::theme::stylesheet::CommonStylesheet::sdk_default().sidebar.authored_geometry();
+        let geometry = stylesheet.sidebar.authored_geometry().with_fallback(&base);
         Self {
             width_expanded: px(geometry.width_expanded.unwrap_or_default()),
             width_icon_rail: px(geometry.width_icon_rail.unwrap_or_default()),

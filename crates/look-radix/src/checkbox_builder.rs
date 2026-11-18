@@ -214,13 +214,13 @@ impl Checkbox {
     }
 
     fn into_sdk_builder(self, look: Look) -> CheckboxBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = checkbox_template_for(&look, self.variant, self.paint, self.size, self.radius);
         let mut builder = xgpui_luma::controls::checkbox::new(self.id)
-            .stylesheet(&look.common_stylesheet())
+            .stylesheet(&look.sized_stylesheet(look.size()))
             .motion_defaults(look.motion_defaults().checkbox)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.checked)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
@@ -255,13 +255,13 @@ impl HasPresenter<ButtonContentContext<CheckboxData>> for Checkbox {
 mod tests {
     use super::*;
     use xgpui_luma::controls::button::HasPresenter;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Checkbox::new("s").size(CheckboxSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Checkbox::new("s").size(CheckboxSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Checkbox::new("s").size(CheckboxSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(Checkbox::new("s").size(CheckboxSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Checkbox::new("s").size(CheckboxSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Checkbox::new("s").size(CheckboxSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

@@ -14,7 +14,6 @@ use crate::controls::popup_menu::PopupMenuEvent;
 use crate::controls::selector::SelectorEvent;
 use crate::controls::textfield::TextFieldEvent;
 use crate::controls::toggle::ToggleEvent;
-use crate::theme::ControlSize;
 
 #[derive(Clone, Debug)]
 pub enum ToolbarValue {
@@ -34,7 +33,6 @@ pub enum ToolbarEvent {
 pub struct ToolbarControl {
     group: Entity<ControlGroupControl<ToolbarItem>>,
     items: Vec<ToolbarItem>,
-    size: ControlSize,
     variant: ToolbarVariant,
     focus_strategy: ControlGroupFocusStrategy,
     template: std::sync::Arc<dyn super::ToolbarTemplate>,
@@ -72,7 +70,6 @@ impl ToolbarControl {
         let mut toolbar = Self {
             group,
             items: model.items,
-            size: model.size,
             variant: model.variant,
             focus_strategy: model.focus_strategy,
             template: model.template,
@@ -122,14 +119,6 @@ impl ToolbarControl {
         self.sync_group_template(cx);
     }
 
-    pub fn set_size(&mut self, size: ControlSize, cx: &mut Context<Self>) {
-        if self.size == size {
-            return;
-        }
-        self.size = size;
-        self.sync_group_template(cx);
-    }
-
     pub fn set_template(&mut self, template: std::sync::Arc<dyn super::ToolbarTemplate>, cx: &mut Context<Self>) {
         self.template = template;
         self.sync_group_template(cx);
@@ -154,7 +143,7 @@ impl ToolbarControl {
     }
 
     fn sync_group_template(&mut self, cx: &mut Context<Self>) {
-        let template = super::template::toolbar_control_group_template(self.size, self.variant, self.template.clone());
+        let template = super::template::toolbar_control_group_template(self.variant, self.template.clone());
         self.group.update(cx, |group, cx| {
             group.set_template(template, cx);
         });

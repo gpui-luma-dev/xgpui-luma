@@ -5,7 +5,6 @@ use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
 use super::model::{ToolbarItem, ToolbarItemKind, ToolbarItemRenderModel, ToolbarRenderModel, fallback_item};
 use super::theme::{ToolbarTheme, ToolbarVariant, default_toolbar_theme};
 use crate::controls::control_group::{ControlGroupItemLike, ControlGroupRenderModel, ControlGroupTemplate};
-use crate::theme::ControlSize;
 
 pub type ToolbarTemplateModifier =
     Box<dyn Fn(Stateful<Div>, &ToolbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
@@ -27,18 +26,12 @@ pub struct ToolbarRenderedItem {
 
 pub struct ThemedToolbarTemplate {
     theme: Arc<dyn ToolbarTheme>,
-    size: ControlSize,
     modifiers: Vec<ToolbarTemplateModifier>,
 }
 
 impl ThemedToolbarTemplate {
     pub fn new(theme: Arc<dyn ToolbarTheme>) -> Self {
-        Self { theme, size: ControlSize::Md, modifiers: Vec::new() }
-    }
-
-    pub fn with_size(mut self, size: ControlSize) -> Self {
-        self.size = size;
-        self
+        Self { theme, modifiers: Vec::new() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -88,8 +81,7 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let size = model.size.unwrap_or(self.size);
-        let look = self.theme.resolve(model.enabled, size, model.variant);
+        let look = self.theme.resolve(model.enabled, model.variant);
         let mut root = div()
             .id(model.id.clone())
             .flex()
@@ -156,12 +148,11 @@ pub(crate) fn render_fallback_toolbar_item(model: &ToolbarItemRenderModel) -> gp
 }
 
 pub(crate) fn toolbar_control_group_template(
-    size: ControlSize,
     variant: ToolbarVariant,
     template: Arc<dyn ToolbarTemplate>,
 ) -> ControlGroupTemplate<ToolbarItem> {
     Arc::new(move |model, _handlers, window, cx| {
-        let toolbar_model = toolbar_render_model(model, size, variant);
+        let toolbar_model = toolbar_render_model(model, variant);
         let items = render_toolbar_items(model, window, cx);
         template.render(&toolbar_model, items, window, cx)
     })
@@ -169,7 +160,6 @@ pub(crate) fn toolbar_control_group_template(
 
 fn toolbar_render_model<'a>(
     model: &'a ControlGroupRenderModel<'a, ToolbarItem>,
-    size: ControlSize,
     variant: ToolbarVariant,
 ) -> ToolbarRenderModel<'a> {
     ToolbarRenderModel {
@@ -186,7 +176,6 @@ fn toolbar_render_model<'a>(
             })
             .collect(),
         enabled: model.enabled,
-        size: Some(size),
         variant,
     }
 }

@@ -3,10 +3,11 @@ use xgpui_luma::controls::resizable_panels::ResizeHandleSize;
 use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 use xgpui_luma::controls::textarea::TextAreaState;
 use xgpui_luma::controls::textfield::TextFieldState;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 
 use crate::{ShadcnButtonStyle, ShadcnLook, ShadcnTextFieldStyle};
 use crate::BadgeVariant;
+use crate::size::ShadcnSize;
 
 use crate::inspect::controls::{
     AccordionContentInspectPalette, AccordionInspectMetrics, AccordionTriggerInspectPalette,
@@ -87,7 +88,7 @@ impl<'a> ShadcnInspect<'a> {
         &self,
         style: ShadcnButtonStyle,
         role: ButtonFamilyRole,
-        size: ControlSize,
+        size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonInspectMetrics {
         crate::inspect::controls::inspect_button_metrics_with_stylesheet(
@@ -102,12 +103,12 @@ impl<'a> ShadcnInspect<'a> {
     }
 
     pub fn inspect_button_typography(&self) -> ButtonInspectTypography {
-        self.inspect_button_typography_for_size(ControlSize::Md, ButtonFamilyRole::Text)
+        self.inspect_button_typography_for_size(ShadcnSize::Md, ButtonFamilyRole::Text)
     }
 
     pub fn inspect_button_typography_for_size(
         &self,
-        size: ControlSize,
+        size: ShadcnSize,
         role: ButtonFamilyRole,
     ) -> ButtonInspectTypography {
         crate::tables::typography::resolve_control_typography_with_stylesheet(
@@ -119,7 +120,7 @@ impl<'a> ShadcnInspect<'a> {
         .into()
     }
 
-    pub fn inspect_accordion_typography(&self, size: ControlSize) -> ButtonInspectTypography {
+    pub fn inspect_accordion_typography(&self, size: ShadcnSize) -> ButtonInspectTypography {
         crate::tables::typography::resolve_control_typography(&self.mode_tokens(), size, false).into()
     }
 
@@ -139,7 +140,7 @@ impl<'a> ShadcnInspect<'a> {
         )
     }
 
-    pub fn inspect_card_metrics(&self, size: ControlSize) -> CardInspectMetrics {
+    pub fn inspect_card_metrics(&self, size: ShadcnSize) -> CardInspectMetrics {
         inspect_card_metrics(self.look, size)
     }
 
@@ -147,7 +148,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_badge_color_palette(self.look, variant)
     }
 
-    pub fn inspect_badge_metrics(&self, variant: BadgeVariant, size: ControlSize) -> BadgeInspectMetrics {
+    pub fn inspect_badge_metrics(&self, variant: BadgeVariant, size: ShadcnSize) -> BadgeInspectMetrics {
         inspect_badge_metrics(&self.mode_tokens(), self.look, variant, size, self.theme_mode())
     }
 
@@ -197,7 +198,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_switch_color_palette(&self.mode_tokens(), self.theme_mode(), style, on, state)
     }
 
-    pub fn inspect_checkbox_metrics(&self, size: ControlSize) -> CheckboxInspectMetrics {
+    pub fn inspect_checkbox_metrics(&self, size: ShadcnSize) -> CheckboxInspectMetrics {
         crate::tables::metrics::resolve_checkbox_metrics_with_stylesheet(
             &self.mode_tokens(),
             self.look.stylesheet().as_ref(),
@@ -221,7 +222,7 @@ impl<'a> ShadcnInspect<'a> {
         )
     }
 
-    pub fn inspect_radio_button_metrics(&self, size: ControlSize) -> RadioButtonInspectMetrics {
+    pub fn inspect_radio_button_metrics(&self, size: ShadcnSize) -> RadioButtonInspectMetrics {
         crate::tables::metrics::resolve_radio_button_metrics_with_stylesheet(
             &self.mode_tokens(),
             self.look.stylesheet().as_ref(),
@@ -245,7 +246,7 @@ impl<'a> ShadcnInspect<'a> {
         )
     }
 
-    pub fn inspect_switch_metrics(&self, size: ControlSize) -> SwitchInspectMetrics {
+    pub fn inspect_switch_metrics(&self, size: ShadcnSize) -> SwitchInspectMetrics {
         crate::tables::metrics::resolve_switch_metrics_with_stylesheet(
             &self.mode_tokens(),
             &self.look.stylesheet(),
@@ -256,11 +257,7 @@ impl<'a> ShadcnInspect<'a> {
         .into()
     }
 
-    pub fn inspect_switch_metrics_for_style(
-        &self,
-        style: ShadcnButtonStyle,
-        size: ControlSize,
-    ) -> SwitchInspectMetrics {
+    pub fn inspect_switch_metrics_for_style(&self, style: ShadcnButtonStyle, size: ShadcnSize) -> SwitchInspectMetrics {
         crate::tables::metrics::resolve_switch_metrics_with_stylesheet(
             &self.mode_tokens(),
             &self.look.stylesheet(),
@@ -301,31 +298,26 @@ impl<'a> ShadcnInspect<'a> {
     }
 
     pub fn inspect_slider_metrics(&self) -> SliderInspectMetrics {
-        self.inspect_slider_metrics_for(ControlSize::Md, None)
+        self.inspect_slider_metrics_for(ShadcnSize::Md)
     }
 
-    /// Inspect geometry for the same size and explicit thumb selection used by painting.
-    pub fn inspect_slider_metrics_for(
-        &self,
-        size: ControlSize,
-        thumb_size: Option<xgpui_luma::controls::slider::SliderThumbSize>,
-    ) -> SliderInspectMetrics {
+    /// Inspect geometry for the same size used by painting.
+    pub fn inspect_slider_metrics_for(&self, size: ShadcnSize) -> SliderInspectMetrics {
         crate::tables::metrics::resolve_slider_metrics_with_stylesheet(
             &self.mode_tokens(),
             &self.look.stylesheet(),
             size,
-            thumb_size,
         )
         .into()
     }
 
     /// Inspect Progress geometry at the rendered control size.
-    pub fn inspect_progress_metrics_for_size(&self, size: ControlSize) -> ProgressInspectMetrics {
+    pub fn inspect_progress_metrics_for_size(&self, size: ShadcnSize) -> ProgressInspectMetrics {
         crate::tables::metrics::resolve_progress_metrics_for_size(&self.mode_tokens(), self.theme_mode(), size).into()
     }
 
     /// Inspect Stepper geometry at the rendered control size.
-    pub fn inspect_stepper_metrics_for_size(&self, size: ControlSize) -> StepperInspectMetrics {
+    pub fn inspect_stepper_metrics_for_size(&self, size: ShadcnSize) -> StepperInspectMetrics {
         crate::tables::metrics::resolve_stepper_metrics_for_size(&self.mode_tokens(), self.theme_mode(), size).into()
     }
 
@@ -334,7 +326,7 @@ impl<'a> ShadcnInspect<'a> {
         &self,
         orientation: ScrollbarOrientation,
         style: ScrollbarStyle,
-        size: ControlSize,
+        size: ShadcnSize,
     ) -> ScrollbarInspectMetrics {
         crate::tables::metrics::resolve_scrollbar_metrics_for_size(
             &self.mode_tokens(),
@@ -371,11 +363,11 @@ impl<'a> ShadcnInspect<'a> {
         inspect_textarea_color_palette(&self.mode_tokens(), self.theme_mode(), style, state, enabled)
     }
 
-    pub fn inspect_textarea_metrics(&self, size: ControlSize) -> TextFieldInspectMetrics {
+    pub fn inspect_textarea_metrics(&self, size: ShadcnSize) -> TextFieldInspectMetrics {
         inspect_textarea_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
-    pub fn inspect_textfield_metrics(&self, size: ControlSize) -> TextFieldInspectMetrics {
+    pub fn inspect_textfield_metrics(&self, size: ShadcnSize) -> TextFieldInspectMetrics {
         inspect_textfield_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -383,17 +375,17 @@ impl<'a> ShadcnInspect<'a> {
         inspect_textfield_elevation(&self.mode_tokens(), self.theme_mode(), style, enabled)
     }
 
-    pub fn inspect_floating_menu_color_palette(&self, size: ControlSize) -> FloatingMenuInspectPalette {
+    pub fn inspect_floating_menu_color_palette(&self, size: ShadcnSize) -> FloatingMenuInspectPalette {
         inspect_floating_menu_color_palette(&self.mode_tokens(), self.theme_mode(), size)
     }
 
-    pub fn inspect_floating_menu_metrics(&self, size: ControlSize) -> FloatingMenuInspectMetrics {
+    pub fn inspect_floating_menu_metrics(&self, size: ShadcnSize) -> FloatingMenuInspectMetrics {
         inspect_floating_menu_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
     pub fn inspect_overlay_window_color_palette(
         &self,
-        size: ControlSize,
+        size: ShadcnSize,
         mode: xgpui_luma::controls::overlay_window::OverlayWindowMode,
     ) -> OverlayWindowInspectPalette {
         inspect_overlay_window_color_palette(self.look(), size, mode)
@@ -401,7 +393,7 @@ impl<'a> ShadcnInspect<'a> {
 
     pub fn inspect_overlay_window_metrics(
         &self,
-        size: ControlSize,
+        size: ShadcnSize,
         mode: xgpui_luma::controls::overlay_window::OverlayWindowMode,
     ) -> OverlayWindowInspectMetrics {
         inspect_overlay_window_metrics(self.look(), size, mode)
@@ -410,12 +402,12 @@ impl<'a> ShadcnInspect<'a> {
     pub fn inspect_context_menu_color_palette(
         &self,
         state: InteractionState,
-        size: ControlSize,
+        size: ShadcnSize,
     ) -> ContextMenuInspectPalette {
         inspect_context_menu_color_palette(&self.mode_tokens(), self.theme_mode(), state, size)
     }
 
-    pub fn inspect_context_menu_metrics(&self, size: ControlSize) -> ContextMenuInspectMetrics {
+    pub fn inspect_context_menu_metrics(&self, size: ShadcnSize) -> ContextMenuInspectMetrics {
         inspect_context_menu_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -423,7 +415,7 @@ impl<'a> ShadcnInspect<'a> {
         &self,
         trigger_style: xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle,
         state: InteractionState,
-        size: ControlSize,
+        size: ShadcnSize,
     ) -> PopupMenuInspectPalette {
         inspect_popup_menu_color_palette(&self.mode_tokens(), self.theme_mode(), trigger_style, state, size)
     }
@@ -431,7 +423,7 @@ impl<'a> ShadcnInspect<'a> {
     pub fn inspect_popup_menu_metrics(
         &self,
         trigger_style: xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle,
-        size: ControlSize,
+        size: ShadcnSize,
     ) -> PopupMenuInspectMetrics {
         inspect_popup_menu_metrics(&self.mode_tokens(), self.theme_mode(), trigger_style, size)
     }
@@ -444,7 +436,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_tabs_list_color_palette_for_look(self.look, enabled)
     }
 
-    pub fn inspect_tabs_metrics(&self, size: ControlSize) -> TabsInspectMetrics {
+    pub fn inspect_tabs_metrics(&self, size: ShadcnSize) -> TabsInspectMetrics {
         inspect_tabs_metrics_for_look(self.look, size)
     }
 
@@ -456,7 +448,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_toolbar_color_palette(&self.mode_tokens(), self.theme_mode(), enabled, variant)
     }
 
-    pub fn inspect_toolbar_metrics(&self, size: ControlSize) -> ToolbarInspectMetrics {
+    pub fn inspect_toolbar_metrics(&self, size: ShadcnSize) -> ToolbarInspectMetrics {
         inspect_toolbar_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -497,7 +489,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_table_row_color_palette(&self.mode_tokens(), self.theme_mode(), selected, state)
     }
 
-    pub fn inspect_table_metrics(&self, size: ControlSize) -> TableInspectMetrics {
+    pub fn inspect_table_metrics(&self, size: ShadcnSize) -> TableInspectMetrics {
         inspect_table_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -509,12 +501,12 @@ impl<'a> ShadcnInspect<'a> {
         inspect_accordion_content_color_palette(&self.mode_tokens(), self.theme_mode(), expanded)
     }
 
-    pub fn inspect_accordion_metrics(&self, size: ControlSize) -> AccordionInspectMetrics {
+    pub fn inspect_accordion_metrics(&self, size: ShadcnSize) -> AccordionInspectMetrics {
         inspect_accordion_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
     /// Inspect Accordion geometry at the rendering window's scale factor.
-    pub fn inspect_accordion_metrics_at_scale(&self, size: ControlSize, scale_factor: f32) -> AccordionInspectMetrics {
+    pub fn inspect_accordion_metrics_at_scale(&self, size: ShadcnSize, scale_factor: f32) -> AccordionInspectMetrics {
         crate::inspect::inspect_accordion_metrics_at_scale(&self.mode_tokens(), self.theme_mode(), size, scale_factor)
     }
 
@@ -530,7 +522,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_tree_view_row_color_palette(&self.mode_tokens(), self.theme_mode(), state)
     }
 
-    pub fn inspect_tree_view_metrics(&self, size: ControlSize) -> TreeViewInspectMetrics {
+    pub fn inspect_tree_view_metrics(&self, size: ShadcnSize) -> TreeViewInspectMetrics {
         inspect_tree_view_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -554,7 +546,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_sidebar_item_color_palette(&self.mode_tokens(), self.theme_mode(), selected, state)
     }
 
-    pub fn inspect_sidebar_metrics(&self, size: ControlSize) -> SidebarInspectMetrics {
+    pub fn inspect_sidebar_metrics(&self, size: ShadcnSize) -> SidebarInspectMetrics {
         inspect_sidebar_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
@@ -562,15 +554,15 @@ impl<'a> ShadcnInspect<'a> {
         inspect_autocomplete_chrome_color_palette(&self.mode_tokens(), self.theme_mode())
     }
 
-    pub fn inspect_autocomplete_menu_color_palette(&self, size: ControlSize) -> FloatingMenuInspectPalette {
+    pub fn inspect_autocomplete_menu_color_palette(&self, size: ShadcnSize) -> FloatingMenuInspectPalette {
         inspect_autocomplete_menu_color_palette(&self.mode_tokens(), self.theme_mode(), size)
     }
 
-    pub fn inspect_autocomplete_metrics(&self, size: ControlSize) -> AutocompleteInspectMetrics {
+    pub fn inspect_autocomplete_metrics(&self, size: ShadcnSize) -> AutocompleteInspectMetrics {
         inspect_autocomplete_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 
-    pub fn inspect_selector_color_palette(&self, state: InteractionState, size: ControlSize) -> SelectorInspectPalette {
+    pub fn inspect_selector_color_palette(&self, state: InteractionState, size: ShadcnSize) -> SelectorInspectPalette {
         inspect_selector_color_palette(
             &self.mode_tokens(),
             self.theme_mode(),
@@ -580,7 +572,7 @@ impl<'a> ShadcnInspect<'a> {
         )
     }
 
-    pub fn inspect_selector_metrics(&self, size: ControlSize) -> SelectorInspectMetrics {
+    pub fn inspect_selector_metrics(&self, size: ShadcnSize) -> SelectorInspectMetrics {
         inspect_selector_metrics(
             &self.mode_tokens(),
             self.theme_mode(),
@@ -593,7 +585,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_control_group_list_color_palette(&self.mode_tokens(), self.theme_mode(), enabled)
     }
 
-    pub fn inspect_control_group_metrics(&self, size: ControlSize) -> ControlGroupInspectMetrics {
+    pub fn inspect_control_group_metrics(&self, size: ShadcnSize) -> ControlGroupInspectMetrics {
         inspect_control_group_metrics(&self.mode_tokens(), self.theme_mode(), size)
     }
 

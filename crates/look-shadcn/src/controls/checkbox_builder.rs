@@ -195,12 +195,12 @@ impl Checkbox {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> CheckboxBuilder {
+        let look = look.with_size(self.size);
         let template = look.checkbox_template(self.style);
         let mut builder = xgpui_luma::controls::checkbox::new(self.id)
             .motion_defaults(look.motion_defaults().checkbox)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.checked)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)

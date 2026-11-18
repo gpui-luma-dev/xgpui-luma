@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use xgpui_luma::controls::scrollbar::ScrollbarLook;
 use xgpui_luma::controls::scrollbar::ScrollbarOrientation;
 use xgpui_luma::controls::scrollbar::ScrollbarStyle;
-use xgpui_luma::theme::ControlSize;
+use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 
@@ -70,7 +70,7 @@ pub fn scrollbar_look(
     mode: &ShadcnModeTokens,
     state: InteractionState,
     orientation: ScrollbarOrientation,
-    size: ControlSize,
+    size: ShadcnSize,
     style: ScrollbarStyle,
 ) -> ScrollbarLook {
     let ctx = LookContext::new(mode, mode.theme_mode, state);
@@ -83,7 +83,7 @@ pub fn scrollbar_look(
 
     let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
         .scrollbar
-        .resolve_geometry(size.stylesheet_key(), Default::default());
+        .resolve_geometry_for(size.key(), Default::default());
     let length = match orientation {
         ScrollbarOrientation::Horizontal => baseline.length_h,
         ScrollbarOrientation::Vertical => baseline.length_v,
@@ -100,7 +100,7 @@ pub fn scrollbar_look(
             .stylesheet()
             .common
             .scrollbar
-            .resolve_geometry(size.stylesheet_key(), Default::default())
+            .resolve_geometry_for(size.key(), Default::default())
             .disabled_opacity,
         track_background: colors.track_background.hsla(),
         thumb_background: colors.thumb_background.hsla(),
@@ -111,7 +111,7 @@ pub fn scrollbar_look(
         min_thumb_length,
         radius: metrics.radius.pill,
     };
-    let geometry = mode.stylesheet().common.scrollbar.resolve_geometry(
+    let geometry = mode.stylesheet().common.scrollbar.resolve_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::ScrollbarGeometry {
             thickness: look.thickness,
@@ -181,7 +181,7 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Md,
+            crate::ShadcnSize::Md,
             ScrollbarStyle::Ghost,
         );
 
@@ -196,21 +196,21 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Sm,
+            crate::ShadcnSize::Sm,
             ScrollbarStyle::Ghost,
         );
         let medium = scrollbar_look(
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Md,
+            crate::ShadcnSize::Md,
             ScrollbarStyle::Ghost,
         );
         let large = scrollbar_look(
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Lg,
+            crate::ShadcnSize::Lg,
             ScrollbarStyle::Ghost,
         );
 
@@ -230,14 +230,14 @@ mod tests {
             &mode,
             InteractionState { hovered: true, ..InteractionState::default() },
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Md,
+            crate::ShadcnSize::Md,
             ScrollbarStyle::Ghost,
         );
         let focused = scrollbar_look(
             &mode,
             InteractionState { focused: true, ..InteractionState::default() },
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Md,
+            crate::ShadcnSize::Md,
             ScrollbarStyle::Ghost,
         );
 
@@ -253,7 +253,7 @@ mod tests {
             &mode,
             InteractionState::default(),
             ScrollbarOrientation::Vertical,
-            xgpui_luma::theme::ControlSize::Md,
+            crate::ShadcnSize::Md,
             ScrollbarStyle::Soft,
         );
 
@@ -301,7 +301,7 @@ impl ScrollbarStylesheet {
         }
     }
 
-    pub fn metrics_for_size(&self, size: ControlSize) -> Option<&ScrollbarMetricsRule> {
+    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ScrollbarMetricsRule> {
         self.metrics.get(control_size_key(size))
     }
 
@@ -359,7 +359,7 @@ pub fn resolve_scrollbar_metrics(
     orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
     style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
 ) -> ScrollbarMetricTable {
-    resolve_scrollbar_metrics_for_size(mode, theme_mode, orientation, style, xgpui_luma::theme::ControlSize::Md)
+    resolve_scrollbar_metrics_for_size(mode, theme_mode, orientation, style, crate::ShadcnSize::Md)
 }
 
 /// Resolve the selected look's Scrollbar dimensions and their sources for a size.
@@ -368,7 +368,7 @@ pub fn resolve_scrollbar_metrics_for_size(
     theme_mode: xgpui_luma::theme::ThemeMode,
     orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
     style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> ScrollbarMetricTable {
     use crate::tables::metrics::helpers::{derived_metric, pill_radius_metric};
 
@@ -385,7 +385,7 @@ pub fn resolve_scrollbar_metrics_for_size(
         min_thumb_length: derived_metric("minimum draggable thumb", look.min_thumb_length),
         radius: pill_radius_metric(catalog, look.radius),
     };
-    let geometry = mode.stylesheet().common.scrollbar.inspect_geometry(
+    let geometry = mode.stylesheet().common.scrollbar.inspect_geometry_for(
         crate::tables::metrics::helpers::control_size_key(size),
         xgpui_luma::theme::stylesheet::ScrollbarGeometry {
             thickness: table.thickness.value_px,

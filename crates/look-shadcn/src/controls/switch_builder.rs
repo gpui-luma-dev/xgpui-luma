@@ -242,10 +242,10 @@ impl Switch {
     }
 
     fn into_sdk_builder(self, look: ShadcnLook) -> SwitchBuilder {
+        let look = look.with_size(self.size);
         let template = look.switch_template(self.style);
         let mut builder = xgpui_luma::controls::switch::new(self.id)
             .template(template)
-            .size(self.size.control_size())
             .with_data(self.checked)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)

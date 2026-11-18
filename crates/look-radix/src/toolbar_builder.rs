@@ -4,7 +4,7 @@ use gpui::{Context, SharedString};
 use xgpui_luma::controls::button::ControlIcon;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::toolbar::{ToolbarBuilder, ToolbarItem};
-use xgpui_luma::theme::ControlSize;
+use crate::RadixSize;
 
 use crate::{Button, ButtonSize, Look, ToolbarStyle, toolbar_template_with};
 
@@ -22,7 +22,7 @@ pub struct Toolbar {
     look: Option<Look>,
     items: Vec<Item>,
     style: Option<ToolbarStyle>,
-    size: ControlSize,
+    size: RadixSize,
     command_size: ButtonSize,
     icon_size: f32,
 }
@@ -74,7 +74,7 @@ impl Toolbar {
             look: None,
             items: Vec::new(),
             style: None,
-            size: ControlSize::Sm,
+            size: RadixSize::One,
             command_size: ButtonSize::One,
             icon_size: 16.0,
         }
@@ -92,7 +92,7 @@ impl Toolbar {
     }
 
     /// SDK shell size, including the reference height for separators.
-    pub fn size(mut self, size: ControlSize) -> Self {
+    pub fn size(mut self, size: RadixSize) -> Self {
         self.size = size;
         self
     }
@@ -158,10 +158,9 @@ impl Toolbar {
                 .collect::<Vec<_>>();
             ToolbarBuilder::new(self.id)
                 .template(match self.style {
-                    Some(style) => toolbar_template_with(&look, style),
-                    None => crate::toolbar_template(&look),
+                    Some(style) => toolbar_template_with(&look.with_size(self.size), style),
+                    None => crate::toolbar_template(&look.with_size(self.size)),
                 })
-                .size(self.size)
                 .items(items)
                 .spawn(cx)
         };

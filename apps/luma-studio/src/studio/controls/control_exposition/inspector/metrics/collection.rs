@@ -1,4 +1,4 @@
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma_look_shadcn::ShadcnLook;
 use xgpui_luma_look_shadcn::inspect::{
     AccordionInspectMetrics, ShadcnInspect, SidebarInspectMetrics, TableInspectMetrics, TabsInspectMetrics,
@@ -136,18 +136,18 @@ fn table_metrics_layout_section(
     )
 }
 
-fn compact_table_row_height(size: ControlSize) -> f32 {
+fn compact_table_row_height(size: ShadcnSize) -> f32 {
     match size {
-        ControlSize::Sm => 28.0,
-        ControlSize::Md => 32.0,
-        ControlSize::Lg => 36.0,
+        ShadcnSize::Sm => 28.0,
+        ShadcnSize::Md => 32.0,
+        ShadcnSize::Lg => 36.0,
     }
 }
 
-fn table_grid_cell_layout_section(look: &ShadcnLook, diagram_id: &str, size: ControlSize) -> InspectLayoutSection {
+fn table_grid_cell_layout_section(look: &ShadcnLook, diagram_id: &str, size: ShadcnSize) -> InspectLayoutSection {
     const GRID_CONTROL_COLUMN_WIDTH: f32 = 48.0;
     let row_metrics = ShadcnInspect::new(look).inspect_table_metrics(size);
-    let checkbox_metrics = ShadcnInspect::new(look).inspect_checkbox_metrics(ControlSize::Sm);
+    let checkbox_metrics = ShadcnInspect::new(look).inspect_checkbox_metrics(ShadcnSize::Sm);
     let compact_row_height = compact_table_row_height(size);
     let inner_row_height = compact_row_height - (row_metrics.row_padding_y.value_px * 2.0);
 

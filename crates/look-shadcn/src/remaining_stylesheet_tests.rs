@@ -1,7 +1,8 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
 use std::collections::HashMap;
-use xgpui_luma::theme::{ControlSize, InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 use crate::{ShadcnLook, ShadcnTextFieldStyle, StylesheetConfig};
+use crate::size::ShadcnSize;
 
 const OVERRIDES: &str = r#"
 [common.textfield.geometry]
@@ -133,8 +134,8 @@ fn input_families_resolve_independent_dimensions_and_typography() {
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
         look.set_mode(mode);
         let tokens = look.mode_tokens();
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            let scale = StandardBoxScale::compute(size, &tokens.metrics, 1.0);
+        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
+            let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
             for style in [
                 ShadcnTextFieldStyle::Outline,
                 ShadcnTextFieldStyle::Input,
@@ -209,13 +210,13 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
         look.set_mode(mode);
         let tokens = look.mode_tokens();
         let inspect = crate::inspect::ShadcnInspect::new(&look);
-        for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-            let progress = look.progress_theme().resolve(true, size);
+        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
+            let progress = look.with_size(size).progress_theme().resolve(true);
             let p = inspect.inspect_progress_metrics_for_size(size);
             assert_eq!((progress.size, progress.track_height, progress.thumb_size), (83.0, 9.0, 22.0));
             assert_eq!(p.track_height.value_px, progress.track_height);
             assert!(format!("{:?}", p.size.source).contains("common.progress"));
-            let stepper = look.stepper_theme().resolve(true, size);
+            let stepper = look.with_size(size).stepper_theme().resolve(true);
             assert_eq!((stepper.step_badge_size, stepper.track_thickness), (43.0, 4.0));
             assert_eq!(inspect.inspect_stepper_metrics_for_size(size).step_badge_size.value_px, 43.0);
             for orientation in [ScrollbarOrientation::Horizontal, ScrollbarOrientation::Vertical] {
@@ -240,7 +241,7 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             assert_eq!((menu.item_typography.size, menu.item_typography.line_height), (16.0, 22.0));
             assert_eq!(m.item_icon_size.value_px, menu.item_icon_size);
             assert!(format!("{:?}", m.item_icon_size.source).contains("common.floating_menu"));
-            let scale = StandardBoxScale::compute(size, &tokens.metrics, 1.0);
+            let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
             let selector = crate::controls::selector::selector_look(
                 &tokens,
                 mode,
@@ -267,7 +268,9 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
                 &tokens,
                 mode,
                 xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline,
-                xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics { size, ..Default::default() },
+                xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics::default(),
+                size,
+                size,
                 InteractionState::default(),
             );
             assert_eq!((popup_scale.height, popup_scale.padding_x, popup_scale.icon_size), (51.0, 11.0, 21.0));
@@ -279,13 +282,13 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             let card = crate::controls::card::card_look(&look, size);
             assert_eq!((card.padding, card.section_gap, card.header_gap, card.body_gap), (23.0, 11.0, 7.0, 12.0));
             assert_eq!(inspect.inspect_card_metrics(size).padding.value_px, 23.0);
-            let toolbar = look.toolbar_theme().resolve(true, size, ToolbarVariant::Outline);
+            let toolbar = look.with_size(size).toolbar_theme().resolve(true, ToolbarVariant::Outline);
             assert_eq!((toolbar.padding_x, toolbar.padding_y, toolbar.gap), (10.0, 6.0, 12.0));
             assert_eq!(inspect.inspect_toolbar_metrics(size).gap.value_px, 12.0);
             let sidebar = crate::paint::sidebar_item_look(&look, false, InteractionState::default(), size);
             assert_eq!((sidebar.height, sidebar.padding_x, sidebar.icon_size, sidebar.gap), (34.0, 11.0, 19.0, 10.0));
             assert_eq!(inspect.inspect_sidebar_metrics(size).item_height.value_px, 34.0);
-            let overlay = look.overlay_window_theme().resolve(size, OverlayWindowMode::Modal);
+            let overlay = look.with_size(size).overlay_window_theme().resolve(OverlayWindowMode::Modal);
             assert_eq!(
                 (overlay.padding, overlay.min_width, overlay.max_width, overlay.estimated_height),
                 (19.0, 450.0, 570.0, 300.0)
@@ -299,7 +302,7 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
         assert_eq!((context.target_min_width, context.target_padding_x), (231.0, 12.0));
         let group = crate::paint::control_group_list_look(&tokens, true);
         assert_eq!((group.padding_x, group.padding_y, group.gap), (12.0, 7.0, 10.0));
-        let table = crate::paint::table_look(&tokens, true, false, ControlSize::Md);
+        let table = crate::paint::table_look(&tokens, true, false, ShadcnSize::Md);
         assert_eq!((table.padding_x, table.padding_y), (4.0, 7.0));
         let badge = crate::badge_look(&look, crate::BadgeVariant::Default, crate::ShadcnSize::Md);
         assert_eq!((badge.min_height, badge.padding_x, badge.gap, badge.icon_size), (29.0, 13.0, 7.0, 17.0));
@@ -326,15 +329,15 @@ fn selected_configuration_survives_color_copies_token_edits_and_live_replacement
         )]))
         .unwrap();
     let progress = copy.progress_theme();
-    assert_eq!(progress.resolve(true, ControlSize::Md).size, 83.0);
+    assert_eq!(progress.resolve(true).size, 83.0);
     copy.apply_token_overrides(&HashMap::from([("radius".into(), "10px".into())])).unwrap();
-    assert_eq!(progress.resolve(true, ControlSize::Md).size, 83.0);
+    assert_eq!(progress.resolve(true).size, 83.0);
     let stored_tokens = copy.mode_tokens();
     let independent = crate::test_support::fallback_look();
     copy.replace_theme(&independent);
-    assert_eq!(progress.resolve(true, ControlSize::Md).size, 64.0);
-    assert_eq!(crate::paint::progress_look(&stored_tokens, true, ControlSize::Md).size, 83.0);
-    assert_eq!(look.progress_theme().resolve(true, ControlSize::Md).size, 83.0);
+    assert_eq!(progress.resolve(true).size, 64.0);
+    assert_eq!(crate::paint::progress_look(&stored_tokens, true, ShadcnSize::Md).size, 83.0);
+    assert_eq!(look.with_size(ShadcnSize::Md).progress_theme().resolve(true).size, 83.0);
 }
 
 #[test]
@@ -342,13 +345,13 @@ fn migrated_literal_families_keep_their_bundled_size_baselines() {
     use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
     let look = crate::test_support::fallback_look();
     for (size, diameter, track, thumb, badge) in [
-        (ControlSize::Sm, 48.0, 4.0, 12.0, 24.0),
-        (ControlSize::Md, 64.0, 6.0, 16.0, 32.0),
-        (ControlSize::Lg, 80.0, 8.0, 20.0, 40.0),
+        (ShadcnSize::Sm, 48.0, 4.0, 12.0, 24.0),
+        (ShadcnSize::Md, 64.0, 6.0, 16.0, 32.0),
+        (ShadcnSize::Lg, 80.0, 8.0, 20.0, 40.0),
     ] {
-        let progress = look.progress_theme().resolve(true, size);
+        let progress = look.with_size(size).progress_theme().resolve(true);
         assert_eq!((progress.size, progress.track_height, progress.thumb_size), (diameter, track, thumb));
-        assert_eq!(look.stepper_theme().resolve(true, size).step_badge_size, badge);
+        assert_eq!(look.with_size(size).stepper_theme().resolve(true).step_badge_size, badge);
         let scrollbar = crate::paint::scrollbar_look(
             &look.mode_tokens(),
             InteractionState::default(),
@@ -377,14 +380,14 @@ size=0
     )
     .unwrap();
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let progress = look.progress_theme().resolve(true, ControlSize::Md);
+    let progress = look.with_size(ShadcnSize::Md).progress_theme().resolve(true);
     assert_eq!(
         (progress.size, progress.stroke_width, progress.track_height, progress.thumb_size),
         (0.0, 6.0, 0.0, 16.0)
     );
     #[cfg(feature = "inspect")]
     {
-        let p = crate::inspect::ShadcnInspect::new(&look).inspect_progress_metrics_for_size(ControlSize::Md);
+        let p = crate::inspect::ShadcnInspect::new(&look).inspect_progress_metrics_for_size(ShadcnSize::Md);
         assert_eq!(p.size.value_px, 0.0);
         assert!(format!("{:?}", p.size.source).contains("common.progress.sizes.md.size"));
         assert_eq!(p.thumb_size.value_px, 16.0);
@@ -395,9 +398,9 @@ size=0
 #[test]
 fn selector_unset_geometry_retains_sdk_provenance_and_values() {
     let look = crate::test_support::fallback_look();
-    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
+    for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
         let tokens = look.mode_tokens();
-        let scale = StandardBoxScale::compute(size, &tokens.metrics, 1.0);
+        let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
         let s = crate::inspect::ShadcnInspect::new(&look).inspect_selector_metrics(size);
         assert_eq!(s.trigger.padding_x.value_px, scale.padding_x);
         assert_eq!(s.trigger.radius.value_px, scale.radius);
@@ -419,7 +422,7 @@ fn selected_color_rules_follow_the_same_configuration_as_geometry() {
         look.set_mode(mode);
         let tokens = look.mode_tokens();
         for enabled in [false, true] {
-            let paint = look.progress_theme().resolve(enabled, ControlSize::Md);
+            let paint = look.with_size(ShadcnSize::Md).progress_theme().resolve(enabled);
             let inspect = crate::inspect::ShadcnInspect::new(&look).inspect_progress_color_palette(enabled);
             assert_eq!(paint.track_color, tokens.catalog.color("secondary").unwrap());
             assert_eq!(paint.progress_color, tokens.catalog.color("secondary-foreground").unwrap());
@@ -447,11 +450,14 @@ item_height=0
     .unwrap();
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let tokens = look.mode_tokens();
-    for size in [ControlSize::Sm, ControlSize::Md, ControlSize::Lg] {
-        let scale = StandardBoxScale::compute(size, &tokens.metrics, 1.0);
-        let resolved =
-            look.selector_theme()
-                .resolve_look(SelectorTriggerStyle::Outline, Default::default(), size, &scale, false);
+    for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
+        let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
+        let resolved = look.with_size(size).selector_theme().resolve_look(
+            SelectorTriggerStyle::Outline,
+            Default::default(),
+            &scale,
+            false,
+        );
         assert_eq!((resolved.trigger_radius, resolved.menu_offset_y), (9.0, 0.0));
         assert_eq!((resolved.items_panel.min_width, resolved.items_panel.radius), (0.0, 7.0));
         #[cfg(feature = "inspect")]
@@ -462,7 +468,7 @@ item_height=0
             assert_eq!(inspected.items_panel.radius.value_px, resolved.items_panel.radius);
             assert_eq!(inspected.items_panel.item_height.value_px, resolved.items_panel.item_height);
         }
-        assert_eq!(resolved.items_panel.item_height, if size == ControlSize::Sm { 0.0 } else { 42.0 });
+        assert_eq!(resolved.items_panel.item_height, if size == ShadcnSize::Sm { 0.0 } else { 42.0 });
     }
 }
 
@@ -544,7 +550,7 @@ radius=11
     assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (3.0, 0.2, 11.0));
     #[cfg(feature = "inspect")]
     {
-        let inspected = crate::inspect::ShadcnInspect::new(&look).inspect_control_group_metrics(ControlSize::Md);
+        let inspected = crate::inspect::ShadcnInspect::new(&look).inspect_control_group_metrics(ShadcnSize::Md);
         assert_eq!(inspected.radius.value_px, shell.radius);
         assert_eq!(inspected.padding_x.value_px, shell.padding_x);
     }
@@ -588,9 +594,9 @@ column_resize_vertical_extension=7
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
-    let sdk = DefaultTableTheme::new(tokens).resolve_look(true, false, ControlSize::Md);
+    let sdk = DefaultTableTheme::new(tokens).resolve_look(true, false);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = crate::controls::table::table_look(&look.mode_tokens(), true, false, ControlSize::Md);
+    let themed = crate::controls::table::table_look(&look.mode_tokens(), true, false, ShadcnSize::Md);
     for resolved in [sdk, themed] {
         assert_eq!(
             (
@@ -631,11 +637,11 @@ drag_width=310
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.table_theme();
     for theme in [&sdk as &dyn TableTheme, themed.as_ref()] {
-        let md = theme.resolve_drag(ControlSize::Md).geometry;
+        let md = theme.resolve_drag().geometry;
         assert_eq!((md.drag_offset, md.drag_width, md.drag_padding_x, md.drag_padding_y), (5.0, 180.0, 7.0, 3.0));
         assert_eq!((md.drag_border_width, md.drag_marker_width), (0.0, 0.0));
-        assert_eq!(theme.resolve_drag(ControlSize::Lg).geometry.drag_width, 310.0);
     }
+    assert_eq!(look.with_size(ShadcnSize::Lg).table_theme().resolve_drag().geometry.drag_width, 310.0);
 }
 
 #[test]
@@ -663,17 +669,26 @@ row_radius=11
     let sdk = DefaultTableTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.table_theme();
-    for theme in [&sdk as &dyn TableTheme, themed.as_ref()] {
-        for (size, opacity, radius) in [(ControlSize::Md, 0.0, 7.0), (ControlSize::Lg, 0.3, 11.0)] {
-            let scale = ListRowScale::compute(size, &theme.metrics(), 1.0);
-            let row =
-                theme.resolve_row_look(false, InteractionState { disabled: true, ..Default::default() }, size, &scale);
+    let large = look.with_size(ShadcnSize::Lg).table_theme();
+    for (theme, size) in [
+        (&sdk as &dyn TableTheme, ShadcnSize::Md),
+        (themed.as_ref(), ShadcnSize::Md),
+        (large.as_ref(), ShadcnSize::Lg),
+    ] {
+        let (opacity, radius) = if size == ShadcnSize::Lg {
+            (0.3, 11.0)
+        } else {
+            (0.0, 7.0)
+        };
+        {
+            let scale = ListRowScale::compute(&theme.metrics(), 1.0);
+            let row = theme.resolve_row_look(false, InteractionState { disabled: true, ..Default::default() }, &scale);
             assert_eq!((row.disabled_opacity, row.radius), (opacity, radius));
-            let expected_padding = if size == ControlSize::Lg { 19.0 } else { 0.0 };
-            let expected_muted = if size == ControlSize::Lg { 0.4 } else { 0.0 };
+            let expected_padding = if size == ShadcnSize::Lg { 19.0 } else { 0.0 };
+            let expected_muted = if size == ShadcnSize::Lg { 0.4 } else { 0.0 };
             assert_eq!(row.column_padding_x, expected_padding);
             assert_eq!(row.column_muted_opacity, expected_muted);
-            assert_eq!(theme.resolve_look(true, false, size).column_padding_x, expected_padding);
+            assert_eq!(theme.resolve_look(true, false).column_padding_x, expected_padding);
             assert_eq!(row.min_height, scale.min_height);
         }
     }
@@ -761,18 +776,19 @@ radius=17
     let sdk = DefaultOverlayWindowTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let themed = look.overlay_window_theme();
-    for theme in [&sdk as &dyn OverlayWindowTheme, themed.as_ref()] {
-        for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
-            let md = theme.resolve(ControlSize::Md, mode);
-            let lg = theme.resolve(ControlSize::Lg, mode);
+    let large = look.with_size(ShadcnSize::Lg).overlay_window_theme();
+    for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
+        for theme in [&sdk as &dyn OverlayWindowTheme, themed.as_ref()] {
+            let md = theme.resolve(mode);
             assert_eq!((md.border_width, md.radius), (0.0, 0.0));
-            assert_eq!((lg.border_width, lg.radius), (3.0, 17.0));
         }
+        let lg = large.resolve(mode);
+        assert_eq!((lg.border_width, lg.radius), (3.0, 17.0));
     }
     #[cfg(feature = "inspect")]
     assert_eq!(
         crate::inspect::ShadcnInspect::new(&look)
-            .inspect_overlay_window_metrics(ControlSize::Lg, OverlayWindowMode::Modal)
+            .inspect_overlay_window_metrics(ShadcnSize::Lg, OverlayWindowMode::Modal)
             .radius
             .value_px,
         17.0
@@ -830,25 +846,25 @@ subtitle_opacity=0.2
     let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
     let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for scale in [sdk_checkbox.scale(ControlSize::Md, 2.0), look.checkbox_theme().scale(ControlSize::Md, 2.0)] {
+    for scale in [sdk_checkbox.scale(2.0), look.with_size(ShadcnSize::Md).checkbox_theme().scale(2.0)] {
         assert_eq!(scale.disabled_opacity, 0.0);
     }
-    for scale in [sdk_radio.scale(ControlSize::Md, 2.0), look.radio_button_theme().scale(ControlSize::Md, 2.0)] {
+    for scale in [sdk_radio.scale(2.0), look.with_size(ShadcnSize::Md).radio_button_theme().scale(2.0)] {
         assert_eq!(scale.disabled_opacity, 0.3);
     }
-    for scale in [sdk_switch.scale(ControlSize::Md, 2.0), look.switch_theme().scale(ControlSize::Md, 2.0)] {
+    for scale in [sdk_switch.scale(2.0), look.with_size(ShadcnSize::Md).switch_theme().scale(2.0)] {
         assert_eq!(scale.disabled_opacity, 0.4);
     }
     for resolved in [
-        sdk_toolbar.resolve(true, ControlSize::Md, ToolbarVariant::Outline),
-        look.toolbar_theme().resolve(true, ControlSize::Md, ToolbarVariant::Outline),
+        sdk_toolbar.resolve(true, ToolbarVariant::Outline),
+        look.with_size(ShadcnSize::Md).toolbar_theme().resolve(true, ToolbarVariant::Outline),
     ] {
         assert_eq!((resolved.border_width, resolved.separator_width), (0.0, 3.0));
     }
     for resolved in [sdk_dock.resolve(true), look.dock_splitter_theme().resolve(true)] {
         assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
     }
-    for resolved in [sdk_stepper.resolve(true, ControlSize::Md), look.stepper_theme().resolve(true, ControlSize::Md)] {
+    for resolved in [sdk_stepper.resolve(true), look.with_size(ShadcnSize::Md).stepper_theme().resolve(true)] {
         assert_eq!((resolved.geometry.content_gap, resolved.geometry.glyph_scale), (0.0, 0.7));
     }
     for resolved in [sdk_split.resolve(false, true), look.split_view_theme().resolve(false, true)] {
@@ -885,10 +901,7 @@ shortcut_opacity=0
     let sdk_slider = DefaultSliderTheme::new(tokens.clone());
     let sdk_progress = DefaultProgressTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for resolved in [
-        sdk_slider.resolve(ControlSize::Md, None, Default::default()),
-        look.slider_theme().resolve(ControlSize::Md, None, Default::default()),
-    ] {
+    for resolved in [sdk_slider.resolve(Default::default()), look.slider_theme().resolve(Default::default())] {
         assert_eq!(
             (
                 resolved.decoration.dial_size,
@@ -898,8 +911,7 @@ shortcut_opacity=0
             (160.0, 52.0, 0.3)
         );
     }
-    for resolved in [sdk_progress.resolve(true, ControlSize::Md), look.progress_theme().resolve(true, ControlSize::Md)]
-    {
+    for resolved in [sdk_progress.resolve(true), look.with_size(ShadcnSize::Md).progress_theme().resolve(true)] {
         assert_eq!((resolved.geometry.indeterminate_fraction, resolved.geometry.shimmer_soft_opacity), (0.0, 0.0));
     }
     let tooltip = crate::tooltip_theme(&look).resolve();

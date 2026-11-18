@@ -48,7 +48,7 @@ pub use look::ShadcnLook;
 pub const FALLBACK_CSS: &str = include_str!("../assets/fallback.css");
 
 pub use shadow::{SHADOW_LADDER_TOKENS, ShadowTokenParts, shadow_ladder_overrides};
-pub use size::ShadcnSize;
+pub use size::{ShadcnControlMetrics, ShadcnSize};
 pub use mode::ShadcnModeTokens;
 pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};

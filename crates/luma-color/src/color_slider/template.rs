@@ -8,7 +8,7 @@ use xgpui_luma::controls::slider::{
     SliderThumbValue, ThumbId, TrackSegment, TrackSegmentKind, attach_linear_interaction, attach_thumb_drag,
     display_position, render_domain_track_layer, segment_corner_radii, segment_display_span,
 };
-use xgpui_luma::theme::ControlSize;
+use crate::size::ColorControlSize;
 
 use super::color_thumb::{ColorThumb, ThumbAxis, ThumbShape};
 use super::radius::{inner_track_corner_radius, inset_corner_radii, resolve_track_corner_radii, TRACK_BORDER_WIDTH};
@@ -20,7 +20,7 @@ pub struct ColorSliderTemplateConfig {
     pub thumb: ThumbConfig,
     pub thumb_painter: Option<Arc<dyn Fn(f32) -> Option<super::color_thumb::ColorThumbPainter> + Send + Sync>>,
     pub corner_radii: CornersRefinement<gpui::AbsoluteLength>,
-    pub size: ControlSize,
+    pub size: ColorControlSize,
 }
 
 impl std::fmt::Debug for ColorSliderTemplateConfig {
@@ -39,7 +39,7 @@ impl Default for ColorSliderTemplateConfig {
             thumb: ThumbConfig::default(),
             thumb_painter: None,
             corner_radii: CornersRefinement::default(),
-            size: ControlSize::Md,
+            size: ColorControlSize::Medium,
         }
     }
 }
@@ -269,11 +269,11 @@ fn render_blocked_segment(
     }
 }
 
-fn track_thickness_for_size(size: ControlSize) -> f32 {
+fn track_thickness_for_size(size: ColorControlSize) -> f32 {
     match size {
-        ControlSize::Sm => sizing::TRACK_THICKNESS_SMALL,
-        ControlSize::Md => sizing::TRACK_THICKNESS_MEDIUM,
-        ControlSize::Lg => sizing::TRACK_THICKNESS_LARGE,
+        ColorControlSize::Small => sizing::TRACK_THICKNESS_SMALL,
+        ColorControlSize::Medium => sizing::TRACK_THICKNESS_MEDIUM,
+        ColorControlSize::Large => sizing::TRACK_THICKNESS_LARGE,
     }
 }
 

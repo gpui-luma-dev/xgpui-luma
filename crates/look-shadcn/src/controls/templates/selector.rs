@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xgpui_luma::controls::selector::{SelectorItemLike, SelectorTheme, SelectorVisualState, ThemedSelectorTemplate};
 use xgpui_luma::controls::selector_list::default_selector_items_template;
-use xgpui_luma::theme::{ControlSize, InteractionState};
+use xgpui_luma::theme::{InteractionState};
 
 use crate::look::ShadcnLook;
 
@@ -32,17 +32,17 @@ impl SelectorTheme for ShadcnSelectorTheme {
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics
+        self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 
     fn resolve_look(
         &self,
         trigger_style: xgpui_luma::controls::selector::SelectorTriggerStyle,
         state: InteractionState,
-        size: ControlSize,
         scale: &xgpui_luma::theme::StandardBoxScale,
         without_elevation: bool,
     ) -> xgpui_luma::controls::selector::SelectorLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         crate::controls::selector::selector_look(
             tokens.as_ref(),
@@ -59,10 +59,10 @@ impl SelectorTheme for ShadcnSelectorTheme {
         &self,
         trigger_style: xgpui_luma::controls::selector::SelectorTriggerStyle,
         visual_state: SelectorVisualState,
-        size: ControlSize,
         scale: &xgpui_luma::theme::StandardBoxScale,
         without_elevation: bool,
     ) -> xgpui_luma::controls::selector::SelectorLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let look = crate::controls::selector::selector_look_with_visual_state(
             tokens.as_ref(),

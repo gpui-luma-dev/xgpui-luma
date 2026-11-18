@@ -56,7 +56,7 @@ pub struct CheckboxInspectMetrics {
 pub fn inspect_checkbox_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: xgpui_luma::theme::ControlSize,
+    size: crate::ShadcnSize,
 ) -> CheckboxInspectMetrics {
     let table = crate::tables::metrics::resolve_checkbox_metrics(mode, theme_mode, size);
     table.into()
@@ -83,12 +83,12 @@ pub(crate) fn inspect_checkbox_elevation_with_stylesheet(
     style: ShadcnButtonStyle,
     checked: bool,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
     use crate::stylesheet::resolve_stylesheet_shadow_token;
     use crate::inspect::controls::button::{button_style_key, inspect_layered_elevation};
 
     let look =
-        crate::controls::checkbox::checkbox_look_with_stylesheet(ctx, stylesheet, style, checked, ControlSize::Md);
+        crate::controls::checkbox::checkbox_look_with_stylesheet(ctx, stylesheet, style, checked, ShadcnSize::Md);
     let layer = crate::controls::choice_indicator::choice_indicator_color_layer(ctx.state);
     let rule = (style != ShadcnButtonStyle::ContentOnly)
         .then(|| stylesheet.checkbox.elevation_rule_for_layer(layer))

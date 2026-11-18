@@ -13,17 +13,15 @@ impl TooltipTheme for RadixTooltipTheme {
             self.0.resolve_role(SemanticRole::Background).hsla(),
             metrics.radius.md,
         );
-        let geometry = self.0.common_stylesheet().tooltip.resolve_geometry(
-            "",
-            xgpui_luma::theme::stylesheet::TooltipGeometry {
+        let geometry =
+            self.0.common_stylesheet().tooltip.resolve_geometry(xgpui_luma::theme::stylesheet::TooltipGeometry {
                 padding: resolved.padding,
                 padding_y: resolved.padding_y,
                 max_width: resolved.max_width,
                 font_size: resolved.text_size,
                 line_height: resolved.line_height,
                 ..Default::default()
-            },
-        );
+            });
         resolved.placement = (&geometry).into();
         resolved.shortcut_gap = geometry.shortcut_gap;
         resolved.shortcut_font_size = geometry.shortcut_font_size;

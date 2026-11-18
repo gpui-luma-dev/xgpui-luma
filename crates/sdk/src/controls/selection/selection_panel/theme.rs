@@ -1,6 +1,6 @@
 use gpui::{BoxShadow, Hsla};
 
-use crate::theme::{ControlSize, LumaTextStyle, ThemeTokens};
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct SelectionPanelLook {
@@ -26,8 +26,8 @@ pub struct SelectionPanelLook {
     pub item_radius: f32,
 }
 
-pub fn default_selection_panel_look(tokens: &ThemeTokens, size: ControlSize) -> SelectionPanelLook {
-    let menu = crate::controls::floating_menu::default_floating_menu_look(tokens, size);
+pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook {
+    let menu = crate::controls::floating_menu::default_floating_menu_look(tokens);
     let look = SelectionPanelLook {
         background: menu.background,
         foreground: menu.foreground,
@@ -48,17 +48,13 @@ pub fn default_selection_panel_look(tokens: &ThemeTokens, size: ControlSize) -> 
         item_icon_size: menu.item_icon_size,
         item_radius: menu.item_radius,
     };
-    look.with_stylesheet(&tokens.stylesheet.selection_panel, size.stylesheet_key())
+    look.with_stylesheet(&tokens.stylesheet.selection_panel)
 }
 
 impl SelectionPanelLook {
     /// Independent panel overrides resolve after shared menu styling.
-    pub fn with_stylesheet(
-        mut self,
-        stylesheet: &crate::theme::stylesheet::SelectionPanelStylesheet,
-        key: &str,
-    ) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, key, SelectionPanelGeometry, self,
+    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectionPanelStylesheet) -> Self {
+        crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectionPanelGeometry, self,
             [padding => padding, min_width => min_width, item_height => item_height,
              item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
              font_size => item_typography.size, line_height => item_typography.line_height,

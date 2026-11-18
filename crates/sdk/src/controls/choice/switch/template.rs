@@ -53,14 +53,14 @@ impl ButtonTemplate<SwitchData> for ThemedSwitchTemplate {
         let progress = model.data.progress;
         let checked = model.data.checked;
         let focused = model.state.focused && !model.state.disabled;
-        let off_palette = self.theme.resolve(false, model.state, model.size);
-        let on_palette = self.theme.resolve(true, model.state, model.size);
+        let off_palette = self.theme.resolve(false, model.state);
+        let on_palette = self.theme.resolve(true, model.state);
         let palette = lerp_switch_palette(&off_palette, &on_palette, progress);
         let settled_palette = if checked { on_palette } else { off_palette };
         let focus = crate::infra::focus_adorner::FocusAdorner::new(self.theme.metrics().focus);
         let focus_ring_extent = focus.extent();
         let scale_factor = window.scale_factor();
-        let mut scale = self.theme.scale(model.size, scale_factor);
+        let mut scale = self.theme.scale(scale_factor);
         if let Some(track_width) = model.switch_track_width {
             scale.track_width = snap_to_pixel(track_width, scale_factor);
         }

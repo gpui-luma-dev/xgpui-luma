@@ -1,14 +1,15 @@
 //! Look-owned sizing for Shadcn control builders.
 //!
-//! Callers author [`ShadcnSize`] on look-owned builders. Spawn maps to SDK
-//! [`xgpui_luma::theme::ControlSize`] inside `.into_sdk_builder(...)`.
+//! Callers author [`ShadcnSize`] on look-owned builders. The look resolves the
+//! selected size to pixel metrics and geometry before creating SDK controls; the
+//! SDK itself has no size axis.
 
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma::theme::{ControlMetricTokens, MetricTokens};
 
 /// Shadcn size axis (`sm` / `default` / `lg`). Default is [`Self::Md`].
 ///
 /// Icon-only chrome is a button role ([`crate::Button::icon_button`]), not a size.
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub enum ShadcnSize {
     Sm,
     #[default]
@@ -38,21 +39,77 @@ impl ShadcnSize {
         }
     }
 
-    /// SDK [`ControlSize`] for spawn / look resolvers. Not part of the caller-facing builder API.
-    pub(crate) fn control_size(self) -> ControlSize {
+    /// Key for size-specific stylesheet entries (`sizes.sm`, `metrics.md`, ...).
+    pub fn key(self) -> &'static str {
         match self {
-            Self::Sm => ControlSize::Sm,
-            Self::Md => ControlSize::Md,
-            Self::Lg => ControlSize::Lg,
+            Self::Sm => "sm",
+            Self::Md => "md",
+            Self::Lg => "lg",
+        }
+    }
+}
+
+/// Shadcn control metrics for each [`ShadcnSize`], resolved to pixels.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ShadcnControlMetrics {
+    pub sm: ControlMetricTokens,
+    pub md: ControlMetricTokens,
+    pub lg: ControlMetricTokens,
+}
+
+impl Default for ShadcnControlMetrics {
+    fn default() -> Self {
+        Self {
+            sm: ControlMetricTokens::new(28.0, 10.0, 5.0, 6.0, 5.0, 14.0),
+            md: MetricTokens::default().control,
+            lg: ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
+        }
+    }
+}
+
+impl ShadcnControlMetrics {
+    pub fn get(&self, size: ShadcnSize) -> ControlMetricTokens {
+        match size {
+            ShadcnSize::Sm => self.sm,
+            ShadcnSize::Md => self.md,
+            ShadcnSize::Lg => self.lg,
         }
     }
 
-    /// Map an SDK size onto [`ShadcnSize`] for spawn callbacks that still pass [`ControlSize`].
-    pub(crate) fn from_control_size(size: ControlSize) -> Self {
+    /// Alias for [`Self::get`], matching the former SDK metric API.
+    pub fn for_size(&self, size: ShadcnSize) -> ControlMetricTokens {
+        self.get(size)
+    }
+
+    pub fn control_height(&self, size: ShadcnSize) -> f32 {
+        self.get(size).control_height
+    }
+
+    pub fn padding_x(&self, size: ShadcnSize) -> f32 {
+        self.get(size).padding_x
+    }
+
+    pub fn padding_y(&self, size: ShadcnSize) -> f32 {
+        self.get(size).padding_y
+    }
+
+    pub fn gap(&self, size: ShadcnSize) -> f32 {
+        self.get(size).gap
+    }
+
+    pub fn radius(&self, size: ShadcnSize) -> f32 {
+        self.get(size).radius
+    }
+
+    pub fn icon_size(&self, size: ShadcnSize) -> f32 {
+        self.get(size).icon_size
+    }
+
+    pub fn get_mut(&mut self, size: ShadcnSize) -> &mut ControlMetricTokens {
         match size {
-            ControlSize::Sm => Self::Sm,
-            ControlSize::Md => Self::Md,
-            ControlSize::Lg => Self::Lg,
+            ShadcnSize::Sm => &mut self.sm,
+            ShadcnSize::Md => &mut self.md,
+            ShadcnSize::Lg => &mut self.lg,
         }
     }
 }
@@ -62,18 +119,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn maps_onto_sdk_control_size() {
-        assert_eq!(ShadcnSize::Sm.control_size(), ControlSize::Sm);
-        assert_eq!(ShadcnSize::Md.control_size(), ControlSize::Md);
-        assert_eq!(ShadcnSize::DEFAULT.control_size(), ControlSize::Md);
-        assert_eq!(ShadcnSize::Lg.control_size(), ControlSize::Lg);
-        assert_eq!(ShadcnSize::from_control_size(ControlSize::Sm), ShadcnSize::Sm);
-        assert_eq!(ShadcnSize::from_control_size(ControlSize::Md), ShadcnSize::Md);
-        assert_eq!(ShadcnSize::from_control_size(ControlSize::Lg), ShadcnSize::Lg);
+    fn default_is_md() {
+        assert_eq!(ShadcnSize::default(), ShadcnSize::Md);
+        assert_eq!(ShadcnSize::DEFAULT.key(), "md");
     }
 
     #[test]
-    fn default_is_md() {
-        assert_eq!(ShadcnSize::default(), ShadcnSize::Md);
+    fn md_control_metrics_match_the_sdk_scale() {
+        assert_eq!(ShadcnControlMetrics::default().md, MetricTokens::default().control);
     }
 }

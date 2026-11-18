@@ -2,10 +2,11 @@
 
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle;
-use xgpui_luma::theme::{ControlSize, InteractionState, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{ResolvedColor, ShadcnButtonStyle, ShadcnModeTokens};
 
 use super::button::{inspect_button_color_palette, inspect_button_metrics};
+use crate::size::ShadcnSize;
 
 pub struct PopupMenuInspectPalette {
     pub trigger_style: PopupMenuTriggerStyle,
@@ -35,7 +36,7 @@ pub fn inspect_popup_menu_color_palette(
     theme_mode: ThemeMode,
     trigger_style: PopupMenuTriggerStyle,
     state: InteractionState,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> PopupMenuInspectPalette {
     let trigger =
         inspect_button_color_palette(mode, theme_mode, button_style(trigger_style), ButtonFamilyRole::Text, state);
@@ -54,7 +55,7 @@ pub fn inspect_popup_menu_metrics(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     trigger_style: PopupMenuTriggerStyle,
-    size: ControlSize,
+    size: ShadcnSize,
 ) -> PopupMenuInspectMetrics {
     let mut result = PopupMenuInspectMetrics {
         trigger: inspect_button_metrics(

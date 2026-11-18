@@ -321,12 +321,12 @@ impl Slider {
     }
 
     fn into_sdk_builder(self, look: Look) -> SliderBuilder {
+        let look = look.with_size(self.size.control_size());
         let template = slider_template_for(&look, self.variant, self.size);
         let mut builder = xgpui_luma::controls::slider::new(self.id)
             .motion_defaults(look.motion_defaults().slider)
             .with_motion_overrides(self.motion)
             .template(template)
-            .size(self.size.control_size())
             .range(self.range)
             .step(self.step)
             .enabled(self.enabled)
@@ -357,13 +357,13 @@ impl Slider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use xgpui_luma::theme::ControlSize;
+    use crate::RadixSize;
 
     #[test]
     fn size_maps_to_sdk_control_size() {
-        assert_eq!(Slider::new("s").size(SliderSize::One).size.control_size(), ControlSize::Sm);
-        assert_eq!(Slider::new("s").size(SliderSize::Two).size.control_size(), ControlSize::Md);
-        assert_eq!(Slider::new("s").size(SliderSize::Three).size.control_size(), ControlSize::Lg);
+        assert_eq!(Slider::new("s").size(SliderSize::One).size.control_size(), RadixSize::One);
+        assert_eq!(Slider::new("s").size(SliderSize::Two).size.control_size(), RadixSize::Two);
+        assert_eq!(Slider::new("s").size(SliderSize::Three).size.control_size(), RadixSize::Three);
     }
 
     #[test]

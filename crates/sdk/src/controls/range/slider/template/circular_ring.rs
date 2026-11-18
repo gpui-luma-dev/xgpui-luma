@@ -30,13 +30,8 @@ pub fn default_circular_ring_template() -> Arc<dyn SliderTemplate> {
 }
 
 impl SliderTemplate for ThemedCircularRingTemplate {
-    fn resolve_look(
-        &self,
-        size: crate::theme::ControlSize,
-        thumb_size: Option<super::super::SliderThumbSize>,
-        state: crate::theme::InteractionState,
-    ) -> super::super::SliderLook {
-        self.theme.resolve(size, thumb_size, state)
+    fn resolve_look(&self, state: crate::theme::InteractionState) -> super::super::SliderLook {
+        self.theme.resolve(state)
     }
 
     fn render(
@@ -47,7 +42,7 @@ impl SliderTemplate for ThemedCircularRingTemplate {
         window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.size, model.thumb_size, model.state);
+        let look = self.theme.resolve(model.state);
         let SliderInputStrategy::Angular { min_angle, max_angle } = model.strategy else {
             return div().id(model.id.clone());
         };

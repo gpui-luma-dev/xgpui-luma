@@ -5,7 +5,6 @@ use std::sync::Arc;
 use xgpui_luma::controls::toolbar::{
     ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant, toolbar_template_with_theme,
 };
-use xgpui_luma::theme::ControlSize;
 
 use crate::{Look, ScaleFamily};
 
@@ -32,26 +31,28 @@ struct RadixToolbarTheme {
 }
 
 impl ToolbarTheme for RadixToolbarTheme {
-    fn resolve(&self, enabled: bool, size: ControlSize, variant: ToolbarVariant) -> ToolbarLook {
+    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
+        let size = self.look.size();
         let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
         let transparent = gpui::hsla(0.0, 0.0, 0.0, 0.0);
         let metrics = self.look.metrics();
-        let control = metrics.for_size(size);
+        let control = self.look.control_sizes().for_size(size);
         let (background, border) = match variant {
             ToolbarVariant::Outline => (gray(if enabled { 1 } else { 2 }), gray(6)),
             ToolbarVariant::Ghost => (transparent, transparent),
         };
         let fallback = ToolbarStyle::default();
-        let geometry = self.look.common_stylesheet().toolbar.resolve_geometry(
-            "",
-            xgpui_luma::theme::stylesheet::ToolbarGeometry {
-                padding_x: fallback.padding_x,
-                padding_y: fallback.padding_y,
-                gap: fallback.gap,
-                border_width: metrics.border_width.default,
-                separator_width: metrics.border_width.default,
-            },
-        );
+        let geometry =
+            self.look
+                .common_stylesheet()
+                .toolbar
+                .resolve_geometry(xgpui_luma::theme::stylesheet::ToolbarGeometry {
+                    padding_x: fallback.padding_x,
+                    padding_y: fallback.padding_y,
+                    gap: fallback.gap,
+                    border_width: metrics.border_width.default,
+                    separator_width: metrics.border_width.default,
+                });
         let style = self.style.unwrap_or(ToolbarStyle {
             padding_x: geometry.padding_x,
             padding_y: geometry.padding_y,
@@ -105,8 +106,8 @@ mod tests {
         let normal = toolbar_theme(&look);
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let custom = custom.resolve(true, ControlSize::Sm, ToolbarVariant::Outline);
-            let normal = normal.resolve(true, ControlSize::Sm, ToolbarVariant::Outline);
+            let custom = custom.resolve(true, ToolbarVariant::Outline);
+            let normal = normal.resolve(true, ToolbarVariant::Outline);
             assert_eq!(custom.gap, 12.0);
             assert_eq!(custom.padding_x, 9.0);
             assert_eq!(normal.gap, 6.0);
@@ -118,12 +119,12 @@ mod tests {
     fn toolbar_tracks_mode_and_preserves_ghost_transparency() {
         let look = Look::built_in();
         let theme = toolbar_theme(&look);
-        let light = theme.resolve(true, ControlSize::Sm, ToolbarVariant::Outline);
+        let light = theme.resolve(true, ToolbarVariant::Outline);
         look.set_mode(ThemeMode::Dark);
-        let dark = theme.resolve(true, ControlSize::Sm, ToolbarVariant::Outline);
+        let dark = theme.resolve(true, ToolbarVariant::Outline);
         assert_ne!(light.background, dark.background);
         assert_eq!(dark.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
-        let ghost = theme.resolve(true, ControlSize::Sm, ToolbarVariant::Ghost);
+        let ghost = theme.resolve(true, ToolbarVariant::Ghost);
         assert_eq!(ghost.background.a, 0.0);
         assert_eq!(ghost.border.a, 0.0);
     }

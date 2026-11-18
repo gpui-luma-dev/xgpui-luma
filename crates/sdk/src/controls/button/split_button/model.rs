@@ -6,7 +6,7 @@ use crate::infra::{
     presenter::{ControlPresenter, HasPresenter},
     menu_item::MenuItem,
 };
-use crate::theme::{ControlSize, InteractionState};
+use crate::theme::InteractionState;
 use super::{SplitButton, SplitButtonEvent, SplitButtonTriggerModel, SplitButtonTemplate, default_split_button_template};
 
 /// Retained feedback for both faces; focus belongs to the composite root.
@@ -192,12 +192,6 @@ impl SplitButtonBuilder {
     }
     pub fn trigger_style(self, style: PopupMenuTriggerStyle) -> Self {
         self.map_popup(|popup| popup.trigger_style(style))
-    }
-    pub fn size(self, size: ControlSize) -> Self {
-        self.map_popup(|popup| popup.size(size))
-    }
-    pub fn menu_size(self, size: ControlSize) -> Self {
-        self.map_popup(|popup| popup.menu_size(size))
     }
     pub fn full_width(self, full_width: bool) -> Self {
         self.map_popup(|popup| popup.full_width(full_width))

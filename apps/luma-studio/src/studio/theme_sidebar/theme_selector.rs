@@ -126,8 +126,7 @@ impl SearchSelectorTemplate for ThemeSearchSelectorTemplate {
         let look = self.selector_theme.resolve_look(
             xgpui_luma::controls::selector::SelectorTriggerStyle::Outline,
             interaction,
-            model.size,
-            &StandardBoxScale::compute(model.size, &self.selector_theme.metrics(), window.scale_factor()),
+            &StandardBoxScale::compute(&self.selector_theme.metrics(), window.scale_factor()),
             false,
         );
         let selected_id = self.selected_id.read().expect("theme selector selected id lock").clone();

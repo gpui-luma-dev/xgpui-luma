@@ -205,7 +205,7 @@ impl Pager {
     }
 
     fn into_sdk_builder_with(self, look: ShadcnLook) -> PagerBuilder {
-        self.builder.stylesheet(&look.stylesheet().common).theme(look.pager_theme())
+        self.builder.stylesheet(look.mode_tokens().common_for(look.size())).theme(look.pager_theme())
     }
 }
 

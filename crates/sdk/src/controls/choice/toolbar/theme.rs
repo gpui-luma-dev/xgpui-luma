@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{ControlSize, ThemeTokens};
+use crate::theme::ThemeTokens;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ToolbarVariant {
@@ -30,7 +30,7 @@ pub struct ToolbarLook {
 }
 
 pub trait ToolbarTheme: Send + Sync {
-    fn resolve(&self, enabled: bool, size: ControlSize, variant: ToolbarVariant) -> ToolbarLook;
+    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook;
 }
 
 pub struct DefaultToolbarTheme {
@@ -55,10 +55,10 @@ pub fn default_toolbar_theme() -> Arc<dyn ToolbarTheme> {
 }
 
 impl ToolbarTheme for DefaultToolbarTheme {
-    fn resolve(&self, enabled: bool, size: ControlSize, variant: ToolbarVariant) -> ToolbarLook {
+    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
         let palette = self.tokens.stylesheet.recipes.palette("toolbar", &self.tokens.palette);
         let metrics = &self.tokens.metrics;
-        let control = metrics.for_size(size);
+        let control = metrics.control;
         let transparent = Hsla { h: 0.0, s: 0.0, l: 0.0, a: 0.0 };
 
         let (background, border) = match variant {
@@ -85,7 +85,7 @@ impl ToolbarTheme for DefaultToolbarTheme {
             gap: control.gap,
             separator_height: control.height,
         };
-        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toolbar, size.stylesheet_key(), ToolbarGeometry, look,
+        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toolbar, ToolbarGeometry, look,
             [padding_x => padding_x, padding_y => padding_y, gap => gap, border_width => border_width, separator_width => separator_width]);
         look
     }

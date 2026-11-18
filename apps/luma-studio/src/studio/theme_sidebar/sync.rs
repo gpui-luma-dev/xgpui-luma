@@ -1,5 +1,5 @@
 use gpui::Context;
-use xgpui_luma::theme::ControlSize;
+use xgpui_luma_look_shadcn::ShadcnSize;
 use xgpui_luma::controls::tabs::TabsWidthMode;
 
 use super::ThemeSidebar;
@@ -52,9 +52,8 @@ impl ThemeSidebar {
 
     fn sync_tabs_template(&self, theme: &std::sync::Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.tabs.update(cx, |tabs, cx| {
-            tabs.set_size(ControlSize::Lg, cx);
             tabs.set_width_mode(TabsWidthMode::Uniform, cx);
-            tabs.set_template(luma_studio_tabs_template(theme.clone(), ControlSize::Lg), cx);
+            tabs.set_template(luma_studio_tabs_template(theme.clone(), ShadcnSize::Lg), cx);
         });
     }
 

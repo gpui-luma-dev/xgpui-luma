@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::toolbar::{ThemedToolbarTemplate, ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant};
-use xgpui_luma::theme::ControlSize;
 
 use crate::look::ShadcnLook;
 
@@ -10,13 +9,14 @@ struct ShadcnToolbarTheme {
 }
 
 impl ToolbarTheme for ShadcnToolbarTheme {
-    fn resolve(&self, enabled: bool, size: ControlSize, variant: ToolbarVariant) -> ToolbarLook {
+    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
+        let size = self.theme.size();
         let tokens = self.theme.mode_tokens();
         let metrics = crate::tables::metrics::resolve_toolbar_metrics(&tokens, self.theme.mode(), size);
         let colors = crate::tables::resolve_toolbar_colors(&tokens, self.theme.mode(), enabled, variant);
 
-        let chrome = tokens.stylesheet().common.toolbar.resolve_geometry(
-            size.stylesheet_key(),
+        let chrome = tokens.stylesheet().common.toolbar.resolve_geometry_for(
+            size.key(),
             xgpui_luma::theme::stylesheet::ToolbarGeometry {
                 border_width: tokens.metrics.border_width.default,
                 separator_width: tokens.metrics.border_width.default,

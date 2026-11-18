@@ -1,7 +1,7 @@
 //! Selector / combobox dropdown panel — same surface as floating menu (`popover` + accent item hover).
 
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
-use xgpui_luma::theme::{ControlSize, ThemeMode};
+use xgpui_luma::theme::{ThemeMode};
 
 use super::floating_menu::floating_menu_look;
 use crate::mode::ShadcnModeTokens;
@@ -9,13 +9,12 @@ use crate::mode::ShadcnModeTokens;
 pub fn selector_items_panel_look(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
-    size: ControlSize,
+    size: crate::ShadcnSize,
 ) -> SelectorItemsPanelLook {
     SelectorItemsPanelLook::from_menu(
         floating_menu_look(mode, theme_mode, size),
-        &mode.metrics,
-        &mode.stylesheet().common,
-        size.stylesheet_key(),
+        &mode.metrics_for(size),
+        mode.common_for(size),
     )
 }
 
@@ -25,7 +24,7 @@ mod tests {
     use std::collections::BTreeMap;
     use xgpui_luma::theme::ThemeMode;
 
-    use xgpui_luma::theme::ControlSize;
+    use crate::size::ShadcnSize;
 
     use crate::catalog::CssTokenMap;
     use crate::mode::ShadcnModeTokens;
@@ -56,7 +55,7 @@ mod tests {
     fn selector_items_panel_uses_popover_surface_and_accent_item_hover() {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ControlSize::Md);
+        let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
 
         assert_eq!(look.background, catalog.color("popover").expect("popover"));
         assert_eq!(look.item_hover_background, catalog.color("accent").expect("accent"));

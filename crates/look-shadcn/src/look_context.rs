@@ -29,6 +29,11 @@ impl<'a> LookContext<'a> {
         &self.tokens.metrics
     }
 
+    /// Shadcn control metrics for each size.
+    pub fn controls(&self) -> &crate::ShadcnControlMetrics {
+        &self.tokens.control_sizes
+    }
+
     pub fn typography(&self) -> &LumaTypography {
         &self.tokens.typography
     }
