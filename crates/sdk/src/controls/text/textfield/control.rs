@@ -251,6 +251,11 @@ impl TextFieldControl {
         cx.notify();
     }
 
+    #[cfg(test)]
+    pub(crate) fn placeholder_for_test(&self) -> &SharedString {
+        &self.model.placeholder
+    }
+
     pub fn set_placeholder(&mut self, placeholder: impl Into<String>, cx: &mut Context<Self>) {
         self.model.placeholder = placeholder.into().into();
         cx.notify();

@@ -1,4 +1,10 @@
-use gpui::{ClickEvent, Context, EventEmitter, IntoElement, MouseDownEvent, Render, SharedString, Window, div, prelude::*};
+#[cfg(all(test, feature = "test-support"))]
+#[path = "strings_tests.rs"]
+mod strings_tests;
+
+use gpui::{
+    App, ClickEvent, Context, EventEmitter, IntoElement, MouseDownEvent, Render, SharedString, Window, div, prelude::*,
+};
 
 use super::model::{PagerBuilder, PagerInfoSlot, PagerModel, PagerRenderModel, PagerTemplateParameters};
 use super::template::PagerTemplateHandlers;
@@ -16,6 +22,8 @@ pub enum PagerEvent {
 pub struct PagerControl {
     model: PagerModel,
     page_size_open: bool,
+    /// The `LumaStrings` indicator last installed, so a later locale switch can replace it.
+    strings_page_of: Option<crate::infra::strings::CountText>,
 }
 
 impl EventEmitter<PagerEvent> for PagerControl {}
@@ -29,7 +37,7 @@ impl PagerControl {
     pub(crate) fn from_builder(mut builder: PagerBuilder, cx: &mut Context<Self>) -> Self {
         normalize_model(&mut builder.model);
         observe_theme_revision(cx, |_, cx| cx.notify()).detach();
-        Self { model: builder.model, page_size_open: false }
+        Self { model: builder.model, page_size_open: false, strings_page_of: None }
     }
 
     pub fn current_page(&self) -> usize {
@@ -127,6 +135,16 @@ impl PagerControl {
         self.model.style = style;
         self.page_size_open = false;
         cx.notify();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn info_text_for_test(&self) -> Option<&SharedString> {
+        self.model.info_text.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn page_indicator_for_test(&self) -> SharedString {
+        self.render_model().page_indicator()
     }
 
     pub fn set_info_text(&mut self, info_text: Option<impl Into<SharedString>>, cx: &mut Context<Self>) {
@@ -256,8 +274,23 @@ impl PagerControl {
     }
 }
 
+impl PagerControl {
+    /// Follow `LumaStrings` unless the app supplied its own page indicator.
+    fn sync_strings(&mut self, cx: &App) {
+        let current = &self.model.template_parameters.page_indicator_formatter;
+        let built_in = std::sync::Arc::ptr_eq(current, &crate::infra::strings::english_page_of())
+            || self.strings_page_of.as_ref().is_some_and(|installed| std::sync::Arc::ptr_eq(current, installed));
+        if built_in {
+            let page_of = crate::infra::strings::LumaStrings::current(cx).page_of.clone();
+            self.model.template_parameters.page_indicator_formatter = page_of.clone();
+            self.strings_page_of = Some(page_of);
+        }
+    }
+}
+
 impl Render for PagerControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_strings(cx);
         let model = self.render_model();
         let handlers = self.template_handlers(cx);
         div().child(self.model.template.render(&model, handlers, window, cx)).into_any_element()

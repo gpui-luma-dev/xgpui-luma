@@ -37,7 +37,9 @@ pub struct SearchSelectorModel {
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
+    pub(crate) placeholder_explicit: bool,
     pub(crate) search_placeholder: SharedString,
+    pub(crate) search_placeholder_explicit: bool,
     pub(crate) enabled: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
@@ -187,8 +189,10 @@ impl SearchSelectorBuilder {
                 stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().search_selector.clone(),
                 id: id.into(),
                 items: items.into_iter().collect(),
-                placeholder: SharedString::from("Select…"),
-                search_placeholder: SharedString::from("Selection search"),
+                placeholder: crate::infra::strings::LumaStrings::default().select_placeholder,
+                placeholder_explicit: false,
+                search_placeholder: crate::infra::strings::LumaStrings::default().selection_search,
+                search_placeholder_explicit: false,
                 enabled: true,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
@@ -242,13 +246,17 @@ impl SearchSelectorBuilder {
         self
     }
 
+    /// Text set here stays fixed across `LumaStrings` changes, even when empty.
     pub fn placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.placeholder = placeholder.into();
+        self.model.placeholder_explicit = true;
         self
     }
 
+    /// Text set here stays fixed across `LumaStrings` changes, even when empty.
     pub fn search_placeholder(mut self, placeholder: impl Into<SharedString>) -> Self {
         self.model.search_placeholder = placeholder.into();
+        self.model.search_placeholder_explicit = true;
         self
     }
 

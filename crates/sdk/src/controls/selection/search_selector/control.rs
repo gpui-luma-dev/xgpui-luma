@@ -1,4 +1,8 @@
 #[cfg(all(test, feature = "test-support"))]
+#[path = "strings_tests.rs"]
+mod strings_tests;
+
+#[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
 
@@ -179,6 +183,7 @@ impl SearchSelectorControl {
 
     pub fn set_placeholder(&mut self, placeholder: impl Into<SharedString>, cx: &mut Context<Self>) {
         self.model.placeholder = placeholder.into();
+        self.model.placeholder_explicit = true;
         cx.notify();
     }
 
@@ -699,8 +704,24 @@ impl Focusable for SearchSelectorControl {
     }
 }
 
+impl SearchSelectorControl {
+    /// Follow `LumaStrings` unless the app supplied the placeholders.
+    fn sync_strings(&mut self, cx: &mut Context<Self>) {
+        let strings = crate::infra::strings::LumaStrings::current(cx);
+        if !self.model.placeholder_explicit && self.model.placeholder != strings.select_placeholder {
+            self.model.placeholder = strings.select_placeholder.clone();
+        }
+        if !self.model.search_placeholder_explicit && self.model.search_placeholder != strings.selection_search {
+            let search = strings.selection_search.clone();
+            self.model.search_placeholder = search.clone();
+            self.popup_search_textfield.update(cx, |field, cx| field.set_placeholder(search.to_string(), cx));
+        }
+    }
+}
+
 impl Render for SearchSelectorControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_strings(cx);
         self.disclosure_transition.sync();
         self.disclosure_transition.schedule_frame(window, cx);
         self.presence.sync();
@@ -812,7 +833,7 @@ impl Render for SearchSelectorControl {
                     .line_height(px(look.item_typography.line_height))
                     .font_weight(look.item_typography.weight)
                     .text_color(autocomplete_look.muted_text_color)
-                    .child("No matches")
+                    .child(crate::infra::strings::LumaStrings::current(cx).no_matches.clone())
                     .into_any_element()
             } else {
                 self.model

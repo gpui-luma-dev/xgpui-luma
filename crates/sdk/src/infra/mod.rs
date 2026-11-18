@@ -17,6 +17,7 @@ pub mod presenter;
 pub mod rounded_shell;
 pub mod shadow_layout;
 pub mod state;
+pub mod strings;
 pub mod template;
 pub mod value;
 

@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "strings_tests.rs"]
+mod strings_tests;
+
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, Pixels, Render, ScrollEvent,
     SharedString, Subscription, TextRun, Window, font, px,
@@ -404,8 +408,21 @@ impl AutocompleteControl {
     }
 }
 
+impl AutocompleteControl {
+    /// Follow `LumaStrings` unless the app supplied the placeholder.
+    fn sync_strings(&mut self, cx: &mut Context<Self>) {
+        let placeholder = &crate::infra::strings::LumaStrings::current(cx).filter_placeholder;
+        if !self.model.placeholder_explicit && self.model.placeholder != *placeholder {
+            let placeholder = placeholder.clone();
+            self.model.placeholder = placeholder.clone();
+            self.textfield.update(cx, |field, cx| field.set_placeholder(placeholder.to_string(), cx));
+        }
+    }
+}
+
 impl Render for AutocompleteControl {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_strings(cx);
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         let autocomplete_look = self.model.autocomplete_theme.resolve(self.model.size);

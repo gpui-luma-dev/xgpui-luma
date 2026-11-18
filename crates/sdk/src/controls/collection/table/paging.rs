@@ -1,3 +1,7 @@
+#[cfg(all(test, feature = "test-support"))]
+#[path = "paging_strings_tests.rs"]
+mod strings_tests;
+
 use std::sync::Arc;
 
 use gpui::{App, AppContext, Context, Entity, EventEmitter, Render, Window, div, prelude::*, px};
@@ -10,6 +14,7 @@ use crate::controls::pager::{
 
 use super::control::{TableControl, TableEvent};
 use super::model::TableBuilder;
+use crate::infra::strings::LumaStrings;
 
 pub type PagingTable<T> = Entity<PagingTableControl<T>>;
 
@@ -27,7 +32,8 @@ impl<T: 'static> PagingTableControl<T> {
                 TableEvent::SelectionChanged { selected_indices } => {
                     let count = selected_indices.len();
                     let total = list.items().len();
-                    pager_clone.update(cx, |pager, cx| pager.set_info_text(Some(selection_summary(count, total)), cx));
+                    let summary = selection_summary(count, total, cx);
+                    pager_clone.update(cx, |pager, cx| pager.set_info_text(Some(summary), cx));
                 }
                 TableEvent::PageChanged { page } => {
                     let page_size = list.page_size().unwrap_or(10);
@@ -52,6 +58,11 @@ impl<T: 'static> PagingTableControl<T> {
             }
         })
         .detach();
+
+        // Show the summary now and redo it when the app replaces `LumaStrings`.
+        Self::refresh_summary(&list, &pager, cx);
+        cx.observe_global::<LumaStrings>(|this, cx| Self::refresh_summary(&this.list, &this.pager, cx))
+            .detach();
 
         let list_clone = list.clone();
         cx.subscribe(&pager, move |_, _, event, cx| {
@@ -106,6 +117,14 @@ impl<T: 'static> Render for PagingTableControl<T> {
     }
 }
 
+impl<T: 'static> PagingTableControl<T> {
+    fn refresh_summary(list: &Entity<TableControl<T>>, pager: &Entity<PagerControl>, cx: &mut App) {
+        let (selected, total) = list.read_with(cx, |list, _| (list.selected_indices().len(), list.items().len()));
+        let summary = selection_summary(selected, total, cx);
+        pager.update(cx, |pager, cx| pager.set_info_text(Some(summary), cx));
+    }
+}
+
 struct TablePagerTemplate {
     theme: Arc<dyn PagerTheme>,
 }
@@ -125,6 +144,8 @@ impl PagerTemplate for TablePagerTemplate {
         cx: &mut App,
     ) -> gpui::AnyElement {
         let look = self.theme.resolve(model.enabled, PagerStyle::MinimalEdge);
+        let page_size_label =
+            model.page_size_label().cloned().unwrap_or_else(|| LumaStrings::current(cx).rows_per_page.clone());
 
         div()
             .w_full()
@@ -149,16 +170,14 @@ impl PagerTemplate for TablePagerTemplate {
                     .child(div().flex_none().flex().items_center().gap(px(look.page_size_label_gap)).when(
                         !model.page_size_options.is_empty(),
                         |slot| {
-                            slot.when_some(model.page_size_label(), |slot, label| {
-                                slot.child(
-                                    div()
-                                        .flex_none()
-                                        .text_color(look.muted_text)
-                                        .text_size(px(look.typography.size))
-                                        .line_height(px(look.typography.line_height))
-                                        .child(label.clone()),
-                                )
-                            })
+                            slot.child(
+                                div()
+                                    .flex_none()
+                                    .text_color(look.muted_text)
+                                    .text_size(px(look.typography.size))
+                                    .line_height(px(look.typography.line_height))
+                                    .child(page_size_label),
+                            )
                             .child(render_page_size_select(model, &look, &handlers))
                         },
                     ))
@@ -476,33 +495,20 @@ impl<T: 'static> PagingTableBuilder<T> {
             let fill_height = self.list_builder.model.fill_height;
             let list = self.list_builder.spawn(cx);
 
-            let (current_page, page_count, page_size, selected_count, total_rows) = list.read_with(cx, |list, _| {
-                (
-                    list.current_page(),
-                    list.page_count(),
-                    list.page_size().unwrap_or(10),
-                    list.selected_indices().len(),
-                    list.items().len(),
-                )
-            });
+            let (current_page, page_count, page_size) =
+                list.read_with(cx, |list, _| (list.current_page(), list.page_count(), list.page_size().unwrap_or(10)));
 
             let mut pager_builder = self.pager_builder;
             // Viewport-driven page size: hide the manual "rows per page" control.
+            // Without an app label, the template shows `LumaStrings::rows_per_page`.
             if fill_height {
                 pager_builder = pager_builder.page_size_options([]);
-            } else if pager_builder.model.template_parameters.page_size_label.is_none() {
-                pager_builder = pager_builder.page_size_label("Rows per page");
             }
             let pager_theme = pager_builder.model.theme.clone().unwrap_or_else(default_pager_theme);
             pager_builder = pager_builder.style(PagerStyle::MinimalEdge);
             pager_builder = pager_builder.template(Arc::new(TablePagerTemplate::new(pager_theme)));
 
-            let pager = pager_builder
-                .current_page(current_page)
-                .page_count(page_count)
-                .page_size(page_size)
-                .info_text(selection_summary(selected_count, total_rows))
-                .spawn(cx);
+            let pager = pager_builder.current_page(current_page).page_count(page_count).page_size(page_size).spawn(cx);
 
             cx.new(|cx| PagingTableControl::new(list, pager, cx))
         };
@@ -511,6 +517,6 @@ impl<T: 'static> PagingTableBuilder<T> {
     }
 }
 
-fn selection_summary(selected_count: usize, total_rows: usize) -> String {
-    format!("{} of {} row(s) selected.", selected_count, total_rows)
+fn selection_summary(selected_count: usize, total_rows: usize, cx: &App) -> gpui::SharedString {
+    (LumaStrings::current(cx).rows_selected)(selected_count, total_rows)
 }

@@ -208,7 +208,9 @@ impl ShadcnLook {
                 .rounded(px(CORNER_RADIUS))
                 .overflow_hidden()
                 .aria_label(item_label(item.item))
-                .when(!item.state.enabled, |surface| surface.aria_description("Disabled"))
+                .when(!item.state.enabled, |surface| {
+                    surface.aria_description(xgpui_luma::infra::strings::LumaStrings::current(cx).disabled.clone())
+                })
                 .child(template(&model, cx))
         })
         .flow(flow, padding);
