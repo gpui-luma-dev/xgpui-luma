@@ -123,6 +123,7 @@ jobs:
           --package xgpui-luma-plot
           --package xgpui-luma-look-radix
           --package xgpui-luma-look-shadcn
+          --package xgpui-luma-l10n
           --package luma-app-common
 
       - name: Test XGPUI Lab
@@ -144,6 +145,7 @@ jobs:
           --package xgpui-luma
           --package xgpui-luma-look-radix
           --package xgpui-luma-look-shadcn
+          --package xgpui-luma-l10n
           --package xgpui-luma-plot
 
       - name: Compile control documentation examples

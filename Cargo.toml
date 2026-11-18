@@ -6,6 +6,7 @@ members = [
   "apps/docs-embed",
   "apps/sdk-perf",
   "crates/sdk",
+  "crates/l10n",
   "crates/luma-color",
   "crates/look-shadcn",
   "crates/look-radix",
