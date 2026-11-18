@@ -173,7 +173,7 @@ pub fn tabs_geometry(
         ResolvedTabsGeometry {
             list_gap: ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
             list_padding: if surface {
-                ResolvedMetric::constant(look.metrics().spacing.s1, "Radix surface spacing.s1")
+                ResolvedMetric::constant(4.0, "Radix surface list padding")
             } else {
                 ResolvedMetric::constant(list.padding, "SDK tabs list padding")
             },
@@ -351,7 +351,7 @@ mod tests {
                     for enabled in [true, false] {
                         let list = theme.resolve_list(enabled);
                         assert_eq!(list.gap, if surface { 2.0 } else { 0.0 });
-                        assert_eq!(list.padding, if surface { look.metrics().spacing.s1 } else { 0.0 });
+                        assert_eq!(list.padding, if surface { 4.0 } else { 0.0 });
                     }
                     for state in [
                         InteractionState::default(),

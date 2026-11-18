@@ -68,23 +68,17 @@ pub(crate) fn metrics_from_catalog(
     let mut controls = ShadcnControlMetrics { md: scaffold.control, ..Default::default() };
     let mut radii = ShadcnRadii::default();
     let mut scaffold = scaffold;
-    apply_catalog_metrics(catalog, &mut scaffold, &mut controls, &mut radii);
+    apply_catalog_metrics(catalog, &mut controls, &mut radii);
     scaffold.control = controls.md;
     (scaffold, controls, radii)
 }
 
-fn apply_catalog_metrics(
-    catalog: &CssTokenMap,
-    scaffold: &mut MetricTokens,
-    controls: &mut ShadcnControlMetrics,
-    radii: &mut ShadcnRadii,
-) {
+fn apply_catalog_metrics(catalog: &CssTokenMap, controls: &mut ShadcnControlMetrics, radii: &mut ShadcnRadii) {
     if let Some(spacing_raw) = catalog.get("spacing") {
         if let Some(spacing_px) = parse_length_px(spacing_raw) {
             for size in ShadcnSize::ALL {
                 apply_spacing_to_control(controls.get_mut(size), spacing_px, control_spacing_scale(size));
             }
-            scaffold.spacing.s1 = spacing_px;
         }
     }
 

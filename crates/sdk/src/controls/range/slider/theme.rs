@@ -91,6 +91,10 @@ impl SliderTheme for DefaultSliderTheme {
     }
 }
 
+/// Default inset of the slider height below the control height. Looks that derive
+/// it from their own spacing set `height` in slider geometry.
+const SLIDER_HEIGHT_INSET_PX: f32 = 4.0;
+
 fn slider_height(metrics: &MetricTokens, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> f32 {
     let recipe = stylesheet.slider.authored_geometry();
     let floor = recipe
@@ -99,7 +103,7 @@ fn slider_height(metrics: &MetricTokens, stylesheet: &crate::theme::stylesheet::
         .unwrap_or_default();
     recipe
         .height
-        .unwrap_or_else(|| (metrics.control_height() - metrics.spacing.s1).max(metrics.control_height() * floor))
+        .unwrap_or_else(|| (metrics.control_height() - SLIDER_HEIGHT_INSET_PX).max(metrics.control_height() * floor))
 }
 
 fn slider_track_height(metrics: &MetricTokens) -> f32 {
@@ -143,14 +147,13 @@ mod tests {
         let mut tokens = ThemeTokens::default();
         tokens.metrics.control.control_height = 60.0;
         tokens.metrics.control.gap = 14.0;
-        tokens.metrics.spacing.s1 = 6.0;
         tokens.metrics.border_width.strong = 3.0;
         let theme = DefaultSliderTheme::new(tokens.clone());
         let look = theme.resolve(InteractionState::default());
 
-        assert_eq!(look.height, 54.0);
+        assert_eq!(look.height, 56.0);
         assert_eq!(look.track_height, 11.0);
-        assert_eq!(look.thumb_size, 27.0);
+        assert_eq!(look.thumb_size, 28.0);
     }
 }
 

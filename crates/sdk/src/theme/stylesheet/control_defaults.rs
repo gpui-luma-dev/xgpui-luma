@@ -278,7 +278,7 @@ button_min_width=0
             if style == PagerStyle::Minimal {
                 0.0
             } else {
-                tokens.metrics.control_height() + tokens.metrics.spacing.s1 * 2.0
+                tokens.metrics.control_height() + 4.0 * 2.0
             }
         );
     }

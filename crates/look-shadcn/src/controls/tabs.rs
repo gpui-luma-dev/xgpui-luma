@@ -489,7 +489,7 @@ pub fn resolve_tabs_metrics_with_stylesheet(
         list_gap: crate::tables::metrics::helpers::inspect_shared_metric(geometry.list_gap),
         list_padding: crate::tables::metrics::helpers::inspect_shared_metric(geometry.list_padding),
         item_padding_x: spacing_control_metric(catalog, size, SpacingField::PaddingX, item.padding_x),
-        item_height: derived_metric("label line_height + spacing.s2", item.height),
+        item_height: derived_metric("label line_height + padding_y × 2", item.height),
         item_radius: radius_metric(catalog, size, item.radius),
         indicator_height: crate::tables::metrics::helpers::inspect_shared_metric(geometry.indicator_height),
     }

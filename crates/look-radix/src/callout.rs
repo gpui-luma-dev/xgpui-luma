@@ -30,7 +30,7 @@ pub(crate) fn resolve_geometry(look: &Look) -> xgpui_luma::theme::stylesheet::Ca
     let metrics = look.metrics();
     let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
     look.common_stylesheet().callout.resolve_geometry(xgpui_luma::theme::stylesheet::CalloutGeometry {
-        padding: metrics.spacing.s4,
+        padding: 12.0,
         gap: metrics.control.gap,
         icon_size: metrics.control.icon_size,
         font_size: typography.size,

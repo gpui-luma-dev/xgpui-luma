@@ -80,8 +80,8 @@ impl ToolbarTheme for DefaultToolbarTheme {
             border,
             separator: palette.border.default,
             radius: 6.0,
-            padding_x: metrics.spacing.s2,
-            padding_y: metrics.spacing.s1,
+            padding_x: 6.0,
+            padding_y: 4.0,
             gap: control.gap,
             separator_height: control.height,
         };
