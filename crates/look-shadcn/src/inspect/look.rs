@@ -1,5 +1,4 @@
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::resizable_panels::ResizeHandleSize;
 use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 use xgpui_luma::controls::textarea::TextAreaState;
 use xgpui_luma::controls::textfield::TextFieldState;
@@ -477,7 +476,7 @@ impl<'a> ShadcnInspect<'a> {
         inspect_resizable_panels_color_palette(&self.mode_tokens(), self.theme_mode(), state)
     }
 
-    pub fn inspect_resizable_panels_metrics(&self, handle_size: ResizeHandleSize) -> ResizablePanelsInspectMetrics {
+    pub fn inspect_resizable_panels_metrics(&self, handle_size: crate::ShadcnSize) -> ResizablePanelsInspectMetrics {
         inspect_resizable_panels_metrics(self.look.mode_tokens().as_ref(), handle_size)
     }
 

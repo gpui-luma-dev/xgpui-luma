@@ -295,7 +295,7 @@ button_min_width=0
 fn slide_panel_and_resize_presets_capture_stylesheet_without_overriding_explicit_sizes() {
     use crate::controls::{
         slide_panel::{SlidePanelState, SlidePanelTopAnchor, SlidePanelSizeConfig},
-        resizable_panels::{ResizeHandleSize, DefaultResizablePanelsTheme, ResizablePanelsTheme},
+        resizable_panels::{DefaultResizablePanelsTheme, ResizablePanelsTheme},
     };
     let mut sheet = CommonStylesheet::resolve_layers(&[r#"
 [common.slide_panel.geometry]
@@ -304,7 +304,6 @@ edge_height=530
 edge_max_viewport_ratio="math(3 / 5)"
 [common.resizable_panels.geometry]
 grip_radius=0
-[common.resizable_panels.sizes.sm]
 lane_width=13
 hit_target=21
 grip_main_axis=45
@@ -325,7 +324,7 @@ grip_main_axis=45
     );
     let theme =
         DefaultResizablePanelsTheme::new(sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap());
-    assert_eq!(theme.resize_handle_metrics(ResizeHandleSize::Sm), handle);
+    assert_eq!(theme.resize_handle_metrics(), handle);
     let baseline = SlidePanelState::new(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 0.0, 900.0));
     assert_eq!(
         (

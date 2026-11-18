@@ -1,6 +1,6 @@
 //! Shadcn `sm` / `lg` common geometry.
 //!
-//! The SDK ships a single (md) scale. Shadcn's size axis lives here: each entry is
+//! The SDK ships a single scale (md for controls, sm for resize handles). Shadcn's size axis lives here: each entry is
 //! selected with [`xgpui_luma::theme::stylesheet::CommonStylesheet::with_size_key`]
 //! before SDK controls resolve plain pixel geometry.
 
@@ -48,5 +48,15 @@ pub(crate) fn apply_size_presets(common: &mut CommonStylesheet) {
         let overlay = common.overlay_window.sizes.get_or_default(size.key());
         overlay.min_width = Some(min);
         overlay.estimated_height = Some(height);
+    }
+    // The SDK resize handle scale is Shadcn `sm`; `md` and `lg` handles are Shadcn's.
+    for (size, lane, hit, cross, main) in
+        [(ShadcnSize::Md, 12.0, 14.0, 6.0, 40.0), (ShadcnSize::Lg, 18.0, 20.0, 8.0, 44.0)]
+    {
+        let handle = common.resizable_panels.sizes.get_or_default(size.key());
+        handle.lane_width = Some(lane);
+        handle.hit_target = Some(hit);
+        handle.grip_cross_axis = Some(cross);
+        handle.grip_main_axis = Some(main);
     }
 }

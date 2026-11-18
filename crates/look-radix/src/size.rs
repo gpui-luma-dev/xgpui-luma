@@ -136,6 +136,16 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
         fill(&mut overlay.max_width, max);
         fill(&mut overlay.estimated_height, height);
     }
+    // The SDK resize handle scale is Radix size 1; sizes 2 and 3 are Radix's.
+    for (size, lane, hit, cross, main) in
+        [(RadixSize::Two, 12.0, 14.0, 6.0, 40.0), (RadixSize::Three, 18.0, 20.0, 8.0, 44.0)]
+    {
+        let handle = common.resizable_panels.sizes.get_or_default(size.key());
+        fill(&mut handle.lane_width, lane);
+        fill(&mut handle.hit_target, hit);
+        fill(&mut handle.grip_cross_axis, cross);
+        fill(&mut handle.grip_main_axis, main);
+    }
 }
 
 /// Former SDK size presets for controls Radix sizes itself; used only for fallback scales.

@@ -9,11 +9,12 @@ struct PanelsTheme {
     look: Look,
 }
 impl ResizablePanelsTheme for PanelsTheme {
-    fn resize_handle_metrics(&self, size: ResizeHandleSize) -> ResizeHandleMetrics {
-        size.metrics_with_stylesheet(&self.look.common_stylesheet())
+    /// Handle pixels for the Look's Radix size.
+    fn resize_handle_metrics(&self) -> ResizeHandleMetrics {
+        ResizeHandleMetrics::from_stylesheet(&self.look.sized_stylesheet(self.look.size()))
     }
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let geometry = self.look.common_stylesheet().resizable_panels.resolve_geometry_for("md", Default::default());
+        let geometry = self.look.common_stylesheet().resizable_panels.resolve_geometry(Default::default());
         let muted = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
         ResizablePanelsLook {
             border: self.look.resolve_role(SemanticRole::Border).hsla(),
@@ -48,13 +49,14 @@ pub fn resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
 ///
 /// ```no_run
 /// use gpui::{Context, div, px};
-/// use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizeHandleSize};
-/// use xgpui_luma_look_radix::{Look, resizable_panels_builder};
+/// use xgpui_luma::controls::resizable_panels::ResizablePanelSpec;
+/// use xgpui_luma_look_radix::{Look, RadixSize, resizable_panels_builder};
 /// fn panels<M: 'static>(look: &Look, cx: &mut Context<M>) {
-///     resizable_panels_builder(look, "panels")
+///     // The Look's Radix size selects the resize handle size.
+///     resizable_panels_builder(&look.with_size(RadixSize::Two), "panels")
 ///         .panel(ResizablePanelSpec::new_render(|| div()).weight(1.0))
 ///         .panel(ResizablePanelSpec::new_render(|| div()).weight(2.0))
-///         .size(px(600.0), px(300.0)).resize_handle(ResizeHandleSize::Md).spawn(cx);
+///         .size(px(600.0), px(300.0)).spawn(cx);
 /// }
 /// ```
 pub fn resizable_panels_builder(look: &Look, id: impl Into<SharedString>) -> ResizablePanelsBuilder {
@@ -155,8 +157,8 @@ mod tests {
                 assert_eq!(disabled.grip_emphasis, look.resolve_role(SemanticRole::MutedForeground).hsla());
                 assert!(disabled.disabled_opacity < normal.disabled_opacity);
                 assert_eq!(slide_panel_look(&look).divider, normal.divider);
-                let sizes = [ResizeHandleSize::Sm, ResizeHandleSize::Md, ResizeHandleSize::Lg]
-                    .map(|size| theme.resize_handle_metrics(size));
+                let sizes = crate::RadixSize::ALL
+                    .map(|size| resizable_panels_theme(&look.with_size(size)).resize_handle_metrics());
                 assert!(sizes[0].hit_target_px < sizes[1].hit_target_px);
                 assert!(sizes[1].hit_target_px < sizes[2].hit_target_px);
             }
@@ -166,16 +168,20 @@ mod tests {
     fn panel_forks_and_captured_drawer_defaults_are_isolated() {
         let base = Look::built_in();
         let fork = base.fork();
-        let theme = resizable_panels_theme(&fork);
+        // Radix size 1 uses the SDK handle scale from general geometry.
+        let theme = resizable_panels_theme(&fork.with_size(crate::RadixSize::One));
         let mut sheet = fork.common_stylesheet();
-        sheet.resizable_panels.sizes.get_or_default("sm").hit_target = Some(25.0);
+        sheet.resizable_panels.geometry.hit_target = Some(25.0);
         sheet.slide_panel.geometry.side_width = Some(280.0);
         fork.set_common_stylesheet(sheet);
         let state =
             slide_panel_state(&fork, SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 100.0, 500.0));
-        assert_eq!(theme.resize_handle_metrics(ResizeHandleSize::Sm).hit_target_px, 25.0);
+        assert_eq!(theme.resize_handle_metrics().hit_target_px, 25.0);
         assert_eq!(state.geometry().side_width, Some(280.0));
-        assert_ne!(resizable_panels_theme(&base).resize_handle_metrics(ResizeHandleSize::Sm).hit_target_px, 25.0);
+        assert_ne!(
+            resizable_panels_theme(&base.with_size(crate::RadixSize::One)).resize_handle_metrics().hit_target_px,
+            25.0
+        );
         let mut sheet = fork.common_stylesheet();
         sheet.slide_panel.geometry.side_width = Some(320.0);
         fork.set_common_stylesheet(sheet);

@@ -186,7 +186,8 @@ impl VscodeShellApp {
     }
 
     fn sync_workbench_theme(&self, cx: &mut Context<Self>) {
-        let theme = self.look.resizable_panels_theme();
+        // Match the workbench's compact handle size.
+        let theme = self.look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).resizable_panels_theme();
         self.workspace_layout.update(cx, |layout, cx| {
             layout.sync_chrome(cx);
             layout.sync_theme(&theme, cx);

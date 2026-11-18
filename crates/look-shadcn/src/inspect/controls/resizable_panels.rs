@@ -3,8 +3,6 @@
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
 
-use xgpui_luma::controls::resizable_panels::ResizeHandleSize;
-
 pub struct ResizablePanelsInspectPalette {
     pub border: ResolvedColor,
     pub divider: ResolvedColor,
@@ -40,7 +38,7 @@ pub fn inspect_resizable_panels_color_palette(
 
 pub fn inspect_resizable_panels_metrics(
     mode: &ShadcnModeTokens,
-    handle_size: ResizeHandleSize,
+    handle_size: crate::ShadcnSize,
 ) -> ResizablePanelsInspectMetrics {
     let table = crate::tables::metrics::resolve_resizable_panels_metrics(handle_size, &mode.stylesheet().common);
     table.into()
@@ -75,7 +73,7 @@ mod tests {
     #[test]
     fn inspect_handle_metrics_follow_preset_sizes() {
         let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).unwrap();
-        let metrics = inspect_resizable_panels_metrics(&mode, ResizeHandleSize::Md);
+        let metrics = inspect_resizable_panels_metrics(&mode, crate::ShadcnSize::Md);
         assert!((metrics.lane_px.value_px - 12.0).abs() < f32::EPSILON);
     }
 }

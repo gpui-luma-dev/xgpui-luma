@@ -18,9 +18,9 @@ pub struct ResizablePanelsLook {
 }
 
 pub trait ResizablePanelsTheme: Send + Sync {
-    /// Shared visual preset; custom looks resolve it through their stylesheet.
-    fn resize_handle_metrics(&self, size: super::ResizeHandleSize) -> super::ResizeHandleMetrics {
-        size.metrics()
+    /// Handle pixels; custom looks resolve their own handle size through a sized stylesheet.
+    fn resize_handle_metrics(&self) -> super::ResizeHandleMetrics {
+        super::ResizeHandleMetrics::default()
     }
 
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook;
@@ -44,14 +44,14 @@ impl DefaultResizablePanelsTheme {
 }
 
 impl ResizablePanelsTheme for DefaultResizablePanelsTheme {
-    fn resize_handle_metrics(&self, size: super::ResizeHandleSize) -> super::ResizeHandleMetrics {
-        size.metrics_with_stylesheet(&self.tokens.stylesheet)
+    fn resize_handle_metrics(&self) -> super::ResizeHandleMetrics {
+        super::ResizeHandleMetrics::from_stylesheet(&self.tokens.stylesheet)
     }
 
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
         let palette = self.tokens.stylesheet.recipes.palette("resizable_panels", &self.tokens.palette);
         let disabled = state.layer() == InteractionLayer::Disabled;
-        let geometry = self.tokens.stylesheet.resizable_panels.resolve_geometry_for("md", Default::default());
+        let geometry = self.tokens.stylesheet.resizable_panels.resolve_geometry(Default::default());
 
         ResizablePanelsLook {
             border: palette.border.default,
@@ -96,23 +96,13 @@ impl ResizablePanelsStylesheet {
                 divider_width: Some(1.0),
                 grip_radius: Some(8.0),
                 disabled_opacity: Some(0.45),
-                ..Default::default()
+                // The SDK's single handle scale (the builder's long-standing default).
+                lane_width: Some(8.0),
+                hit_target: Some(12.0),
+                grip_cross_axis: Some(4.0),
+                grip_main_axis: Some(36.0),
             },
-            sizes: [("sm", 8.0, 12.0, 4.0, 36.0), ("md", 12.0, 14.0, 6.0, 40.0), ("lg", 18.0, 20.0, 8.0, 44.0)]
-                .into_iter()
-                .map(|(key, lane, hit, cross, main)| {
-                    (
-                        key.into(),
-                        ResizablePanelsGeometryStylesheet {
-                            lane_width: Some(lane),
-                            hit_target: Some(hit),
-                            grip_cross_axis: Some(cross),
-                            grip_main_axis: Some(main),
-                            ..Default::default()
-                        },
-                    )
-                })
-                .collect(),
+            sizes: Default::default(),
         }
     }
 }

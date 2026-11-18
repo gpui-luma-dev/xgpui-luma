@@ -474,7 +474,7 @@ item_height=0
 
 #[test]
 fn pager_and_resize_handle_overrides_reach_paint_and_inspection() {
-    use xgpui_luma::controls::{pager::PagerStyle, resizable_panels::ResizeHandleSize};
+    use xgpui_luma::controls::pager::PagerStyle;
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.pager.geometry]
@@ -497,7 +497,7 @@ edge_max_viewport_ratio="math(2 / 3)"
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     let pager = look.pager_theme().resolve(true, PagerStyle::Minimal);
     assert_eq!((pager.radius, pager.disabled_opacity, pager.button_size), (13.0, 0.0, 0.0));
-    let handle = look.resizable_panels_theme().resize_handle_metrics(ResizeHandleSize::Md);
+    let handle = look.resizable_panels_theme().resize_handle_metrics();
     assert_eq!(
         (handle.lane_px, handle.hit_target_px, handle.grip_main_axis_px, handle.grip_radius),
         (17.0, 23.0, 47.0, 0.0)
@@ -510,7 +510,7 @@ edge_max_viewport_ratio="math(2 / 3)"
     #[cfg(feature = "inspect")]
     {
         let inspector = crate::inspect::ShadcnInspect::new(&look);
-        let inspected = inspector.inspect_resizable_panels_metrics(ResizeHandleSize::Md);
+        let inspected = inspector.inspect_resizable_panels_metrics(crate::ShadcnSize::Md);
         assert_eq!(inspected.lane_px.value_px, handle.lane_px);
         assert_eq!(inspected.hit_target_px.value_px, handle.hit_target_px);
         assert_eq!(inspected.grip_main_axis_px.value_px, handle.grip_main_axis_px);

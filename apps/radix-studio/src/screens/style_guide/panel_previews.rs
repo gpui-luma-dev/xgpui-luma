@@ -195,13 +195,9 @@ struct Cell {
     id: String,
 }
 fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
-    let theme = radix::resizable_panels_theme(look);
+    // The cell's Radix size selects the resize handle size.
+    let theme = radix::resizable_panels_theme(&look.with_size(cell.size));
     let resolved = theme.resolve(cell.state);
-    let size = match cell.size {
-        RadixSize::One => ResizeHandleSize::Sm,
-        RadixSize::Two => ResizeHandleSize::Md,
-        RadixSize::Three => ResizeHandleSize::Lg,
-    };
     let orientation = if cell.variant == 0 {
         ResizablePanelsOrientation::Horizontal
     } else {
@@ -227,8 +223,7 @@ fn panels(look: &Look, id: &SharedString, cell: &Cell) -> AnyElement {
         double_click_collapse: None,
         hovered_handle: cell.state.hovered.then_some(0),
         dragging_handle: cell.state.pressed.then_some(0),
-        resize_handle: size,
-        handle_metrics: theme.resize_handle_metrics(size),
+        handle_metrics: theme.resize_handle_metrics(),
         handle_grip: true,
         panel_sizes_px: &sizes,
         panel_hidden: vec![false; 2],

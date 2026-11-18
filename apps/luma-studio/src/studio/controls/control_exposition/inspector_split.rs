@@ -10,7 +10,7 @@ use xgpui_luma::controls::icon_button::IconButton;
 use xgpui_luma::infra::presenter::ControlPresenter;
 use xgpui_luma::controls::resizable_panels::{
     PanelHideMode, ResizablePanelSpec, ResizablePanels, ResizablePanelsEvent, ResizablePanelsOrientation,
-    ResizeHandleSize, ResizeHandleVisibility,
+    ResizeHandleVisibility,
 };
 use xgpui_luma_look_shadcn::ShadcnLook;
 use xgpui_luma_look_shadcn as shadcn;
@@ -65,12 +65,12 @@ impl InspectorSplitShell {
 
         let inspector_toggle_for_details = inspector_toggle.clone();
         let split_panels = look
+            .with_size(xgpui_luma_look_shadcn::ShadcnSize::Md)
             .resizable_panels(format!("{id}-split"))
             .orientation(ResizablePanelsOrientation::Horizontal)
             .show_border(false)
             .show_handle(true)
             .handle_visibility(ResizeHandleVisibility::Always)
-            .resize_handle(ResizeHandleSize::Md)
             .handle_grip(true)
             .panels([
                 ResizablePanelSpec::new_render(move || {
@@ -157,7 +157,7 @@ impl InspectorSplitShell {
             button.set_presenter(inspector_toggle_presenter(look.chrome().title_text), cx);
         });
         self.split_panels.update(cx, |panels, cx| {
-            panels.set_theme(look.resizable_panels_theme(), cx);
+            panels.set_theme(look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Md).resizable_panels_theme(), cx);
         });
         cx.notify();
     }

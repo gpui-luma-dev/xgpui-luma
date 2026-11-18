@@ -134,7 +134,7 @@ impl SlidePanelState {
             geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default()
                 .slide_panel
                 .authored_geometry_for("overlay"),
-            handle_metrics: crate::controls::resizable_panels::ResizeHandleSize::Sm.metrics(),
+            handle_metrics: crate::controls::resizable_panels::ResizeHandleMetrics::default(),
         }
     }
 
@@ -144,8 +144,7 @@ impl SlidePanelState {
             .slide_panel
             .authored_geometry_for("overlay");
         self.geometry = stylesheet.slide_panel.authored_geometry_for("overlay").with_fallback(&baseline);
-        self.handle_metrics =
-            crate::controls::resizable_panels::ResizeHandleSize::Sm.metrics_with_stylesheet(stylesheet);
+        self.handle_metrics = crate::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(stylesheet);
         self
     }
 

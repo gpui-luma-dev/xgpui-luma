@@ -14,7 +14,6 @@ macro_rules! resizable_panels {
         $( show_handle: $show_handle:expr, )?
         $( handle_visibility: $handle_visibility:ident, )?
         $( double_click_collapse: ($collapse_mode:ident, $collapse_direction:ident), )?
-        $( resize_handle: $resize_handle:ident, )?
         $( handle_grip: $handle_grip:expr, )?
         $( show_border: $show_border:expr, )?
         $( width: $width_only:expr, )?
@@ -31,7 +30,6 @@ macro_rules! resizable_panels {
             $(, show_handle = $show_handle)*
             $(, handle_visibility = $handle_visibility)*
             $(, double_click_collapse = ($collapse_mode, $collapse_direction))*
-            $(, resize_handle = $resize_handle)*
             $(, handle_grip = $handle_grip)*
             $(, show_border = $show_border)*
             $(, width = $width_only)*
@@ -47,7 +45,6 @@ macro_rules! resizable_panels {
         $( show_handle: $show_handle:expr, )?
         $( handle_visibility: $handle_visibility:ident, )?
         $( double_click_collapse: ($collapse_mode:ident, $collapse_direction:ident), )?
-        $( resize_handle: $resize_handle:ident, )?
         $( handle_grip: $handle_grip:expr, )?
         $( show_border: $show_border:expr, )?
         $( width: $width_only:expr, )?
@@ -63,7 +60,6 @@ macro_rules! resizable_panels {
             $(, show_handle = $show_handle)*
             $(, handle_visibility = $handle_visibility)*
             $(, double_click_collapse = ($collapse_mode, $collapse_direction))*
-            $(, resize_handle = $resize_handle)*
             $(, handle_grip = $handle_grip)*
             $(, show_border = $show_border)*
             $(, width = $width_only)*
@@ -77,7 +73,6 @@ macro_rules! resizable_panels {
         $(, show_handle = $show_handle:expr)*
         $(, handle_visibility = $handle_visibility:ident)*
         $(, double_click_collapse = ($collapse_mode:ident, $collapse_direction:ident))*
-        $(, resize_handle = $resize_handle:ident)*
         $(, handle_grip = $handle_grip:expr)*
         $(, show_border = $show_border:expr)*
         $(, width = $width_only:expr)*
@@ -97,9 +92,6 @@ macro_rules! resizable_panels {
                 $crate::controls::resizable_panels::ResizeCollapseDirection::$collapse_direction,
             ),
         )); )?
-        $( builder = builder.resize_handle(
-            $crate::controls::resizable_panels::ResizeHandleSize::$resize_handle,
-        ); )?
         $( builder = builder.handle_grip($handle_grip); )?
         $( builder = builder.show_border($show_border); )?
         $( builder = builder.width($width_only); )?

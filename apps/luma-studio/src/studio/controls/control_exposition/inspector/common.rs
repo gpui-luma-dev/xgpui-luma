@@ -227,11 +227,11 @@ pub fn sidebar_item_selected(value_id: &str) -> bool {
     value_id == "selected"
 }
 
-pub fn resize_handle_size(size_id: &str) -> xgpui_luma::controls::resizable_panels::ResizeHandleSize {
+pub fn resize_handle_size(size_id: &str) -> xgpui_luma_look_shadcn::ShadcnSize {
     match size_id {
-        "sm" => xgpui_luma::controls::resizable_panels::ResizeHandleSize::Sm,
-        "lg" => xgpui_luma::controls::resizable_panels::ResizeHandleSize::Lg,
-        _ => xgpui_luma::controls::resizable_panels::ResizeHandleSize::Md,
+        "sm" => xgpui_luma_look_shadcn::ShadcnSize::Sm,
+        "lg" => xgpui_luma_look_shadcn::ShadcnSize::Lg,
+        _ => xgpui_luma_look_shadcn::ShadcnSize::Md,
     }
 }
 

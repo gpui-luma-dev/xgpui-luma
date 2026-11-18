@@ -5,7 +5,7 @@ crate::motion_profile!(ResizablePanelsMotion => resizable_panels {
 use std::rc::Rc;
 use std::sync::Arc;
 
-use gpui::{AnyElement, AppContext, Entity, Hsla, IntoElement, Pixels, SharedString, px};
+use gpui::{AnyElement, AppContext, Entity, Hsla, IntoElement, Pixels, SharedString};
 
 use super::{
     ResizablePanels, ResizablePanelsTemplate, ResizablePanelsTheme, default_resizable_panels_template,
@@ -33,15 +33,6 @@ impl PanelId {
     pub fn as_str(&self) -> &str {
         self.0.as_ref()
     }
-}
-
-/// Preset overlay resize handle dimensions (lane, grip, and hit target scale together).
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ResizeHandleSize {
-    Sm,
-    #[default]
-    Md,
-    Lg,
 }
 
 /// Controls when the resize handle lane and grip are visibly rendered.
@@ -105,46 +96,26 @@ pub struct ResizeHandleMetrics {
     pub grip_radius: f32,
 }
 
-impl ResizeHandleSize {
-    pub fn metrics(self) -> ResizeHandleMetrics {
-        self.metrics_with_stylesheet(crate::theme::stylesheet::CommonStylesheet::sdk_default())
+impl Default for ResizeHandleMetrics {
+    /// The SDK's single resize handle scale.
+    fn default() -> Self {
+        Self::from_stylesheet(crate::theme::stylesheet::CommonStylesheet::sdk_default())
     }
+}
 
-    /// Resolve the shared preset against a captured stylesheet.
-    pub fn metrics_with_stylesheet(
-        self,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
-    ) -> ResizeHandleMetrics {
-        let key = match self {
-            Self::Sm => "sm",
-            Self::Md => "md",
-            Self::Lg => "lg",
-        };
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .resizable_panels
-            .authored_geometry_for(key);
-        let recipe = stylesheet.resizable_panels.authored_geometry_for(key).with_fallback(&baseline);
-        ResizeHandleMetrics {
+impl ResizeHandleMetrics {
+    /// Resolve handle pixels from a stylesheet's general resizable-panels geometry,
+    /// falling back to the SDK scale. Looks select their own handle size by passing
+    /// a sized stylesheet (see `CommonStylesheet::with_size_key`).
+    pub fn from_stylesheet(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
+        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().resizable_panels.authored_geometry();
+        let recipe = stylesheet.resizable_panels.authored_geometry().with_fallback(&baseline);
+        Self {
             lane_px: recipe.lane_width.unwrap_or_default(),
             hit_target_px: recipe.hit_target.unwrap_or_default(),
             grip_cross_axis_px: recipe.grip_cross_axis.unwrap_or_default(),
             grip_main_axis_px: recipe.grip_main_axis.unwrap_or_default(),
             grip_radius: recipe.grip_radius.unwrap_or_default(),
-        }
-    }
-
-    pub fn lane_pixels(self) -> Pixels {
-        px(self.metrics().lane_px)
-    }
-
-    /// Maps a pixel lane width to the nearest preset.
-    pub fn from_lane_px(lane_px: f32) -> Self {
-        if lane_px >= (Self::Md.metrics().lane_px + Self::Lg.metrics().lane_px) / 2.0 {
-            Self::Lg
-        } else if lane_px >= (Self::Sm.metrics().lane_px + Self::Md.metrics().lane_px) / 2.0 {
-            Self::Md
-        } else {
-            Self::Sm
         }
     }
 }
@@ -249,7 +220,6 @@ pub struct ResizablePanelsModel {
     pub(crate) motion_enabled: bool,
     pub(crate) handle_visibility: ResizeHandleVisibility,
     pub(crate) double_click_collapse: Option<ResizeCollapseBehavior>,
-    pub(crate) resize_handle: ResizeHandleSize,
     pub(crate) handle_grip: bool,
     pub(crate) keyboard_step: f32,
     pub(crate) keyboard_shift_step: f32,
@@ -269,7 +239,6 @@ pub struct ResizablePanelsRenderModel<'a> {
     pub double_click_collapse: Option<ResizeCollapseBehavior>,
     pub hovered_handle: Option<usize>,
     pub dragging_handle: Option<usize>,
-    pub resize_handle: ResizeHandleSize,
     pub handle_metrics: ResizeHandleMetrics,
     pub handle_grip: bool,
     pub panel_sizes_px: &'a [f32],
@@ -444,7 +413,6 @@ impl ResizablePanelsBuilder {
                 motion_enabled: true,
                 handle_visibility: ResizeHandleVisibility::Hidden,
                 double_click_collapse: None,
-                resize_handle: ResizeHandleSize::Sm,
                 handle_grip: false,
                 keyboard_step: 2.0,
                 keyboard_shift_step: 10.0,
@@ -510,11 +478,6 @@ impl ResizablePanelsBuilder {
 
     pub fn double_click_collapse(mut self, behavior: Option<ResizeCollapseBehavior>) -> Self {
         self.model.double_click_collapse = behavior;
-        self
-    }
-
-    pub fn resize_handle(mut self, size: ResizeHandleSize) -> Self {
-        self.model.resize_handle = size;
         self
     }
 
@@ -603,24 +566,16 @@ mod resize_handle_tests {
 
     use super::{
         PanelId, ResizablePanelSpec, ResizablePanelsBuilder, ResizeCollapseBehavior, ResizeCollapseDirection,
-        ResizeCollapseMode, ResizeHandleSize, ResizeHandleVisibility, default_resizable_panels_template,
+        ResizeCollapseMode, ResizeHandleMetrics, ResizeHandleVisibility, default_resizable_panels_template,
     };
 
     #[test]
-    fn metrics_increase_across_presets() {
-        let sm = ResizeHandleSize::Sm.metrics();
-        let md = ResizeHandleSize::Md.metrics();
-        let lg = ResizeHandleSize::Lg.metrics();
-        assert!(sm.lane_px < md.lane_px && md.lane_px < lg.lane_px);
-        assert!(sm.hit_target_px <= md.hit_target_px && md.hit_target_px <= lg.hit_target_px);
-        assert!(sm.grip_cross_axis_px < md.grip_cross_axis_px && md.grip_cross_axis_px < lg.grip_cross_axis_px);
-    }
-
-    #[test]
-    fn from_lane_px_maps_widths_to_presets() {
-        assert_eq!(ResizeHandleSize::from_lane_px(18.0), ResizeHandleSize::Lg);
-        assert_eq!(ResizeHandleSize::from_lane_px(10.0), ResizeHandleSize::Md);
-        assert_eq!(ResizeHandleSize::from_lane_px(8.0), ResizeHandleSize::Sm);
+    fn default_metrics_are_the_single_sdk_scale() {
+        let metrics = ResizeHandleMetrics::default();
+        assert_eq!(
+            (metrics.lane_px, metrics.hit_target_px, metrics.grip_cross_axis_px, metrics.grip_main_axis_px),
+            (8.0, 12.0, 4.0, 36.0)
+        );
     }
 
     #[test]

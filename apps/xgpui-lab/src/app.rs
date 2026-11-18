@@ -388,58 +388,62 @@ impl XgpuiLabApp {
         let content_view = content.clone();
         let sidebar_look = nav_look.clone();
         let content_look = look.clone();
-        let panels = xgpui_luma_look_radix::resizable_panels_builder(&look, "shell-2026-panels")
-            .show_border(false)
-            .motion_enabled(true)
-            .handle_visibility(ResizeHandleVisibility::Hover)
-            .double_click_collapse(Some(ResizeCollapseBehavior::new(
-                ResizeCollapseMode::Completely,
-                ResizeCollapseDirection::Left,
-            )))
-            .panel(
-                ResizablePanelSpec::new_render(move || {
-                    if sidebar_destination.get() == Destination::Workshop {
-                        return div()
-                            .id("control-workshop-scroll")
-                            .size_full()
-                            .overflow_y_scroll()
-                            .p(px(8.))
-                            .text_color(sidebar_look.chrome().body_text)
-                            .child(explorer_heading("LUMA CONTROLS", &sidebar_look))
-                            .child(workshop_sidebar.clone())
-                            .child(explorer_heading("LUMA COLOR CONTROLS", &sidebar_look))
-                            .child(div().flex().flex_col().gap_1().children(workshop_color_sidebar.clone()))
-                            .into_any_element();
-                    }
-                    div()
-                        .id("lab-explorer-scroll")
+        let panels = xgpui_luma_look_radix::resizable_panels_builder(
+            // Radix size 1: the compact handle, matching the former SDK builder default.
+            &look.with_size(xgpui_luma_look_radix::RadixSize::One),
+            "shell-2026-panels",
+        )
+        .show_border(false)
+        .motion_enabled(true)
+        .handle_visibility(ResizeHandleVisibility::Hover)
+        .double_click_collapse(Some(ResizeCollapseBehavior::new(
+            ResizeCollapseMode::Completely,
+            ResizeCollapseDirection::Left,
+        )))
+        .panel(
+            ResizablePanelSpec::new_render(move || {
+                if sidebar_destination.get() == Destination::Workshop {
+                    return div()
+                        .id("control-workshop-scroll")
                         .size_full()
                         .overflow_y_scroll()
                         .p(px(8.))
                         .text_color(sidebar_look.chrome().body_text)
-                        .child(explorer_heading("LAB EXPLORER", &sidebar_look))
-                        .child(accordion.clone())
-                        .child(explorer_heading("XGPUI LAB EXPLORER", &sidebar_look))
-                        .child(extension_accordion.clone())
-                        .into_any_element()
-                })
-                .size(INITIAL_SIDEBAR_WIDTH)
-                .min(MIN_SIDEBAR_WIDTH)
-                .max(MAX_SIDEBAR_WIDTH),
-            )
-            .panel(
-                ResizablePanelSpec::new_render(move || {
-                    div()
-                        .debug_selector(|| "shell-2026-workspace".into())
-                        .size_full()
-                        .min_w_0()
-                        .bg(content_look.chrome().content_background)
-                        .child(content_view.borrow().clone())
-                })
-                .weight(1.)
-                .min(MIN_WORKSPACE_WIDTH),
-            )
-            .spawn(cx);
+                        .child(explorer_heading("LUMA CONTROLS", &sidebar_look))
+                        .child(workshop_sidebar.clone())
+                        .child(explorer_heading("LUMA COLOR CONTROLS", &sidebar_look))
+                        .child(div().flex().flex_col().gap_1().children(workshop_color_sidebar.clone()))
+                        .into_any_element();
+                }
+                div()
+                    .id("lab-explorer-scroll")
+                    .size_full()
+                    .overflow_y_scroll()
+                    .p(px(8.))
+                    .text_color(sidebar_look.chrome().body_text)
+                    .child(explorer_heading("LAB EXPLORER", &sidebar_look))
+                    .child(accordion.clone())
+                    .child(explorer_heading("XGPUI LAB EXPLORER", &sidebar_look))
+                    .child(extension_accordion.clone())
+                    .into_any_element()
+            })
+            .size(INITIAL_SIDEBAR_WIDTH)
+            .min(MIN_SIDEBAR_WIDTH)
+            .max(MAX_SIDEBAR_WIDTH),
+        )
+        .panel(
+            ResizablePanelSpec::new_render(move || {
+                div()
+                    .debug_selector(|| "shell-2026-workspace".into())
+                    .size_full()
+                    .min_w_0()
+                    .bg(content_look.chrome().content_background)
+                    .child(content_view.borrow().clone())
+            })
+            .weight(1.)
+            .min(MIN_WORKSPACE_WIDTH),
+        )
+        .spawn(cx);
         let (rail, rail_navigation) = spawn_rail(&nav_look, cx);
         panels.clone().on_event(cx, |this: &mut Self, event, cx| {
             if let ResizablePanelsEvent::SizesChanged { sizes_px } = event
