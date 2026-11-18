@@ -1,5 +1,5 @@
 use gpui::{InteractiveElement, StatefulInteractiveElement, Styled, px};
-use xgpui_luma::theme::{LumaTextScale, LumaTextStyle, LumaTypography};
+use xgpui_luma::theme::{LumaTextStyle, LumaTypography};
 
 use crate::context::with_active_look;
 use crate::tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
@@ -24,14 +24,7 @@ fn apply_text_style<S: Styled>(element: S, text_style: LumaTextStyle) -> S {
 }
 
 fn fallback_scale(size: ShadcnTextSize) -> LumaTextStyle {
-    LumaTypography::default().text.scale(match size {
-        ShadcnTextSize::Xs => LumaTextScale::Xs,
-        ShadcnTextSize::Sm => LumaTextScale::Sm,
-        ShadcnTextSize::Base => LumaTextScale::Md,
-        ShadcnTextSize::Lg => LumaTextScale::Lg,
-        ShadcnTextSize::Xl => LumaTextScale::Xl,
-        ShadcnTextSize::TwoXl => LumaTextScale::TwoXl,
-    })
+    size.native_style()
 }
 
 fn apply_typography_scale<S: Styled>(element: S, size: ShadcnTextSize) -> S {

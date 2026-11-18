@@ -352,7 +352,7 @@ fn render_nested_dock_examples(
     fill_foreground: gpui::Hsla,
 ) -> gpui::Div {
     let title_style = xgpui_luma::theme::LumaTypography::default().text.role.h4;
-    let body_style = xgpui_luma::theme::LumaTypography::default().text.scale.sm;
+    let body_style = xgpui_luma_look_shadcn::ShadcnTextSize::Sm.native_style();
 
     div()
         .size_full()
@@ -414,8 +414,8 @@ fn render_nested_example_card(
     title: &'static str,
     content: gpui::AnyElement,
 ) -> gpui::Div {
-    let title_style = xgpui_luma::theme::LumaTypography::default().text.scale.sm;
-    let caption_style = xgpui_luma::theme::LumaTypography::default().text.scale.xs;
+    let title_style = xgpui_luma_look_shadcn::ShadcnTextSize::Sm.native_style();
+    let caption_style = xgpui_luma_look_shadcn::ShadcnTextSize::Xs.native_style();
     div()
         .w(px(220.0))
         .flex()

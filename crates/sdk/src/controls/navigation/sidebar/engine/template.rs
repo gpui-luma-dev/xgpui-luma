@@ -318,8 +318,9 @@ fn sidebar_title_style(typography: &LumaTypography) -> LumaTextStyle {
     typography.text.label
 }
 
+/// Label metrics at body weight.
 fn sidebar_subtitle_style(typography: &LumaTypography) -> LumaTextStyle {
-    typography.text.scale.sm
+    LumaTextStyle { weight: typography.text.body.weight, ..typography.text.label }
 }
 
 fn render_title(title: Option<SharedString>, subtitle: Option<SharedString>, theme: &Arc<dyn SidebarTheme>) -> Div {

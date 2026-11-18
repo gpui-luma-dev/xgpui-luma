@@ -204,9 +204,7 @@ impl Render for PlotVizApp {
                             .gap(px(12.0))
                             .p_6()
                             .child(
-                                div()
-                                    .typography_style(typography.text.scale.two_xl)
-                                    .child("Luma Plot Using Native SDK Look"),
+                                div().typography_style(typography.text.title).child("Luma Plot Using Native SDK Look"),
                             )
                             .child(
                                 div()

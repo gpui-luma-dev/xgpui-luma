@@ -99,12 +99,13 @@ impl ColorVizLookExt for Look {
         InteractionColors { selected: gray(3), hovered: gray(4), pressed: gray(5) }
     }
 
+    /// The lab's text sizes in pixels; the SDK has no text size scale.
     fn typography_scale(&self, size: TextSize) -> LumaTextStyle {
-        let scale = LumaTypography::default().text.scale;
+        let text = LumaTypography::default().text;
         match size {
-            TextSize::Xs => scale.xs,
-            TextSize::Sm => scale.sm,
-            TextSize::Base => scale.md,
+            TextSize::Xs => text.caption,
+            TextSize::Sm => LumaTextStyle { weight: text.body.weight, ..text.label },
+            TextSize::Base => text.body,
         }
     }
 

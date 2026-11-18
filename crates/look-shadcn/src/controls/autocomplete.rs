@@ -67,12 +67,12 @@ pub fn autocomplete_textbox_look(
     let geometry = mode.stylesheet().common.autocomplete.resolve_geometry_for(
         size.key(),
         xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: mode.typography.text.scale.sm.size,
-            status_line_height: mode.typography.text.scale.sm.line_height,
+            status_font_size: crate::ShadcnTextSize::Sm.native_style().size,
+            status_line_height: crate::ShadcnTextSize::Sm.native_style().line_height,
             ..Default::default()
         },
     );
-    let mut status_typography = mode.typography.text.scale.sm;
+    let mut status_typography = crate::ShadcnTextSize::Sm.native_style();
     status_typography.size = geometry.status_font_size;
     status_typography.line_height = geometry.status_line_height;
     AutocompleteLook {

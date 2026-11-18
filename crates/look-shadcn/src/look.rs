@@ -391,10 +391,9 @@ impl ShadcnLook {
     }
 
     pub fn typography_scale(&self, size: ShadcnTextSize) -> LumaTextStyle {
-        let tokens = self.mode_tokens();
         find_typography_scale_rule(self.stylesheet().as_ref(), size)
             .map(resolve_typography_rule)
-            .unwrap_or_else(|| tokens.typography.text.scale(size.into()))
+            .unwrap_or_else(|| size.native_style())
     }
 
     pub fn typography_role(&self, role: ShadcnTextRole) -> LumaTextStyle {

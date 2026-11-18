@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::Hsla;
 
 use crate::controls::floating_menu::{FloatingMenuLook, default_floating_menu_look};
-use crate::theme::ThemeTokens;
+use crate::theme::{LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Debug)]
 pub struct AutocompleteLook {
@@ -47,7 +47,8 @@ pub(crate) fn default_autocomplete_look(tokens: &ThemeTokens) -> AutocompleteLoo
     let palette = tokens.stylesheet.recipes.palette("autocomplete", &tokens.palette);
     let mut look = AutocompleteLook {
         status_color: palette.state.selected.background,
-        status_typography: tokens.typography.text.scale.sm,
+        // Body weight; pixel size and line height come from autocomplete geometry.
+        status_typography: LumaTextStyle { size: 12.5, line_height: 18.0, ..tokens.typography.text.body },
         muted_text_color: palette.surface.floating.foreground,
         clear_icon_color: palette.surface.floating.foreground,
         clear_icon_hover_color: palette.form.input.foreground,
@@ -78,7 +79,7 @@ mod stylesheet_tests {
         ])
         .unwrap();
         let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        tokens.typography.text.scale.sm.weight = gpui::FontWeight::BOLD;
+        tokens.typography.text.body.weight = gpui::FontWeight::BOLD;
         let theme = DefaultAutocompleteTheme::new(tokens);
         let look = theme.resolve();
         assert_eq!(
