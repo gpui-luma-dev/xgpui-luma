@@ -17,8 +17,8 @@ pub use pack::LumaChrome;
 pub use revision::{LumaThemeSyncExt, observe_theme_revision};
 pub use registry::{ThemePartUsage, ThemeUsage};
 pub use tokens::{
-    AppPalette, BorderPalette, BorderWidthTokens, ControlMetricTokens, ControlSizes, DataPalette, FocusMetricTokens,
-    FocusPalette, FontFamilyToken, FontTokens, FormInputPalette, FormPalette, LumaElevation, LumaPalette, LumaShadow,
+    AppPalette, BorderPalette, ControlMetricTokens, ControlSizes, DataPalette, FocusMetricTokens, FocusPalette,
+    FontFamilyToken, FontTokens, FormInputPalette, FormPalette, LumaElevation, LumaPalette, LumaShadow,
     LumaShadowLayer, LumaTextRole, LumaTextStyle, LumaTheme, LumaThemeMode, LumaTypography, MetricTokens,
     NavigationPalette, StateBackgroundPalette, StatePalette, StateTonePalette, SurfacePalette, SurfaceTonePalette,
     SurfaceWithBorderPalette, TextRoleTokens, TextTokens, ThemeMode, ThemeModes, ThemeTokens, SrgbPalette,

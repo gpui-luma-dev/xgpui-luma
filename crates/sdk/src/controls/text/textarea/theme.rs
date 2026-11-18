@@ -56,7 +56,7 @@ pub trait TextAreaTheme: Send + Sync {
     fn metrics(&self) -> MetricTokens;
 
     fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
-        compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width.default)
+        compose_textarea_look(&self.resolve(state, enabled), scale, self.metrics().border_width)
     }
 }
 
@@ -138,7 +138,7 @@ impl TextAreaTheme for DefaultTextAreaTheme {
     fn resolve_look(&self, state: TextAreaState, enabled: bool, scale: &StandardBoxScale) -> TextAreaLook {
         let mut palette = self.resolve(state, enabled);
         apply_control_typography(&mut palette.typography, &self.tokens.typography);
-        let mut look = compose_textarea_look(&palette, scale, self.metrics().border_width.default);
+        let mut look = compose_textarea_look(&palette, scale, self.metrics().border_width);
         look.helper_geometry = self.tokens.stylesheet.shared_geometry();
         crate::theme::stylesheet::apply_common_geometry!(
             self.tokens.stylesheet.textarea, TextAreaGeometry, look,

@@ -63,7 +63,7 @@ impl SliderTheme for DefaultSliderTheme {
         let fallback = SliderGeometry::sdk_default(metrics, &self.tokens.stylesheet);
         let geometry = self.tokens.stylesheet.slider.resolve_geometry(&fallback);
         SliderLook {
-            thumb_border_width: self.tokens.metrics.border_width.default,
+            thumb_border_width: self.tokens.metrics.border_width,
             decoration: self.tokens.stylesheet.slider.decoration(),
             track_background: if state.disabled {
                 palette.state.disabled.background
@@ -106,8 +106,11 @@ fn slider_height(metrics: &MetricTokens, stylesheet: &crate::theme::stylesheet::
         .unwrap_or_else(|| (metrics.control_height() - SLIDER_HEIGHT_INSET_PX).max(metrics.control_height() * floor))
 }
 
+/// Minimum slider track height, also subtracted from the control gap.
+const SLIDER_TRACK_MIN_PX: f32 = 2.0;
+
 fn slider_track_height(metrics: &MetricTokens) -> f32 {
-    (metrics.gap() - metrics.border_width.strong).max(metrics.border_width.strong)
+    (metrics.gap() - SLIDER_TRACK_MIN_PX).max(SLIDER_TRACK_MIN_PX)
 }
 
 fn slider_thumb_size_with_stylesheet(
@@ -147,12 +150,11 @@ mod tests {
         let mut tokens = ThemeTokens::default();
         tokens.metrics.control.control_height = 60.0;
         tokens.metrics.control.gap = 14.0;
-        tokens.metrics.border_width.strong = 3.0;
         let theme = DefaultSliderTheme::new(tokens.clone());
         let look = theme.resolve(InteractionState::default());
 
         assert_eq!(look.height, 56.0);
-        assert_eq!(look.track_height, 11.0);
+        assert_eq!(look.track_height, 12.0);
         assert_eq!(look.thumb_size, 28.0);
     }
 }

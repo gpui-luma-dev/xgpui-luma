@@ -158,7 +158,7 @@ impl SliderTheme for SliderThemeAdapter {
         let radix_size = self.size.unwrap_or_else(|| SliderSize::from_control_size(size));
         let (geometry, _) = slider_geometry(look, radix_size);
         SliderLook {
-            thumb_border_width: look.metrics().border_width.default,
+            thumb_border_width: look.metrics().border_width,
             decoration: look.sized_stylesheet(radix_size.control_size()).slider.decoration(),
             track_background: track,
             fill_background: fill,

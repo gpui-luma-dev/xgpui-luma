@@ -32,7 +32,7 @@ pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook 
         background: menu.background,
         foreground: menu.foreground,
         border: menu.border,
-        border_width: tokens.metrics.border_width.default,
+        border_width: tokens.metrics.border_width,
         disabled_opacity: menu.disabled_opacity,
         shadow: menu.shadow,
         radius: menu.radius,

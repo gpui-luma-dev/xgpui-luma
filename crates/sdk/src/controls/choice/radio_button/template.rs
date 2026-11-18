@@ -80,7 +80,7 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
                 .justify_center()
                 .size(px(scale.indicator_size))
                 .bg(palette.indicator_background)
-                .border(px(self.theme.metrics().border_width.default))
+                .border(px(self.theme.metrics().border_width))
                 .border_color(palette.indicator_border)
                 .rounded(px(scale.indicator_size))
                 .child(render_dot(progress, scale.dot_size, palette.dot_color));
@@ -164,7 +164,7 @@ impl ButtonTemplate<RadioButtonData> for ThemedRadioButtonTemplate {
 
         // Optional paint must not add/remove a layout border when focus changes.
         control = control
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.control_border.unwrap_or_else(gpui::transparent_black));
 
         let mut root = self.apply_modifiers(control, model);

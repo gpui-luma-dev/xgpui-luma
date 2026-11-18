@@ -137,7 +137,7 @@ pub(crate) fn slider_look_with_stylesheet(
     let (geometry, _, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size);
 
     SliderLook {
-        thumb_border_width: mode.metrics.border_width.default,
+        thumb_border_width: mode.metrics.border_width,
         decoration: mode.sized_common(stylesheet, size).slider.decoration(),
         track_background: colors.track_background.hsla(),
         fill_background: colors.fill_background.hsla(),

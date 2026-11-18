@@ -1318,8 +1318,8 @@ pub fn resolve_button_metrics_with_stylesheet(
             stylesheet_metric("corner_radius", look.radius)
         },
         border_width: crate::ResolvedMetric {
-            value_px: metrics.border_width.default,
-            source: crate::MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
+            value_px: metrics.border_width,
+            source: crate::MetricSource::Scaffold { path: "MetricTokens.border_width".into() },
         },
         focus_ring_width: crate::tables::metrics::helpers::focus_ring_width_metric(metrics),
         focus_ring_offset: crate::tables::metrics::helpers::focus_ring_offset_metric(metrics),

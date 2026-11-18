@@ -99,7 +99,7 @@ impl TextFieldTheme for TextFieldThemeAdapter {
         let size = self.look.size();
         let mut palette = self.resolve(state, enabled);
         palette.typography = typography_for_size(size);
-        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width.default);
+        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width);
         let stylesheet = self.look.stylesheet_snapshot();
         look.helper_geometry = stylesheet.shared_geometry();
         let geometry = stylesheet.textfield.resolve_geometry_for(

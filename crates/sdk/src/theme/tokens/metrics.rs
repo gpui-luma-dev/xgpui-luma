@@ -6,7 +6,9 @@ pub struct MetricTokens {
     /// Default whole-control disabled opacity; family recipes may override it.
     #[serde(deserialize_with = "crate::theme::stylesheet::required_unit")]
     pub disabled_opacity: f32,
-    pub border_width: BorderWidthTokens,
+    /// Standard border width in pixels.
+    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
+    pub border_width: f32,
     pub focus: FocusMetricTokens,
     /// The SDK control scale; the only size the SDK defines.
     pub control: ControlMetricTokens,
@@ -18,17 +20,6 @@ pub struct MetricTokens {
 /// large, full) and hand SDK controls plain pixels. Families whose SDK default is
 /// fully rounded use this value.
 pub const FULL_RADIUS_PX: f32 = 999.0;
-
-#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct BorderWidthTokens {
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub hairline: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub default: f32,
-    #[serde(deserialize_with = "crate::theme::stylesheet::required_length")]
-    pub strong: f32,
-}
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -80,7 +71,7 @@ impl MetricTokens {
     pub fn native_default() -> Self {
         Self {
             disabled_opacity: 0.56,
-            border_width: BorderWidthTokens { hairline: 0.5, default: 1.0, strong: 2.0 },
+            border_width: 1.0,
             focus: FocusMetricTokens { gap: 1.0, width: 1.0, offset: 0.0 },
             control: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
         }

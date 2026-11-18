@@ -62,7 +62,7 @@ impl SelectorItemsPanelLook {
             background: menu.background,
             foreground: menu.foreground,
             border: menu.border,
-            border_width: metrics.border_width.default,
+            border_width: metrics.border_width,
             disabled_opacity: menu.disabled_opacity,
             popup_offset_y: placement.offset_y.unwrap_or_default(),
             window_margin: placement.window_margin.unwrap_or_default(),

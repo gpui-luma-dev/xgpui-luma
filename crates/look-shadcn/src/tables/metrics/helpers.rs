@@ -100,8 +100,8 @@ pub fn focus_ring_offset_metric(metrics: &xgpui_luma::theme::MetricTokens) -> Re
 
 pub fn border_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
     ResolvedMetric {
-        value_px: metrics.border_width.default,
-        source: MetricSource::Scaffold { path: "MetricTokens.border_width.default".into() },
+        value_px: metrics.border_width,
+        source: MetricSource::Scaffold { path: "MetricTokens.border_width".into() },
     }
 }
 

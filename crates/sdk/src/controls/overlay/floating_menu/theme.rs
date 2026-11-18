@@ -100,7 +100,7 @@ pub(crate) fn default_floating_menu_look(tokens: &ThemeTokens) -> FloatingMenuLo
             .window_margin
             .unwrap_or_default(),
         positive: tokens.stylesheet.recipes.palette("floating_menu", &tokens.palette).data.positive,
-        border_width: recipe.border_width.unwrap_or(metrics.border_width.default),
+        border_width: recipe.border_width.unwrap_or(metrics.border_width),
         background: palette.surface.floating.background,
         foreground: palette.surface.floating.foreground,
         border: palette.surface.floating.border,

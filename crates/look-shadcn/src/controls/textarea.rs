@@ -59,7 +59,7 @@ pub fn textarea_look(
     scale.height = geometry.min_height.value_px;
     scale.padding_x = geometry.padding_x.value_px;
     scale.padding_y = geometry.padding_y.value_px;
-    let mut look = compose_textarea_look(&palette, &scale, mode.metrics.border_width.default);
+    let mut look = compose_textarea_look(&palette, &scale, mode.metrics.border_width);
     look.helper_geometry = mode.stylesheet().common.shared_geometry();
     look.caret_width = geometry.caret_width.value_px;
     look.caret_height_extra = geometry.caret_height_extra.value_px;

@@ -74,8 +74,8 @@ impl ToolbarTheme for DefaultToolbarTheme {
         };
 
         let mut look = ToolbarLook {
-            border_width: metrics.border_width.default,
-            separator_width: metrics.border_width.default,
+            border_width: metrics.border_width,
+            separator_width: metrics.border_width,
             background,
             border,
             separator: palette.border.default,

@@ -59,7 +59,7 @@ pub trait TextFieldTheme: Send + Sync {
     fn metrics(&self) -> MetricTokens;
 
     fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
-        compose_textfield_look(&self.resolve(state, enabled), scale, self.metrics().border_width.default)
+        compose_textfield_look(&self.resolve(state, enabled), scale, self.metrics().border_width)
     }
 }
 
@@ -144,7 +144,7 @@ impl TextFieldTheme for DefaultTextFieldTheme {
     fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
         let mut palette = self.resolve(state, enabled);
         apply_control_typography(&mut palette.typography, &self.tokens.typography);
-        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width.default);
+        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width);
         look.helper_geometry = self.tokens.stylesheet.shared_geometry();
         crate::theme::stylesheet::apply_common_geometry!(
             self.tokens.stylesheet.textfield, TextFieldGeometry, look,

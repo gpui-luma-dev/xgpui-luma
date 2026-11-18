@@ -263,7 +263,7 @@ pub fn textfield_look(
     scale.padding_y = geometry.padding_y.value_px;
     scale.gap = geometry.gap.value_px;
     scale.icon_size = geometry.icon_size.value_px;
-    let mut look = compose_textfield_look(&palette, &scale, mode.metrics.border_width.default);
+    let mut look = compose_textfield_look(&palette, &scale, mode.metrics.border_width);
     look.helper_geometry = mode.stylesheet().common.shared_geometry();
     look.caret_width = geometry.caret_width.value_px;
     look.caret_height_extra = geometry.caret_height_extra.value_px;

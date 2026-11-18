@@ -285,14 +285,14 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
             }
             trigger = trigger
                 .overflow_hidden()
-                .border(px(self.theme.metrics().border_width.default))
+                .border(px(self.theme.metrics().border_width))
                 .border_color(border)
                 .h(px(look.trigger_height))
                 .child(action_face)
                 .child(
                     div()
                         .h_full()
-                        .border_l(px(self.theme.metrics().border_width.default))
+                        .border_l(px(self.theme.metrics().border_width))
                         .border_color(look.trigger_foreground)
                         .child(secondary),
                 );
@@ -341,7 +341,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
         }
 
         if !model.split {
-            trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
+            trigger = trigger.border(px(self.theme.metrics().border_width)).border_color(border);
         }
 
         if let Some(shadows) = look.trigger_shadow.take().filter(|shadows| !shadows.is_empty()) {

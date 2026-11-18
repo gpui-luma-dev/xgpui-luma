@@ -171,7 +171,7 @@ pub fn floating_menu_look_for(
             .authored_geometry_for("panel")
             .window_margin
             .unwrap_or_default(),
-        border_width: recipe.border_width.unwrap_or(metrics.border_width.default),
+        border_width: recipe.border_width.unwrap_or(metrics.border_width),
         positive: xgpui_luma::color::gpui_bridge::to_hsla(
             look.common_stylesheet().tokens.source(look.mode()).palette.data.positive,
             xgpui_luma::color::GamutMapping::CssLocalMinde,

@@ -108,7 +108,7 @@ pub fn tabs_list_look_with_stylesheet(
 
     let geometry = crate::tables::metrics::resolve_common_tabs_geometry(mode, stylesheet, size);
     TabsListLook {
-        border_width: metrics.border_width.default,
+        border_width: metrics.border_width,
         background: if enabled {
             None
         } else {

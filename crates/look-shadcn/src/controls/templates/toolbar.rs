@@ -18,8 +18,8 @@ impl ToolbarTheme for ShadcnToolbarTheme {
         let chrome = tokens.stylesheet().common.toolbar.resolve_geometry_for(
             size.key(),
             xgpui_luma::theme::stylesheet::ToolbarGeometry {
-                border_width: tokens.metrics.border_width.default,
-                separator_width: tokens.metrics.border_width.default,
+                border_width: tokens.metrics.border_width,
+                separator_width: tokens.metrics.border_width,
                 ..Default::default()
             },
         );

@@ -106,7 +106,7 @@ impl TabsTheme for DefaultTabsTheme {
         let metrics = &self.tokens.metrics;
 
         TabsListLook {
-            border_width: metrics.border_width.default,
+            border_width: metrics.border_width,
             background: (!enabled).then_some(palette.state.disabled.background),
             border: None,
             radius: metrics.radius(),

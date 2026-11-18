@@ -142,7 +142,7 @@ pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: 
             .window_margin
             .unwrap_or_default(),
         positive: mode.data_positive,
-        border_width: mode.metrics.border_width.default,
+        border_width: mode.metrics.border_width,
         background: colors.background.hsla(),
         foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),

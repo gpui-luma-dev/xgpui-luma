@@ -230,7 +230,7 @@ where
             .px(px(scale.preview_padding_x))
             .py(px(scale.preview_padding_y))
             .rounded(px(scale.radius))
-            .border(px(self.theme.metrics().border_width.default))
+            .border(px(self.theme.metrics().border_width))
             .border_color(palette.chevron_color)
             .when_some(palette.background, |preview, color| preview.bg(color))
             .text_color(palette.foreground)
@@ -358,7 +358,7 @@ impl ThemedTreeViewTemplate {
                     .absolute()
                     .inset_0()
                     .rounded(px(scale.radius))
-                    .border(px(self.theme.metrics().border_width.default))
+                    .border(px(self.theme.metrics().border_width))
                     .border_color(color),
             );
         }

@@ -352,8 +352,8 @@ fn sdk_toolbar_factory_uses_common_geometry_for_both_variants() {
 fn selector_panel_chrome_inherits_tokens_and_placement_before_independent_overrides() {
     use crate::controls::{selector_list::default_selector_items_panel_look, selection_panel::default_selection_panel_look};
     let sheet = CommonStylesheet::resolve_layers(&[r#"
-[common.tokens.metrics.border_width]
-default=3
+[common.tokens.metrics]
+border_width=3
 [common.popover.geometry]
 window_margin=13
 [common.popover.sizes.panel]

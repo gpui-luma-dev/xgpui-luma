@@ -148,7 +148,7 @@ impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
             .font_weight(look.typography.weight)
             .h(px(look.height));
 
-        control = control.border(px(self.theme.metrics().border_width.default)).border_color(border);
+        control = control.border(px(self.theme.metrics().border_width)).border_color(border);
 
         let square_icon_toggle = matches!(model.role, ButtonFamilyRole::Toggle { .. })
             && !model.round

@@ -274,7 +274,7 @@ where
                 crate::infra::icon::render_icon_source(&model.icons.trigger, look.trigger_icon, trigger_icon_size),
             ));
 
-        trigger = trigger.border(px(self.theme.metrics().border_width.default)).border_color(border);
+        trigger = trigger.border(px(self.theme.metrics().border_width)).border_color(border);
 
         if !model.state.disabled
             && !model.without_elevation

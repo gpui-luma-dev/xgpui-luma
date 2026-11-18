@@ -334,7 +334,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
 
             if model.item_dividers && index + 1 < model.items.len() {
                 item_container = item_container
-                    .border_b(px(self.theme.metrics().border_width.default))
+                    .border_b(px(self.theme.metrics().border_width))
                     .border_color(trigger_palette.border_color);
             }
 
