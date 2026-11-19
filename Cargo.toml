@@ -11,6 +11,7 @@ members = [
   "crates/look-radix",
   "crates/plot",
   "crates/l10n",
+  "crates/style",
   "apps/common",
   "apps/luma-studio",
   "apps/radix-studio",
@@ -28,6 +29,7 @@ default-members = [
   "crates/look-shadcn",
   "crates/look-radix",
   "crates/plot",
+  "crates/style",
 ]
 
 [workspace.package]
@@ -63,6 +65,8 @@ toml = "0.8"
 palette = "0.7.7"
 font-kit = { version = "0.14.1-zed", package = "zed-font-kit" }
 thiserror = "2"
+pest = "2.7"
+pest_derive = "2.7"
 
 [workspace.lints.clippy]
 style = { level = "allow", priority = -1 }

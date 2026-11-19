@@ -1,0 +1,17 @@
+[package]
+name = "xgpui-luma-style"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "The Luma style language (.lss): parse, validate, cascade, resolve and explain control styles"
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+pest.workspace = true
+pest_derive.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

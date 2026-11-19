@@ -1,0 +1,31 @@
+// SDK button (converted from #94 button/family/style.hcl; the SDK `icon` variant is dropped,
+// since variants are a look feature). Layer: sdk.
+
+/// Push button; also the base the popup menu trigger paints like in looks.
+button {
+  height      = metrics.control.control_height
+  padding_x   = metrics.control.padding_x
+  padding_y   = metrics.control.padding_y
+  gap         = metrics.control.gap
+  radius      = exact(metrics.control.radius)
+  font_size   = typography.text.label.size
+  line_height = typography.text.label.line_height
+  /// Icon size inside the button.
+  icon_size: length = typography.text.label.size
+
+  /// The button face.
+  part root {
+    background   = palette.surface.subtle.background
+    foreground   = palette.app.foreground
+    /// Secondary text, such as a shortcut hint.
+    muted_foreground: color = palette.app.muted_foreground
+    border       = palette.border.default
+    focus_border = palette.focus.ring
+    font_family  = typography.font.sans
+    shadow       = none
+    transition   = motion.default
+    :hover    { background = palette.state.hover.background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
+  }
+}
