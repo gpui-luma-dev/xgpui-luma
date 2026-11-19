@@ -170,6 +170,8 @@ struct LookState {
     sized_stylesheets: RwLock<Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]>>,
     /// Bumped by look setters; polling does not schedule GPUI redraws.
     revision: RwLock<u64>,
+    /// The `.lss` theme last bound, keyed by revision and mode (see [`Look::style_theme`]).
+    style_theme: crate::style::ThemeCache,
 }
 
 impl Look {
@@ -206,6 +208,7 @@ impl Look {
                 sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
                 common_stylesheet: RwLock::new(common),
                 revision: RwLock::new(0),
+                style_theme: Default::default(),
             }),
         }
     }
@@ -521,6 +524,12 @@ impl Look {
         if let Ok(mut revision) = self.state.revision.write() {
             *revision = revision.wrapping_add(1);
         }
+    }
+
+    /// The look's scales bound to the Radix `.lss` files in the current mode. Cached: rebinds only after
+    /// a setter bumped the revision or the mode changed.
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.state.style_theme.get(self)
     }
 
     pub fn revision(&self) -> u64 {

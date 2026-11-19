@@ -1,8 +1,10 @@
 //! The checkbox template driven by the Luma style language (issue #285).
 //!
-//! It reads every value from a [`Theme`] (the SDK's `.lss` files, plus a look's when it has migrated)
-//! and builds the same element tree as [`ThemedCheckboxTemplate`](super::ThemedCheckboxTemplate),
-//! which looks keep using until they move to `.lss`.
+//! It reads every value from a [`Theme`] (the SDK's `.lss` files, plus a look's) and builds the same
+//! element tree as [`ThemedCheckboxTemplate`](super::ThemedCheckboxTemplate). A look whose mode or
+//! palette changes while running passes a [`ThemeProvider`], asked on every render.
+
+use std::sync::Arc;
 
 use gpui::{AnyElement, App, Div, Hsla, Stateful, Window, div, hsla, prelude::*, px};
 use xgpui_luma_style::{
@@ -30,7 +32,6 @@ struct Handles {
     disabled: StateId,
     invalid: StateId,
     checked: StateId,
-    variant: AttrId,
     indicator_size: Prop<f32>,
     indicator_radius: Prop<f32>,
     glyph_size: Prop<f32>,
@@ -60,7 +61,6 @@ impl Handles {
             disabled: state("disabled"),
             invalid: state("invalid"),
             checked: state("checked"),
-            variant: config.attribute("variant").expect("SDK attribute"),
             indicator_size: prop("indicator_size"),
             indicator_radius: prop("indicator_radius"),
             glyph_size: prop("glyph_size"),
@@ -79,19 +79,48 @@ pub fn default_template() -> std::sync::Arc<dyn ButtonTemplate<CheckboxData>> {
     TEMPLATE.get_or_init(|| std::sync::Arc::new(StyledCheckboxTemplate::sdk())).clone()
 }
 
+/// The current theme of a look whose mode or palette can change. Called on every render, so it should
+/// return a cached [`Theme`] (cloning one is cheap) and rebind only when the look changed.
+pub type ThemeProvider = Arc<dyn Fn() -> Theme + Send + Sync>;
+
+enum ThemeSource {
+    Fixed(Theme),
+    Live(ThemeProvider),
+}
+
 /// A checkbox template whose values come from `.lss` files.
 pub struct StyledCheckboxTemplate {
-    theme: Theme,
+    source: ThemeSource,
     handles: Handles,
-    variant: Option<AttrValue>,
+    attrs: Vec<(AttrId, AttrValue)>,
+    states: Vec<StateId>,
     overrides: Overrides,
     modifiers: Vec<Modifier<ButtonRenderModel<CheckboxData>>>,
 }
 
 impl StyledCheckboxTemplate {
+    /// A template that always uses `theme`.
     pub fn new(theme: Theme) -> Self {
         let handles = Handles::new(&theme);
-        Self { theme, handles, variant: None, overrides: Overrides::new(), modifiers: Vec::new() }
+        Self::with_source(ThemeSource::Fixed(theme), handles)
+    }
+
+    /// A template that asks `provider` for the theme on every render. Every theme it returns must share
+    /// the first one's configuration (state and attribute handles are looked up once).
+    pub fn live(provider: ThemeProvider) -> Self {
+        let handles = Handles::new(&provider());
+        Self::with_source(ThemeSource::Live(provider), handles)
+    }
+
+    fn with_source(source: ThemeSource, handles: Handles) -> Self {
+        Self {
+            source,
+            handles,
+            attrs: Vec::new(),
+            states: Vec::new(),
+            overrides: Overrides::new(),
+            modifiers: Vec::new(),
+        }
     }
 
     /// The SDK alone.
@@ -99,9 +128,37 @@ impl StyledCheckboxTemplate {
         Self::new(crate::style::default_theme())
     }
 
-    /// A variant of a look, e.g. `"soft"`.
-    pub fn variant(mut self, variant: &str) -> Self {
-        self.variant = Some(AttrValue::named(variant));
+    fn theme(&self) -> Theme {
+        match &self.source {
+            ThemeSource::Fixed(theme) => theme.clone(),
+            ThemeSource::Live(provider) => provider(),
+        }
+    }
+
+    /// A variant of a look, e.g. `"soft"`: shorthand for `attr("variant", variant)`.
+    pub fn variant(self, variant: &str) -> Self {
+        self.attr("variant", variant)
+    }
+
+    /// An attribute value for every instance, e.g. `attr("size", "sm")` or a look's own `attr("tone",
+    /// "gray")`. An attribute the theme's configuration does not declare is ignored.
+    pub fn attr(mut self, name: &str, value: &str) -> Self {
+        if let Some(attr) = self.theme().stylesheet().config().attribute(name) {
+            self.attrs.retain(|(a, _)| *a != attr);
+            self.attrs.push((attr, AttrValue::named(value)));
+        }
+        self
+    }
+
+    /// A state that is always on or off for this template, e.g. a look's `state("high_contrast", true)`.
+    /// A state the theme's configuration does not declare is ignored.
+    pub fn state(mut self, name: &str, on: bool) -> Self {
+        if let Some(state) = self.theme().stylesheet().config().state(name) {
+            self.states.retain(|s| *s != state);
+            if on {
+                self.states.push(state);
+            }
+        }
         self
     }
 
@@ -114,19 +171,16 @@ impl StyledCheckboxTemplate {
     fn key(&self, model: &ButtonRenderModel<CheckboxData>, checked: bool, scale: f32) -> StyleKey {
         let h = &self.handles;
         let s = model.state;
-        StyleKey::new(h.control)
+        let key = StyleKey::new(h.control)
             .state_if(h.hover, s.hovered)
             .state_if(h.pressed, s.pressed)
             .state_if(h.focused, s.focused)
             .state_if(h.disabled, s.disabled)
             .state_if(h.invalid, s.invalid)
             .state_if(h.checked, checked)
-            .attr_opt(h.variant, self.variant)
-            .scale(scale)
-    }
-
-    fn resolve(&self, key: &StyleKey) -> std::sync::Arc<Resolved> {
-        self.theme.resolve_with(key, &self.overrides)
+            .scale(scale);
+        let key = self.states.iter().fold(key, |key, state| key.state(*state));
+        self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value))
     }
 }
 
@@ -150,8 +204,9 @@ impl ButtonTemplate<CheckboxData> for StyledCheckboxTemplate {
         let progress = model.data.progress.clamp(0.0, 1.0);
         let checked = model.data.checked;
         let scale = window.scale_factor();
-        let off = self.resolve(&self.key(model, false, scale));
-        let on = self.resolve(&self.key(model, true, scale));
+        let theme = self.theme();
+        let off = theme.resolve_with(&self.key(model, false, scale), &self.overrides);
+        let on = theme.resolve_with(&self.key(model, true, scale), &self.overrides);
         // Colors animate between unchecked and checked; everything else uses the settled state.
         let animated = Resolved::lerp(&off, &on, progress);
         let settled = if checked { on } else { off };

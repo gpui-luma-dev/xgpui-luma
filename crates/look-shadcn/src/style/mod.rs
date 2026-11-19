@@ -60,6 +60,31 @@ pub fn theme(look: &ShadcnLook) -> Result<Theme, Diagnostics> {
     Theme::bind(&stylesheet(), Arc::new(ShadcnTokens::new(look)), mode_name(look.mode()))
 }
 
+/// The last bound theme of a look. Keyed by the identity of the mode tokens it was bound to (the cached
+/// theme keeps them alive, so the key cannot be reused) and the mode.
+#[derive(Default)]
+pub(crate) struct ThemeCache(std::sync::Mutex<Option<(usize, ThemeMode, Theme)>>);
+
+impl ThemeCache {
+    pub(crate) fn get(&self, look: &ShadcnLook) -> Theme {
+        let mode = look.mode();
+        let tokens = look.mode_tokens_for(mode);
+        let id = Arc::as_ptr(&tokens) as usize;
+        let mut cached = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((cached_id, cached_mode, theme)) = cached.as_ref()
+            && *cached_id == id
+            && *cached_mode == mode
+        {
+            return theme.clone();
+        }
+        // The look's files are compiled in and bind for every catalog the tests cover; should a catalog
+        // still fail to bind, the SDK alone keeps the control drawable.
+        let theme = self::theme(look).unwrap_or_else(|_| xgpui_luma::style::default_theme());
+        *cached = Some((id, mode, theme.clone()));
+        theme
+    }
+}
+
 /// Native Shadcn tokens: `css.<name>` (the CSS custom property `--<name>`, `_` for `-`) and look
 /// functions over the Shadcn resolver. Holds both modes; the bound mode picks one.
 pub struct ShadcnTokens {

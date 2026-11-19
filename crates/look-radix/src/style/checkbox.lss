@@ -1,23 +1,23 @@
 // Radix checkbox. Layer: look, over the SDK checkbox. Replaces CheckboxThemeAdapter, checkbox_scale_for
 // and the Radix checkbox geometry; `style::tests::checkbox_matches_the_native_look` checks it for every
 // variant, size, radius, tone, high contrast, state and mode.
-// Geometry matches `@radix-ui/themes` BaseCheckbox at `--scaling: 1`. Lengths are `exact`: native Radix
-// geometry is not snapped to device pixels.
+// Geometry matches `@radix-ui/themes` BaseCheckbox at `--scaling: 1`, snapped to device pixels like the
+// SDK (the native Radix checkbox was not snapped).
 // The base is the surface variant at size 2. Colors own their property (`:=`) against the SDK; press
 // keeps the resting fill, only hover changes the checked fill.
 
 checkbox {
-  gap              = exact(8)
-  indicator_size   = exact(16)   // --checkbox-size
-  glyph_size       = exact(10)   // --checkbox-indicator-size
+  gap              = 8
+  indicator_size   = 16   // --checkbox-size
+  glyph_size       = 10   // --checkbox-indicator-size
   // Never a pill: radius full uses the large factor.
-  indicator_radius = exact(radix.radius_1 * radix.checkbox_radius_scale * radix.radius_factor)
-  height           = exact(indicator_size)
-  radius           = exact(indicator_radius)
+  indicator_radius = radix.radius_1 * radix.checkbox_radius_scale * radix.radius_factor
+  height           = indicator_size
+  radius           = indicator_radius
   label_baseline_shift = 0
 
-  size 1 { indicator_size = exact(14)  glyph_size = exact(9) }
-  size 3 { indicator_size = exact(20)  glyph_size = exact(12) }
+  size 1 { indicator_size = 14  glyph_size = 9 }
+  size 3 { indicator_size = 20  glyph_size = 12 }
 
   part root { focus_border = radix.role.focus }
 

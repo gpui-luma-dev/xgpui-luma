@@ -2,7 +2,7 @@
 use gpui::{IntoElement, ParentElement};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::checkbox::{CheckboxData, ThemedCheckboxTemplate};
+use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::radio_button::{RadioButtonData, ThemedRadioButtonTemplate};
 use xgpui_luma::controls::switch::{SwitchData, ThemedSwitchTemplate};
 use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
@@ -48,7 +48,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
     for size in [RadixSize::One, RadixSize::Two, RadixSize::Three] {
         for variant in [CheckboxVariant::Classic, CheckboxVariant::Surface, CheckboxVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedCheckboxTemplate::new(checkbox_theme(&look.with_size(size), variant));
+            let template = checkbox_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(

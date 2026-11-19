@@ -496,9 +496,7 @@ mod tests {
                 ShadcnButtonStyle::Ghost,
                 ShadcnButtonStyle::ContentOnly,
             ] {
-                let template = xgpui_luma::controls::checkbox::ThemedCheckboxTemplate::new(
-                    super::super::templates::checkbox_theme_with_style(look.clone(), style),
-                );
+                let template = super::super::templates::checkbox_template(look.clone(), style);
                 assert_stable_layout(move |state, selected, window, cx| {
                     template
                         .render(

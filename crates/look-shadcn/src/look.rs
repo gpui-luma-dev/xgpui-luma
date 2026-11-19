@@ -67,6 +67,8 @@ struct ShadcnLookState {
     motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     snapshot: RwLock<Arc<ShadcnLookSnapshot>>,
     mode: AtomicU8,
+    /// The `.lss` theme last bound, keyed by its mode tokens and mode (see [`ShadcnLook::style_theme`]).
+    style_theme: crate::style::ThemeCache,
 }
 
 struct ShadcnLookSnapshot {
@@ -199,6 +201,7 @@ impl ShadcnLook {
                     crate::stylesheet::embedded_stylesheet().clone(),
                 )?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })
@@ -215,6 +218,7 @@ impl ShadcnLook {
                 motion: RwLock::new(Default::default()),
                 snapshot: RwLock::new(Arc::new(ShadcnLookSnapshot::new(catalog, stylesheet)?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })
@@ -293,6 +297,12 @@ impl ShadcnLook {
             ThemeMode::Light => Arc::clone(&snapshot.light),
             ThemeMode::Dark => Arc::clone(&snapshot.dark),
         }
+    }
+
+    /// The look's catalog bound to the Shadcn `.lss` files in the current mode. Cached: rebinds only
+    /// after the mode or the catalog changed.
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.state.style_theme.get(self)
     }
 
     pub fn catalog(&self) -> Arc<CssTokenCatalog> {
@@ -464,6 +474,7 @@ impl ShadcnLook {
                 motion: RwLock::new(lock::read(&self.state.motion).clone()),
                 snapshot: RwLock::new(Arc::new(next)),
                 mode: AtomicU8::new(self.state.mode.load(Ordering::Relaxed)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })

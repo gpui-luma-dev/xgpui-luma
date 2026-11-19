@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, point, px};
 use xgpui_luma::controls::button::ButtonTemplate;
-use xgpui_luma::controls::checkbox::{CheckboxPalette, CheckboxScale, CheckboxTheme, ThemedCheckboxTemplate};
+use xgpui_luma::controls::checkbox::{CheckboxPalette, CheckboxScale, CheckboxTheme, StyledCheckboxTemplate};
 use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
 
 use crate::button::Paint;
@@ -295,14 +295,22 @@ pub fn checkbox_theme_for(
     Arc::new(CheckboxThemeAdapter { look: look.clone(), variant, paint, geometry: Some((size, radius)) })
 }
 
+/// The Radix checkbox drawn from `.lss` (`style/checkbox.lss`) at the look's size and medium radius,
+/// following the look's mode and palettes.
 pub fn checkbox_template(
     look: &Look,
     variant: CheckboxVariant,
     paint: Paint,
 ) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::checkbox::CheckboxData>> {
-    Arc::new(ThemedCheckboxTemplate::new(checkbox_theme_with(look, variant, paint)))
+    let size = match look.size() {
+        crate::RadixSize::One => CheckboxSize::One,
+        crate::RadixSize::Two => CheckboxSize::Two,
+        crate::RadixSize::Three => CheckboxSize::Three,
+    };
+    checkbox_template_for(look, variant, paint, size, Radius::Medium)
 }
 
+/// The `.lss` Radix checkbox for a size × radius style-guide cell.
 pub fn checkbox_template_for(
     look: &Look,
     variant: CheckboxVariant,
@@ -310,7 +318,31 @@ pub fn checkbox_template_for(
     size: CheckboxSize,
     radius: Radius,
 ) -> Arc<dyn ButtonTemplate<xgpui_luma::controls::checkbox::CheckboxData>> {
-    Arc::new(ThemedCheckboxTemplate::new(checkbox_theme_for(look, variant, paint, size, radius)))
+    let source = look.clone();
+    let mut template = StyledCheckboxTemplate::live(Arc::new(move || source.style_theme()))
+        .state("high_contrast", paint.high_contrast);
+    match variant {
+        CheckboxVariant::Surface => {}
+        CheckboxVariant::Classic => template = template.variant("classic"),
+        CheckboxVariant::Soft => template = template.variant("soft"),
+    }
+    if size != CheckboxSize::Two {
+        template = template.attr("size", size.as_str());
+    }
+    if paint.tone == Tone::Gray {
+        template = template.attr("tone", "gray");
+    }
+    let radius = match radius {
+        Radius::None => Some("none"),
+        Radius::Small => Some("small"),
+        Radius::Medium => None,
+        Radius::Large => Some("large"),
+        Radius::Full => Some("full"),
+    };
+    if let Some(radius) = radius {
+        template = template.attr("radius", radius);
+    }
+    Arc::new(template)
 }
 
 #[cfg(test)]

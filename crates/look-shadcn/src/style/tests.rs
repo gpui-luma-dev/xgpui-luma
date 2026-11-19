@@ -203,3 +203,22 @@ fn checkbox_matches_the_native_look() {
         }
     }
 }
+
+#[test]
+fn style_theme_follows_the_mode() {
+    let label = |look: &ShadcnLook| {
+        look.style_theme()
+            .resolve(&StyleKey::new(ControlId::new("checkbox")))
+            .part(PartId::new("label"))
+            .foreground()
+            .map(Hsla::from)
+            .expect("label color")
+    };
+    let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("catalog");
+    let light = label(&look);
+    look.set_mode(ThemeMode::Dark);
+    let dark = label(&look);
+    assert!(!close(light, dark), "the cached theme follows the mode");
+    look.set_mode(ThemeMode::Light);
+    assert!(close(label(&look), light));
+}

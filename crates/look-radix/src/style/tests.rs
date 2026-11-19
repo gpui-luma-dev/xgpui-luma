@@ -163,7 +163,10 @@ fn checkbox_matches_the_native_look() {
                                             "{case}: shadow {shadows:?} != {want:?}"
                                         );
 
+                                        // Native Radix geometry is unsnapped; the `.lss` checkbox snaps lengths
+                                        // to device pixels like the SDK.
                                         let metrics = native.scale(scale);
+                                        let snap = |v: f32| xgpui_luma::theme::snap_to_pixel(v, scale);
                                         let root = resolved.root();
                                         let number = |name: &str| root.value(name).and_then(Value::as_number);
                                         let near = |got: Option<f32>, want: f32, what: &str| {
@@ -174,13 +177,13 @@ fn checkbox_matches_the_native_look() {
                                         };
                                         near(
                                             root.get(length("indicator_size")),
-                                            metrics.indicator_size,
+                                            snap(metrics.indicator_size),
                                             "indicator_size",
                                         );
-                                        near(root.get(length("glyph_size")), metrics.glyph_size, "glyph_size");
+                                        near(root.get(length("glyph_size")), snap(metrics.glyph_size), "glyph_size");
                                         near(
                                             root.get(length("indicator_radius")),
-                                            metrics.indicator_radius,
+                                            snap(metrics.indicator_radius),
                                             "indicator_radius",
                                         );
                                         near(
@@ -188,9 +191,9 @@ fn checkbox_matches_the_native_look() {
                                             metrics.label_baseline_shift,
                                             "baseline",
                                         );
-                                        near(root.height(), metrics.height, "height");
-                                        near(root.gap(), metrics.gap, "gap");
-                                        near(root.radius(), metrics.control_radius, "control radius");
+                                        near(root.height(), snap(metrics.height), "height");
+                                        near(root.gap(), snap(metrics.gap), "gap");
+                                        near(root.radius(), snap(metrics.control_radius), "control radius");
                                         near(number("padding_x"), metrics.control_padding_x, "padding x");
                                         near(number("padding_y"), metrics.control_padding_y, "padding y");
                                         near(number("disabled_opacity"), metrics.disabled_opacity, "disabled opacity");
@@ -219,4 +222,24 @@ fn checkbox_matches_the_native_look() {
             }
         }
     }
+}
+
+#[test]
+fn style_theme_follows_the_mode_and_palettes() {
+    let checkbox = ControlId::new("checkbox");
+    let checked = config().state("checked").expect("checked");
+    fn color(look: &Look, key: StyleKey, part: &'static str) -> Hsla {
+        let resolved = look.style_theme().resolve(&key);
+        let part = resolved.part(PartId::new(part));
+        part.background().or(part.foreground()).map(Hsla::from).expect("color")
+    }
+    let look = Look::built_in().fork();
+    let light = color(&look, StyleKey::new(checkbox), "label");
+    look.set_mode(ThemeMode::Dark);
+    let dark = color(&look, StyleKey::new(checkbox), "label");
+    assert!(!close(light, dark), "the cached theme follows the mode");
+    assert!(close(dark, look.resolve_role(SemanticRole::Foreground).hsla()));
+    look.set_palettes(Accent::Crimson, Gray::Auto);
+    let fill = color(&look, StyleKey::new(checkbox).state(checked), "indicator");
+    assert!(close(fill, look.resolve_role(SemanticRole::Primary).hsla()), "and the palettes");
 }

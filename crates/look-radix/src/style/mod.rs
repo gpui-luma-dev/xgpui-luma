@@ -75,6 +75,28 @@ pub fn theme(look: &Look) -> Result<Theme, Diagnostics> {
     Theme::bind(&stylesheet(), Arc::new(RadixTokens::new(look)), mode_name(look.mode()))
 }
 
+/// The last bound theme of a look, keyed by the look's revision (bumped by every setter) and mode.
+#[derive(Default)]
+pub(crate) struct ThemeCache(std::sync::Mutex<Option<(u64, ThemeMode, Theme)>>);
+
+impl ThemeCache {
+    pub(crate) fn get(&self, look: &Look) -> Theme {
+        let (revision, mode) = (look.revision(), look.mode());
+        let mut cached = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((cached_revision, cached_mode, theme)) = cached.as_ref()
+            && *cached_revision == revision
+            && *cached_mode == mode
+        {
+            return theme.clone();
+        }
+        // The look's files are compiled in and bind for every look the tests cover; should one still fail
+        // to bind, the SDK alone keeps the control drawable.
+        let theme = self::theme(look).unwrap_or_else(|_| xgpui_luma::style::default_theme());
+        *cached = Some((revision, mode, theme.clone()));
+        theme
+    }
+}
+
 struct ModeTokens {
     scales: ModeScales,
     /// The color on solid accent faces (custom contrast, or dark labels for bright accents).
