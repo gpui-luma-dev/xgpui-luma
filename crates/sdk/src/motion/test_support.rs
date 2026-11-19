@@ -13,7 +13,6 @@ macro_rules! test_look_motion_contract {
             let look = $make_look;
             look.motion(|m| {
                 let transition = Transition::timed(Duration::from_secs(1), Easing::Linear);
-                m.radio.state = transition.clone();
                 m.toggle.state = transition.clone();
                 m.slider.thumb = transition.clone();
                 m.progress.value = transition.clone();
@@ -35,7 +34,6 @@ macro_rules! test_look_motion_contract {
                             values.push(sample(&entity.read(cx).motion_profile().$role));
                         }};
                     }
-                    check!($api::Radio::new("radio"), state);
                     check!($api::Toggle::new("toggle"), state);
                     check!($api::Slider::new("slider"), thumb);
                     check!($api::Progress::new("progress"), value);
@@ -48,6 +46,10 @@ macro_rules! test_look_motion_contract {
                     let checkbox = $api::Checkbox::new("checkbox").look(&look).spawn(cx);
                     let lss = Transition::timed(Duration::from_millis(200), Easing::OutCubic);
                     assert_eq!(sample(&checkbox.read(cx).current_transition()), sample(&lss));
+                    let radio = $api::Radio::new("radio").look(&look).spawn(cx);
+                    assert_eq!(sample(&radio.read(cx).current_transition()), sample(&lss));
+                    let edited_radio = $api::Radio::new("edited-radio").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited_radio.read(cx).current_transition()), 1.0);
                     let edited =
                         $api::Checkbox::new("edited").transition(Transition::instant()).look(&look).spawn(cx);
                     assert_eq!(sample(&edited.read(cx).current_transition()), 1.0);

@@ -52,13 +52,13 @@ where
 /// ```rust
 /// # use xgpui_luma::define_control_template;
 /// # use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-/// # use xgpui_luma::controls::radio_button::{RadioButtonData, RadioButtonTheme, default_radio_button_theme};
+/// # use xgpui_luma::controls::switch::{SwitchData, SwitchTheme, default_switch_theme};
 /// define_control_template!(
-///     ThemedRadioButtonTemplate,
-///     dyn RadioButtonTheme,
-///     ButtonRenderModel<RadioButtonData>,
-///     ButtonTemplate<RadioButtonData>,
-///     default_radio_button_theme()
+///     ThemedSwitchTemplate,
+///     dyn SwitchTheme,
+///     ButtonRenderModel<SwitchData>,
+///     ButtonTemplate<SwitchData>,
+///     default_switch_theme()
 /// );
 /// ```
 #[macro_export]

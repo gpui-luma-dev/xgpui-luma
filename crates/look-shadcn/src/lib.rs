@@ -78,9 +78,6 @@ pub use usage::all_shadcn_theme_usages;
 mod button_stylesheet_tests;
 
 #[cfg(test)]
-mod choice_stylesheet_tests;
-
-#[cfg(test)]
 mod remaining_stylesheet_tests;
 #[cfg(test)]
 mod radius_catalog_tests;

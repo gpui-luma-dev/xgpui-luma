@@ -20,12 +20,12 @@ pub use resolve::{
     resolve_listbox_list_color_rule, resolve_listbox_row_color_rule, resolve_sidebar_branch_color_rule,
     resolve_sidebar_container_color_rule, resolve_sidebar_item_color_rule, resolve_sidebar_metrics,
     resolve_sidebar_section_color_rule, resolve_autocomplete_chrome_color_rule, resolve_progress_color_rule,
-    resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics, resolve_radio_color_rule,
-    resolve_resizable_panels_color_rule, resolve_scrollbar_color_rule, resolve_scrollbar_metrics,
-    resolve_slider_color_rule, resolve_slider_metrics, resolve_split_view_color_rule, resolve_stylesheet_shadow_token,
-    resolve_layered_elevation_shadow, resolve_switch_color_rule, resolve_switch_metrics, resolve_stylesheet_metric,
-    resolve_tabs_item_color_rule, resolve_tabs_list_color_rule, resolve_textfield_color_rule,
-    resolve_tree_view_row_color_rule, resolve_typography_rule, ResolvedFields,
+    resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics, resolve_resizable_panels_color_rule,
+    resolve_scrollbar_color_rule, resolve_scrollbar_metrics, resolve_slider_color_rule, resolve_slider_metrics,
+    resolve_split_view_color_rule, resolve_stylesheet_shadow_token, resolve_layered_elevation_shadow,
+    resolve_switch_color_rule, resolve_switch_metrics, resolve_stylesheet_metric, resolve_tabs_item_color_rule,
+    resolve_tabs_list_color_rule, resolve_textfield_color_rule, resolve_tree_view_row_color_rule,
+    resolve_typography_rule, ResolvedFields,
 };
 
 use std::sync::OnceLock;
@@ -85,8 +85,6 @@ mod tests {
         assert!(!stylesheet.button.color_rules.is_empty());
         assert_eq!(stylesheet.badge.color_rules.len(), 5);
         assert_eq!(stylesheet.toggle.elevation_rules.len(), 2);
-        assert_eq!(stylesheet.radio.color_rules.len(), 5);
-        assert_eq!(stylesheet.radio.elevation_rules.len(), 2);
         assert_eq!(stylesheet.switch.color_rules.len(), 3);
         assert_eq!(stylesheet.switch.elevation_rules.len(), 2);
         assert_eq!(stylesheet.slider.color_rules.len(), 8);
@@ -129,13 +127,12 @@ mod tests {
     #[test]
     fn embedded_color_rule_metadata_covers_all_controls() {
         let sections = embedded_color_rule_metadata();
-        assert_eq!(sections.len(), 27);
+        assert_eq!(sections.len(), 26);
         assert!(sections.iter().all(|section| !section.rules.is_empty()));
         assert_eq!(
             sections.iter().map(|section| section.rules.len()).sum::<usize>(),
             embedded_stylesheet().button.color_rules.len()
                 + embedded_stylesheet().badge.color_rules.len()
-                + embedded_stylesheet().radio.color_rules.len()
                 + embedded_stylesheet().switch.color_rules.len()
                 + embedded_stylesheet().slider.color_rules.len()
                 + embedded_stylesheet().scrollbar.color_rules.len()

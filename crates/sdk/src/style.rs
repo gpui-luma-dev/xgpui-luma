@@ -36,18 +36,35 @@ pub fn config() -> Arc<Config> {
 }
 
 macro_rules! sdk_sources {
-    ($($path:literal),+ $(,)?) => {
-        /// The SDK's style files, for the `sdk` layer.
-        pub fn sources() -> Vec<Source> {
+    (shared: [$($path:literal),+ $(,)?], light: $light:literal, dark: $dark:literal $(,)?) => {
+        fn shared_sources() -> Vec<Source> {
             vec![$(Source::new(concat!("sdk/", $path), include_str!($path))),+]
         }
 
+        /// The SDK's style files, for the `sdk` layer: the shared files and the light palette.
+        pub fn sources() -> Vec<Source> {
+            let mut sources = shared_sources();
+            sources.push(Source::new(concat!("sdk/", $light), include_str!($light)));
+            sources
+        }
+
+        /// The SDK's files with the dark palette instead of the light one.
+        pub fn dark_sources() -> Vec<Source> {
+            let mut sources = shared_sources();
+            sources.push(Source::new(concat!("sdk/", $dark), include_str!($dark)));
+            sources
+        }
+
         #[cfg(test)]
-        const SOURCE_PATHS: &[&str] = &[$($path),+];
+        const SOURCE_PATHS: &[&str] = &[$($path,)+ $light, $dark];
     };
 }
 
-sdk_sources!["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss"];
+sdk_sources! {
+    shared: ["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss"],
+    light: "theme/palette.lss",
+    dark: "theme/palette-dark.lss",
+}
 
 /// The SDK's files compiled on their own.
 pub fn stylesheet() -> Stylesheet {
@@ -58,6 +75,30 @@ pub fn stylesheet() -> Stylesheet {
                 .layer("sdk", sources())
                 .compile()
                 .unwrap_or_else(|d| panic!("the SDK style files compile:\n{d}"))
+        })
+        .clone()
+}
+
+/// The SDK's files with the dark palette, compiled on their own.
+pub fn dark_stylesheet() -> Stylesheet {
+    static SHEET: OnceLock<Stylesheet> = OnceLock::new();
+    SHEET
+        .get_or_init(|| {
+            Stylesheet::builder(config())
+                .layer("sdk", dark_sources())
+                .compile()
+                .unwrap_or_else(|d| panic!("the SDK dark style files compile:\n{d}"))
+        })
+        .clone()
+}
+
+/// The SDK alone with its dark palette (another SDK theme, not a mode).
+pub fn dark_theme() -> Theme {
+    static THEME: OnceLock<Theme> = OnceLock::new();
+    THEME
+        .get_or_init(|| {
+            Theme::bind(&dark_stylesheet(), Arc::new(NoNativeTokens), "")
+                .unwrap_or_else(|d| panic!("the SDK dark theme binds:\n{d}"))
         })
         .clone()
 }
@@ -133,17 +174,21 @@ mod tests {
 
     #[test]
     fn every_axis_combination_resolves_without_problems() {
-        let theme = default_theme();
-        for control in theme.stylesheet().controls() {
-            let problems = theme.check(control);
-            assert!(problems.is_empty(), "{control}: {problems}");
+        for theme in [default_theme(), dark_theme()] {
+            for control in theme.stylesheet().controls() {
+                let problems = theme.check(control);
+                assert!(problems.is_empty(), "{control}: {problems}");
+            }
         }
     }
 
     #[test]
-    fn tokens_match_theme_tokens_light() {
-        let native = ThemeTokens::light();
-        let theme = default_theme();
+    fn palettes_match_theme_tokens_light_and_dark() {
+        tokens_match(ThemeTokens::light(), default_theme());
+        tokens_match(ThemeTokens::dark(), dark_theme());
+    }
+
+    fn tokens_match(native: ThemeTokens, theme: Theme) {
         let values: std::collections::HashMap<String, Value> = {
             // Read each token by resolving it through a throwaway file: a property per token.
             let p = &native.palette;
@@ -173,8 +218,23 @@ mod tests {
                 ("palette.border.default", p.border.default),
                 ("palette.border.strong", p.border.strong),
             ];
-            let decls: String =
-                colors.iter().enumerate().map(|(i, (path, _))| format!("  c{i}: color = {path}\n")).collect();
+            let e = &native.elevation;
+            let shadows = [
+                ("elevation.control", &e.control),
+                ("elevation.thumb", &e.thumb),
+                ("elevation.menu", &e.menu),
+                ("elevation.popover", &e.popover),
+                ("elevation.panel", &e.panel),
+                ("elevation.dialog", &e.dialog),
+                ("elevation.overlay_window", &e.overlay_window),
+                ("elevation.drag_preview", &e.drag_preview),
+            ];
+            let decls: String = colors
+                .iter()
+                .enumerate()
+                .map(|(i, (path, _))| format!("  c{i}: color = {path}\n"))
+                .chain(shadows.iter().enumerate().map(|(i, (path, _))| format!("  s{i}: shadow = {path}\n")))
+                .collect();
             let sheet = theme
                 .stylesheet()
                 .with_source("sdk", Source::new("probe.lss", format!("probe {{\n{decls}}}")))
@@ -184,6 +244,21 @@ mod tests {
             for (i, (path, expected)) in colors.iter().enumerate() {
                 let got = resolved.root().value(&format!("c{i}")).and_then(Value::as_color).map(Hsla::from);
                 assert!(got.is_some_and(|g| close(g, *expected)), "{path}: {got:?} != {expected:?}");
+            }
+            for (i, (path, expected)) in shadows.iter().enumerate() {
+                let got = resolved.root().value(&format!("s{i}")).cloned();
+                let Some(Value::Shadow(layers)) = got else {
+                    panic!("{path}: {got:?}")
+                };
+                assert_eq!(layers.len(), expected.layers.len(), "{path}");
+                for (g, w) in layers.iter().zip(&expected.layers) {
+                    assert!(close(Hsla::from(g.color), w.color), "{path}: {g:?} != {w:?}");
+                    assert_eq!(
+                        (g.x, g.y, g.blur, g.spread, g.inset),
+                        (w.offset_x, w.offset_y, w.blur, w.spread, w.inset),
+                        "{path}"
+                    );
+                }
             }
             std::collections::HashMap::new()
         };
@@ -216,6 +291,48 @@ mod tests {
         assert_eq!(length("glyph_size"), Some(12.0));
         assert_eq!(length("indicator_radius"), Some(4.0));
         assert_eq!((root.height(), root.gap()), (Some(36.0), Some(8.0)));
+    }
+
+    /// The SDK radio's `.lss` values in both SDK themes (they matched `DefaultRadioButtonTheme` when it
+    /// was deleted).
+    #[test]
+    fn radio_values_follow_the_sdk_tokens() {
+        for (tokens, theme) in [(ThemeTokens::light(), default_theme()), (ThemeTokens::dark(), dark_theme())] {
+            let palette = tokens.palette;
+            let config = config();
+            let state = |name: &str| config.state(name).expect("state");
+            let resolve = |states: &[&str]| {
+                theme.resolve(&states.iter().fold(StyleKey::new(ControlId::new("radio")), |key, s| key.state(state(s))))
+            };
+            let color = |states: &[&str], part: &'static str, border: bool| {
+                let resolved = resolve(states);
+                let part = resolved.part(PartId::new(part));
+                if border {
+                    part.border()
+                } else {
+                    part.background().or(part.foreground())
+                }
+                .map(Hsla::from)
+            };
+            let expect = |got: Option<Hsla>, want: Hsla, what: &str| {
+                assert!(got.is_some_and(|g| close(g, want)), "{what}: {got:?} != {want:?}");
+            };
+            expect(color(&[], "indicator", false), palette.form.input.background, "unselected");
+            expect(color(&["hover"], "indicator", false), palette.state.hover.background, "hover");
+            expect(color(&["selected"], "indicator", true), palette.state.selected.background, "selected ring");
+            expect(
+                color(&["selected", "pressed"], "indicator", true),
+                palette.state.pressed.background,
+                "pressed ring",
+            );
+            expect(color(&["selected", "disabled"], "indicator", true), palette.form.input.border, "disabled ring");
+            expect(color(&["selected"], "dot", false), palette.state.selected.foreground, "dot");
+            let rest = resolve(&[]);
+            let root = rest.root();
+            let length = |name: &str| root.value(name).and_then(Value::as_number);
+            assert_eq!((length("indicator_size"), length("dot_size")), (Some(18.0), Some(9.0)));
+            assert_eq!(length("indicator_radius"), Some(18.0), "round");
+        }
     }
 
     #[test]

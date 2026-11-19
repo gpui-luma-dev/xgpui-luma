@@ -47,13 +47,26 @@ fn every_axis_combination_resolves_without_problems() {
 }
 
 /// A resolved Radix checkbox: `attrs` as (attribute, value), `states` by name.
-fn checkbox(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+fn resolve(
+    control: &'static str,
+    look: &Look,
+    attrs: &[(&str, &str)],
+    states: &[&str],
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
     let config = config();
-    let key = attrs.iter().fold(StyleKey::new(ControlId::new("checkbox")), |key, (attr, value)| {
+    let key = attrs.iter().fold(StyleKey::new(ControlId::new(control)), |key, (attr, value)| {
         key.attr(config.attribute(attr).expect("attribute"), AttrValue::named(value))
     });
     let key = states.iter().fold(key, |key, state| key.state(config.state(state).expect("state")));
     look.style_theme().resolve(&key)
+}
+
+fn checkbox(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("checkbox", look, attrs, states)
+}
+
+fn radio(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("radio", look, attrs, states)
 }
 
 fn color(resolved: &xgpui_luma::style::lss::Resolved, part: &'static str, what: &str) -> Hsla {
@@ -200,4 +213,61 @@ fn style_theme_follows_the_mode_and_palettes() {
     look.set_palettes(Accent::Crimson, Gray::Auto);
     let fill = color(&look, StyleKey::new(checkbox).state(checked), "indicator");
     assert!(close(fill, look.resolve_role(SemanticRole::Primary).hsla()), "and the palettes");
+}
+
+// Behaviour of the native Radix radio, kept as checks on the `.lss` radio.
+
+#[test]
+fn radio_press_keeps_the_resting_fill() {
+    let look = Look::built_in();
+    for variant in [&[][..], &[("variant", "classic")], &[("variant", "soft")]] {
+        for selected in [&[][..], &["selected"]] {
+            let focused = radio(&look, variant, &[selected, &["focused"]].concat());
+            let pressed = radio(&look, variant, &[selected, &["focused", "pressed", "hover"]].concat());
+            for (part, what) in [("indicator", "background"), ("indicator", "border"), ("dot", "fg")] {
+                assert!(
+                    close(color(&pressed, part, what), color(&focused, part, what)),
+                    "{variant:?} {selected:?} {part}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn radio_soft_keeps_one_tint_and_only_classic_has_a_shadow() {
+    use crate::scale::ScaleFamily::Color as Accent;
+    let look = Look::built_in();
+    for selected in [&[][..], &["selected"]] {
+        let soft = radio(&look, &[("variant", "soft")], selected);
+        assert!(close(color(&soft, "indicator", "background"), step(&look, Accent, 4)));
+        assert!(shadow(&soft).is_empty());
+        assert!(shadow(&radio(&look, &[], selected)).is_empty());
+        assert!(!shadow(&radio(&look, &[("variant", "classic")], selected)).is_empty());
+    }
+}
+
+#[test]
+fn radio_high_contrast_and_bright_accents() {
+    use crate::scale::ScaleFamily::Color as Accent;
+    let look = Look::built_in();
+    let hc = radio(&look, &[], &["selected", "high_contrast"]);
+    assert!(close(color(&hc, "indicator", "background"), step(&look, Accent, 12)));
+    assert!(close(color(&hc, "dot", "fg"), step(&look, Accent, 1)));
+    let (_, lime) = looks().pop().expect("lime");
+    let selected = radio(&lime, &[], &["selected"]);
+    assert!(color(&selected, "dot", "fg").l < 0.5, "dark dot on a bright accent");
+}
+
+#[test]
+fn radio_is_round_at_every_size() {
+    let look = Look::built_in();
+    for (attrs, edge) in [(&[("size", "1")][..], 14.0), (&[], 16.0), (&[("size", "3")], 20.0)] {
+        let resolved = radio(&look, attrs, &[]);
+        let root = resolved.root();
+        let number = |name: &str| root.value(name).and_then(Value::as_number).expect("number");
+        assert_eq!(number("indicator_size"), edge);
+        assert_eq!(number("indicator_radius"), edge);
+        assert_eq!(root.radius(), Some(edge / 2.0));
+    }
 }

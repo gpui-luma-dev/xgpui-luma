@@ -31,7 +31,7 @@ macro_rules! shadcn_sources {
     };
 }
 
-shadcn_sources!["tokens.lss", "checkbox.lss"];
+shadcn_sources!["tokens.lss", "checkbox.lss", "radio.lss"];
 
 /// The SDK's files with the Shadcn look's files over them.
 pub fn stylesheet() -> Stylesheet {

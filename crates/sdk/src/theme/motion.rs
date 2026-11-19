@@ -18,7 +18,6 @@ pub struct MotionDefaults {
     pub scroll_container: crate::controls::scroll_container::ScrollContainerMotion,
     pub popover: crate::controls::popover_button::PopoverMotion,
 
-    pub radio: crate::controls::radio_button::RadioMotion,
     pub toggle: crate::controls::toggle::ToggleMotion,
     pub control_group: crate::controls::control_group::ControlGroupMotion,
     pub slider: crate::controls::slider::SliderMotion,
@@ -108,7 +107,7 @@ mod tests {
             ($ms:expr; $($role:expr),+ $(,)?) => { $(check(&$role, $ms, stringify!($role));)+ };
         }
         timed!(200;
-            m.radio.state, m.toggle.state, m.switch.state,
+            m.toggle.state, m.switch.state,
             m.control_group.selection, m.slider.thumb, m.progress.value, m.stepper.selection,
             m.accordion.expansion, m.tree_view.expansion, m.tree_view.position, m.sidebar.expansion,
             m.sidebar.popup.enter, m.sidebar.popup.exit, m.split_view.extent, m.resizable_panels.extent,

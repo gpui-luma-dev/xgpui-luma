@@ -33,13 +33,6 @@ fn choice_colors_match_runtime_for_every_state_style_and_fallback() {
             for style in styles() {
                 for state in states() {
                     for selected in [false, true] {
-                        let actual = inspect_radio_button_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::radio_button_look(&mode, style, selected, state, ShadcnSize::Md);
-                        assert_eq!(actual.indicator_background.value, painted.indicator_background);
-                        assert_eq!(actual.indicator_border.value, painted.indicator_border);
-                        assert_eq!(actual.dot_color.value, painted.dot_color);
-                        assert_eq!(actual.label_color.value, painted.label_color);
-
                         let actual = inspect_switch_color_palette(&mode, theme_mode, style, selected, state);
                         let painted = paint::switch_look(&mode, theme_mode, style, selected, state, ShadcnSize::Md);
                         assert_eq!(actual.track_background.value, painted.track_background);

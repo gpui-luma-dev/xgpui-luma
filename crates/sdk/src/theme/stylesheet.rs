@@ -113,7 +113,6 @@ common_stylesheet! {
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     toggle: ToggleStylesheet,
-    radio: RadioStylesheet,
     textfield: TextFieldStylesheet,
     textarea: TextAreaStylesheet,
     progress: ProgressStylesheet,
@@ -194,7 +193,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            radio: RadioStylesheet::native_default(),
             progress: ProgressStylesheet::native_default(),
             stepper: StepperStylesheet::native_default(),
             scrollbar: ScrollbarStylesheet::native_default(),
@@ -309,21 +307,6 @@ impl CommonStylesheet {
             (
                 "control_group",
                 &[AppMutedForeground, BorderDefault, StateDisabledBackground, SurfaceSubtleBackground][..],
-            ),
-            (
-                "radio_button",
-                &[
-                    AppForeground,
-                    FocusRing,
-                    FormInputBackground,
-                    FormInputBorder,
-                    StateDisabledBackground,
-                    StateDisabledForeground,
-                    StateHoverBackground,
-                    StatePressedBackground,
-                    StateSelectedBackground,
-                    StateSelectedForeground,
-                ][..],
             ),
             (
                 "table",

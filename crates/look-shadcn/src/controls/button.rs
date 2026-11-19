@@ -510,9 +510,7 @@ mod tests {
                         )
                         .into_any_element()
                 });
-                let template = xgpui_luma::controls::radio_button::ThemedRadioButtonTemplate::new(
-                    super::super::templates::radio_button_theme_with_style(look.clone(), style),
-                );
+                let template = super::super::templates::radio_button_template(look.clone(), style);
                 assert_stable_layout(move |state, selected, window, cx| {
                     template
                         .render(

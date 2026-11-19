@@ -192,10 +192,7 @@ pub use progress::{
     ProgressSize, ProgressVariant, progress_template, progress_theme, progress_theme_with, resolve_progress_radius,
 };
 pub use progress_builder::Progress;
-pub use radio::{
-    RadioSize, RadioVariant, radio_scale_for, radio_template, radio_template_for, radio_theme, radio_theme_for,
-    radio_theme_with,
-};
+pub use radio::{RadioSize, RadioVariant, radio_template, radio_template_for};
 pub use radio_builder::Radio;
 pub use radio_group::{RadioGroup, radio_group_template};
 pub use slider::{

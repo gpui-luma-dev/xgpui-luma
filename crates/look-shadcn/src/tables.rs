@@ -26,7 +26,6 @@ pub use crate::controls::sidebar::{
 };
 pub use crate::controls::progress::{resolve_progress_colors, ProgressColorTable};
 pub use crate::controls::stepper::{resolve_stepper_colors, StepperColorTable};
-pub use crate::controls::radio::{resolve_radio_colors, RadioColorTable};
 pub use crate::controls::resizable_panels::{resolve_resizable_panels_colors, ResizablePanelsColorTable};
 pub use crate::controls::scrollbar::{resolve_scrollbar_colors, ScrollbarColorTable};
 pub use crate::controls::slider::{resolve_slider_colors, SliderColorTable};
@@ -37,8 +36,6 @@ pub use crate::controls::tabs::{
 };
 pub use crate::controls::textfield::{resolve_textfield_colors, TextFieldColorTable};
 pub use crate::controls::tree_view::{resolve_tree_view_row_colors, TreeViewRowColorTable};
-
-pub use crate::controls::radio::{resolve_radio_palette, RadioResolvedColors};
 
 /// Shared metric values and source metadata.
 pub mod metrics;

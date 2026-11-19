@@ -375,6 +375,33 @@ pub static CHECKBOX_INSPECTOR_SPEC: ControlInspectorSpec = ControlInspectorSpec 
     default_value_id: "checked",
 };
 
+static RADIO_VALUES: [InspectorValueMode; 2] = [
+    InspectorValueMode { id: "selected", label: "selected" },
+    InspectorValueMode { id: "unselected", label: "unselected" },
+];
+
+/// The Shadcn radio (`look-shadcn/src/style/radio.lss`): the same parts, variants and sizes as the checkbox.
+pub static RADIO_BUTTON_INSPECTOR_SPEC: ControlInspectorSpec = ControlInspectorSpec {
+    control_label: "Radio Button",
+    id_prefix: "radio-button-theme-inspector",
+    parts: &CHECKBOX_PARTS,
+    variants: &[],
+    states: &LSS_INTERACTION_STATES,
+    sizes: &CHECKBOX_SIZES,
+    value_modes: &RADIO_VALUES,
+    default_part_id: "labeled",
+    default_variant_id: "primary",
+    default_size_id: "md",
+    default_value_id: "selected",
+};
+
+/// The radio inspector: the generic adapter with the radio's indicator geometry.
+pub fn radio_button_inspector() -> SharedInspectorResolver {
+    LssInspectorAdapter::new("radio", "selected")
+        .indicator_only(IndicatorOnly { size: "indicator_size", radius: "indicator_radius", hidden_parts: &["label"] })
+        .shared()
+}
+
 /// The checkbox inspector: the generic adapter with the checkbox's indicator geometry.
 pub fn checkbox_inspector() -> SharedInspectorResolver {
     LssInspectorAdapter::new("checkbox", "checked")

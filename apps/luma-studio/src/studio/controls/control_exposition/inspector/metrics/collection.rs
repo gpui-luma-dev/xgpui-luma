@@ -328,7 +328,9 @@ fn accordion_metrics_layout_section(
 fn sm_checkbox_indicator_size(look: &ShadcnLook) -> f32 {
     use xgpui_luma::style::lss::{AttrValue, ControlId, StyleKey, Value};
     let theme = look.style_theme();
-    let Some(size) = theme.stylesheet().config().attribute("size") else { return 0.0 };
+    let Some(size) = theme.stylesheet().config().attribute("size") else {
+        return 0.0;
+    };
     let key = StyleKey::new(ControlId::new("checkbox")).attr(size, AttrValue::new("sm"));
     theme.resolve(&key).root().value("indicator_size").and_then(Value::as_number).unwrap_or(0.0)
 }

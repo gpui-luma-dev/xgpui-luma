@@ -567,6 +567,14 @@ impl ShadcnLook {
         templates::radio_button_template(self.clone(), style)
     }
 
+    /// The `.lss` radio template before it is shared, for adding modifiers.
+    pub fn styled_radio_button_template(
+        &self,
+        style: ShadcnButtonStyle,
+    ) -> xgpui_luma::controls::radio_button::StyledRadioButtonTemplate {
+        templates::styled_radio_button_template(self.clone(), style)
+    }
+
     pub fn button_template(
         &self,
         style: ShadcnButtonStyle,
@@ -909,10 +917,6 @@ impl ShadcnLook {
 
     pub fn switch_theme(&self) -> Arc<dyn xgpui_luma::controls::switch::SwitchTheme> {
         templates::switch_theme(self.clone())
-    }
-
-    pub fn radio_button_theme(&self) -> Arc<dyn xgpui_luma::controls::radio_button::RadioButtonTheme> {
-        templates::radio_button_theme(self.clone())
     }
 
     pub fn slider_theme(&self) -> Arc<dyn xgpui_luma::controls::slider::SliderTheme> {

@@ -15,7 +15,6 @@ mod pager;
 mod popup_menu;
 mod progress;
 mod stepper;
-mod radio;
 mod resizable_panels;
 mod scrollbar;
 mod selector;
@@ -51,10 +50,6 @@ pub use card::{CardInspectMetrics, inspect_card_metrics};
 pub use control_group::{
     ControlGroupInspectMetrics, ControlGroupListInspectPalette, inspect_control_group_list_color_palette,
     inspect_control_group_metrics,
-};
-pub use radio::{
-    RadioButtonInspectMetrics, RadioButtonInspectPalette, inspect_radio_button_color_palette,
-    inspect_radio_button_elevation, inspect_radio_button_metrics,
 };
 pub use floating_menu::{
     FloatingMenuInspectMetrics, FloatingMenuInspectPalette, inspect_floating_menu_color_palette,
@@ -126,5 +121,3 @@ pub(crate) use button::{
     inspect_button_color_palette_with_stylesheet, inspect_button_metrics_with_stylesheet,
     inspect_button_elevation_with_stylesheet,
 };
-
-pub(crate) use radio::{inspect_radio_button_color_palette_with_stylesheet, inspect_radio_button_elevation_with_stylesheet};

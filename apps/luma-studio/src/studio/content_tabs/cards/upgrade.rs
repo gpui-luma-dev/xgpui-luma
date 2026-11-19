@@ -8,7 +8,7 @@ use xgpui_luma::controls::checkbox::{Checkbox, CheckboxEvent};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{ControlGroupItemElementTemplate, ControlGroupItemRenderModel};
 use xgpui_luma::infra::presenter::HasPresenter;
-use xgpui_luma::controls::radio_button::{RadioButtonData, ThemedRadioButtonTemplate};
+use xgpui_luma::controls::radio_button::RadioButtonData;
 use xgpui_luma::controls::radio_group::{RadioGroup, RadioGroupItemLike, horizontal as horizontal_radio_group};
 use xgpui_luma::controls::textarea::TextArea;
 use xgpui_luma::controls::textfield::TextField;
@@ -194,7 +194,8 @@ fn plan_items() -> [PlanOptionItem; 2] {
 
 fn plan_radio_indicator_template(look: Arc<ShadcnLook>) -> Arc<dyn ButtonTemplate<RadioButtonData>> {
     Arc::new(
-        ThemedRadioButtonTemplate::new(look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm).radio_button_theme())
+        look.with_size(xgpui_luma_look_shadcn::ShadcnSize::Sm)
+            .styled_radio_button_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
             .with_modifier(|element, _| element.min_h(px(0.0)).px(px(0.0)).py(px(0.0))),
     )
 }

@@ -12,7 +12,6 @@ pub use crate::controls::floating_menu::{FloatingMenuMetricTable, resolve_floati
 pub use crate::controls::overlay_window::{OverlayWindowMetricTable, resolve_overlay_window_metrics};
 pub use crate::controls::pager::{PagerMetricTable, resolve_pager_metrics};
 pub use crate::controls::progress::{ProgressMetricTable, resolve_progress_metrics, resolve_progress_metrics_for_size};
-pub use crate::controls::radio::{RadioButtonMetricTable, resolve_radio_button_metrics};
 pub use crate::controls::resizable_panels::{ResizablePanelsMetricTable, resolve_resizable_panels_metrics};
 pub use crate::controls::scrollbar::{ScrollbarMetricTable, resolve_scrollbar_metrics, resolve_scrollbar_metrics_for_size};
 pub use crate::controls::sidebar::{SidebarMetricTable, resolve_sidebar_metrics};
@@ -30,6 +29,3 @@ pub(crate) use crate::controls::tabs::resolve_common_tabs_geometry;
 pub use crate::controls::textfield::{TextFieldMetricTable, resolve_textfield_metrics};
 pub use crate::controls::toolbar_item::{ToolbarMetricTable, resolve_toolbar_metrics};
 pub use crate::controls::tree_view::{TreeViewMetricTable, resolve_tree_view_metrics};
-
-#[cfg(feature = "inspect")]
-pub(crate) use crate::controls::radio::resolve_radio_button_metrics_with_stylesheet;

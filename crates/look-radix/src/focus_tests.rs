@@ -3,7 +3,7 @@ use gpui::{IntoElement, ParentElement};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::checkbox::CheckboxData;
-use xgpui_luma::controls::radio_button::{RadioButtonData, ThemedRadioButtonTemplate};
+use xgpui_luma::controls::radio_button::RadioButtonData;
 use xgpui_luma::controls::switch::{SwitchData, ThemedSwitchTemplate};
 use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
 use xgpui_luma::theme::{ThemeMode};
@@ -61,7 +61,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedRadioButtonTemplate::new(radio_theme(&look.with_size(size), variant));
+            let template = radio_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(

@@ -150,11 +150,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
 
 /// Former SDK size presets for controls Radix sizes itself; used only for fallback scales.
 fn apply_choice_presets(common: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
-    for (size, scale) in [(RadixSize::One, 0.45), (RadixSize::Three, 0.55)] {
-        let radio = common.radio.sizes.get_or_default(size.key());
-        fill(&mut radio.indicator_scale, scale);
-        fill(&mut radio.dot_scale, 0.24);
-    }
     for (size, width, height, thumb) in [
         (RadixSize::One, 32.0 / 28.0, 13.0 / 28.0, 9.0 / 28.0),
         (RadixSize::Three, 48.0 / 44.0, 24.0 / 44.0, 20.0 / 44.0),

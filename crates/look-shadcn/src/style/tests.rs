@@ -55,17 +55,34 @@ fn every_axis_combination_resolves_without_problems() {
 }
 
 /// A resolved Shadcn checkbox: `attrs` as (attribute, value), `states` by name.
-fn checkbox(
+fn resolve(
+    control: &'static str,
     look: &ShadcnLook,
     attrs: &[(&str, &str)],
     states: &[&str],
 ) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
     let config = xgpui_luma::style::config();
-    let key = attrs.iter().fold(StyleKey::new(ControlId::new("checkbox")), |key, (attr, value)| {
+    let key = attrs.iter().fold(StyleKey::new(ControlId::new(control)), |key, (attr, value)| {
         key.attr(config.attribute(attr).expect("attribute"), AttrValue::named(value))
     });
     let key = states.iter().fold(key, |key, state| key.state(config.state(state).expect("state")));
     look.style_theme().resolve(&key)
+}
+
+fn checkbox(
+    look: &ShadcnLook,
+    attrs: &[(&str, &str)],
+    states: &[&str],
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("checkbox", look, attrs, states)
+}
+
+fn radio(
+    look: &ShadcnLook,
+    attrs: &[(&str, &str)],
+    states: &[&str],
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("radio", look, attrs, states)
 }
 
 fn color(resolved: &xgpui_luma::style::lss::Resolved, part: &'static str, what: &str) -> Hsla {
@@ -192,4 +209,64 @@ fn style_theme_follows_the_mode() {
     assert!(!close(light, dark), "the cached theme follows the mode");
     look.set_mode(ThemeMode::Light);
     assert!(close(label(&look), light));
+}
+
+// Behaviour of the native Shadcn radio, kept as checks on the `.lss` radio.
+
+#[test]
+fn radio_indicator_has_the_catalog_shadow_except_when_disabled_or_content_only() {
+    let look = retro_arcade();
+    assert_eq!(shadow(&radio(&look, &[], &[])).len(), 1, "shadow-xs");
+    assert!(shadow(&radio(&look, &[], &["disabled"])).is_empty());
+    assert!(shadow(&radio(&look, &[("variant", "content_only")], &[])).is_empty());
+    assert_eq!(color(&radio(&look, &[("variant", "content_only")], &["focused"]), "root", "focus").a, 0.0);
+}
+
+#[test]
+fn radio_hover_and_press_do_not_recolor() {
+    let look = retro_arcade();
+    for selected in [&[][..], &["selected"]] {
+        let rest = radio(&look, &[], selected);
+        for extra in [&["hover"][..], &["pressed"], &["hover", "pressed"]] {
+            let moved = radio(&look, &[], &[selected, extra].concat());
+            for (part, what) in [("indicator", "background"), ("indicator", "border"), ("dot", "fg"), ("label", "fg")] {
+                assert!(close(color(&moved, part, what), color(&rest, part, what)), "{selected:?} {extra:?} {part}");
+            }
+        }
+    }
+}
+
+#[test]
+fn primary_radio_fills_and_ring_styles_draw_a_ring() {
+    let look = retro_arcade();
+    let tokens = look.mode_tokens();
+    let css = |name: &str| crate::resolve::resolve_color(&tokens.catalog, name).expect("catalog color");
+    let filled = radio(&look, &[], &["selected"]);
+    assert!(close(color(&filled, "indicator", "background"), css("primary")));
+    assert!(close(color(&filled, "dot", "fg"), css("primary-foreground")));
+    let unselected = radio(&look, &[], &[]);
+    for (variant, ring, dot) in
+        [("secondary", "secondary", "secondary-foreground"), ("outline", "foreground", "foreground")]
+    {
+        let ringed = radio(&look, &[("variant", variant)], &["selected"]);
+        assert!(
+            close(color(&ringed, "indicator", "background"), color(&unselected, "indicator", "background")),
+            "{variant} face"
+        );
+        assert!(close(color(&ringed, "indicator", "border"), css(ring)), "{variant} ring");
+        assert!(close(color(&ringed, "dot", "fg"), css(dot)), "{variant} dot");
+    }
+}
+
+#[test]
+fn radio_sizes_scale_the_indicator_and_dot() {
+    let look = retro_arcade();
+    let number = |attrs: &[(&str, &str)], name: &str| {
+        radio(&look, attrs, &[]).root().value(name).and_then(Value::as_number).expect("number")
+    };
+    assert_eq!(number(&[("size", "sm")], "indicator_size"), 13.0, "28 × 0.45, snapped");
+    assert_eq!(number(&[], "indicator_size"), 18.0);
+    assert_eq!(number(&[("size", "lg")], "indicator_size"), 24.0);
+    assert_eq!(number(&[], "dot_size"), 9.0, "36 × 0.24, snapped");
+    assert_eq!(number(&[], "indicator_radius"), 18.0, "round");
 }

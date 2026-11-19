@@ -46,7 +46,7 @@ macro_rules! radix_sources {
     };
 }
 
-radix_sources!["tokens.lss", "checkbox.lss"];
+radix_sources!["tokens.lss", "checkbox.lss", "radio.lss"];
 
 /// The SDK's files with the Radix look's files over them.
 pub fn stylesheet() -> Stylesheet {

@@ -5,10 +5,10 @@ use crate::provenance::{LookResolver, ResolvedColor};
 use crate::stylesheet::config::{
     AccordionContentColorRule, AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule,
     CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuTriggerColorRule,
-    ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, RadioColorRule, ResizablePanelsColorRule,
-    ScrollbarColorRule, SidebarBranchColorRule, SidebarContainerColorRule, SidebarItemColorRule,
-    SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, SwitchColorRule, TableRowColorRule,
-    TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule, TextfieldColorRule, TreeViewRowColorRule,
+    ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
+    SidebarBranchColorRule, SidebarContainerColorRule, SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule,
+    SplitViewColorRule, SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule,
+    TabsListColorRule, TextfieldColorRule, TreeViewRowColorRule,
 };
 
 use super::{
@@ -92,24 +92,6 @@ pub fn resolve_control_group_list_color_rule(
     fields.insert("background", background.clone());
     let border = resolve_color_ref(resolver, &rule.border, &fields)?;
     Ok(ResolvedControlGroupListColors { background, border })
-}
-
-pub fn resolve_radio_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &RadioColorRule,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-) -> anyhow::Result<ResolvedRadioColors> {
-    let ctx = ResolveContext { style, layer, disabled: layer == InteractionLayer::Disabled };
-    let mut fields = ResolvedFields::default();
-    let indicator_background = resolve_stylesheet_color(resolver, &rule.indicator_background, &fields, &ctx)?;
-    fields.insert("indicator_background", indicator_background.clone());
-    let selection_ring = resolve_stylesheet_color(resolver, &rule.selection_ring, &fields, &ctx)?;
-    fields.insert("selection_ring", selection_ring.clone());
-    let dot_color = resolve_stylesheet_color(resolver, &rule.dot_color, &fields, &ctx)?;
-    fields.insert("dot_color", dot_color.clone());
-    let label_color = resolve_stylesheet_color(resolver, &rule.label_color, &fields, &ctx)?;
-    Ok(ResolvedRadioColors { indicator_background, selection_ring, dot_color, label_color })
 }
 
 pub fn resolve_switch_color_rule(
@@ -483,14 +465,6 @@ pub struct ResolvedBadgeColors {
 pub struct ResolvedSplitViewColors {
     pub separator: ResolvedColor,
     pub separator_hover: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedRadioColors {
-    pub indicator_background: ResolvedColor,
-    pub selection_ring: ResolvedColor,
-    pub dot_color: ResolvedColor,
-    pub label_color: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]

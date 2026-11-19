@@ -129,10 +129,6 @@ profile!(PopoverMotionStylesheet => crate::controls::popover_button::PopoverMoti
     presence: PresenceMotionStylesheet,
 });
 
-profile!(RadioMotionStylesheet => crate::controls::radio_button::RadioMotion {
-    state: Option<TransitionSpec>,
-});
-
 profile!(ToggleMotionStylesheet => crate::controls::toggle::ToggleMotion {
     state: Option<TransitionSpec>,
 });
@@ -250,7 +246,6 @@ profile!(MotionStylesheet => MotionDefaults {
     listbox: ListBoxMotionStylesheet,
     scroll_container: ScrollContainerMotionStylesheet,
     popover: PopoverMotionStylesheet,
-    radio: RadioMotionStylesheet,
     toggle: ToggleMotionStylesheet,
     control_group: ControlGroupMotionStylesheet,
     slider: SliderMotionStylesheet,
@@ -290,7 +285,6 @@ impl MotionStylesheet {
             listbox: ListBoxMotionStylesheet { scroll: Some(timed.clone()), drop_layout: Some(timed.clone()) },
             scroll_container: ScrollContainerMotionStylesheet { scroll: Some(timed.clone()) },
             popover: PopoverMotionStylesheet { presence: presence.clone() },
-            radio: RadioMotionStylesheet { state: Some(timed.clone()) },
             toggle: ToggleMotionStylesheet { state: Some(timed.clone()) },
             control_group: ControlGroupMotionStylesheet { selection: Some(timed.clone()) },
             slider: SliderMotionStylesheet::native_default(),
@@ -489,7 +483,7 @@ easing = "out_cubic"
             tabs_overlay { enter, exit }, slide_panel { presence.enter, presence.exit },
             listbox { scroll, drop_layout }, scroll_container { scroll },
             popover { presence.enter, presence.exit },
-            radio { state }, toggle { state }, switch { state },
+            toggle { state }, switch { state },
             control_group { selection }, slider { thumb }, progress { value }, stepper { selection },
             accordion { expansion, drop_layout }, tree_view { expansion, position, drop_layout },
             sidebar { expansion, popup.enter, popup.exit, drop_layout },

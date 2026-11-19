@@ -154,7 +154,7 @@ impl RadioButtonControlExposition {
                 move || left_pane.clone().into_any_element()
             },
             &super::inspector::RADIO_BUTTON_INSPECTOR_SPEC,
-            super::inspector::RadioButtonInspectorAdapter::shared(),
+            super::inspector::radio_button_inspector(),
         );
         theme_inspector.update(cx, |inspector, cx| {
             inspector.set_motion_report(
@@ -166,8 +166,13 @@ impl RadioButtonControlExposition {
                         ("Content only", content_only_radio.clone()),
                     ],
                     |radio| radio.motion_enabled(),
-                    |radio| radio.motion_profile().state.clone(),
-                    |look| look.motion_defaults().radio.state.clone(),
+                    |radio| radio.current_transition(),
+                    // The look's `.lss` `transition` toward selected (the radio has no motion defaults).
+                    |look| {
+                        look.radio_button_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
+                            .transition(&xgpui_luma::controls::radio_button::RadioButtonData::new(true))
+                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
+                    },
                 )),
                 cx,
             );

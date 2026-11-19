@@ -112,7 +112,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         slider: native_radix_slider(),
         switch: native_radix_switch(),
         button: crate::button::native_button_stylesheet(),
-        radio: crate::radio::native_radio_stylesheet(),
         textfield: crate::textfield::native_textfield_stylesheet(),
         progress: crate::progress::native_progress_stylesheet(),
         textarea: crate::textarea::native_textarea_stylesheet(),

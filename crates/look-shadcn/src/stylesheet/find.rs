@@ -7,7 +7,7 @@ use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 use super::config::{
     AccordionContentColorRule, AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule,
     CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuSurfaceElevationRule,
-    FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, RadioColorRule,
+    FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule,
     ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarBranchColorRule,
     SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
     SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule,
@@ -53,15 +53,6 @@ fn textfield_style_key(style: crate::controls::ShadcnTextFieldStyle) -> &'static
         crate::controls::ShadcnTextFieldStyle::Primary => "primary",
         crate::controls::ShadcnTextFieldStyle::Surface => "surface",
     }
-}
-
-pub fn find_radio_color_rule(
-    stylesheet: &StylesheetConfig,
-    style: ShadcnButtonStyle,
-    selected: bool,
-    layer: InteractionLayer,
-) -> Option<&RadioColorRule> {
-    stylesheet.radio.find_color_rule(style, selected, layer)
 }
 
 pub fn find_switch_color_rule(stylesheet: &StylesheetConfig, on: bool, disabled: bool) -> Option<&SwitchColorRule> {

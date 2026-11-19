@@ -74,15 +74,10 @@ const RADIX_THEME_USAGES: &[&ThemeUsage] = &[
     &ThemeUsage {
         label: "Radio Button",
         parts: &[
-            part(
-                "indicator elevation",
-                "shadow-sm",
-                &["default", "selected"],
-                &["RadioButtonPalette.indicator_shadow"],
-            ),
-            part("selected fill", "primary", &["selected"], &["RadioButtonPalette.indicator_border"]),
-            part("dot", "primary-foreground", &["selected"], &["RadioButtonPalette.dot_color"]),
-            part("border", "input", &["unselected"], &["RadioButtonPalette.indicator_border"]),
+            part("indicator elevation", "shadow-sm", &["default", "selected"], &["radio.indicator.shadow"]),
+            part("selected fill", "primary", &["selected"], &["radio.indicator.border"]),
+            part("dot", "primary-foreground", &["selected"], &["radio.dot.foreground"]),
+            part("border", "input", &["unselected"], &["radio.indicator.border"]),
         ],
     },
     &ThemeUsage {

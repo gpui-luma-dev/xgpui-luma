@@ -25,18 +25,11 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
                 assert_eq!(box_.radius, resolve_button_radius(size, radius));
             }
         }
-        for (sdk, radio_size, edge, font, line, progress_height) in [
-            (RadixSize::One, RadioSize::One, 14.0, 12.5, 18.0, 4.0),
-            (RadixSize::Two, RadioSize::Two, 16.0, 14.0, 20.0, 6.0),
-            (RadixSize::Three, RadioSize::Three, 20.0, 16.0, 22.0, 8.0),
+        for (sdk, font, line, progress_height) in [
+            (RadixSize::One, 12.5, 18.0, 4.0),
+            (RadixSize::Two, 14.0, 20.0, 6.0),
+            (RadixSize::Three, 16.0, 22.0, 8.0),
         ] {
-            for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
-                let actual = radio_theme_for(&look.with_size(sdk), variant, Paint::accent(), radio_size).scale(2.0);
-                assert_eq!(
-                    (actual.indicator_size, actual.dot_size, actual.gap, actual.control_radius),
-                    (edge, edge * 0.4, 8.0, edge / 2.0)
-                );
-            }
             let scale = StandardBoxScale::compute(&look.metrics_for(sdk), 2.0);
             for bits in 0..16 {
                 let hovered = bits & 1 != 0;
@@ -96,7 +89,6 @@ fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
     for (sizes, count) in [
         (stylesheet.button.sizes.keys().collect::<Vec<_>>(), 4),
         (stylesheet.avatar.sizes.keys().collect(), 9),
-        (stylesheet.radio.sizes.keys().collect(), 3),
         (stylesheet.badge.sizes.keys().collect(), 3),
     ] {
         assert_eq!(sizes.iter().filter(|key| key.parse::<usize>().is_ok()).count(), count);
@@ -113,7 +105,6 @@ fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
 fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let look = Look::built_in();
     let fork = look.fork();
-    let radio = radio_theme_for(&fork, RadioVariant::Surface, Paint::accent(), RadioSize::One);
     let field = textfield_theme(&fork);
     let area = textarea_theme(&fork);
     let progress = progress_theme(&fork);
@@ -125,7 +116,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.radio.sizes.get_mut("1").unwrap().dot_size = Some(0.0);
     config.textfield.geometry.padding_x = Some(0.0);
     config.textarea.geometry.min_height = Some(73.0);
     config.progress.sizes.get_mut("2").unwrap().track_height = Some(11.0);
@@ -140,7 +130,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
-    assert_eq!(radio.scale(1.0).dot_size, 0.0);
     let scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
     assert_eq!(field.resolve_look(Default::default(), true, &scale).padding_x, 0.0);
     assert_eq!(area.resolve_look(Default::default(), true, &scale).min_height, 73.0);

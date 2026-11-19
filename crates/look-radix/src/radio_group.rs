@@ -2,12 +2,11 @@
 
 use std::sync::Arc;
 use gpui::{Context, SharedString, prelude::*};
-use xgpui_luma::controls::radio_button::ThemedRadioButtonTemplate;
 use xgpui_luma::controls::control_group::{ControlGroupItem, ControlGroupItemLike};
 use xgpui_luma::controls::radio_group::{
     RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_buttons_template,
 };
-use crate::{Look, Paint, RadioSize, RadioVariant, radio_theme_for};
+use crate::{Look, Paint, RadioSize, RadioVariant};
 use crate::look::resolve_look;
 
 /// Standard (non-segmented) radio template.
@@ -18,11 +17,10 @@ pub fn radio_group_template<T: ControlGroupItemLike + 'static>(
     size: RadioSize,
     layout: RadioGroupLayout,
 ) -> RadioGroupTemplate<T> {
-    let radio =
-        ThemedRadioButtonTemplate::new(radio_theme_for(look, variant, paint, size)).with_modifier(|element, model| {
-            let selector = model.id.to_string();
-            element.debug_selector(move || selector.clone())
-        });
+    let radio = crate::radio::styled_radio_template(look, variant, paint, size).with_modifier(|element, model| {
+        let selector = model.id.to_string();
+        element.debug_selector(move || selector.clone())
+    });
     radio_group_buttons_template(Arc::new(radio), layout)
 }
 
@@ -284,16 +282,22 @@ mod tests {
                 assert_eq!(view.read(app).changes, 3);
             });
             cx.update(|window, _| {
-                let theme = radio_theme_for(&Look::built_in(), RadioVariant::Surface, Paint::accent(), RadioSize::Two);
-                let scale = theme.scale(window.scale_factor());
-                let mut expected = theme
-                    .resolve(false, xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() })
-                    .indicator_background;
-                expected.a *= scale.disabled_opacity;
+                use xgpui_luma::style::lss::{ControlId, PartId, StyleKey, Value};
+                let theme = Look::built_in().style_theme();
+                let disabled = crate::style::config().state("disabled").expect("state");
+                let resolved =
+                    theme.resolve(&StyleKey::new(ControlId::new("radio")).state(disabled).scale(window.scale_factor()));
+                let number = |name: &str| resolved.root().value(name).and_then(Value::as_number).expect("number");
+                let mut expected =
+                    gpui::Hsla::from(resolved.part(PartId::new("indicator")).background().expect("background"));
+                expected.a *= number("disabled_opacity");
+                let size = number("indicator_size");
                 assert!(
                     window.painted_quads().iter().any(|quad| {
-                        quad.background.as_solid() == Some(expected)
-                            && quad.bounds.size.width == px(scale.indicator_size).scale(window.scale_factor())
+                        quad.background.as_solid().is_some_and(|c| {
+                            let (c, e) = (c.to_rgb(), expected.to_rgb());
+                            (c.r - e.r).abs() < 2e-3 && (c.a - e.a).abs() < 2e-3
+                        }) && quad.bounds.size.width == px(size).scale(window.scale_factor())
                     }),
                     "disabled indicator opacity is applied once"
                 );
@@ -304,12 +308,15 @@ mod tests {
     #[test]
     fn bound_radio_size_controls_label_typography_even_with_sdk_default_model_size() {
         let look = Look::built_in();
+        use xgpui_luma::style::lss::{AttrValue, ControlId, PartId, StyleKey};
+        let size_attr = crate::style::config().attribute("size").expect("size");
         for size in RadioSize::ALL {
-            let theme = radio_theme_for(&look, RadioVariant::Surface, Paint::accent(), size);
-            let palette = theme.resolve(false, Default::default());
+            let key = StyleKey::new(ControlId::new("radio")).attr(size_attr, AttrValue::named(size.as_str()));
+            let resolved = look.style_theme().resolve(&key);
+            let label = resolved.part(PartId::new("label"));
             let expected = crate::typography::label_typography(size.control_size());
-            assert_eq!(palette.label_typography.size, expected.size);
-            assert_eq!(palette.label_typography.line_height, expected.line_height);
+            assert_eq!(label.font_size(), Some(expected.size));
+            assert_eq!(label.line_height(), Some(expected.line_height));
         }
     }
 }

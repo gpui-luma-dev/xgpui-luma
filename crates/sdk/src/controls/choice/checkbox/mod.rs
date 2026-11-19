@@ -3,7 +3,8 @@ pub use callback::{CheckboxCallbacks, CheckboxEventExt};
 
 mod styled;
 /// The checkbox renders from `.lss` (issue #285): the SDK's files, plus a look's.
-pub use styled::{StyledCheckboxTemplate, ThemeProvider, default_template as default_checkbox_template};
+pub use super::styled::ThemeProvider;
+pub use styled::{StyledCheckboxTemplate, default_template as default_checkbox_template};
 
 use std::sync::Arc;
 
@@ -80,12 +81,7 @@ impl CheckboxControl {
         transition_override: Option<&Transition>,
         checked: bool,
     ) -> Transition {
-        let data = CheckboxData { checked, progress: if checked { 1.0 } else { 0.0 }, ..Default::default() };
-        transition_override
-            .cloned()
-            .or_else(|| template.transition(&data))
-            .or_else(|| default_checkbox_template().transition(&data))
-            .unwrap_or_else(Transition::instant)
+        super::styled::choice_transition(template, default_checkbox_template().as_ref(), transition_override, checked)
     }
 
     /// The transition the next check change animates with.

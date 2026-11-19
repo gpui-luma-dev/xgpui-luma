@@ -10,21 +10,6 @@ pub static PRIMARY_SECONDARY_CONTENT_ONLY_VARIANTS: [InspectorVariant; 3] = [
     InspectorVariant { id: "content-only", label: "Content Only" },
 ];
 
-pub static CHOICE_LAYOUT_PARTS: [InspectorPart; 2] = [
-    InspectorPart {
-        id: "labeled",
-        label: "Labeled",
-        variants: &PRIMARY_SECONDARY_CONTENT_ONLY_VARIANTS,
-        default_variant_id: "primary",
-    },
-    InspectorPart {
-        id: "indicator-only",
-        label: "Indicator Only",
-        variants: &PRIMARY_SECONDARY_CONTENT_ONLY_VARIANTS,
-        default_variant_id: "primary",
-    },
-];
-
 pub static CHOICE_SIZES: [InspectorSize; 3] = [
     InspectorSize { id: "sm", label: "sm" },
     InspectorSize { id: "md", label: "md" },

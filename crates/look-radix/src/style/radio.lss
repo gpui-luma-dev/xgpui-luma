@@ -1,0 +1,72 @@
+// Radix radio. Layer: look, over the SDK radio.
+// Geometry matches `@radix-ui/themes` BaseRadio at `--scaling: 1`: always round; the theme radius does
+// not apply. The base is the surface variant at size 2. Colors own their property (`:=`) against the
+// SDK; press keeps the resting fill, only hover changes the selected fill.
+
+radio {
+  gap                  = 8
+  indicator_size       = 16   // --radio-size
+  dot_size             = 6.4  // the indicator scaled by 0.4
+  height               = indicator_size
+  radius               = indicator_size / 2
+  label_baseline_shift = 0
+
+  size 1 { indicator_size = 14  dot_size = 5.6 }
+  size 3 { indicator_size = 20  dot_size = 8 }
+
+  part root { focus_border = radix.role.focus }
+
+  part indicator {
+    background := radix.role.surface
+    border     := gray[7]
+    shadow     := []
+    :selected                       { background = radix.role.primary  border = background }
+    :selected:hover                 { background = tone[10] }
+    :selected:high_contrast         { background = tone[12] }
+    :selected:high_contrast:hover   { background = tone[12] }
+    :disabled                       { background = alpha(gray[3], 0.45)  border = gray[6] }
+    :selected:high_contrast:disabled { background = alpha(gray[3], 0.45) }
+  }
+
+  part dot {
+    foreground := gray[11]
+    :selected                        { foreground = radix.role.primary_foreground }
+    :selected:high_contrast          { foreground = tone[1] }
+    :disabled                        { foreground = gray[8] }
+    :selected:high_contrast:disabled { foreground = gray[8] }
+  }
+
+  part label {
+    foreground := radix.role.foreground
+    font_size   = 14
+    line_height = 20
+    font_weight = 400
+    :disabled { foreground = radix.role.muted_foreground }
+  }
+  size 1 { part label { font_size = 12.5  line_height = 18 } }
+  size 3 { part label { font_size = 16    line_height = 22 } }
+
+  // Classic: a raised face, as on the checkbox.
+  variant classic {
+    part indicator {
+      shadow = [inset_shadow(gray[5], 0, 0, 0, 1), inset_shadow(alpha(gray[2], 0.5), 0, 1.5, 2, 0)]
+      :selected { shadow = [inset_shadow(alpha(dot.foreground, 0.35), 0, 0.5, 0.5, 0),
+                            inset_shadow(alpha(black, 0.28), 0, -0.5, 0.5, 0)] }
+      :disabled { shadow = [inset_shadow(gray[5], 0, 0, 0, 1), inset_shadow(alpha(gray[3], 0.4), 0, 1.5, 2, 0)] }
+    }
+  }
+
+  // Soft: one accent face, selected or not; no edge when disabled.
+  variant soft {
+    part indicator {
+      background := tone[4]
+      border     := tone[4]
+      :disabled { background = alpha(gray[3], 0.45)  border = alpha(radix.role.surface, 0) }
+    }
+    part dot {
+      foreground := tone[11]
+      :high_contrast { foreground = tone[12] }
+      :disabled      { foreground = gray[8] }
+    }
+  }
+}

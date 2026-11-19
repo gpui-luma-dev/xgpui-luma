@@ -195,9 +195,6 @@ pub use crate::controls::layout::resizable_panels::theme::{
 pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
-pub use crate::controls::choice::radio_button::theme::{
-    RadioStylesheet, RadioGeometryStylesheet, RadioGeometry, ResolvedRadioGeometry,
-};
 pub use crate::controls::text::textfield::theme::{
     TextFieldStylesheet, TextFieldGeometryStylesheet, TextFieldGeometry, ResolvedTextFieldGeometry,
 };
@@ -400,7 +397,6 @@ mod tests {
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         ToggleStylesheet::validate_contract();
-        RadioStylesheet::validate_contract();
         TextFieldStylesheet::validate_contract();
         TextAreaStylesheet::validate_contract();
         ProgressStylesheet::validate_contract();
