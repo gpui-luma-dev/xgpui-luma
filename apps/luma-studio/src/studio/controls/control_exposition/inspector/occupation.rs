@@ -18,25 +18,6 @@ pub struct InspectMetricPropertyData {
     pub provenance: Option<SharedString>,
 }
 
-pub fn switch_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
-    let state = InteractionState::default();
-    let tokens = look.mode_tokens();
-    let palette = paint::switch_look(
-        tokens.as_ref(),
-        look.mode(),
-        ShadcnButtonStyle::Primary,
-        true,
-        state,
-        xgpui_luma_look_shadcn::ShadcnSize::Md,
-    );
-    let shadows = if palette.thumb_shadow.is_empty() {
-        None
-    } else {
-        Some(palette.thumb_shadow.as_slice())
-    };
-    choice_indicator_occupation(shadows, focus_oversize, state.disabled)
-}
-
 pub(crate) fn choice_indicator_occupation(
     shadows: Option<&[BoxShadow]>,
     focus_oversize: f32,

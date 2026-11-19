@@ -798,7 +798,6 @@ radius=17
 #[test]
 fn remaining_control_chrome_inherits_shared_overrides() {
     use xgpui_luma::controls::{
-        switch::{DefaultSwitchTheme, SwitchTheme},
         toolbar::{DefaultToolbarTheme, ToolbarTheme, ToolbarVariant},
         stepper::{DefaultStepperTheme, StepperTheme},
         split_view::{DefaultSplitViewTheme, SplitViewTheme},
@@ -806,8 +805,6 @@ fn remaining_control_chrome_inherits_shared_overrides() {
     };
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.switch.geometry]
-disabled_opacity=0.4
 [common.toolbar.geometry]
 border_width=0
 separator_width=3
@@ -832,15 +829,11 @@ subtitle_opacity=0.2
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
-    let sdk_switch = DefaultSwitchTheme::new(tokens.clone());
     let sdk_toolbar = DefaultToolbarTheme::new(tokens.clone());
     let sdk_dock = DefaultDockSplitterTheme::new(tokens.clone());
     let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
     let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for scale in [sdk_switch.scale(2.0), look.with_size(ShadcnSize::Md).switch_theme().scale(2.0)] {
-        assert_eq!(scale.disabled_opacity, 0.4);
-    }
     for resolved in [
         sdk_toolbar.resolve(true, ToolbarVariant::Outline),
         look.with_size(ShadcnSize::Md).toolbar_theme().resolve(true, ToolbarVariant::Outline),

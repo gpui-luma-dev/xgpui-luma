@@ -29,6 +29,14 @@ tokens {
     checkbox_radius_scale = 1
     size 1 { checkbox_radius_scale = 0.875 }
     size 3 { checkbox_radius_scale = 1.25 }
+
+    /// Switch `--radius-1` (size 1) or `--radius-2` (sizes 2–3), before the radius factor.
+    switch_radius_base = 4
+    size 1 { switch_radius_base = 3 }
+    /// `--radius-thumb`: a pill unless the theme radius is none or small.
+    radius_thumb = 9999
+    radius none  { radius_thumb = 0.5 }
+    radius small { radius_thumb = 0.5 }
   }
 
   typography {

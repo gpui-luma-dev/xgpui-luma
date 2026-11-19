@@ -42,7 +42,6 @@ pub(crate) mod selector_builder;
 pub(crate) mod selector_items_panel;
 pub(crate) mod slider;
 pub(crate) mod slider_builder;
-pub(crate) mod switch;
 pub(crate) mod switch_builder;
 pub(crate) mod tabs;
 pub(crate) mod tabs_builder;

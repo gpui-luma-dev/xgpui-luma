@@ -1,0 +1,60 @@
+// Shadcn switch. Layer: look, over the SDK switch. The base is Shadcn's primary style.
+// Hover and pressed do not recolor the track or thumb, so colors own their property (`:=`).
+
+switch {
+  track_width  = 40
+  track_height = 18
+  thumb_size   = 14
+  // Native Shadcn switches keep the SDK baseline shift at every size (checkbox and radio scale it).
+  label_baseline_shift = exact(1)
+  size sm { track_width = 32  track_height = 13  thumb_size = 9 }
+  size lg { track_width = 48  track_height = 24  thumb_size = 20 }
+
+  part root {
+    focus_border = first(css.ring, shadcn.fallback_foreground)
+  }
+
+  // The track's shadow is the thumb elevation, drawn around the track.
+  part track {
+    background := css.input
+    border     := first(css.border, shadcn.fallback_foreground)
+    shadow     := first(css.shadow_sm, [])
+    :checked  { background = action_layer(primary, default)  border = background }
+    :disabled { background = css.muted  border = first(css.border, shadcn.fallback_foreground)  shadow = none }
+  }
+
+  part thumb {
+    background := css.background
+    border     := css.border
+    :checked  { background = action_foreground(primary)  border = background }
+    :disabled { background = css.muted_foreground  border = css.muted }
+  }
+
+  part label {
+    foreground := css.foreground
+    font_size   = shadcn.control_font_size
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  variant secondary {
+    part track { :checked { background = action_layer(secondary, default) } }
+    part thumb { :checked { background = action_foreground(secondary) } }
+  }
+
+  variant outline {
+    part track { :checked { background = action_layer(outline, default) } }
+    part thumb { :checked { background = action_foreground(outline) } }
+  }
+
+  variant ghost {
+    part track { :checked { background = action_layer(ghost, default) } }
+    part thumb { :checked { background = action_foreground(ghost) } }
+  }
+
+  // The primary track; a contrasting thumb in every state, no focus ring paint and no shadow.
+  variant content_only {
+    part root  { focus_border = transparent }
+    part track { shadow := none }
+    part thumb { background := shadcn.content_only_thumb  border := shadcn.content_only_thumb }
+  }
+}

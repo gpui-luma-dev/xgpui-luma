@@ -58,56 +58,9 @@ pub static COLOR_LAYOUT_INTERACTION_STATES: [InspectorStateSpec; 4] = [
     },
 ];
 
-pub static CHOICE_INTERACTION_STATES: [InspectorStateSpec; 5] = [
-    InspectorStateSpec {
-        id: "default",
-        label: "Default",
-        icon: LucideIcon::Circle,
-        expanded_default: true,
-        categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "disabled",
-        label: "Disabled",
-        icon: LucideIcon::CircleOff,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "hover",
-        label: "Hover",
-        icon: LucideIcon::MousePointer2,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "focused",
-        label: "Focused",
-        icon: LucideIcon::Focus,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "pressed",
-        label: "Pressed",
-        icon: LucideIcon::MousePointerClick,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
-    },
-];
-
 pub static SELECTED_UNSELECTED_VALUES: [InspectorValueMode; 2] = [
     InspectorValueMode { id: "selected", label: "selected" },
     InspectorValueMode { id: "unselected", label: "unselected" },
-];
-
-pub static ON_OFF_VALUES: [InspectorValueMode; 2] =
-    [InspectorValueMode { id: "on", label: "on" }, InspectorValueMode { id: "off", label: "off" }];
-
-pub static TEXTFIELD_VARIANTS: [InspectorVariant; 3] = [
-    InspectorVariant { id: "outline", label: "Outline" },
-    InspectorVariant { id: "primary", label: "Primary" },
-    InspectorVariant { id: "surface", label: "Surface" },
 ];
 
 pub static TEXTFIELD_INTERACTION_STATES: [InspectorStateSpec; 5] = [
@@ -146,6 +99,12 @@ pub static TEXTFIELD_INTERACTION_STATES: [InspectorStateSpec; 5] = [
         expanded_default: false,
         categories: &COLOR_LAYOUT_ELEVATION_CATEGORIES,
     },
+];
+
+pub static TEXTFIELD_VARIANTS: [InspectorVariant; 3] = [
+    InspectorVariant { id: "outline", label: "Outline" },
+    InspectorVariant { id: "primary", label: "Primary" },
+    InspectorVariant { id: "surface", label: "Surface" },
 ];
 
 pub static TEXTAREA_INTERACTION_STATES: [InspectorStateSpec; 5] = [

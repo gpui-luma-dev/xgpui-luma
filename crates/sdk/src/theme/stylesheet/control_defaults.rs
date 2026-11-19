@@ -7,25 +7,10 @@ use crate::{
         overlay_window::{DefaultOverlayWindowTheme, OverlayWindowMode, OverlayWindowTheme},
         selection_panel::default_selection_panel_look,
         slider::{DefaultSliderTheme, SliderTheme},
-        switch::SwitchScale,
         textfield::{DefaultTextFieldTheme, TextFieldTheme},
     },
-    theme::{MetricTokens, StandardBoxScale, ThemeMode, snap_to_pixel},
+    theme::{StandardBoxScale, ThemeMode},
 };
-
-#[test]
-fn choice_baseline_keeps_stock_metrics_at_multiple_display_scales() {
-    let metrics = MetricTokens::default();
-    let (width, height, thumb) = (40.0, 18.0, 14.0);
-    {
-        for scale in [1.0, 1.25, 1.5, 2.0] {
-            let switch = SwitchScale::compute(&metrics, scale);
-            assert_eq!(switch.track_width, snap_to_pixel(width, scale));
-            assert_eq!(switch.track_height, snap_to_pixel(height, scale));
-            assert_eq!(switch.thumb_size, snap_to_pixel(thumb, scale));
-        }
-    }
-}
 
 #[test]
 fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
@@ -127,22 +112,21 @@ fn tree_and_accordion_themes_resolve_captured_common_geometry() {
 #[test]
 fn math_values_resolve_through_tokens_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.switch.geometry]\ntrack_width_scale = 'math(32 / 28)'\n[common.tokens.metrics.control]\ncontrol_height = 'math(28 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
-        "[common.switch.geometry]\nthumb_scale = 'math(0 / 28)'",
+        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.tokens.metrics.control]\ncontrol_height = 'math(28 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
+        "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
     ]).unwrap();
     assert_eq!(sheet.tokens.metrics.control.control_height, 56.0);
     assert_eq!(sheet.overlay_window.geometry.backdrop_opacity, Some(0.25));
-    let scale = SwitchScale::compute_with_stylesheet(&sheet.tokens.metrics, 1.0, &sheet);
-    assert_eq!(scale.track_width, 64.0);
-    assert_eq!(scale.thumb_size, 0.0);
+    assert_eq!(sheet.slider.geometry.width, Some(64.0));
+    assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
-    let direct: CommonStylesheet = toml::from_str("[switch.geometry]\ngap = 'math(2 * 3)'").unwrap();
-    assert_eq!(direct.switch.geometry.gap, Some(6.0));
+    let direct: CommonStylesheet = toml::from_str("[slider.geometry]\nheight = 'math(2 * 3)'").unwrap();
+    assert_eq!(direct.slider.geometry.height, Some(6.0));
     for source in [
-        "[common.switch.geometry]\ntrack_width_scale = 'math(-1 / 2)'",
+        "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
         "[common.overlay_window.geometry]\nbackdrop_opacity = 'math(3 / 2)'",
         "[common.tokens.metrics.control]\ncontrol_height = 'math(-28 * 2)'",
-        "[common.switch.geometry]\nunknown = 'math(1 + 2)'",
+        "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
     }

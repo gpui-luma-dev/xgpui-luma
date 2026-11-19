@@ -20,11 +20,11 @@ use crate::inspect::controls::{
     PopupMenuInspectPalette, ProgressInspectMetrics, ProgressInspectPalette, ResizablePanelsInspectMetrics,
     ResizablePanelsInspectPalette, ScrollbarInspectMetrics, ScrollbarInspectPalette, SelectorInspectMetrics,
     SelectorInspectPalette, SliderInspectMetrics, SliderInspectPalette, SplitViewInspectMetrics,
-    SplitViewInspectPalette, StepperInspectMetrics, StepperInspectPalette, SwitchInspectMetrics, SwitchInspectPalette,
-    TabsInspectMetrics, TabsItemInspectPalette, TabsListInspectPalette, TextFieldInspectMetrics,
-    TextFieldInspectPalette, ToolbarInspectMetrics, ToolbarInspectPalette, TreeViewInspectMetrics,
-    TreeViewRowInspectPalette, ColorChromeInspectSection, ColorChromeProfile, inspect_accordion_content_color_palette,
-    inspect_accordion_metrics, inspect_accordion_trigger_color_palette, inspect_autocomplete_chrome_color_palette,
+    SplitViewInspectPalette, StepperInspectMetrics, StepperInspectPalette, TabsInspectMetrics, TabsItemInspectPalette,
+    TabsListInspectPalette, TextFieldInspectMetrics, TextFieldInspectPalette, ToolbarInspectMetrics,
+    ToolbarInspectPalette, TreeViewInspectMetrics, TreeViewRowInspectPalette, ColorChromeInspectSection,
+    ColorChromeProfile, inspect_accordion_content_color_palette, inspect_accordion_metrics,
+    inspect_accordion_trigger_color_palette, inspect_autocomplete_chrome_color_palette,
     inspect_autocomplete_menu_color_palette, inspect_autocomplete_metrics, inspect_badge_color_palette,
     inspect_badge_metrics, inspect_card_metrics, inspect_context_menu_color_palette, inspect_context_menu_metrics,
     inspect_control_group_list_color_palette, inspect_control_group_metrics, inspect_floating_menu_color_palette,
@@ -37,11 +37,10 @@ use crate::inspect::controls::{
     inspect_resizable_panels_color_palette, inspect_resizable_panels_metrics, inspect_scrollbar_color_palette,
     inspect_scrollbar_metrics, inspect_selector_color_palette, inspect_selector_metrics, inspect_slider_color_palette,
     inspect_split_view_color_palette, inspect_stepper_color_palette, inspect_stepper_metrics,
-    inspect_switch_color_palette, inspect_switch_elevation, inspect_tabs_item_color_palette_for_look,
-    inspect_tabs_list_color_palette_for_look, inspect_tabs_metrics_for_look, inspect_textarea_color_palette,
-    inspect_textarea_metrics, inspect_textfield_color_palette, inspect_textfield_elevation, inspect_textfield_metrics,
-    inspect_toolbar_color_palette, inspect_toolbar_metrics, inspect_tree_view_metrics,
-    inspect_tree_view_row_color_palette, inspect_color_chrome_sections,
+    inspect_tabs_item_color_palette_for_look, inspect_tabs_list_color_palette_for_look, inspect_tabs_metrics_for_look,
+    inspect_textarea_color_palette, inspect_textarea_metrics, inspect_textfield_color_palette,
+    inspect_textfield_elevation, inspect_textfield_metrics, inspect_toolbar_color_palette, inspect_toolbar_metrics,
+    inspect_tree_view_metrics, inspect_tree_view_row_color_palette, inspect_color_chrome_sections,
 };
 
 /// Inspect-time wrapper around a [`ShadcnLook`] look resolver.
@@ -157,46 +156,6 @@ impl<'a> ShadcnInspect<'a> {
         enabled: bool,
     ) -> TextFieldInspectPalette {
         inspect_textfield_color_palette(&self.mode_tokens(), self.theme_mode(), style, state, enabled)
-    }
-
-    pub fn inspect_switch_color_palette(
-        &self,
-        style: ShadcnButtonStyle,
-        on: bool,
-        state: InteractionState,
-    ) -> SwitchInspectPalette {
-        inspect_switch_color_palette(&self.mode_tokens(), self.theme_mode(), style, on, state)
-    }
-
-    pub fn inspect_switch_metrics(&self, size: ShadcnSize) -> SwitchInspectMetrics {
-        crate::tables::metrics::resolve_switch_metrics_with_stylesheet(
-            &self.mode_tokens(),
-            &self.look.stylesheet(),
-            self.theme_mode(),
-            ShadcnButtonStyle::Primary,
-            size,
-        )
-        .into()
-    }
-
-    pub fn inspect_switch_metrics_for_style(&self, style: ShadcnButtonStyle, size: ShadcnSize) -> SwitchInspectMetrics {
-        crate::tables::metrics::resolve_switch_metrics_with_stylesheet(
-            &self.mode_tokens(),
-            &self.look.stylesheet(),
-            self.theme_mode(),
-            style,
-            size,
-        )
-        .into()
-    }
-
-    pub fn inspect_switch_elevation(
-        &self,
-        style: ShadcnButtonStyle,
-        on: bool,
-        state: InteractionState,
-    ) -> ButtonInspectElevation {
-        inspect_switch_elevation(&self.mode_tokens(), self.theme_mode(), style, on, state)
     }
 
     pub fn inspect_scrollbar_color_palette(

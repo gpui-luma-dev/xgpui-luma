@@ -1,0 +1,64 @@
+// SDK switch. Layer: sdk. Drawn by the switch template (controls/choice/switch/styled.rs).
+// The "on" state is `checked`. A switch instance can still override its track and thumb size, length,
+// orientation and radius (ButtonRenderModel switch fields); these values are the normal ones.
+
+/// A track with a sliding thumb, and a label.
+switch {
+  /// Whole-control opacity when disabled.
+  disabled_opacity: number = metrics.disabled_opacity
+  /// Space between the track and the label.
+  gap = metrics.control.gap
+  border_width = exact(metrics.border_width)
+
+  /// Track length, height and thumb size as fractions of the control height.
+  track_width_scale: number = 40 / 36
+  track_height_scale: number = 18 / 36
+  thumb_scale: number = 14 / 36
+  /// Track length (horizontal) and thickness.
+  track_width: length = metrics.control.control_height * track_width_scale
+  track_height: length = metrics.control.control_height * track_height_scale
+  /// Thumb diameter, and its inset from the track ends.
+  thumb_size: length = metrics.control.control_height * thumb_scale
+  track_padding: length = 2
+  /// Corner radius of the track: a pill.
+  track_radius: length = exact(999)
+  /// Shift aligning the label baseline with the track.
+  label_baseline_shift: length = exact(geometry.label_baseline)
+  /// Focus ring geometry (FocusAdorner): gap to the face, stroke width, extra outward offset.
+  focus_gap: length = exact(metrics.focus.gap)
+  focus_width: length = exact(metrics.focus.width)
+  focus_offset: length = exact(metrics.focus.offset)
+
+  /// The whole control row.
+  part root {
+    focus_border = palette.focus.ring
+    transition   = motion.default
+  }
+
+  /// The track. Its shadow is the thumb elevation, drawn around the track.
+  part track {
+    background = palette.form.input.background
+    border     = palette.border.default
+    shadow     = elevation.thumb
+    :checked  { background = palette.state.selected.background  border = background }
+    :disabled { background = palette.state.disabled.background  border = palette.border.default }
+  }
+
+  /// The thumb.
+  part thumb {
+    background = palette.app.background
+    border     = palette.border.default
+    :checked  { background = palette.state.selected.foreground  border = background }
+    :disabled { background = palette.state.disabled.foreground  border = palette.state.disabled.background }
+  }
+
+  /// The label text.
+  part label {
+    foreground  = palette.app.foreground
+    font_family = typography.font.sans
+    font_size   = typography.text.body.size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    font_weight = typography.text.label.weight
+    :disabled { foreground = palette.state.disabled.foreground }
+  }
+}

@@ -215,8 +215,13 @@ fn render_choice_size_cell(
     ));
     let radius_override = radius.map(|preset| {
         let tokens = look.mode_tokens();
-        let scale = xgpui_luma_look_shadcn::paint::switch_scale(tokens.as_ref(), look.mode(), style, size, 1.0);
-        xgpui_luma_look_shadcn::paint::resolve_switch_radius_preset(preset, &tokens.radii, scale.track_height)
+        let switch = super::lss::shadcn_style(look, "switch", style, InteractionState::default(), None);
+        let track_height = switch
+            .root()
+            .value("track_height")
+            .and_then(xgpui_luma::style::lss::Value::as_number)
+            .unwrap_or_default();
+        xgpui_luma_look_shadcn::paint::resolve_button_radius_preset(preset, &tokens.radii, track_height)
     });
 
     match control {

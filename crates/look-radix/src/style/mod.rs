@@ -46,7 +46,7 @@ macro_rules! radix_sources {
     };
 }
 
-radix_sources!["tokens.lss", "checkbox.lss", "radio.lss"];
+radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss"];
 
 /// The SDK's files with the Radix look's files over them.
 pub fn stylesheet() -> Stylesheet {
@@ -98,6 +98,8 @@ impl ThemeCache {
 }
 
 struct ModeTokens {
+    /// The light-mode gray scale, whatever the bound mode (switch thumbs keep their light palette).
+    light: ModeScales,
     scales: ModeScales,
     /// The color on solid accent faces (custom contrast, or dark labels for bright accents).
     accent_contrast: Hsla,
@@ -114,6 +116,7 @@ impl RadixTokens {
     pub fn new(look: &Look) -> Self {
         let mode = |mode| ModeTokens {
             scales: look.scales_for(mode),
+            light: look.scales_for(ThemeMode::Light),
             accent_contrast: look.resolve_role_for(SemanticRole::PrimaryForeground, mode).hsla(),
         };
         Self {
@@ -128,7 +131,7 @@ impl RadixTokens {
     }
 }
 
-const ROOTS: &[&str] = &["gray", "accent", "tone", "look"];
+const ROOTS: &[&str] = &["gray", "accent", "tone", "light_gray", "look"];
 
 fn color(hsla: Hsla) -> Value {
     let rgb = hsla.to_rgb();
@@ -148,8 +151,12 @@ impl TokenSource for RadixTokens {
         }
     }
 
-    /// `gray[n]`, `accent[n]`, and `tone[n]`: the accent scale, or gray for `tone gray`.
+    /// `gray[n]`, `accent[n]`, `tone[n]` (the accent scale, or gray for `tone gray`), and `light_gray[n]`.
     fn index(&self, root: &str, index: i64, cx: &TokenCx<'_>) -> Option<Value> {
+        let step = u8::try_from(index).ok().filter(|n| (1..=12).contains(n))?;
+        if root == "light_gray" {
+            return Some(color(self.mode(cx).light.resolved(ScaleFamily::Gray, step).hsla()));
+        }
         let family = match root {
             "gray" => ScaleFamily::Gray,
             "accent" => ScaleFamily::Color,
@@ -157,7 +164,6 @@ impl TokenSource for RadixTokens {
             "tone" => ScaleFamily::Color,
             _ => return None,
         };
-        let step = u8::try_from(index).ok().filter(|n| (1..=12).contains(n))?;
         Some(color(self.mode(cx).scales.resolved(family, step).hsla()))
     }
 

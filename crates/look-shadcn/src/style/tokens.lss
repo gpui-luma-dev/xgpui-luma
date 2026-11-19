@@ -12,6 +12,10 @@ tokens {
     control_font_size = 14
     size sm { control_font_size = 12 }
     size lg { control_font_size = 16 }
+
+    // The content-only switch thumb: the strongest contrast for the mode.
+    mode light { content_only_thumb = white }
+    mode dark  { content_only_thumb = black }
   }
 
   metrics {

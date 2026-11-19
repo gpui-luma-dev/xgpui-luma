@@ -24,7 +24,6 @@ pub use crate::controls::selector::selector_palette;
 pub use crate::controls::selector_items_panel::selector_items_panel_look;
 pub use crate::controls::slider::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset, slider_look};
 pub use crate::controls::split_view::split_view_look;
-pub use crate::controls::switch::{resolve_switch_radius_preset, switch_look, switch_scale};
 pub use crate::controls::tabs::{tabs_item_look, tabs_list_look};
 pub use crate::controls::textfield::textfield_palette;
 pub use crate::focus::focus_ring_color;

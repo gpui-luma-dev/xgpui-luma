@@ -23,9 +23,8 @@ pub use resolve::{
     resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics, resolve_resizable_panels_color_rule,
     resolve_scrollbar_color_rule, resolve_scrollbar_metrics, resolve_slider_color_rule, resolve_slider_metrics,
     resolve_split_view_color_rule, resolve_stylesheet_shadow_token, resolve_layered_elevation_shadow,
-    resolve_switch_color_rule, resolve_switch_metrics, resolve_stylesheet_metric, resolve_tabs_item_color_rule,
-    resolve_tabs_list_color_rule, resolve_textfield_color_rule, resolve_tree_view_row_color_rule,
-    resolve_typography_rule, ResolvedFields,
+    resolve_stylesheet_metric, resolve_tabs_item_color_rule, resolve_tabs_list_color_rule,
+    resolve_textfield_color_rule, resolve_tree_view_row_color_rule, resolve_typography_rule, ResolvedFields,
 };
 
 use std::sync::OnceLock;
@@ -35,7 +34,6 @@ fn embedded() -> &'static StylesheetConfig {
     STYLESHEET.get_or_init(|| {
         let mut config = StylesheetConfig::native_default();
         define_shadcn_slider(&mut config);
-        define_shadcn_switch(&mut config);
         config
     })
 }
@@ -49,7 +47,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     let mut common = CommonStylesheet {
         motion,
         slider: native_shadcn_common_slider(),
-        switch: native_shadcn_common_switch(),
         tabs: crate::controls::tabs::native_tabs_stylesheet(),
         button: crate::controls::button::native_button_stylesheet(),
         toggle: crate::controls::toggle::native_toggle_stylesheet(),
@@ -69,7 +66,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
 }
 
 pub use crate::controls::slider::{native_shadcn_common_slider, native_shadcn_slider, define_shadcn_slider};
-pub use crate::controls::switch::{native_shadcn_common_switch, native_shadcn_switch, define_shadcn_switch};
 
 #[cfg(test)]
 mod tests {
@@ -85,8 +81,6 @@ mod tests {
         assert!(!stylesheet.button.color_rules.is_empty());
         assert_eq!(stylesheet.badge.color_rules.len(), 5);
         assert_eq!(stylesheet.toggle.elevation_rules.len(), 2);
-        assert_eq!(stylesheet.switch.color_rules.len(), 3);
-        assert_eq!(stylesheet.switch.elevation_rules.len(), 2);
         assert_eq!(stylesheet.slider.color_rules.len(), 8);
         assert_eq!(stylesheet.slider.elevation_rules.len(), 2);
         assert_eq!(stylesheet.card.elevation_rules.len(), 1);
@@ -127,13 +121,12 @@ mod tests {
     #[test]
     fn embedded_color_rule_metadata_covers_all_controls() {
         let sections = embedded_color_rule_metadata();
-        assert_eq!(sections.len(), 26);
+        assert_eq!(sections.len(), 25);
         assert!(sections.iter().all(|section| !section.rules.is_empty()));
         assert_eq!(
             sections.iter().map(|section| section.rules.len()).sum::<usize>(),
             embedded_stylesheet().button.color_rules.len()
                 + embedded_stylesheet().badge.color_rules.len()
-                + embedded_stylesheet().switch.color_rules.len()
                 + embedded_stylesheet().slider.color_rules.len()
                 + embedded_stylesheet().scrollbar.color_rules.len()
                 + embedded_stylesheet().accordion.trigger.color_rules.len()
@@ -162,24 +155,17 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use xgpui_luma::theme::stylesheet::{define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::define_sdk_slider;
         let original = StylesheetConfig::native_default();
         // Assemble the controls independently from an empty sheet.
         let mut native = StylesheetConfig::default();
         define_sdk_slider(&mut native.common);
-        define_sdk_switch(&mut native.common);
         define_shadcn_slider(&mut native);
-        define_shadcn_switch(&mut native);
         size_presets::apply_size_presets(&mut native.common);
         assert_eq!(native.common.slider, original.common.slider);
-        assert_eq!(native.common.switch, original.common.switch);
         assert_eq!(native.slider, original.slider);
-        assert_eq!(native.switch, original.switch);
         assert_eq!(native.common.motion.slider, original.common.motion.slider);
-        assert_eq!(native.common.motion.switch, original.common.motion.switch);
-        for family in ["slider", "switch"] {
-            assert_eq!(native.common.recipes.0.get(family), original.common.recipes.0.get(family));
-        }
+        assert_eq!(native.common.recipes.0.get("slider"), original.common.recipes.0.get("slider"));
 
         let look = crate::ShadcnLook::built_in();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {

@@ -1,10 +1,10 @@
 //! The checkbox on the shared choice template (issue #285): a checkmark mark in the `glyph` part.
 
-use gpui::{AnyElement, Hsla, div, prelude::*, px};
+use gpui::{AnyElement, App, Div, Hsla, Stateful, Window, div, prelude::*, px};
 
-use crate::controls::button::ButtonTemplate;
+use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
 use crate::controls::checkbox::CheckboxData;
-use crate::controls::choice::styled::{ChoiceData, StyledChoiceTemplate};
+use crate::controls::choice::styled::{ChoiceData, IndicatorChoice, StyledChoiceTemplate, render_indicator};
 
 /// A checkbox template whose values come from `.lss` files.
 pub type StyledCheckboxTemplate = StyledChoiceTemplate<CheckboxData>;
@@ -12,8 +12,6 @@ pub type StyledCheckboxTemplate = StyledChoiceTemplate<CheckboxData>;
 impl ChoiceData for CheckboxData {
     const CONTROL: &'static str = "checkbox";
     const ON_STATE: &'static str = "checked";
-    const MARK_PART: &'static str = "glyph";
-    const MARK_SIZE: &'static str = "glyph_size";
 
     fn is_on(&self) -> bool {
         self.checked
@@ -26,6 +24,20 @@ impl ChoiceData for CheckboxData {
     fn toward(on: bool) -> Self {
         CheckboxData::new(on)
     }
+
+    fn render(
+        template: &StyledChoiceTemplate<Self>,
+        model: &ButtonRenderModel<Self>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Stateful<Div> {
+        render_indicator(template, model, window, cx)
+    }
+}
+
+impl IndicatorChoice for CheckboxData {
+    const MARK_PART: &'static str = "glyph";
+    const MARK_SIZE: &'static str = "glyph_size";
 
     fn render_mark(&self, progress: f32, size: f32, color: Hsla) -> AnyElement {
         render_checkmark(progress, size, color, &self.icons.selected)

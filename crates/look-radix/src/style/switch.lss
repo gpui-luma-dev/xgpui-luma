@@ -1,0 +1,64 @@
+// Radix switch. Layer: look, over the SDK switch.
+// Geometry matches `@radix-ui/themes` Switch at `--scaling: 1`: height 16 / 20 / 24, width = height × 1.75,
+// thumb inset 1; radius = max(--radius-{1|2} × factor, --radius-thumb), never more than a pill.
+// The base is the surface variant at size 2. Hover and pressed do not change it (`:=`).
+
+switch {
+  gap                  = 8
+  track_width          = 35
+  track_height         = 20
+  thumb_size           = 18
+  track_padding        = 1
+  track_radius         = min(max(radix.switch_radius_base * radix.radius_factor, radix.radius_thumb), track_height / 2)
+  label_baseline_shift = 0
+
+  size 1 { track_width = 28  track_height = 16  thumb_size = 14 }
+  size 3 { track_width = 42  track_height = 24  thumb_size = 22 }
+
+  part root { focus_border = radix.role.focus }
+
+  // The track's shadow is the thumb elevation, drawn around the track.
+  part track {
+    background := alpha(gray[3], 0.55)
+    border     := alpha(gray[5], 0.7)
+    shadow     := [box_shadow(alpha(black, 0.08), 0, 1, 3, 0), box_shadow(alpha(black, 0.06), 0, 0, 0, 1)]
+    :checked               { background = radix.role.primary  border = background
+                             shadow = [box_shadow(alpha(black, 0.12), 0, 1, 3, 0), box_shadow(alpha(black, 0.06), 0, 0, 0, 1)] }
+    :checked:high_contrast { background = tone[12] }
+    :disabled              { background = alpha(gray[3], 0.55)  border = alpha(gray[3], 0.55)
+                             shadow = [box_shadow(alpha(black, 0.08), 0, 1, 3, 0), box_shadow(alpha(black, 0.06), 0, 0, 0, 1)] }
+    :checked:high_contrast:disabled { background = alpha(gray[3], 0.55) }
+  }
+
+  part thumb {
+    background := white
+    border     := white
+    :disabled { background = light_gray[2]  border = light_gray[2] }
+  }
+
+  part label {
+    foreground := radix.role.foreground
+    font_size   = 14
+    line_height = 20
+    font_weight = 400
+    :disabled { foreground = radix.role.muted_foreground }
+  }
+  size 1 { part label { font_size = 12.5  line_height = 18 } }
+  size 3 { part label { font_size = 16    line_height = 22 } }
+
+  variant classic {
+    part track {
+      background = alpha(gray[4], 0.6)
+      border     = alpha(gray[5], 0.55)
+      :checked { border = alpha(gray[3], 0.5) }
+    }
+  }
+
+  variant soft {
+    part track {
+      border = alpha(gray[3], 0.55)
+      :checked               { background = tone[4]  border = background }
+      :checked:high_contrast { background = tone[6] }
+    }
+  }
+}

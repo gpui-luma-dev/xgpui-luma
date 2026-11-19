@@ -45,30 +45,3 @@ where
         &self.modifiers
     }
 }
-
-/// Macro to define a control template alias and a default instance helper.
-///
-/// Usage:
-/// ```rust
-/// # use xgpui_luma::define_control_template;
-/// # use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-/// # use xgpui_luma::controls::switch::{SwitchData, SwitchTheme, default_switch_theme};
-/// define_control_template!(
-///     ThemedSwitchTemplate,
-///     dyn SwitchTheme,
-///     ButtonRenderModel<SwitchData>,
-///     ButtonTemplate<SwitchData>,
-///     default_switch_theme()
-/// );
-/// ```
-#[macro_export]
-macro_rules! define_control_template {
-    ($name:ident, $theme:ty, $model:ty, $trait:path, $default_theme:expr) => {
-        pub type $name = $crate::infra::template::ControlTemplate<$theme, $model>;
-
-        pub fn default_template() -> std::sync::Arc<dyn $trait> {
-            static TEMPLATE: std::sync::OnceLock<std::sync::Arc<dyn $trait>> = std::sync::OnceLock::new();
-            TEMPLATE.get_or_init(|| std::sync::Arc::new($name::new($default_theme))).clone()
-        }
-    };
-}

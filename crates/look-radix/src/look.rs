@@ -95,7 +95,6 @@ pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::styles
     STYLESHEET.get_or_init(|| {
         let mut sheet = native_radix_stylesheet();
         apply_radix_slider_stylesheet(&mut sheet);
-        apply_radix_switch_stylesheet(&mut sheet);
         sheet
     })
 }
@@ -110,7 +109,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         motion,
         tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
-        switch: native_radix_switch(),
         button: crate::button::native_button_stylesheet(),
         textfield: crate::textfield::native_textfield_stylesheet(),
         progress: crate::progress::native_progress_stylesheet(),
@@ -135,8 +133,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
 
 pub use crate::slider::{native_radix_slider};
 pub(crate) use crate::slider::{apply_radix_slider_stylesheet};
-pub use crate::switch::{native_radix_switch};
-pub(crate) use crate::switch::{apply_radix_switch_stylesheet};
 
 fn sized_stylesheets(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
@@ -805,22 +801,16 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_slider};
         let original = native_radix_stylesheet();
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
-        define_sdk_switch(&mut native);
         apply_radix_slider_stylesheet(&mut native);
-        apply_radix_switch_stylesheet(&mut native);
         crate::size::apply_size_presets(&mut native);
         assert_eq!(native.slider, original.slider);
-        assert_eq!(native.switch, original.switch);
         assert_eq!(native.motion.slider, original.motion.slider);
-        assert_eq!(native.motion.switch, original.motion.switch);
-        for family in ["slider", "switch"] {
-            assert_eq!(native.recipes.0.get(family), original.recipes.0.get(family));
-        }
+        assert_eq!(native.recipes.0.get("slider"), original.recipes.0.get("slider"));
 
         let old_look = Look::built_in();
         old_look.set_common_stylesheet(original);

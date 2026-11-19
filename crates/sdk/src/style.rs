@@ -61,7 +61,9 @@ macro_rules! sdk_sources {
 }
 
 sdk_sources! {
-    shared: ["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss"],
+    shared: ["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss",
+        "controls/choice/switch/switch.lss",
+    ],
     light: "theme/palette.lss",
     dark: "theme/palette-dark.lss",
 }
@@ -332,6 +334,49 @@ mod tests {
             let length = |name: &str| root.value(name).and_then(Value::as_number);
             assert_eq!((length("indicator_size"), length("dot_size")), (Some(18.0), Some(9.0)));
             assert_eq!(length("indicator_radius"), Some(18.0), "round");
+        }
+    }
+
+    /// The SDK switch's `.lss` values in both SDK themes (they matched `DefaultSwitchTheme` when it was
+    /// deleted).
+    #[test]
+    fn switch_values_follow_the_sdk_tokens() {
+        for (tokens, theme) in [(ThemeTokens::light(), default_theme()), (ThemeTokens::dark(), dark_theme())] {
+            let palette = tokens.palette;
+            let config = config();
+            let state = |name: &str| config.state(name).expect("state");
+            let resolve = |states: &[&str], scale: f32| {
+                let key = states.iter().fold(StyleKey::new(ControlId::new("switch")), |key, s| key.state(state(s)));
+                theme.resolve(&key.scale(scale))
+            };
+            let color = |states: &[&str], part: &'static str, border: bool| {
+                let resolved = resolve(states, 1.0);
+                let part = resolved.part(PartId::new(part));
+                if border {
+                    part.border()
+                } else {
+                    part.background().or(part.foreground())
+                }
+                .map(Hsla::from)
+            };
+            let expect = |got: Option<Hsla>, want: Hsla, what: &str| {
+                assert!(got.is_some_and(|g| close(g, want)), "{what}: {got:?} != {want:?}");
+            };
+            expect(color(&[], "track", false), palette.form.input.background, "off track");
+            expect(color(&["checked"], "track", false), palette.state.selected.background, "on track");
+            expect(color(&["checked"], "track", true), palette.state.selected.background, "on track border");
+            expect(color(&["checked", "disabled"], "track", false), palette.state.disabled.background, "disabled");
+            expect(color(&[], "thumb", false), palette.app.background, "off thumb");
+            expect(color(&["checked"], "thumb", false), palette.state.selected.foreground, "on thumb");
+            for scale in [1.0, 1.25, 1.5, 2.0] {
+                let resolved = resolve(&[], scale);
+                let root = resolved.root();
+                let length = |name: &str| root.value(name).and_then(Value::as_number);
+                let snap = |v: f32| crate::theme::snap_to_pixel(v, scale);
+                assert_eq!(length("track_width"), Some(snap(40.0)), "@{scale}");
+                assert_eq!(length("track_height"), Some(snap(18.0)), "@{scale}");
+                assert_eq!(length("thumb_size"), Some(snap(14.0)), "@{scale}");
+            }
         }
     }
 

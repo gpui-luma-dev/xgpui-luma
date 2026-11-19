@@ -1,7 +1,7 @@
 //! Look defaults use the SDK controls' own typed roles. This is configuration,
 //! not a runtime: controls retain targets, accessibility, presence, and scheduling.
 
-use crate::controls::{switch::SwitchMotion, tabs::TabsMotion};
+use crate::controls::tabs::TabsMotion;
 use crate::motion::Transition;
 use super::stylesheet::CommonStylesheet;
 
@@ -36,7 +36,6 @@ pub struct MotionDefaults {
     pub combobox: crate::controls::combobox::ComboBoxMotion,
     pub table: crate::controls::table::TableMotion,
 
-    pub switch: SwitchMotion,
     pub tabs: TabsMotion,
 }
 
@@ -66,15 +65,15 @@ impl CommonStylesheet {
     /// Resolve motion without depending on a look crate.
     ///
     /// ```
-    /// use xgpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
+    /// use xgpui_luma::{controls::toggle, theme::stylesheet::CommonStylesheet};
     /// let sheet = CommonStylesheet::parse(r#"
-    /// [common.motion.switch.state]
+    /// [common.motion.toggle.state]
     /// kind = "spring"
     /// stiffness = 300.0
     /// damping = 28.0
     /// "#)?;
-    /// let builder = switch::new("notifications")
-    ///     .motion_defaults(sheet.motion_defaults().switch);
+    /// let builder = toggle::new("bold")
+    ///     .motion_defaults(sheet.motion_defaults().toggle);
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn motion_defaults(&self) -> MotionDefaults {
@@ -107,7 +106,7 @@ mod tests {
             ($ms:expr; $($role:expr),+ $(,)?) => { $(check(&$role, $ms, stringify!($role));)+ };
         }
         timed!(200;
-            m.toggle.state, m.switch.state,
+            m.toggle.state,
             m.control_group.selection, m.slider.thumb, m.progress.value, m.stepper.selection,
             m.accordion.expansion, m.tree_view.expansion, m.tree_view.position, m.sidebar.expansion,
             m.sidebar.popup.enter, m.sidebar.popup.exit, m.split_view.extent, m.resizable_panels.extent,

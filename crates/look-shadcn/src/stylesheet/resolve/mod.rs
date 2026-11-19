@@ -10,7 +10,7 @@ use crate::size::ShadcnSize;
 
 use super::config::{
     ButtonMetricsRule, ProgressMetricsRule, ScrollbarMetricsRule, SidebarMetricsRule, SliderMetricsRule,
-    StepperMetricsRule, SwitchMetricsRule, TypographyRule,
+    StepperMetricsRule, TypographyRule,
 };
 
 /// Context for resolving derived stylesheet tokens (`@outline_layer`, `@action_layer`, etc.).
@@ -127,10 +127,6 @@ pub fn resolve_slider_metrics(
         thumb_size: rule.thumb_size,
         radius: resolve_stylesheet_metric(&rule.radius, controls, size).unwrap_or(xgpui_luma::theme::FULL_RADIUS_PX),
     }
-}
-
-pub fn resolve_switch_metrics(rule: &SwitchMetricsRule) -> ResolvedSwitchMetrics {
-    ResolvedSwitchMetrics { width: rule.width, height: rule.height, thumb_size: rule.thumb_size }
 }
 
 pub fn resolve_scrollbar_metrics(rule: &ScrollbarMetricsRule) -> ResolvedScrollbarMetrics {

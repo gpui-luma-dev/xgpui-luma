@@ -36,17 +36,45 @@ pub struct IndicatorOnly {
     pub hidden_parts: &'static [&'static str],
 }
 
+/// The labeled box model from named root properties instead of the root's own box (a switch's track).
+#[derive(Clone, Copy, Debug)]
+pub struct BoxProps {
+    pub height: &'static str,
+    pub padding: &'static str,
+    pub radius: &'static str,
+}
+
 /// Inspector rows for one `.lss` control, from the look's current style theme.
 pub struct LssInspectorAdapter {
     control: ControlId,
     /// The state the value selector turns on (`"checked"` for the value mode `checked`).
     value_state: &'static str,
+    /// The value-mode id that turns `value_state` on (defaults to the state's name).
+    on_value: &'static str,
     indicator_only: Option<IndicatorOnly>,
+    box_props: Option<BoxProps>,
 }
 
 impl LssInspectorAdapter {
     pub fn new(control: &'static str, value_state: &'static str) -> Self {
-        Self { control: ControlId::new(control), value_state, indicator_only: None }
+        Self {
+            control: ControlId::new(control),
+            value_state,
+            on_value: value_state,
+            indicator_only: None,
+            box_props: None,
+        }
+    }
+
+    /// The value-mode id meaning on, when it differs from the state's name (e.g. `on` for `checked`).
+    pub fn on_value(mut self, on_value: &'static str) -> Self {
+        self.on_value = on_value;
+        self
+    }
+
+    pub fn box_props(mut self, box_props: BoxProps) -> Self {
+        self.box_props = Some(box_props);
+        self
     }
 
     pub fn indicator_only(mut self, indicator_only: IndicatorOnly) -> Self {
@@ -81,7 +109,7 @@ impl LssInspectorAdapter {
             ("pressed", s.pressed),
             ("focused", s.focused),
             ("disabled", s.disabled),
-            (self.value_state, selection.value_id == self.value_state),
+            (self.value_state, selection.value_id == self.on_value),
         ] {
             if let Some(state) = config.state(name) {
                 key = key.state_if(state, on);
@@ -177,6 +205,19 @@ impl LssInspectorAdapter {
                 focus_ring_width: focus.width,
                 focus_ring_offset: focus.gap,
             },
+            None if self.box_props.is_some() => {
+                let props = self.box_props.expect("checked");
+                InspectBoxModelSnapshot {
+                    height: num(props.height),
+                    padding_x: num(props.padding),
+                    padding_y: num(props.padding),
+                    border_width: num("border_width"),
+                    gap: num("gap"),
+                    radius: num(props.radius),
+                    focus_ring_width: focus.width,
+                    focus_ring_offset: focus.gap,
+                }
+            }
             None => InspectBoxModelSnapshot {
                 height: root.and_then(|r| r.box_model.height.or(r.box_model.min_height)).unwrap_or(0.0),
                 padding_x: root.map_or(0.0, |r| r.box_model.padding.left),
@@ -394,6 +435,32 @@ pub static RADIO_BUTTON_INSPECTOR_SPEC: ControlInspectorSpec = ControlInspectorS
     default_size_id: "md",
     default_value_id: "selected",
 };
+
+static SWITCH_VALUES: [InspectorValueMode; 2] =
+    [InspectorValueMode { id: "on", label: "on" }, InspectorValueMode { id: "off", label: "off" }];
+
+/// The Shadcn switch (`look-shadcn/src/style/switch.lss`): no parts selector; the box model is the track.
+pub static SWITCH_INSPECTOR_SPEC: ControlInspectorSpec = ControlInspectorSpec {
+    control_label: "Switch",
+    id_prefix: "switch-theme-inspector",
+    parts: &[],
+    variants: &CHECKBOX_VARIANTS,
+    states: &LSS_INTERACTION_STATES,
+    sizes: &CHECKBOX_SIZES,
+    value_modes: &SWITCH_VALUES,
+    default_part_id: "",
+    default_variant_id: "primary",
+    default_size_id: "md",
+    default_value_id: "on",
+};
+
+/// The switch inspector: the generic adapter with the track as the box model.
+pub fn switch_inspector() -> SharedInspectorResolver {
+    LssInspectorAdapter::new("switch", "checked")
+        .on_value("on")
+        .box_props(BoxProps { height: "track_height", padding: "track_padding", radius: "track_radius" })
+        .shared()
+}
 
 /// The radio inspector: the generic adapter with the radio's indicator geometry.
 pub fn radio_button_inspector() -> SharedInspectorResolver {

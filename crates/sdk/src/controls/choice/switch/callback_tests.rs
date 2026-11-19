@@ -13,7 +13,7 @@ fn spring_state_interrupts_completes_and_obeys_animation_disable() {
     let app = TestAppContext::single();
     let owner = app.update(|cx| {
         cx.new(|cx| Owner {
-            control: new("spring").motion(|m| m.state = Transition::spring(200.0, 18.0)).spawn(cx),
+            control: new("spring").transition(Transition::spring(200.0, 18.0)).spawn(cx),
             log: Vec::new(),
             _observer: None,
         })
@@ -185,34 +185,22 @@ fn owner_is_weak_and_captures_release_with_control_or_builder() {
 
 #[test]
 fn vanilla_sdk_defaults_and_stylesheet_work_without_a_look() {
-    use crate::{motion::MotionState, theme::stylesheet::CommonStylesheet};
+    use crate::motion::MotionState;
     use std::time::Duration;
-    let sheet = CommonStylesheet::parse(
-        r#"
-[common.motion.switch.state]
-kind = "timed"
-duration_ms = 800
-easing = "linear"
-"#,
-    )
-    .unwrap();
+    // Timing comes from `.lss` (`transition`, 200 ms out-cubic by default), or this instance's override.
     let app = TestAppContext::single();
     app.update(|cx| {
         let vanilla = cx.new(|cx| new("vanilla").spawn(cx));
-        let configured = cx.new(|cx| new("configured").motion_defaults(sheet.motion_defaults().switch).spawn(cx));
         let edited = cx.new(|cx| {
             new("edited")
-                .motion(|m| m.state = Transition::instant())
-                .motion_defaults(sheet.motion_defaults().switch)
-                .motion_enabled(false)
+                .transition(Transition::timed(Duration::from_millis(800), crate::motion::Easing::Linear))
                 .spawn(cx)
         });
         let sample = |entity: &Entity<Switch>, elapsed| {
-            entity.read(cx).read(cx).motion_profile().state.start(MotionState::default(), 1.0).sample(elapsed)
+            entity.read(cx).read(cx).current_transition().start(MotionState::default(), 1.0).sample(elapsed)
         };
         assert!(!sample(&vanilla, Duration::from_millis(199)).complete);
         assert!(sample(&vanilla, Duration::from_millis(200)).complete);
-        assert_eq!(sample(&configured, Duration::from_millis(200)).state.value, 0.25);
-        assert!(sample(&edited, Duration::ZERO).complete);
+        assert_eq!(sample(&edited, Duration::from_millis(200)).state.value, 0.25);
     });
 }

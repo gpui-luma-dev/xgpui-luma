@@ -270,3 +270,78 @@ fn radio_sizes_scale_the_indicator_and_dot() {
     assert_eq!(number(&[], "dot_size"), 9.0, "36 × 0.24, snapped");
     assert_eq!(number(&[], "indicator_radius"), 18.0, "round");
 }
+
+// Behaviour of the native Shadcn switch, kept as checks on the `.lss` switch.
+
+#[test]
+fn switch_hover_and_press_do_not_recolor() {
+    let look = retro_arcade();
+    for on in [&[][..], &["checked"]] {
+        let rest = switch(&look, &[], on);
+        for extra in [&["hover"][..], &["pressed"]] {
+            let moved = switch(&look, &[], &[on, extra].concat());
+            for (part, what) in [("track", "background"), ("track", "border"), ("thumb", "background"), ("label", "fg")]
+            {
+                assert!(close(color(&moved, part, what), color(&rest, part, what)), "{on:?} {extra:?} {part}");
+            }
+        }
+    }
+}
+
+#[test]
+fn switch_on_fills_with_the_style_color_and_off_uses_input() {
+    let look = retro_arcade();
+    let tokens = look.mode_tokens();
+    let css = |name: &str| crate::resolve::resolve_color(&tokens.catalog, name).expect("catalog color");
+    assert!(close(color(&switch(&look, &[], &[]), "track", "background"), css("input")));
+    let on = switch(&look, &[], &["checked"]);
+    assert!(close(color(&on, "track", "background"), css("primary")));
+    assert!(close(color(&on, "track", "border"), css("primary")), "the border follows the fill");
+    assert!(close(color(&on, "thumb", "background"), css("primary-foreground")));
+    let secondary = switch(&look, &[("variant", "secondary")], &["checked"]);
+    assert!(close(color(&secondary, "track", "background"), css("secondary")));
+}
+
+#[test]
+fn switch_shadow_and_content_only_thumb() {
+    let look = retro_arcade();
+    assert!(!track_shadow(&switch(&look, &[], &[])).is_empty(), "shadow-sm around the track");
+    assert!(track_shadow(&switch(&look, &[], &["disabled"])).is_empty());
+    assert!(track_shadow(&switch(&look, &[("variant", "content_only")], &[])).is_empty());
+    for (mode, thumb) in [(ThemeMode::Light, Color::WHITE), (ThemeMode::Dark, Color::BLACK)] {
+        look.set_mode(mode);
+        let content_only = switch(&look, &[("variant", "content_only")], &["checked"]);
+        assert!(close(color(&content_only, "thumb", "background"), Hsla::from(thumb)), "{mode:?}");
+    }
+}
+
+#[test]
+fn switch_sizes() {
+    let look = retro_arcade();
+    let number = |attrs: &[(&str, &str)], name: &str| {
+        switch(&look, attrs, &[]).root().value(name).and_then(Value::as_number).expect("number")
+    };
+    for (attrs, width, height, thumb) in [
+        (&[("size", "sm")][..], 32.0, 13.0, 9.0),
+        (&[], 40.0, 18.0, 14.0),
+        (&[("size", "lg")], 48.0, 24.0, 20.0),
+    ] {
+        assert_eq!(
+            (number(attrs, "track_width"), number(attrs, "track_height"), number(attrs, "thumb_size")),
+            (width, height, thumb)
+        );
+        assert_eq!(number(attrs, "label_baseline_shift"), 1.0, "the switch keeps the SDK baseline at every size");
+    }
+}
+
+fn switch(
+    look: &ShadcnLook,
+    attrs: &[(&str, &str)],
+    states: &[&str],
+) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("switch", look, attrs, states)
+}
+
+fn track_shadow(resolved: &xgpui_luma::style::lss::Resolved) -> Vec<BoxShadow> {
+    resolved.part(PartId::new("track")).shadow().map(|s| box_shadows(&s)).unwrap_or_default()
+}

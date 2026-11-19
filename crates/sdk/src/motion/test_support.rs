@@ -46,6 +46,8 @@ macro_rules! test_look_motion_contract {
                     let checkbox = $api::Checkbox::new("checkbox").look(&look).spawn(cx);
                     let lss = Transition::timed(Duration::from_millis(200), Easing::OutCubic);
                     assert_eq!(sample(&checkbox.read(cx).current_transition()), sample(&lss));
+                    let switch = $api::Switch::new("switch").look(&look).spawn(cx);
+                    assert_eq!(sample(&switch.read(cx).current_transition()), sample(&lss));
                     let radio = $api::Radio::new("radio").look(&look).spawn(cx);
                     assert_eq!(sample(&radio.read(cx).current_transition()), sample(&lss));
                     let edited_radio = $api::Radio::new("edited-radio").transition(Transition::instant()).look(&look).spawn(cx);
@@ -97,7 +99,7 @@ easing = "linear"
             let look = ($make_look)(source);
             let vanilla = xgpui_luma::theme::MotionDefaults::vanilla();
             let inherited = look.motion_defaults();
-            assert_eq!(inherited.switch.state.description(), vanilla.switch.state.description());
+            assert_eq!(inherited.toggle.state.description(), vanilla.toggle.state.description());
             assert_eq!(
                 inherited.slide_panel.presence.enter.description(),
                 vanilla.slide_panel.presence.enter.description()

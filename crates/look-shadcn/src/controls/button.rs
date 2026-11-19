@@ -483,7 +483,7 @@ mod tests {
     #[cfg(feature = "test-support")]
     #[test]
     fn choice_focus_geometry_is_stable_across_styles() {
-        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+        use xgpui_luma::controls::button::ButtonRenderModel;
         use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
         use gpui::IntoElement;
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
@@ -524,9 +524,7 @@ mod tests {
                         )
                         .into_any_element()
                 });
-                let template = xgpui_luma::controls::switch::ThemedSwitchTemplate::new(
-                    super::super::templates::switch_theme_with_style(look.clone(), style),
-                );
+                let template = super::super::templates::switch_template(look.clone(), style);
                 assert_stable_layout(move |state, selected, window, cx| {
                     template
                         .render(

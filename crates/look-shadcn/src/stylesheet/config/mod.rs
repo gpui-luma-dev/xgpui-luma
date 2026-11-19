@@ -13,7 +13,6 @@ pub use crate::controls::card::{CardStylesheet, CardColorRule};
 pub use crate::elements::badge::{BadgeStylesheet, BadgeColorRule};
 pub use crate::controls::split_view::{SplitViewStylesheet, SplitViewColorRule};
 pub use crate::controls::control_group::{ControlGroupStylesheet, ControlGroupListColorRule};
-pub use crate::controls::switch::{SwitchStylesheet, SwitchMetricsRule, SwitchColorRule};
 pub use crate::controls::slider::{SliderStylesheet, SliderMetricsRule, SliderColorRule};
 pub use crate::controls::scrollbar::{ScrollbarStylesheet, ScrollbarMetricsRule, ScrollbarColorRule};
 pub use crate::controls::accordion::{AccordionStylesheet, AccordionTriggerColorRule, AccordionContentColorRule};
@@ -43,8 +42,6 @@ pub struct StylesheetConfig {
     pub button: ButtonStylesheet,
     #[serde(default)]
     pub toggle: ToggleStylesheet,
-    #[serde(default)]
-    pub switch: SwitchStylesheet,
     #[serde(default)]
     pub slider: SliderStylesheet,
     #[serde(default)]
@@ -91,7 +88,6 @@ impl StylesheetConfig {
             typography: TypographyStylesheet::native_default(),
             button: ButtonStylesheet::native_default(),
             toggle: ToggleStylesheet::native_default(),
-            switch: super::native_shadcn_switch(),
             slider: super::native_shadcn_slider(),
             scrollbar: ScrollbarStylesheet::native_default(),
             accordion: AccordionStylesheet::native_default(),

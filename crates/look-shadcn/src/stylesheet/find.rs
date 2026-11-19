@@ -10,8 +10,8 @@ use super::config::{
     FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule,
     ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarBranchColorRule,
     SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
-    SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule,
-    TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
+    TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule, TextfieldColorRule,
+    TreeViewRowColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
 
@@ -53,10 +53,6 @@ fn textfield_style_key(style: crate::controls::ShadcnTextFieldStyle) -> &'static
         crate::controls::ShadcnTextFieldStyle::Primary => "primary",
         crate::controls::ShadcnTextFieldStyle::Surface => "surface",
     }
-}
-
-pub fn find_switch_color_rule(stylesheet: &StylesheetConfig, on: bool, disabled: bool) -> Option<&SwitchColorRule> {
-    stylesheet.switch.find_color_rule(on, disabled)
 }
 
 pub fn find_slider_color_rule<'a>(

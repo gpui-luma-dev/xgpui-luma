@@ -22,32 +22,6 @@ fn styles() -> [ShadcnButtonStyle; 5] {
 }
 
 #[test]
-fn choice_colors_match_runtime_for_every_state_style_and_fallback() {
-    for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
-        for missing in [None, Some("ring"), Some("border"), Some("primary")] {
-            let mut mode =
-                ShadcnModeTokens::from_catalog(crate::inspect::test_support::sample_catalog(), theme_mode).unwrap();
-            if let Some(token) = missing {
-                mode.catalog.tokens.remove(token);
-            }
-            for style in styles() {
-                for state in states() {
-                    for selected in [false, true] {
-                        let actual = inspect_switch_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::switch_look(&mode, theme_mode, style, selected, state, ShadcnSize::Md);
-                        assert_eq!(actual.track_background.value, painted.track_background);
-                        assert_eq!(actual.track_border.value, painted.track_border);
-                        assert_eq!(actual.thumb_background.value, painted.thumb_background);
-                        assert_eq!(actual.thumb_border.value, painted.thumb_border);
-                        assert_eq!(actual.label_color.value, painted.label_color);
-                    }
-                }
-            }
-        }
-    }
-}
-
-#[test]
 fn button_and_toggle_tables_match_runtime_including_focus_and_typography() {
     for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
         let mode = ShadcnModeTokens::from_catalog(crate::inspect::test_support::sample_catalog(), theme_mode).unwrap();
@@ -277,55 +251,6 @@ fn selected_tabs_stylesheet_matches_paint_and_reports_shared_paths() {
                     assert_eq!(painted.label_color, look.mode_tokens().catalog.color("primary").unwrap());
                     assert_eq!(painted.indicator, colors.indicator.map(|color| color.value));
                     assert_eq!(painted.indicator_height, actual.indicator_height.value_px);
-                }
-            }
-        }
-    }
-}
-
-#[test]
-fn shared_switch_geometry_matches_selected_stylesheet_and_inspection() {
-    let mut stylesheet = crate::stylesheet::embedded_stylesheet().clone();
-    stylesheet.common.switch.sizes.get_mut("md").unwrap().track_width = Some(52.0);
-    stylesheet.common.switch.sizes.get_mut("md").unwrap().track_height = Some(26.0);
-    stylesheet.common.switch.sizes.get_mut("md").unwrap().thumb_size = Some(22.0);
-    stylesheet.common.switch.geometry.gap = Some(0.0);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let theme = look.switch_theme();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        let inspect = ShadcnInspect::new(&look).inspect_switch_metrics(ShadcnSize::Md);
-        let scale = theme.scale(1.0);
-        assert_eq!((scale.track_width, scale.track_height, scale.thumb_size, scale.gap), (52.0, 26.0, 22.0, 0.0));
-        assert_eq!(inspect.track_width.value_px, scale.track_width);
-        assert_eq!(inspect.track_height.value_px, scale.track_height);
-        assert_eq!(inspect.thumb_size.value_px, scale.thumb_size);
-        assert_eq!(inspect.gap.value_px, scale.gap);
-        assert!(
-            format_inspect_metric_source(&inspect.track_width.source).contains("common.switch.sizes.md.track_width")
-        );
-    }
-}
-
-#[test]
-fn shared_switch_geometry_preserves_shadcn_sizes_and_display_snapping() {
-    let look = ShadcnLook::built_in();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        for (size, width, height, thumb) in [
-            (ShadcnSize::Sm, 32.0, 13.0, 9.0),
-            (ShadcnSize::Md, 40.0, 18.0, 14.0),
-            (ShadcnSize::Lg, 48.0, 24.0, 20.0),
-        ] {
-            for style in styles() {
-                let theme = crate::controls::templates::switch_theme_with_style(look.with_size(size), style);
-                for factor in [1.0, 1.25, 2.0] {
-                    let scale = theme.scale(factor);
-                    let snap = |value| xgpui_luma::theme::snap_to_pixel(value, factor);
-                    assert_eq!(
-                        (scale.track_width, scale.track_height, scale.thumb_size, scale.track_padding),
-                        (snap(width), snap(height), snap(thumb), snap(2.0))
-                    );
                 }
             }
         }

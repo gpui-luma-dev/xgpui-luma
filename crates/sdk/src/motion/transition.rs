@@ -41,8 +41,7 @@ pub trait RunningMotion: Debug + Send + Sync {
 /// ```no_run
 /// use xgpui_luma::{controls::{switch, tabs::Tabs}, motion::Transition};
 ///
-/// let switch = switch::new("notifications")
-///     .motion(|m| m.state = Transition::spring(300.0, 28.0));
+/// let switch = switch::new("notifications").transition(Transition::spring(300.0, 28.0));
 /// let tabs = Tabs::new("settings")
 ///     .motion(|m| {
 ///         m.indicator = Transition::spring(300.0, 28.0);

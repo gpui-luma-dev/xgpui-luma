@@ -81,10 +81,6 @@ pub fn inspector_elevation_applies(state_id: &str) -> bool {
     state_id != "disabled"
 }
 
-pub fn choice_elevation_applies(variant_id: &str, state_id: &str) -> bool {
-    variant_id != "content-only" && inspector_elevation_applies(state_id)
-}
-
 pub fn button_elevation_applies(variant_id: &str, state_id: &str) -> bool {
     variant_id != "content-only" && inspector_elevation_applies(state_id)
 }

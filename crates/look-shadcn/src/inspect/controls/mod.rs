@@ -20,7 +20,6 @@ mod scrollbar;
 mod selector;
 mod slider;
 mod split_view;
-mod switch;
 mod tabs;
 mod textarea;
 mod textfield;
@@ -85,10 +84,6 @@ pub use scrollbar::{
     ScrollbarInspectMetrics, ScrollbarInspectPalette, inspect_scrollbar_color_palette, inspect_scrollbar_metrics,
 };
 pub use slider::{SliderInspectMetrics, SliderInspectPalette, inspect_slider_color_palette, inspect_slider_metrics};
-pub use switch::{
-    SwitchInspectMetrics, SwitchInspectPalette, inspect_switch_color_palette, inspect_switch_elevation,
-    inspect_switch_metrics,
-};
 pub use textfield::{
     TextFieldInspectMetrics, TextFieldInspectPalette, inspect_textfield_color_palette, inspect_textfield_elevation,
     inspect_textfield_metrics,

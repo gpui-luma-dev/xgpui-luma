@@ -3,7 +3,7 @@
 use gpui::{AnyElement, Div, FontWeight, Hsla, IntoElement, SharedString, div, hsla, px, prelude::*};
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma_look_shadcn::ShadcnLook;
-use xgpui_luma_look_shadcn::inspect::{ButtonInspectMetrics, SwitchInspectMetrics};
+use xgpui_luma_look_shadcn::inspect::ButtonInspectMetrics;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BoxModelLayerColors {
@@ -138,20 +138,6 @@ impl InspectBoxModelSnapshot {
             border_width: metrics.border_width.value_px,
             gap: metrics.gap.value_px,
             radius: metrics.radius.value_px,
-            focus_ring_width: metrics.focus_ring_width.value_px,
-            focus_ring_offset: metrics.focus_ring_offset.value_px,
-        }
-    }
-
-    pub fn from_switch_metrics(metrics: &SwitchInspectMetrics) -> Self {
-        let track_padding = metrics.track_padding.value_px;
-        Self {
-            height: metrics.track_height.value_px,
-            padding_x: track_padding,
-            padding_y: track_padding,
-            border_width: metrics.border_width.value_px,
-            gap: metrics.gap.value_px,
-            radius: metrics.track_radius.value_px,
             focus_ring_width: metrics.focus_ring_width.value_px,
             focus_ring_offset: metrics.focus_ring_offset.value_px,
         }

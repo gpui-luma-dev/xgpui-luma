@@ -200,10 +200,7 @@ pub use slider::{
     slider_theme_with,
 };
 pub use slider_builder::Slider;
-pub use switch::{
-    SwitchSize, SwitchVariant, resolve_switch_radius, switch_scale_for, switch_template, switch_template_for,
-    switch_theme, switch_theme_for, switch_theme_with, switch_geometry,
-};
+pub use switch::{SwitchSize, SwitchVariant, switch_template, switch_template_for};
 pub use switch_builder::Switch;
 pub use tabs::{
     TabsBaselineStyle, TabsMetrics, TabsStyle, TabsSize, TabsVariant, tabs_template, tabs_template_for, tabs_theme,

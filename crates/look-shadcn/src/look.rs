@@ -915,10 +915,6 @@ impl ShadcnLook {
         templates::button_family_theme(self.clone())
     }
 
-    pub fn switch_theme(&self) -> Arc<dyn xgpui_luma::controls::switch::SwitchTheme> {
-        templates::switch_theme(self.clone())
-    }
-
     pub fn slider_theme(&self) -> Arc<dyn xgpui_luma::controls::slider::SliderTheme> {
         templates::slider_theme(self.clone())
     }

@@ -1,10 +1,10 @@
-//! The template shared by choice controls driven by the Luma style language (issue #285): an
-//! indicator box with a mark inside (a checkmark, a dot), a label, and a focus ring.
+//! The template shared by choice controls driven by the Luma style language (issue #285).
 //!
-//! A control supplies its data type through [`ChoiceData`]: the control name, the state that means
-//! "on", the mark part and size property, and how the mark draws. Every value comes from a [`Theme`]
-//! (the SDK's `.lss` files, plus a look's). A look whose mode or palette changes while running passes
-//! a [`ThemeProvider`], asked on every render.
+//! [`StyledChoiceTemplate`] is the shared core: the theme (fixed, or a [`ThemeProvider`] asked on every
+//! render), fixed attributes and states, instance overrides, modifiers, style keys and the `transition`
+//! hook. A control supplies its data type through [`ChoiceData`] and draws itself in
+//! [`ChoiceData::render`]. Controls drawn as an indicator box with a mark inside (checkbox, radio)
+//! implement [`IndicatorChoice`] and render with [`render_indicator`]; the switch draws a track and thumb.
 
 use std::sync::Arc;
 
@@ -31,11 +31,6 @@ pub trait ChoiceData: Clone + Send + Sync + 'static {
     const CONTROL: &'static str;
     /// The state meaning "on", e.g. `"checked"`.
     const ON_STATE: &'static str;
-    /// The part drawn inside the indicator, e.g. `"glyph"`, and its size property, e.g. `"glyph_size"`.
-    const MARK_PART: &'static str;
-    const MARK_SIZE: &'static str;
-    /// Whether the indicator-only (icon) role keeps the row's gap, height and padding.
-    const ICON_ROLE_KEEPS_ROW: bool = false;
 
     fn is_on(&self) -> bool;
     fn progress(&self) -> f32;
@@ -45,30 +40,36 @@ pub trait ChoiceData: Clone + Send + Sync + 'static {
     fn root_id(id: &SharedString) -> ElementId {
         id.clone().into()
     }
+    /// Draw the control from the template's theme.
+    fn render(
+        template: &StyledChoiceTemplate<Self>,
+        model: &ButtonRenderModel<Self>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Stateful<Div>;
+}
+
+/// A choice control drawn as an indicator box with a mark inside, a label and a focus ring.
+pub trait IndicatorChoice: ChoiceData {
+    /// The part drawn inside the indicator, e.g. `"glyph"`, and its size property, e.g. `"glyph_size"`.
+    const MARK_PART: &'static str;
+    const MARK_SIZE: &'static str;
+    /// Whether the indicator-only (icon) role keeps the row's gap, height and padding.
+    const ICON_ROLE_KEEPS_ROW: bool = false;
+
     /// The mark, drawn at `progress` (0 off, 1 on).
     fn render_mark(&self, progress: f32, size: f32, color: Hsla) -> AnyElement;
 }
 
-/// Handles looked up once from the theme's stylesheet.
+/// State handles looked up once from the theme's configuration.
 struct Handles {
     control: ControlId,
-    indicator: PartId,
-    mark: PartId,
-    label: PartId,
     hover: StateId,
     pressed: StateId,
     focused: StateId,
     disabled: StateId,
     invalid: StateId,
     on: StateId,
-    indicator_size: Prop<f32>,
-    indicator_radius: Prop<f32>,
-    mark_size: Prop<f32>,
-    label_baseline_shift: Prop<f32>,
-    disabled_opacity: Prop<f32>,
-    focus_gap: Prop<f32>,
-    focus_width: Prop<f32>,
-    focus_offset: Prop<f32>,
 }
 
 impl Handles {
@@ -76,28 +77,15 @@ impl Handles {
         let sheet = theme.stylesheet();
         let config = sheet.config();
         let control = sheet.control(D::CONTROL).expect("the SDK style files declare the choice control");
-        let part = |name: &str| sheet.part(control, name).expect("choice part");
-        let prop = |name: &str| sheet.prop::<f32>(control, name).expect("choice property");
         let state = |name: &str| config.state(name).expect("SDK state");
         Self {
             control,
-            indicator: part("indicator"),
-            mark: part(D::MARK_PART),
-            label: part("label"),
             hover: state("hover"),
             pressed: state("pressed"),
             focused: state("focused"),
             disabled: state("disabled"),
             invalid: state("invalid"),
             on: state(D::ON_STATE),
-            indicator_size: prop("indicator_size"),
-            indicator_radius: prop("indicator_radius"),
-            mark_size: prop(D::MARK_SIZE),
-            label_baseline_shift: prop("label_baseline_shift"),
-            disabled_opacity: prop("disabled_opacity"),
-            focus_gap: prop("focus_gap"),
-            focus_width: prop("focus_width"),
-            focus_offset: prop("focus_offset"),
         }
     }
 }
@@ -147,7 +135,7 @@ impl<D: ChoiceData> StyledChoiceTemplate<D> {
         Self::new(crate::style::default_theme())
     }
 
-    fn theme(&self) -> Theme {
+    pub(crate) fn theme(&self) -> Theme {
         match &self.source {
             ThemeSource::Fixed(theme) => theme.clone(),
             ThemeSource::Live(provider) => provider(),
@@ -203,7 +191,7 @@ impl<D: ChoiceData> StyledChoiceTemplate<D> {
         self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value))
     }
 
-    fn key(&self, model: &ButtonRenderModel<D>, on: bool, scale: f32) -> StyleKey {
+    pub(crate) fn key(&self, model: &ButtonRenderModel<D>, on: bool, scale: f32) -> StyleKey {
         let h = &self.handles;
         let s = model.state;
         self.base_key()
@@ -217,17 +205,55 @@ impl<D: ChoiceData> StyledChoiceTemplate<D> {
     }
 }
 
+impl<D: ChoiceData> StyledChoiceTemplate<D> {
+    /// The off and on styles for a render (colors animate between them), and the settled one.
+    pub(crate) fn resolve_pair(&self, model: &ButtonRenderModel<D>, scale: f32) -> (Resolved, Arc<Resolved>) {
+        let theme = self.theme();
+        let off = theme.resolve_with(&self.key(model, false, scale), &self.overrides);
+        let on = theme.resolve_with(&self.key(model, true, scale), &self.overrides);
+        let animated = Resolved::lerp(&off, &on, model.data.progress().clamp(0.0, 1.0));
+        (animated, if model.data.is_on() { on } else { off })
+    }
+}
+
+/// A length property on a part (`0` when unset).
+pub(crate) fn length(part: PartView<'_>, name: &'static str) -> f32 {
+    part.get(Prop::<f32>::new(name))
+        .or_else(|| part.value(name).and_then(Value::as_number))
+        .unwrap_or(0.0)
+}
+
+/// The label's color, text style and font family.
+pub(crate) fn label_style(label: PartView<'_>) -> (Hsla, LumaTextStyle, SharedString) {
+    let color = hsl(label.foreground()).unwrap_or_else(transparent);
+    let typography = LumaTextStyle {
+        size: label.font_size().unwrap_or(14.0),
+        line_height: label.line_height().unwrap_or(20.0),
+        weight: gpui::FontWeight(label.value("font_weight").and_then(Value::as_number).unwrap_or(0.0).max(100.0)),
+    };
+    (color, typography, label.font_family().unwrap_or("").to_string().into())
+}
+
+/// The focus ring from the root's `focus_gap`, `focus_width` and `focus_offset`.
+pub(crate) fn focus_adorner(root: PartView<'_>) -> FocusAdorner {
+    FocusAdorner::new(FocusMetricTokens {
+        gap: length(root, "focus_gap"),
+        width: length(root, "focus_width"),
+        offset: length(root, "focus_offset"),
+    })
+}
+
 impl<D: ChoiceData> TemplateWithModifiers<ButtonRenderModel<D>> for StyledChoiceTemplate<D> {
     fn modifiers(&self) -> &[Modifier<ButtonRenderModel<D>>] {
         &self.modifiers
     }
 }
 
-fn hsl(color: Option<xgpui_luma_style::Color>) -> Option<Hsla> {
+pub(crate) fn hsl(color: Option<xgpui_luma_style::Color>) -> Option<Hsla> {
     color.map(Hsla::from)
 }
 
-fn transparent() -> Hsla {
+pub(crate) fn transparent() -> Hsla {
     hsla(0.0, 0.0, 0.0, 0.0)
 }
 
@@ -243,140 +269,7 @@ impl<D: ChoiceData> ButtonTemplate<D> for StyledChoiceTemplate<D> {
     }
 
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let h = &self.handles;
-        let progress = model.data.progress().clamp(0.0, 1.0);
-        let scale = window.scale_factor();
-        let theme = self.theme();
-        let off = theme.resolve_with(&self.key(model, false, scale), &self.overrides);
-        let on = theme.resolve_with(&self.key(model, true, scale), &self.overrides);
-        // Colors animate between off and on; everything else uses the settled state.
-        let animated = Resolved::lerp(&off, &on, progress);
-        let settled = if model.data.is_on() { on } else { off };
-
-        let root = settled.root();
-        let num = |part: PartView<'_>, name: &str| part.value(name).and_then(Value::as_number).unwrap_or(0.0);
-        let indicator_size = root.get(h.indicator_size).unwrap_or(0.0);
-        let indicator_radius = root.get(h.indicator_radius).unwrap_or(0.0);
-        let mark_size = root.get(h.mark_size).unwrap_or(0.0);
-        let border_width = num(root, "border_width");
-        let control_radius = root.radius().unwrap_or(0.0);
-        let gap = root.gap().unwrap_or(0.0);
-        let height = root.height().unwrap_or(0.0);
-        let padding_x = num(root, "padding_x");
-        let padding_y = num(root, "padding_y");
-
-        let label = settled.part(h.label);
-        let label_color = hsl(label.foreground()).unwrap_or_else(transparent);
-        let typography = LumaTextStyle {
-            size: label.font_size().unwrap_or(14.0),
-            line_height: label.line_height().unwrap_or(20.0),
-            weight: gpui::FontWeight(num(label, "font_weight").max(100.0)),
-        };
-        let font_family: SharedString = label.font_family().unwrap_or("").to_string().into();
-
-        let focus = FocusAdorner::new(FocusMetricTokens {
-            gap: root.get(h.focus_gap).unwrap_or(0.0),
-            width: root.get(h.focus_width).unwrap_or(0.0),
-            offset: root.get(h.focus_offset).unwrap_or(0.0),
-        });
-        let focus_ring_extent = focus.extent();
-        let focus_color = hsl(root.focus_border()).unwrap_or_else(transparent);
-        let focused = model.state.focused && !model.state.disabled;
-
-        let animated_indicator = animated.part(h.indicator);
-        let mark_color = hsl(animated.part(h.mark).foreground()).unwrap_or_else(transparent);
-        let mut indicator = div()
-            .flex()
-            .items_center()
-            .justify_center()
-            .size(px(indicator_size))
-            .bg(hsl(animated_indicator.background()).unwrap_or_else(transparent))
-            .border(px(border_width))
-            .border_color(hsl(animated_indicator.border()).unwrap_or_else(transparent))
-            .rounded(px(indicator_radius))
-            .child(model.data.render_mark(progress, mark_size, mark_color));
-        if let Some(layers) = settled.part(h.indicator).shadow()
-            && should_paint_shadow(model.elevation, model.state.disabled, !layers.is_empty())
-        {
-            indicator = indicator.shadow(box_shadows(layers));
-        }
-
-        let indicator = div().relative().child(indicator);
-        let indicator = if focus_ring_extent > 0.0 {
-            div()
-                .id("indicator-slot")
-                .relative()
-                .flex()
-                .items_center()
-                .justify_center()
-                .size(px(indicator_size + focus_ring_extent * 2.0))
-                .child(indicator)
-                .child(focus.overlay(focus_color, focused, indicator_radius, false))
-                .into_any_element()
-        } else {
-            indicator.into_any_element()
-        };
-
-        let mut control = div()
-            .id(D::root_id(&model.id))
-            .relative()
-            .flex()
-            .items_center()
-            .text_color(label_color)
-            .text_size(px(typography.size))
-            .line_height(px(typography.line_height))
-            .font_family(font_family.clone())
-            .font_weight(typography.weight)
-            .rounded(px(control_radius))
-            .cursor_pointer();
-
-        let control_background = hsl(root.background());
-        let control_border = hsl(root.border());
-        let row = |control: Stateful<Div>| control.gap(px(gap)).min_h(px(height)).px(px(padding_x)).py(px(padding_y));
-        if matches!(model.role, ButtonFamilyRole::Icon) {
-            if D::ICON_ROLE_KEEPS_ROW {
-                control = row(control);
-            }
-            control = control.child(indicator);
-        } else {
-            let content_look = ButtonFamilyLook {
-                focus_border: transparent(),
-                background: control_background.unwrap_or_else(transparent),
-                foreground: label_color,
-                muted_foreground: label_color,
-                border: control_border,
-                typography,
-                font_family,
-                radius: control_radius,
-                padding_x,
-                padding_y,
-                gap,
-                height,
-                icon_size: mark_size,
-                shadow: None,
-            };
-            let content_model = button_content_context(model, content_look);
-            let baseline = root.get(h.label_baseline_shift).unwrap_or(0.0);
-            let label = div().mt(px(baseline)).child((model.content)(&content_model, cx));
-            control = row(control).child(indicator).child(label);
-        }
-
-        let animated_root = animated.root();
-        if let Some(background) = hsl(animated_root.background()) {
-            control = control.bg(background);
-        }
-        // Optional paint must not add or remove a layout border when focus changes.
-        control = control
-            .border(px(border_width))
-            .border_color(hsl(animated_root.border()).unwrap_or_else(transparent));
-
-        let mut root_element = self.apply_modifiers(control, model);
-        if model.state.disabled {
-            root_element = root_element.opacity(root.get(h.disabled_opacity).unwrap_or(1.0));
-        } else {
-            root_element = root_element.cursor_pointer();
-        }
-        root_element
+        D::render(self, model, window, cx)
     }
 }
 
@@ -394,4 +287,129 @@ pub(crate) fn choice_transition<D: ChoiceData>(
         .or_else(|| template.transition(&data))
         .or_else(|| sdk_default.transition(&data))
         .unwrap_or_else(crate::motion::Transition::instant)
+}
+
+/// Draw an indicator choice: the indicator box with its mark, the label, and the focus ring.
+pub(crate) fn render_indicator<D: IndicatorChoice>(
+    template: &StyledChoiceTemplate<D>,
+    model: &ButtonRenderModel<D>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Stateful<Div> {
+    let progress = model.data.progress().clamp(0.0, 1.0);
+    // Colors animate between off and on; everything else uses the settled state.
+    let (animated, settled) = template.resolve_pair(model, window.scale_factor());
+
+    let root = settled.root();
+    let indicator_size = length(root, "indicator_size");
+    let indicator_radius = length(root, "indicator_radius");
+    let mark_size = length(root, D::MARK_SIZE);
+    let border_width = length(root, "border_width");
+    let control_radius = root.radius().unwrap_or(0.0);
+    let gap = root.gap().unwrap_or(0.0);
+    let height = root.height().unwrap_or(0.0);
+    let padding_x = length(root, "padding_x");
+    let padding_y = length(root, "padding_y");
+
+    let (label_color, typography, font_family) = label_style(settled.part(PartId::new("label")));
+
+    let focus = focus_adorner(root);
+    let focus_ring_extent = focus.extent();
+    let focus_color = hsl(root.focus_border()).unwrap_or_else(transparent);
+    let focused = model.state.focused && !model.state.disabled;
+
+    let animated_indicator = animated.part(PartId::new("indicator"));
+    let mark_color = hsl(animated.part(PartId::new(D::MARK_PART)).foreground()).unwrap_or_else(transparent);
+    let mut indicator = div()
+        .flex()
+        .items_center()
+        .justify_center()
+        .size(px(indicator_size))
+        .bg(hsl(animated_indicator.background()).unwrap_or_else(transparent))
+        .border(px(border_width))
+        .border_color(hsl(animated_indicator.border()).unwrap_or_else(transparent))
+        .rounded(px(indicator_radius))
+        .child(model.data.render_mark(progress, mark_size, mark_color));
+    if let Some(layers) = settled.part(PartId::new("indicator")).shadow()
+        && should_paint_shadow(model.elevation, model.state.disabled, !layers.is_empty())
+    {
+        indicator = indicator.shadow(box_shadows(layers));
+    }
+
+    let indicator = div().relative().child(indicator);
+    let indicator = if focus_ring_extent > 0.0 {
+        div()
+            .id("indicator-slot")
+            .relative()
+            .flex()
+            .items_center()
+            .justify_center()
+            .size(px(indicator_size + focus_ring_extent * 2.0))
+            .child(indicator)
+            .child(focus.overlay(focus_color, focused, indicator_radius, false))
+            .into_any_element()
+    } else {
+        indicator.into_any_element()
+    };
+
+    let mut control = div()
+        .id(D::root_id(&model.id))
+        .relative()
+        .flex()
+        .items_center()
+        .text_color(label_color)
+        .text_size(px(typography.size))
+        .line_height(px(typography.line_height))
+        .font_family(font_family.clone())
+        .font_weight(typography.weight)
+        .rounded(px(control_radius))
+        .cursor_pointer();
+
+    let control_background = hsl(root.background());
+    let control_border = hsl(root.border());
+    let row = |control: Stateful<Div>| control.gap(px(gap)).min_h(px(height)).px(px(padding_x)).py(px(padding_y));
+    if matches!(model.role, ButtonFamilyRole::Icon) {
+        if D::ICON_ROLE_KEEPS_ROW {
+            control = row(control);
+        }
+        control = control.child(indicator);
+    } else {
+        let content_look = ButtonFamilyLook {
+            focus_border: transparent(),
+            background: control_background.unwrap_or_else(transparent),
+            foreground: label_color,
+            muted_foreground: label_color,
+            border: control_border,
+            typography,
+            font_family,
+            radius: control_radius,
+            padding_x,
+            padding_y,
+            gap,
+            height,
+            icon_size: mark_size,
+            shadow: None,
+        };
+        let content_model = button_content_context(model, content_look);
+        let baseline = length(root, "label_baseline_shift");
+        let label = div().mt(px(baseline)).child((model.content)(&content_model, cx));
+        control = row(control).child(indicator).child(label);
+    }
+
+    let animated_root = animated.root();
+    if let Some(background) = hsl(animated_root.background()) {
+        control = control.bg(background);
+    }
+    // Optional paint must not add or remove a layout border when focus changes.
+    control = control
+        .border(px(border_width))
+        .border_color(hsl(animated_root.border()).unwrap_or_else(transparent));
+
+    let mut root_element = template.apply_modifiers(control, model);
+    if model.state.disabled {
+        root_element = root_element.opacity(root.value("disabled_opacity").and_then(Value::as_number).unwrap_or(1.0));
+    } else {
+        root_element = root_element.cursor_pointer();
+    }
+    root_element
 }

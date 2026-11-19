@@ -271,3 +271,67 @@ fn radio_is_round_at_every_size() {
         assert_eq!(root.radius(), Some(edge / 2.0));
     }
 }
+
+// Behaviour of the native Radix switch, kept as checks on the `.lss` switch.
+
+#[test]
+fn switch_thumb_is_white_and_light_gray_when_disabled_in_both_modes() {
+    let look = Look::built_in().fork();
+    for mode in [ThemeMode::Light, ThemeMode::Dark] {
+        look.set_mode(mode);
+        assert!(close(color(&switch(&look, &[], &["checked"]), "thumb", "background"), gpui::white()));
+        let disabled = switch(&look, &[], &["disabled"]);
+        assert!(close(color(&disabled, "thumb", "background"), look.light_gray_step(2)), "{mode:?}");
+    }
+}
+
+#[test]
+fn switch_variants_fill_as_radix_does() {
+    use crate::scale::ScaleFamily::Color as Accent;
+    let look = Look::built_in();
+    let on = switch(&look, &[], &["checked"]);
+    assert!(close(color(&on, "track", "background"), look.resolve_role(SemanticRole::Primary).hsla()));
+    let hc = switch(&look, &[], &["checked", "high_contrast"]);
+    assert!(close(color(&hc, "track", "background"), step(&look, Accent, 12)));
+    let soft = switch(&look, &[("variant", "soft")], &["checked"]);
+    assert!(close(color(&soft, "track", "background"), step(&look, Accent, 4)));
+    let soft_hc = switch(&look, &[("variant", "soft")], &["checked", "high_contrast"]);
+    assert!(close(color(&soft_hc, "track", "background"), step(&look, Accent, 6)));
+    let classic = switch(&look, &[("variant", "classic")], &["checked"]);
+    assert!(
+        !close(color(&classic, "track", "border"), color(&classic, "track", "background")),
+        "classic keeps an edge"
+    );
+    for on in [&[][..], &["checked"]] {
+        assert_eq!(track_shadow(&switch(&look, &[], on)).len(), 2);
+    }
+}
+
+#[test]
+fn switch_sizes_and_radius() {
+    let look = Look::built_in();
+    let number = |attrs: &[(&str, &str)], name: &str| {
+        switch(&look, attrs, &[]).root().value(name).and_then(Value::as_number).expect("number")
+    };
+    for (attrs, width, height, thumb) in [
+        (&[("size", "1")][..], 28.0, 16.0, 14.0),
+        (&[], 35.0, 20.0, 18.0),
+        (&[("size", "3")], 42.0, 24.0, 22.0),
+    ] {
+        assert_eq!(
+            (number(attrs, "track_width"), number(attrs, "track_height"), number(attrs, "thumb_size")),
+            (width, height, thumb)
+        );
+    }
+    assert_eq!(number(&[], "track_radius"), 10.0, "medium: a pill");
+    assert_eq!(number(&[("radius", "small")], "track_radius"), 3.0, "4 × 0.75");
+    assert!(number(&[("radius", "none")], "track_radius") <= 1.0, "nearly square");
+}
+
+fn switch(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
+    resolve("switch", look, attrs, states)
+}
+
+fn track_shadow(resolved: &xgpui_luma::style::lss::Resolved) -> Vec<BoxShadow> {
+    resolved.part(PartId::new("track")).shadow().map(|s| box_shadows(&s)).unwrap_or_default()
+}

@@ -22,7 +22,6 @@ pub use crate::controls::split_view::{
     SplitViewMetricTable, resolve_split_view_metrics, resolve_split_view_metrics_with_stylesheet,
 };
 pub use crate::controls::stepper::{StepperMetricTable, resolve_stepper_metrics, resolve_stepper_metrics_for_size};
-pub use crate::controls::switch::{SwitchMetricTable, resolve_switch_metrics, resolve_switch_metrics_with_stylesheet};
 pub use crate::controls::table::{TableMetricTable, resolve_table_metrics};
 pub use crate::controls::tabs::{TabsMetricTable, resolve_tabs_metrics, resolve_tabs_metrics_with_stylesheet};
 pub(crate) use crate::controls::tabs::resolve_common_tabs_geometry;

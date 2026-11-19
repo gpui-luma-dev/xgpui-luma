@@ -7,8 +7,8 @@ use crate::stylesheet::config::{
     CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuTriggerColorRule,
     ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
     SidebarBranchColorRule, SidebarContainerColorRule, SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule,
-    SplitViewColorRule, SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule,
-    TabsListColorRule, TextfieldColorRule, TreeViewRowColorRule,
+    SplitViewColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule,
+    TextfieldColorRule, TreeViewRowColorRule,
 };
 
 use super::{
@@ -92,23 +92,6 @@ pub fn resolve_control_group_list_color_rule(
     fields.insert("background", background.clone());
     let border = resolve_color_ref(resolver, &rule.border, &fields)?;
     Ok(ResolvedControlGroupListColors { background, border })
-}
-
-pub fn resolve_switch_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &SwitchColorRule,
-    style: ShadcnButtonStyle,
-) -> anyhow::Result<ResolvedSwitchColors> {
-    let ctx = ResolveContext { style, layer: InteractionLayer::Default, disabled: rule.disabled.unwrap_or(false) };
-    let mut fields = ResolvedFields::default();
-    let track_background = resolve_stylesheet_color(resolver, &rule.track_background, &fields, &ctx)?;
-    fields.insert("track_background", track_background.clone());
-    let thumb_background = resolve_stylesheet_color(resolver, &rule.thumb_background, &fields, &ctx)?;
-    fields.insert("thumb_background", thumb_background.clone());
-    let thumb_border = resolve_stylesheet_color(resolver, &rule.thumb_border, &fields, &ctx)?;
-    fields.insert("thumb_border", thumb_border.clone());
-    let label_color = resolve_stylesheet_color(resolver, &rule.label_color, &fields, &ctx)?;
-    Ok(ResolvedSwitchColors { track_background, thumb_background, thumb_border, label_color })
 }
 
 pub fn resolve_slider_color_rule(
@@ -468,14 +451,6 @@ pub struct ResolvedSplitViewColors {
 }
 
 #[derive(Clone, Debug)]
-pub struct ResolvedSwitchColors {
-    pub track_background: ResolvedColor,
-    pub thumb_background: ResolvedColor,
-    pub thumb_border: ResolvedColor,
-    pub label_color: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
 pub struct ResolvedSliderColors {
     pub track_background: ResolvedColor,
     pub fill_background: ResolvedColor,
@@ -628,13 +603,6 @@ pub struct ResolvedSliderMetrics {
     pub track_height: f32,
     pub thumb_size: f32,
     pub radius: f32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ResolvedSwitchMetrics {
-    pub width: f32,
-    pub height: f32,
-    pub thumb_size: f32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

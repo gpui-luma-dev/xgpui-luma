@@ -4,7 +4,7 @@ use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultBut
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::radio_button::RadioButtonData;
-use xgpui_luma::controls::switch::{SwitchData, ThemedSwitchTemplate};
+use xgpui_luma::controls::switch::SwitchData;
 use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
 use xgpui_luma::theme::{ThemeMode};
 use crate::*;
@@ -74,8 +74,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [SwitchVariant::Classic, SwitchVariant::Surface, SwitchVariant::Soft] {
             let look = Look::built_in();
-            let template =
-                ThemedSwitchTemplate::new(switch_theme_with(&look.with_size(size), variant, Paint::accent()));
+            let template = switch_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(

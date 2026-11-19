@@ -30,7 +30,6 @@ pub use crate::controls::resizable_panels::{resolve_resizable_panels_colors, Res
 pub use crate::controls::scrollbar::{resolve_scrollbar_colors, ScrollbarColorTable};
 pub use crate::controls::slider::{resolve_slider_colors, SliderColorTable};
 pub use crate::controls::split_view::{resolve_split_view_colors, SplitViewColorTable};
-pub use crate::controls::switch::{resolve_switch_colors, SwitchColorTable};
 pub use crate::controls::tabs::{
     resolve_tabs_item_colors, resolve_tabs_list_colors, TabsItemColorTable, TabsListColorTable,
 };
@@ -43,8 +42,6 @@ pub mod metrics;
 pub use crate::controls::button::resolve_button_palette;
 
 pub use crate::controls::sidebar::resolve_sidebar_focus_border;
-
-pub use crate::controls::switch::{resolve_switch_palette, SwitchResolvedColors};
 
 /// Typed typography shared by rendering and inspection.
 pub mod typography;
