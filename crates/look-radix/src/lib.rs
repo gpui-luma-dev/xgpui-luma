@@ -129,6 +129,7 @@ mod radio_builder;
 mod radio_group;
 mod scale;
 mod size;
+pub mod style;
 mod segmented;
 mod selector;
 mod selector_list;

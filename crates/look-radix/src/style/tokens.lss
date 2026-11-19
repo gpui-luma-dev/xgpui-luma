@@ -1,0 +1,37 @@
+// Radix look tokens. Layer: look.
+// Native roots: gray[n] and accent[n] (n = 1..12) for the bound mode; tone[n], the accent scale or gray
+// for `tone gray`; look.accent_contrast, the color on solid accent faces; look.font_sans.
+
+tokens {
+  radix {
+    // SemanticRole mappings.
+    role {
+      background         = gray[1]
+      surface            = gray[2]
+      border             = gray[6]
+      foreground         = gray[12]
+      muted_foreground   = gray[11]
+      primary            = accent[9]
+      primary_foreground = look.accent_contrast
+      focus              = accent[8]
+    }
+
+    /// `--radius-1` at radius factor 1.
+    radius_1 = 3
+    /// `--radius-factor` from the `radius` attribute; medium is the base.
+    radius_factor = 1
+    radius none  { radius_factor = 0 }
+    radius small { radius_factor = 0.75 }
+    radius large { radius_factor = 1.5 }
+    radius full  { radius_factor = 1.5 }
+
+    /// Checkbox multiplier on `--radius-1` for each size.
+    checkbox_radius_scale = 1
+    size 1 { checkbox_radius_scale = 0.875 }
+    size 3 { checkbox_radius_scale = 1.25 }
+  }
+
+  typography {
+    font { sans = look.font_sans }
+  }
+}

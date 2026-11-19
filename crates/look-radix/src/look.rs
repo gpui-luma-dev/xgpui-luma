@@ -346,7 +346,11 @@ impl Look {
 
     /// Palettes currently in use, for readouts and pickers.
     pub fn palettes(&self) -> ThemePalettes {
-        self.state.palettes.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(self.mode()) as usize]
+        self.palettes_for(self.mode())
+    }
+
+    fn palettes_for(&self, mode: ThemeMode) -> ThemePalettes {
+        self.state.palettes.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(mode) as usize]
     }
 
     /// Palette name behind one family, so swatches can report `indigo 9` over `color 9`.
@@ -503,9 +507,8 @@ impl Look {
         Ok(())
     }
 
-    fn custom_contrast(&self) -> Option<Hsla> {
-        self.state.custom_contrast.read().unwrap_or_else(|poisoned| poisoned.into_inner())
-            [mode_to_u8(self.mode()) as usize]
+    fn custom_contrast_for(&self, mode: ThemeMode) -> Option<Hsla> {
+        self.state.custom_contrast.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(mode) as usize]
             .map(|(_, preview)| preview)
     }
 
@@ -529,11 +532,16 @@ impl Look {
     }
 
     pub fn scales(&self) -> ModeScales {
+        self.scales_for(self.mode())
+    }
+
+    /// Scales for `mode`, whatever the current mode is.
+    pub(crate) fn scales_for(&self, mode: ThemeMode) -> ModeScales {
         self.state
             .scales
             .read()
-            .map(|scales| scales.for_mode(self.mode()))
-            .unwrap_or_else(|poisoned| poisoned.into_inner().for_mode(self.mode()))
+            .map(|scales| scales.for_mode(mode))
+            .unwrap_or_else(|poisoned| poisoned.into_inner().for_mode(mode))
     }
 
     /// Resolve a role without reducing its source to the current backend gamut.
@@ -567,15 +575,20 @@ impl Look {
     }
 
     pub fn resolve_role(&self, role: SemanticRole) -> ResolvedColor {
+        self.resolve_role_for(role, self.mode())
+    }
+
+    /// [`Self::resolve_role`] for `mode`, whatever the current mode is.
+    pub(crate) fn resolve_role_for(&self, role: SemanticRole, mode: ThemeMode) -> ResolvedColor {
         if role == SemanticRole::PrimaryForeground {
-            if let Some(contrast) = self.custom_contrast() {
+            if let Some(contrast) = self.custom_contrast_for(mode) {
                 return ResolvedColor::authored(contrast, "custom-accent-contrast");
             }
-            if self.accent_uses_dark_solid_contrast() {
-                return self.dark_solid_contrast();
+            if self.accent_uses_dark_solid_contrast_for(mode) {
+                return self.dark_solid_contrast_for(mode);
             }
         }
-        role.resolve(self.scales(), self.mode())
+        role.resolve(self.scales_for(mode), mode)
     }
 
     /// Control thumbs retain their light palette in both theme modes.
@@ -589,21 +602,26 @@ impl Look {
 
     /// Whether solid accent faces need dark labels (lime / mint / sky / yellow / amber).
     pub fn accent_uses_dark_solid_contrast(&self) -> bool {
-        match self.palettes().accent {
+        self.accent_uses_dark_solid_contrast_for(self.mode())
+    }
+
+    fn accent_uses_dark_solid_contrast_for(&self, mode: ThemeMode) -> bool {
+        match self.palettes_for(mode).accent {
             PaletteSlot::Named(name) => {
                 Accent::ALL.iter().any(|accent| accent.as_str() == name && accent.uses_dark_solid_contrast())
             }
             PaletteSlot::Custom => self
-                .custom_contrast()
+                .custom_contrast_for(mode)
                 .map(|color| color.l < 0.5)
-                .unwrap_or_else(|| self.resolve_step(ScaleFamily::Color, 9).hsla().l >= 0.68),
+                .unwrap_or_else(|| self.scales_for(mode).resolved(ScaleFamily::Color, 9).hsla().l >= 0.68),
         }
     }
 
     /// Dark label for bright solid faces — the darker of gray 1 / gray 12 in the active mode.
-    fn dark_solid_contrast(&self) -> ResolvedColor {
-        let gray1 = self.resolve_step(ScaleFamily::Gray, 1);
-        let gray12 = self.resolve_step(ScaleFamily::Gray, 12);
+    fn dark_solid_contrast_for(&self, mode: ThemeMode) -> ResolvedColor {
+        let scales = self.scales_for(mode);
+        let gray1 = scales.resolved(ScaleFamily::Gray, 1);
+        let gray12 = scales.resolved(ScaleFamily::Gray, 12);
         if gray1.hsla().l <= gray12.hsla().l {
             gray1
         } else {
@@ -768,7 +786,7 @@ mod tests {
         assert_eq!(look.resolve_role(SemanticRole::PrimaryForeground).hsla(), light_contrast);
         look.set_palettes(Accent::Indigo, Gray::Auto);
         look.set_mode(ThemeMode::Dark);
-        assert!(look.custom_contrast().is_none());
+        assert!(look.custom_contrast_for(ThemeMode::Dark).is_none());
         assert_eq!(look.palettes(), ThemePalettes::named(Accent::Indigo, Gray::Auto));
     }
 
