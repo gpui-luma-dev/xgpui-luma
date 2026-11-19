@@ -129,10 +129,6 @@ profile!(PopoverMotionStylesheet => crate::controls::popover_button::PopoverMoti
     presence: PresenceMotionStylesheet,
 });
 
-profile!(CheckboxMotionStylesheet => crate::controls::checkbox::CheckboxMotion {
-    state: Option<TransitionSpec>,
-});
-
 profile!(RadioMotionStylesheet => crate::controls::radio_button::RadioMotion {
     state: Option<TransitionSpec>,
 });
@@ -254,7 +250,6 @@ profile!(MotionStylesheet => MotionDefaults {
     listbox: ListBoxMotionStylesheet,
     scroll_container: ScrollContainerMotionStylesheet,
     popover: PopoverMotionStylesheet,
-    checkbox: CheckboxMotionStylesheet,
     radio: RadioMotionStylesheet,
     toggle: ToggleMotionStylesheet,
     control_group: ControlGroupMotionStylesheet,
@@ -295,7 +290,6 @@ impl MotionStylesheet {
             listbox: ListBoxMotionStylesheet { scroll: Some(timed.clone()), drop_layout: Some(timed.clone()) },
             scroll_container: ScrollContainerMotionStylesheet { scroll: Some(timed.clone()) },
             popover: PopoverMotionStylesheet { presence: presence.clone() },
-            checkbox: CheckboxMotionStylesheet::native_default(),
             radio: RadioMotionStylesheet { state: Some(timed.clone()) },
             toggle: ToggleMotionStylesheet { state: Some(timed.clone()) },
             control_group: ControlGroupMotionStylesheet { selection: Some(timed.clone()) },
@@ -495,7 +489,7 @@ easing = "out_cubic"
             tabs_overlay { enter, exit }, slide_panel { presence.enter, presence.exit },
             listbox { scroll, drop_layout }, scroll_container { scroll },
             popover { presence.enter, presence.exit },
-            checkbox { state }, radio { state }, toggle { state }, switch { state },
+            radio { state }, toggle { state }, switch { state },
             control_group { selection }, slider { thumb }, progress { value }, stepper { selection },
             accordion { expansion, drop_layout }, tree_view { expansion, position, drop_layout },
             sidebar { expansion, popup.enter, popup.exit, drop_layout },

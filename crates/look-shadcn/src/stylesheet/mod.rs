@@ -190,7 +190,6 @@ mod tests {
         assert_eq!(native.checkbox, original.checkbox);
         assert_eq!(native.common.motion.slider, original.common.motion.slider);
         assert_eq!(native.common.motion.switch, original.common.motion.switch);
-        assert_eq!(native.common.motion.checkbox, original.common.motion.checkbox);
         for family in ["slider", "switch", "checkbox"] {
             assert_eq!(native.common.recipes.0.get(family), original.common.recipes.0.get(family));
         }

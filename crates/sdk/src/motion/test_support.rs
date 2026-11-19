@@ -13,7 +13,6 @@ macro_rules! test_look_motion_contract {
             let look = $make_look;
             look.motion(|m| {
                 let transition = Transition::timed(Duration::from_secs(1), Easing::Linear);
-                m.checkbox.state = transition.clone();
                 m.radio.state = transition.clone();
                 m.toggle.state = transition.clone();
                 m.slider.thumb = transition.clone();
@@ -36,7 +35,6 @@ macro_rules! test_look_motion_contract {
                             values.push(sample(&entity.read(cx).motion_profile().$role));
                         }};
                     }
-                    check!($api::Checkbox::new("checkbox"), state);
                     check!($api::Radio::new("radio"), state);
                     check!($api::Toggle::new("toggle"), state);
                     check!($api::Slider::new("slider"), thumb);
@@ -45,9 +43,14 @@ macro_rules! test_look_motion_contract {
                     check!($api::PopupMenu::new("menu"), highlight);
                     let context = $api::ContextMenu::new("context").look(&look).spawn(cx);
                     values.push(sample(&context.read(cx).motion_profile().presence.enter));
+                    // The checkbox takes its transition from `.lss` (the SDK's `motion.default`, 200 ms
+                    // out-cubic, unless the look's files say otherwise), not from look motion edits.
+                    let checkbox = $api::Checkbox::new("checkbox").look(&look).spawn(cx);
+                    let lss = Transition::timed(Duration::from_millis(200), Easing::OutCubic);
+                    assert_eq!(sample(&checkbox.read(cx).current_transition()), sample(&lss));
                     let edited =
-                        $api::Checkbox::new("edited").motion(|m| m.state = Transition::instant()).look(&look).spawn(cx);
-                    assert_eq!(sample(&edited.read(cx).motion_profile().state), 1.0);
+                        $api::Checkbox::new("edited").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited.read(cx).current_transition()), 1.0);
                     let menu = $api::PopupMenu::new("edited-menu")
                         .look(&look)
                         .motion(|m| m.presence.exit = Transition::instant())

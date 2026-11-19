@@ -199,6 +199,19 @@ fn transparent() -> Hsla {
 }
 
 impl ButtonTemplate<CheckboxData> for StyledCheckboxTemplate {
+    /// The root's `transition`, chosen by the destination state (checked or unchecked).
+    fn transition(&self, data: &CheckboxData) -> Option<crate::motion::Transition> {
+        let h = &self.handles;
+        let key = StyleKey::new(h.control).state_if(h.checked, data.checked);
+        let key = self.states.iter().fold(key, |key, state| key.state(*state));
+        let key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
+        let resolved = self.theme().resolve_with(&key, &self.overrides);
+        resolved
+            .root()
+            .get(xgpui_luma_style::props::TRANSITION)
+            .map(|motion| crate::style::transition(&motion))
+    }
+
     fn render(&self, model: &ButtonRenderModel<CheckboxData>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let h = &self.handles;
         let progress = model.data.progress.clamp(0.0, 1.0);

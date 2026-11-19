@@ -137,6 +137,10 @@ pub enum Easing {
     OutCubic,
     /// Cubic acceleration followed by cubic deceleration, with zero endpoint velocity.
     InOutCubic,
+    InQuad,
+    OutQuad,
+    InOutQuad,
+    InCubic,
 }
 
 #[derive(Debug)]
@@ -177,6 +181,11 @@ impl RunningMotion for TimedRun {
             Easing::OutCubic => (super::ease_out_cubic(t), 3.0 * (1.0 - t).powi(2)),
             Easing::InOutCubic if t < 0.5 => (4.0 * t.powi(3), 12.0 * t.powi(2)),
             Easing::InOutCubic => (1.0 - 4.0 * (1.0 - t).powi(3), 12.0 * (1.0 - t).powi(2)),
+            Easing::InQuad => (t * t, 2.0 * t),
+            Easing::OutQuad => (1.0 - (1.0 - t).powi(2), 2.0 * (1.0 - t)),
+            Easing::InOutQuad if t < 0.5 => (2.0 * t * t, 4.0 * t),
+            Easing::InOutQuad => (1.0 - 2.0 * (1.0 - t).powi(2), 4.0 * (1.0 - t)),
+            Easing::InCubic => (t.powi(3), 3.0 * t * t),
         };
         let distance = self.target - self.from;
         MotionSample {

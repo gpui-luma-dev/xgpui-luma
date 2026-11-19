@@ -205,8 +205,13 @@ impl CheckboxControlExposition {
                         ("Indicator only", indicator_only_unchecked.clone()),
                     ],
                     |checkbox| checkbox.motion_enabled(),
-                    |checkbox| checkbox.motion_profile().state.clone(),
-                    |look| look.motion_defaults().checkbox.state.clone(),
+                    |checkbox| checkbox.current_transition(),
+                    // The look's `.lss` `transition` toward checked (the checkbox has no motion defaults).
+                    |look| {
+                        look.checkbox_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
+                            .transition(&xgpui_luma::controls::checkbox::CheckboxData::new(true))
+                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
+                    },
                 )),
                 cx,
             );

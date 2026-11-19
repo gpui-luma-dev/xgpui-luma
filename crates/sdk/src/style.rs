@@ -73,6 +73,31 @@ pub fn default_theme() -> Theme {
         .clone()
 }
 
+/// The SDK motion runtime's transition for a `transition` property value.
+pub fn transition(motion: &xgpui_luma_style::Motion) -> crate::motion::Transition {
+    use crate::motion::{Easing, Transition};
+    use xgpui_luma_style::{Easing as LssEasing, Motion};
+    match *motion {
+        Motion::Instant => Transition::instant(),
+        Motion::Timed { duration_ms, easing } => {
+            let easing = match easing {
+                LssEasing::Linear => Easing::Linear,
+                LssEasing::InQuad => Easing::InQuad,
+                LssEasing::OutQuad => Easing::OutQuad,
+                LssEasing::InOutQuad => Easing::InOutQuad,
+                LssEasing::InCubic => Easing::InCubic,
+                LssEasing::OutCubic => Easing::OutCubic,
+                LssEasing::InOutCubic => Easing::InOutCubic,
+            };
+            // Whole nanoseconds, so equal files give equal transitions (an equal transition does not
+            // restart a running animation).
+            let nanos = (f64::from(duration_ms.max(0.0)) * 1e6).round() as u64;
+            Transition::timed(std::time::Duration::from_nanos(nanos), easing)
+        }
+        Motion::Spring { stiffness, damping } => Transition::spring(stiffness, damping),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use gpui::Hsla;
@@ -259,6 +284,58 @@ mod tests {
                     assert_eq!(text.font_family(), Some(palette.label_font_family.as_ref()), "{case}: font family");
                 }
             }
+        }
+    }
+
+    #[test]
+    fn checkbox_transition_matches_the_former_checkbox_motion() {
+        use crate::controls::checkbox::{CheckboxData, default_checkbox_template};
+        use crate::motion::{Easing, TransitionDescription};
+        // What `CheckboxMotion::state` was in `MotionDefaults::vanilla()`.
+        let expected =
+            TransitionDescription::Timed { duration: std::time::Duration::from_millis(200), easing: Easing::OutCubic };
+        for checked in [false, true] {
+            let transition = default_checkbox_template().transition(&CheckboxData::new(checked)).expect("transition");
+            assert_eq!(transition.description(), expected, "checked={checked}");
+        }
+    }
+
+    #[test]
+    fn transitions_convert_to_the_motion_runtime() {
+        use crate::motion::{Easing, TransitionDescription};
+        use std::time::Duration;
+        use xgpui_luma_style::{Easing as E, Motion};
+        assert_eq!(transition(&Motion::Instant).description(), TransitionDescription::Instant);
+        assert_eq!(
+            transition(&Motion::Spring { stiffness: 300.0, damping: 28.0 }).description(),
+            TransitionDescription::Spring { stiffness: 300.0, damping: 28.0 }
+        );
+        for (lss, sdk) in [
+            (E::Linear, Easing::Linear),
+            (E::InQuad, Easing::InQuad),
+            (E::OutQuad, Easing::OutQuad),
+            (E::InOutQuad, Easing::InOutQuad),
+            (E::InCubic, Easing::InCubic),
+            (E::OutCubic, Easing::OutCubic),
+            (E::InOutCubic, Easing::InOutCubic),
+        ] {
+            assert_eq!(
+                transition(&Motion::Timed { duration_ms: 150.0, easing: lss }).description(),
+                TransitionDescription::Timed { duration: Duration::from_millis(150), easing: sdk }
+            );
+        }
+    }
+
+    #[test]
+    fn new_easings_run_from_zero_to_one() {
+        use crate::motion::{Easing, MotionState, Transition};
+        use std::time::Duration;
+        for easing in [Easing::InQuad, Easing::OutQuad, Easing::InOutQuad, Easing::InCubic] {
+            let run = Transition::timed(Duration::from_millis(100), easing).start(MotionState::default(), 1.0);
+            let mid = run.sample(Duration::from_millis(50)).state.value;
+            assert!(mid > 0.0 && mid < 1.0, "{easing:?} midpoint {mid}");
+            let end = run.sample(Duration::from_millis(100));
+            assert!(end.complete && (end.state.value - 1.0).abs() < 1e-6, "{easing:?}");
         }
     }
 

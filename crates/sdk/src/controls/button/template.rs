@@ -44,6 +44,12 @@ fn presenter_model<D: Clone>(model: &ButtonRenderModel<D>, look: &ButtonFamilyLo
 
 pub trait ButtonTemplate<D = ()>: Send + Sync {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div>;
+
+    /// The transition a control animates with when it moves to `data` (e.g. a checkbox becoming
+    /// checked), from the template's style. `None` leaves the choice to the control.
+    fn transition(&self, _data: &D) -> Option<crate::motion::Transition> {
+        None
+    }
 }
 
 pub struct DefaultButtonTemplate<D = ()> {
@@ -120,6 +126,10 @@ impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let root = self.base.render(model, window, cx);
         self.apply_modifiers(root, model)
+    }
+
+    fn transition(&self, data: &D) -> Option<crate::motion::Transition> {
+        self.base.transition(data)
     }
 }
 

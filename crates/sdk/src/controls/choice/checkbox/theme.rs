@@ -1,4 +1,4 @@
-use crate::theme::stylesheet::{CheckboxMotionStylesheet, CommonStylesheet, PaletteRole, TransitionSpec};
+use crate::theme::stylesheet::{CommonStylesheet, PaletteRole};
 use std::collections::HashMap;
 
 use std::sync::{Arc, OnceLock};
@@ -311,13 +311,6 @@ impl CheckboxGeometryStylesheet {
     }
 }
 
-impl CheckboxMotionStylesheet {
-    /// Construct the SDK checkbox motion without parsing bundled data.
-    pub fn native_default() -> Self {
-        Self { state: Some(TransitionSpec::Timed { duration_ms: 200, easing: crate::motion::Easing::OutCubic }) }
-    }
-}
-
 /// Construct SDK checkbox palette references without parsing bundled data.
 pub fn native_sdk_checkbox_recipes() -> HashMap<PaletteRole, PaletteRole> {
     use PaletteRole::*;
@@ -341,6 +334,5 @@ pub fn native_sdk_checkbox_recipes() -> HashMap<PaletteRole, PaletteRole> {
 /// Install the native SDK checkbox baseline.
 pub fn define_sdk_checkbox(sheet: &mut CommonStylesheet) {
     sheet.checkbox = CheckboxStylesheet::native_default();
-    sheet.motion.checkbox = CheckboxMotionStylesheet::native_default();
     sheet.recipes.0.insert("checkbox".into(), native_sdk_checkbox_recipes());
 }

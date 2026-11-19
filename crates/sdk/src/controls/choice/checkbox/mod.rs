@@ -1,7 +1,3 @@
-crate::motion_profile!(CheckboxMotion => checkbox {
-    state: crate::motion::Transition,
-});
-
 mod callback;
 pub use callback::{CheckboxCallbacks, CheckboxEventExt};
 
@@ -23,7 +19,7 @@ use gpui::{
     Render, SharedString, Subscription, Window, div,
 };
 
-use crate::motion::VisualTransition;
+use crate::motion::{Transition, VisualTransition};
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
@@ -73,7 +69,10 @@ pub struct CheckboxControl {
     checked: bool,
     motion_enabled: bool,
     transition: VisualTransition,
-    motion: CheckboxMotion,
+    /// Set on this instance; replaces the template's `transition`.
+    transition_override: Option<Transition>,
+    /// The button's template, kept here so transitions resolve without reading the button.
+    template: Arc<dyn ButtonTemplate<CheckboxData>>,
     button: Entity<Button<CheckboxData>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -81,17 +80,34 @@ pub struct CheckboxControl {
 impl EventEmitter<CheckboxEvent> for CheckboxControl {}
 
 impl CheckboxControl {
-    /// Motion roles captured when this control was created.
-    pub fn motion_profile(&self) -> &CheckboxMotion {
-        &self.motion
+    /// The transition toward `checked`: this instance's override, else the template's `transition`
+    /// (`.lss`), else the SDK checkbox's.
+    fn transition_toward(
+        template: &dyn ButtonTemplate<CheckboxData>,
+        transition_override: Option<&Transition>,
+        checked: bool,
+    ) -> Transition {
+        let data = CheckboxData { checked, progress: if checked { 1.0 } else { 0.0 }, ..Default::default() };
+        transition_override
+            .cloned()
+            .or_else(|| template.transition(&data))
+            .or_else(|| default_checkbox_template().transition(&data))
+            .unwrap_or_else(Transition::instant)
+    }
+
+    /// The transition the next check change animates with.
+    pub fn current_transition(&self) -> Transition {
+        Self::transition_toward(self.template.as_ref(), self.transition_override.as_ref(), self.checked)
     }
 
     fn from_builder(builder: CheckboxBuilder, cx: &mut Context<Self>) -> Self {
         let checked = builder.button.model.data.checked;
         let motion_enabled = builder.motion_enabled;
-        let motion = builder.motion_profile();
+        let transition_override = builder.transition;
         let progress = if checked { 1.0 } else { 0.0 };
-        let transition = VisualTransition::with_transition(progress, motion.state.enabled(motion_enabled));
+        let template = builder.button.model.template.clone();
+        let initial = Self::transition_toward(template.as_ref(), transition_override.as_ref(), checked);
+        let transition = VisualTransition::with_transition(progress, initial.enabled(motion_enabled));
 
         let mut button_builder = builder.button;
         button_builder.model.data = CheckboxData { checked, progress, icons: button_builder.model.data.icons.clone() };
@@ -103,7 +119,15 @@ impl CheckboxControl {
         });
         let subscription = cx.subscribe(&button, Self::handle_button_event);
 
-        Self { checked, motion_enabled, transition, motion, button, _subscriptions: vec![subscription] }
+        Self {
+            checked,
+            motion_enabled,
+            transition,
+            transition_override,
+            template,
+            button,
+            _subscriptions: vec![subscription],
+        }
     }
 
     fn push_button_data(&mut self, cx: &mut Context<Self>) {
@@ -123,6 +147,7 @@ impl CheckboxControl {
             return;
         }
         self.checked = checked;
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.transition.set_target(if checked { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -141,7 +166,7 @@ impl CheckboxControl {
             return;
         }
         self.motion_enabled = motion_enabled;
-        self.transition.set_transition(self.motion.state.enabled(motion_enabled));
+        self.transition.set_transition(self.current_transition().enabled(motion_enabled));
         self.transition.set_target(if self.checked { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -162,6 +187,8 @@ impl CheckboxControl {
     }
 
     pub fn set_template(&mut self, template: Arc<dyn ButtonTemplate<CheckboxData>>, cx: &mut Context<Self>) {
+        self.template = template.clone();
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.button.update(cx, |button, cx| button.set_template(template, cx));
         cx.notify();
     }
@@ -220,13 +247,17 @@ pub struct CheckboxBuilder {
     callbacks: CheckboxCallbacks,
     button: ButtonBuilder<CheckboxData>,
     motion_enabled: bool,
-    motion: crate::motion::MotionConfig<CheckboxMotion>,
+    transition: Option<Transition>,
     icons_explicit: bool,
     icons: SelectionStatusIcons,
 }
 
 impl CheckboxBuilder {
-    crate::motion_methods!(CheckboxMotion, motion);
+    /// Animate check changes with `transition` instead of the template's `transition` (`.lss`).
+    pub fn transition(mut self, transition: Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Append an owner-bound callback; registrations are additive and owners are weak.
     pub fn on_event<M: 'static>(
@@ -353,7 +384,7 @@ pub fn new(id: impl Into<SharedString>) -> CheckboxBuilder {
         callbacks: CheckboxCallbacks::default(),
         button: ButtonBuilder::new(id).typed(CheckboxData::default()).template(default_checkbox_template()),
         motion_enabled: true,
-        motion: Default::default(),
+        transition: None,
         icons_explicit: false,
         icons: SelectionStatusIcons::default(),
     }
