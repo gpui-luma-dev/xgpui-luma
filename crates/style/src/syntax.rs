@@ -7,7 +7,7 @@ use pest::error::LineColLocation;
 use pest::iterators::Pair;
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 
-use crate::diag::{Diagnostic, Span};
+use crate::diag::{Code, Diagnostic, Span};
 
 #[derive(pest_derive::Parser)]
 #[grammar = "grammar.pest"]
@@ -168,7 +168,7 @@ fn syntax_error(err: pest::error::Error<Rule>, text: &str) -> Diagnostic {
         }
         variant => format!("syntax error: {}", variant.message()),
     };
-    let mut d = Diagnostic::error(message);
+    let mut d = Diagnostic::error(Code::Syntax, message);
     d.line = line as u32;
     d.column = column as u32;
     d.snippet = text.lines().nth(line.saturating_sub(1)).map(str::to_owned);
@@ -418,7 +418,8 @@ impl Cx {
         let mut inner = pair.into_inner();
         let mut expr = self.primary(inner.next().expect("primary"));
         for index in inner {
-            let span = self.span(&index);
+            // The indexed expression starts where its base starts (`gray[7]`, not `[7]`).
+            let span = Span { end: self.span(&index).end, ..expr.span };
             let idx = self.expr(index.into_inner().next().expect("index expression"));
             expr = Expr { span, kind: ExprKind::Index(Box::new(expr), Box::new(idx)) };
         }

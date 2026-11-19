@@ -1,46 +1,55 @@
-//! The SDK's own styles, used the way a template would use them.
+//! The SDK's own styles.
 
 mod common;
 
 use common::*;
-use xgpui_luma_style::{Easing, Motion, Resolved};
+use xgpui_luma_style::{Easing, Motion, PartId, Resolved, ValueSource, props};
+
+const INDICATOR: PartId = PartId::new("indicator");
+const LABEL: PartId = PartId::new("label");
 
 #[test]
-fn fixtures_compile_and_resolve_without_problems() {
+fn every_axis_combination_resolves_without_problems() {
     let theme = sdk_theme();
     for control in ["checkbox", "button", "popup_menu"] {
-        for states in [&[][..], &["hover"], &["pressed"], &["checked", "hover"], &["disabled"], &["open"]] {
-            theme.resolve(&theme.key(control).states(states));
-        }
+        let id = theme.stylesheet().control(control).expect("declared");
+        let problems = theme.check(id);
+        assert!(problems.is_empty(), "{control}: {problems}");
     }
-    assert!(theme.diagnostics().is_empty(), "{}", theme.diagnostics());
 }
 
 #[test]
 fn checkbox_geometry_comes_from_declared_properties() {
     let theme = sdk_theme();
-    let style = theme.resolve(&theme.key("checkbox"));
+    let sheet = theme.stylesheet();
+    let checkbox = sheet.control("checkbox").expect("declared");
+    let indicator_size = sheet.prop::<f32>(checkbox, "indicator_size").expect("declared length");
+    let glyph_size = sheet.prop::<f32>(checkbox, "glyph_size").expect("declared length");
+    let opacity = sheet.prop::<f32>(checkbox, "disabled_opacity").expect("declared number");
+
+    let style = theme.resolve(&key(&theme, "checkbox", &[], &[]));
     let root = style.root();
-    assert_eq!(root.length("indicator_size"), Some(18.0)); // control height 36 × 0.5
-    assert_eq!(root.length("glyph_size"), Some(12.0)); // 18 − 2 × 3
-    assert_eq!(root.length("indicator_radius"), Some(4.0));
-    assert_eq!(root.number("disabled_opacity"), Some(0.56));
-    assert_eq!(root.height(), Some(36.0));
+    assert_eq!(root.get(indicator_size), Some(18.0)); // control height 36 × 0.5
+    assert_eq!(root.get(glyph_size), Some(12.0)); // 18 − 2 × 3
+    assert_eq!(root.get(opacity), Some(0.56));
+    assert_eq!(root.get(props::HEIGHT), Some(36.0));
     assert_eq!(root.radius(), Some(6.0));
 }
 
 #[test]
 fn lengths_snap_to_device_pixels_unless_exact() {
     let theme = sdk_theme();
-    let style = theme.resolve(&theme.key("checkbox").scale(1.25));
+    let size = theme
+        .stylesheet()
+        .prop::<f32>(theme.stylesheet().control("checkbox").unwrap(), "indicator_size")
+        .unwrap();
+    let style = theme.resolve(&key(&theme, "checkbox", &[], &[]).scale(1.25));
     // 18 × 1.25 = 22.5 device px → 23 → 18.4 logical px.
-    assert_eq!(style.root().length("indicator_size"), Some(18.4));
-    // The label line height is 14 × 18 / 12.5 = 20.16, snapped to 20.
-    assert_eq!(style.part("label").line_height(), Some(20.0));
-    let one_x = theme.resolve(&theme.key("checkbox"));
-    assert_eq!(one_x.part("label").line_height(), Some(20.0));
+    assert_eq!(style.root().get(size), Some(18.4));
+    // The label line height is 14 × 18 / 12.5 = 20.16 (from the unsnapped font size), snapped to 20.
+    assert_eq!(style.part(LABEL).line_height(), Some(20.0));
     // `exact(…)` keeps the radius as authored.
-    let style = theme.resolve(&theme.key("checkbox").scale(1.5));
+    let style = theme.resolve(&key(&theme, "checkbox", &[], &[]).scale(1.5));
     assert_eq!(style.root().radius(), Some(6.0));
 }
 
@@ -48,8 +57,8 @@ fn lengths_snap_to_device_pixels_unless_exact() {
 fn checkbox_indicator_follows_the_state_table() {
     let theme = sdk_theme();
     let indicator = |states: &[&str]| {
-        let style = theme.resolve(&theme.key("checkbox").states(states));
-        (style.part("indicator").background(), style.part("indicator").border())
+        let style = theme.resolve(&key(&theme, "checkbox", &[], states));
+        (style.part(INDICATOR).background(), style.part(INDICATOR).border())
     };
     let input = sdk_gray(100.0);
     let input_border = sdk_gray(65.1);
@@ -82,10 +91,10 @@ fn checkbox_indicator_follows_the_state_table() {
 #[test]
 fn label_reads_typography_tokens() {
     let theme = sdk_theme();
-    let style = theme.resolve(&theme.key("checkbox"));
-    let label = style.part("label");
+    let style = theme.resolve(&key(&theme, "checkbox", &[], &[]));
+    let label = style.part(LABEL);
     assert_eq!(label.font_size(), Some(14.0));
-    assert_eq!(label.string("font_family"), Some("System UI"));
+    assert_eq!(label.font_family(), Some("System UI"));
     assert_color(label.foreground(), sdk_gray(11.18), "label");
 }
 
@@ -93,43 +102,42 @@ fn label_reads_typography_tokens() {
 fn motion_is_a_part_property() {
     let theme = sdk_theme();
     let timed = Motion::Timed { duration_ms: 200.0, easing: Easing::OutCubic };
-    let checkbox = theme.resolve(&theme.key("checkbox"));
+    let checkbox = theme.resolve(&key(&theme, "checkbox", &[], &[]));
     assert_eq!(checkbox.root().transition(), Some(timed));
 
     // Presence: the destination state picks the transition. Opening is timed, closing is instant.
-    let open = theme.resolve(&theme.key("popup_menu").state("open"));
-    let closed = theme.resolve(&theme.key("popup_menu"));
-    assert_eq!(open.part("menu").transition(), Some(timed));
-    assert_eq!(closed.part("menu").transition(), Some(Motion::Instant));
-    assert_eq!(
-        closed.part("highlight").transition(),
-        Some(Motion::Timed { duration_ms: 180.0, easing: Easing::OutCubic })
-    );
+    let menu = PartId::new("menu");
+    let open = theme.resolve(&key(&theme, "popup_menu", &[], &["open"]));
+    let closed = theme.resolve(&key(&theme, "popup_menu", &[], &[]));
+    assert_eq!(open.part(menu).transition(), Some(timed));
+    assert_eq!(closed.part(menu).transition(), Some(Motion::Instant));
+    let highlight = closed.part(PartId::new("highlight")).transition();
+    assert_eq!(highlight, Some(Motion::Timed { duration_ms: 180.0, easing: Easing::OutCubic }));
 }
 
 #[test]
 fn shadows_come_from_elevation_tokens() {
     let theme = sdk_theme();
-    let style = theme.resolve(&theme.key("popup_menu"));
-    assert_eq!(style.part("trigger").shadow("shadow").map(<[_]>::len), Some(1));
-    assert_eq!(style.part("menu").shadow("shadow").map(<[_]>::len), Some(2));
+    let style = theme.resolve(&key(&theme, "popup_menu", &[], &[]));
+    assert_eq!(style.part(PartId::new("trigger")).shadow().map(<[_]>::len), Some(1));
+    assert_eq!(style.part(PartId::new("menu")).get(props::SHADOW).map(|s| s.len()), Some(2));
     // `shadow = none` leaves the property unset.
-    let button = theme.resolve(&theme.key("button"));
-    assert_eq!(button.root().get("shadow"), None);
+    let button = theme.resolve(&key(&theme, "button", &[], &[]));
+    assert_eq!(button.root().shadow(), None);
 }
 
 #[test]
 fn root_properties_are_visible_by_bare_name() {
     let theme = sdk_theme();
-    let style = theme.resolve(&theme.key("popup_menu"));
-    assert_eq!(style.root().length("menu_offset_y"), Some(4.0)); // gap 8 × 0.5
+    let style = theme.resolve(&key(&theme, "popup_menu", &[], &[]));
+    assert_eq!(style.root().value("menu_offset_y").and_then(|v| v.as_number()), Some(4.0)); // gap 8 × 0.5
 }
 
 #[test]
 fn explain_names_the_winning_rule_and_what_it_beat() {
     let theme = sdk_theme();
-    let key = theme.key("checkbox").states(&["checked", "hover"]);
-    let why = theme.explain(&key, "indicator", "background");
+    let why = theme.explain(&key(&theme, "checkbox", &[], &["checked", "hover"]), INDICATOR, "background");
+    assert_eq!(why.source, ValueSource::Rule);
     let winner = why.winner.expect("a winner");
     assert_eq!(winner.source.as_ref(), "sdk/checkbox.lss");
     assert_eq!(winner.states, ":hover:checked");
@@ -139,20 +147,23 @@ fn explain_names_the_winning_rule_and_what_it_beat() {
 }
 
 #[test]
-fn docs_come_from_the_style_files() {
-    let theme_sheet = xgpui_luma_style::Stylesheet::compile(luma_config(), sdk_sources()).expect("compiles");
-    assert_eq!(theme_sheet.doc("checkbox"), Some("An indicator box with a checkmark, and a label."));
-    assert_eq!(theme_sheet.doc("checkbox.indicator"), Some("The checkbox box."));
-    assert_eq!(theme_sheet.doc("checkbox.glyph_size"), Some("Checkmark size."));
-    assert_eq!(theme_sheet.parts("checkbox"), ["root", "indicator", "glyph", "label"]);
+fn docs_parts_and_modes_come_from_the_style_files() {
+    let sheet = sdk_sheet();
+    let checkbox = sheet.control("checkbox").expect("declared");
+    assert_eq!(sheet.doc("checkbox"), Some("An indicator box with a checkmark, and a label."));
+    assert_eq!(sheet.doc("checkbox.indicator"), Some("The checkbox box."));
+    assert_eq!(sheet.doc("checkbox.glyph_size"), Some("Checkmark size."));
+    let parts: Vec<_> = sheet.parts(checkbox).iter().map(|p| p.name()).collect();
+    assert_eq!(parts, ["root", "indicator", "glyph", "label"]);
+    assert!(sheet.modes().is_empty(), "the SDK has no light/dark");
 }
 
 #[test]
 fn checked_animation_lerps_between_resolved_styles() {
     let theme = sdk_theme();
-    let off = theme.resolve(&theme.key("checkbox"));
-    let on = theme.resolve(&theme.key("checkbox").state("checked"));
+    let off = theme.resolve(&key(&theme, "checkbox", &[], &[]));
+    let on = theme.resolve(&key(&theme, "checkbox", &[], &["checked"]));
     let mid = Resolved::lerp(&off, &on, 0.5);
     let expected = sdk_gray(100.0).mix(sdk_gray(12.0), 0.5);
-    assert_color(mid.part("indicator").background(), expected, "halfway");
+    assert_color(mid.part(INDICATOR).background(), expected, "halfway");
 }

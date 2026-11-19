@@ -1,6 +1,6 @@
 # Luma style language — design (draft for review)
 
-Status: draft, 2026-11-19. Concept only; nothing implemented, no parser chosen. All open questions in §15 are decided.
+Status: implemented in `crates/style` on `issue-285/style-lang` (2026-11-19). All open questions in §15 are decided; §17 lists what implementation changed.
 Scope: the authoring language for control styles and tokens. The Rust API around it is in [style-crate-api.md](style-crate-api.md), which defers to this document for syntax, name resolution and the cascade.
 
 ---
@@ -121,6 +121,7 @@ tokens {                                  // a Shadcn file
 ```
 
 - Groups nest; a token's path is its group path (`palette.focus.ring`).
+- Tokens can be scoped by attribute, like controls: `metrics { control { size sm { height = 28 } } }`. The most specific scope matching the instance wins, so `metrics.control.control_height` follows the instance's size (Shadcn needs this).
 - `mode light { … }` / `mode dark { … }` hold values used only in that mode. Control blocks never branch on mode.
 - Token kinds are inferred from their values: function return kinds give `color`, `shadow`, `text`, `motion`; strings give `font`; plain numbers give `number`, which may be used in any `length` or `number` property (the property's kind decides the meaning). An optional annotation, `height: length = 36`, makes the kind exact and can carry a `///` doc.
 - A token overridden in a later layer must keep the original's kind; a token defined in several `mode` blocks must have the same kind in each.
@@ -131,12 +132,12 @@ tokens {                                  // a Shadcn file
 | Form | Example | Notes |
 |---|---|---|
 | Number | `12`, `0.56` | Unit comes from the property's kind. |
-| Hex color | `#1e293b`, `#1e293b80` | sRGB. Other color forms are functions: `oklch(…)`, `oklab(…)`, `color(display_p3, …)` and the other CSS Color 4 spaces (API §7.1). |
+| Hex color | `#1e293b`, `#1e293b80` | sRGB. Other color forms are functions: `oklch(…)`, `oklab(…)`, `color(display_p3, …)` and the other CSS Color 4 spaces (API §9). |
 | String | `"System UI"` | Font families, icon names. |
-| Keyword | `none`, `transparent`, `instant`, `out_cubic`, `black` | Built into the crate (API §6); `none` = not painted (an absent `Option`). |
+| Keyword | `none`, `transparent`, `instant`, `out_cubic`, `black` | Built into the crate (API §8); `none` = not painted (an absent `Option`). |
 | Path | `palette.app.foreground`, `typography.text.body.size` | Reaches into record values (`text(…)` has `size`, `line_height`, `weight`). |
 | Index | `gray[7]`, `tone[10]` | For scale-like native roots. |
-| Call | `alpha(css.ring, 0.5)`, `first(css.card, css.background)` | Built-in functions (`min`, `max`, `first`, `alpha`, `gray`, `shadow`, `text`, `timed`, …) plus look functions from the token source (`layer`, `shift`, `css_shadow`, …); API §6. |
+| Call | `alpha(css.ring, 0.5)`, `first(css.card, css.background)` | Built-in functions (`min`, `max`, `first`, `alpha`, `gray`, `shadow`, `text`, `timed`, …) plus look functions from the token source (`layer`, `shift`, `css_shadow`, …); API §8. |
 | List | `[shadow(0.1, 0, 1, 3, 0), shadow(0.1, 0, 1, 2, -1)]` | Shadow layers. |
 | Arithmetic | `max(indicator_size - glyph_inset * 2, 0)` | `+ - * /`, unary `-`, parentheses. |
 
@@ -171,10 +172,11 @@ Every assignment whose control matches (or is inherited through `extends`), whos
 1. **State count** of the rule (more wins).
 2. **Interaction state**: a rule containing a member of the exclusive group beats one that doesn't (a `:hover` beats a `:selected` at equal count, as in #94).
 3. **Attribute count** of its scope (a `variant ghost` rule beats the base rule for the same states).
-4. **Layer** (`app` > `look` > `sdk` > inherited through `extends`).
-5. **Source order** (later wins).
+4. **Layer** (`app` > `look` > `sdk`). A rule reached through `extends` counts at the layer where the `extends` was written, if that is higher than its own.
+5. **Own over inherited**: the control's own rules beat rules reached through `extends`.
+6. **Source order** (later wins).
 
-Instance overrides (API §9) sit above all of this: a value set on one control instance owns its property in every state, like `:=` in a top layer.
+Instance overrides (API §6) sit above all of this: a value set on one control instance owns its property in every state, like `:=` in a top layer.
 
 This is #94's semantics written as one rank: state rules from the base still apply inside a variant unless the variant writes the same state; a look overrides the SDK coordinate by coordinate.
 
@@ -204,15 +206,15 @@ A look's base scope can also own a property against the SDK: `background := radi
 ### 8.5 `extends`
 | Where | Effect |
 |---|---|
-| `toggle extends button { … }` | Every `button` rule from every layer is a candidate for `toggle`, ranked as layer "inherited". So a look's `button` overrides reach `toggle`. |
+| `toggle extends button { … }` | Every `button` rule from every layer is a candidate for `toggle`, below toggle's own rules at the same layer. So a look's `button` overrides reach `toggle`. |
 | `variant ghost extends outline { … }` | Rules scoped `variant outline` also match `variant ghost`, ranked below ghost's own rules. |
 | `part branch extends item { … }` | Rules for part `item` also apply to part `branch`, ranked below branch's own. |
-| `part trigger extends button.root { … }` | Rules for `button`'s `root` (base and the variant of the same name) apply to `trigger`. The only way to share paint across controls. |
+| `part trigger extends button.root { … }` | Rules for `button`'s `root` (base and the variant of the same name) apply to `trigger`. The only way to share paint across controls. Written in a look, these rules beat the SDK's own trigger rules (rank 4). |
 
-Cycles are errors.
+A part can extend another part only outside variant, size and state blocks. Cycles are errors.
 
 ### 8.6 Evaluate
-The winning expression is evaluated for the key. `none` leaves the property unset. Lengths snap to device pixels unless the consumer's policy says otherwise.
+The winning expression is evaluated for the key. `none` leaves the property unset. Lengths snap to device pixels on output unless the value is `exact(…)` or the consumer's policy says otherwise. A property that reads another property sees its unsnapped value, so rounding does not compound (`line_height = font_size * …`).
 
 ## 9. Properties and kinds
 
@@ -242,8 +244,9 @@ const_block  = { kw_const ~ "{" ~ binding* ~ "}" }
 binding      = { doc* ~ ident ~ (":" ~ ident)? ~ "=" ~ expr }       // optional kind annotation
 
 tokens_block = { kw_tokens ~ "{" ~ token_item* ~ "}" }
-token_item   = _{ mode_block | const_block | group | binding }
+token_item   = _{ mode_block | const_block | token_scope | group | binding }
 mode_block   = { kw_mode ~ ident ~ "{" ~ token_item* ~ "}" }
+token_scope  = { ident ~ key ~ "{" ~ token_item* ~ "}" }             // size sm { … } inside tokens
 group        = { doc* ~ ident ~ "{" ~ token_item* ~ "}" }
 
 control      = { doc* ~ ident ~ extends? ~ "{" ~ item* ~ "}" }
@@ -259,7 +262,8 @@ assign       = { ":=" | "=" }
 
 expr         = { prefix* ~ postfix ~ (infix ~ prefix* ~ postfix)* }   // Pratt
 prefix       = { "-" }
-infix        = { "+" | "-" | "*" | "/" }
+infix        = { "+" | "-" | "*" | div }
+div          = @{ "/" ~ !("/" | "*") }                              // never the start of a comment
 postfix      = { primary ~ index* }
 index        = { "[" ~ expr ~ "]" }
 primary      = _{ "(" ~ expr ~ ")" | call | list | number | hex_color | string | path }
@@ -537,3 +541,16 @@ New states needed: `open`, `expanded` (`expanded` was already listed as a flag i
 ### What it needs elsewhere
 - **Instance overrides.** Today `.motion(|m| m.content = instant())` edits one instance. In this model that is an instance-level style override (a top layer for one key), which the crate API must provide anyway for per-instance paint. Design it once for both.
 - **Parts that only exist for motion** (`highlight`, `selection`, `submenu`) must be real parts of those controls. Most already are visual pieces; a few will be new.
+
+## 17. What implementation changed (2026-11-19)
+
+The crate implements this design. Writing it against the converted #94 files changed six things, now reflected above:
+
+1. **Token scopes.** Token files can scope values by attribute (`size sm { height = 28 }`); Shadcn's size-dependent metrics need it (§5, grammar).
+2. **`extends` and layers.** A rule reached through `extends` ranks at the layer where the `extends` was written. Otherwise Shadcn's `part trigger extends button.root` would lose to the SDK's own trigger rules (§8.3, §8.5).
+3. **Snapping on output only.** Property references see unsnapped values (§8.6).
+4. **`rec2020`** uses CSS Color 4's current 2.4 gamma; the five-space example in the colors spec then agrees within 0.002.
+5. **Misspelled token roots** (`pallete.x`) are reported when the theme is bound, because native roots (`css`, `gray`) are known only then. The message suggests the closest token group.
+6. **Part `extends`** is allowed only outside variant, size and state blocks (§8.5).
+
+The grammar also needed one fix: `/` must not start `//` or `/*`, or a `///` doc comment after a value is read as division.

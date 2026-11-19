@@ -7,8 +7,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use xgpui_luma_style::{
-    Color, Config, FunctionSig, Kind, NoNativeTokens, ShadowLayer, SnapPolicy, Source, Stylesheet, Theme, TokenCx,
-    TokenSource, Value,
+    Color, Config, FunctionSig, Kind, NoNativeTokens, ShadowLayer, SnapPolicy, Source, StyleKey, Stylesheet, Theme,
+    TokenCx, TokenSource, Value,
 };
 
 // ---- the SDK's configuration ---------------------------------------------------------------
@@ -41,51 +41,75 @@ pub fn luma_config() -> Arc<Config> {
 // ---- the files each crate ships ------------------------------------------------------------
 
 macro_rules! fixture {
-    ($layer:literal, $path:literal) => {
-        Source::new($layer, $path, include_str!(concat!("../fixtures/", $path)))
+    ($path:literal) => {
+        Source::new($path, include_str!(concat!("../fixtures/", $path)))
     };
 }
 
+/// What `xgpui_luma::style::sources()` would return.
 pub fn sdk_sources() -> Vec<Source> {
     vec![
-        fixture!("sdk", "sdk/tokens.lss"),
-        fixture!("sdk", "sdk/checkbox.lss"),
-        fixture!("sdk", "sdk/button.lss"),
-        fixture!("sdk", "sdk/popup_menu.lss"),
+        fixture!("sdk/tokens.lss"),
+        fixture!("sdk/checkbox.lss"),
+        fixture!("sdk/button.lss"),
+        fixture!("sdk/popup_menu.lss"),
     ]
 }
 
+/// What `shadcn::style::sources()` would return.
 pub fn shadcn_sources() -> Vec<Source> {
     vec![
-        fixture!("look", "shadcn/tokens.lss"),
-        fixture!("look", "shadcn/checkbox.lss"),
-        fixture!("look", "shadcn/button.lss"),
-        fixture!("look", "shadcn/popup_menu.lss"),
+        fixture!("shadcn/tokens.lss"),
+        fixture!("shadcn/checkbox.lss"),
+        fixture!("shadcn/button.lss"),
+        fixture!("shadcn/popup_menu.lss"),
     ]
 }
 
+/// What `radix::style::sources()` would return.
 pub fn radix_sources() -> Vec<Source> {
-    vec![fixture!("look", "radix/tokens.lss"), fixture!("look", "radix/checkbox.lss")]
+    vec![fixture!("radix/tokens.lss"), fixture!("radix/checkbox.lss")]
 }
 
-fn compile(sources: Vec<Source>) -> Stylesheet {
-    Stylesheet::compile(luma_config(), sources).unwrap_or_else(|d| panic!("fixtures compile:\n{d}"))
+pub fn sdk_sheet() -> Stylesheet {
+    Stylesheet::builder(luma_config())
+        .layer("sdk", sdk_sources())
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"))
 }
 
+pub fn shadcn_sheet() -> Stylesheet {
+    Stylesheet::builder(luma_config())
+        .layer("sdk", sdk_sources())
+        .layer("look", shadcn_sources())
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"))
+}
+
+pub fn radix_sheet() -> Stylesheet {
+    Stylesheet::builder(luma_config())
+        .layer("sdk", sdk_sources())
+        .layer("look", radix_sources())
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"))
+}
+
+/// The SDK alone: no native tokens and no modes.
 pub fn sdk_theme() -> Theme {
-    Theme::bind(&compile(sdk_sources()), Arc::new(NoNativeTokens), "light").unwrap_or_else(|d| panic!("{d}"))
+    Theme::bind(&sdk_sheet(), Arc::new(NoNativeTokens), "").unwrap_or_else(|d| panic!("{d}"))
 }
 
 pub fn shadcn_theme(mode: &str) -> Theme {
-    let mut sources = sdk_sources();
-    sources.extend(shadcn_sources());
-    Theme::bind(&compile(sources), Arc::new(ShadcnCatalog::new()), mode).unwrap_or_else(|d| panic!("{d}"))
+    Theme::bind(&shadcn_sheet(), Arc::new(ShadcnCatalog::new()), mode).unwrap_or_else(|d| panic!("{d}"))
 }
 
 pub fn radix_theme(mode: &str) -> Theme {
-    let mut sources = sdk_sources();
-    sources.extend(radix_sources());
-    Theme::bind(&compile(sources), Arc::new(RadixScales), mode).unwrap_or_else(|d| panic!("{d}"))
+    Theme::bind(&radix_sheet(), Arc::new(RadixScales), mode).unwrap_or_else(|d| panic!("{d}"))
+}
+
+/// A key from names, as a tool would build it (templates use handles; see `templates.rs`).
+pub fn key(theme: &Theme, control: &str, attrs: &[(&str, &str)], states: &[&str]) -> StyleKey {
+    theme.key_named(control, attrs, states).unwrap_or_else(|d| panic!("{d}"))
 }
 
 /// The SDK palette value a token resolves to, read straight from the SDK token numbers.

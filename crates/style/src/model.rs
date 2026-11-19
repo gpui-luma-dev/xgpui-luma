@@ -121,6 +121,8 @@ pub(crate) struct Model {
     /// Native roots and look functions referenced by the files, checked when a theme is bound.
     pub native_refs: Vec<(String, Span)>,
     pub look_calls: Vec<(String, usize, Span)>,
+    /// The files as given, with their layer names, for recompiling after edits.
+    pub sources: Vec<(String, crate::compile::Source)>,
 }
 
 impl Model {
@@ -146,6 +148,22 @@ impl Model {
             }
         }
         None
+    }
+
+    /// Core and declared property names usable on a control (for suggestions).
+    pub fn prop_names(&self, control: usize) -> Vec<&str> {
+        let mut names: Vec<&str> = crate::builtins::CORE_PROPERTIES.iter().map(|(n, _, _)| *n).collect();
+        let mut c = Some(control);
+        let mut guard = 0;
+        while let Some(i) = c {
+            names.extend(self.controls[i].props.keys().map(String::as_str));
+            c = self.controls[i].base;
+            guard += 1;
+            if guard > 32 {
+                break;
+            }
+        }
+        names
     }
 
     pub fn const_lookup(&self, scope: usize, name: &str) -> Option<&ConstDef> {

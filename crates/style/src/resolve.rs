@@ -1,97 +1,48 @@
-//! Binding to tokens, the cascade (language §8) and resolution.
+//! Binding to tokens, rebinding, the cascade (language §8) and resolution.
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::builtins;
 use crate::color::Color;
 use crate::compile::Stylesheet;
 use crate::config::SnapPolicy;
-use crate::diag::{Diagnostic, Diagnostics, Severity, Span};
+use crate::diag::{Code, Diagnostic, Diagnostics, Severity, Span, suggest};
+use crate::handles::{ControlId, FromValue, PartId, Prop, StyleKey, intern};
+use crate::inspect::{Location, Reference, ReferenceKind};
 use crate::model::{Model, Rule};
 use crate::names::{self, Ctx, Target};
+use crate::overrides::{OverrideValue, Overrides};
 use crate::syntax::{BinOp, Expr, ExprKind};
 use crate::token::{TokenCx, TokenSource};
 use crate::value::{Kind, Motion, ShadowLayer, Value};
 
-/// Control, attributes, states and scale bits.
-type CacheKey = (String, Vec<(String, String)>, Vec<String>, u32);
-
-/// What one render asks for: a control, its attributes, its states and the display scale.
-#[derive(Clone, Debug, PartialEq)]
-pub struct StyleKey {
-    control: String,
-    attrs: Vec<(String, String)>,
-    states: Vec<String>,
-    scale: f32,
-}
-
-impl StyleKey {
-    pub fn new(control: &str) -> Self {
-        Self { control: control.to_string(), attrs: Vec::new(), states: Vec::new(), scale: 1.0 }
-    }
-
-    /// Set an attribute, e.g. `.attr("variant", "soft")`.
-    pub fn attr(mut self, name: &str, value: &str) -> Self {
-        self.attrs.retain(|(n, _)| n != name);
-        self.attrs.push((name.to_string(), value.to_string()));
-        self.attrs.sort();
-        self
-    }
-
-    /// Add an active state, e.g. `.state("checked")`.
-    pub fn state(mut self, name: &str) -> Self {
-        if !self.states.iter().any(|s| s == name) {
-            self.states.push(name.to_string());
-            self.states.sort();
-        }
-        self
-    }
-
-    pub fn states(self, names: &[&str]) -> Self {
-        names.iter().fold(self, |key, s| key.state(s))
-    }
-
-    /// Device pixels per logical pixel, used for snapping.
-    pub fn scale(mut self, scale: f32) -> Self {
-        self.scale = scale;
-        self
-    }
-
-    pub fn control(&self) -> &str {
-        &self.control
-    }
-
-    fn cache_key(&self) -> CacheKey {
-        (self.control.clone(), self.attrs.clone(), self.states.clone(), self.scale.to_bits())
-    }
-}
-
 /// Resolved values for every part of one control instance.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Resolved {
-    parts: BTreeMap<String, BTreeMap<String, Value>>,
+    parts: BTreeMap<&'static str, BTreeMap<&'static str, Value>>,
 }
 
 impl Resolved {
-    pub fn part(&self, name: &str) -> PartView<'_> {
-        PartView { values: self.parts.get(name) }
+    pub fn part(&self, part: PartId) -> PartView<'_> {
+        PartView { values: self.parts.get(part.name()) }
     }
 
     pub fn root(&self) -> PartView<'_> {
-        self.part("root")
+        self.part(PartId::ROOT)
     }
 
-    /// Part names that have at least one value.
-    pub fn parts(&self) -> impl Iterator<Item = &str> {
-        self.parts.keys().map(String::as_str)
+    /// Parts that have at least one value.
+    pub fn parts(&self) -> impl Iterator<Item = PartId> + '_ {
+        self.parts.keys().map(|p| PartId::new(p))
     }
 
     /// Interpolate two resolved styles (e.g. unchecked → checked) for animation.
     pub fn lerp(a: &Resolved, b: &Resolved, t: f32) -> Resolved {
         let mut parts = BTreeMap::new();
-        let names: HashSet<&String> = a.parts.keys().chain(b.parts.keys()).collect();
+        let names: HashSet<&&'static str> = a.parts.keys().chain(b.parts.keys()).collect();
         for name in names {
             let empty = BTreeMap::new();
             let pa = a.parts.get(name).unwrap_or(&empty);
@@ -104,150 +55,139 @@ impl Resolved {
                     (None, Some(y)) if t >= 0.5 => y.clone(),
                     _ => continue,
                 };
-                out.insert(prop.clone(), v);
+                out.insert(*prop, v);
             }
-            parts.insert(name.clone(), out);
+            parts.insert(*name, out);
         }
         Resolved { parts }
     }
 }
 
-/// Typed access to one part's values.
+/// One part's values: typed reads through property handles (API topic 1).
 #[derive(Clone, Copy, Debug)]
 pub struct PartView<'a> {
-    values: Option<&'a BTreeMap<String, Value>>,
+    values: Option<&'a BTreeMap<&'static str, Value>>,
 }
 
 impl<'a> PartView<'a> {
-    pub fn get(&self, prop: &str) -> Option<&'a Value> {
-        self.values.and_then(|v| v.get(prop))
+    /// A property through its typed handle, e.g. `part.get(props::RADIUS)` or a declared property handle.
+    pub fn get<T: FromValue>(&self, prop: Prop<T>) -> Option<T> {
+        self.value(prop.name()).and_then(T::from_value)
     }
 
-    pub fn color(&self, prop: &str) -> Option<Color> {
-        self.get(prop).and_then(Value::as_color)
+    /// The raw value by name, for tools.
+    pub fn value(&self, name: &str) -> Option<&'a Value> {
+        self.values.and_then(|v| v.get(name))
     }
 
-    pub fn length(&self, prop: &str) -> Option<f32> {
-        self.get(prop).and_then(Value::as_number)
-    }
-
-    pub fn number(&self, prop: &str) -> Option<f32> {
-        self.length(prop)
-    }
-
-    pub fn shadow(&self, prop: &str) -> Option<&'a [ShadowLayer]> {
-        self.get(prop).and_then(Value::as_shadow)
-    }
-
-    pub fn string(&self, prop: &str) -> Option<&'a str> {
-        self.get(prop).and_then(Value::as_str)
-    }
-
-    pub fn motion(&self, prop: &str) -> Option<Motion> {
-        self.get(prop).and_then(Value::as_motion)
+    /// Property names with values, for tools.
+    pub fn names(&self) -> impl Iterator<Item = &'static str> + 'a {
+        self.values.into_iter().flat_map(|v| v.keys().copied())
     }
 
     pub fn background(&self) -> Option<Color> {
-        self.color("background")
+        self.value("background").and_then(Value::as_color)
     }
     pub fn foreground(&self) -> Option<Color> {
-        self.color("foreground")
+        self.value("foreground").and_then(Value::as_color)
     }
     pub fn border(&self) -> Option<Color> {
-        self.color("border")
+        self.value("border").and_then(Value::as_color)
     }
     pub fn focus_border(&self) -> Option<Color> {
-        self.color("focus_border")
+        self.value("focus_border").and_then(Value::as_color)
     }
     pub fn radius(&self) -> Option<f32> {
-        self.length("radius")
+        self.value("radius").and_then(Value::as_number)
     }
     pub fn height(&self) -> Option<f32> {
-        self.length("height")
+        self.value("height").and_then(Value::as_number)
     }
     pub fn gap(&self) -> Option<f32> {
-        self.length("gap")
+        self.value("gap").and_then(Value::as_number)
     }
     pub fn font_size(&self) -> Option<f32> {
-        self.length("font_size")
+        self.value("font_size").and_then(Value::as_number)
     }
     pub fn line_height(&self) -> Option<f32> {
-        self.length("line_height")
+        self.value("line_height").and_then(Value::as_number)
+    }
+    pub fn font_family(&self) -> Option<&'a str> {
+        self.value("font_family").and_then(Value::as_str)
+    }
+    pub fn shadow(&self) -> Option<&'a [ShadowLayer]> {
+        self.value("shadow").and_then(Value::as_shadow)
     }
     pub fn transition(&self) -> Option<Motion> {
-        self.motion("transition")
+        self.value("transition").and_then(Value::as_motion)
     }
 }
 
-/// Where one property's value came from.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Explanation {
-    pub value: Option<Value>,
-    pub winner: Option<RuleInfo>,
-    /// Other matching rules, highest ranked first.
-    pub overridden: Vec<RuleInfo>,
-    /// The `:=` assignment that removed less specific rules, if one did.
-    pub owned_by: Option<RuleInfo>,
-    pub inherited_from_root: bool,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RuleInfo {
-    pub source: Arc<str>,
-    pub layer: String,
-    pub line: u32,
-    pub column: u32,
-    /// e.g. `"variant soft"`, empty for the base.
-    pub scope: String,
-    /// e.g. `":checked:hover"`.
-    pub states: String,
-    /// Source text of the value.
-    pub expression: String,
-    /// The `extends` path this rule was reached through, if any.
-    pub via: Option<String>,
-}
-
-/// A stylesheet bound to native tokens and a mode. Cheap to clone; caches resolved keys.
+/// A stylesheet bound to native tokens and a mode. A theme never changes: every change returns a new
+/// theme that shares the compiled stylesheet (API topic 4). Cheap to clone; caches resolved keys.
 #[derive(Clone)]
 pub struct Theme {
-    inner: Arc<ThemeInner>,
+    pub(crate) inner: Arc<ThemeInner>,
 }
 
-struct ThemeInner {
-    model: Arc<Model>,
-    tokens: Arc<dyn TokenSource>,
-    mode: String,
-    roots: HashSet<String>,
-    cache: Mutex<HashMap<CacheKey, Arc<Resolved>>>,
-    diags: Mutex<Vec<Diagnostic>>,
+pub(crate) struct ThemeInner {
+    pub(crate) sheet: Stylesheet,
+    pub(crate) tokens: Arc<dyn TokenSource>,
+    pub(crate) mode: String,
+    pub(crate) roots: HashSet<String>,
+    pub(crate) token_values: HashMap<String, Value>,
+    generation: u64,
+    cache: Mutex<HashMap<(StyleKey, u64), Arc<Resolved>>>,
+    pub(crate) diags: Mutex<Vec<Diagnostic>>,
+}
+
+impl ThemeInner {
+    pub(crate) fn model(&self) -> &Model {
+        &self.sheet.model
+    }
+}
+
+fn next_generation() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
 }
 
 impl Theme {
+    /// Bind a stylesheet to native tokens and a mode. The SDK alone binds with
+    /// [`NoNativeTokens`](crate::NoNativeTokens) and mode `""`.
     pub fn bind(stylesheet: &Stylesheet, tokens: Arc<dyn TokenSource>, mode: &str) -> Result<Theme, Diagnostics> {
-        let model = stylesheet.model.clone();
+        Self::bind_with(stylesheet.clone(), tokens, mode, HashMap::new())
+    }
+
+    fn bind_with(
+        sheet: Stylesheet,
+        tokens: Arc<dyn TokenSource>,
+        mode: &str,
+        token_values: HashMap<String, Value>,
+    ) -> Result<Theme, Diagnostics> {
+        let model = sheet.model.clone();
         let roots: HashSet<String> = tokens.roots().iter().map(|r| r.to_string()).collect();
         let mut diags = Vec::new();
-        let err = |span: Span, message: String| {
-            let file = model.files.get(span.file as usize);
-            Diagnostic {
-                severity: Severity::Error,
-                source: file.map(|f| f.name.clone()),
-                line: span.line,
-                column: span.column,
-                message,
-                snippet: file.and_then(|f| f.text.lines().nth(span.line.saturating_sub(1) as usize)).map(str::to_owned),
-            }
+        let at = |span: Span, code: Code, message: String| {
+            let file = model.files.get(span.file as usize).map(|f| (&f.name, &*f.text));
+            Diagnostic::at(Severity::Error, code, span, file, message)
         };
         for (root, span) in &model.native_refs {
             if !roots.contains(root) {
-                diags.push(err(*span, format!("unknown name \"{root}\": not a token, constant or native token root")));
+                let hint = suggest(root, model.tokens.groups.iter().filter(|g| !g.contains('.')).map(String::as_str));
+                diags.push(at(
+                    *span,
+                    Code::UnknownName,
+                    format!("unknown name \"{root}\": not a token, constant or native token root{hint}"),
+                ));
             }
         }
         for (name, args, span) in &model.look_calls {
             match tokens.function(name) {
-                None => diags.push(err(*span, format!("unknown function \"{name}\""))),
-                Some(sig) if *args < sig.min_args || *args > sig.max_args => diags.push(err(
+                None => diags.push(at(*span, Code::UnknownFunction, format!("unknown function \"{name}\""))),
+                Some(sig) if *args < sig.min_args || *args > sig.max_args => diags.push(at(
                     *span,
+                    Code::WrongArgumentCount,
                     format!("{name} expects {} to {} arguments, found {args}", sig.min_args, sig.max_args),
                 )),
                 Some(_) => {}
@@ -256,10 +196,22 @@ impl Theme {
         for root in &roots {
             if model.tokens.is_root(root) || model.control(root).is_some() || model.consts[0].entries.contains_key(root)
             {
-                diags.push(Diagnostic::error(format!(
-                    "native token root \"{root}\" clashes with a token group, control or constant"
-                )));
+                diags.push(Diagnostic::error(
+                    Code::AmbiguousName,
+                    format!("native token root \"{root}\" clashes with a token group, control or constant"),
+                ));
             }
+        }
+        let modes = sheet.modes();
+        if !modes.is_empty() && !modes.iter().any(|m| m == mode) {
+            diags.push(Diagnostic::error(
+                Code::UnknownMode,
+                format!(
+                    "unknown mode \"{mode}\" (modes: {}){}",
+                    modes.join(", "),
+                    suggest(mode, modes.iter().map(String::as_str))
+                ),
+            ));
         }
         if !diags.is_empty() {
             let mut seen = HashSet::new();
@@ -268,32 +220,124 @@ impl Theme {
         }
         Ok(Theme {
             inner: Arc::new(ThemeInner {
-                model,
+                sheet,
                 tokens,
                 mode: mode.to_string(),
                 roots,
+                token_values,
+                generation: next_generation(),
                 cache: Mutex::new(HashMap::new()),
                 diags: Mutex::new(Vec::new()),
             }),
         })
     }
 
-    /// Start a key for a control.
-    pub fn key(&self, control: &str) -> StyleKey {
-        StyleKey::new(control)
+    /// The same stylesheet and tokens in another mode.
+    pub fn with_mode(&self, mode: &str) -> Result<Theme, Diagnostics> {
+        let i = &self.inner;
+        Self::bind_with(i.sheet.clone(), i.tokens.clone(), mode, i.token_values.clone())
+    }
+
+    /// The same stylesheet with a different native token source (e.g. a newly loaded Shadcn CSS theme).
+    pub fn with_tokens(&self, tokens: Arc<dyn TokenSource>) -> Result<Theme, Diagnostics> {
+        let i = &self.inner;
+        Self::bind_with(i.sheet.clone(), tokens, &i.mode, i.token_values.clone())
+    }
+
+    /// Live token edits: values for file tokens that rank above every layer, without recompiling.
+    pub fn with_token_values(&self, values: &[(&str, Value)]) -> Result<Theme, Diagnostics> {
+        let i = &self.inner;
+        let model = i.model();
+        let mut merged = i.token_values.clone();
+        let mut problems = Vec::new();
+        for (path, value) in values {
+            if model.tokens.defs.contains_key(*path) {
+                merged.insert(path.to_string(), value.clone());
+            } else {
+                let hint = suggest(path, model.tokens.defs.keys().map(String::as_str));
+                problems.push(Diagnostic::error(Code::UnknownName, format!("unknown token \"{path}\"{hint}")));
+            }
+        }
+        if !problems.is_empty() {
+            return Err(Diagnostics(problems));
+        }
+        Self::bind_with(i.sheet.clone(), i.tokens.clone(), &i.mode, merged)
+    }
+
+    /// The same tokens and mode with another stylesheet (after edits, an import or a theme swap).
+    pub fn with_stylesheet(&self, stylesheet: &Stylesheet) -> Result<Theme, Diagnostics> {
+        let i = &self.inner;
+        let values = i.token_values.iter().filter(|(p, _)| stylesheet.model.tokens.defs.contains_key(*p));
+        Self::bind_with(
+            stylesheet.clone(),
+            i.tokens.clone(),
+            &i.mode,
+            values.map(|(p, v)| (p.clone(), v.clone())).collect(),
+        )
+    }
+
+    pub fn stylesheet(&self) -> &Stylesheet {
+        &self.inner.sheet
     }
 
     pub fn mode(&self) -> &str {
         &self.inner.mode
     }
 
-    /// Every part's values for one key. Problems leave a property unset and are recorded in [`Theme::diagnostics`].
+    /// Changes with every new theme; tells consumers when to refresh.
+    pub fn generation(&self) -> u64 {
+        self.inner.generation
+    }
+
+    /// Live token edits in effect, sorted by path.
+    pub fn token_values(&self) -> Vec<(String, Value)> {
+        let mut v: Vec<_> = self.inner.token_values.iter().map(|(p, v)| (p.clone(), v.clone())).collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        v
+    }
+
+    /// A key from names, for tools and tests. Templates build keys from handles instead.
+    pub fn key_named(&self, control: &str, attrs: &[(&str, &str)], states: &[&str]) -> Result<StyleKey, Diagnostic> {
+        let config = self.inner.model().config.clone();
+        let Some(control) = self.inner.sheet.control(control) else {
+            let hint = suggest(control, self.inner.model().controls.iter().map(|c| c.name.as_str()));
+            return Err(Diagnostic::error(Code::UnknownControl, format!("unknown control \"{control}\"{hint}")));
+        };
+        let mut key = StyleKey::new(control);
+        for (attr, value) in attrs {
+            let Some(a) = config.attribute(attr) else {
+                let hint = suggest(attr, config.attributes.iter().map(String::as_str));
+                return Err(Diagnostic::error(Code::UnknownAttribute, format!("unknown attribute \"{attr}\"{hint}")));
+            };
+            key = key.attr(a, crate::handles::AttrValue::named(value));
+        }
+        for state in states {
+            let Some(s) = config.state(state) else {
+                let hint = suggest(state, config.states.iter().map(String::as_str));
+                return Err(Diagnostic::error(Code::UnknownState, format!("unknown state \"{state}\"{hint}")));
+            };
+            key = key.state(s);
+        }
+        Ok(key)
+    }
+
+    /// Every part's values for one key. Problems leave a property unset and are recorded in
+    /// [`Theme::diagnostics`]; resolving never fails.
     pub fn resolve(&self, key: &StyleKey) -> Arc<Resolved> {
-        let ck = key.cache_key();
+        self.resolve_inner(key, None)
+    }
+
+    /// Like [`Theme::resolve`], with values set on this instance.
+    pub fn resolve_with(&self, key: &StyleKey, overrides: &Overrides) -> Arc<Resolved> {
+        self.resolve_inner(key, Some(overrides))
+    }
+
+    fn resolve_inner(&self, key: &StyleKey, overrides: Option<&Overrides>) -> Arc<Resolved> {
+        let ck = (*key, overrides.map_or(0, Overrides::id));
         if let Some(hit) = self.inner.cache.lock().expect("cache lock").get(&ck) {
             return hit.clone();
         }
-        let resolved = Arc::new(self.compute(key));
+        let resolved = Arc::new(self.compute(key, overrides));
         self.inner.cache.lock().expect("cache lock").insert(ck, resolved.clone());
         resolved
     }
@@ -303,139 +347,97 @@ impl Theme {
         Diagnostics(self.inner.diags.lock().expect("diagnostics lock").clone())
     }
 
-    /// Where `part.prop` gets its value for `key`.
-    pub fn explain(&self, key: &StyleKey, part: &str, prop: &str) -> Explanation {
-        let empty = Explanation {
-            value: None,
-            winner: None,
-            overridden: Vec::new(),
-            owned_by: None,
-            inherited_from_root: false,
-        };
-        let Some(k) = self.key_data(key) else { return empty };
-        let model = &self.inner.model;
-        let Some(p) = model.controls[k.control].part(part) else {
-            return empty;
-        };
-        let ev = Evaluator::new(self);
-        let value = ev.output(k.control, p, prop, &k).ok().flatten();
-        let sel = select(model, k.control, p, prop, &k);
-        let info = |c: &Cand<'_>| self.rule_info(c);
-        let mut ranked: Vec<&Cand<'_>> = sel.kept.iter().collect();
-        ranked.sort_by_key(|c| std::cmp::Reverse(c.rank()));
-        let inherited_from_root = ranked.is_empty() && p != 0 && builtins::core_property(prop).is_some_and(|(_, i)| i);
-        Explanation {
-            value,
-            winner: ranked.first().map(|c| info(c)),
-            overridden: ranked.iter().skip(1).map(|c| info(c)).collect(),
-            owned_by: sel.owner.as_ref().map(info),
-            inherited_from_root,
+    /// Problems found since `mark` (a value returned by an earlier call; start with 0), and the new mark.
+    pub fn diagnostics_since(&self, mark: usize) -> (Diagnostics, usize) {
+        let all = self.inner.diags.lock().expect("diagnostics lock");
+        let mark = mark.min(all.len());
+        (Diagnostics(all[mark..].to_vec()), all.len())
+    }
+
+    pub(crate) fn record(&self, new: Vec<Diagnostic>) {
+        if new.is_empty() {
+            return;
+        }
+        let mut all = self.inner.diags.lock().expect("diagnostics lock");
+        for d in new {
+            if !all.contains(&d) {
+                all.push(d);
+            }
         }
     }
 
-    fn rule_info(&self, c: &Cand<'_>) -> RuleInfo {
-        let model = &self.inner.model;
-        let file = &model.files[c.rule.span.file as usize];
-        let e = &c.rule.expr.span;
-        let expression =
-            file.text.get(e.start as usize..expr_end(&c.rule.expr) as usize).unwrap_or("").trim().to_string();
-        RuleInfo {
-            source: file.name.clone(),
-            layer: model.config.layers[c.rule.layer].clone(),
-            line: c.rule.span.line,
-            column: c.rule.span.column,
-            scope: c.rule.attrs.iter().map(|(a, v)| format!("{a} {v}")).collect::<Vec<_>>().join(", "),
-            states: (0..model.config.states.len())
-                .filter(|i| c.rule.states & (1 << i) != 0)
-                .map(|i| format!(":{}", model.config.states[i]))
-                .collect(),
-            expression,
-            via: c.via.clone(),
-        }
-    }
-
-    fn key_data(&self, key: &StyleKey) -> Option<KeyData> {
-        let model = &self.inner.model;
-        let mut problem = None;
-        let control = model.control(&key.control);
-        if control.is_none() {
-            problem = Some(format!("unknown control \"{}\"", key.control));
-        }
-        let mut states = 0u32;
-        for s in &key.states {
-            match model.config.state(s) {
-                Some(i) => states |= 1 << i,
-                None => problem = Some(format!("unknown state \"{s}\"")),
-            }
-        }
-        for (a, _) in &key.attrs {
-            if model.config.attribute(a).is_none() {
-                problem = Some(format!("unknown attribute \"{a}\""));
-            }
-        }
-        if let Some(message) = problem {
-            self.inner.diags.lock().expect("diagnostics lock").push(Diagnostic::error(message));
+    pub(crate) fn key_data(&self, key: &StyleKey) -> Option<KeyData> {
+        let model = self.inner.model();
+        let Some(control) = model.control(key.control.name()) else {
+            self.record(vec![Diagnostic::error(Code::UnknownControl, format!("unknown control \"{}\"", key.control))]);
             return None;
-        }
-        Some(KeyData {
-            control: control?,
-            attrs: key.attrs.clone(),
-            states: model.config.normalize(states),
-            scale: key.scale,
-        })
+        };
+        let attrs = key
+            .attrs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (intern(&model.config.attributes[i]), v.name())))
+            .collect();
+        Some(KeyData { control, attrs, states: model.config.normalize(key.states.0), scale: key.scale_factor() })
     }
 
-    fn compute(&self, key: &StyleKey) -> Resolved {
+    fn compute(&self, key: &StyleKey, overrides: Option<&Overrides>) -> Resolved {
         let Some(k) = self.key_data(key) else {
             return Resolved::default();
         };
-        let model = &self.inner.model;
-        let ev = Evaluator::new(self);
+        let model = self.inner.model();
+        let ev = Evaluator::new(&self.inner, k.control, overrides, false);
         let mut parts = BTreeMap::new();
         for (pi, part) in model.controls[k.control].parts.iter().enumerate() {
-            let mut props: Vec<String> = Vec::new();
-            collect_props(model, k.control, pi, &mut props, 0);
-            if pi != 0 {
-                let mut root_props = Vec::new();
-                collect_props(model, k.control, 0, &mut root_props, 0);
-                for p in root_props {
-                    if builtins::core_property(&p).is_some_and(|(_, inherits)| inherits) && !props.contains(&p) {
-                        props.push(p);
-                    }
-                }
-            }
             let mut values = BTreeMap::new();
-            for prop in props {
+            for prop in props_of_part(model, k.control, pi, overrides) {
                 match ev.output(k.control, pi, &prop, &k) {
                     Ok(Some(v)) => {
-                        values.insert(prop, v);
+                        values.insert(intern(&prop), v);
                     }
                     Ok(None) => {}
-                    Err(EvalErr::Absent(path)) => ev.report(
-                        None,
-                        format!("{}.{}.{prop}: token \"{path}\" is absent", model.controls[k.control].name, part.name),
-                    ),
-                    Err(EvalErr::Error(span, message)) => ev.report(Some(span), message),
+                    Err(e) => ev.report_err(e, &model.controls[k.control].name, &part.name, &prop),
                 }
             }
             if !values.is_empty() {
-                parts.insert(part.name.clone(), values);
+                parts.insert(intern(&part.name), values);
             }
         }
-        let new = ev.diags.into_inner();
-        if !new.is_empty() {
-            let mut all = self.inner.diags.lock().expect("diagnostics lock");
-            for d in new {
-                if !all.contains(&d) {
-                    all.push(d);
-                }
-            }
-        }
+        self.record(ev.diags.into_inner());
         Resolved { parts }
+    }
+
+    /// The control handle for a key's control index (for inspection).
+    pub(crate) fn control_id(&self, control: usize) -> ControlId {
+        ControlId::named(&self.inner.model().controls[control].name)
     }
 }
 
-fn expr_end(expr: &Expr) -> u32 {
+/// Properties to resolve for a part: any rule's (through `extends`), inherited text properties, overrides.
+pub(crate) fn props_of_part(model: &Model, control: usize, part: usize, overrides: Option<&Overrides>) -> Vec<String> {
+    let mut props: Vec<String> = Vec::new();
+    collect_props(model, control, part, &mut props, 0);
+    if part != 0 {
+        let mut root_props = Vec::new();
+        collect_props(model, control, 0, &mut root_props, 0);
+        for p in root_props {
+            if builtins::core_property(&p).is_some_and(|(_, inherits)| inherits) && !props.contains(&p) {
+                props.push(p);
+            }
+        }
+    }
+    if let Some(o) = overrides {
+        let part_name = &model.controls[control].parts[part].name;
+        for (p, prop, _) in o.iter() {
+            if p == part_name && !props.iter().any(|x| x == prop) {
+                props.push(prop.to_string());
+            }
+        }
+    }
+    props
+}
+
+pub(crate) fn expr_end(expr: &Expr) -> u32 {
     let mut end = expr.span.end;
     let mut visit = |e: &Expr| end = end.max(expr_end(e));
     match &expr.kind {
@@ -451,7 +453,7 @@ fn expr_end(expr: &Expr) -> u32 {
 }
 
 /// Every property any rule sets for `part` of `control`, through `extends`.
-fn collect_props(model: &Model, control: usize, part: usize, out: &mut Vec<String>, depth: usize) {
+pub(crate) fn collect_props(model: &Model, control: usize, part: usize, out: &mut Vec<String>, depth: usize) {
     if depth > 16 {
         return;
     }
@@ -472,28 +474,28 @@ fn collect_props(model: &Model, control: usize, part: usize, out: &mut Vec<Strin
 }
 
 #[derive(Clone, Debug)]
-struct KeyData {
-    control: usize,
-    attrs: Vec<(String, String)>,
-    states: u32,
-    scale: f32,
+pub(crate) struct KeyData {
+    pub control: usize,
+    pub attrs: Vec<(&'static str, &'static str)>,
+    pub states: u32,
+    pub scale: f32,
 }
 
 /// A matching rule with how it was reached.
-struct Cand<'m> {
-    rule: &'m Rule,
+pub(crate) struct Cand<'m> {
+    pub rule: &'m Rule,
     /// The rule's layer, raised to the layer of the `extends` it was reached through.
-    layer: usize,
+    pub layer: usize,
     /// 0 for the control's own rules; more for rules reached through `extends`.
-    depth: u32,
-    interaction: bool,
-    via: Option<String>,
+    pub depth: u32,
+    pub interaction: bool,
+    pub via: Option<String>,
 }
 
 impl Cand<'_> {
     /// Language §8.3: state count, interaction state, attribute count, layer, own over inherited, order.
     /// A rule reached through `extends` counts at least at the layer where the `extends` was written.
-    fn rank(&self) -> (u32, bool, usize, usize, i64, usize) {
+    pub fn rank(&self) -> (u32, bool, usize, usize, i64, usize) {
         (
             self.rule.states.count_ones(),
             self.interaction,
@@ -505,12 +507,12 @@ impl Cand<'_> {
     }
 }
 
-struct Selection<'m> {
-    kept: Vec<Cand<'m>>,
-    owner: Option<Cand<'m>>,
+pub(crate) struct Selection<'m> {
+    pub kept: Vec<Cand<'m>>,
+    pub owner: Option<Cand<'m>>,
 }
 
-fn select<'m>(model: &'m Model, control: usize, part: usize, prop: &str, key: &KeyData) -> Selection<'m> {
+pub(crate) fn select<'m>(model: &'m Model, control: usize, part: usize, prop: &str, key: &KeyData) -> Selection<'m> {
     let mut all = Vec::new();
     collect_cands(model, control, control, part, prop, key, 0, 0, None, &mut all);
     // `:=` (language §8.4): drop less specific candidates, and lower layers' candidates for the owner's scope.
@@ -599,40 +601,99 @@ fn collect_cands<'m>(
     }
 }
 
-enum EvalErr {
+pub(crate) enum EvalErr {
     /// A native token is missing; `first()` skips these.
     Absent(String),
-    Error(Span, String),
+    Error(Span, Code, String),
 }
 
-struct Evaluator<'t> {
+/// Evaluates expressions for one control instance. With tracing on, records what each value read.
+pub(crate) struct Evaluator<'t> {
     theme: &'t ThemeInner,
+    instance: usize,
+    overrides: Option<&'t Overrides>,
     stack: RefCell<Vec<String>>,
-    diags: RefCell<Vec<Diagnostic>>,
+    pub(crate) diags: RefCell<Vec<Diagnostic>>,
+    trace: Option<RefCell<Vec<Vec<Reference>>>>,
 }
 
 impl<'t> Evaluator<'t> {
-    fn new(theme: &'t Theme) -> Self {
-        Self { theme: &theme.inner, stack: RefCell::new(Vec::new()), diags: RefCell::new(Vec::new()) }
+    pub(crate) fn new(theme: &'t ThemeInner, instance: usize, overrides: Option<&'t Overrides>, trace: bool) -> Self {
+        Self {
+            theme,
+            instance,
+            overrides,
+            stack: RefCell::new(Vec::new()),
+            diags: RefCell::new(Vec::new()),
+            trace: trace.then(|| RefCell::new(vec![Vec::new()])),
+        }
     }
 
     fn model(&self) -> &'t Model {
-        &self.theme.model
+        self.theme.model()
     }
 
-    fn report(&self, span: Option<Span>, message: String) {
+    /// The references recorded at the top level (tracing only).
+    pub(crate) fn take_references(&self) -> Vec<Reference> {
+        self.trace.as_ref().map(|t| std::mem::take(&mut t.borrow_mut()[0])).unwrap_or_default()
+    }
+
+    pub(crate) fn location(&self, span: Span) -> Option<Location> {
+        self.model().files.get(span.file as usize).map(|f| Location {
+            source: f.name.clone(),
+            line: span.line,
+            column: span.column,
+        })
+    }
+
+    fn trace_push(&self) {
+        if let Some(t) = &self.trace {
+            t.borrow_mut().push(Vec::new());
+        }
+    }
+
+    fn trace_pop(
+        &self,
+        name: String,
+        kind: ReferenceKind,
+        value: Option<&Value>,
+        at: Option<Span>,
+        description: Option<String>,
+    ) {
+        if let Some(t) = &self.trace {
+            let mut t = t.borrow_mut();
+            let children = t.pop().unwrap_or_default();
+            let reference = Reference {
+                name,
+                kind,
+                value: value.cloned(),
+                defined_at: at.and_then(|s| self.location(s)),
+                description,
+                children,
+            };
+            if let Some(parent) = t.last_mut() {
+                parent.push(reference);
+            }
+        }
+    }
+
+    pub(crate) fn report_err(&self, err: EvalErr, control: &str, part: &str, prop: &str) {
+        match err {
+            EvalErr::Absent(path) => {
+                self.report(None, Code::AbsentToken, format!("{control}.{part}.{prop}: token \"{path}\" is absent"))
+            }
+            EvalErr::Error(span, code, message) => self.report(Some(span), code, message),
+        }
+    }
+
+    fn report(&self, span: Option<Span>, code: Code, message: String) {
         let model = self.model();
-        let file = span.and_then(|s| model.files.get(s.file as usize));
-        let d = Diagnostic {
-            severity: Severity::Warning,
-            source: file.map(|f| f.name.clone()),
-            line: span.map_or(0, |s| s.line),
-            column: span.map_or(0, |s| s.column),
-            message,
-            snippet: file
-                .zip(span)
-                .and_then(|(f, s)| f.text.lines().nth(s.line.saturating_sub(1) as usize))
-                .map(str::to_owned),
+        let d = match span {
+            Some(s) => {
+                let file = model.files.get(s.file as usize).map(|f| (&f.name, &*f.text));
+                Diagnostic::at(Severity::Warning, code, s, file, message)
+            }
+            None => Diagnostic { severity: Severity::Warning, ..Diagnostic::error(code, message) },
         };
         let mut diags = self.diags.borrow_mut();
         if !diags.contains(&d) {
@@ -644,7 +705,7 @@ impl<'t> Evaluator<'t> {
         let mut stack = self.stack.borrow_mut();
         if stack.contains(&label) {
             let chain = stack.iter().skip_while(|l| **l != label).cloned().collect::<Vec<_>>().join(" → ");
-            return Err(EvalErr::Error(span, format!("cycle: {chain} → {label}")));
+            return Err(EvalErr::Error(span, Code::Cycle, format!("cycle: {chain} → {label}")));
         }
         stack.push(label);
         Ok(())
@@ -654,18 +715,53 @@ impl<'t> Evaluator<'t> {
         self.stack.borrow_mut().pop();
     }
 
-    /// The value of `part.prop` for `key` (language §8), or `None` when unset.
-    fn prop(&self, control: usize, part: usize, prop: &str, key: &KeyData) -> Result<Option<Value>, EvalErr> {
+    /// The value of `part.prop` for `key` (language §8), or `None` when unset; plus where it was set.
+    pub(crate) fn prop_at(
+        &self,
+        control: usize,
+        part: usize,
+        prop: &str,
+        key: &KeyData,
+    ) -> Result<(Option<Value>, Option<Span>), EvalErr> {
         let model = self.model();
-        let label = format!("{}.{}.{prop}", model.controls[control].name, model.controls[control].parts[part].name);
         let kind = model.prop_kind(control, prop);
+        let part_name = &model.controls[control].parts[part].name;
+        let label = format!("{}.{part_name}.{prop}", model.controls[control].name);
+
+        // Instance overrides rank above every layer and own their property in all states.
+        if control == self.instance
+            && let Some(value) = self.overrides.and_then(|o| o.get(part_name, prop))
+        {
+            let span = Span::default();
+            self.enter(label, span)?;
+            let result = match value {
+                OverrideValue::Value(v) => Ok(v.clone()),
+                OverrideValue::Token(path) => {
+                    let expr = Expr { kind: ExprKind::Path(path.split('.').map(str::to_owned).collect()), span };
+                    self.eval(&expr, Ctx::Const { scope: 0 }, key, false)
+                }
+            };
+            self.leave();
+            let value = result?;
+            let kind = kind.unwrap_or(Kind::Number);
+            return match value.coerce(kind) {
+                Ok(Value::None) => Ok((None, None)),
+                Ok(v) => Ok((Some(v), None)),
+                Err(v) => Err(EvalErr::Error(
+                    span,
+                    Code::KindMismatch,
+                    format!("override for {prop} expects {kind}, found {}", v.describe()),
+                )),
+            };
+        }
+
         let sel = select(model, control, part, prop, key);
         let Some(winner) = sel.kept.iter().max_by_key(|c| c.rank()) else {
             let inherits = builtins::core_property(prop).is_some_and(|(_, i)| i);
             return if part != 0 && inherits {
-                self.prop(control, 0, prop, key)
+                self.prop_at(control, 0, prop, key)
             } else {
-                Ok(None)
+                Ok((None, None))
             };
         };
         self.enter(label, winner.rule.span)?;
@@ -674,22 +770,36 @@ impl<'t> Evaluator<'t> {
         self.leave();
         let value = result?;
         let kind = kind.unwrap_or(winner.rule.kind);
-        let value = match value.coerce(kind) {
-            Ok(Value::None) => return Ok(None),
-            Ok(v) => v,
-            Err(v) => {
-                return Err(EvalErr::Error(
-                    winner.rule.expr.span,
-                    format!("{prop} expects {kind}, found {}", v.describe()),
-                ));
-            }
-        };
-        Ok(Some(value))
+        match value.coerce(kind) {
+            Ok(Value::None) => Ok((None, Some(winner.rule.span))),
+            Ok(v) => Ok((Some(v), Some(winner.rule.span))),
+            Err(v) => Err(EvalErr::Error(
+                winner.rule.expr.span,
+                Code::KindMismatch,
+                format!("{prop} expects {kind}, found {}", v.describe()),
+            )),
+        }
     }
 
-    /// The value as a template receives it: like [`Self::prop`], with lengths snapped to device pixels
-    /// unless the winning value is `exact(…)`. References between properties use unsnapped values.
-    fn output(&self, control: usize, part: usize, prop: &str, key: &KeyData) -> Result<Option<Value>, EvalErr> {
+    pub(crate) fn prop(
+        &self,
+        control: usize,
+        part: usize,
+        prop: &str,
+        key: &KeyData,
+    ) -> Result<Option<Value>, EvalErr> {
+        self.prop_at(control, part, prop, key).map(|(v, _)| v)
+    }
+
+    /// The value as a template receives it: lengths snapped to device pixels unless the winning value
+    /// is `exact(…)`. References between properties use unsnapped values.
+    pub(crate) fn output(
+        &self,
+        control: usize,
+        part: usize,
+        prop: &str,
+        key: &KeyData,
+    ) -> Result<Option<Value>, EvalErr> {
         let model = self.model();
         let value = self.prop(control, part, prop, key)?;
         if model.config.snap != SnapPolicy::Lengths || model.prop_kind(control, prop) != Some(Kind::Length) {
@@ -719,10 +829,12 @@ impl<'t> Evaluator<'t> {
     }
 
     fn eval(&self, expr: &Expr, ctx: Ctx<'_>, key: &KeyData, as_arg: bool) -> Result<Value, EvalErr> {
-        let err = |message: String| EvalErr::Error(expr.span, message);
+        let err = |code: Code, message: String| EvalErr::Error(expr.span, code, message);
         match &expr.kind {
             ExprKind::Number(n) => Ok(Value::Number(*n)),
-            ExprKind::Hex(h) => Color::parse_hex(h).map(Value::Color).ok_or_else(|| err(format!("invalid color {h}"))),
+            ExprKind::Hex(h) => {
+                Color::parse_hex(h).map(Value::Color).ok_or_else(|| err(Code::Syntax, format!("invalid color {h}")))
+            }
             ExprKind::Str(s) => Ok(Value::Str(s.as_str().into())),
             ExprKind::List(items) => {
                 let values = items.iter().map(|e| self.eval(e, ctx, key, false)).collect::<Result<Vec<_>, _>>()?;
@@ -736,7 +848,7 @@ impl<'t> Evaluator<'t> {
             }
             ExprKind::Neg(inner) => match self.eval(inner, ctx, key, false)? {
                 Value::Number(n) => Ok(Value::Number(-n)),
-                other => Err(err(format!("cannot negate {}", other.describe()))),
+                other => Err(err(Code::KindMismatch, format!("cannot negate {}", other.describe()))),
             },
             ExprKind::Bin(op, a, b) => {
                 let (a, b) = (self.eval(a, ctx, key, false)?, self.eval(b, ctx, key, false)?);
@@ -745,38 +857,45 @@ impl<'t> Evaluator<'t> {
                         BinOp::Add => a + b,
                         BinOp::Sub => a - b,
                         BinOp::Mul => a * b,
-                        BinOp::Div if b == 0.0 => return Err(err("division by zero".into())),
+                        BinOp::Div if b == 0.0 => return Err(err(Code::Evaluation, "division by zero".into())),
                         BinOp::Div => a / b,
                     })),
-                    (a, b) => {
-                        Err(err(format!("arithmetic needs numbers, found {} and {}", a.describe(), b.describe())))
-                    }
+                    (a, b) => Err(err(
+                        Code::KindMismatch,
+                        format!("arithmetic needs numbers, found {} and {}", a.describe(), b.describe()),
+                    )),
                 }
             }
             ExprKind::Index(base, index) => {
                 let n = match self.eval(index, ctx, key, false)? {
                     Value::Number(n) => n as i64,
-                    other => return Err(err(format!("an index must be a number, found {}", other.describe()))),
+                    other => {
+                        return Err(err(
+                            Code::KindMismatch,
+                            format!("an index must be a number, found {}", other.describe()),
+                        ));
+                    }
                 };
                 if let ExprKind::Path(segs) = &base.kind
                     && segs.len() == 1
                     && self.theme.roots.contains(&segs[0])
                 {
-                    return self
-                        .theme
-                        .tokens
-                        .index(&segs[0], n, &self.token_cx(key))
-                        .ok_or(EvalErr::Absent(format!("{}[{n}]", segs[0])));
+                    self.trace_push();
+                    let name = format!("{}[{n}]", segs[0]);
+                    let value = self.theme.tokens.index(&segs[0], n, &self.token_cx(key));
+                    self.trace_pop(name.clone(), ReferenceKind::Native, value.as_ref(), None, None);
+                    return value.ok_or(EvalErr::Absent(name));
                 }
                 match self.eval(base, ctx, key, false)? {
-                    Value::List(items) => {
-                        items.get(n as usize).cloned().ok_or_else(|| err(format!("index {n} is out of range")))
-                    }
+                    Value::List(items) => items
+                        .get(n as usize)
+                        .cloned()
+                        .ok_or_else(|| err(Code::Evaluation, format!("index {n} is out of range"))),
                     Value::Shadow(layers) => layers
                         .get(n as usize)
                         .map(|l| Value::Shadow(vec![*l].into()))
-                        .ok_or_else(|| err(format!("index {n} is out of range"))),
-                    other => Err(err(format!("cannot index {}", other.describe()))),
+                        .ok_or_else(|| err(Code::Evaluation, format!("index {n} is out of range"))),
+                    other => Err(err(Code::KindMismatch, format!("cannot index {}", other.describe()))),
                 }
             }
             ExprKind::Call(func, args) => self.call(expr, &func.join("."), args, ctx, key),
@@ -815,67 +934,110 @@ impl<'t> Evaluator<'t> {
                 } else {
                     self.theme.tokens.call(name, &values, &self.token_cx(key))
                 };
-                result.map_err(|m| EvalErr::Error(expr.span, format!("{name}: {m}")))
+                result.map_err(|m| EvalErr::Error(expr.span, Code::Evaluation, format!("{name}: {m}")))
             }
         }
     }
 
     fn path(&self, expr: &Expr, segs: &[String], ctx: Ctx<'_>, key: &KeyData, as_arg: bool) -> Result<Value, EvalErr> {
         let model = self.model();
-        let target =
-            names::lookup(model, Some(&self.theme.roots), ctx, segs).map_err(|m| EvalErr::Error(expr.span, m))?;
+        let target = names::lookup(model, Some(&self.theme.roots), ctx, segs)
+            .map_err(|m| EvalErr::Error(expr.span, Code::AmbiguousName, m))?;
+        let name = segs.join(".");
         let value = match target {
             Target::Keyword(v) => v,
             Target::Prop { part, prop } => {
                 let Ctx::Prop { control, part: current, .. } = ctx else {
-                    return Err(EvalErr::Error(expr.span, format!("\"{prop}\" is a property, not available here")));
+                    return Err(EvalErr::Error(
+                        expr.span,
+                        Code::UnknownName,
+                        format!("\"{prop}\" is a property, not available here"),
+                    ));
                 };
-                let value = match part {
-                    Some(p) => self.prop(control, p, &prop, key)?,
-                    None => match self.prop(control, current, &prop, key)? {
-                        Some(v) => Some(v),
-                        None if current != 0 => self.prop(control, 0, &prop, key)?,
-                        None => None,
+                self.trace_push();
+                let result = match part {
+                    Some(p) => self.prop_at(control, p, &prop, key),
+                    None => match self.prop_at(control, current, &prop, key) {
+                        Ok((Some(v), at)) => Ok((Some(v), at)),
+                        Ok((None, _)) if current != 0 => self.prop_at(control, 0, &prop, key),
+                        other => other,
                     },
                 };
+                let (value, at) = match result {
+                    Ok(r) => r,
+                    Err(e) => {
+                        self.trace_pop(name, ReferenceKind::Property, None, None, None);
+                        return Err(e);
+                    }
+                };
+                self.trace_pop(name, ReferenceKind::Property, value.as_ref(), at, None);
                 value.unwrap_or(Value::None)
             }
             Target::OtherControl { control, variant, prop } => {
                 let mut other = KeyData { control, attrs: Vec::new(), states: 0, scale: key.scale };
                 if let Some(v) = variant {
-                    other.attrs.push(("variant".into(), v));
+                    other.attrs.push(("variant", intern(&v)));
                 }
-                self.prop(control, 0, &prop, &other)?.unwrap_or(Value::None)
+                self.trace_push();
+                let result = self.prop_at(control, 0, &prop, &other);
+                let (value, at) = match result {
+                    Ok(r) => r,
+                    Err(e) => {
+                        self.trace_pop(name, ReferenceKind::Property, None, None, None);
+                        return Err(e);
+                    }
+                };
+                self.trace_pop(name, ReferenceKind::Property, value.as_ref(), at, None);
+                value.unwrap_or(Value::None)
             }
-            Target::Const { scope, name, fields } => {
-                let def = model.const_lookup(scope, &name).expect("lookup found it");
-                self.enter(format!("const {name}"), expr.span)?;
+            Target::Const { scope, name: cname, fields } => {
+                let def = model.const_lookup(scope, &cname).expect("lookup found it");
+                self.enter(format!("const {cname}"), expr.span)?;
+                self.trace_push();
                 let v = self.eval(&def.expr, Ctx::Const { scope: def.scope }, key, false);
                 self.leave();
-                self.fields(expr, v?, &fields)?
+                let v = v.and_then(|v| self.fields(expr, v, &fields));
+                self.trace_pop(name, ReferenceKind::Constant, v.as_ref().ok(), Some(def.span), None);
+                v?
             }
             Target::Token { path, fields } => {
-                let v = self.token(expr, &path, key)?;
-                self.fields(expr, v, &fields)?
+                self.trace_push();
+                let r = self.token(expr, &path, key);
+                let (v, at) = match r {
+                    Ok((v, at)) => (self.fields(expr, v, &fields), at),
+                    Err(e) => (Err(e), None),
+                };
+                self.trace_pop(name, ReferenceKind::Token, v.as_ref().ok(), at, None);
+                v?
             }
             Target::Native { path } => {
                 let joined = path.join(".");
-                self.theme.tokens.token(&joined, &self.token_cx(key)).ok_or(EvalErr::Absent(joined))?
+                self.trace_push();
+                let cx = self.token_cx(key);
+                let value = self.theme.tokens.token(&joined, &cx);
+                let description = self.theme.tokens.describe(&joined, &cx);
+                self.trace_pop(joined.clone(), ReferenceKind::Native, value.as_ref(), None, description);
+                value.ok_or(EvalErr::Absent(joined))?
             }
             Target::Unknown if as_arg && segs.len() == 1 => Value::Symbol(segs[0].as_str().into()),
-            Target::Unknown => return Err(EvalErr::Error(expr.span, format!("unknown name \"{}\"", segs.join(".")))),
+            Target::Unknown => {
+                return Err(EvalErr::Error(expr.span, Code::UnknownName, format!("unknown name \"{name}\"")));
+            }
         };
         Ok(value)
     }
 
-    fn token(&self, expr: &Expr, path: &str, key: &KeyData) -> Result<Value, EvalErr> {
+    fn token(&self, expr: &Expr, path: &str, key: &KeyData) -> Result<(Value, Option<Span>), EvalErr> {
+        if let Some(v) = self.theme.token_values.get(path) {
+            return Ok((v.clone(), None));
+        }
         let model = self.model();
         let defs = &model.tokens.defs[path];
         let mode = &self.theme.mode;
         let best = defs
             .iter()
             .filter(|d| d.mode.as_deref().is_none_or(|m| m == mode))
-            .filter(|d| d.attrs.iter().all(|a| key.attrs.contains(a)))
+            .filter(|d| d.attrs.iter().all(|(a, v)| key.attrs.iter().any(|(ka, kv)| ka == a && kv == v)))
             .max_by_key(|d| (d.attrs.len(), d.layer, d.mode.is_some(), d.order));
         let Some(def) = best else {
             return Err(EvalErr::Absent(path.to_string()));
@@ -885,12 +1047,17 @@ impl<'t> Evaluator<'t> {
         let v = self.eval(&def.expr, ctx, key, false);
         self.leave();
         let v = v?;
-        match def.kind {
+        let v = match def.kind {
             Some(kind) => v.coerce(kind).map_err(|v| {
-                EvalErr::Error(def.span, format!("token {path} is declared {kind} but evaluated to {}", v.describe()))
-            }),
-            None => Ok(v),
-        }
+                EvalErr::Error(
+                    def.span,
+                    Code::KindMismatch,
+                    format!("token {path} is declared {kind} but evaluated to {}", v.describe()),
+                )
+            })?,
+            None => v,
+        };
+        Ok((v, Some(def.span)))
     }
 
     fn fields(&self, expr: &Expr, value: Value, fields: &[String]) -> Result<Value, EvalErr> {
@@ -900,7 +1067,13 @@ impl<'t> Evaluator<'t> {
                 (Value::Text(t), "size") => Value::Number(t.size),
                 (Value::Text(t), "line_height") => Value::Number(t.line_height),
                 (Value::Text(t), "weight") => Value::Number(t.weight),
-                _ => return Err(EvalErr::Error(expr.span, format!("{} has no field \"{f}\"", v.describe()))),
+                _ => {
+                    return Err(EvalErr::Error(
+                        expr.span,
+                        Code::UnknownName,
+                        format!("{} has no field \"{f}\"", v.describe()),
+                    ));
+                }
             };
         }
         Ok(v)

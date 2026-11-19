@@ -1,413 +1,216 @@
-# `xgpui-luma-style` — public API spec (draft for review)
+# `xgpui-luma-style` — public API
 
-Status: draft, 2026-11-19, revised to match [style-language-design.md](style-language-design.md). Nothing implemented. All open questions in §14 are decided or deferred.
-The language document defines syntax, name resolution and the cascade; this document defines the Rust API around them. Supersedes the #94 (HCL) and #282 (`#[derive(Style)]`) approaches.
+Status: implemented on `issue-285/style-lang` (2026-11-19), except where marked *later*. This document records the API decisions (topics 1–8) and the names as they are in the code. Syntax, name resolution and the cascade are in [style-language-design.md](style-language-design.md).
 
 ## 1. Purpose and boundary
 
-One crate that **styles** Luma controls and lets tools **introspect** that styling. It is built only for Luma, but it knows nothing about Luma: everything Luma-specific comes in through a small, deliberate API. **No UI** lives in the crate.
-
-```
-                   ┌──────────────────────────── xgpui-luma-style ────────────────────────────┐
-  Config       ──▶ │                                                                          │
-  Style files  ──▶ │  parse ─▶ compile (declarations, validation) ─▶ bind (tokens, mode)      │
-  TokenSource  ──▶ │                                       └─▶ resolve ─▶ Resolved / PartStyle │ ──▶ templates (.apply), animation runtime
-                   │                                       └─▶ inspect ─▶ Inspection          │ ──▶ inspector UI (outside the crate)
-                   └──────────────────────────────────────────────────────────────────────────┘
-```
+One crate that **styles** Luma controls and lets tools **introspect** that styling. It is built only for Luma, but it knows nothing about Luma: everything Luma-specific comes in through a small, deliberate API. **No UI** lives in the crate, and the crate never writes files.
 
 | Inbound (consumer supplies) | Outbound (crate returns) |
 |---|---|
-| `Config`: states, exclusive state group, attributes, layers, snapping | `Resolved` / `PartStyle`: values for one control instance |
-| Style files (text) with their layer | `Inspection`: the data behind every value |
-| `TokenSource`: native token roots (`css.*`, `gray[n]`, `tone[n]`) and look functions | `Diagnostics`: errors with file, line and column |
+| `Config`: layers, states, exclusive state group, attributes, snapping | `Resolved` / `PartView`: values for one control instance |
+| Style files (`Source`) by layer | `Explanation` / `Inspection`: where every value came from |
+| `TokenSource`: native token roots and look functions | `Diagnostics`: problems with code, location, range and snippet |
+| `Overrides`: values set on one instance | Edited and exported `.lss` text |
 
-**Not in this crate:** UI, Luma types (`ThemeTokens`, `InteractionState`, looks), control behaviour, layout structure, the animation runtime.
+Controls, parts and control-specific properties are declared **in the style files**. Rust declares only `Config`. Dependencies: `pest`, `pest_derive`, `thiserror`.
 
-**Where the schema lives:** controls, parts and control-specific properties are declared **in the style files** (language §4). Rust declares only the global configuration below. There is no per-control Rust.
+## 2. Configuration
 
-Dependencies: `pest`, `pest_derive`, `thiserror`. Feature `gpui` (default on) adds conversions and `.apply()`.
-
-## 2. Concepts
-
-| Term | Meaning |
-|---|---|
-| **Control** | A named styled thing (`checkbox`), declared by the first layer whose files mention it. |
-| **Part** | A named piece of a control (`indicator`). The control block itself is part `root`. |
-| **Core property** | A property the crate defines, with a fixed kind (§8): `background`, `padding_x`, `transition`, … |
-| **Declared property** | A control-specific property declared in a style file: `indicator_size: length = …`. |
-| **State** | A boolean flag from the consumer's set (`hover`, `checked`, `open`, …). |
-| **Exclusive group** | States of which only the strongest active one counts (Luma: `disabled > pressed > hover`). |
-| **Attribute** | A named axis set on an instance (`variant`, `size`); a scope in the language. |
-| **Layer** | An ordered tier for style files (Luma: `sdk < look < app`). |
-| **Mode** | A token variant chosen at bind time (`light`, `dark`). |
-| **StyleKey** | Control + attributes + states + scale factor: what one render asks for. |
-
-## 3. Configuration
-
-Built once by the SDK at startup. It contains only what is global; everything per control comes from the files.
+Built once by the SDK (`xgpui_luma::style::config()`), shared by every stylesheet.
 
 ```rust
-pub struct Config { /* opaque */ }
-
-impl Config {
-    pub fn builder() -> ConfigBuilder;
-}
-
-impl ConfigBuilder {
-    pub fn layers(self, ordered: &[&'static str]) -> Self;            // lowest first
-    pub fn states(self, states: &[StateDecl]) -> Self;                // at most 32
-    pub fn exclusive(self, strongest_first: &[&'static str]) -> Self; // e.g. ["disabled", "pressed", "hover"]
-    pub fn attributes(self, names: &[&'static str]) -> Self;          // e.g. ["variant", "size"]
-    pub fn snap(self, policy: SnapPolicy) -> Self;
-    pub fn build(self) -> Result<Config, ConfigError>;
-}
-
-pub struct StateDecl { pub name: &'static str, pub label: &'static str, pub doc: &'static str }
-pub enum SnapPolicy  { None, Lengths }   // Lengths: every length snaps unless wrapped in exact()
-```
-
-Luma's configuration (in the SDK):
-
-```rust
-Config::builder()
+let config = Arc::new(Config::builder()
     .layers(&["sdk", "look", "app"])
-    .states(&[st("hover"), st("pressed"), st("focused"), st("disabled"), st("checked"), st("selected"),
-              st("active"), st("expanded"), st("open"), st("invalid"), st("high_contrast")])
-    .exclusive(&["disabled", "pressed", "hover"])
-    .attributes(&["variant", "size"])
+    .states(&["hover", "pressed", "focused", "disabled", "checked", "selected",
+              "active", "expanded", "open", "invalid", "high_contrast"])
+    .exclusive(&["disabled", "pressed", "hover"])     // only the strongest active one counts
+    .attributes(&["variant", "size", "tone"])         // at most 8
     .snap(SnapPolicy::Lengths)
-    .build()?
+    .build()?);
+
+config.state("checked")      // Option<StateId>
+config.attribute("variant")  // Option<AttrId>
 ```
 
-## 4. Style files
+The SDK has no light/dark mode; looks provide modes. An SDK-only app switches themes by compiling different token files.
 
-Syntax, name resolution, cascade and motion are specified in the language document. The API:
+## 3. Setup: files, compile, bind (topic 3)
 
 ```rust
-pub struct Source { pub layer: &'static str, pub name: Arc<str>, pub text: Arc<str> }   // name: "radix/checkbox.lss"
+let sheet = Stylesheet::builder(config)
+    .layer("sdk",  xgpui_luma::style::sources())   // SDK tokens + one .lss beside each control
+    .layer("look", shadcn::style::sources())       // look tokens + overrides
+    .layer("app",  app_sources)                    // optional
+    .compile()?;                                   // Result<Stylesheet, Diagnostics>
 
-pub struct Sheet { /* parsed, not yet validated */ }
-impl Sheet {
-    pub fn parse(source: Source) -> Result<Sheet, Diagnostics>;
-}
+let theme = Theme::bind(&sheet, shadcn::style::tokens(&catalog), "light")?;
+let sdk_only = Theme::bind(&sdk_sheet, Arc::new(NoNativeTokens), "")?;
 ```
 
-Files are normally embedded with `include_str!` and parsed at startup.
+- `Source::new(name, text)` for embedded files (`include_str!`); `Source::from_path(path)` to read from disk (import, hot reload, the lab).
+- Each crate exports its own `sources()`; a test in the SDK fails if a `.lss` file under `crates/sdk/src` is missing from the list (*later*, with the SDK migration).
+- `sheet.modes()` lists modes found in token files (empty for the SDK alone). Binding an unknown mode is an error.
+- A look can use the SDK styles unchanged and tweak them: a token file alone maps the SDK palette onto the look; control files override only what differs; `:=` replaces a property in every state. A look cannot add parts or declare properties on SDK controls; it can declare its own controls.
 
-## 5. Compile and bind
+**Compile** checks syntax, declarations (only in the declaring layer), unknown controls/parts/properties/states/attributes, kinds, ambiguous names, built-in function arity, `extends`, and token kind consistency. **Bind** checks native token roots, look functions and the mode.
+
+## 4. Keys and handles (topic 2)
+
+Handles are looked up once and stay valid across rebinds and swaps: controls, parts, attribute values and properties are interned by name; states and attributes are `Config` indices.
 
 ```rust
-/// Validated rules, declarations and file-defined tokens for one set of files
-/// (the SDK plus one look plus app files). Independent of native tokens and mode.
-pub struct Stylesheet { /* Arc inside; cheap Clone */ }
+// Once, at SDK startup (e.g. in a OnceLock):
+let checkbox  = sheet.control("checkbox")?;                    // ControlId
+let indicator = sheet.part(checkbox, "indicator")?;            // PartId
+let size      = sheet.prop::<f32>(checkbox, "indicator_size")?; // Prop<f32>; errors if missing or another kind
+let checked   = config.state("checked")?;                      // StateId
+let variant   = config.attribute("variant")?;                  // AttrId
+let soft      = AttrValue::named("soft");                      // interned when a builder sets .variant("soft")
 
-impl Stylesheet {
-    pub fn compile(config: Arc<Config>, sheets: impl IntoIterator<Item = Sheet>) -> Result<Stylesheet, Diagnostics>;
-    pub fn controls(&self) -> impl Iterator<Item = ControlInfo<'_>>;      // for tools
-    pub fn control(&self, name: &str) -> Option<ControlId>;
-    pub fn part(&self, control: ControlId, name: &str) -> Option<PartId>;
-    pub fn state(&self, name: &str) -> Option<StateId>;
-    /// Typed handle to a declared property; errors if missing or of another kind.
-    pub fn prop<T: FromValue>(&self, control: ControlId, name: &str) -> Result<Prop<T>, Diagnostic>;
-}
-
-/// A stylesheet bound to native tokens and a mode. Owns the resolve cache.
-pub struct Theme { /* Arc inside; cheap Clone */ }
-
-impl Theme {
-    pub fn bind(stylesheet: Stylesheet, tokens: Arc<dyn TokenSource>, mode: &str) -> Result<Theme, Diagnostics>;
-    pub fn resolve(&self, key: &StyleKey, overrides: Option<&Overrides>) -> Arc<Resolved>;
-    pub fn inspect(&self, key: &StyleKey, overrides: Option<&Overrides>) -> Inspection;
-    pub fn diagnostics(&self) -> &Diagnostics;   // evaluation problems found while resolving
-}
+// Per render: no strings, no allocation.
+let key = StyleKey::new(checkbox)
+    .state_if(checked, model.checked)
+    .states(interaction_states)          // StateSet, a u32 bitset
+    .attr_opt(variant, model.variant)
+    .scale(window.scale_factor());
 ```
 
-**Compile** checks everything that does not need native tokens: syntax already passed; unknown control, part, attribute, state or property; a declaration outside the declaring layer; kind mismatches; ambiguous names; unknown built-in functions and arity; `extends` targets and cycles; reference cycles; token kind consistency across layers and modes.
-**Bind** checks native token references and look functions, and selects the mode's token values.
-A light/dark switch or a native token change (a new Shadcn CSS theme) is a new `bind` from the same `Stylesheet`.
+- `ControlId::new("checkbox")`, `PartId::new("indicator")`, `Prop::new(…)` are `const` for names known at compile time; `PartId::ROOT` is the control itself.
+- `StyleKey` is small, `Copy` and `Hash`; it is the cache key.
+- `theme.key_named(control, attrs, states)` builds a key from names, for tools and tests.
 
-## 6. Tokens
+## 5. Reading styles: the generic view (topic 1)
 
-Two sources, one namespace:
+```rust
+let style = theme.resolve(&key);                 // Arc<Resolved>, cached per key
+let part  = style.part(indicator);               // PartView
+part.get(props::BACKGROUND)                      // Option<Color>
+part.get(size)                                   // Option<f32>, declared property
+part.background(); part.radius(); part.transition();   // shortcuts for core properties
+part.value("indicator_size")                     // raw Value by name, for tools
+Resolved::lerp(&off, &on, t)                     // animation between two resolved styles
+```
 
-- **File tokens**, from `tokens { … }` blocks (SDK `palette`, `metrics`, `typography`, `elevation`; Shadcn `shadcn.*`; Radix `radix.*`). Compiled into the `Stylesheet`; `mode` blocks are selected at bind.
-- **Native tokens and functions**, from the consumer's `TokenSource`.
+- `props::*` holds handles for every core property (`BACKGROUND`, `RADIUS`, `SHADOW`, `TRANSITION`, …).
+- `FromValue` types: `f32` (length, number, weight), `Color`, `Motion`, `Arc<[ShadowLayer]>`, `Arc<str>` (font, icon), `TextStyle`.
+- Lengths are snapped to device pixels on output (unless `exact(…)`); properties that read other properties see unsnapped values.
+- Motion: for a change from key A to key B, the animation runtime uses `resolve(B).part(p).transition()`.
+- `.apply()` onto gpui elements is *later*, as a `gpui` feature built on this view.
+
+## 6. Instance overrides (topic 5)
+
+```rust
+let overrides = Overrides::new()
+    .set(indicator, props::BACKGROUND, Color::oklch(0.6, 0.2, 145.0, 1.0))
+    .set(PartId::ROOT, props::TRANSITION, Motion::Instant)          // replaces today's .motion(|m| …)
+    .set_token(indicator, props::BORDER, "palette.focus.ring");      // follows mode and theme changes
+let style = theme.resolve_with(&key, &overrides);
+```
+
+- An override replaces its property **in every state** (like `:=` above all layers), including the disabled look.
+- Overrides take part in the cascade: a rule `border = background` follows an overridden background, and `explain` reports `ValueSource::InstanceOverride`.
+- The type checks values (`Prop<Color>` takes a `Color`). Build once per instance; results are cached per override set.
+- Overrides apply to one instance; styling every instance belongs in the app layer.
+- Per-state overrides are *later* (non-breaking).
+
+## 7. Rebind, refresh, swap (topic 4)
+
+A `Theme` never changes; every change returns a new one that shares the compiled stylesheet. Failures return `Diagnostics` and leave the current theme as it is.
+
+```rust
+theme.with_mode("dark")?                                   // same files and tokens, other mode
+theme.with_tokens(Arc::new(new_catalog))?                  // new native token source
+theme.with_token_values(&[("palette.app.background", v)])? // live edits above every layer, no recompile
+sheet.with_source("app", Source::new("app/tweak.lss", text))? // recompile with one file replaced or added
+theme.with_stylesheet(&sheet2)?                            // same tokens and mode, new files
+theme.generation()                                         // changes with every new theme
+theme.token_values()                                       // live edits in effect
+```
+
+Holding the current theme and refreshing windows is the SDK's job.
+
+## 8. Tokens
 
 ```rust
 pub trait TokenSource: Send + Sync {
-    /// Native roots this source provides, e.g. ["css"], ["gray", "accent", "tone", "destructive"].
-    fn roots(&self) -> &[&'static str];
-    /// `css.primary_foreground`. `None` means absent (see `first()`).
-    fn token(&self, path: &str, mode: &str) -> Option<Value>;
-    /// `gray[7]`, `tone[10]`.
-    fn index(&self, root: &str, index: i32, mode: &str, key: &KeyView<'_>) -> Option<Value>;
-    /// Look functions: `layer`, `shift`, `css_shadow`, `resting_shadow`, `lucide`, ….
-    fn functions(&self) -> &[FunctionSig];
-    fn call(&self, name: &str, args: &[Value], mode: &str, key: &KeyView<'_>) -> Result<Value, String>;
-    /// Provenance for one native token, one step per line ("--primary in theme.css").
-    fn trace(&self, path: &str, mode: &str) -> Vec<TokenStep>;
+    fn roots(&self) -> &[&str];                                          // e.g. ["css"], ["gray", "accent", "tone"]
+    fn token(&self, path: &str, cx: &TokenCx<'_>) -> Option<Value>;      // None = absent (see first())
+    fn index(&self, root: &str, index: i64, cx: &TokenCx<'_>) -> Option<Value> { None }  // gray[7]
+    fn function(&self, name: &str) -> Option<FunctionSig> { None }       // look functions
+    fn describe(&self, path: &str, cx: &TokenCx<'_>) -> Option<String> { None }  // for the inspector
+    fn call(&self, name: &str, args: &[Value], cx: &TokenCx<'_>) -> Result<Value, String>;
 }
-
-pub struct FunctionSig { pub name: &'static str, pub params: &'static [Kind], pub variadic: bool, pub returns: Kind }
-pub struct KeyView<'a> { /* read-only attributes and states, e.g. for tone[n] */ }
-pub struct TokenStep { pub label: Arc<str>, pub value: Option<Value> }
 ```
 
-**Built-in functions** (crate, not consumer): `min`, `max`, `first`, `exact`, `alpha`, `mix`, `gray(lightness, alpha)`, `srgb`, `hsla`, `oklch`, `oklab`, `color(space, …)`, `shadow`, `text`, `timed`, `spring`.
-**Built-in keywords:** `none`, `transparent`, `black`, `white`, `instant`, and the easing names (`linear`, `out_cubic`, …).
+- `TokenCx` gives the mode and the instance's attributes (`cx.attr("tone")`).
+- File tokens (`tokens { … }`) and native tokens share one namespace. Look functions receive an absent token as `Value::None`.
+- Built-in functions: `min`, `max`, `first`, `exact`, `alpha`, `mix`, `gray`, `srgb`, `hsla`, `oklch`, `oklab`, `color(space, …)`, `shadow`, `box_shadow`, `inset_shadow`, `text`, `timed`, `spring`. Built-in keywords: `none`, `transparent`, `black`, `white`, `instant`, easing names. Which further functions are built in or belong to a look is decided per function: built in if it needs no look data.
 
-Luma implements `TokenSource` three times: SDK (empty or near-empty: its tokens are in files), Shadcn (`css.*` catalog plus `layer`, `first_layer`, `shift`, `px`, `css_shadow`, `css_font`), Radix (scales via `gray[n]` etc. plus the shadow helpers).
+## 9. Values and colors
 
-## 7. Values
+`Value` is `Number`, `Color`, `Shadow`, `Text`, `Str`, `Icon`, `Motion`, `Symbol`, `List` or `None`. Numbers have no units; the property's kind gives the meaning (lengths are logical pixels, durations milliseconds). `value.to_lss()` prints a value as `.lss`.
 
-The crate's own types, no gpui dependency:
+Colors follow CSS Color Level 4: `oklch(…)`, `oklab(…)`, `color(srgb | srgb_linear | display_p3 | a98_rgb | prophoto_rgb | rec2020, r, g, b[, a])`, hex, `srgb()`, `hsla()`, `gray()`. They are stored as OKLCH (unclamped), mixed and interpolated in OKLab, and written out as sRGB with CSS gamut mapping (`to_srgb()`, `to_hsla()`).
+
+## 10. Introspection (topic 6)
 
 ```rust
-pub enum Kind { Length, Number, Color, Shadow, Text, Font, Weight, Icon, Motion }
-
-pub enum Value {
-    Number(f32),                      // lengths are logical px; no units in files
-    Color(Color),
-    Shadow(Arc<[ShadowLayer]>),       // [] = no shadow
-    Text(TextStyle),                  // size, line_height, weight; fields readable by path
-    Font(Arc<str>),
-    Weight(u16),
-    Icon(Arc<str>),
-    Motion(Motion),
-    None,                             // `none`: not painted
-}
-
-pub struct Color       { pub l: f32, pub c: f32, pub h: f32, pub alpha: f32 }  // OKLCH, unclamped (§7.1)
-pub struct ShadowLayer { pub x: f32, pub y: f32, pub blur: f32, pub spread: f32, pub color: Color, pub inset: bool }
-pub struct TextStyle   { pub size: f32, pub line_height: f32, pub weight: u16 }
-pub enum   Motion      { Instant, Timed { duration_ms: u32, easing: Easing }, Spring { stiffness: f32, damping: f32 } }
-pub enum   Easing      { Linear, InCubic, OutCubic, InOutCubic, /* … SDK easings */ }
+theme.explain(&key, part, "background")            // Explanation for one property
+theme.explain_with(&key, &overrides, part, prop)
+theme.inspect(&key, Some(&overrides))              // Inspection: every part and row
+sheet.axes(checkbox)                               // Axes: attribute values, states, modes for pickers
 ```
 
-`Length` and `Number` share `Value::Number`; the property's kind gives the meaning (language §6, decisions 5 and 6).
+- `Explanation`: value, `ValueSource` (`Rule`, `InheritedFromRoot`, `InstanceOverride`, `Unset`), winning `RuleInfo` (source, layer, line, column, scope, states, expression text, `via` for `extends`), overridden rules (best first), the `:=` owner, and `references`.
+- `Reference`: what an expression read (property, token, constant or native token), its value, where it is defined, the token source's `describe` text, and what *it* read, recursively — e.g. `shadcn.outline_layer.default` → `css.card`. Recorded only when explaining.
+- `Inspection` rows: every property any rule sets (directly or through `extends`), every declared property of the control (even when unset), and text properties inherited from root; each with kind, `Category` (Colors, Layout, Typography, Elevation, Motion, Other), doc and explanation. Each part has a `BoxModel`.
+- `Axes` come from the files (scopes, `extends` aliases, rule states, mode blocks), replacing per-control inspector specs.
 
-### 7.1 Colors
-
-Follows CSS Color Level 4.
-
-| Authoring form | Example |
-|---|---|
-| OKLCH, OKLab | `oklch(0.62, 0.19, 259.8)`, `oklab(0.62, -0.03, -0.19)` |
-| `color()` with a predefined space | `color(srgb, 0.41587, 0.50367, 0.36664)`, `color(display_p3, …)`, `color(a98_rgb, …)`, `color(prophoto_rgb, …)`, `color(rec2020, …)` |
-| sRGB shorthands | `#1e293b`, `srgb(r, g, b)`, `hsla(h, s, l, a)`, `gray(lightness, alpha)` |
-
-An optional last argument is alpha. Space names use `_` because `-` is subtraction (`display_p3` for CSS `display-p3`). Native tokens such as Shadcn `css.*` are parsed by the look with CSS syntax and arrive as `Value::Color`.
-
-- **Stored as OKLCH**, unclamped, so wide-gamut colors (P3, Rec. 2020, ProPhoto) keep their full value through the cascade, the inspector and export.
-- **Math in OKLab**: `mix`, `lerp` and `alpha` work in OKLab (the CSS default for `color-mix`), which avoids hue jumps and gives even transitions.
-- **Output to gpui is sRGB**, converted with the CSS Color 4 gamut-mapping algorithm (reduce OKLCH chroma until the color fits). This matters for Shadcn themes from tools such as tweakcn, which often use OKLCH values outside sRGB.
-- **Inspection** shows the authored form (from the source text), the stored OKLCH value, and whether the sRGB output was gamut-mapped.
-- Conversion matrices are the published CSS Color 4 ones. The workspace already depends on `palette` 0.7 (OKLCH/OKLab); the other spaces need small hand-written conversions if `palette` lacks them.
-
-## 8. Core properties
-
-Defined by the crate. Every other property is declared in a style file.
-
-| Kind | Properties | `.apply()` |
-|---|---|---|
-| color | `background`, `foreground`, `border`, `focus_border` | `background`, `foreground`, `border` (focus is drawn by the SDK's focus adorner) |
-| length | `border_width`, `radius`, `padding`, `padding_x`, `padding_y`, `margin`, `gap`, `width`, `height`, `min_width`, `max_width`, `min_height`, `max_height`, `font_size`, `line_height` | yes |
-| number | `opacity` | yes |
-| shadow | `shadow` | yes |
-| font / weight | `font_family`, `font_weight` | yes |
-| motion | `transition` | no: read by the SDK animation runtime |
-
-Text-related properties (`foreground`, `font_*`, `line_height`) inherit from `root` when a part does not set them.
-
-## 9. Resolution
+## 11. Editing and export (topic 7)
 
 ```rust
-pub struct StyleKey {
-    pub control: ControlId,
-    pub attrs: Attrs,       // small sorted map: attribute → interned value
-    pub states: StateSet,   // u32 bitset; normalized for the exclusive group by the crate
-    pub scale: f32,
-}
-
-pub struct Resolved { /* every part of one control for one key */ }
-
-impl Resolved {
-    pub fn root(&self) -> &PartStyle;
-    pub fn part(&self, part: PartId) -> &PartStyle;
-    /// Interpolate two resolved styles (e.g. unchecked → checked). Colors, numbers and shadows
-    /// lerp; other values switch at t = 0.5.
-    pub fn lerp(a: &Resolved, b: &Resolved, t: f32) -> Resolved;
-}
-
-pub struct PartStyle {
-    pub background: Option<Color>,
-    pub foreground: Option<Color>,
-    pub border: Option<Color>,
-    pub focus_border: Option<Color>,
-    pub border_width: Option<f32>,
-    pub radius: Option<f32>,
-    pub padding: Edges<Option<f32>>,
-    pub margin: Edges<Option<f32>>,
-    pub gap: Option<f32>,
-    pub width: Option<f32>,
-    pub height: Option<f32>,
-    pub min_width: Option<f32>,
-    pub max_width: Option<f32>,
-    pub min_height: Option<f32>,
-    pub max_height: Option<f32>,
-    pub opacity: Option<f32>,
-    pub shadow: Option<Arc<[ShadowLayer]>>,
-    pub font_family: Option<Arc<str>>,
-    pub font_size: Option<f32>,
-    pub line_height: Option<f32>,
-    pub font_weight: Option<u16>,
-    pub transition: Option<Motion>,
-    declared: DeclaredValues,
-}
-
-impl PartStyle {
-    pub fn get<T: FromValue>(&self, prop: Prop<T>) -> Option<T>;   // declared properties
-}
-
-/// Typed handle to a declared property, obtained once from `Stylesheet::prop`.
-pub struct Prop<T> { /* PropertyId + PhantomData<T> */ }
+let edit = Edit::replace(&row.explanation.winner?, "tone[11]");     // new value text, in place
+let edit = Edit::insert("app", "app/overrides.lss",
+    &RuleSpec::new("checkbox", "indicator", "background", "black").scope("variant", "brand").state("checked"));
+let (sheet2, changed) = sheet.apply(&[edit])?;                      // recompiled + changed files (to save)
+sheet.export_variant("checkbox", "brand", &session_rules)            // a complete .lss with a named variant
+export_tokens(&theme.token_values())                                 // a tokens { … } file for live edits
 ```
 
-- **Motion:** for a change from key A to key B the animation runtime uses `resolve(B).part(p).transition` (destination state, language §16). Presence: enter uses the key with `open`, exit the key without it.
-- **Instance overrides** replace builder-level edits such as today's `.motion(|m| …)`:
+- Replacements splice the original text, so comments and layout survive; inserted rules are printed in one standard layout.
+- Exports contain only the differences and round-trip: the tests compile exported text and compare resolved values.
+- `Source::from_path` plus `with_source` is import.
 
-```rust
-/// Per-instance values, ranked above every layer and owning their property in all states (like `:=`).
-pub struct Overrides { /* small, Arc'd */ }
-impl Overrides {
-    pub fn new() -> Self;
-    pub fn set(self, part: PartId, property: PropertyId, value: Value) -> Self;
-}
-```
+## 12. Diagnostics (topic 8)
 
-- `resolve` never fails or panics. Evaluation problems leave the property unset and are recorded in `Theme::diagnostics`. Results are cached per `(StyleKey, Overrides)`.
+- Compile and bind fail with `Diagnostics`; **resolving never fails**: a problem leaves the property unset and is recorded once.
+- `theme.diagnostics()` and `theme.diagnostics_since(mark)` (returns new problems and the next mark) for polling from the lab or Studio.
+- `theme.check(control)` resolves every combination of the control's axes and returns the problems — one line per control in SDK and look tests.
+- Every `Diagnostic` has a `Code` (`UnknownPart`, `KindMismatch`, `AmbiguousName`, `Cycle`, `AbsentToken`, …), source, line, column, byte `range`, message and snippet. Unknown names get a suggestion: `unknown part "indicatr" for checkbox (parts: …) — did you mean "indicator"?`
+- Load-time lints (unused declarations, rules that can never win) are *later*.
 
-### `gpui` feature
-
-```rust
-impl From<Color> for gpui::Hsla;          // gamut-mapped to sRGB (§7.1)
-impl From<&ShadowLayer> for gpui::BoxShadow;
-
-pub trait ApplyStyle: gpui::Styled + Sized {
-    /// Applies the set core properties that map to gpui (§8). Never applies declared properties
-    /// or `transition`.
-    fn apply(self, style: &PartStyle) -> Self;
-}
-impl<E: gpui::Styled> ApplyStyle for E {}
-```
-
-## 10. Introspection
-
-Read-only in phase 1. The crate returns data; the inspector UI lives above it.
-
-```rust
-pub struct Inspection {
-    pub key: StyleKey,
-    pub control: ControlInfo<'static>,
-    pub axes: Axes,
-    pub parts: Vec<PartInspection>,
-}
-
-pub struct ControlInfo<'a> {
-    pub name: &'a str,
-    pub doc: &'a str,                        // from `///` in the declaring file
-    pub parts: Vec<PartInfo<'a>>,            // name, doc
-    pub declared: Vec<PropertyInfo<'a>>,     // name, kind, doc, declared_at
-    pub extends: Option<&'a str>,
-}
-
-pub struct Axes {
-    pub attributes: Vec<(Arc<str>, Vec<Arc<str>>)>,   // values found in scopes: ("variant", ["classic","soft"])
-    pub states: Vec<StateId>,                         // states the control's rules use
-}
-
-pub struct PartInspection {
-    pub part: PartId,
-    pub properties: Vec<PropertyInspection>,
-    pub box_model: BoxModel,
-}
-
-pub struct PropertyInspection {
-    pub property: PropertyId,
-    pub kind: Kind,
-    pub category: Category,
-    pub doc: Option<Arc<str>>,
-    pub value: Option<Value>,
-    pub inherited_from_root: bool,
-    pub winner: Option<RuleRef>,
-    pub overridden: Vec<RuleRef>,         // lower-ranked candidates, highest first
-    pub owned_by: Option<RuleRef>,        // the `:=` that removed less specific rules, if any
-    pub expression: Arc<str>,             // source text of the winning value
-    pub references: Vec<Reference>,       // what the expression read, with values and traces
-}
-
-pub struct RuleRef {
-    pub source: Arc<str>,                 // "radix/checkbox.lss"
-    pub layer: &'static str,              // or "inherited" via extends
-    pub line: u32,
-    pub column: u32,
-    pub scope: Arc<str>,                  // "variant soft"
-    pub states: Arc<str>,                 // ":checked:hover"
-    pub via_extends: Option<Arc<str>>,    // "button.root"
-    pub instance_override: bool,
-}
-
-pub enum Reference {
-    Token { path: Arc<str>, value: Option<Value>, defined_at: Option<RuleRef>, native: Vec<TokenStep> },
-    Property { part: PartId, property: PropertyId, value: Option<Value> },
-    Const { name: Arc<str>, value: Option<Value>, defined_at: RuleRef },
-}
-
-pub struct BoxModel { pub size: (Option<f32>, Option<f32>), pub padding: Edges<f32>, pub border: f32, pub margin: Edges<f32> }
-pub enum Category { Colors, Layout, Typography, Elevation, Motion, Other }
-```
-
-This one shape covers what Studio's per-control inspectors show today (value and source rows, box model, elevation, typography, motion) for every control in every look.
-
-### Phase 2 (designed for, not built)
-- `Stylesheet::edit(&RuleRef, PropertyId, new_source: &str) -> Result<Stylesheet, Diagnostics>`: live edits. Edits splice the source text by span, so comments survive.
-- `Stylesheet::export(layer, attrs) -> String`: the lab's "export style" for a variant.
-
-## 11. Diagnostics
-
-```rust
-pub struct Diagnostics(pub Vec<Diagnostic>);
-pub struct Diagnostic { pub severity: Severity, pub source: Option<Arc<str>>, pub line: u32, pub column: u32, pub message: String }
-pub enum Severity { Error, Warning }
-```
-
-`Diagnostics` implements `std::error::Error` and prints `radix/checkbox.lss:14:5: unknown part "indicatr" for checkbox (parts: indicator, glyph, label)` with the source line. The full list of load-time errors is in the language document §11.
-
-## 12. Who owns what
+## 13. Who owns what
 
 | Piece | Lives in |
 |---|---|
-| Parser, compiler, cascade, values, resolve, cache, lerp, overrides, inspection data | `xgpui-luma-style` |
-| `Config`; SDK style and token files; SDK `TokenSource`; templates using `.apply()`; reading `transition` in the animation runtime | SDK |
-| Look style and token files; look `TokenSource`s; variant/size builder helpers | `look-shadcn`, `look-radix` |
+| Parser, compiler, cascade, values, resolve, cache, lerp, overrides, inspection, edit/export, diagnostics | `xgpui-luma-style` |
+| `Config`, SDK `.lss` files and `sources()`, templates reading `PartView`, the animation runtime reading `transition`, holding the current `Theme` | SDK |
+| Look `.lss` files and `sources()`, look `TokenSource`s, variant/size builder helpers | `look-shadcn`, `look-radix` |
 | Inspector UI (from Studio's generic display) | SDK feature or a small `style-inspector` crate |
-| Control behaviour, layout structure, focus adorner, icons rendering, animation runtime | SDK (unchanged) |
 
-## 13. Testing contract
+## 14. Decisions
 
-- **Crate:** unit tests per grammar rule, name-resolution step and cascade rank, with a test config and token source; no Luma.
-- **SDK and looks:** one exhaustive test per look that resolves every control × attribute value × state combination, in both modes, with zero diagnostics.
-- **Migration parity:** resolved values compared with today's native output per control, as #282's checkbox parity test does; #94's HCL parity tests are reused because the cascade keeps #94's semantics.
-
-## 14. Open questions (API level)
-
-Language questions are all decided (language §15). Remaining API decisions:
-
-1. ~~Crate name.~~ **Decided 2026-11-19: `xgpui-luma-style`**, in `crates/style`. It replaces the #282 spike crate of the same name, which exists only on the #282 branch.
-2. ~~File extension.~~ **Decided 2026-11-19: `.lss`.**
-3. ~~Color model.~~ **Decided 2026-11-19: CSS Color 4 color spaces, OKLCH-based** (§7.1).
-4. ~~Instance overrides.~~ **Decided 2026-11-19: owning, all-states values only** (§9). An instance value replaces its property in every state, including the disabled look; set a disabled value too if needed. Per-state overrides (`set_in(states, …)`) can be added later without breaking callers.
-
-All API questions are decided or deferred.
-5. ~~Built-in vs look functions.~~ **Deferred 2026-11-19** to implementation, decided per function with one rule: a function is built in if it needs no look data (pure math and constructors); it is a look function if it reads look data (the CSS catalog, mode deltas, Radix scales). §6's list is the starting point.
+| Topic | Decision |
+|---|---|
+| Crate | `xgpui-luma-style` in `crates/style`; files are `.lss` |
+| 1 Reading styles | Generic view with typed property handles; `.apply()` later as a gpui feature |
+| 2 Keys | Handles: interned names for controls, parts, attribute values and properties; `Config` indices for states and attributes |
+| 3 Setup | Layered builder; files beside controls with a completeness test; embedded and from-disk sources; `modes()` |
+| 4 Rebind | Themes never change; `with_mode`, `with_tokens`, `with_token_values`, `with_source`/`with_stylesheet`; failures keep the old theme; `generation()` |
+| 5 Overrides | One override set per instance, typed, literals or tokens, inside the cascade, all states |
+| 6 Inspection | `explain` and `inspect` with references, declared-but-unset rows, axes from files, box model, categories |
+| 7 Export | Edits in place; inserts; `export_variant`; `export_tokens`; round-trip tests; no file writing |
+| 8 Diagnostics | Load fails, resolve never fails; `diagnostics_since`; `check`; codes, ranges and suggestions; lints later |
+| Colors | CSS Color 4, stored as OKLCH, OKLab math, sRGB gamut mapping |
+| Functions | Built in if they need no look data; decided per function |

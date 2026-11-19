@@ -1,6 +1,7 @@
 //! Global configuration: the only styling facts declared in Rust.
 
-use crate::diag::Diagnostic;
+use crate::diag::{Code, Diagnostic};
+use crate::handles::{AttrId, MAX_ATTRIBUTES, StateId, StateSet};
 
 /// How lengths snap to device pixels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -28,15 +29,42 @@ impl Config {
         ConfigBuilder::default()
     }
 
-    pub(crate) fn layer(&self, name: &str) -> Option<usize> {
+    /// A state handle, e.g. `config.state("checked")`.
+    pub fn state(&self, name: &str) -> Option<StateId> {
+        self.state_index(name).map(|i| StateId(i as u8))
+    }
+
+    /// An attribute handle, e.g. `config.attribute("variant")`.
+    pub fn attribute(&self, name: &str) -> Option<AttrId> {
+        self.attribute_index(name).map(|i| AttrId(i as u8))
+    }
+
+    pub fn state_name(&self, state: StateId) -> &str {
+        &self.states[state.0 as usize]
+    }
+
+    pub fn attribute_name(&self, attr: AttrId) -> &str {
+        &self.attributes[attr.0 as usize]
+    }
+
+    pub fn layers(&self) -> impl Iterator<Item = &str> {
+        self.layers.iter().map(String::as_str)
+    }
+
+    /// States from names; unknown names are skipped (use [`Config::state`] to check).
+    pub fn state_set(&self, names: &[&str]) -> StateSet {
+        names.iter().filter_map(|n| self.state(n)).collect()
+    }
+
+    pub(crate) fn layer_index(&self, name: &str) -> Option<usize> {
         self.layers.iter().position(|l| l == name)
     }
 
-    pub(crate) fn state(&self, name: &str) -> Option<usize> {
+    pub(crate) fn state_index(&self, name: &str) -> Option<usize> {
         self.states.iter().position(|s| s == name)
     }
 
-    pub(crate) fn attribute(&self, name: &str) -> Option<usize> {
+    pub(crate) fn attribute_index(&self, name: &str) -> Option<usize> {
         self.attributes.iter().position(|a| a == name)
     }
 
@@ -81,7 +109,7 @@ impl ConfigBuilder {
         self
     }
 
-    /// Attribute names usable as scopes (`variant ghost { … }`) and on instances.
+    /// Attribute names usable as scopes (`variant ghost { … }`) and on keys (at most 8).
     pub fn attributes(mut self, names: &[&str]) -> Self {
         self.attributes = names.iter().map(|s| s.to_string()).collect();
         self
@@ -93,17 +121,21 @@ impl ConfigBuilder {
     }
 
     pub fn build(self) -> Result<Config, Diagnostic> {
+        let fail = |message: String| Err(Diagnostic::error(Code::Config, message));
         if self.layers.is_empty() {
-            return Err(Diagnostic::error("config needs at least one layer"));
+            return fail("config needs at least one layer".into());
         }
         if self.states.len() > 32 {
-            return Err(Diagnostic::error("config allows at most 32 states"));
+            return fail("config allows at most 32 states".into());
+        }
+        if self.attributes.len() > MAX_ATTRIBUTES {
+            return fail(format!("config allows at most {MAX_ATTRIBUTES} attributes"));
         }
         let mut exclusive = Vec::new();
         for name in &self.exclusive {
             match self.states.iter().position(|s| s == name) {
                 Some(i) => exclusive.push(i),
-                None => return Err(Diagnostic::error(format!("exclusive state \"{name}\" is not a declared state"))),
+                None => return fail(format!("exclusive state \"{name}\" is not a declared state")),
             }
         }
         Ok(

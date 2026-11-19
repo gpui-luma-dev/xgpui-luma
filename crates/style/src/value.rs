@@ -110,6 +110,18 @@ impl Easing {
             _ => return None,
         })
     }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Linear => "linear",
+            Self::InQuad => "in_quad",
+            Self::OutQuad => "out_quad",
+            Self::InOutQuad => "in_out_quad",
+            Self::InCubic => "in_cubic",
+            Self::OutCubic => "out_cubic",
+            Self::InOutCubic => "in_out_cubic",
+        }
+    }
 }
 
 /// How a part animates when its state changes. Read by the animation runtime, not applied as style.
@@ -257,5 +269,41 @@ impl Value {
                 }
             }
         }
+    }
+}
+
+impl From<f32> for Value {
+    fn from(n: f32) -> Self {
+        Value::Number(n)
+    }
+}
+
+impl From<Color> for Value {
+    fn from(c: Color) -> Self {
+        Value::Color(c)
+    }
+}
+
+impl From<Motion> for Value {
+    fn from(m: Motion) -> Self {
+        Value::Motion(m)
+    }
+}
+
+impl From<Arc<[ShadowLayer]>> for Value {
+    fn from(s: Arc<[ShadowLayer]>) -> Self {
+        Value::Shadow(s)
+    }
+}
+
+impl From<Arc<str>> for Value {
+    fn from(s: Arc<str>) -> Self {
+        Value::Str(s)
+    }
+}
+
+impl From<TextStyle> for Value {
+    fn from(t: TextStyle) -> Self {
+        Value::Text(t)
     }
 }

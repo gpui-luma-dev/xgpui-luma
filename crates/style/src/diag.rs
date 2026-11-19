@@ -19,22 +19,83 @@ pub enum Severity {
     Warning,
 }
 
+/// What kind of problem a diagnostic is, for tools that group, filter or offer fixes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Code {
+    Syntax,
+    Config,
+    UnknownLayer,
+    UnknownControl,
+    UnknownPart,
+    UnknownProperty,
+    UnknownState,
+    UnknownAttribute,
+    UnknownMode,
+    UnknownKind,
+    UnknownName,
+    UnknownFunction,
+    WrongArgumentCount,
+    KindMismatch,
+    AmbiguousName,
+    Duplicate,
+    Declaration,
+    Extends,
+    Cycle,
+    AbsentToken,
+    Evaluation,
+    Io,
+}
+
 /// One problem, with its location when it has one.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Diagnostic {
     pub severity: Severity,
+    pub code: Code,
     /// The style file's name, e.g. `"radix/checkbox.lss"`.
     pub source: Option<Arc<str>>,
     pub line: u32,
     pub column: u32,
+    /// Byte range in the source, for editors to underline.
+    pub range: Option<(u32, u32)>,
     pub message: String,
     /// The source line the problem is on, for display.
     pub snippet: Option<String>,
 }
 
 impl Diagnostic {
-    pub(crate) fn error(message: impl Into<String>) -> Self {
-        Self { severity: Severity::Error, source: None, line: 0, column: 0, message: message.into(), snippet: None }
+    pub(crate) fn error(code: Code, message: impl Into<String>) -> Self {
+        Self {
+            severity: Severity::Error,
+            code,
+            source: None,
+            line: 0,
+            column: 0,
+            range: None,
+            message: message.into(),
+            snippet: None,
+        }
+    }
+
+    /// A diagnostic located at `span` in a file with the given name and text.
+    pub(crate) fn at(
+        severity: Severity,
+        code: Code,
+        span: Span,
+        file: Option<(&Arc<str>, &str)>,
+        message: impl Into<String>,
+    ) -> Self {
+        Self {
+            severity,
+            code,
+            source: file.map(|(name, _)| name.clone()),
+            line: span.line,
+            column: span.column,
+            range: file.map(|_| (span.start, span.end)),
+            message: message.into(),
+            snippet: file
+                .and_then(|(_, text)| text.lines().nth(span.line.saturating_sub(1) as usize))
+                .map(str::to_owned),
+        }
     }
 }
 
@@ -73,6 +134,10 @@ impl Diagnostics {
         self.0.is_empty()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn has_errors(&self) -> bool {
         self.0.iter().any(|d| d.severity == Severity::Error)
     }
@@ -85,6 +150,10 @@ impl Diagnostics {
     pub fn mentions(&self, text: &str) -> bool {
         self.0.iter().any(|d| d.message.contains(text))
     }
+
+    pub fn has_code(&self, code: Code) -> bool {
+        self.0.iter().any(|d| d.code == code)
+    }
 }
 
 impl fmt::Display for Diagnostics {
@@ -96,5 +165,42 @@ impl fmt::Display for Diagnostics {
             write!(f, "{d}")?;
         }
         Ok(())
+    }
+}
+
+/// `, did you mean "x"?` for the closest candidate within a small edit distance, or empty.
+pub(crate) fn suggest<'a>(name: &str, candidates: impl IntoIterator<Item = &'a str>) -> String {
+    let len = name.chars().count();
+    let limit = (len / 3).clamp(2, 3).min(len.saturating_sub(1));
+    candidates
+        .into_iter()
+        .filter(|c| *c != name)
+        .map(|c| (distance(name, c), c))
+        .filter(|(d, _)| *d <= limit)
+        .min()
+        .map(|(_, c)| format!(" — did you mean \"{c}\"?"))
+        .unwrap_or_default()
+}
+
+fn distance(a: &str, b: &str) -> usize {
+    let b: Vec<char> = b.chars().collect();
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for (i, ca) in a.chars().enumerate() {
+        let mut cur = vec![i + 1];
+        for (j, cb) in b.iter().enumerate() {
+            let cost = usize::from(ca != *cb);
+            cur.push((prev[j] + cost).min(prev[j + 1] + 1).min(cur[j] + 1));
+        }
+        prev = cur;
+    }
+    prev[b.len()]
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn suggests_close_names_only() {
+        assert_eq!(super::suggest("indicatr", ["indicator", "glyph"]), " — did you mean \"indicator\"?");
+        assert_eq!(super::suggest("xyz", ["indicator", "glyph"]), "");
     }
 }

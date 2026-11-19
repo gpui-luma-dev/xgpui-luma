@@ -5,36 +5,74 @@ use std::sync::Arc;
 
 use crate::builtins;
 use crate::config::Config;
-use crate::diag::{Diagnostic, Diagnostics, Severity, Span};
+use crate::diag::{Code, Diagnostic, Diagnostics, Severity, Span, suggest};
 use crate::model::{ConstDef, ConstScope, ControlDef, FileInfo, Model, PartDef, PropDecl, Rule, TokenDef, Tokens};
 use crate::names::{self, Ctx, Target};
 use crate::syntax::{self, Binding, ControlAst, Decl, Expr, ExprKind, Item, Top, TokenItem};
+use crate::handles::{ControlId, FromValue, PartId, Prop};
 use crate::value::Kind;
 
-/// One style file to compile.
-#[derive(Clone, Debug)]
+/// One style file: a name for diagnostics and the inspector, and its text.
+#[derive(Clone, Debug, PartialEq)]
 pub struct Source {
-    pub layer: String,
     pub name: Arc<str>,
     pub text: Arc<str>,
 }
 
 impl Source {
-    pub fn new(layer: &str, name: impl Into<Arc<str>>, text: impl Into<Arc<str>>) -> Self {
-        Self { layer: layer.to_string(), name: name.into(), text: text.into() }
+    pub fn new(name: impl Into<Arc<str>>, text: impl Into<Arc<str>>) -> Self {
+        Self { name: name.into(), text: text.into() }
+    }
+
+    /// Read a style file from disk (for import, hot reload and editing in the lab).
+    pub fn from_path(path: impl AsRef<std::path::Path>) -> Result<Self, Diagnostic> {
+        let path = path.as_ref();
+        std::fs::read_to_string(path)
+            .map(|text| Source::new(path.display().to_string(), text))
+            .map_err(|e| Diagnostic::error(Code::Io, format!("cannot read {}: {e}", path.display())))
     }
 }
 
-/// Validated rules, declarations, tokens and constants for one set of files.
+/// Collects style files by layer, then compiles them.
+pub struct StylesheetBuilder {
+    config: Arc<Config>,
+    sources: Vec<(String, Source)>,
+}
+
+impl StylesheetBuilder {
+    /// Add files to a layer, e.g. `.layer("sdk", xgpui_luma::style::sources())`.
+    pub fn layer(mut self, layer: &str, sources: impl IntoIterator<Item = Source>) -> Self {
+        self.sources.extend(sources.into_iter().map(|s| (layer.to_string(), s)));
+        self
+    }
+
+    pub fn source(mut self, layer: &str, source: Source) -> Self {
+        self.sources.push((layer.to_string(), source));
+        self
+    }
+
+    pub fn compile(self) -> Result<Stylesheet, Diagnostics> {
+        Stylesheet::compile_sources(self.config, self.sources)
+    }
+}
+
+/// Validated rules, declarations, tokens and constants for one set of files. Cheap to clone.
 #[derive(Clone)]
 pub struct Stylesheet {
     pub(crate) model: Arc<Model>,
 }
 
 impl Stylesheet {
-    pub fn compile(config: Arc<Config>, sources: impl IntoIterator<Item = Source>) -> Result<Stylesheet, Diagnostics> {
+    pub fn builder(config: Arc<Config>) -> StylesheetBuilder {
+        StylesheetBuilder { config, sources: Vec::new() }
+    }
+
+    pub(crate) fn compile_sources(
+        config: Arc<Config>,
+        sources: Vec<(String, Source)>,
+    ) -> Result<Stylesheet, Diagnostics> {
         let mut c = Compiler::new(config);
-        c.run(sources.into_iter().collect());
+        c.run(sources);
         let diags = std::mem::take(&mut c.diags);
         if diags.iter().any(|d| d.severity == Severity::Error) {
             return Err(Diagnostics(diags));
@@ -42,16 +80,64 @@ impl Stylesheet {
         Ok(Stylesheet { model: Arc::new(c.model) })
     }
 
+    pub fn config(&self) -> &Arc<Config> {
+        &self.model.config
+    }
+
+    /// The files this stylesheet was compiled from, with their layers.
+    pub fn sources(&self) -> impl Iterator<Item = (&str, &Source)> {
+        self.model.sources.iter().map(|(l, s)| (l.as_str(), s))
+    }
+
+    /// Compile again with one file replaced (same name) or added. The current stylesheet is unchanged.
+    pub fn with_source(&self, layer: &str, source: Source) -> Result<Stylesheet, Diagnostics> {
+        let mut sources = self.model.sources.clone();
+        match sources.iter_mut().find(|(_, s)| s.name == source.name) {
+            Some(slot) => *slot = (layer.to_string(), source),
+            None => sources.push((layer.to_string(), source)),
+        }
+        Stylesheet::compile_sources(self.model.config.clone(), sources)
+    }
+
+    /// A control handle, if the stylesheet declares the control.
+    pub fn control(&self, name: &str) -> Option<ControlId> {
+        self.model.control(name).map(|i| ControlId::named(&self.model.controls[i].name))
+    }
+
+    /// A part handle, if the control has the part.
+    pub fn part(&self, control: ControlId, name: &str) -> Option<PartId> {
+        let c = self.model.control(control.name())?;
+        self.model.controls[c].part(name).map(|_| PartId::named(name))
+    }
+
+    /// A typed handle to a property of a control; fails if the property is unknown or of another kind.
+    pub fn prop<T: FromValue>(&self, control: ControlId, name: &str) -> Result<Prop<T>, Diagnostic> {
+        let Some(c) = self.model.control(control.name()) else {
+            return Err(Diagnostic::error(Code::UnknownControl, format!("unknown control \"{control}\"")));
+        };
+        match self.model.prop_kind(c, name) {
+            Some(kind) if T::KINDS.contains(&kind) => Ok(Prop::new(crate::handles::intern(name))),
+            Some(kind) => Err(Diagnostic::error(
+                Code::KindMismatch,
+                format!("{control}.{name} is {kind}, which this handle's type cannot read"),
+            )),
+            None => Err(Diagnostic::error(
+                Code::UnknownProperty,
+                format!("\"{name}\" is not a core or declared property of {control}"),
+            )),
+        }
+    }
+
     /// Control names, in declaration order.
-    pub fn controls(&self) -> impl Iterator<Item = &str> {
-        self.model.controls.iter().map(|c| c.name.as_str())
+    pub fn controls(&self) -> impl Iterator<Item = ControlId> + '_ {
+        self.model.controls.iter().map(|c| ControlId::named(&c.name))
     }
 
     /// A control's parts, `root` first.
-    pub fn parts(&self, control: &str) -> Vec<&str> {
+    pub fn parts(&self, control: ControlId) -> Vec<PartId> {
         self.model
-            .control(control)
-            .map_or_else(Vec::new, |i| self.model.controls[i].parts.iter().map(|p| p.name.as_str()).collect())
+            .control(control.name())
+            .map_or_else(Vec::new, |i| self.model.controls[i].parts.iter().map(|p| PartId::named(&p.name)).collect())
     }
 
     /// The doc comment of a control, part (`"checkbox.indicator"`) or declared property (`"checkbox.glyph_size"`).
@@ -68,13 +154,16 @@ impl Stylesheet {
     }
 
     /// A property's kind for a control.
-    pub fn kind(&self, control: &str, prop: &str) -> Option<Kind> {
-        self.model.prop_kind(self.model.control(control)?, prop)
+    pub fn kind(&self, control: ControlId, prop: &str) -> Option<Kind> {
+        self.model.prop_kind(self.model.control(control.name())?, prop)
     }
 
-    /// Attribute values a control's rules mention, e.g. `("variant", "soft")`.
-    pub fn scopes(&self, control: &str) -> Vec<(String, String)> {
-        self.model.control(control).map_or_else(Vec::new, |i| self.model.controls[i].scope_values.clone())
+    /// Modes the token files define, e.g. `["dark", "light"]`. Empty for the SDK alone.
+    pub fn modes(&self) -> Vec<String> {
+        let mut modes: Vec<String> = self.model.tokens.defs.values().flatten().filter_map(|d| d.mode.clone()).collect();
+        modes.sort();
+        modes.dedup();
+        modes
     }
 }
 
@@ -124,6 +213,7 @@ impl Compiler {
                 tokens: Tokens::default(),
                 native_refs: Vec::new(),
                 look_calls: Vec::new(),
+                sources: Vec::new(),
             },
             diags: Vec::new(),
             order: 0,
@@ -131,17 +221,9 @@ impl Compiler {
         }
     }
 
-    fn err(&mut self, span: Span, message: impl Into<String>) {
-        let file = self.model.files.get(span.file as usize);
-        let snippet = file.and_then(|f| f.text.lines().nth(span.line.saturating_sub(1) as usize)).map(str::to_owned);
-        self.diags.push(Diagnostic {
-            severity: Severity::Error,
-            source: file.map(|f| f.name.clone()),
-            line: span.line,
-            column: span.column,
-            message: message.into(),
-            snippet,
-        });
+    fn err(&mut self, span: Span, code: Code, message: impl Into<String>) {
+        let file = self.model.files.get(span.file as usize).map(|f| (&f.name, &*f.text));
+        self.diags.push(Diagnostic::at(Severity::Error, code, span, file, message));
     }
 
     fn next_order(&mut self) -> usize {
@@ -149,14 +231,16 @@ impl Compiler {
         self.order
     }
 
-    fn run(&mut self, sources: Vec<Source>) {
+    fn run(&mut self, sources: Vec<(String, Source)>) {
+        self.model.sources = sources.clone();
         let mut parsed = Vec::new();
-        for source in sources {
+        for (layer_name, source) in sources {
             let index = self.model.files.len() as u32;
-            let Some(layer) = self.model.config.layer(&source.layer) else {
+            let Some(layer) = self.model.config.layer_index(&layer_name) else {
+                let known = self.model.config.layers.join(", ");
                 self.diags.push(Diagnostic {
                     source: Some(source.name.clone()),
-                    ..Diagnostic::error(format!("unknown layer \"{}\"", source.layer))
+                    ..Diagnostic::error(Code::UnknownLayer, format!("unknown layer \"{layer_name}\" (layers: {known})"))
                 });
                 continue;
             };
@@ -213,12 +297,12 @@ impl Compiler {
         for b in bindings {
             let kind = b.kind.as_ref().and_then(|k| self.kind_of(k));
             if self.model.consts[scope].entries.contains_key(&b.name.text) {
-                self.err(b.name.span, format!("constant \"{}\" is defined twice", b.name.text));
+                self.err(b.name.span, Code::Duplicate, format!("constant \"{}\" is defined twice", b.name.text));
                 continue;
             }
             if layer > 0 && scope == self.layer_scopes[layer] && self.model.consts[0].entries.contains_key(&b.name.text)
             {
-                self.err(b.name.span, format!("\"{}\" redefines a global constant", b.name.text));
+                self.err(b.name.span, Code::Duplicate, format!("\"{}\" redefines a global constant", b.name.text));
                 continue;
             }
             self.model.consts[scope]
@@ -237,6 +321,7 @@ impl Compiler {
         if kind.is_none() {
             self.err(
                 ident.span,
+                Code::UnknownKind,
                 format!(
                     "unknown kind \"{}\" (kinds: length, number, color, shadow, text, font, weight, icon, motion)",
                     ident.text
@@ -272,14 +357,14 @@ impl Compiler {
                 TokenItem::Const(_) => {}
                 TokenItem::Mode { name, items } => {
                     if mode.is_some() {
-                        self.err(name.span, "mode blocks cannot be nested");
+                        self.err(name.span, Code::Syntax, "mode blocks cannot be nested");
                         continue;
                     }
                     self.add_tokens(items, group, Some(&name.text), attrs, scope, layer);
                 }
                 TokenItem::Scope { attr, value, items } => {
-                    if self.model.config.attribute(&attr.text).is_none() {
-                        self.err(attr.span, format!("unknown attribute \"{}\"", attr.text));
+                    if self.model.config.attribute_index(&attr.text).is_none() {
+                        self.err(attr.span, Code::UnknownAttribute, format!("unknown attribute \"{}\"", attr.text));
                         continue;
                     }
                     let mut attrs = attrs.to_vec();
@@ -348,7 +433,11 @@ impl Compiler {
                 self.model.controls[index].base_name = Some((base.segs.join("."), base.span));
             }
         } else if let Some(base) = &ast.extends {
-            self.err(base.span, format!("\"{name} extends …\" belongs in the layer that declares {name}"));
+            self.err(
+                base.span,
+                Code::Declaration,
+                format!("\"{name} extends …\" belongs in the layer that declares {name}"),
+            );
         }
         self.declare_items(index, &ast.items, declaring);
     }
@@ -389,23 +478,31 @@ impl Compiler {
         let name = &d.name.text;
         let cname = self.model.controls[control].name.clone();
         if !declaring {
-            self.err(d.name.span, format!("\"{name}\" can only be declared in the layer that declares {cname}"));
+            self.err(
+                d.name.span,
+                Code::Declaration,
+                format!("\"{name}\" can only be declared in the layer that declares {cname}"),
+            );
             return;
         }
         if builtins::core_property(name).is_some() {
-            self.err(d.name.span, format!("\"{name}\" is a core property; its kind is fixed and needs no declaration"));
+            self.err(
+                d.name.span,
+                Code::Declaration,
+                format!("\"{name}\" is a core property; its kind is fixed and needs no declaration"),
+            );
             return;
         }
         if builtins::keyword(name).is_some() {
-            self.err(d.name.span, format!("\"{name}\" is a keyword and cannot be a property name"));
+            self.err(d.name.span, Code::Declaration, format!("\"{name}\" is a keyword and cannot be a property name"));
             return;
         }
         let Some(kind) = self.kind_of(kind_ident) else { return };
         if let Some(prev) = self.model.controls[control].props.get(name) {
             if prev.kind != kind {
-                self.err(d.name.span, format!("\"{name}\" is already declared as {}", prev.kind));
+                self.err(d.name.span, Code::Duplicate, format!("\"{name}\" is already declared as {}", prev.kind));
             } else {
-                self.err(d.name.span, format!("\"{name}\" is declared twice"));
+                self.err(d.name.span, Code::Duplicate, format!("\"{name}\" is declared twice"));
             }
             return;
         }
@@ -419,7 +516,7 @@ impl Compiler {
             };
             match self.model.control(&name) {
                 Some(b) if b != i => self.model.controls[i].base = Some(b),
-                _ => self.err(span, format!("unknown control \"{name}\" in extends")),
+                _ => self.err(span, Code::UnknownControl, format!("unknown control \"{name}\" in extends")),
             }
         }
         // Cycles, then inherit base parts in dependency order.
@@ -429,7 +526,7 @@ impl Compiler {
             while let Some(x) = c {
                 if !seen.insert(x) {
                     let (name, span) = self.model.controls[i].base_name.clone().unwrap_or_default();
-                    self.err(span, format!("extends cycle through \"{name}\""));
+                    self.err(span, Code::Cycle, format!("extends cycle through \"{name}\""));
                     self.model.controls[i].base = None;
                     break;
                 }
@@ -498,14 +595,16 @@ impl Compiler {
                 Item::Const(_) => {}
                 Item::Part(p) => {
                     if cx.in_part {
-                        self.err(p.name.span, "parts cannot be nested");
+                        self.err(p.name.span, Code::Syntax, "parts cannot be nested");
                         continue;
                     }
                     let control = &self.model.controls[cx.control];
                     let Some(part) = control.part(&p.name.text) else {
                         let parts = control.parts.iter().map(|p| p.name.as_str()).collect::<Vec<_>>().join(", ");
-                        let message = format!("unknown part \"{}\" for {} (parts: {parts})", p.name.text, control.name);
-                        self.err(p.name.span, message);
+                        let hint = suggest(&p.name.text, control.parts.iter().map(|p| p.name.as_str()));
+                        let message =
+                            format!("unknown part \"{}\" for {} (parts: {parts}){hint}", p.name.text, control.name);
+                        self.err(p.name.span, Code::UnknownPart, message);
                         continue;
                     };
                     if let Some(target) = &p.extends {
@@ -517,9 +616,17 @@ impl Compiler {
                     self.rule_items(&p.items, inner);
                 }
                 Item::Scope(s) => {
-                    if self.model.config.attribute(&s.attr.text).is_none() {
+                    if self.model.config.attribute_index(&s.attr.text).is_none() {
                         let known = self.model.config.attributes.join(", ");
-                        self.err(s.attr.span, format!("unknown attribute \"{}\" (attributes: {known})", s.attr.text));
+                        self.err(
+                            s.attr.span,
+                            Code::UnknownAttribute,
+                            format!(
+                                "unknown attribute \"{}\" (attributes: {known}){}",
+                                s.attr.text,
+                                suggest(&s.attr.text, self.model.config.attributes.iter().map(String::as_str))
+                            ),
+                        );
                         continue;
                     }
                     let pair = (s.attr.text.clone(), s.value.text.clone());
@@ -528,7 +635,7 @@ impl Compiler {
                         match aliases.get(&pair) {
                             Some(existing) if existing != &base.text => {
                                 let message = format!("{} {} already extends {existing}", s.attr.text, s.value.text);
-                                self.err(base.span, message);
+                                self.err(base.span, Code::Duplicate, message);
                             }
                             _ => {
                                 aliases.insert(pair.clone(), base.text.clone());
@@ -549,11 +656,19 @@ impl Compiler {
                     let mut states = cx.states;
                     let mut ok = true;
                     for st in &s.states {
-                        match self.model.config.state(&st.text) {
+                        match self.model.config.state_index(&st.text) {
                             Some(i) => states |= 1 << i,
                             None => {
                                 let known = self.model.config.states.join(", ");
-                                self.err(st.span, format!("unknown state \":{}\" (states: {known})", st.text));
+                                self.err(
+                                    st.span,
+                                    Code::UnknownState,
+                                    format!(
+                                        "unknown state \":{}\" (states: {known}){}",
+                                        st.text,
+                                        suggest(&st.text, self.model.config.states.iter().map(String::as_str))
+                                    ),
+                                );
                                 ok = false;
                             }
                         }
@@ -574,7 +689,11 @@ impl Compiler {
 
     fn part_extends(&mut self, cx: &RuleCx, part: usize, target: &syntax::PathRef) {
         if !cx.attrs.is_empty() || cx.states != 0 {
-            self.err(target.span, "a part can only extend another part outside variant, size and state blocks");
+            self.err(
+                target.span,
+                Code::Extends,
+                "a part can only extend another part outside variant, size and state blocks",
+            );
             return;
         }
         let resolved = match target.segs.as_slice() {
@@ -586,7 +705,7 @@ impl Compiler {
             Some(t) if t != (cx.control, part) => {
                 self.model.controls[cx.control].part_extends.insert(part, (t.0, t.1, cx.layer));
             }
-            _ => self.err(target.span, format!("unknown part \"{}\" in extends", target.segs.join("."))),
+            _ => self.err(target.span, Code::Extends, format!("unknown part \"{}\" in extends", target.segs.join("."))),
         }
     }
 
@@ -595,8 +714,9 @@ impl Compiler {
         let Some(kind) = self.model.prop_kind(cx.control, name) else {
             if d.kind.is_none() || !cx.declaring {
                 let cname = &self.model.controls[cx.control].name;
-                let message = format!("\"{name}\" is not a core or declared property of {cname}");
-                self.err(d.name.span, message);
+                let hint = suggest(name, self.model.prop_names(cx.control));
+                let message = format!("\"{name}\" is not a core or declared property of {cname}{hint}");
+                self.err(d.name.span, Code::UnknownProperty, message);
             }
             return;
         };
@@ -639,12 +759,16 @@ impl Compiler {
                 };
                 if !known {
                     let span = c.rules.first().map(|r| r.span).unwrap_or_default();
-                    problems.push((span, format!("{attr} {value} extends unknown {attr} \"{base}\" in {}", c.name)));
+                    problems.push((
+                        span,
+                        Code::Extends,
+                        format!("{attr} {value} extends unknown {attr} \"{base}\" in {}", c.name),
+                    ));
                 }
             }
         }
-        for (span, message) in problems {
-            self.err(span, message);
+        for (span, code, message) in problems {
+            self.err(span, code, message);
         }
     }
 
@@ -661,6 +785,7 @@ impl Compiler {
                 {
                     checker.problems.push((
                         rule.expr.span,
+                        Code::KindMismatch,
                         format!("{} expects {}, found {found} ({})", rule.prop, rule.kind, describe_expr(&rule.expr)),
                     ));
                 }
@@ -678,9 +803,11 @@ impl Compiler {
                 if let (Some(declared), Some(found)) = (def.kind, found)
                     && !declared.accepts(found)
                 {
-                    checker
-                        .problems
-                        .push((def.span, format!("token {path} is declared {declared} but its value is {found}")));
+                    checker.problems.push((
+                        def.span,
+                        Code::KindMismatch,
+                        format!("token {path} is declared {declared} but its value is {found}"),
+                    ));
                 }
                 if let Some(k) = def.kind.or(found) {
                     kinds.push((k, def.span));
@@ -689,7 +816,11 @@ impl Compiler {
             if let Some((first, _)) = kinds.first().copied() {
                 for (k, span) in &kinds[1..] {
                     if !first.accepts(*k) || !k.accepts(first) {
-                        checker.problems.push((*span, format!("token {path} is {k} here but {first} elsewhere")));
+                        checker.problems.push((
+                            *span,
+                            Code::KindMismatch,
+                            format!("token {path} is {k} here but {first} elsewhere"),
+                        ));
                     }
                 }
             }
@@ -704,12 +835,18 @@ impl Compiler {
                 if let (Some(declared), Some(found)) = (def.kind, found)
                     && !declared.accepts(found)
                 {
-                    checker
-                        .problems
-                        .push((def.span, format!("constant {name} is declared {declared} but its value is {found}")));
+                    checker.problems.push((
+                        def.span,
+                        Code::KindMismatch,
+                        format!("constant {name} is declared {declared} but its value is {found}"),
+                    ));
                 }
                 if self.model.tokens.is_root(name) || self.model.control(name).is_some() {
-                    checker.problems.push((def.span, format!("constant \"{name}\" shadows a token group or control")));
+                    checker.problems.push((
+                        def.span,
+                        Code::AmbiguousName,
+                        format!("constant \"{name}\" shadows a token group or control"),
+                    ));
                 }
             }
         }
@@ -717,9 +854,9 @@ impl Compiler {
         self.model.native_refs = native;
         self.model.look_calls = calls;
         let mut seen = HashSet::new();
-        for (span, message) in problems {
+        for (span, code, message) in problems {
             if seen.insert((span, message.clone())) {
-                self.err(span, message);
+                self.err(span, code, message);
             }
         }
     }
@@ -739,7 +876,7 @@ fn describe_expr(expr: &Expr) -> String {
 /// Static name and kind checks. Unknown kinds (native tokens, look functions) are checked later.
 struct Checker<'m> {
     model: &'m Model,
-    problems: Vec<(Span, String)>,
+    problems: Vec<(Span, Code, String)>,
     native: Vec<(String, Span)>,
     calls: Vec<(String, usize, Span)>,
 }
@@ -750,7 +887,7 @@ impl Checker<'_> {
             ExprKind::Number(_) => Some(Kind::Number),
             ExprKind::Hex(h) => {
                 if crate::color::Color::parse_hex(h).is_none() {
-                    self.problems.push((expr.span, format!("invalid color {h}")));
+                    self.problems.push((expr.span, Code::Syntax, format!("invalid color {h}")));
                 }
                 Some(Kind::Color)
             }
@@ -797,8 +934,11 @@ impl Checker<'_> {
         if let Some(k) = self.infer(expr, ctx, false, stack)
             && !Kind::Number.accepts(k)
         {
-            self.problems
-                .push((expr.span, format!("arithmetic needs numbers, found {k} ({})", describe_expr(expr))));
+            self.problems.push((
+                expr.span,
+                Code::KindMismatch,
+                format!("arithmetic needs numbers, found {k} ({})", describe_expr(expr)),
+            ));
         }
     }
 
@@ -811,7 +951,8 @@ impl Checker<'_> {
         stack: &mut Vec<String>,
     ) -> Option<Kind> {
         if func.len() != 1 {
-            self.problems.push((expr.span, format!("unknown function \"{}\"", func.join("."))));
+            self.problems
+                .push((expr.span, Code::UnknownFunction, format!("unknown function \"{}\"", func.join("."))));
             return None;
         }
         let name = &func[0];
@@ -826,8 +967,11 @@ impl Checker<'_> {
                     } else {
                         format!("{min} to {max}")
                     };
-                    self.problems
-                        .push((expr.span, format!("{name} expects {expected} arguments, found {}", args.len())));
+                    self.problems.push((
+                        expr.span,
+                        Code::WrongArgumentCount,
+                        format!("{name} expects {expected} arguments, found {}", args.len()),
+                    ));
                 }
                 match name.as_str() {
                     "first" => kinds.iter().flatten().next().copied(),
@@ -853,7 +997,7 @@ impl Checker<'_> {
         let target = match names::lookup(self.model, None, ctx, segs) {
             Ok(t) => t,
             Err(message) => {
-                self.problems.push((expr.span, message));
+                self.problems.push((expr.span, Code::AmbiguousName, message));
                 return None;
             }
         };
@@ -868,14 +1012,14 @@ impl Checker<'_> {
                 let kind = self.model.prop_kind(control, &prop);
                 if kind.is_none() {
                     let message = format!("{} has no property \"{prop}\"", self.model.controls[control].name);
-                    self.problems.push((expr.span, message));
+                    self.problems.push((expr.span, Code::UnknownProperty, message));
                 }
                 kind
             }
             Target::Const { scope, name, fields } => {
                 let label = format!("const {name}");
                 if stack.contains(&label) {
-                    self.problems.push((expr.span, format!("cycle: {} → {label}", stack.join(" → "))));
+                    self.problems.push((expr.span, Code::Cycle, format!("cycle: {} → {label}", stack.join(" → "))));
                     return None;
                 }
                 let def = self.model.const_lookup(scope, &name).expect("lookup found it");
@@ -888,7 +1032,7 @@ impl Checker<'_> {
             Target::Token { path, fields } => {
                 let label = format!("token {path}");
                 if stack.contains(&label) {
-                    self.problems.push((expr.span, format!("cycle: {} → {label}", stack.join(" → "))));
+                    self.problems.push((expr.span, Code::Cycle, format!("cycle: {} → {label}", stack.join(" → "))));
                     return None;
                 }
                 let defs = &self.model.tokens.defs[&path];
@@ -910,9 +1054,18 @@ impl Checker<'_> {
                     let what = if self.model.tokens.groups.contains(&segs.join(".")) {
                         format!("\"{}\" is a token group, not a value", segs.join("."))
                     } else {
-                        format!("unknown name \"{}\"", segs.join("."))
+                        let joined = segs.join(".");
+                        let hint = if segs.len() == 1 {
+                            match ctx {
+                                Ctx::Prop { control, .. } => suggest(&joined, self.model.prop_names(control)),
+                                _ => String::new(),
+                            }
+                        } else {
+                            suggest(&joined, self.model.tokens.defs.keys().map(String::as_str))
+                        };
+                        format!("unknown name \"{joined}\"{hint}")
                     };
-                    self.problems.push((expr.span, what));
+                    self.problems.push((expr.span, Code::UnknownName, what));
                 }
                 None
             }
@@ -924,7 +1077,7 @@ impl Checker<'_> {
             (k, []) => k,
             (Some(Kind::Text), [f]) if matches!(f.as_str(), "size" | "line_height" | "weight") => Some(Kind::Number),
             (Some(k), [f, ..]) => {
-                self.problems.push((expr.span, format!("{k} has no field \"{f}\"")));
+                self.problems.push((expr.span, Code::UnknownName, format!("{k} has no field \"{f}\"")));
                 None
             }
             (None, _) => None,

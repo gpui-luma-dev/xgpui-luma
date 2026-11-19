@@ -5,7 +5,7 @@ use crate::value::{Kind, Value};
 /// What a native token lookup or look function can see about the instance being styled.
 pub struct TokenCx<'a> {
     pub(crate) mode: &'a str,
-    pub(crate) attrs: &'a [(String, String)],
+    pub(crate) attrs: &'a [(&'static str, &'static str)],
 }
 
 impl TokenCx<'_> {
@@ -16,7 +16,7 @@ impl TokenCx<'_> {
 
     /// An instance attribute, e.g. `attr("tone")` for Radix `tone[n]`.
     pub fn attr(&self, name: &str) -> Option<&str> {
-        self.attrs.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str())
+        self.attrs.iter().find(|(n, _)| *n == name).map(|(_, v)| *v)
     }
 }
 
@@ -43,6 +43,11 @@ pub trait TokenSource: Send + Sync {
 
     /// The signature of a look function, or `None` if this source has no function of that name.
     fn function(&self, _name: &str) -> Option<FunctionSig> {
+        None
+    }
+
+    /// Where a native token came from, for the inspector (e.g. "--primary in theme.css").
+    fn describe(&self, _path: &str, _cx: &TokenCx<'_>) -> Option<String> {
         None
     }
 
