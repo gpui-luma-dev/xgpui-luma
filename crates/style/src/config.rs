@@ -29,6 +29,23 @@ impl Config {
         ConfigBuilder::default()
     }
 
+    /// Start a config that adds a look's own attributes and states to this one (e.g. Radix `tone`,
+    /// `radius`, `high_contrast`). Existing attributes and states keep their positions, so handles
+    /// from this config stay valid in the extended one.
+    pub fn extend(&self) -> ConfigExtension {
+        ConfigExtension { base: self.clone(), attributes: Vec::new(), states: Vec::new() }
+    }
+
+    /// Attribute names, in handle order.
+    pub fn attribute_names(&self) -> impl Iterator<Item = &str> {
+        self.attributes.iter().map(String::as_str)
+    }
+
+    /// State names, in handle order.
+    pub fn state_names(&self) -> impl Iterator<Item = &str> {
+        self.states.iter().map(String::as_str)
+    }
+
     /// A state handle, e.g. `config.state("checked")`.
     pub fn state(&self, name: &str) -> Option<StateId> {
         self.state_index(name).map(|i| StateId(i as u8))
@@ -147,5 +164,50 @@ impl ConfigBuilder {
                 snap: self.snap,
             },
         )
+    }
+}
+
+/// Adds a look's own attributes and states to a base config; see [`Config::extend`].
+#[derive(Clone, Debug)]
+pub struct ConfigExtension {
+    base: Config,
+    attributes: Vec<String>,
+    states: Vec<String>,
+}
+
+impl ConfigExtension {
+    /// Attributes to add after the base config's.
+    pub fn attributes(mut self, names: &[&str]) -> Self {
+        self.attributes.extend(names.iter().map(|s| s.to_string()));
+        self
+    }
+
+    /// States to add after the base config's.
+    pub fn states(mut self, names: &[&str]) -> Self {
+        self.states.extend(names.iter().map(|s| s.to_string()));
+        self
+    }
+
+    pub fn build(self) -> Result<Config, Diagnostic> {
+        let mut config = self.base;
+        for name in self.attributes {
+            if config.attributes.contains(&name) {
+                return Err(Diagnostic::error(Code::Config, format!("attribute \"{name}\" is already declared")));
+            }
+            config.attributes.push(name);
+        }
+        for name in self.states {
+            if config.states.contains(&name) {
+                return Err(Diagnostic::error(Code::Config, format!("state \"{name}\" is already declared")));
+            }
+            config.states.push(name);
+        }
+        if config.attributes.len() > MAX_ATTRIBUTES {
+            return Err(Diagnostic::error(Code::Config, format!("config allows at most {MAX_ATTRIBUTES} attributes")));
+        }
+        if config.states.len() > 32 {
+            return Err(Diagnostic::error(Code::Config, "config allows at most 32 states"));
+        }
+        Ok(config)
     }
 }

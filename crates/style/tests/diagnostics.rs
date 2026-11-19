@@ -80,7 +80,7 @@ fn unknown_state_and_attribute_suggest_close_names() {
     let d = errors("look", "checkbox { varient soft { gap = 4 } }");
     assert_eq!(first(&d).code, Code::UnknownAttribute);
     assert!(
-        d.mentions("unknown attribute \"varient\" (attributes: variant, size, tone) — did you mean \"variant\"?"),
+        d.mentions("unknown attribute \"varient\" (attributes: variant, size) — did you mean \"variant\"?"),
         "{d}"
     );
 }
@@ -245,4 +245,20 @@ fn check_reports_partial_coverage_and_bad_modes() {
         d.mentions("chip uses 12 states; checked combinations of up to 3 of them instead of all 4096 combinations"),
         "{d}"
     );
+}
+
+#[test]
+fn looks_add_their_own_axes_and_sdk_files_cannot_use_them() {
+    let sdk = luma_config();
+    let radix = radix_config();
+    // SDK handles keep their positions in the extended config.
+    assert_eq!(sdk.attribute("size"), radix.attribute("size"));
+    assert_eq!(sdk.state("checked"), radix.state("checked"));
+    assert!(sdk.attribute("tone").is_none() && radix.attribute("tone").is_some());
+    assert!(sdk.state("high_contrast").is_none() && radix.state("high_contrast").is_some());
+    // An SDK-only stylesheet rejects a look's axes.
+    let d = errors("sdk", "chip { tone gray { gap = 1 }  :high_contrast { gap = 2 } }");
+    assert!(d.has_code(Code::UnknownAttribute) && d.has_code(Code::UnknownState), "{d}");
+    // Adding an existing axis is an error.
+    assert!(sdk.extend().attributes(&["size"]).build().is_err());
 }

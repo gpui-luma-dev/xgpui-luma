@@ -38,7 +38,7 @@ fn text_properties_inherited_from_root_are_marked() {
     let trigger = inspection.parts.iter().find(|p| p.part.name() == "trigger").expect("part");
     let fs = trigger.rows.iter().find(|r| r.property == "font_size").expect("inherited row");
     assert_eq!(fs.explanation.source, ValueSource::InheritedFromRoot);
-    assert_eq!(fs.explanation.value, Some(Value::Number(13.0))); // 12.5, snapped at 1×
+    assert_eq!(fs.explanation.value, Some(Value::Number(12.5))); // text metrics are never snapped
     assert_eq!(fs.category, Category::Typography);
 }
 

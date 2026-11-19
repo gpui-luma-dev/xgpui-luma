@@ -1,0 +1,170 @@
+// SDK tokens: the one neutral default theme. Layer: sdk.
+//
+// Converted from #94's crates/sdk/assets/sdk.hcl, whose values were checked against the Rust
+// ThemeTokens::light(). `theme::style::tests` checks this file against ThemeTokens::light() again,
+// so the two cannot drift while both exist.
+//
+// The SDK has no light/dark modes: another SDK theme is another token file. Looks map these
+// groups onto their own data in their token files.
+
+const {
+  full_radius = 999   // FULL_RADIUS_PX: fully rounded corners
+
+  // Motion shared by control files (MotionStylesheet::native_default()).
+  default_timed = timed(200, out_cubic)
+}
+
+tokens {
+  metrics {
+    disabled_opacity = 0.56
+    border_width     = 1
+
+    focus {
+      gap    = 1
+      width  = 1
+      offset = 0
+    }
+
+    // The single SDK control scale.
+    control {
+      height         = 36
+      control_height = height   // interactive target height; defaults to height
+      padding_x      = 14
+      padding_y      = 8
+      gap            = 8
+      radius         = 6
+      icon_size      = 16
+    }
+  }
+
+  typography {
+    const {
+      body  = text(14, 20, 400)
+      title = text(20, 28, 600)
+    }
+
+    font {
+      sans  = "System UI"
+      mono  = "Monaco"
+      serif = "New York"
+    }
+
+    text {
+      body    = body
+      label   = text(12.5, 18, 500)
+      caption = text(11, 16, 500)
+      title   = title
+      code    = text(13, 18, 400)
+
+      role {
+        h1 = text(44, 52, 700)
+        h2 = text(28, 36, 600)
+        h3 = title
+        h4 = text(16, 22, 500)
+        p  = body
+      }
+    }
+  }
+
+  palette {
+    app {
+      background       = gray(98.04, 1)
+      foreground       = gray(11.18, 1)
+      muted_foreground = gray(46.86, 1)
+    }
+    shell {
+      background              = gray(11, 1)
+      foreground              = gray(100, 1)
+      border                  = gray(100, 0.1)
+      hover_background        = gray(100, 0.12)
+      active_background       = gray(100, 0.2)
+      close_hover_background  = gray(30, 1)
+      close_active_background = gray(40, 1)
+      close_foreground        = gray(100, 1)
+    }
+    surface {
+      panel {
+        background = gray(100, 1)
+        foreground = gray(11.18, 1)
+        border     = gray(83.92, 1)
+      }
+      floating {
+        background = gray(100, 1)
+        foreground = gray(11.18, 1)
+        border     = gray(83.92, 1)
+      }
+      subtle {
+        background = gray(96.08, 1)
+        foreground = gray(26.67, 1)
+      }
+    }
+    state {
+      hover {
+        background = gray(91.37, 1)
+        foreground = gray(11.18, 1)
+      }
+      pressed  { background = gray(83.92, 1) }
+      selected {
+        background = gray(12, 1)
+        foreground = gray(100, 1)
+      }
+      disabled {
+        background = gray(96.08, 1)
+        foreground = gray(65.1, 1)
+      }
+    }
+    form {
+      input {
+        background     = gray(100, 1)
+        foreground     = gray(11.18, 1)
+        border         = gray(65.1, 1)
+        invalid_border = gray(20, 1)
+        placeholder    = gray(65.1, 1)
+      }
+    }
+    focus  { ring = gray(20, 1) }
+    border {
+      default = gray(83.92, 1)
+      strong  = gray(46.86, 1)
+    }
+    navigation {
+      background          = gray(100, 1)
+      foreground          = gray(11.18, 1)
+      muted_foreground    = gray(46.86, 1)
+      hover_background    = gray(96.08, 1)
+      selected_background = gray(12, 1)
+      selected_foreground = gray(100, 1)
+      border              = gray(83.92, 1)
+    }
+    data {
+      positive = gray(30, 1)
+      accent_1 = gray(20, 1)
+      accent_2 = gray(35, 1)
+      accent_3 = gray(45, 1)
+      accent_4 = gray(55, 1)
+      accent_5 = gray(65, 1)
+    }
+  }
+
+  // A list of layers per role; [] means no shadow.
+  elevation {
+    none           = []
+    drag_preview   = [shadow(0.1, 0, 1, 3, 0), shadow(0.1, 0, 1, 2, -1)]
+    control        = [shadow(0.05, 0, 1, 2, 0)]
+    thumb          = [shadow(0.14, 0, 1, 2, 0)]
+    menu           = [shadow(0.1, 0, 1, 3, 0), shadow(0.1, 0, 1, 2, -1)]
+    popover        = [shadow(0.12, 0, 4, 8, -2), shadow(0.06, 0, 2, 4, -1)]
+    panel          = [shadow(0.06, 0, 1, 3, 0)]
+    dialog         = [shadow(0.16, 0, 18, 32, -8), shadow(0.08, 0, 6, 12, -4)]
+    overlay_window = [shadow(0.2, 0, 18, 38, -16)]
+  }
+
+  // Shared geometry (CommonStylesheet::shared_geometry()).
+  geometry {
+    label_baseline = 1
+  }
+
+  motion {
+    default = default_timed
+  }
+}

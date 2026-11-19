@@ -13,25 +13,29 @@ use xgpui_luma_style::{
 
 // ---- the SDK's configuration ---------------------------------------------------------------
 
+/// What a Radix look would build: the SDK config plus Radix's own axes.
+pub fn radix_config() -> Arc<Config> {
+    Arc::new(
+        luma_config()
+            .extend()
+            .attributes(&["tone", "radius"])
+            .states(&["high_contrast"])
+            .build()
+            .expect("valid"),
+    )
+}
+
+/// What `xgpui_luma::style::config()` returns: SDK states and generic attributes only.
 pub fn luma_config() -> Arc<Config> {
     Arc::new(
         Config::builder()
             .layers(&["sdk", "look", "app"])
             .states(&[
-                "hover",
-                "pressed",
-                "focused",
-                "disabled",
-                "checked",
-                "selected",
-                "active",
-                "expanded",
-                "open",
+                "hover", "pressed", "focused", "disabled", "checked", "selected", "active", "expanded", "open",
                 "invalid",
-                "high_contrast",
             ])
             .exclusive(&["disabled", "pressed", "hover"])
-            .attributes(&["variant", "size", "tone"])
+            .attributes(&["variant", "size"])
             .snap(SnapPolicy::Lengths)
             .build()
             .expect("valid config"),
@@ -87,7 +91,7 @@ pub fn shadcn_sheet() -> Stylesheet {
 }
 
 pub fn radix_sheet() -> Stylesheet {
-    Stylesheet::builder(luma_config())
+    Stylesheet::builder(radix_config())
         .layer("sdk", sdk_sources())
         .layer("look", radix_sources())
         .compile()

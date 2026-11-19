@@ -15,6 +15,8 @@ mod compile;
 mod config;
 mod diag;
 mod edit;
+#[cfg(feature = "gpui")]
+mod gpui_support;
 mod handles;
 mod inspect;
 mod model;
@@ -27,9 +29,11 @@ mod value;
 
 pub use color::{Color, RgbSpace};
 pub use compile::{Source, Stylesheet, StylesheetBuilder};
-pub use config::{Config, ConfigBuilder, SnapPolicy};
+pub use config::{Config, ConfigBuilder, ConfigExtension, SnapPolicy};
 pub use diag::{Code, Diagnostic, Diagnostics, Severity, Span};
 pub use edit::{Edit, RuleSpec, export_tokens};
+#[cfg(feature = "gpui")]
+pub use gpui_support::{ApplyStyle, box_shadows};
 pub use handles::{
     AttrId, AttrValue, ControlId, FromValue, MAX_ATTRIBUTES, PartId, Prop, StateId, StateSet, StyleKey, props,
 };

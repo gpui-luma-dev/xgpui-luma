@@ -8,7 +8,11 @@ pub use callback::{CheckboxCallbacks, CheckboxEventExt};
 mod template;
 pub(crate) mod theme;
 
-pub use template::{ThemedCheckboxTemplate, default_template as default_checkbox_template};
+pub use template::{ThemedCheckboxTemplate, default_template as default_themed_checkbox_template};
+mod styled;
+/// The SDK checkbox renders from the SDK's `.lss` files (issue #285); looks keep `ThemedCheckboxTemplate`
+/// until they migrate.
+pub use styled::{StyledCheckboxTemplate, default_template as default_checkbox_template};
 
 pub use theme::{CheckboxLook, CheckboxPalette, CheckboxScale, CheckboxTheme, DefaultCheckboxTheme, default_checkbox_theme};
 

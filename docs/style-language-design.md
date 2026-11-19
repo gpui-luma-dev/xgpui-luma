@@ -88,7 +88,7 @@ button {
 | `name = expr` | Assignment to a core property or a declared property. Unknown name → error. |
 | `name := expr` | **Owning assignment** (§8.4): rules for `name` from less specific scopes stop applying. |
 | `part p { … }` | A part. Parts are declared by the declaring layer; other layers may only use them. The control block itself is part `root`. |
-| `variant v { … }`, `size s { … }` | **Scopes**: rules inside apply only when the instance has that attribute value. Any attribute the consumer declares works the same way (`variant`, `size`, `orientation`, …). Scopes nest. |
+| `variant v { … }`, `size s { … }` | **Scopes**: rules inside apply only when the instance has that attribute value. Any attribute the consumer declares works the same way (`variant`, `size`, `orientation`, …). Scopes nest. The SDK declares `variant` and `size` without values and its files use no size scopes; size keys (`sm`, `2`, …) are written only in look files, and a look's base values are its default size. Looks add their own attributes and states (Radix `tone`, `radius`, `:high_contrast`) to the config. |
 | `:s1:s2 { … }` | **State block**: properties only, no nesting. Applies when all listed states hold. |
 | `extends x` | On a control, part or scope header: start from another definition (§8.5). |
 | `///` | Doc comment for the next declaration, part or control; shown by the inspector. |
@@ -214,7 +214,7 @@ A look's base scope can also own a property against the SDK: `background := radi
 A part can extend another part only outside variant, size and state blocks. Cycles are errors.
 
 ### 8.6 Evaluate
-The winning expression is evaluated for the key. `none` leaves the property unset. Lengths snap to device pixels on output unless the value is `exact(…)` or the consumer's policy says otherwise. A property that reads another property sees its unsnapped value, so rounding does not compound (`line_height = font_size * …`).
+The winning expression is evaluated for the key. `none` leaves the property unset. Lengths snap to device pixels unless the value is `exact(…)` or the consumer's policy says otherwise, and a property that reads another length reads the snapped value, so geometry built from geometry stays on the pixel grid (as the SDK's native scales compute it). Text metrics (`font_size`, `line_height`) are never snapped: text renders at fractional sizes.
 
 ## 9. Properties and kinds
 
@@ -549,7 +549,7 @@ The crate implements this design. Writing it against the converted #94 files cha
 
 1. **Token scopes.** Token files can scope values by attribute (`size sm { height = 28 }`); Shadcn's size-dependent metrics need it (§5, grammar).
 2. **`extends` and layers.** A rule reached through `extends` ranks at the layer where the `extends` was written. Otherwise Shadcn's `part trigger extends button.root` would lose to the SDK's own trigger rules (§8.3, §8.5).
-3. **Snapping on output only.** Property references see unsnapped values (§8.6).
+3. **Snapping.** Text metrics are never snapped; other lengths are snapped both on output and when another property reads them, matching the SDK's native checkbox geometry at every display scale (§8.6).
 4. **`rec2020`** uses CSS Color 4's current 2.4 gamma; the five-space example in the colors spec then agrees within 0.002.
 5. **Misspelled token roots** (`pallete.x`) are reported when the theme is bound, because native roots (`css`, `gray`) are known only then. The message suggests the closest token group.
 6. **Part `extends`** is allowed only outside variant, size and state blocks (§8.5).

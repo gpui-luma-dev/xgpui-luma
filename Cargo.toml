@@ -45,6 +45,7 @@ fasteval = { version = "0.2.4", default-features = false }
 anyhow = "1"
 xgpui-luma = { version = "1.0.2", path = "crates/sdk" }
 xgpui-luma-color = { version = "1.0.2", path = "crates/luma-color" }
+xgpui-luma-style = { path = "crates/style", features = ["gpui"] }
 xgpui-luma-look-shadcn = { version = "1.0.2", path = "crates/look-shadcn" }
 xgpui-luma-look-radix = { version = "1.0.2", path = "crates/look-radix" }
 xgpui-luma-plot = { version = "1.0.2", path = "crates/plot" }

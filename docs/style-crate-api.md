@@ -23,17 +23,22 @@ Built once by the SDK (`xgpui_luma::style::config()`), shared by every styleshee
 let config = Arc::new(Config::builder()
     .layers(&["sdk", "look", "app"])
     .states(&["hover", "pressed", "focused", "disabled", "checked", "selected",
-              "active", "expanded", "open", "invalid", "high_contrast"])
+              "active", "expanded", "open", "invalid"])
     .exclusive(&["disabled", "pressed", "hover"])     // only the strongest active one counts
-    .attributes(&["variant", "size", "tone"])         // at most 8
+    .attributes(&["variant", "size"])                 // generic axes, no values; at most 8 in all
     .snap(SnapPolicy::Lengths)
     .build()?);
 
 config.state("checked")      // Option<StateId>
 config.attribute("variant")  // Option<AttrId>
+
+// A look adds its own axes; SDK handles keep their positions.
+let radix = Arc::new(config.extend().attributes(&["tone", "radius"]).states(&["high_contrast"]).build()?);
 ```
 
-The SDK has no light/dark mode; looks provide modes. An SDK-only app switches themes by compiling different token files.
+- **The SDK knows axes, not values.** It declares generic attributes (`variant`, `size`) and its own states. Size keys (`sm`/`md`/`lg`, `1`–`4`), tones, radius steps and look states such as `high_contrast` exist only in look files and look configs. SDK files are compiled against the SDK config alone, so they cannot mention a look's axes.
+- **The default size is the look's.** A look's base values are its default size (Shadcn base = md, Radix base = 2); a key with no size gets them. A look may also write the default explicitly (`size md { }`) so pickers list it. `sheet.axes(control)` reads the values from the files.
+- The SDK has no light/dark mode; looks provide modes. An SDK-only app switches themes by compiling different token files.
 
 ## 3. Setup: files, compile, bind (topic 3)
 
@@ -94,7 +99,7 @@ Resolved::lerp(&off, &on, t)                     // animation between two resolv
 
 - `props::*` holds handles for every core property (`BACKGROUND`, `RADIUS`, `SHADOW`, `TRANSITION`, …).
 - `FromValue` types: `f32` (length, number, weight), `Color`, `Motion`, `Arc<[ShadowLayer]>`, `Arc<str>` (font, icon), `TextStyle`.
-- Lengths are snapped to device pixels on output (unless `exact(…)`); properties that read other properties see unsnapped values.
+- Lengths are snapped to device pixels (unless `exact(…)`), also when another property reads them; `font_size` and `line_height` are never snapped.
 - Cost (release build, Radix checkbox fixtures): about 15–17 µs for the first resolve of a key, then a cache lookup. Resolving names at compile time and comparing interned names by pointer are the next steps if profiling the SDK shows a need.
 - Motion: for a change from key A to key B, the animation runtime uses `resolve(B).part(p).transition()`.
 - `.apply()` onto gpui elements is *later*, as a `gpui` feature built on this view.
@@ -211,6 +216,7 @@ export_tokens(&theme.token_values())                                 // a tokens
 | 1 Reading styles | Generic view with typed property handles; `.apply()` later as a gpui feature |
 | 2 Keys | Handles: interned names for controls, parts, attribute values and properties; `Config` indices for states and attributes |
 | 3 Setup | Layered builder; files beside controls with a completeness test; embedded and from-disk sources; `modes()` |
+| Axes | SDK config declares generic attributes (`variant`, `size`) and SDK states only; looks add theirs with `Config::extend`; size values and the default size are the look's |
 | 4 Rebind | Themes never change; `with_mode`, `with_tokens`, `with_token_values`, `with_source`/`with_stylesheet`; failures keep the old theme; `generation()` |
 | 5 Overrides | One override set per instance, typed, literals or tokens, inside the cascade, all states; cached by contents; unknown parts and properties reported |
 | 6 Inspection | `explain` and `inspect` with references, declared-but-unset rows, axes from files, box model, categories |

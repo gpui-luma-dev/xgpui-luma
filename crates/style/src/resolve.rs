@@ -849,17 +849,31 @@ impl<'t> Evaluator<'t> {
         prop: &str,
         key: &KeyData,
     ) -> Result<Option<Value>, EvalErr> {
+        let pv = self.prop_at(control, part, prop, key)?;
+        Ok(self.snap(control, prop, key, pv).value)
+    }
+
+    /// Snap a length to device pixels (language §8.6). Templates and references between properties both
+    /// see snapped lengths, so geometry built from other geometry stays on the pixel grid. Values written
+    /// `exact(…)` and text metrics (`font_size`, `line_height`) are never snapped: text renders at
+    /// fractional sizes, and snapping it would change line breaks with the display scale.
+    fn snap(&self, control: usize, prop: &str, key: &KeyData, pv: PropValue) -> PropValue {
         let model = self.model();
-        let PropValue { value, exact, .. } = self.prop_at(control, part, prop, key)?;
-        if model.config.snap != SnapPolicy::Lengths || model.prop_kind(control, prop) != Some(Kind::Length) {
-            return Ok(value);
+        let text_metric = matches!(prop, "font_size" | "line_height");
+        if pv.exact
+            || text_metric
+            || key.scale <= 0.0
+            || model.config.snap != SnapPolicy::Lengths
+            || model.prop_kind(control, prop) != Some(Kind::Length)
+        {
+            return pv;
         }
-        Ok(match value {
-            Some(Value::Number(n)) if !exact && key.scale > 0.0 => {
-                Some(Value::Number((n * key.scale).round() / key.scale))
+        match pv.value {
+            Some(Value::Number(n)) => {
+                PropValue { value: Some(Value::Number((n * key.scale).round() / key.scale)), ..pv }
             }
-            other => other,
-        })
+            _ => pv,
+        }
     }
 
     fn token_cx<'k>(&'k self, key: &'k KeyData) -> TokenCx<'k> {
@@ -999,7 +1013,8 @@ impl<'t> Evaluator<'t> {
                         Ok(p) if p.value.is_none() && current != 0 => self.prop_at(control, 0, &prop, key),
                         other => other,
                     },
-                };
+                }
+                .map(|pv| self.snap(control, &prop, key, pv));
                 let (value, at) = match result {
                     Ok(p) => (p.value, p.at),
                     Err(e) => {
@@ -1019,7 +1034,7 @@ impl<'t> Evaluator<'t> {
                     other.attrs.push((intern(&attr), intern(&v)));
                 }
                 self.trace_push();
-                let result = self.prop_at(control, 0, &prop, &other);
+                let result = self.prop_at(control, 0, &prop, &other).map(|pv| self.snap(control, &prop, &other, pv));
                 let (value, at) = match result {
                     Ok(p) => (p.value, p.at),
                     Err(e) => {

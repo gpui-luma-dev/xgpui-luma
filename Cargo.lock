@@ -7896,6 +7896,7 @@ dependencies = [
  "ttf-parser",
  "web-time",
  "xgpui",
+ "xgpui-luma-style",
 ]
 
 [[package]]
@@ -7970,6 +7971,7 @@ dependencies = [
  "pest",
  "pest_derive",
  "thiserror 2.0.20",
+ "xgpui",
 ]
 
 [[package]]

@@ -46,8 +46,16 @@ fn lengths_snap_to_device_pixels_unless_exact() {
     let style = theme.resolve(&key(&theme, "checkbox", &[], &[]).scale(1.25));
     // 18 × 1.25 = 22.5 device px → 23 → 18.4 logical px.
     assert_eq!(style.root().get(size), Some(18.4));
-    // The label line height is 14 × 18 / 12.5 = 20.16 (from the unsnapped font size), snapped to 20.
-    assert_eq!(style.part(LABEL).line_height(), Some(20.0));
+    // Text metrics are never snapped: the label line height stays 14 × 18 / 12.5 = 20.16.
+    assert_eq!(style.part(LABEL).line_height(), Some(20.16));
+    // Geometry built from other geometry reads snapped values: at 1.5×, inset 3 → 3.33, so the glyph is
+    // 18 − 2 × 3.33 = 11.33 (as the native CheckboxScale computes it), not 12.
+    let glyph = theme
+        .stylesheet()
+        .prop::<f32>(theme.stylesheet().control("checkbox").unwrap(), "glyph_size")
+        .unwrap();
+    let at_1_5 = theme.resolve(&key(&theme, "checkbox", &[], &[]).scale(1.5));
+    assert!((at_1_5.root().get(glyph).unwrap() - 34.0 / 3.0).abs() < 1e-4);
     // `exact(…)` keeps the radius as authored.
     let style = theme.resolve(&key(&theme, "checkbox", &[], &[]).scale(1.5));
     assert_eq!(style.root().radius(), Some(6.0));
