@@ -1,0 +1,16 @@
+[package]
+name = "xgpui-luma-style"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "Declarative control styles with generated descriptors (issue #282 spike)"
+repository.workspace = true
+
+[dependencies]
+gpui.workspace = true
+inventory = "0.3"
+xgpui-luma-style-derive = { path = "../style-derive" }
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+[package]
+name = "xgpui-luma-style-derive"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+description = "#[derive(Style)] for xgpui-luma-style (issue #282 spike)"
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+darling = "0.21"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+
+[lints]
+workspace = true
