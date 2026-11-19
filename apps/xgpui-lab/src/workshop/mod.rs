@@ -11,6 +11,8 @@ mod navigation;
 mod feedback;
 mod selection;
 mod shadow_button;
+mod template_preview;
+mod theme_inspector;
 mod custom_button;
 mod toolbar;
 mod color_arc;

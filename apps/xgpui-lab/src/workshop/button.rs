@@ -5,6 +5,8 @@ use xgpui_luma::controls::button::{Button, ButtonEventExt, HasPresenter};
 use xgpui_luma::controls::switch::{Switch, SwitchEventExt};
 use crate::theme::Look;
 use super::event_stream::ControlEventStream;
+use super::theme_inspector::{InspectorSplit, ThemeInspector};
+use xgpui_luma::controls::button_family::ButtonStyle;
 
 pub struct ButtonControlExposition {
     look: Arc<Look>,
@@ -12,6 +14,23 @@ pub struct ButtonControlExposition {
     enabled_switch: Switch,
     buttons_enabled: bool,
     event_stream: Entity<ControlEventStream>,
+    split: Entity<InspectorSplit>,
+    body: Entity<ButtonBody>,
+    inspector: Entity<ThemeInspector<ButtonStyle>>,
+}
+/// The button page, rendered as the left panel of the inspector split.
+struct ButtonBody {
+    page: gpui::WeakEntity<ButtonControlExposition>,
+}
+impl Render for ButtonBody {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let Some(page) = self.page.upgrade() else {
+            return div().into_any_element();
+        };
+        let look = page.read(cx).look.clone();
+        let preview = super::template_preview::button_template_preview(&look, window, cx);
+        page.read(cx).page(preview)
+    }
 }
 impl ButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
@@ -37,18 +56,32 @@ impl ButtonControlExposition {
         enabled_switch.clone().on_value_changed(cx, |this: &mut Self, on, cx| {
             this.buttons_enabled = on;
             this.button.update(cx, |button, cx| button.set_enabled(on, cx));
-            cx.notify();
+            this.refresh(cx);
         });
-        Self { look, button, enabled_switch, buttons_enabled: true, event_stream }
+        let tokens = xgpui_luma::theme::ThemeTokens::default();
+        let style = ButtonStyle::from_stylesheet(&tokens.stylesheet);
+        let inspector_look = look.clone();
+        let inspector = cx.new(|cx| ThemeInspector::new(inspector_look, "Button", "button", tokens, style, cx));
+        let page = cx.weak_entity();
+        let body = cx.new(|_| ButtonBody { page });
+        let (left, right) = (body.clone().into(), inspector.clone().into());
+        let split = cx.new(|cx| InspectorSplit::new("workshop-button-inspector-split", left, right, cx));
+        Self { look, button, enabled_switch, buttons_enabled: true, event_stream, split, body, inspector }
+    }
+    /// Re-render this page, including the split's left panel.
+    fn refresh(&mut self, cx: &mut Context<Self>) {
+        self.body.update(cx, |_, cx| cx.notify());
+        cx.notify();
     }
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
-        self.event_stream.update(cx, |stream, cx| stream.sync_look(look, cx));
-        cx.notify();
+        self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
+        self.inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
+        self.refresh(cx);
     }
 }
-impl Render for ButtonControlExposition {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+impl ButtonControlExposition {
+    fn page(&self, preview: gpui::AnyElement) -> gpui::AnyElement {
         use super::sample_layout::{section, page, sdk_preview};
         page(
             "workshop-sdk-button-page",
@@ -67,8 +100,21 @@ impl Render for ButtonControlExposition {
                     sdk_preview("workshop-sdk-button-preview", self.button.clone()),
                 ))
                 .child(self.enabled_switch.clone())
+                .child(section(
+                    &self.look,
+                    "command-button-template-preview",
+                    "Template Preview",
+                    "The SDK template for the Text and Icon roles in each interaction state.",
+                    720.,
+                    preview,
+                ))
                 .child(self.event_stream.clone()),
         )
+    }
+}
+impl Render for ButtonControlExposition {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div().size_full().child(self.split.clone())
     }
 }
 
@@ -77,6 +123,20 @@ mod tests {
     use super::*;
     use gpui::{Focusable, TestAppContext};
     use crate::workshop::{Workshop, Sample};
+    #[test]
+    fn button_page_has_a_theme_inspector_and_template_preview() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (workshop, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        workshop.update(cx, |workshop, cx| workshop.select("button", cx));
+        cx.run_until_parked();
+        let inspector = cx.update(|_, cx| match &workshop.read(cx).samples["button"] {
+            Sample::Button(sample) => sample.read(cx).inspector.clone(),
+            _ => unreachable!(),
+        });
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).toggle_count()), 3, "disabled, pressed and hovered");
+    }
+
     #[test]
     fn sdk_button_retains_enabled_state_across_app_theme_and_navigation() {
         let mut app = TestAppContext::single();

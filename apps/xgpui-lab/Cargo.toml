@@ -44,6 +44,7 @@ sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }
 gpui = { workspace = true, features = ["profiler", "test-support"] }
 xgpui-luma = { workspace = true }
+xgpui-luma-style = { workspace = true }
 xgpui-luma-color = { workspace = true }
 gpui_platform = { workspace = true, features = ["font-kit", "test-support"] }
 image = "0.25"

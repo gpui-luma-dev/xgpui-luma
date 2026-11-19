@@ -61,25 +61,33 @@ pub trait FieldScope {
     fn field(&self, name: &str, cx: &ResolveCx<'_>, at: StateSet, depth: u8) -> Option<Dyn>;
 }
 
+/// Split a dotted path into its first segment and the rest.
+#[doc(hidden)]
+pub fn split_path(path: &str) -> (&str, Option<&str>) {
+    match path.split_once('.') {
+        Some((head, rest)) => (head, Some(rest)),
+        None => (path, None),
+    }
+}
+
 /// A style struct. Implemented by `#[derive(Style)]`.
 pub trait Style: Clone + std::fmt::Debug + FieldScope + 'static {
     /// Plain values that templates read.
     type Resolved: Clone + std::fmt::Debug + PartialEq + Lerp;
-    /// A sparse overlay used by looks, apps and editors.
-    type Patch: Clone + std::fmt::Debug + Default;
     /// Field descriptors.
     const SHAPE: &'static StyleShape;
 
     fn resolve(&self, cx: &ResolveCx<'_>, at: StateSet) -> Self::Resolved;
-    /// Apply a patch: every field the patch sets replaces this style's value.
-    fn apply(&mut self, patch: &Self::Patch);
 
-    /// A copy with `patches` applied in order.
-    fn with(&self, patches: &[&Self::Patch]) -> Self {
-        let mut style = self.clone();
-        for patch in patches {
-            style.apply(patch);
-        }
-        style
-    }
+    /// The resolved value at a dotted path (`"indicator.background"`), as other
+    /// fields would see it. `None` for unknown paths, parts and computed fields.
+    fn get(&self, path: &str, cx: &ResolveCx<'_>, at: StateSet) -> Option<Dyn>;
+    /// Set a literal at a dotted path. Per-state fields set the rule for `at`
+    /// (the base value for an empty set). Returns `false` for an unknown path,
+    /// a computed field, or a value of the wrong type.
+    fn set(&mut self, path: &str, at: StateSet, value: Dyn) -> bool;
+    /// How the value at a path is authored: a literal, token path or expression.
+    fn describe(&self, path: &str, at: StateSet) -> Option<String>;
+    /// Every state that some per-state rule in this style (or its parts) uses.
+    fn states_used(&self) -> StateSet;
 }

@@ -7,6 +7,8 @@ use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use super::{
     event_stream::ControlEventStream,
     sample_layout::{card, page},
+    template_preview,
+    theme_inspector::{InspectorSplit, ThemeInspector},
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -73,6 +75,27 @@ pub(super) struct ChoiceSample {
     control: Control,
     state: String,
     events: Entity<ControlEventStream>,
+    /// Checkbox only: the sample beside its theme inspector.
+    inspected: Option<Inspected>,
+}
+struct Inspected {
+    split: Entity<InspectorSplit>,
+    body: Entity<ChoiceBody>,
+    inspector: Entity<ThemeInspector<checkbox::CheckboxStyle>>,
+}
+/// The sample page, rendered as the left panel of the inspector split.
+struct ChoiceBody {
+    sample: gpui::WeakEntity<ChoiceSample>,
+}
+impl Render for ChoiceBody {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let Some(sample) = self.sample.upgrade() else {
+            return div().into_any_element();
+        };
+        let look = sample.read(cx).look.clone();
+        let preview = template_preview::checkbox_template_preview(&look, window, cx);
+        sample.read(cx).page(Some(preview))
+    }
 }
 impl ChoiceSample {
     pub(super) fn new(kind: ChoiceKind, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
@@ -224,21 +247,41 @@ impl ChoiceSample {
                 "Interact with the sample to see its SDK events.",
             )
         });
-        Self { kind, look, control, state, events }
+        let inspected = matches!(kind, ChoiceKind::Checkbox).then(|| {
+            let tokens = xgpui_luma::theme::ThemeTokens::default();
+            let style = checkbox::CheckboxStyle::from_stylesheet(&tokens.stylesheet);
+            let inspector_look = look.clone();
+            let inspector = cx.new(|cx| ThemeInspector::new(inspector_look, "Checkbox", "checkbox", tokens, style, cx));
+            let sample = cx.weak_entity();
+            let body = cx.new(|_| ChoiceBody { sample });
+            let (left, right) = (body.clone().into(), inspector.clone().into());
+            let split = cx.new(|cx| InspectorSplit::new("workshop-checkbox-inspector-split", left, right, cx));
+            Inspected { split, body, inspector }
+        });
+        Self { kind, look, control, state, events, inspected }
     }
     fn record(&mut self, event: &impl std::fmt::Debug, cx: &mut Context<Self>) {
         let line = format!("{event:?}");
         self.events.update(cx, |events, cx| events.append_line(&line, cx));
+        self.refresh(cx);
+    }
+    /// Re-render this sample, including the split's left panel.
+    fn refresh(&mut self, cx: &mut Context<Self>) {
+        if let Some(inspected) = &self.inspected {
+            inspected.body.update(cx, |_, cx| cx.notify());
+        }
         cx.notify();
     }
     pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
-        self.events.update(cx, |events, cx| events.sync_look(look, cx));
-        cx.notify();
+        self.events.update(cx, |events, cx| events.sync_look(look.clone(), cx));
+        if let Some(inspected) = &self.inspected {
+            inspected.inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
+        }
+        self.refresh(cx);
     }
-}
-impl Render for ChoiceSample {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    /// The sample page; `preview` adds a template preview card (checkbox).
+    fn page(&self, preview: Option<gpui::AnyElement>) -> gpui::AnyElement {
         page(
             "workshop-choice-page",
             div()
@@ -261,8 +304,26 @@ impl Render for ChoiceSample {
                             .child(self.state.clone()),
                     ),
                 ))
+                .children(preview.map(|preview| {
+                    card(
+                        &self.look,
+                        "workshop-choice-template-preview",
+                        "Template Preview",
+                        "The SDK template rendered unchecked and checked in each interaction state.",
+                        640.,
+                        preview,
+                    )
+                }))
                 .child(self.events.clone()),
         )
+    }
+}
+impl Render for ChoiceSample {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        match &self.inspected {
+            Some(inspected) => inspected.split.clone().into_any_element(),
+            None => self.page(None),
+        }
     }
 }
 
@@ -290,6 +351,32 @@ mod tests {
             _ => panic!("missing Choice sample"),
         })
     }
+    #[test]
+    fn checkbox_sample_has_a_theme_inspector_with_state_toggles() {
+        let mut app = TestAppContext::single();
+        let (workshop, cx) = setup(&mut app);
+        let sample = select(&workshop, "checkbox", cx);
+        let inspector = cx.update(|_, cx| {
+            sample.read(cx).inspected.as_ref().map(|inspected| inspected.inspector.clone()).expect("inspector")
+        });
+        cx.run_until_parked();
+        let (states, toggles) = cx.update(|_, cx| (inspector.read(cx).states(), inspector.read(cx).toggle_count()));
+        assert_eq!(states, xgpui_luma_style::StateSet::NONE);
+        assert_eq!(toggles, 4, "checked, hovered, pressed and disabled");
+        // Toggles are listed highest precedence first: disabled, pressed, hovered, checked.
+        for (index, selected) in [(0, true), (3, true), (0, false)] {
+            let toggle = cx.update(|_, cx| inspector.read(cx).toggle(index));
+            toggle.update(cx, |_, cx| cx.emit(toggle::ToggleEvent::Change { selected }));
+        }
+        cx.run_until_parked();
+        let states = cx.update(|_, cx| inspector.read(cx).states());
+        assert_eq!(states, xgpui_luma_style::StateSet::from(xgpui_luma_style::State::Checked));
+        for other in ["radio-button", "switch", "toggle"] {
+            let sample = select(&workshop, other, cx);
+            assert!(cx.update(|_, cx| sample.read(cx).inspected.is_none()), "{other} has no inspector yet");
+        }
+    }
+
     #[test]
     fn choice_boolean_controls_use_keyboard_and_retain_state_across_navigation_and_app_theme() {
         let mut app = TestAppContext::single();

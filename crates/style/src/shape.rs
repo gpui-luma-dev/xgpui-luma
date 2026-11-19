@@ -94,7 +94,7 @@ pub enum FieldContent {
         range: Option<(f32, f32)>,
         /// The field is a `States` table.
         stateful: bool,
-        /// Derived in Rust; read-only in editors and absent from patches.
+        /// Derived in Rust; read-only in editors and not settable by path.
         computed: bool,
     },
     Part(&'static StyleShape),

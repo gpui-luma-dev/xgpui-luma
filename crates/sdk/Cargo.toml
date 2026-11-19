@@ -25,6 +25,7 @@ web-time = "1.1"
 palette.workspace = true
 smallvec.workspace = true
 toml.workspace = true
+xgpui-luma-style.workspace = true
 
 [[bench]]
 name = "render_hot_paths"

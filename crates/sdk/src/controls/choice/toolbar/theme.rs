@@ -2,7 +2,11 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
+use xgpui_luma_style::{ResolveCx, State, StateSet, Style};
+
+use super::style::{ResolvedToolbarSeparatorPart, ResolvedToolbarStyle, ToolbarStyle};
 use crate::theme::ThemeTokens;
+use crate::theme::style_tokens::ThemeTokenSource;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ToolbarVariant {
@@ -31,10 +35,36 @@ pub struct ToolbarLook {
 
 pub trait ToolbarTheme: Send + Sync {
     fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook;
+
+    /// Everything the template reads (issue #282). The default adapts
+    /// [`resolve`](Self::resolve), so themes written before `ToolbarStyle` keep working.
+    fn resolved_style(&self, enabled: bool, variant: ToolbarVariant) -> ResolvedToolbarStyle {
+        resolved_from_look(&self.resolve(enabled, variant), variant)
+    }
+}
+
+/// Build a resolved style from the older look. Only `Outline` draws a border.
+pub fn resolved_from_look(look: &ToolbarLook, variant: ToolbarVariant) -> ResolvedToolbarStyle {
+    ResolvedToolbarStyle {
+        background: look.background,
+        border: (variant == ToolbarVariant::Outline).then_some(look.border),
+        border_width: look.border_width,
+        radius: look.radius,
+        padding_x: look.padding_x,
+        padding_y: look.padding_y,
+        gap: look.gap,
+        separator: ResolvedToolbarSeparatorPart {
+            color: look.separator,
+            width: look.separator_width,
+            height: look.separator_height,
+        },
+    }
 }
 
 pub struct DefaultToolbarTheme {
     tokens: ThemeTokens,
+    outline: ToolbarStyle,
+    ghost: ToolbarStyle,
 }
 
 impl Default for DefaultToolbarTheme {
@@ -45,7 +75,9 @@ impl Default for DefaultToolbarTheme {
 
 impl DefaultToolbarTheme {
     pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
+        let outline = ToolbarStyle::from_stylesheet(&tokens.stylesheet);
+        let ghost = outline.ghost();
+        Self { tokens, outline, ghost }
     }
 }
 
@@ -88,6 +120,20 @@ impl ToolbarTheme for DefaultToolbarTheme {
         crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toolbar, ToolbarGeometry, look,
             [padding_x => padding_x, padding_y => padding_y, gap => gap, border_width => border_width, separator_width => separator_width, radius => radius]);
         look
+    }
+
+    fn resolved_style(&self, enabled: bool, variant: ToolbarVariant) -> ResolvedToolbarStyle {
+        let style = match variant {
+            ToolbarVariant::Outline => &self.outline,
+            ToolbarVariant::Ghost => &self.ghost,
+        };
+        let at = if enabled {
+            StateSet::NONE
+        } else {
+            StateSet::from(State::Disabled)
+        };
+        let tokens = ThemeTokenSource::for_family(&self.tokens, "toolbar");
+        style.resolve(&ResolveCx::new(&tokens, 1.0), at)
     }
 }
 

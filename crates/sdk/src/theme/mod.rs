@@ -8,6 +8,7 @@ pub mod pack;
 pub mod revision;
 pub mod registry;
 pub mod tokens;
+pub mod style_tokens;
 
 pub use cache::{LayoutCacheKey, LumaLayoutCacheExt};
 pub use interaction::{InteractionLayer, InteractionState};

@@ -4,38 +4,24 @@ use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
 
 use super::{ButtonContentContext, ButtonRenderModel, button_content_context};
 use crate::controls::button_family::{
-    ButtonFamilyLook, ButtonFamilyRole, ButtonFamilyTheme, button_family_effective_border, compose_button_family_look,
-    default_button_family_theme,
+    ButtonFamilyLook, ButtonFamilyRole, ButtonFamilyTheme, button_family_effective_border, default_button_family_theme,
+    look_from_resolved,
 };
 
 use crate::infra::template::{Modifier, TemplateWithModifiers};
-use crate::theme::StandardBoxScale;
 
 pub type ButtonTemplateModifier<D> = Modifier<ButtonRenderModel<D>>;
-
-fn resolve_theme_look<D>(
-    theme: &Arc<dyn ButtonFamilyTheme>,
-    model: &ButtonRenderModel<D>,
-    scale: &StandardBoxScale,
-) -> ButtonFamilyLook {
-    if let Some(look) = theme.resolve_look(model.role, model.state, scale, crate::theme::FULL_RADIUS_PX) {
-        return look;
-    }
-
-    let palette = theme.resolve(model.role, model.state);
-    compose_button_family_look(&palette, model.role, scale, crate::theme::FULL_RADIUS_PX)
-}
 
 fn resolve_look<D>(
     theme: &Arc<dyn ButtonFamilyTheme>,
     model: &ButtonRenderModel<D>,
-    scale: &StandardBoxScale,
+    scale_factor: f32,
 ) -> ButtonFamilyLook {
     if let Some(resolve) = &model.look {
         return resolve(model);
     }
 
-    resolve_theme_look(theme, model, scale)
+    look_from_resolved(&theme.resolved_style(model.role, model.state, scale_factor))
 }
 
 fn presenter_model<D: Clone>(model: &ButtonRenderModel<D>, look: &ButtonFamilyLook) -> ButtonContentContext<D> {
@@ -125,9 +111,7 @@ impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
 
 impl<D: 'static + Clone> ButtonTemplate<D> for DefaultButtonTemplate<D> {
     fn render(&self, model: &ButtonRenderModel<D>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
-        let scale_factor = window.scale_factor();
-        let scale = StandardBoxScale::compute(&self.theme.metrics(), scale_factor);
-        let mut look = resolve_look(&self.theme, model, &scale);
+        let mut look = resolve_look(&self.theme, model, window.scale_factor());
         let presenter_model = presenter_model(model, &look);
         let focused = model.state.focused && !model.state.disabled;
         let border = button_family_effective_border(look.border);
@@ -252,8 +236,10 @@ mod tests {
     use gpui::Hsla;
 
     use super::*;
-    use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
-    use crate::theme::{InteractionState, LumaTextStyle};
+    use crate::controls::button_family::{
+        ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, compose_button_family_look,
+    };
+    use crate::theme::{InteractionState, LumaTextStyle, StandardBoxScale};
 
     fn lime_look() -> ButtonFamilyLook {
         ButtonFamilyLook {
@@ -291,9 +277,7 @@ mod tests {
             ..Default::default()
         };
 
-        let scale =
-            StandardBoxScale { height: 32.0, padding_x: 12.0, padding_y: 6.0, gap: 6.0, radius: 8.0, icon_size: 14.0 };
-        let look = resolve_look(&template.theme, &model, &scale);
+        let look = resolve_look(&template.theme, &model, 1.0);
         assert_eq!(look.background, lime_look().background);
     }
 

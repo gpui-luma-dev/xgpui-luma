@@ -12,7 +12,11 @@ macro_rules! palette_roles {
             $(#[serde(rename = $name)] $variant,)+
         }
         impl PaletteRole {
-            fn read(self, palette: &LumaPalette<Hsla>) -> Hsla {
+            /// The role for a palette path such as `"state.hover.background"`.
+            pub(crate) fn from_path(path: &str) -> Option<Self> {
+                match path { $($name => Some(Self::$variant),)+ _ => None }
+            }
+            pub(crate) fn read(self, palette: &LumaPalette<Hsla>) -> Hsla {
                 match self { $(Self::$variant => palette.$($field).+,)+ }
             }
             fn write(self, palette: &mut LumaPalette<Hsla>, color: Hsla) {

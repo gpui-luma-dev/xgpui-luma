@@ -2,7 +2,11 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla, SharedString};
 
+use crate::theme::style_tokens::ThemeTokenSource;
 use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use xgpui_luma_style::{ResolveCx, StateSet, Style};
+
+use super::style::{ButtonStyle, ResolvedButtonStyle};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ButtonFamilyRole {
@@ -61,11 +65,86 @@ pub trait ButtonFamilyTheme: Send + Sync {
     ) -> Option<ButtonFamilyLook> {
         None
     }
+
+    /// Everything the template reads (issue #282). The default adapts
+    /// [`resolve_look`](Self::resolve_look) / [`resolve`](Self::resolve), so
+    /// themes written before `ButtonStyle` keep working.
+    fn resolved_style(
+        &self,
+        role: ButtonFamilyRole,
+        state: InteractionState,
+        scale_factor: f32,
+    ) -> ResolvedButtonStyle {
+        resolved_from_look(&theme_look(self, role, state, scale_factor))
+    }
 }
 
-#[derive(Clone, Debug, Default)]
+/// The look an older theme produces, before `ButtonStyle`.
+pub fn theme_look<T: ButtonFamilyTheme + ?Sized>(
+    theme: &T,
+    role: ButtonFamilyRole,
+    state: InteractionState,
+    scale_factor: f32,
+) -> ButtonFamilyLook {
+    let scale = StandardBoxScale::compute(&theme.metrics(), scale_factor);
+    theme.resolve_look(role, state, &scale, crate::theme::FULL_RADIUS_PX).unwrap_or_else(|| {
+        compose_button_family_look(&theme.resolve(role, state), role, &scale, crate::theme::FULL_RADIUS_PX)
+    })
+}
+
+/// Build a resolved style from the older look.
+pub fn resolved_from_look(look: &ButtonFamilyLook) -> ResolvedButtonStyle {
+    ResolvedButtonStyle {
+        focus_border: look.focus_border,
+        background: look.background,
+        foreground: look.foreground,
+        muted_foreground: look.muted_foreground,
+        border: look.border,
+        shadow: look.shadow.clone(),
+        font_family: look.font_family.clone(),
+        font_size: look.typography.size,
+        line_height: look.typography.line_height,
+        font_weight: look.typography.weight,
+        radius: look.radius,
+        padding_x: look.padding_x,
+        padding_y: look.padding_y,
+        gap: look.gap,
+        height: look.height,
+        icon_size: look.icon_size,
+    }
+}
+
+/// The look content presenters receive, from a resolved style.
+pub fn look_from_resolved(style: &ResolvedButtonStyle) -> ButtonFamilyLook {
+    ButtonFamilyLook {
+        focus_border: style.focus_border,
+        background: style.background,
+        foreground: style.foreground,
+        muted_foreground: style.muted_foreground,
+        border: style.border,
+        typography: LumaTextStyle { size: style.font_size, line_height: style.line_height, weight: style.font_weight },
+        font_family: style.font_family.clone(),
+        radius: style.radius,
+        padding_x: style.padding_x,
+        padding_y: style.padding_y,
+        gap: style.gap,
+        height: style.height,
+        icon_size: style.icon_size,
+        shadow: style.shadow.clone(),
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct DefaultButtonFamilyTheme {
     tokens: ThemeTokens,
+    text: ButtonStyle,
+    icon: ButtonStyle,
+}
+
+impl Default for DefaultButtonFamilyTheme {
+    fn default() -> Self {
+        Self::new(ThemeTokens::default())
+    }
 }
 
 pub fn default_button_family_theme() -> Arc<dyn ButtonFamilyTheme> {
@@ -76,7 +155,9 @@ pub fn default_button_family_theme() -> Arc<dyn ButtonFamilyTheme> {
 
 impl DefaultButtonFamilyTheme {
     pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
+        let text = ButtonStyle::from_stylesheet(&tokens.stylesheet);
+        let icon = ButtonStyle::icon_from_stylesheet(&tokens.stylesheet);
+        Self { tokens, text, icon }
     }
 }
 
@@ -104,6 +185,22 @@ impl ButtonFamilyTheme for DefaultButtonFamilyTheme {
             crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.button, ButtonGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
         }
         Some(look)
+    }
+
+    fn resolved_style(
+        &self,
+        role: ButtonFamilyRole,
+        state: InteractionState,
+        scale_factor: f32,
+    ) -> ResolvedButtonStyle {
+        let style = match role {
+            ButtonFamilyRole::Text => &self.text,
+            ButtonFamilyRole::Icon => &self.icon,
+            // The toggle keeps the older path until it has its own style.
+            ButtonFamilyRole::Toggle { .. } => return resolved_from_look(&theme_look(self, role, state, scale_factor)),
+        };
+        let tokens = ThemeTokenSource::for_family(&self.tokens, "button");
+        style.resolve(&ResolveCx::new(&tokens, scale_factor), StateSet::from(state))
     }
 }
 

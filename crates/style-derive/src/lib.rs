@@ -4,8 +4,9 @@
 //! - `path`: registers the style for tools; omit it for parts.
 //! - `snap`: snap resolved `Px` fields to device pixels.
 //!
-//! Field attributes: `#[style(range = 0.0..=64.0, label = "Size")]`.
+//! Field attributes: `#[style(range = 0.0..=64.0, label = "Size", snap = false)]`.
 //! - `range`: editor range for numeric fields.
+//! - `snap`: override the struct's `snap` for this field.
 //! - `label`: editor label; defaults to the field name in title case.
 //!
 //! Field types decide how a field is handled:
@@ -13,7 +14,7 @@
 //! - `States<V<T>>`: a per-state value;
 //! - `Computed<T>`: derived in Rust by a method of the same name,
 //!   `fn name(&self, cx: &ResolveCx, at: StateSet) -> <T as Leaf>::Resolved`;
-//!   read-only in editors and absent from patches;
+//!   read-only in editors and not settable by path;
 //! - any other type: a nested part that must also derive `Style`.
 
 use darling::ast::Data;
@@ -46,6 +47,8 @@ struct StyleField {
     range: Option<syn::Expr>,
     #[darling(default)]
     label: Option<String>,
+    #[darling(default)]
+    snap: Option<bool>,
 }
 
 enum Shape<'a> {
@@ -144,20 +147,20 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
     let ls = quote!(::xgpui_luma_style);
     let StyleInput { ident, vis, attrs, data, path, snap } = input;
     let resolved = format_ident!("Resolved{ident}");
-    let patch = format_ident!("{ident}Patch");
     let fields = data.take_struct().expect("darling checks struct_named").fields;
 
     let mut errors = darling::Error::accumulator();
     let mut resolved_fields = Vec::new();
     let mut resolve_body = Vec::new();
     let mut scope_arms = Vec::new();
-    let mut patch_fields = Vec::new();
-    let mut patch_methods = Vec::new();
-    let mut apply_body = Vec::new();
     let mut descriptors = Vec::new();
     let mut handles = Vec::new();
     let mut lerp_body = Vec::new();
     let mut computed_markers = Vec::new();
+    let mut get_arms = Vec::new();
+    let mut set_arms = Vec::new();
+    let mut describe_arms = Vec::new();
+    let mut states_used = Vec::new();
 
     for field in &fields {
         let name = field.ident.as_ref().expect("named field");
@@ -183,6 +186,9 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
                 resolved_fields.push(quote!(#[doc = #doc] #field_vis #name: <#inner as #ls::Leaf>::Resolved));
                 resolve_body.push(quote!(#name: Self::#name(self, cx, at)));
                 computed_markers.push(quote!(let _ = &self.#name;));
+                describe_arms.push(quote!((#key, ::core::option::Option::None) => {
+                    ::core::option::Option::Some(::std::string::String::from("computed"))
+                }));
                 descriptors.push(quote!(#ls::FieldDesc {
                     name: #key,
                     label: #label,
@@ -202,6 +208,14 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
                 } else {
                     quote!(self.#name)
                 };
+                let snap = field.snap.unwrap_or(snap);
+                if stateful {
+                    states_used.push(quote!(
+                        for selector in self.#name.selectors() {
+                            used = used.union(selector);
+                        }
+                    ));
+                }
                 let handle = format_ident!("{}", key.to_uppercase());
                 resolved_fields.push(quote!(#[doc = #doc] #field_vis #name: <#inner as #ls::Leaf>::Resolved));
                 handles.push(quote!(
@@ -213,21 +227,30 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
                         #name: #ls::Leaf::finish(#value.eval(cx, self, at, 0), cx, #snap)
                     ));
                     scope_arms.push(quote!(
-                        #key => ::core::option::Option::Some(#ls::Leaf::to_dyn(&#value.eval(cx, self, at, depth)))
+                        #key => ::core::option::Option::Some(#ls::Leaf::to_dyn(
+                            &#ls::Leaf::snapped(#value.eval(cx, self, at, depth), cx, #snap),
+                        ))
                     ));
-                    patch_fields.push(quote!(pub #name: ::core::option::Option<#ty>));
-                    patch_methods.push(quote!(
-                        #[doc = #doc]
-                        pub fn #name(mut self, value: impl ::core::convert::Into<#ty>) -> Self {
-                            self.#name = ::core::option::Option::Some(value.into());
-                            self
+                    get_arms.push(quote!((#key, ::core::option::Option::None) => {
+                        #ls::FieldScope::field(self, #key, cx, at, 0)
+                    }));
+                    let assign = if stateful {
+                        quote!(self.#name.set(at, #ls::V::Lit(literal)))
+                    } else {
+                        quote!(self.#name = #ls::V::Lit(literal))
+                    };
+                    set_arms.push(quote!((#key, ::core::option::Option::None) => {
+                        match <#inner as #ls::Leaf>::from_dyn(&value) {
+                            ::core::option::Option::Some(literal) => {
+                                #assign;
+                                true
+                            }
+                            ::core::option::Option::None => false,
                         }
-                    ));
-                    apply_body.push(quote!(
-                        if let ::core::option::Option::Some(value) = &patch.#name {
-                            self.#name = ::core::clone::Clone::clone(value);
-                        }
-                    ));
+                    }));
+                    describe_arms.push(quote!((#key, ::core::option::Option::None) => {
+                        ::core::option::Option::Some(#value.describe())
+                    }));
                 }
                 descriptors.push(quote!(#ls::FieldDesc {
                     name: #key,
@@ -248,18 +271,16 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
                 }
                 resolved_fields.push(quote!(#[doc = #doc] #field_vis #name: <#ty as #ls::Style>::Resolved));
                 resolve_body.push(quote!(#name: #ls::Style::resolve(&self.#name, cx, at)));
-                patch_fields.push(quote!(pub #name: <#ty as #ls::Style>::Patch));
-                patch_methods.push(quote!(
-                    #[doc = #doc]
-                    pub fn #name(
-                        mut self,
-                        edit: impl ::core::ops::FnOnce(<#ty as #ls::Style>::Patch) -> <#ty as #ls::Style>::Patch,
-                    ) -> Self {
-                        self.#name = edit(::core::mem::take(&mut self.#name));
-                        self
-                    }
-                ));
-                apply_body.push(quote!(#ls::Style::apply(&mut self.#name, &patch.#name);));
+                states_used.push(quote!(used = used.union(#ls::Style::states_used(&self.#name));));
+                get_arms.push(quote!((#key, ::core::option::Option::Some(rest)) => {
+                    #ls::Style::get(&self.#name, rest, cx, at)
+                }));
+                set_arms.push(quote!((#key, ::core::option::Option::Some(rest)) => {
+                    #ls::Style::set(&mut self.#name, rest, at, value)
+                }));
+                describe_arms.push(quote!((#key, ::core::option::Option::Some(rest)) => {
+                    #ls::Style::describe(&self.#name, rest, at)
+                }));
                 descriptors.push(quote!(#ls::FieldDesc {
                     name: #key,
                     label: #label,
@@ -275,7 +296,6 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
     let name = path.clone().unwrap_or_default();
     let register = path.map(|_| quote!(#ls::inventory::submit! { #ls::Registered(<#ident as #ls::Style>::SHAPE) }));
     let resolved_doc = format!("Resolved [`{ident}`]: plain values for templates.");
-    let patch_doc = format!("A sparse overlay for [`{ident}`]. Unset fields keep the underlying value.");
 
     Ok(quote! {
         #[doc = #resolved_doc]
@@ -284,23 +304,8 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
             #(#resolved_fields,)*
         }
 
-        #[doc = #patch_doc]
-        #[derive(Clone, Debug, Default)]
-        #vis struct #patch {
-            #(#patch_fields,)*
-        }
-
-        impl #patch {
-            #(#patch_methods)*
-        }
-
         impl #ident {
             #(#handles)*
-
-            /// An empty patch for this style.
-            pub fn patch() -> #patch {
-                #patch::default()
-            }
         }
 
         impl #ls::FieldScope for #ident {
@@ -321,7 +326,6 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
 
         impl #ls::Style for #ident {
             type Resolved = #resolved;
-            type Patch = #patch;
             const SHAPE: &'static #ls::StyleShape = &#ls::StyleShape {
                 name: #name,
                 type_name: stringify!(#ident),
@@ -336,8 +340,39 @@ fn expand(input: StyleInput) -> darling::Result<TokenStream> {
             }
 
             #[allow(unused_variables)]
-            fn apply(&mut self, patch: &#patch) {
-                #(#apply_body)*
+            fn get(
+                &self,
+                path: &str,
+                cx: &#ls::ResolveCx<'_>,
+                at: #ls::StateSet,
+            ) -> ::core::option::Option<#ls::Dyn> {
+                match #ls::split_path(path) {
+                    #(#get_arms)*
+                    _ => ::core::option::Option::None,
+                }
+            }
+
+            #[allow(unused_variables)]
+            fn set(&mut self, path: &str, at: #ls::StateSet, value: #ls::Dyn) -> bool {
+                match #ls::split_path(path) {
+                    #(#set_arms)*
+                    _ => false,
+                }
+            }
+
+            #[allow(unused_variables)]
+            fn describe(&self, path: &str, at: #ls::StateSet) -> ::core::option::Option<::std::string::String> {
+                match #ls::split_path(path) {
+                    #(#describe_arms)*
+                    _ => ::core::option::Option::None,
+                }
+            }
+
+            #[allow(unused_mut)]
+            fn states_used(&self) -> #ls::StateSet {
+                let mut used = #ls::StateSet::NONE;
+                #(#states_used)*
+                used
             }
         }
 

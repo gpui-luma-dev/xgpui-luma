@@ -15,15 +15,21 @@ use crate::theme::{ColorVizLookExt, Look};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::event_stream::ControlEventStream;
+use super::theme_inspector::{InspectorSplit, ThemeInspector};
+use xgpui_luma::controls::toolbar::ToolbarStyle;
 
 pub struct ToolbarControlExposition {
     look: Arc<Look>,
     left_pane: Entity<ToolbarExpositionLeftPane>,
+    split: Entity<InspectorSplit>,
+    inspector: Entity<ThemeInspector<ToolbarStyle>>,
 }
 
 struct ToolbarExpositionLeftPane {
     look: Arc<Look>,
     toolbar: Toolbar,
+    /// Template preview: stripped toolbars, enabled and disabled.
+    preview: [Toolbar; 2],
     roving_focus_button: Entity<Button<()>>,
     sequential_focus_button: Entity<Button<()>>,
     event_stream: Entity<ControlEventStream>,
@@ -33,7 +39,9 @@ struct ToolbarExpositionLeftPane {
 impl ToolbarExpositionLeftPane {
     fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
-        self.toolbar.update(cx, |toolbar, cx| toolbar.notify_items(cx));
+        for toolbar in [&self.toolbar, &self.preview[0], &self.preview[1]] {
+            toolbar.update(cx, |toolbar, cx| toolbar.notify_items(cx));
+        }
         self.roving_focus_button.update(cx, |_, cx| cx.notify());
         self.sequential_focus_button.update(cx, |_, cx| cx.notify());
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look, cx));
@@ -63,6 +71,19 @@ impl Render for ToolbarExpositionLeftPane {
                     sdk_preview(
                         "workshop-sdk-toolbar-preview",
                         div().id("command-toolbar-scroll").w_full().overflow_x_scroll().child(self.toolbar.clone()),
+                    ),
+                ))
+                .child(section(
+                    &self.look,
+                    "command-toolbar-template-preview",
+                    "Template Preview",
+                    "A stripped SDK toolbar, enabled and disabled.",
+                    1120.,
+                    super::template_preview::preview_table(
+                        &self.look,
+                        &["Enabled", "Disabled"],
+                        PREVIEW_COLUMN_WIDTH,
+                        vec![("SDK", self.preview.iter().map(|toolbar| toolbar.clone().into_any_element()).collect())],
                     ),
                 ))
                 .child(section(
@@ -191,9 +212,14 @@ impl ToolbarControlExposition {
             .without_card()
         });
 
+        let preview = [
+            stripped_toolbar("lab-toolbar-preview-enabled", true, cx),
+            stripped_toolbar("lab-toolbar-preview-disabled", false, cx),
+        ];
         let left_pane = cx.new(|_| ToolbarExpositionLeftPane {
             look: look.clone(),
             toolbar: toolbar.clone(),
+            preview,
             roving_focus_button: roving_focus_button.clone(),
             sequential_focus_button: sequential_focus_button.clone(),
             event_stream: event_stream.clone(),
@@ -243,12 +269,20 @@ impl ToolbarControlExposition {
             }
         });
 
-        Self { look, left_pane }
+        let tokens = xgpui_luma::theme::ThemeTokens::default();
+        let style = ToolbarStyle::from_stylesheet(&tokens.stylesheet);
+        let inspector_look = look.clone();
+        let inspector = cx.new(|cx| ThemeInspector::new(inspector_look, "Toolbar", "toolbar", tokens, style, cx));
+        let (left, right) = (left_pane.clone().into(), inspector.clone().into());
+        let split = cx.new(|cx| InspectorSplit::new("workshop-toolbar-inspector-split", left, right, cx));
+
+        Self { look, left_pane, split, inspector }
     }
 
     pub fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
+        self.inspector.update(cx, |inspector, cx| inspector.sync_look(look.clone(), cx));
         cx.notify();
     }
 }
@@ -260,7 +294,7 @@ impl Render for ToolbarControlExposition {
             .size_full()
             .min_h(px(0.0))
             .min_w(px(0.0))
-            .child(self.left_pane.clone())
+            .child(self.split.clone())
     }
 }
 
@@ -316,6 +350,29 @@ fn toolbar_selector<T: 'static>(
         .spawn(cx);
     ToolbarItem::selector_control(id, selector, cx).label(label)
 }
+const PREVIEW_COLUMN_WIDTH: f32 = 420.;
+
+/// The Studio style guides' stripped editing toolbar: a selector, two toggles and a button.
+fn stripped_toolbar<T: 'static>(id: &'static str, enabled: bool, cx: &mut Context<T>) -> Toolbar {
+    xgpui_luma::controls::toolbar::ToolbarBuilder::new(id)
+        .enabled(enabled)
+        .item(toolbar_selector(
+            "style",
+            "Paragraph",
+            [
+                SelectorItem::new("paragraph").label("Paragraph").icon(LucideIcon::Pilcrow),
+                SelectorItem::new("heading").label("Heading").icon(LucideIcon::TypeIcon),
+            ],
+            "paragraph",
+            cx,
+        ))
+        .separator("format-separator")
+        .item(toolbar_toggle("bold", LucideIcon::Bold, cx))
+        .item(toolbar_toggle("italic", LucideIcon::Italic, cx))
+        .item(toolbar_button("link", LucideIcon::Link, cx))
+        .spawn(cx)
+}
+
 fn toolbar_toggle<T: 'static>(id: &'static str, icon: LucideIcon, cx: &mut Context<T>) -> ToolbarItem {
     let toggle = xgpui_luma::controls::toggle::new(id)
         .content(move |model, _| {
@@ -342,6 +399,20 @@ mod tests {
     use gpui::{Focusable, TestAppContext};
     use xgpui_luma::controls::button::ButtonEvent;
     use crate::workshop::{Sample, Workshop};
+
+    #[test]
+    fn toolbar_sample_has_a_theme_inspector_with_a_disabled_toggle() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (workshop, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        workshop.update(cx, |workshop, cx| workshop.select("toolbar", cx));
+        cx.run_until_parked();
+        let inspector = cx.update(|_, cx| match &workshop.read(cx).samples["toolbar"] {
+            Sample::Toolbar(sample) => sample.read(cx).inspector.clone(),
+            _ => unreachable!(),
+        });
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).toggle_count()), 1, "disabled only");
+    }
 
     #[test]
     fn command_toolbar_focus_modes_work_and_survive_navigation() {

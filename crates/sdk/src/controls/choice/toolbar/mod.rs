@@ -1,5 +1,6 @@
 mod control;
 mod model;
+mod style;
 mod template;
 pub(crate) mod theme;
 
@@ -12,7 +13,8 @@ pub use template::{
     ThemedToolbarTemplate, ToolbarRenderedItem, ToolbarTemplate, ToolbarTemplateModifier, default_toolbar_template,
     toolbar_template_with_theme,
 };
-pub use theme::{DefaultToolbarTheme, ToolbarLook, ToolbarTheme, ToolbarVariant, default_toolbar_theme};
+pub use style::{ResolvedToolbarSeparatorPart, ResolvedToolbarStyle, ToolbarSeparatorPart, ToolbarStyle};
+pub use theme::{DefaultToolbarTheme, ToolbarLook, ToolbarTheme, ToolbarVariant, default_toolbar_theme, resolved_from_look};
 
 use gpui::{Entity, SharedString};
 

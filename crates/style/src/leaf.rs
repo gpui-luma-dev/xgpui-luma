@@ -26,6 +26,11 @@ pub trait Leaf: Clone + std::fmt::Debug + Default + PartialEq + 'static {
     fn to_dyn(&self) -> Dyn;
     /// Convert to the resolved form; `snap` asks lengths to snap to device pixels.
     fn finish(self, cx: &ResolveCx<'_>, snap: bool) -> Self::Resolved;
+    /// The value as other fields see it through references: lengths snapped
+    /// when `snap` is set, everything else unchanged.
+    fn snapped(self, _cx: &ResolveCx<'_>, _snap: bool) -> Self {
+        self
+    }
 }
 
 /// A leaf that supports arithmetic in expressions.
@@ -35,7 +40,7 @@ pub trait Numeric: Leaf {
 }
 
 macro_rules! numeric_leaf {
-    ($(#[$meta:meta])* $name:ident, $kind:expr, |$value:ident, $cx:ident, $snap:ident| $finish:expr) => {
+    ($(#[$meta:meta])* $name:ident, $kind:expr, snaps: $snaps:literal, |$value:ident| $finish:expr) => {
         $(#[$meta])*
         #[derive(Clone, Copy, Debug, Default, PartialEq)]
         pub struct $name(pub f32);
@@ -52,9 +57,12 @@ macro_rules! numeric_leaf {
             fn to_dyn(&self) -> Dyn {
                 Dyn::Number(self.0)
             }
-            fn finish(self, $cx: &ResolveCx<'_>, $snap: bool) -> f32 {
-                let $value = self.0;
+            fn finish(self, cx: &ResolveCx<'_>, snap: bool) -> f32 {
+                let $value = self.snapped(cx, snap).0;
                 $finish
+            }
+            fn snapped(self, cx: &ResolveCx<'_>, snap: bool) -> Self {
+                if $snaps && snap { Self(cx.snap(self.0)) } else { self }
             }
         }
 
@@ -73,19 +81,22 @@ numeric_leaf!(
     /// A length in logical pixels. Snaps to device pixels when the style asks.
     Px,
     ValueKind::Px,
-    |value, cx, snap| if snap { cx.snap(value) } else { value }
+    snaps: true,
+    |value| value
 );
 numeric_leaf!(
     /// A plain number: ratios and multipliers.
     Scalar,
     ValueKind::Scalar,
-    |value, _cx, _snap| value
+    snaps: false,
+    |value| value
 );
 numeric_leaf!(
     /// An opacity from 0 to 1.
     Opacity,
     ValueKind::Opacity,
-    |value, _cx, _snap| value.clamp(0.0, 1.0)
+    snaps: false,
+    |value| value.clamp(0.0, 1.0)
 );
 
 /// A paint color.
@@ -197,6 +208,9 @@ where
     }
     fn finish(self, cx: &ResolveCx<'_>, snap: bool) -> Self::Resolved {
         self.map(|value| value.finish(cx, snap))
+    }
+    fn snapped(self, cx: &ResolveCx<'_>, snap: bool) -> Self {
+        self.map(|value| value.snapped(cx, snap))
     }
 }
 

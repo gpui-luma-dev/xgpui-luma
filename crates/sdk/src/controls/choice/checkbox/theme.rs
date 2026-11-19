@@ -6,7 +6,14 @@ use std::sync::{Arc, OnceLock};
 use gpui::{BoxShadow, Hsla, SharedString};
 
 use crate::theme::scales::{label_baseline_shift, snap_to_pixel};
+use crate::theme::style_tokens::ThemeTokenSource;
 use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use xgpui_luma_style::{ResolveCx, State, StateSet, Style};
+
+use super::style::{
+    CheckboxStyle, ResolvedCheckboxGlyphPart, ResolvedCheckboxIndicatorPart, ResolvedCheckboxLabelPart,
+    ResolvedCheckboxRootPart, ResolvedCheckboxStyle, interaction_state,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CheckboxScale {
@@ -88,11 +95,72 @@ pub trait CheckboxTheme: Send + Sync {
     fn scale(&self, scale_factor: f32) -> CheckboxScale {
         CheckboxScale::compute(&self.metrics(), scale_factor)
     }
+
+    /// Everything the template reads, for the given states (issue #282).
+    /// The default adapts [`resolve`](Self::resolve) and [`scale`](Self::scale),
+    /// so themes written before `CheckboxStyle` keep working unchanged.
+    fn resolved_style(&self, at: StateSet, scale_factor: f32) -> ResolvedCheckboxStyle {
+        let palette = self.resolve(at.contains(State::Checked), interaction_state(at));
+        resolved_from_palette(&palette, &self.scale(scale_factor), &self.metrics())
+    }
 }
 
-#[derive(Clone, Debug, Default)]
+/// Build a resolved style from the older palette and scale.
+pub fn resolved_from_palette(
+    palette: &CheckboxPalette,
+    scale: &CheckboxScale,
+    metrics: &MetricTokens,
+) -> ResolvedCheckboxStyle {
+    let control_height = metrics.control_height();
+    ResolvedCheckboxStyle {
+        disabled_opacity: scale.disabled_opacity,
+        control_radius: scale.control_radius,
+        control_padding_x: scale.control_padding_x,
+        control_padding_y: scale.control_padding_y,
+        height: scale.height,
+        gap: scale.gap,
+        border_width: metrics.border_width,
+        indicator_scale: if control_height > 0.0 {
+            scale.indicator_size / control_height
+        } else {
+            0.0
+        },
+        indicator_size: scale.indicator_size,
+        indicator_radius: scale.indicator_radius,
+        glyph_inset: ((scale.indicator_size - scale.glyph_size) / 2.0).max(0.0),
+        glyph_size: scale.glyph_size,
+        label_baseline_shift: scale.label_baseline_shift,
+        root: ResolvedCheckboxRootPart {
+            background: palette.control_background,
+            border: palette.control_border,
+            focus_border: palette.focus_border,
+        },
+        indicator: ResolvedCheckboxIndicatorPart {
+            background: palette.indicator_background,
+            border: palette.indicator_border,
+            shadow: palette.indicator_shadow.clone(),
+        },
+        glyph: ResolvedCheckboxGlyphPart { foreground: palette.checkmark_color },
+        label: ResolvedCheckboxLabelPart {
+            foreground: palette.label_color,
+            font_family: palette.label_font_family.clone(),
+            font_size: palette.label_typography.size,
+            line_height: palette.label_typography.line_height,
+            font_weight: palette.label_typography.weight,
+        },
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct DefaultCheckboxTheme {
     tokens: ThemeTokens,
+    style: CheckboxStyle,
+}
+
+impl Default for DefaultCheckboxTheme {
+    fn default() -> Self {
+        Self::new(ThemeTokens::default())
+    }
 }
 
 pub fn default_checkbox_theme() -> Arc<dyn CheckboxTheme> {
@@ -103,7 +171,8 @@ pub fn default_checkbox_theme() -> Arc<dyn CheckboxTheme> {
 
 impl DefaultCheckboxTheme {
     pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
+        let style = CheckboxStyle::from_stylesheet(&tokens.stylesheet);
+        Self { tokens, style }
     }
 }
 
@@ -164,6 +233,11 @@ impl CheckboxTheme for DefaultCheckboxTheme {
 
     fn scale(&self, scale_factor: f32) -> CheckboxScale {
         CheckboxScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
+    }
+
+    fn resolved_style(&self, at: StateSet, scale_factor: f32) -> ResolvedCheckboxStyle {
+        let tokens = ThemeTokenSource::for_family(&self.tokens, "checkbox");
+        self.style.resolve(&ResolveCx::new(&tokens, scale_factor), at)
     }
 }
 

@@ -38,7 +38,7 @@ impl State {
         State::Disabled,
     ];
 
-    /// Lowercase name used in descriptors and exported patches.
+    /// Lowercase name used in descriptors and tools.
     pub const fn name(self) -> &'static str {
         match self {
             State::Invalid => "invalid",
@@ -66,6 +66,11 @@ impl StateSet {
 
     pub const fn without(self, state: State) -> Self {
         Self(self.0 & !(state as u16))
+    }
+
+    /// Every state in either set.
+    pub const fn union(self, other: StateSet) -> Self {
+        Self(self.0 | other.0)
     }
 
     pub const fn contains(self, state: State) -> bool {

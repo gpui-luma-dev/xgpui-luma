@@ -5,8 +5,14 @@ crate::motion_profile!(CheckboxMotion => checkbox {
 mod callback;
 pub use callback::{CheckboxCallbacks, CheckboxEventExt};
 
+mod style;
 mod template;
 pub(crate) mod theme;
+
+pub use style::{
+    CheckboxGlyphPart, CheckboxIndicatorPart, CheckboxLabelPart, CheckboxRootPart, CheckboxStyle, ResolvedCheckboxStyle,
+};
+pub use theme::resolved_from_palette;
 
 pub use template::{ThemedCheckboxTemplate, default_template as default_checkbox_template};
 

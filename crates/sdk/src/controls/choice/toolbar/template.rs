@@ -81,29 +81,29 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div> {
-        let look = self.theme.resolve(model.enabled, model.variant);
+        let s = self.theme.resolved_style(model.enabled, model.variant);
         let mut root = div()
             .id(model.id.clone())
             .flex()
             .flex_row()
             .items_center()
-            .gap(px(look.gap))
-            .px(px(look.padding_x))
-            .py(px(look.padding_y))
-            .rounded(px(look.radius))
-            .bg(look.background);
+            .gap(px(s.gap))
+            .px(px(s.padding_x))
+            .py(px(s.padding_y))
+            .rounded(px(s.radius))
+            .bg(s.background);
 
-        if model.variant == ToolbarVariant::Outline {
-            root = root.border(px(look.border_width)).border_color(look.border);
+        if let Some(border) = s.border {
+            root = root.border(px(s.border_width)).border_color(border);
         }
 
         for item in items {
             let child = match item.kind {
                 ToolbarItemKind::Separator => div()
-                    .w(px(look.separator_width))
-                    .h(px(look.separator_height))
+                    .w(px(s.separator.width))
+                    .h(px(s.separator.height))
                     .flex_none()
-                    .bg(look.separator)
+                    .bg(s.separator.color)
                     .into_any_element(),
                 ToolbarItemKind::Hosted => item.element,
             };

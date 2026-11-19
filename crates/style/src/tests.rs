@@ -253,20 +253,19 @@ fn token_edits_cascade_through_expressions() {
 }
 
 #[test]
-fn patches_replace_fields_and_whole_state_tables() {
+fn a_variant_is_a_clone_with_a_few_fields_changed() {
     const ACCENT: Token<Color> = Token::new("palette.accent");
     let mut tokens = Tokens::new();
     tokens.0.insert(ACCENT.path, Dyn::Color(color_for(ACCENT.path)));
 
-    let look = CheckStyle::patch()
-        .indicator_size(px(20.0))
-        .indicator(|part| part.background(States::new(tok::INPUT_BACKGROUND).on(Checked, ACCENT)));
-    let style = CheckStyle::default().with(&[&look]);
+    let mut style = CheckStyle::default();
+    style.indicator_size = px(20.0).into();
+    style.indicator.background = States::new(tok::INPUT_BACKGROUND).on(Checked, ACCENT);
 
     let cx = ResolveCx::new(&tokens, 1.0);
     let checked = style.resolve(&cx, Checked.into());
     assert_eq!(checked.indicator_size, 20.0);
-    assert_eq!(checked.glyph_size, 14.0, "references see the patched field");
+    assert_eq!(checked.glyph_size, 14.0, "references see the edited field");
     assert_eq!(checked.indicator.background, color_for(ACCENT.path));
     assert_eq!(checked.indicator.border, color_for(ACCENT.path), "border follows background");
 
@@ -354,4 +353,54 @@ fn values_describe_their_links() {
     assert!(style.indicator_size.is_linked());
     assert_eq!(style.glyph_size.describe(), "max((self.indicator_size - (self.glyph_inset * 2)), 0)");
     assert!(!style.glyph_inset.is_linked());
+}
+
+#[test]
+fn get_set_and_describe_by_path() {
+    let tokens = Tokens::new();
+    let cx = ResolveCx::new(&tokens, 1.0);
+    let mut style = CheckStyle::default();
+
+    assert_eq!(style.get("indicator_size", &cx, StateSet::NONE), Some(Dyn::Number(16.0)));
+    assert_eq!(
+        style.get("indicator.background", &cx, Checked.into()),
+        Some(Dyn::Color(color_for(tok::SELECTED.path)))
+    );
+    assert_eq!(style.get("indicator", &cx, StateSet::NONE), None, "parts have no value");
+    assert_eq!(style.get("double_gap", &cx, StateSet::NONE), None, "computed fields are not readable by path");
+    assert_eq!(
+        style.describe("indicator_size", StateSet::NONE).as_deref(),
+        Some("(metrics.control.control_height * 0.5)")
+    );
+    assert_eq!(style.describe("indicator.border", Checked.into()).as_deref(), Some("self.background"));
+
+    assert!(style.set("glyph_inset", StateSet::NONE, Dyn::Number(5.0)));
+    assert_eq!(style.get("glyph_size", &cx, StateSet::NONE), Some(Dyn::Number(6.0)), "references follow the edit");
+    assert!(style.set("indicator.background", Hovered.into(), Dyn::Color(color_for("x"))));
+    assert_eq!(style.resolve(&cx, Hovered.into()).indicator.background, color_for("x"));
+    assert_eq!(style.resolve(&cx, StateSet::NONE).indicator.background, color_for(tok::INPUT_BACKGROUND.path));
+
+    assert!(!style.set("glyph_inset", StateSet::NONE, Dyn::Color(color_for("x"))), "wrong type");
+    assert!(!style.set("nope", StateSet::NONE, Dyn::Number(1.0)));
+    assert!(!style.set("double_gap", StateSet::NONE, Dyn::Number(1.0)));
+    assert!(cx.errors().is_empty(), "{:?}", cx.errors());
+}
+
+#[test]
+fn states_used_collects_rule_states_across_parts() {
+    let used = CheckStyle::default().states_used();
+    assert_eq!(used, StateSet::NONE.with(Hovered).with(Pressed).with(Checked).with(Disabled));
+}
+
+#[test]
+fn snapped_expressions_round_only_where_written() {
+    let mut tokens = Tokens::new();
+    tokens.0.insert(tok::GAP.path, Dyn::Number(7.3));
+    let cx = ResolveCx::new(&tokens, 2.0);
+    let mut style = CheckStyle::default();
+    style.gap = tok::GAP.snapped();
+    assert_eq!(style.describe("gap", StateSet::NONE).as_deref(), Some("snap(metrics.control.gap)"));
+    assert_eq!(style.get("gap", &cx, StateSet::NONE), Some(Dyn::Number(7.5)));
+    let half: V<Px> = (tok::GAP * 0.5).snapped();
+    assert_eq!(half.describe(), "snap((metrics.control.gap * 0.5))");
 }
