@@ -24,6 +24,7 @@ mod event_stream;
 mod sample_layout;
 mod sdk_sample;
 mod event_log_view;
+mod style_inspector;
 
 use std::{
     collections::HashMap,

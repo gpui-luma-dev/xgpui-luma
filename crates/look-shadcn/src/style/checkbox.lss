@@ -1,0 +1,55 @@
+// Shadcn checkbox. Layer: look, over the SDK checkbox. Replaces checkbox_look, the checkbox color and
+// elevation rules and the checkbox size presets; `style::tests::checkbox_matches_the_native_look`
+// checks it for every variant, size, state and mode.
+// The base is Shadcn's primary style. Indicator, checkmark and label colors ignore hover and pressed,
+// so they own their property (`:=`) against the SDK's hover and pressed rules.
+
+checkbox {
+  size sm { indicator_scale = 0.45  indicator_radius = 2  glyph_inset = 2 }
+  size lg { indicator_scale = 0.55  indicator_radius = 6  glyph_inset = 4 }
+
+  part root {
+    focus_border = first(css.ring, shadcn.fallback_foreground)
+  }
+
+  part indicator {
+    background := outline_layer(default)
+    border     := first(css.border, shadcn.fallback_foreground)
+    shadow     := first(css.shadow_xs, [])
+    :checked  { background = action_layer(primary, default)  border = background }
+    :disabled { background = css.muted  border = first(css.border, shadcn.fallback_foreground)  shadow = none }
+  }
+
+  part glyph {
+    foreground := css.foreground
+    :checked  { foreground = action_foreground(primary) }
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  part label {
+    foreground := css.foreground
+    font_size   = shadcn.control_font_size
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  variant secondary {
+    part indicator { :checked { background = action_layer(secondary, default) } }
+    part glyph { :checked { foreground = action_foreground(secondary) } }
+  }
+
+  variant outline {
+    part indicator { :checked { background = action_layer(outline, default) } }
+    part glyph { :checked { foreground = action_foreground(outline) } }
+  }
+
+  variant ghost {
+    part indicator { :checked { background = action_layer(ghost, default) } }
+    part glyph { :checked { foreground = action_foreground(ghost) } }
+  }
+
+  // The primary indicator with no focus ring paint and no shadow.
+  variant content_only {
+    part root { focus_border = transparent }
+    part indicator { shadow := none }
+  }
+}

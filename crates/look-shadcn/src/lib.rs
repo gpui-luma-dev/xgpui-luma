@@ -18,6 +18,7 @@ mod resolve;
 mod shadow;
 mod radius;
 mod size;
+pub mod style;
 mod state_color;
 pub mod stylesheet;
 mod tokens;

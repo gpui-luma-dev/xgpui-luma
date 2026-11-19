@@ -104,6 +104,10 @@ impl StateSet {
         if active { self.with(state) } else { self }
     }
 
+    pub fn without(self, state: StateId) -> Self {
+        StateSet(self.0 & !(1 << state.0))
+    }
+
     pub fn contains(self, state: StateId) -> bool {
         self.0 & (1 << state.0) != 0
     }
@@ -145,6 +149,16 @@ impl StyleKey {
 
     pub fn state_if(mut self, state: StateId, active: bool) -> Self {
         self.states = self.states.with_if(state, active);
+        self
+    }
+
+    /// Set or clear one state (tools toggling states; templates usually build keys with `state_if`).
+    pub fn set_state(mut self, state: StateId, active: bool) -> Self {
+        self.states = if active {
+            self.states.with(state)
+        } else {
+            self.states.without(state)
+        };
         self
     }
 

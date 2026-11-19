@@ -286,6 +286,15 @@ impl ShadcnLook {
         }
     }
 
+    /// Mode tokens for `mode`, whatever the current mode is (style token sources hold both).
+    pub(crate) fn mode_tokens_for(&self, mode: ThemeMode) -> Arc<ShadcnModeTokens> {
+        let snapshot = self.snapshot();
+        match mode {
+            ThemeMode::Light => Arc::clone(&snapshot.light),
+            ThemeMode::Dark => Arc::clone(&snapshot.dark),
+        }
+    }
+
     pub fn catalog(&self) -> Arc<CssTokenCatalog> {
         Arc::clone(&self.snapshot().catalog)
     }
