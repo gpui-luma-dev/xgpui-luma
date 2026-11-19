@@ -192,3 +192,40 @@ fn unknown_controls_and_names_are_reported_not_panicked() {
     let err = theme.key_named("checkbox", &[], &["hovered"]).err().expect("unknown state");
     assert_eq!(err.message, "unknown state \"hovered\" — did you mean \"hover\"?");
 }
+
+#[test]
+fn references_to_another_control_find_the_attribute_from_the_files() {
+    // The crate does not assume an attribute called "variant".
+    let config = Arc::new(
+        xgpui_luma_style::Config::builder()
+            .layers(&["sdk"])
+            .states(&["hover"])
+            .attributes(&["style", "size"])
+            .build()
+            .unwrap(),
+    );
+    let src = "popover { offset: length = 4  style panel { offset = 9 } }\nchip { gap = popover.panel.offset }";
+    let sheet = Stylesheet::builder(config.clone())
+        .layer("sdk", [Source::new("p.lss", src)])
+        .compile()
+        .expect("compiles");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    assert_eq!(theme.resolve(&StyleKey::new(ControlId::new("chip"))).root().gap(), Some(9.0));
+
+    let unknown = "popover { offset: length = 4  style panel { offset = 9 } }\nchip { gap = popover.pannel.offset }";
+    let d = Stylesheet::builder(config.clone())
+        .layer("sdk", [Source::new("p.lss", unknown)])
+        .compile()
+        .err()
+        .expect("fails");
+    assert!(d.mentions("popover has no scope \"pannel\" — did you mean \"panel\"?"), "{d}");
+
+    let ambiguous = "popover { offset: length = 4  style big { offset = 9 }  size big { offset = 12 } }\nchip { gap = popover.big.offset }";
+    let d = Stylesheet::builder(config)
+        .layer("sdk", [Source::new("p.lss", ambiguous)])
+        .compile()
+        .err()
+        .expect("fails");
+    assert!(d.has_code(Code::AmbiguousName), "{d}");
+    assert!(d.mentions("\"big\" is a value of more than one attribute of popover (size, style)"), "{d}");
+}

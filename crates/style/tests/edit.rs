@@ -62,7 +62,7 @@ fn exported_variants_round_trip() {
         RuleSpec::new("checkbox", "indicator", "background", "black").state("checked"),
         RuleSpec::new("checkbox", "root", "gap", "12"),
     ];
-    let text = sheet.export_variant("checkbox", "brand", &edits);
+    let text = sheet.export_scope("checkbox", "variant", "brand", &edits);
     assert_eq!(
         text,
         "checkbox {\n  variant brand {\n    part indicator {\n      background = palette.state.hover.background\n      :checked { background = black }\n    }\n    gap = 12\n  }\n}\n"

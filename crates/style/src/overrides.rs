@@ -1,7 +1,7 @@
 //! Instance overrides: values set on one control instance (API topic 5).
 
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::handles::{PartId, Prop, intern};
 use crate::value::Value;
@@ -16,16 +16,12 @@ pub enum OverrideValue {
 /// Values set on one control instance. Each replaces its property in every state, like `:=` in a
 /// layer above all others, and takes part in the cascade (so `border = background` follows it).
 ///
-/// Build once (e.g. in a control builder) and reuse: resolved results are cached per override set.
+/// Override sets with equal contents share cached results, so building one per frame is fine.
 #[derive(Clone, Debug)]
 pub struct Overrides {
-    id: u64,
     entries: Arc<[(&'static str, &'static str, OverrideValue)]>,
-}
-
-fn next_id() -> u64 {
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    NEXT.fetch_add(1, Ordering::Relaxed)
+    /// Exact description of the contents; the cache key. Empty when there are no entries.
+    content: Arc<str>,
 }
 
 impl Default for Overrides {
@@ -34,9 +30,17 @@ impl Default for Overrides {
     }
 }
 
+impl PartialEq for Overrides {
+    fn eq(&self, other: &Self) -> bool {
+        self.content == other.content
+    }
+}
+
+impl Eq for Overrides {}
+
 impl Overrides {
     pub fn new() -> Self {
-        Self { id: next_id(), entries: Arc::from(Vec::new()) }
+        Self { entries: Arc::from(Vec::new()), content: Arc::from("") }
     }
 
     /// Set a property of a part to a value of the property's type.
@@ -53,23 +57,33 @@ impl Overrides {
         self.entries.is_empty()
     }
 
-    /// Identifies this override set in caches.
+    /// A hash of the contents: equal override sets have equal ids.
     pub fn id(&self) -> u64 {
-        self.id
+        let mut h = DefaultHasher::new();
+        self.content.hash(&mut h);
+        h.finish()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&'static str, &'static str, &OverrideValue)> {
         self.entries.iter().map(|(p, n, v)| (*p, *n, v))
     }
 
+    pub(crate) fn content(&self) -> &Arc<str> {
+        &self.content
+    }
+
     pub(crate) fn get(&self, part: &str, prop: &str) -> Option<&OverrideValue> {
-        self.entries.iter().rev().find(|(p, n, _)| *p == part && *n == prop).map(|(_, _, v)| v)
+        self.entries.iter().find(|(p, n, _)| *p == part && *n == prop).map(|(_, _, v)| v)
     }
 
     fn with(self, part: &str, prop: &str, value: OverrideValue) -> Self {
         let mut entries: Vec<_> =
             self.entries.iter().filter(|(p, n, _)| !(*p == part && *n == prop)).cloned().collect();
         entries.push((intern(part), intern(prop), value));
-        Self { id: next_id(), entries: entries.into() }
+        // Sorted, so the order of `set` calls does not change the identity.
+        entries.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        // `Debug` prints floats exactly, so equal descriptions mean equal contents.
+        let content: String = entries.iter().map(|(p, n, v)| format!("{p}.{n}={v:?};")).collect();
+        Self { entries: entries.into(), content: content.into() }
     }
 }

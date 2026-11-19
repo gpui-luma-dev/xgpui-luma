@@ -137,7 +137,7 @@ pub(crate) struct ThemeInner {
     pub(crate) roots: HashSet<String>,
     pub(crate) token_values: HashMap<String, Value>,
     generation: u64,
-    cache: Mutex<HashMap<(StyleKey, u64), Arc<Resolved>>>,
+    cache: Mutex<HashMap<CacheKey, Arc<Resolved>>>,
     pub(crate) diags: Mutex<Vec<Diagnostic>>,
 }
 
@@ -333,12 +333,17 @@ impl Theme {
     }
 
     fn resolve_inner(&self, key: &StyleKey, overrides: Option<&Overrides>) -> Arc<Resolved> {
-        let ck = (*key, overrides.map_or(0, Overrides::id));
+        let overrides = overrides.filter(|o| !o.is_empty());
+        let ck = (*key, overrides.map_or_else(|| Arc::from(""), |o| o.content().clone()));
         if let Some(hit) = self.inner.cache.lock().expect("cache lock").get(&ck) {
             return hit.clone();
         }
         let resolved = Arc::new(self.compute(key, overrides));
-        self.inner.cache.lock().expect("cache lock").insert(ck, resolved.clone());
+        let mut cache = self.inner.cache.lock().expect("cache lock");
+        if cache.len() >= MAX_CACHED {
+            cache.clear();
+        }
+        cache.insert(ck, resolved.clone());
         resolved
     }
 
@@ -386,6 +391,9 @@ impl Theme {
             return Resolved::default();
         };
         let model = self.inner.model();
+        if let Some(o) = overrides {
+            self.record(self.check_overrides(k.control, o));
+        }
         let ev = Evaluator::new(&self.inner, k.control, overrides, false);
         let mut parts = BTreeMap::new();
         for (pi, part) in model.controls[k.control].parts.iter().enumerate() {
@@ -405,6 +413,38 @@ impl Theme {
         }
         self.record(ev.diags.into_inner());
         Resolved { parts }
+    }
+
+    /// Report overrides for parts or properties the control does not have.
+    pub(crate) fn check_overrides(&self, control: usize, overrides: &Overrides) -> Vec<Diagnostic> {
+        let model = self.inner.model();
+        let def = &model.controls[control];
+        let mut problems = Vec::new();
+        for (part, prop, _) in overrides.iter() {
+            if def.part(part).is_none() {
+                let hint = suggest(part, def.parts.iter().map(|p| p.name.as_str()));
+                problems.push(Diagnostic {
+                    severity: Severity::Warning,
+                    ..Diagnostic::error(
+                        Code::UnknownPart,
+                        format!("instance override: unknown part \"{part}\" for {}{hint}", def.name),
+                    )
+                });
+            } else if model.prop_kind(control, prop).is_none() {
+                let hint = suggest(prop, model.prop_names(control));
+                problems.push(Diagnostic {
+                    severity: Severity::Warning,
+                    ..Diagnostic::error(
+                        Code::UnknownProperty,
+                        format!(
+                            "instance override: \"{prop}\" is not a core or declared property of {}{hint}",
+                            def.name
+                        ),
+                    )
+                });
+            }
+        }
+        problems
     }
 
     /// The control handle for a key's control index (for inspection).
@@ -429,7 +469,7 @@ pub(crate) fn props_of_part(model: &Model, control: usize, part: usize, override
     if let Some(o) = overrides {
         let part_name = &model.controls[control].parts[part].name;
         for (p, prop, _) in o.iter() {
-            if p == part_name && !props.iter().any(|x| x == prop) {
+            if p == part_name && model.prop_kind(control, prop).is_some() && !props.iter().any(|x| x == prop) {
                 props.push(prop.to_string());
             }
         }
@@ -601,6 +641,15 @@ fn collect_cands<'m>(
     }
 }
 
+/// A key and the exact contents of its override set (empty for none).
+type CacheKey = (StyleKey, Arc<str>);
+
+/// A span with no file: for values that come from Rust (instance overrides), not from a style file.
+const NO_SPAN: Span = Span { file: u32::MAX, start: 0, end: 0, line: 0, column: 0 };
+
+/// Most cached resolved keys per theme; the cache is cleared when it is full.
+const MAX_CACHED: usize = 4096;
+
 pub(crate) enum EvalErr {
     /// A native token is missing; `first()` skips these.
     Absent(String),
@@ -729,28 +778,34 @@ impl<'t> Evaluator<'t> {
         let label = format!("{}.{part_name}.{prop}", model.controls[control].name);
 
         // Instance overrides rank above every layer and own their property in all states.
+        // Overrides for unknown properties are reported once per resolve and ignored (see `compute`).
         if control == self.instance
+            && let Some(kind) = kind
             && let Some(value) = self.overrides.and_then(|o| o.get(part_name, prop))
         {
-            let span = Span::default();
-            self.enter(label, span)?;
+            // Overrides come from Rust, not a style file, so their problems have no file location.
+            let context = format!("instance override for {part_name}.{prop}");
+            self.enter(label, NO_SPAN)?;
             let result = match value {
                 OverrideValue::Value(v) => Ok(v.clone()),
                 OverrideValue::Token(path) => {
-                    let expr = Expr { kind: ExprKind::Path(path.split('.').map(str::to_owned).collect()), span };
+                    let expr =
+                        Expr { kind: ExprKind::Path(path.split('.').map(str::to_owned).collect()), span: NO_SPAN };
                     self.eval(&expr, Ctx::Const { scope: 0 }, key, false)
                 }
             };
             self.leave();
-            let value = result?;
-            let kind = kind.unwrap_or(Kind::Number);
+            let value = result.map_err(|e| match e {
+                EvalErr::Error(span, code, message) => EvalErr::Error(span, code, format!("{context}: {message}")),
+                absent => absent,
+            })?;
             return match value.coerce(kind) {
                 Ok(Value::None) => Ok((None, None)),
                 Ok(v) => Ok((Some(v), None)),
                 Err(v) => Err(EvalErr::Error(
-                    span,
+                    NO_SPAN,
                     Code::KindMismatch,
-                    format!("override for {prop} expects {kind}, found {}", v.describe()),
+                    format!("{context}: expects {kind}, found {}", v.describe()),
                 )),
             };
         }
@@ -973,10 +1028,13 @@ impl<'t> Evaluator<'t> {
                 self.trace_pop(name, ReferenceKind::Property, value.as_ref(), at, None);
                 value.unwrap_or(Value::None)
             }
-            Target::OtherControl { control, variant, prop } => {
+            Target::OtherControl { control, scope_value, prop } => {
                 let mut other = KeyData { control, attrs: Vec::new(), states: 0, scale: key.scale };
-                if let Some(v) = variant {
-                    other.attrs.push(("variant", intern(&v)));
+                if let Some(v) = scope_value {
+                    let attr = model.scope_attribute(control, &v).map_err(|_| {
+                        EvalErr::Error(expr.span, Code::UnknownName, format!("no single scope \"{v}\" in this control"))
+                    })?;
+                    other.attrs.push((intern(&attr), intern(&v)));
                 }
                 self.trace_push();
                 let result = self.prop_at(control, 0, &prop, &other);

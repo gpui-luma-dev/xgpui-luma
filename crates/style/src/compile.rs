@@ -1008,7 +1008,30 @@ impl Checker<'_> {
                 let _ = part;
                 self.model.prop_kind(control, &prop)
             }
-            Target::OtherControl { control, prop, .. } => {
+            Target::OtherControl { control, scope_value, prop } => {
+                if let Some(value) = &scope_value {
+                    let name = &self.model.controls[control].name;
+                    match self.model.scope_attribute(control, value) {
+                        Ok(_) => {}
+                        Err(attrs) if attrs.is_empty() => {
+                            let values = self.model.controls[control].scope_values.iter().map(|(_, v)| v.as_str());
+                            let hint = suggest(value, values);
+                            self.problems.push((
+                                expr.span,
+                                Code::UnknownName,
+                                format!("{name} has no scope \"{value}\"{hint}"),
+                            ));
+                        }
+                        Err(attrs) => self.problems.push((
+                            expr.span,
+                            Code::AmbiguousName,
+                            format!(
+                                "\"{value}\" is a value of more than one attribute of {name} ({})",
+                                attrs.join(", ")
+                            ),
+                        )),
+                    }
+                }
                 let kind = self.model.prop_kind(control, &prop);
                 if kind.is_none() {
                     let message = format!("{} has no property \"{prop}\"", self.model.controls[control].name);

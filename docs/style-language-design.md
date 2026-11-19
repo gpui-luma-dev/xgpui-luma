@@ -152,7 +152,7 @@ A bare or dotted name resolves in this order; matching more than one is an **err
 3. **Another part**: `glyph.foreground`.
 4. **Constants**: innermost `const` block outward, then file, then global (SDK).
 5. **Tokens**: `metrics`, `palette`, `elevation`, `typography`, then the look's roots (`shadcn`, `radix`, `css`, …).
-6. **Other controls** (geometry only): `popover.panel.offset_y`.
+6. **Other controls** (geometry only): `popover.offset_y`, or `popover.panel.offset_y` for the value under scope `panel`. The crate finds which attribute `panel` belongs to from the other control's scopes; a value used by no attribute, or by more than one, is a load-time error.
 
 A property cannot refer to itself: in a look, `gap = gap * 2` is a cycle error. Use the token instead (`gap = metrics.control.gap * 2`).
 

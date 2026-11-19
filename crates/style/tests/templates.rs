@@ -154,3 +154,57 @@ fn variants_come_from_builders_as_interned_values() {
     let style = theme.resolve(&key_for(&h, &model));
     assert_color(style.part(h.indicator).background(), radix_step("accent", 5, "light"), "soft");
 }
+
+#[test]
+fn equal_override_sets_share_cached_results() {
+    let theme = sdk_theme();
+    let h = CheckboxHandles::new(&theme);
+    let model = Model { checked: false, hovered: false, disabled: false, variant: None, scale: 1.0 };
+    let k = key_for(&h, &model);
+    // Built twice, in a different order: same contents, same cached result.
+    let a = Overrides::new().set(PartId::ROOT, props::GAP, 4.0).set(h.indicator, props::RADIUS, 2.0);
+    let b = Overrides::new().set(h.indicator, props::RADIUS, 2.0).set(PartId::ROOT, props::GAP, 4.0);
+    assert_eq!(a, b);
+    assert_eq!(a.id(), b.id());
+    assert!(std::sync::Arc::ptr_eq(&theme.resolve_with(&k, &a), &theme.resolve_with(&k, &b)));
+    // An empty override set is the same as none.
+    assert!(std::sync::Arc::ptr_eq(&theme.resolve_with(&k, &Overrides::new()), &theme.resolve(&k)));
+    // Different contents are different entries.
+    let c = Overrides::new().set(PartId::ROOT, props::GAP, 4.5);
+    assert_ne!(a, c);
+    assert_eq!(theme.resolve_with(&k, &c).root().gap(), Some(5.0)); // 4.5 snapped at 1×
+}
+
+#[test]
+fn overrides_for_unknown_parts_or_properties_are_reported_and_ignored() {
+    let theme = sdk_theme();
+    let h = CheckboxHandles::new(&theme);
+    let model = Model { checked: false, hovered: false, disabled: false, variant: None, scale: 1.0 };
+    let misspelled: Prop<f32> = Prop::new("indicator_sise");
+    let overrides =
+        Overrides::new().set(PartId::ROOT, misspelled, 3.0).set(PartId::new("indicatr"), props::RADIUS, 2.0);
+    let style = theme.resolve_with(&key_for(&h, &model), &overrides);
+    assert_eq!(style.root().value("indicator_sise"), None);
+    let d = theme.diagnostics();
+    assert!(
+        d.mentions("instance override: \"indicator_sise\" is not a core or declared property of checkbox — did you mean \"indicator_size\"?"),
+        "{d}"
+    );
+    assert!(
+        d.mentions("instance override: unknown part \"indicatr\" for checkbox — did you mean \"indicator\"?"),
+        "{d}"
+    );
+}
+
+#[test]
+fn override_problems_have_no_file_location() {
+    let theme = sdk_theme();
+    let h = CheckboxHandles::new(&theme);
+    let model = Model { checked: false, hovered: false, disabled: false, variant: None, scale: 1.0 };
+    let overrides = Overrides::new().set_token(h.indicator, props::BACKGROUND, "palette.nope");
+    theme.resolve_with(&key_for(&h, &model), &overrides);
+    let d = theme.diagnostics();
+    let problem = d.iter().find(|x| x.message.contains("palette.nope")).expect("reported");
+    assert_eq!(problem.source, None, "not blamed on a style file: {problem}");
+    assert!(problem.message.starts_with("instance override for indicator.background: "), "{}", problem.message);
+}

@@ -110,7 +110,8 @@ let style = theme.resolve_with(&key, &overrides);
 
 - An override replaces its property **in every state** (like `:=` above all layers), including the disabled look.
 - Overrides take part in the cascade: a rule `border = background` follows an overridden background, and `explain` reports `ValueSource::InstanceOverride`.
-- The type checks values (`Prop<Color>` takes a `Color`). Build once per instance; results are cached per override set.
+- The type checks values (`Prop<Color>` takes a `Color`). Override sets with equal contents share cached results (in any `set` order), so building one per frame costs nothing extra; the cache holds at most 4,096 entries per theme and is cleared when full.
+- An override for a part or property the control does not have is ignored and reported (with a suggestion). Override problems carry no file location, since they come from Rust.
 - Overrides apply to one instance; styling every instance belongs in the app layer.
 - Per-state overrides are *later* (non-breaking).
 
@@ -174,7 +175,7 @@ let edit = Edit::replace(&row.explanation.winner?, "tone[11]");     // new value
 let edit = Edit::insert("app", "app/overrides.lss",
     &RuleSpec::new("checkbox", "indicator", "background", "black").scope("variant", "brand").state("checked"));
 let (sheet2, changed) = sheet.apply(&[edit])?;                      // recompiled + changed files (to save)
-sheet.export_variant("checkbox", "brand", &session_rules)            // a complete .lss with a named variant
+sheet.export_scope("checkbox", "variant", "brand", &session_rules) // a complete .lss with the rules under one scope
 export_tokens(&theme.token_values())                                 // a tokens { … } file for live edits
 ```
 
@@ -208,9 +209,9 @@ export_tokens(&theme.token_values())                                 // a tokens
 | 2 Keys | Handles: interned names for controls, parts, attribute values and properties; `Config` indices for states and attributes |
 | 3 Setup | Layered builder; files beside controls with a completeness test; embedded and from-disk sources; `modes()` |
 | 4 Rebind | Themes never change; `with_mode`, `with_tokens`, `with_token_values`, `with_source`/`with_stylesheet`; failures keep the old theme; `generation()` |
-| 5 Overrides | One override set per instance, typed, literals or tokens, inside the cascade, all states |
+| 5 Overrides | One override set per instance, typed, literals or tokens, inside the cascade, all states; cached by contents; unknown parts and properties reported |
 | 6 Inspection | `explain` and `inspect` with references, declared-but-unset rows, axes from files, box model, categories |
-| 7 Export | Edits in place; inserts; `export_variant`; `export_tokens`; round-trip tests; no file writing |
+| 7 Export | Edits in place; inserts; `export_scope`; `export_tokens`; round-trip tests; no file writing |
 | 8 Diagnostics | Load fails, resolve never fails; `diagnostics_since`; `check`; codes, ranges and suggestions; lints later |
 | Colors | CSS Color 4, stored as OKLCH, OKLab math, sRGB gamut mapping |
 | Functions | Built in if they need no look data; decided per function |

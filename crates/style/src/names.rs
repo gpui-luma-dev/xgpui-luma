@@ -28,7 +28,8 @@ pub(crate) enum Target {
     /// Another control's root property (geometry), optionally under a variant.
     OtherControl {
         control: usize,
-        variant: Option<String>,
+        /// A scope value of the other control (`popover.panel.offset`); its attribute is found from the files.
+        scope_value: Option<String>,
         prop: String,
     },
     Const {
@@ -110,10 +111,10 @@ pub(crate) fn lookup(
                     "a control" => {
                         let other = model.control(first).expect("checked");
                         match rest {
-                            [prop] => Target::OtherControl { control: other, variant: None, prop: prop.clone() },
-                            [variant, prop] => Target::OtherControl {
+                            [prop] => Target::OtherControl { control: other, scope_value: None, prop: prop.clone() },
+                            [value, prop] => Target::OtherControl {
                                 control: other,
-                                variant: Some(variant.clone()),
+                                scope_value: Some(value.clone()),
                                 prop: prop.clone(),
                             },
                             _ => Target::Unknown,

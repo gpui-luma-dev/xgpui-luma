@@ -150,6 +150,35 @@ impl Model {
         None
     }
 
+    /// The attribute whose scopes use `value` on `control` (or its base controls). `Err` lists the
+    /// attributes when there is not exactly one.
+    pub fn scope_attribute(&self, control: usize, value: &str) -> Result<String, Vec<String>> {
+        let mut attrs: Vec<String> = Vec::new();
+        let mut c = Some(control);
+        let mut guard = 0;
+        while let Some(i) = c {
+            let def = &self.controls[i];
+            let pairs = def.scope_values.iter().chain(def.aliases.keys());
+            for (attr, v) in pairs {
+                if v == value && !attrs.contains(attr) {
+                    attrs.push(attr.clone());
+                }
+            }
+            c = def.base;
+            guard += 1;
+            if guard > 32 {
+                break;
+            }
+        }
+        match attrs.len() {
+            1 => Ok(attrs.pop().expect("one")),
+            _ => {
+                attrs.sort();
+                Err(attrs)
+            }
+        }
+    }
+
     /// Core and declared property names usable on a control (for suggestions).
     pub fn prop_names(&self, control: usize) -> Vec<&str> {
         let mut names: Vec<&str> = crate::builtins::CORE_PROPERTIES.iter().map(|(n, _, _)| *n).collect();

@@ -135,11 +135,11 @@ impl Stylesheet {
         Ok((sheet, files))
     }
 
-    /// A complete `.lss` file with `rules` as a named variant of `control` (their own scopes are ignored),
-    /// e.g. the lab's "export style".
-    pub fn export_variant(&self, control: &str, variant: &str, rules: &[RuleSpec]) -> String {
+    /// A complete `.lss` file with `rules` under one scope of `control` (their own scopes are ignored),
+    /// e.g. the lab's "export style" as `export_scope("checkbox", "variant", "brand", …)`.
+    pub fn export_scope(&self, control: &str, attribute: &str, value: &str, rules: &[RuleSpec]) -> String {
         let refs: Vec<&RuleSpec> = rules.iter().collect();
-        print_rules(control, &[("variant".to_string(), variant.to_string())], &refs)
+        print_rules(control, &[(attribute.to_string(), value.to_string())], &refs)
     }
 }
 

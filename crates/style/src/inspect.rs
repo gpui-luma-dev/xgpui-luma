@@ -240,7 +240,8 @@ impl Theme {
         let value = ev.output(k.control, p, prop, &k).ok().flatten();
         let references = ev.take_references();
 
-        let overridden_by_instance = overrides.and_then(|o| o.get(part.name(), prop)).is_some();
+        let overridden_by_instance =
+            overrides.and_then(|o| o.get(part.name(), prop)).is_some() && model.prop_kind(k.control, prop).is_some();
         let sel = select(model, k.control, p, prop, &k);
         let mut ranked: Vec<&Cand<'_>> = sel.kept.iter().collect();
         ranked.sort_by_key(|c| std::cmp::Reverse(c.rank()));
