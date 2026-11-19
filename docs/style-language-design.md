@@ -266,7 +266,8 @@ infix        = { "+" | "-" | "*" | div }
 div          = @{ "/" ~ !("/" | "*") }                              // never the start of a comment
 postfix      = { primary ~ index* }
 index        = { "[" ~ expr ~ "]" }
-primary      = _{ "(" ~ expr ~ ")" | call | list | number | hex_color | string | path }
+primary      = _{ paren | call | list | number | hex_color | string | path }
+paren        = { "(" ~ expr ~ ")" }                                 // kept, so spans include the parentheses
 call         = { path ~ "(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
 list         = { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
 

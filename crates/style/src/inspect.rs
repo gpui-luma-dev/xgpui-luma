@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use crate::builtins;
 use crate::compile::Stylesheet;
-use crate::diag::Diagnostics;
+use crate::diag::{Code, Diagnostic, Diagnostics, Severity};
 use crate::handles::{AttrId, AttrValue, ControlId, PartId, StateId, StyleKey};
 use crate::overrides::Overrides;
 use crate::resolve::{Cand, Evaluator, Theme, expr_end, props_of_part, select};
@@ -36,6 +36,8 @@ pub struct RuleInfo {
     pub via: Option<String>,
     /// Byte range of the value in the source, for edits.
     pub(crate) range: (u32, u32),
+    /// Fingerprint of the file text the range refers to.
+    pub(crate) revision: u64,
 }
 
 /// How a property got its value.
@@ -291,6 +293,7 @@ impl Theme {
             expression,
             via: c.via.clone(),
             range,
+            revision: crate::diag::revision(&file.text),
         }
     }
 
@@ -359,12 +362,29 @@ impl Theme {
     /// Resolve every combination of a control's axes (attribute values × states × modes) and return
     /// the problems found. For tests and for the lab after a live edit.
     pub fn check(&self, control: ControlId) -> Diagnostics {
-        let axes = self.stylesheet().axes(control);
-        let themes: Vec<Theme> = if axes.modes.is_empty() {
-            self.with_mode(self.mode()).into_iter().collect()
-        } else {
-            axes.modes.iter().filter_map(|m| self.with_mode(m).ok()).collect()
+        /// Up to this many states, every combination is checked; above it, combinations of up to three.
+        const ALL_COMBINATIONS_UP_TO: usize = 10;
+        let mut all: Vec<Diagnostic> = Vec::new();
+        let add = |ds: Vec<Diagnostic>, all: &mut Vec<Diagnostic>| {
+            for d in ds {
+                if !all.contains(&d) {
+                    all.push(d);
+                }
+            }
         };
+        let axes = self.stylesheet().axes(control);
+        let modes: Vec<String> = if axes.modes.is_empty() {
+            vec![self.mode().to_string()]
+        } else {
+            axes.modes.clone()
+        };
+        let mut themes = Vec::new();
+        for mode in &modes {
+            match self.with_mode(mode) {
+                Ok(theme) => themes.push(theme),
+                Err(d) => add(d.0, &mut all),
+            }
+        }
         let mut keys = vec![StyleKey::new(control)];
         for (attr, values) in &axes.attributes {
             let mut next = Vec::new();
@@ -376,11 +396,27 @@ impl Theme {
             }
             keys = next;
         }
-        let states: Vec<StateId> = axes.states.iter().copied().take(10).collect();
-        let mut all = Vec::new();
+        let states = &axes.states;
+        let n = states.len();
+        let masks: Vec<u32> = if n <= ALL_COMBINATIONS_UP_TO {
+            (0u32..(1 << n)).collect()
+        } else {
+            let partial = Diagnostic {
+                severity: Severity::Warning,
+                ..Diagnostic::error(
+                    Code::PartialCheck,
+                    format!(
+                        "{control} uses {n} states; checked combinations of up to 3 of them instead of all {} combinations",
+                        1u64 << n
+                    ),
+                )
+            };
+            add(vec![partial], &mut all);
+            (0u32..(1 << n)).filter(|m| m.count_ones() <= 3).collect()
+        };
         for theme in &themes {
             for key in &keys {
-                for mask in 0u32..(1 << states.len()) {
+                for mask in &masks {
                     let mut k = *key;
                     for (i, s) in states.iter().enumerate() {
                         k = k.state_if(*s, mask & (1 << i) != 0);
@@ -388,11 +424,7 @@ impl Theme {
                     theme.resolve(&k);
                 }
             }
-            for d in theme.diagnostics().0 {
-                if !all.contains(&d) {
-                    all.push(d);
-                }
-            }
+            add(theme.diagnostics().0, &mut all);
         }
         Diagnostics(all)
     }

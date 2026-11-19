@@ -229,3 +229,20 @@ fn references_to_another_control_find_the_attribute_from_the_files() {
     assert!(d.has_code(Code::AmbiguousName), "{d}");
     assert!(d.mentions("\"big\" is a value of more than one attribute of popover (size, style)"), "{d}");
 }
+
+#[test]
+fn check_reports_partial_coverage_and_bad_modes() {
+    let names: Vec<String> = (0..12).map(|i| format!("s{i}")).collect();
+    let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+    let config = Arc::new(xgpui_luma_style::Config::builder().layers(&["sdk"]).states(&refs).build().unwrap());
+    let rules: String = names.iter().map(|s| format!(":{s} {{ gap = 1 }} ")).collect();
+    let src = format!("chip {{ gap = 0  {rules} }}");
+    let sheet = Stylesheet::builder(config).layer("sdk", [Source::new("c.lss", src)]).compile().expect("compiles");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let d = theme.check(ControlId::new("chip"));
+    assert!(d.has_code(Code::PartialCheck), "{d}");
+    assert!(
+        d.mentions("chip uses 12 states; checked combinations of up to 3 of them instead of all 4096 combinations"),
+        "{d}"
+    );
+}

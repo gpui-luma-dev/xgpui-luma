@@ -429,7 +429,11 @@ impl Cx {
     fn primary(&self, pair: Pair<'_, Rule>) -> Expr {
         let span = self.span(&pair);
         let kind = match pair.as_rule() {
-            Rule::expr => return self.expr(pair),
+            // Keep the parentheses in the span, so edits and the inspector see `(2 + 3)`, not `2 + 3)`.
+            Rule::paren => {
+                let inner = self.expr(pair.into_inner().next().expect("parenthesised expression"));
+                return Expr { span, kind: inner.kind };
+            }
             Rule::number => ExprKind::Number(pair.as_str().parse().unwrap_or(0.0)),
             Rule::hex_color => ExprKind::Hex(pair.as_str().to_owned()),
             Rule::string => {
@@ -528,6 +532,19 @@ mod tests {
         let err = parse("t {\n  part p { background = }\n}", 0).expect_err("fails");
         assert_eq!(err.line, 2);
         assert!(err.message.contains("expected"), "{}", err.message);
+    }
+
+    #[test]
+    fn parenthesised_values_keep_their_parentheses() {
+        let src = "t { a: length = (2 + 3) * 4 }";
+        let file = parse(src, 0).expect("parses");
+        let Top::Control(c) = &file.items[0] else { panic!() };
+        let Item::Decl(d) = &c.items[0] else { panic!() };
+        let ExprKind::Bin(BinOp::Mul, lhs, _) = &d.value.kind else {
+            panic!("{:?}", d.value.kind)
+        };
+        assert_eq!(&src[lhs.span.start as usize..lhs.span.end as usize], "(2 + 3)");
+        assert_eq!(d.value.span.start, lhs.span.start);
     }
 
     #[test]

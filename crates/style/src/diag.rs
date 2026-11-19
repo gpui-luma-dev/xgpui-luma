@@ -43,6 +43,10 @@ pub enum Code {
     Cycle,
     AbsentToken,
     Evaluation,
+    /// An edit was made against a different version of the file.
+    StaleEdit,
+    /// `Theme::check` covered only part of the combinations.
+    PartialCheck,
     Io,
 }
 
@@ -166,6 +170,14 @@ impl fmt::Display for Diagnostics {
         }
         Ok(())
     }
+}
+
+/// A fingerprint of a file's text, so edits can check they target the version they were made from.
+pub(crate) fn revision(text: &str) -> u64 {
+    use std::hash::{DefaultHasher, Hash, Hasher};
+    let mut h = DefaultHasher::new();
+    text.hash(&mut h);
+    h.finish()
 }
 
 /// `, did you mean "x"?` for the closest candidate within a small edit distance, or empty.

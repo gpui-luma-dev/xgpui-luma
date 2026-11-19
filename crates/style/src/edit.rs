@@ -11,7 +11,7 @@ use crate::inspect::RuleInfo;
 use crate::value::{Motion, ShadowLayer, Value};
 
 /// A byte range in a file and its new text.
-type Replacement<'a> = ((u32, u32), &'a str);
+type Replacement<'a> = ((u32, u32), u64, &'a str);
 
 /// A rule to insert or export, by names.
 #[derive(Clone, Debug, PartialEq)]
@@ -52,8 +52,8 @@ impl RuleSpec {
 /// One change to style files.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Edit {
-    /// Replace a rule's value text.
-    Replace { source: Arc<str>, range: (u32, u32), text: String },
+    /// Replace a rule's value text. `revision` is the fingerprint of the file version the range refers to.
+    Replace { source: Arc<str>, range: (u32, u32), revision: u64, text: String },
     /// Append a new rule to a file (created in `layer` if the stylesheet has no file of that name).
     Insert { layer: String, source: Arc<str>, text: String },
 }
@@ -61,7 +61,12 @@ pub enum Edit {
 impl Edit {
     /// Replace the value of a rule from an [`Explanation`](crate::Explanation) or inspector row.
     pub fn replace(rule: &RuleInfo, expression: &str) -> Edit {
-        Edit::Replace { source: rule.source.clone(), range: rule.range, text: expression.to_string() }
+        Edit::Replace {
+            source: rule.source.clone(),
+            range: rule.range,
+            revision: rule.revision,
+            text: expression.to_string(),
+        }
     }
 
     /// Append a rule to `source` (in `layer` when the file is new), creating the blocks it needs.
@@ -83,8 +88,8 @@ impl Stylesheet {
         let mut replaces: BTreeMap<Arc<str>, Vec<Replacement<'_>>> = BTreeMap::new();
         for edit in edits {
             match edit {
-                Edit::Replace { source, range, text } => {
-                    replaces.entry(source.clone()).or_default().push((*range, text))
+                Edit::Replace { source, range, revision, text } => {
+                    replaces.entry(source.clone()).or_default().push((*range, *revision, text))
                 }
                 Edit::Insert { .. } => {}
             }
@@ -93,10 +98,19 @@ impl Stylesheet {
             let Some((_, src)) = sources.iter_mut().find(|(_, s)| s.name == name) else {
                 return Err(Diagnostics(vec![Diagnostic::error(Code::Io, format!("no style file named \"{name}\""))]));
             };
+            let current = crate::diag::revision(&src.text);
+            if list.iter().any(|(_, revision, _)| *revision != current) {
+                return Err(Diagnostics(vec![Diagnostic::error(
+                    Code::StaleEdit,
+                    format!(
+                        "the edit was made against another version of \"{name}\"; explain the rule again and retry"
+                    ),
+                )]));
+            }
             // Apply from the end so earlier ranges stay valid.
-            list.sort_by_key(|((start, _), _)| std::cmp::Reverse(*start));
+            list.sort_by_key(|((start, _), _, _)| std::cmp::Reverse(*start));
             let mut text = src.text.to_string();
-            for ((start, end), new) in list {
+            for ((start, end), _, new) in list {
                 if end as usize > text.len() || start > end {
                     return Err(Diagnostics(vec![Diagnostic::error(
                         Code::Io,

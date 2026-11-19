@@ -95,6 +95,7 @@ Resolved::lerp(&off, &on, t)                     // animation between two resolv
 - `props::*` holds handles for every core property (`BACKGROUND`, `RADIUS`, `SHADOW`, `TRANSITION`, …).
 - `FromValue` types: `f32` (length, number, weight), `Color`, `Motion`, `Arc<[ShadowLayer]>`, `Arc<str>` (font, icon), `TextStyle`.
 - Lengths are snapped to device pixels on output (unless `exact(…)`); properties that read other properties see unsnapped values.
+- Cost (release build, Radix checkbox fixtures): about 15–17 µs for the first resolve of a key, then a cache lookup. Resolving names at compile time and comparing interned names by pointer are the next steps if profiling the SDK shows a need.
 - Motion: for a change from key A to key B, the animation runtime uses `resolve(B).part(p).transition()`.
 - `.apply()` onto gpui elements is *later*, as a `gpui` feature built on this view.
 
@@ -180,6 +181,8 @@ export_tokens(&theme.token_values())                                 // a tokens
 ```
 
 - Replacements splice the original text, so comments and layout survive; inserted rules are printed in one standard layout.
+- A `RuleInfo` records a fingerprint of the file text it came from. A replacement against a different version of the file is rejected (`Code::StaleEdit`); explain the rule again and retry.
+- Ranges include parentheses: a value written `(2 + 3) * 4` is shown and replaced whole.
 - Exports contain only the differences and round-trip: the tests compile exported text and compare resolved values.
 - `Source::from_path` plus `with_source` is import.
 
@@ -187,7 +190,7 @@ export_tokens(&theme.token_values())                                 // a tokens
 
 - Compile and bind fail with `Diagnostics`; **resolving never fails**: a problem leaves the property unset and is recorded once.
 - `theme.diagnostics()` and `theme.diagnostics_since(mark)` (returns new problems and the next mark) for polling from the lab or Studio.
-- `theme.check(control)` resolves every combination of the control's axes and returns the problems — one line per control in SDK and look tests.
+- `theme.check(control)` resolves every combination of the control's axes and returns the problems — one line per control in SDK and look tests. With more than 10 states it checks combinations of up to three and says so (`Code::PartialCheck`); modes that fail to bind are reported, not skipped.
 - Every `Diagnostic` has a `Code` (`UnknownPart`, `KindMismatch`, `AmbiguousName`, `Cycle`, `AbsentToken`, …), source, line, column, byte `range`, message and snippet. Unknown names get a suggestion: `unknown part "indicatr" for checkbox (parts: …) — did you mean "indicator"?`
 - Load-time lints (unused declarations, rules that can never win) are *later*.
 

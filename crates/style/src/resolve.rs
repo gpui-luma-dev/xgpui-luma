@@ -656,6 +656,14 @@ pub(crate) enum EvalErr {
     Error(Span, Code, String),
 }
 
+/// One property's value, where its winning rule is, and whether that rule opted out of snapping.
+#[derive(Clone)]
+pub(crate) struct PropValue {
+    pub value: Option<Value>,
+    pub at: Option<Span>,
+    pub exact: bool,
+}
+
 /// Evaluates expressions for one control instance. With tracing on, records what each value read.
 pub(crate) struct Evaluator<'t> {
     theme: &'t ThemeInner,
@@ -764,14 +772,9 @@ impl<'t> Evaluator<'t> {
         self.stack.borrow_mut().pop();
     }
 
-    /// The value of `part.prop` for `key` (language §8), or `None` when unset; plus where it was set.
-    pub(crate) fn prop_at(
-        &self,
-        control: usize,
-        part: usize,
-        prop: &str,
-        key: &KeyData,
-    ) -> Result<(Option<Value>, Option<Span>), EvalErr> {
+    /// The value of `part.prop` for `key` (language §8), where its winning rule is, and whether it is `exact`.
+    /// One rule selection serves both the value and the snapping decision.
+    pub(crate) fn prop_at(&self, control: usize, part: usize, prop: &str, key: &KeyData) -> Result<PropValue, EvalErr> {
         let model = self.model();
         let kind = model.prop_kind(control, prop);
         let part_name = &model.controls[control].parts[part].name;
@@ -800,8 +803,8 @@ impl<'t> Evaluator<'t> {
                 absent => absent,
             })?;
             return match value.coerce(kind) {
-                Ok(Value::None) => Ok((None, None)),
-                Ok(v) => Ok((Some(v), None)),
+                Ok(Value::None) => Ok(PropValue { value: None, at: None, exact: false }),
+                Ok(v) => Ok(PropValue { value: Some(v), at: None, exact: false }),
                 Err(v) => Err(EvalErr::Error(
                     NO_SPAN,
                     Code::KindMismatch,
@@ -816,7 +819,7 @@ impl<'t> Evaluator<'t> {
             return if part != 0 && inherits {
                 self.prop_at(control, 0, prop, key)
             } else {
-                Ok((None, None))
+                Ok(PropValue { value: None, at: None, exact: false })
             };
         };
         self.enter(label, winner.rule.span)?;
@@ -825,25 +828,16 @@ impl<'t> Evaluator<'t> {
         self.leave();
         let value = result?;
         let kind = kind.unwrap_or(winner.rule.kind);
+        let (at, exact) = (Some(winner.rule.span), winner.rule.expr.is_exact());
         match value.coerce(kind) {
-            Ok(Value::None) => Ok((None, Some(winner.rule.span))),
-            Ok(v) => Ok((Some(v), Some(winner.rule.span))),
+            Ok(Value::None) => Ok(PropValue { value: None, at, exact }),
+            Ok(v) => Ok(PropValue { value: Some(v), at, exact }),
             Err(v) => Err(EvalErr::Error(
                 winner.rule.expr.span,
                 Code::KindMismatch,
                 format!("{prop} expects {kind}, found {}", v.describe()),
             )),
         }
-    }
-
-    pub(crate) fn prop(
-        &self,
-        control: usize,
-        part: usize,
-        prop: &str,
-        key: &KeyData,
-    ) -> Result<Option<Value>, EvalErr> {
-        self.prop_at(control, part, prop, key).map(|(v, _)| v)
     }
 
     /// The value as a template receives it: lengths snapped to device pixels unless the winning value
@@ -856,21 +850,10 @@ impl<'t> Evaluator<'t> {
         key: &KeyData,
     ) -> Result<Option<Value>, EvalErr> {
         let model = self.model();
-        let value = self.prop(control, part, prop, key)?;
+        let PropValue { value, exact, .. } = self.prop_at(control, part, prop, key)?;
         if model.config.snap != SnapPolicy::Lengths || model.prop_kind(control, prop) != Some(Kind::Length) {
             return Ok(value);
         }
-        let exact = {
-            let sel = select(model, control, part, prop, key);
-            match sel.kept.iter().max_by_key(|c| c.rank()) {
-                Some(w) => w.rule.expr.is_exact(),
-                None => select(model, control, 0, prop, key)
-                    .kept
-                    .iter()
-                    .max_by_key(|c| c.rank())
-                    .is_some_and(|w| w.rule.expr.is_exact()),
-            }
-        };
         Ok(match value {
             Some(Value::Number(n)) if !exact && key.scale > 0.0 => {
                 Some(Value::Number((n * key.scale).round() / key.scale))
@@ -1013,13 +996,12 @@ impl<'t> Evaluator<'t> {
                 let result = match part {
                     Some(p) => self.prop_at(control, p, &prop, key),
                     None => match self.prop_at(control, current, &prop, key) {
-                        Ok((Some(v), at)) => Ok((Some(v), at)),
-                        Ok((None, _)) if current != 0 => self.prop_at(control, 0, &prop, key),
+                        Ok(p) if p.value.is_none() && current != 0 => self.prop_at(control, 0, &prop, key),
                         other => other,
                     },
                 };
                 let (value, at) = match result {
-                    Ok(r) => r,
+                    Ok(p) => (p.value, p.at),
                     Err(e) => {
                         self.trace_pop(name, ReferenceKind::Property, None, None, None);
                         return Err(e);
@@ -1039,7 +1021,7 @@ impl<'t> Evaluator<'t> {
                 self.trace_push();
                 let result = self.prop_at(control, 0, &prop, &other);
                 let (value, at) = match result {
-                    Ok(r) => r,
+                    Ok(p) => (p.value, p.at),
                     Err(e) => {
                         self.trace_pop(name, ReferenceKind::Property, None, None, None);
                         return Err(e);
