@@ -147,7 +147,7 @@ fn compact_table_row_height(size: ShadcnSize) -> f32 {
 fn table_grid_cell_layout_section(look: &ShadcnLook, diagram_id: &str, size: ShadcnSize) -> InspectLayoutSection {
     const GRID_CONTROL_COLUMN_WIDTH: f32 = 48.0;
     let row_metrics = ShadcnInspect::new(look).inspect_table_metrics(size);
-    let checkbox_metrics = ShadcnInspect::new(look).inspect_checkbox_metrics(ShadcnSize::Sm);
+    let checkbox_indicator = sm_checkbox_indicator_size(look);
     let compact_row_height = compact_table_row_height(size);
     let inner_row_height = compact_row_height - (row_metrics.row_padding_y.value_px * 2.0);
 
@@ -191,8 +191,8 @@ fn table_grid_cell_layout_section(look: &ShadcnLook, diagram_id: &str, size: Sha
             InspectPropertyRow::new("embedded checkbox size", "sm · indicator_only", "payments card pattern"),
             InspectPropertyRow::new(
                 "checkbox indicator size",
-                format!("{:.1}px", checkbox_metrics.indicator_size.value_px),
-                "CheckboxScale at Sm",
+                format!("{checkbox_indicator:.1}px"),
+                "checkbox.lss · size sm · indicator_size",
             ),
         ],
     )
@@ -322,4 +322,13 @@ fn accordion_metrics_layout_section(
             ("chevron size", &metrics.chevron_size),
         ]),
     )
+}
+
+/// The Shadcn `.lss` checkbox's indicator at size sm.
+fn sm_checkbox_indicator_size(look: &ShadcnLook) -> f32 {
+    use xgpui_luma::style::lss::{AttrValue, ControlId, StyleKey, Value};
+    let theme = look.style_theme();
+    let Some(size) = theme.stylesheet().config().attribute("size") else { return 0.0 };
+    let key = StyleKey::new(ControlId::new("checkbox")).attr(size, AttrValue::new("sm"));
+    theme.resolve(&key).root().value("indicator_size").and_then(Value::as_number).unwrap_or(0.0)
 }

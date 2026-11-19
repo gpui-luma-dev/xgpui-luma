@@ -13,9 +13,6 @@ pub(crate) fn apply_size_presets(common: &mut CommonStylesheet) {
     for (size, label_baseline) in [(ShadcnSize::Sm, 0.5), (ShadcnSize::Lg, 1.5)] {
         common.shared.sizes.get_or_default(size.key()).label_baseline = Some(label_baseline);
     }
-    for (size, scale, radius, inset) in [(ShadcnSize::Sm, 0.45, 2.0, 2.0), (ShadcnSize::Lg, 0.55, 6.0, 4.0)] {
-        common.checkbox.sizes.get_or_default(size.key()).indicator(scale, radius, inset);
-    }
     for (size, scale) in [(ShadcnSize::Sm, 0.45), (ShadcnSize::Lg, 0.55)] {
         let radio = common.radio.sizes.get_or_default(size.key());
         radio.indicator_scale = Some(scale);

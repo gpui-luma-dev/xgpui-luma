@@ -12,20 +12,20 @@ use crate::inspect::controls::{
     AccordionContentInspectPalette, AccordionInspectMetrics, AccordionTriggerInspectPalette,
     AutocompleteChromeInspectPalette, AutocompleteInspectMetrics, BadgeInspectMetrics, BadgeInspectPalette,
     ButtonInspectElevation, ButtonInspectMetrics, ButtonInspectPalette, ButtonInspectTypography, CardInspectMetrics,
-    CheckboxInspectMetrics, CheckboxInspectPalette, ContextMenuInspectMetrics, ContextMenuInspectPalette,
-    ControlGroupInspectMetrics, ControlGroupListInspectPalette, FloatingMenuInspectMetrics, FloatingMenuInspectPalette,
-    ListBoxListInspectPalette, ListBoxRowInspectPalette, TableInspectMetrics, TableInspectPalette,
-    TableRowInspectPalette, SidebarContainerInspectPalette, SidebarInspectMetrics, SidebarItemInspectPalette,
-    SidebarSectionInspectPalette, OverlayWindowInspectMetrics, OverlayWindowInspectPalette, PagerInspectMetrics,
-    PagerShellInspectPalette, PopupMenuInspectMetrics, PopupMenuInspectPalette, ProgressInspectMetrics,
-    ProgressInspectPalette, RadioButtonInspectMetrics, RadioButtonInspectPalette, ResizablePanelsInspectMetrics,
-    ResizablePanelsInspectPalette, ScrollbarInspectMetrics, ScrollbarInspectPalette, SelectorInspectMetrics,
-    SelectorInspectPalette, SliderInspectMetrics, SliderInspectPalette, SplitViewInspectMetrics,
-    SplitViewInspectPalette, StepperInspectMetrics, StepperInspectPalette, SwitchInspectMetrics, SwitchInspectPalette,
-    TabsInspectMetrics, TabsItemInspectPalette, TabsListInspectPalette, TextFieldInspectMetrics,
-    TextFieldInspectPalette, ToolbarInspectMetrics, ToolbarInspectPalette, TreeViewInspectMetrics,
-    TreeViewRowInspectPalette, ColorChromeInspectSection, ColorChromeProfile, inspect_accordion_content_color_palette,
-    inspect_accordion_metrics, inspect_accordion_trigger_color_palette, inspect_autocomplete_chrome_color_palette,
+    ContextMenuInspectMetrics, ContextMenuInspectPalette, ControlGroupInspectMetrics, ControlGroupListInspectPalette,
+    FloatingMenuInspectMetrics, FloatingMenuInspectPalette, ListBoxListInspectPalette, ListBoxRowInspectPalette,
+    TableInspectMetrics, TableInspectPalette, TableRowInspectPalette, SidebarContainerInspectPalette,
+    SidebarInspectMetrics, SidebarItemInspectPalette, SidebarSectionInspectPalette, OverlayWindowInspectMetrics,
+    OverlayWindowInspectPalette, PagerInspectMetrics, PagerShellInspectPalette, PopupMenuInspectMetrics,
+    PopupMenuInspectPalette, ProgressInspectMetrics, ProgressInspectPalette, RadioButtonInspectMetrics,
+    RadioButtonInspectPalette, ResizablePanelsInspectMetrics, ResizablePanelsInspectPalette, ScrollbarInspectMetrics,
+    ScrollbarInspectPalette, SelectorInspectMetrics, SelectorInspectPalette, SliderInspectMetrics,
+    SliderInspectPalette, SplitViewInspectMetrics, SplitViewInspectPalette, StepperInspectMetrics,
+    StepperInspectPalette, SwitchInspectMetrics, SwitchInspectPalette, TabsInspectMetrics, TabsItemInspectPalette,
+    TabsListInspectPalette, TextFieldInspectMetrics, TextFieldInspectPalette, ToolbarInspectMetrics,
+    ToolbarInspectPalette, TreeViewInspectMetrics, TreeViewRowInspectPalette, ColorChromeInspectSection,
+    ColorChromeProfile, inspect_accordion_content_color_palette, inspect_accordion_metrics,
+    inspect_accordion_trigger_color_palette, inspect_autocomplete_chrome_color_palette,
     inspect_autocomplete_menu_color_palette, inspect_autocomplete_metrics, inspect_badge_color_palette,
     inspect_badge_metrics, inspect_card_metrics, inspect_context_menu_color_palette, inspect_context_menu_metrics,
     inspect_control_group_list_color_palette, inspect_control_group_metrics, inspect_floating_menu_color_palette,
@@ -151,20 +151,6 @@ impl<'a> ShadcnInspect<'a> {
         inspect_badge_metrics(&self.mode_tokens(), self.look, variant, size, self.theme_mode())
     }
 
-    pub fn inspect_checkbox_color_palette(
-        &self,
-        style: ShadcnButtonStyle,
-        checked: bool,
-        state: InteractionState,
-    ) -> CheckboxInspectPalette {
-        crate::inspect::controls::inspect_checkbox_color_palette_with_stylesheet(
-            &crate::LookContext::new(&self.mode_tokens(), self.theme_mode(), state),
-            self.look.stylesheet().as_ref(),
-            style,
-            checked,
-        )
-    }
-
     pub fn inspect_textfield_color_palette(
         &self,
         style: ShadcnTextFieldStyle,
@@ -195,30 +181,6 @@ impl<'a> ShadcnInspect<'a> {
         state: InteractionState,
     ) -> SwitchInspectPalette {
         inspect_switch_color_palette(&self.mode_tokens(), self.theme_mode(), style, on, state)
-    }
-
-    pub fn inspect_checkbox_metrics(&self, size: ShadcnSize) -> CheckboxInspectMetrics {
-        crate::tables::metrics::resolve_checkbox_metrics_with_stylesheet(
-            &self.mode_tokens(),
-            self.look.stylesheet().as_ref(),
-            self.theme_mode(),
-            size,
-        )
-        .into()
-    }
-
-    pub fn inspect_checkbox_elevation(
-        &self,
-        style: ShadcnButtonStyle,
-        checked: bool,
-        state: InteractionState,
-    ) -> ButtonInspectElevation {
-        crate::inspect::controls::inspect_checkbox_elevation_with_stylesheet(
-            &crate::LookContext::new(&self.mode_tokens(), self.theme_mode(), state),
-            self.look.stylesheet().as_ref(),
-            style,
-            checked,
-        )
     }
 
     pub fn inspect_radio_button_metrics(&self, size: ShadcnSize) -> RadioButtonInspectMetrics {

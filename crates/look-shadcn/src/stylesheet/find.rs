@@ -6,11 +6,11 @@ use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
 use super::config::{
     AccordionContentColorRule, AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule,
-    CardColorRule, CheckboxColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule,
-    FloatingMenuSurfaceElevationRule, FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule,
-    ProgressColorRule, RadioColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule,
-    SidebarBranchColorRule, SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule,
-    StylesheetConfig, SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule,
+    CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuSurfaceElevationRule,
+    FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, RadioColorRule,
+    ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarBranchColorRule,
+    SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
+    SwitchColorRule, TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule,
     TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
@@ -53,14 +53,6 @@ fn textfield_style_key(style: crate::controls::ShadcnTextFieldStyle) -> &'static
         crate::controls::ShadcnTextFieldStyle::Primary => "primary",
         crate::controls::ShadcnTextFieldStyle::Surface => "surface",
     }
-}
-
-pub fn find_checkbox_color_rule(
-    stylesheet: &StylesheetConfig,
-    checked: bool,
-    layer: InteractionLayer,
-) -> Option<&CheckboxColorRule> {
-    stylesheet.checkbox.find_color_rule(checked, layer)
 }
 
 pub fn find_radio_color_rule(

@@ -69,6 +69,120 @@ pub struct Reference {
     pub children: Vec<Reference>,
 }
 
+// Plain-text renderings for inspectors (the crate has no UI; tools show these strings as they like).
+
+impl RuleInfo {
+    /// `file:line  scope :states  = expression  via …`, e.g.
+    /// `shadcn/checkbox.lss:17  :checked  = action_layer(primary, default)`.
+    pub fn summary(&self) -> String {
+        let mut selector: Vec<&str> = Vec::new();
+        if !self.scope.is_empty() {
+            selector.push(&self.scope);
+        }
+        if !self.states.is_empty() {
+            selector.push(&self.states);
+        }
+        let selector = if selector.is_empty() {
+            String::new()
+        } else {
+            format!("  {}", selector.join(" "))
+        };
+        let via = self.via.as_ref().map(|v| format!("  via {v}")).unwrap_or_default();
+        format!("{}:{}{selector}  = {}{via}", self.source, self.line, self.expression)
+    }
+}
+
+impl Reference {
+    /// One line per reference, children indented: `← css.primary = #2563eb  (--primary: … (light))`.
+    pub fn lines(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        self.push_lines(0, &mut out);
+        out
+    }
+
+    fn push_lines(&self, depth: usize, out: &mut Vec<String>) {
+        let value = self
+            .value
+            .as_ref()
+            .map(|v| display_value(Some(v), v.kind().unwrap_or(Kind::Number)))
+            .unwrap_or_else(|| "absent".into());
+        let at = self
+            .defined_at
+            .as_ref()
+            .map(|l| format!("  ({}:{})", l.source, l.line))
+            .or_else(|| self.description.as_ref().map(|d| format!("  ({d})")))
+            .unwrap_or_default();
+        out.push(format!("{}← {} = {value}{at}", "  ".repeat(depth), self.name));
+        for child in &self.children {
+            child.push_lines(depth + 1, out);
+        }
+    }
+}
+
+impl Explanation {
+    /// Where the value came from, in one line: the winning rule, or why there is none.
+    pub fn source_line(&self) -> String {
+        match self.source {
+            ValueSource::Rule => self.winner.as_ref().map(RuleInfo::summary).unwrap_or_default(),
+            ValueSource::InheritedFromRoot => "inherited from root".into(),
+            ValueSource::InstanceOverride => "instance override".into(),
+            ValueSource::Unset => "unset".into(),
+        }
+    }
+
+    /// The rules this value beat and the owning `:=`, e.g. `beat 2 rules · owned by := at sdk/…:12`.
+    pub fn notes(&self) -> Option<String> {
+        let mut notes = Vec::new();
+        match self.overridden.len() {
+            0 => {}
+            1 => notes.push("beat 1 rule".to_string()),
+            n => notes.push(format!("beat {n} rules")),
+        }
+        if let Some(owner) = &self.owned_by {
+            notes.push(format!("owned by := at {}:{}", owner.source, owner.line));
+        }
+        (!notes.is_empty()).then(|| notes.join(" · "))
+    }
+
+    /// Every reference line (see [`Reference::lines`]).
+    pub fn reference_lines(&self) -> Vec<String> {
+        self.references.iter().flat_map(Reference::lines).collect()
+    }
+}
+
+fn trim_number(n: f32) -> String {
+    let s = format!("{n:.2}");
+    s.trim_end_matches('0').trim_end_matches('.').to_string()
+}
+
+/// A value as an inspector shows it: `12px`, `#2563eb`, `2 layers`, `200ms out_cubic`, or `—` when unset.
+pub fn display_value(value: Option<&Value>, kind: Kind) -> String {
+    use crate::value::Motion;
+    match value {
+        None => "—".into(),
+        Some(Value::Number(n)) => match kind {
+            Kind::Length => format!("{}px", trim_number(*n)),
+            Kind::Weight => format!("{n:.0}"),
+            _ => trim_number(*n),
+        },
+        Some(Value::Color(c)) => {
+            let [r, g, b, a] = c.to_srgb();
+            let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+            if byte(a) == 255 {
+                format!("#{:02x}{:02x}{:02x}", byte(r), byte(g), byte(b))
+            } else {
+                format!("#{:02x}{:02x}{:02x}{:02x}", byte(r), byte(g), byte(b), byte(a))
+            }
+        }
+        Some(Value::Shadow(layers)) if layers.is_empty() => "no shadow".into(),
+        Some(Value::Shadow(layers)) => format!("{} layer{}", layers.len(), if layers.len() == 1 { "" } else { "s" }),
+        Some(Value::Motion(Motion::Instant)) => "instant".into(),
+        Some(Value::Motion(Motion::Timed { duration_ms, easing })) => format!("{duration_ms:.0}ms {}", easing.name()),
+        Some(Value::Motion(Motion::Spring { stiffness, damping })) => format!("spring {stiffness} / {damping}"),
+        Some(other) => other.to_lss(),
+    }
+}
+
 /// Where one property's value came from.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Explanation {

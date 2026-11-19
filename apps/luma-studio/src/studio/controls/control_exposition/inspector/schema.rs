@@ -83,7 +83,7 @@ pub enum InspectorCategoryContent {
 
 #[derive(Clone, Debug)]
 pub struct InspectColorRow {
-    pub label: &'static str,
+    pub label: SharedString,
     pub value: Hsla,
     pub source: String,
     pub detail: Option<String>,

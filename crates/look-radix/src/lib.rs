@@ -183,10 +183,7 @@ pub use callout::callout;
 pub use context_menu::{ContextMenuVariant, context_menu_template, context_menu_theme};
 pub use context_menu_builder::ContextMenu;
 pub use card::{Card, CardSize, CardStyle, CardVariant};
-pub use checkbox::{
-    CheckboxSize, CheckboxVariant, checkbox_scale_for, checkbox_template, checkbox_template_for, checkbox_theme,
-    checkbox_theme_for, checkbox_theme_with, resolve_checkbox_radius,
-};
+pub use checkbox::{CheckboxSize, CheckboxVariant, checkbox_template, checkbox_template_for};
 pub use checkbox_builder::Checkbox;
 pub use checkbox_group::{CheckboxGroup, checkbox_group_template};
 pub use popup_menu::{PopupMenuVariant, floating_menu_look, floating_menu_look_for, popup_menu_template, popup_menu_theme};

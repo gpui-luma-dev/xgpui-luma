@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Context, FontWeight, Hsla, Render, Window, div, prelude::*, px};
 use xgpui_luma::style::lss::{
-    AttrId, AttrValue, Category, ControlId, Inspection, Kind, Motion, PartInspection, Reference, Row, RuleInfo,
-    StateId, StyleKey, Theme, Value, ValueSource,
+    AttrId, AttrValue, Category, ControlId, Inspection, PartInspection, Row, StateId, StyleKey, Theme, Value,
+    display_value,
 };
 
 use xgpui_luma::prelude::HasPresenter;
@@ -168,26 +168,9 @@ impl StyleInspector {
             Some(Value::Color(c)) => Some(Hsla::from(*c)),
             _ => None,
         };
-        let source = match e.source {
-            ValueSource::Rule => e.winner.as_ref().map(rule_line).unwrap_or_default(),
-            ValueSource::InheritedFromRoot => "inherited from root".into(),
-            ValueSource::InstanceOverride => "instance override".into(),
-            ValueSource::Unset => "unset".into(),
-        };
-        let beaten = match e.overridden.len() {
-            0 => String::new(),
-            1 => "  · beat 1 rule".into(),
-            n => format!("  · beat {n} rules"),
-        };
-        let owned = e
-            .owned_by
-            .as_ref()
-            .map(|o| format!("  · owned by := at {}:{}", o.source, o.line))
-            .unwrap_or_default();
-        let mut references = Vec::new();
-        for r in &e.references {
-            flatten(r, 0, &mut references);
-        }
+        let notes = e.notes().map(|n| format!("  · {n}")).unwrap_or_default();
+        let source = format!("{}{notes}", e.source_line());
+        let references = e.reference_lines();
         let id = format!("style-inspector-row-{}-{}", part.part.name(), row.property);
         div()
             .debug_selector(move || id.clone())
@@ -223,15 +206,10 @@ impl StyleInspector {
                                     .border_color(chrome.border)
                                     .bg(c)
                             }))
-                            .child(format_value(e.value.as_ref(), row.kind)),
+                            .child(display_value(e.value.as_ref(), row.kind)),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .font_family(MONO_FAMILY)
-                            .text_color(chrome.muted_text)
-                            .child(format!("{source}{beaten}{owned}")),
+                        div().flex_1().min_w_0().font_family(MONO_FAMILY).text_color(chrome.muted_text).child(source),
                     ),
             )
             .children(row.doc.clone().map(|d| div().pl(px(162.)).text_color(chrome.muted_text).child(d)))
@@ -244,74 +222,9 @@ impl StyleInspector {
     }
 }
 
-fn rule_line(rule: &RuleInfo) -> String {
-    let mut where_ = vec![];
-    if !rule.scope.is_empty() {
-        where_.push(rule.scope.clone());
-    }
-    if !rule.states.is_empty() {
-        where_.push(rule.states.clone());
-    }
-    let selector = if where_.is_empty() {
-        String::new()
-    } else {
-        format!("  {}", where_.join(" "))
-    };
-    let via = rule.via.as_ref().map(|v| format!("  via {v}")).unwrap_or_default();
-    format!("{}:{}{selector}  = {}{via}", rule.source, rule.line, rule.expression)
-}
-
-fn flatten(reference: &Reference, depth: usize, out: &mut Vec<String>) {
-    let value = reference
-        .value
-        .as_ref()
-        .map(|v| format_value(Some(v), kind_of(v)))
-        .unwrap_or_else(|| "absent".into());
-    let at = reference
-        .defined_at
-        .as_ref()
-        .map(|l| format!("  ({}:{})", l.source, l.line))
-        .or_else(|| reference.description.as_ref().map(|d| format!("  ({d})")))
-        .unwrap_or_default();
-    out.push(format!("{}← {} = {value}{at}", "  ".repeat(depth), reference.name));
-    for child in &reference.children {
-        flatten(child, depth + 1, out);
-    }
-}
-
-fn kind_of(value: &Value) -> Kind {
-    value.kind().unwrap_or(Kind::Number)
-}
-
 fn trim(n: f32) -> String {
     let s = format!("{n:.2}");
     s.trim_end_matches('0').trim_end_matches('.').to_string()
-}
-
-fn format_value(value: Option<&Value>, kind: Kind) -> String {
-    match value {
-        None => "—".into(),
-        Some(Value::Number(n)) => match kind {
-            Kind::Length => format!("{}px", trim(*n)),
-            Kind::Weight => format!("{n:.0}"),
-            _ => trim(*n),
-        },
-        Some(Value::Color(c)) => {
-            let [r, g, b, a] = c.to_srgb();
-            let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-            if byte(a) == 255 {
-                format!("#{:02x}{:02x}{:02x}", byte(r), byte(g), byte(b))
-            } else {
-                format!("#{:02x}{:02x}{:02x}{:02x}", byte(r), byte(g), byte(b), byte(a))
-            }
-        }
-        Some(Value::Shadow(layers)) if layers.is_empty() => "no shadow".into(),
-        Some(Value::Shadow(layers)) => format!("{} layer{}", layers.len(), if layers.len() == 1 { "" } else { "s" }),
-        Some(Value::Motion(Motion::Instant)) => "instant".into(),
-        Some(Value::Motion(Motion::Timed { duration_ms, easing })) => format!("{duration_ms:.0}ms {}", easing.name()),
-        Some(Value::Motion(Motion::Spring { stiffness, damping })) => format!("spring {stiffness} / {damping}"),
-        Some(other) => other.to_lss(),
-    }
 }
 
 impl Render for StyleInspector {

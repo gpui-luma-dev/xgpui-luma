@@ -1,7 +1,6 @@
 //! The checkbox template driven by the Luma style language (issue #285).
 //!
-//! It reads every value from a [`Theme`] (the SDK's `.lss` files, plus a look's) and builds the same
-//! element tree as [`ThemedCheckboxTemplate`](super::ThemedCheckboxTemplate). A look whose mode or
+//! It reads every value from a [`Theme`] (the SDK's `.lss` files, plus a look's). A look whose mode or
 //! palette changes while running passes a [`ThemeProvider`], asked on every render.
 
 use std::sync::Arc;
@@ -376,14 +375,12 @@ fn render_checkmark(progress: f32, size: f32, color: Hsla, icon: &crate::infra::
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
-    use std::sync::Arc;
+    use gpui::IntoElement;
 
-    use gpui::{AnyElement, App, Context, IntoElement, Render, TestAppContext, Window, div};
+    use crate::theme::InteractionState;
 
     use super::*;
     use crate::controls::button::{ButtonRenderModel, ButtonTemplate};
-    use crate::controls::checkbox::{DefaultCheckboxTheme, ThemedCheckboxTemplate};
-    use crate::theme::{InteractionState, ThemeTokens};
 
     fn model(state: InteractionState, checked: bool, role: ButtonFamilyRole) -> ButtonRenderModel<CheckboxData> {
         ButtonRenderModel { data: CheckboxData::new(checked), state, role, ..Default::default() }
@@ -396,57 +393,6 @@ mod tests {
             crate::infra::focus_adorner::testing::assert_stable_layout(move |state, checked, window, cx| {
                 template.render(&model(state, checked, role), window, cx).into_any_element()
             });
-        }
-    }
-
-    /// The `.lss` checkbox and the native checkbox render boxes of the same size in every state.
-    #[test]
-    fn styled_and_native_checkboxes_render_the_same_bounds() {
-        type Render2 = Box<dyn Fn(InteractionState, bool, &mut Window, &mut App) -> (AnyElement, AnyElement)>;
-        struct Harness {
-            render: Render2,
-            bits: u8,
-        }
-        impl Render for Harness {
-            fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-                let state = InteractionState {
-                    focused: self.bits & 1 != 0,
-                    hovered: self.bits & 2 != 0,
-                    pressed: self.bits & 4 != 0,
-                    disabled: self.bits & 8 != 0,
-                    invalid: self.bits & 16 != 0,
-                };
-                let (native, styled) = (self.render)(state, self.bits & 32 != 0, window, cx);
-                div()
-                    .flex()
-                    .flex_col()
-                    .items_start()
-                    .child(div().flex_none().debug_selector(|| "native".into()).child(native))
-                    .child(div().flex_none().debug_selector(|| "styled".into()).child(styled))
-            }
-        }
-        for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon] {
-            let native = ThemedCheckboxTemplate::new(Arc::new(DefaultCheckboxTheme::new(ThemeTokens::light())));
-            let styled = StyledCheckboxTemplate::sdk();
-            let render: Render2 = Box::new(move |state, checked, window, cx| {
-                let m = model(state, checked, role);
-                (native.render(&m, window, cx).into_any_element(), styled.render(&m, window, cx).into_any_element())
-            });
-            let mut app = TestAppContext::single();
-            let (view, cx) = app.add_window_view(|_, _| Harness { render, bits: 0 });
-            for scale in [1.0, 1.25, 1.5, 2.0] {
-                cx.simulate_scale_factor_change(scale);
-                for bits in 0..64 {
-                    view.update(cx, |v, cx| {
-                        v.bits = bits;
-                        cx.notify();
-                    });
-                    cx.run_until_parked();
-                    let n = cx.debug_bounds("native").expect("native rendered");
-                    let s = cx.debug_bounds("styled").expect("styled rendered");
-                    assert_eq!(n.size, s.size, "{role:?} state {bits} at {scale}x");
-                }
-            }
         }
     }
 }

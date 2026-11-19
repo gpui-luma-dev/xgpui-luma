@@ -23,7 +23,6 @@ pub use crate::controls::range::slider::theme::{
     SliderStylesheet, SliderGeometryStylesheet, SliderGeometry, SliderGeometrySources, SliderDecoration,
     native_sdk_slider_recipes, define_sdk_slider,
 };
-pub use crate::controls::choice::checkbox::theme::{native_sdk_checkbox_recipes, define_sdk_checkbox};
 mod motion;
 pub use motion::*;
 mod colors;
@@ -114,7 +113,6 @@ common_stylesheet! {
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     toggle: ToggleStylesheet,
-    checkbox: CheckboxStylesheet,
     radio: RadioStylesheet,
     textfield: TextFieldStylesheet,
     textarea: TextAreaStylesheet,
@@ -290,7 +288,6 @@ impl CommonStylesheet {
         };
         define_sdk_slider(&mut sheet);
         define_sdk_switch(&mut sheet);
-        define_sdk_checkbox(&mut sheet);
         use PaletteRole::*;
         for (family, roles) in [
             (
@@ -822,19 +819,5 @@ mod tests {
             });
         });
         assert_eq!(sheet.switch.sizes.get("compact").unwrap().track_width_scale, Some(32.0 / 28.0));
-    }
-
-    #[test]
-    fn checkbox_builder_methods_configure_geometry_and_sizes_fluently() {
-        let mut sheet = CommonStylesheet::default();
-        sheet.checkbox.disabled_opacity(0.56).gap(8.0).size("1", |m| {
-            m.indicator_size(14.0).glyph_size(9.0);
-        });
-
-        assert_eq!(sheet.checkbox.geometry.disabled_opacity, Some(0.56));
-        assert_eq!(sheet.checkbox.geometry.gap, Some(8.0));
-        let size1 = sheet.checkbox.sizes.get("1").unwrap();
-        assert_eq!(size1.indicator_size, Some(14.0));
-        assert_eq!(size1.glyph_size, Some(9.0));
     }
 }

@@ -3,9 +3,7 @@
 use gpui::{AnyElement, Div, FontWeight, Hsla, IntoElement, SharedString, div, hsla, px, prelude::*};
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma_look_shadcn::ShadcnLook;
-use xgpui_luma_look_shadcn::inspect::{
-    ButtonInspectMetrics, CheckboxInspectMetrics, RadioButtonInspectMetrics, SwitchInspectMetrics,
-};
+use xgpui_luma_look_shadcn::inspect::{ButtonInspectMetrics, RadioButtonInspectMetrics, SwitchInspectMetrics};
 
 #[derive(Clone, Copy, Debug)]
 pub struct BoxModelLayerColors {
@@ -142,28 +140,6 @@ impl InspectBoxModelSnapshot {
             radius: metrics.radius.value_px,
             focus_ring_width: metrics.focus_ring_width.value_px,
             focus_ring_offset: metrics.focus_ring_offset.value_px,
-        }
-    }
-
-    pub fn from_checkbox_metrics(metrics: &CheckboxInspectMetrics, indicator_only: bool) -> Self {
-        if indicator_only {
-            choice_indicator_only_box_model(
-                metrics.indicator_size.value_px,
-                metrics.border_width.value_px,
-                metrics.indicator_radius.value_px,
-                metrics.focus_ring_width.value_px,
-                metrics.focus_ring_offset.value_px,
-            )
-        } else {
-            choice_indicator_box_model(
-                metrics.height.value_px,
-                metrics.indicator_size.value_px,
-                metrics.gap.value_px,
-                metrics.border_width.value_px,
-                metrics.control_radius.value_px,
-                metrics.focus_ring_width.value_px,
-                metrics.focus_ring_offset.value_px,
-            )
         }
     }
 

@@ -4,7 +4,6 @@ mod autocomplete;
 mod badge;
 mod button;
 mod card;
-mod checkbox;
 mod context_menu;
 mod control_group;
 mod floating_menu;
@@ -49,10 +48,6 @@ pub use button::{
     inspect_button_metrics, inspect_button_typography, inspect_button_typography_for_size,
 };
 pub use card::{CardInspectMetrics, inspect_card_metrics};
-pub use checkbox::{
-    CheckboxInspectMetrics, CheckboxInspectPalette, inspect_checkbox_color_palette, inspect_checkbox_elevation,
-    inspect_checkbox_metrics,
-};
 pub use control_group::{
     ControlGroupInspectMetrics, ControlGroupListInspectPalette, inspect_control_group_list_color_palette,
     inspect_control_group_metrics,
@@ -132,5 +127,4 @@ pub(crate) use button::{
     inspect_button_elevation_with_stylesheet,
 };
 
-pub(crate) use checkbox::{inspect_checkbox_color_palette_with_stylesheet, inspect_checkbox_elevation_with_stylesheet};
 pub(crate) use radio::{inspect_radio_button_color_palette_with_stylesheet, inspect_radio_button_elevation_with_stylesheet};

@@ -14,7 +14,7 @@ pub use find::*;
 pub use metadata::*;
 pub use resolve::{
     resolve_accordion_content_color_rule, resolve_accordion_trigger_color_rule, resolve_button_color_rule,
-    resolve_badge_color_rule, resolve_button_metrics_rule, resolve_card_color_rule, resolve_checkbox_color_rule,
+    resolve_badge_color_rule, resolve_button_metrics_rule, resolve_card_color_rule,
     resolve_control_group_list_color_rule, resolve_floating_menu_surface_color_rule,
     resolve_floating_menu_trigger_color_rule, resolve_table_row_color_rule, resolve_table_surface_color_rule,
     resolve_listbox_list_color_rule, resolve_listbox_row_color_rule, resolve_sidebar_branch_color_rule,
@@ -36,7 +36,6 @@ fn embedded() -> &'static StylesheetConfig {
         let mut config = StylesheetConfig::native_default();
         define_shadcn_slider(&mut config);
         define_shadcn_switch(&mut config);
-        define_shadcn_checkbox(&mut config);
         config
     })
 }
@@ -71,7 +70,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
 
 pub use crate::controls::slider::{native_shadcn_common_slider, native_shadcn_slider, define_shadcn_slider};
 pub use crate::controls::switch::{native_shadcn_common_switch, native_shadcn_switch, define_shadcn_switch};
-pub use crate::controls::checkbox::{native_shadcn_checkbox, define_shadcn_checkbox};
 
 #[cfg(test)]
 mod tests {
@@ -86,8 +84,6 @@ mod tests {
         assert!(stylesheet.typography.semantic_rule("h1").is_some());
         assert!(!stylesheet.button.color_rules.is_empty());
         assert_eq!(stylesheet.badge.color_rules.len(), 5);
-        assert_eq!(stylesheet.checkbox.color_rules.len(), 3);
-        assert_eq!(stylesheet.checkbox.elevation_rules.len(), 2);
         assert_eq!(stylesheet.toggle.elevation_rules.len(), 2);
         assert_eq!(stylesheet.radio.color_rules.len(), 5);
         assert_eq!(stylesheet.radio.elevation_rules.len(), 2);
@@ -126,7 +122,6 @@ mod tests {
         assert!(find_textfield_color_rule(stylesheet, "primary", true, false, ThemeMode::Light).is_some());
         assert!(find_textfield_elevation_rule(stylesheet, crate::controls::ShadcnTextFieldStyle::Primary).is_some());
         assert!(find_autocomplete_chrome_color_rule(stylesheet).is_some());
-        assert!(find_checkbox_color_rule(stylesheet, true, InteractionLayer::Default).is_some());
         assert!(find_slider_color_rule(stylesheet, "primary", InteractionLayer::Hovered).is_some());
         assert!(find_slider_color_rule(stylesheet, "secondary", InteractionLayer::Default).is_some());
     }
@@ -134,13 +129,12 @@ mod tests {
     #[test]
     fn embedded_color_rule_metadata_covers_all_controls() {
         let sections = embedded_color_rule_metadata();
-        assert_eq!(sections.len(), 28);
+        assert_eq!(sections.len(), 27);
         assert!(sections.iter().all(|section| !section.rules.is_empty()));
         assert_eq!(
             sections.iter().map(|section| section.rules.len()).sum::<usize>(),
             embedded_stylesheet().button.color_rules.len()
                 + embedded_stylesheet().badge.color_rules.len()
-                + embedded_stylesheet().checkbox.color_rules.len()
                 + embedded_stylesheet().radio.color_rules.len()
                 + embedded_stylesheet().switch.color_rules.len()
                 + embedded_stylesheet().slider.color_rules.len()
@@ -171,26 +165,22 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use xgpui_luma::theme::stylesheet::{define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{define_sdk_slider, define_sdk_switch};
         let original = StylesheetConfig::native_default();
         // Assemble the controls independently from an empty sheet.
         let mut native = StylesheetConfig::default();
         define_sdk_slider(&mut native.common);
         define_sdk_switch(&mut native.common);
-        define_sdk_checkbox(&mut native.common);
         define_shadcn_slider(&mut native);
         define_shadcn_switch(&mut native);
-        define_shadcn_checkbox(&mut native);
         size_presets::apply_size_presets(&mut native.common);
         assert_eq!(native.common.slider, original.common.slider);
         assert_eq!(native.common.switch, original.common.switch);
-        assert_eq!(native.common.checkbox, original.common.checkbox);
         assert_eq!(native.slider, original.slider);
         assert_eq!(native.switch, original.switch);
-        assert_eq!(native.checkbox, original.checkbox);
         assert_eq!(native.common.motion.slider, original.common.motion.slider);
         assert_eq!(native.common.motion.switch, original.common.motion.switch);
-        for family in ["slider", "switch", "checkbox"] {
+        for family in ["slider", "switch"] {
             assert_eq!(native.common.recipes.0.get(family), original.common.recipes.0.get(family));
         }
 

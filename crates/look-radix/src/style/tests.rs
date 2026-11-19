@@ -1,11 +1,8 @@
 use gpui::{BoxShadow, Hsla};
-use xgpui_luma::style::lss::{AttrValue, Color, ControlId, PartId, StyleKey, Value, box_shadows};
-use xgpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::style::lss::{AttrValue, ControlId, PartId, StyleKey, Value, box_shadows};
+use xgpui_luma::theme::ThemeMode;
 
 use super::*;
-use crate::button::Paint;
-use crate::button_layout::Radius;
-use crate::checkbox::{CheckboxSize, CheckboxVariant, checkbox_theme_for};
 use crate::palette::{Accent, Gray};
 
 /// The built-in look and a bright accent whose solid faces take dark labels.
@@ -22,17 +19,6 @@ fn looks() -> Vec<(&'static str, Look)> {
 fn close(a: Hsla, b: Hsla) -> bool {
     let (a, b) = (a.to_rgb(), b.to_rgb());
     [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-}
-
-fn same_shadows(got: &[BoxShadow], want: &[BoxShadow]) -> bool {
-    got.len() == want.len()
-        && got.iter().zip(want).all(|(g, w)| {
-            close(g.color, w.color)
-                && g.offset == w.offset
-                && g.blur_radius == w.blur_radius
-                && g.spread_radius == w.spread_radius
-                && g.inset == w.inset
-        })
 }
 
 #[test]
@@ -60,168 +46,140 @@ fn every_axis_combination_resolves_without_problems() {
     }
 }
 
-#[test]
-fn checkbox_matches_the_native_look() {
+/// A resolved Radix checkbox: `attrs` as (attribute, value), `states` by name.
+fn checkbox(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Arc<xgpui_luma::style::lss::Resolved> {
     let config = config();
-    let state = |name: &str| config.state(name).expect("state");
-    let attr = |name: &str| config.attribute(name).expect("attribute");
-    let (variant_attr, size_attr, tone_attr, radius_attr) =
-        (attr("variant"), attr("size"), attr("tone"), attr("radius"));
-    let checkbox = ControlId::new("checkbox");
-    let (indicator, glyph, label) = (PartId::new("indicator"), PartId::new("glyph"), PartId::new("label"));
-    let variants = [
-        (CheckboxVariant::Surface, None),
-        (CheckboxVariant::Classic, Some("classic")),
-        (CheckboxVariant::Soft, Some("soft")),
-    ];
-    let sizes = [(CheckboxSize::One, Some("1")), (CheckboxSize::Two, None), (CheckboxSize::Three, Some("3"))];
-    let radii = [
-        (Radius::None, Some("none")),
-        (Radius::Small, Some("small")),
-        (Radius::Medium, None),
-        (Radius::Large, Some("large")),
-        (Radius::Full, Some("full")),
-    ];
-    let paints = [
-        (Paint::accent(), None, false),
-        (Paint::gray(), Some("gray"), false),
-        (Paint::accent().high_contrast(), None, true),
-        (Paint::gray().high_contrast(), Some("gray"), true),
-    ];
+    let key = attrs.iter().fold(StyleKey::new(ControlId::new("checkbox")), |key, (attr, value)| {
+        key.attr(config.attribute(attr).expect("attribute"), AttrValue::named(value))
+    });
+    let key = states.iter().fold(key, |key, state| key.state(config.state(state).expect("state")));
+    look.style_theme().resolve(&key)
+}
 
+fn color(resolved: &xgpui_luma::style::lss::Resolved, part: &'static str, what: &str) -> Hsla {
+    let part = resolved.part(PartId::new(part));
+    let color = match what {
+        "background" => part.background(),
+        "border" => part.border(),
+        _ => part.foreground(),
+    };
+    color.map(Hsla::from).unwrap_or_else(|| panic!("{what} is unset"))
+}
+
+fn shadow(resolved: &xgpui_luma::style::lss::Resolved) -> Vec<BoxShadow> {
+    resolved.part(PartId::new("indicator")).shadow().map(|s| box_shadows(&s)).unwrap_or_default()
+}
+
+fn step(look: &Look, family: crate::scale::ScaleFamily, n: u8) -> Hsla {
+    look.resolve_step(family, n).hsla()
+}
+
+// Behaviour of the native Radix checkbox, kept as checks on the `.lss` checkbox.
+
+#[test]
+fn pressed_keeps_the_resting_fill_and_only_hover_changes_the_checked_fill() {
+    use crate::scale::ScaleFamily::Color as Accent;
     for (name, look) in looks() {
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
-            let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
-            let sheet = theme.stylesheet();
-            let length = |name: &str| sheet.prop::<f32>(checkbox, name).expect("declared");
-            for (variant, variant_key) in variants {
-                for (size, size_key) in sizes {
-                    let sized = look.with_size(size.control_size());
-                    let border_width = sized.metrics_for(size.control_size()).border_width;
-                    for (radius, radius_key) in radii {
-                        for (paint, tone_key, high_contrast) in paints {
-                            let native = checkbox_theme_for(&sized, variant, paint, size, radius);
-                            for bits in 0..32u8 {
-                                let s = InteractionState {
-                                    hovered: bits & 1 != 0,
-                                    pressed: bits & 2 != 0,
-                                    focused: bits & 4 != 0,
-                                    disabled: bits & 8 != 0,
-                                    invalid: bits & 16 != 0,
-                                };
-                                for checked in [false, true] {
-                                    let palette = native.resolve(checked, s);
-                                    for scale in [1.0, 1.5] {
-                                        let case = format!(
-                                            "{name} {mode:?} {variant:?} {size:?} {radius:?} {paint:?} {s:?} checked={checked} @{scale}x"
-                                        );
-                                        let key = StyleKey::new(checkbox)
-                                            .attr_opt(variant_attr, variant_key.map(AttrValue::new))
-                                            .attr_opt(size_attr, size_key.map(AttrValue::new))
-                                            .attr_opt(radius_attr, radius_key.map(AttrValue::new))
-                                            .attr_opt(tone_attr, tone_key.map(AttrValue::new))
-                                            .state_if(state("high_contrast"), high_contrast)
-                                            .state_if(state("hover"), s.hovered)
-                                            .state_if(state("pressed"), s.pressed)
-                                            .state_if(state("focused"), s.focused)
-                                            .state_if(state("disabled"), s.disabled)
-                                            .state_if(state("invalid"), s.invalid)
-                                            .state_if(state("checked"), checked)
-                                            .scale(scale);
-                                        let resolved = theme.resolve(&key);
-
-                                        let color = |got: Option<Color>, want: Hsla, what: &str| {
-                                            let got = got
-                                                .map(Hsla::from)
-                                                .unwrap_or_else(|| panic!("{case}: {what} is unset"));
-                                            assert!(close(got, want), "{case}: {what}: {got:?} != {want:?}");
-                                        };
-                                        color(
-                                            resolved.part(indicator).background(),
-                                            palette.indicator_background,
-                                            "indicator",
-                                        );
-                                        color(
-                                            resolved.part(indicator).border(),
-                                            palette.indicator_border,
-                                            "indicator border",
-                                        );
-                                        color(resolved.part(glyph).foreground(), palette.checkmark_color, "checkmark");
-                                        color(resolved.part(label).foreground(), palette.label_color, "label");
-                                        color(resolved.root().focus_border(), palette.focus_border, "focus border");
-                                        assert_eq!(resolved.root().background(), None, "{case}: control background");
-                                        assert_eq!(resolved.root().border(), None, "{case}: control border");
-                                        let shadows = resolved
-                                            .part(indicator)
-                                            .shadow()
-                                            .map(|s| box_shadows(&s))
-                                            .unwrap_or_default();
-                                        let want = palette.indicator_shadow.clone().unwrap_or_default();
-                                        assert!(
-                                            same_shadows(&shadows, &want),
-                                            "{case}: shadow {shadows:?} != {want:?}"
-                                        );
-
-                                        // Native Radix geometry is unsnapped; the `.lss` checkbox snaps lengths
-                                        // to device pixels like the SDK.
-                                        let metrics = native.scale(scale);
-                                        let snap = |v: f32| xgpui_luma::theme::snap_to_pixel(v, scale);
-                                        let root = resolved.root();
-                                        let number = |name: &str| root.value(name).and_then(Value::as_number);
-                                        let near = |got: Option<f32>, want: f32, what: &str| {
-                                            assert!(
-                                                got.is_some_and(|g| (g - want).abs() < 1e-4),
-                                                "{case}: {what}: {got:?} != {want}"
-                                            );
-                                        };
-                                        near(
-                                            root.get(length("indicator_size")),
-                                            snap(metrics.indicator_size),
-                                            "indicator_size",
-                                        );
-                                        near(root.get(length("glyph_size")), snap(metrics.glyph_size), "glyph_size");
-                                        near(
-                                            root.get(length("indicator_radius")),
-                                            snap(metrics.indicator_radius),
-                                            "indicator_radius",
-                                        );
-                                        near(
-                                            root.get(length("label_baseline_shift")),
-                                            metrics.label_baseline_shift,
-                                            "baseline",
-                                        );
-                                        near(root.height(), snap(metrics.height), "height");
-                                        near(root.gap(), snap(metrics.gap), "gap");
-                                        near(root.radius(), snap(metrics.control_radius), "control radius");
-                                        near(number("padding_x"), metrics.control_padding_x, "padding x");
-                                        near(number("padding_y"), metrics.control_padding_y, "padding y");
-                                        near(number("disabled_opacity"), metrics.disabled_opacity, "disabled opacity");
-                                        near(number("border_width"), border_width, "border width");
-
-                                        let text = resolved.part(label);
-                                        let typography = palette.label_typography;
-                                        near(text.font_size(), typography.size, "font size");
-                                        near(text.line_height(), typography.line_height, "line height");
-                                        near(
-                                            text.value("font_weight").and_then(Value::as_number),
-                                            typography.weight.0,
-                                            "weight",
-                                        );
-                                        assert_eq!(
-                                            text.font_family(),
-                                            Some(palette.label_font_family.as_ref()),
-                                            "{case}: font family"
-                                        );
-                                    }
-                                }
-                            }
+            for variant in [&[][..], &[("variant", "classic")], &[("variant", "soft")]] {
+                for checked in [&[][..], &["checked"]] {
+                    let at = |extra: &[&str]| checkbox(&look, variant, &[checked, extra].concat());
+                    let focused = at(&["focused"]);
+                    for pressed in [&["focused", "pressed"][..], &["focused", "pressed", "hover"]] {
+                        let pressed = at(pressed);
+                        for (part, what) in [("indicator", "background"), ("indicator", "border"), ("glyph", "fg")] {
+                            assert!(
+                                close(color(&pressed, part, what), color(&focused, part, what)),
+                                "{name} {mode:?} {variant:?} {checked:?}: pressed {part} {what}"
+                            );
                         }
                     }
                 }
             }
+            let hovered = checkbox(&look, &[], &["checked", "hover"]);
+            assert!(close(color(&hovered, "indicator", "background"), step(&look, Accent, 10)), "{name} {mode:?}");
         }
     }
+}
+
+#[test]
+fn surface_fills_with_the_accent_behind_a_gray_edge() {
+    let look = Look::built_in();
+    let unchecked = checkbox(&look, &[], &[]);
+    let checked = checkbox(&look, &[], &["checked"]);
+    assert!(close(color(&unchecked, "indicator", "border"), step(&look, crate::scale::ScaleFamily::Gray, 7)));
+    assert!(close(color(&checked, "indicator", "background"), look.resolve_role(SemanticRole::Primary).hsla()));
+    assert!(shadow(&unchecked).is_empty() && shadow(&checked).is_empty(), "surface stays flat");
+}
+
+#[test]
+fn soft_keeps_one_accent_tint_in_both_check_states() {
+    use crate::scale::ScaleFamily::Color as Accent;
+    let look = Look::built_in();
+    for checked in [&[][..], &["checked"]] {
+        let soft = checkbox(&look, &[("variant", "soft")], checked);
+        assert!(close(color(&soft, "indicator", "background"), step(&look, Accent, 5)));
+    }
+    let checked = checkbox(&look, &[("variant", "soft")], &["checked"]);
+    assert!(close(color(&checked, "glyph", "fg"), step(&look, Accent, 11)));
+}
+
+#[test]
+fn classic_is_the_only_variant_that_carries_a_shadow() {
+    let look = Look::built_in();
+    for checked in [&[][..], &["checked"]] {
+        assert!(!shadow(&checkbox(&look, &[("variant", "classic")], checked)).is_empty());
+        assert!(shadow(&checkbox(&look, &[], checked)).is_empty());
+        assert!(shadow(&checkbox(&look, &[("variant", "soft")], checked)).is_empty());
+    }
+}
+
+#[test]
+fn high_contrast_uses_step_twelve() {
+    use crate::scale::ScaleFamily::Color as Accent;
+    let look = Look::built_in();
+    let surface = checkbox(&look, &[], &["checked", "high_contrast"]);
+    assert!(close(color(&surface, "indicator", "background"), step(&look, Accent, 12)));
+    assert!(close(color(&surface, "glyph", "fg"), step(&look, Accent, 1)));
+    let soft = checkbox(&look, &[("variant", "soft")], &["checked", "high_contrast"]);
+    assert!(close(color(&soft, "indicator", "background"), step(&look, Accent, 5)), "soft keeps its tint");
+    assert!(close(color(&soft, "glyph", "fg"), step(&look, Accent, 12)), "and darkens only the checkmark");
+}
+
+#[test]
+fn gray_tone_reads_the_gray_scale() {
+    use crate::scale::ScaleFamily::Gray;
+    let look = Look::built_in();
+    let soft = checkbox(&look, &[("variant", "soft"), ("tone", "gray")], &[]);
+    assert!(close(color(&soft, "indicator", "background"), step(&look, Gray, 5)));
+}
+
+#[test]
+fn checkbox_radius_follows_size_and_radius_but_never_pills() {
+    let look = Look::built_in();
+    let radius = |attrs: &[(&str, &str)]| {
+        let resolved = checkbox(&look, attrs, &[]);
+        resolved.root().value("indicator_radius").and_then(Value::as_number).expect("radius")
+    };
+    let size = |attrs: &[(&str, &str)]| {
+        checkbox(&look, attrs, &[]).root().value("indicator_size").and_then(Value::as_number).expect("size")
+    };
+    assert_eq!(radius(&[]), 3.0, "size 2, medium: --radius-1");
+    assert_eq!(size(&[]), 16.0);
+    assert_eq!(radius(&[("radius", "full")]), radius(&[("radius", "large")]));
+    assert!(radius(&[("radius", "full")]) < size(&[]) / 2.0);
+    assert_eq!(radius(&[("radius", "none")]), 0.0);
+    assert_eq!(size(&[("size", "1")]), 14.0);
+    assert_eq!(size(&[("size", "3")]), 20.0);
+}
+
+#[test]
+fn bright_accents_take_dark_checkmarks() {
+    let (_, lime) = looks().pop().expect("lime");
+    let checked = checkbox(&lime, &[], &["checked"]);
+    assert!(close(color(&checked, "glyph", "fg"), lime.resolve_role(SemanticRole::PrimaryForeground).hsla()));
+    assert!(color(&checked, "glyph", "fg").l < 0.5);
 }
 
 #[test]

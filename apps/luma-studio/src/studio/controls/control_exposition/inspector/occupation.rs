@@ -31,19 +31,6 @@ pub fn radio_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupa
     choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
 }
 
-pub fn checkbox_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
-    let state = InteractionState::default();
-    let tokens = look.mode_tokens();
-    let palette = paint::checkbox_look(
-        tokens.as_ref(),
-        ShadcnButtonStyle::Primary,
-        false,
-        state,
-        xgpui_luma_look_shadcn::ShadcnSize::Md,
-    );
-    choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
-}
-
 pub fn switch_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
     let state = InteractionState::default();
     let tokens = look.mode_tokens();
@@ -63,7 +50,7 @@ pub fn switch_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccup
     choice_indicator_occupation(shadows, focus_oversize, state.disabled)
 }
 
-fn choice_indicator_occupation(
+pub(crate) fn choice_indicator_occupation(
     shadows: Option<&[BoxShadow]>,
     focus_oversize: f32,
     disabled: bool,

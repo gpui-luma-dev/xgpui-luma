@@ -39,7 +39,7 @@ pub use handles::{
 };
 pub use inspect::{
     Axes, BoxModel, Category, Edges, Explanation, Inspection, Location, PartInspection, Reference, ReferenceKind, Row,
-    RuleInfo, ValueSource,
+    RuleInfo, ValueSource, display_value,
 };
 pub use overrides::{OverrideValue, Overrides};
 pub use resolve::{PartView, Resolved, Theme};

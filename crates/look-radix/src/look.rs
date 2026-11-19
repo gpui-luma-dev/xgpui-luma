@@ -96,7 +96,6 @@ pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::styles
         let mut sheet = native_radix_stylesheet();
         apply_radix_slider_stylesheet(&mut sheet);
         apply_radix_switch_stylesheet(&mut sheet);
-        apply_radix_checkbox_stylesheet(&mut sheet);
         sheet
     })
 }
@@ -112,7 +111,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
         switch: native_radix_switch(),
-        checkbox: native_radix_checkbox(),
         button: crate::button::native_button_stylesheet(),
         radio: crate::radio::native_radio_stylesheet(),
         textfield: crate::textfield::native_textfield_stylesheet(),
@@ -133,18 +131,13 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         ..Default::default()
     };
     crate::size::apply_size_presets(&mut common);
-    let mut common = common.with_sdk_defaults();
-    // Radix derives the checkbox indicator radius from its `radius` prop.
-    common.checkbox.geometry.indicator_radius = None;
-    common
+    common.with_sdk_defaults()
 }
 
 pub use crate::slider::{native_radix_slider};
 pub(crate) use crate::slider::{apply_radix_slider_stylesheet};
 pub use crate::switch::{native_radix_switch};
 pub(crate) use crate::switch::{apply_radix_switch_stylesheet};
-pub use crate::checkbox::{native_radix_checkbox};
-pub(crate) use crate::checkbox::{apply_radix_checkbox_stylesheet};
 
 fn sized_stylesheets(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
@@ -813,23 +806,20 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_slider, define_sdk_switch};
         let original = native_radix_stylesheet();
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
         define_sdk_switch(&mut native);
-        define_sdk_checkbox(&mut native);
         apply_radix_slider_stylesheet(&mut native);
         apply_radix_switch_stylesheet(&mut native);
-        apply_radix_checkbox_stylesheet(&mut native);
         crate::size::apply_size_presets(&mut native);
         assert_eq!(native.slider, original.slider);
         assert_eq!(native.switch, original.switch);
-        assert_eq!(native.checkbox, original.checkbox);
         assert_eq!(native.motion.slider, original.motion.slider);
         assert_eq!(native.motion.switch, original.motion.switch);
-        for family in ["slider", "switch", "checkbox"] {
+        for family in ["slider", "switch"] {
             assert_eq!(native.recipes.0.get(family), original.recipes.0.get(family));
         }
 

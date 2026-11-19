@@ -113,7 +113,7 @@ mod listbox {
                     rows.extend(listbox_list_color_rows(&inspect.inspect_listbox_list_color_palette(true, false)));
                     if selection.state_id == "keyboard-active" {
                         rows.push(InspectColorRow {
-                            label: "focus border",
+                            label: "focus border".into(),
                             value: xgpui_luma_look_shadcn::paint::focus_ring_color(&look.mode_tokens().catalog)
                                 .unwrap_or_else(|_| look.chrome().body_text),
                             source: "ring".into(),

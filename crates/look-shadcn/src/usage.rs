@@ -65,10 +65,10 @@ const RADIX_THEME_USAGES: &[&ThemeUsage] = &[
     &ThemeUsage {
         label: "Checkbox",
         parts: &[
-            part("indicator elevation", "shadow-sm", &["default", "checked"], &["CheckboxPalette.indicator_shadow"]),
-            part("checked fill", "primary", &["checked"], &["CheckboxPalette.indicator_background"]),
-            part("checkmark", "primary-foreground", &["checked"], &["CheckboxPalette.checkmark_color"]),
-            part("border", "input", &["unchecked"], &["CheckboxPalette.indicator_border"]),
+            part("indicator elevation", "shadow-sm", &["default", "checked"], &["checkbox.indicator.shadow"]),
+            part("checked fill", "primary", &["checked"], &["checkbox.indicator.background"]),
+            part("checkmark", "primary-foreground", &["checked"], &["checkbox.glyph.foreground"]),
+            part("border", "input", &["unchecked"], &["checkbox.indicator.border"]),
         ],
     },
     &ThemeUsage {

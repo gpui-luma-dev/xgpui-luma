@@ -101,19 +101,14 @@ pub fn transition(motion: &xgpui_luma_style::Motion) -> crate::motion::Transitio
 #[cfg(test)]
 mod tests {
     use gpui::Hsla;
-    use xgpui_luma_style::{Color, ControlId, PartId, Value};
+    use xgpui_luma_style::{ControlId, PartId, StyleKey, Value};
 
     use super::*;
-    use crate::controls::checkbox::{CheckboxTheme, DefaultCheckboxTheme};
-    use crate::theme::{InteractionState, ThemeTokens};
+    use crate::theme::ThemeTokens;
 
     fn close(a: Hsla, b: Hsla) -> bool {
         let (a, b) = (a.to_rgb(), b.to_rgb());
         [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-    }
-
-    fn hsla(c: Option<Color>) -> Option<Hsla> {
-        c.map(Hsla::from)
     }
 
     #[test]
@@ -195,96 +190,32 @@ mod tests {
         assert!(values.is_empty());
     }
 
+    /// The SDK checkbox's `.lss` values (they matched `DefaultCheckboxTheme` when it was deleted).
     #[test]
-    fn checkbox_matches_the_native_theme() {
-        let tokens = ThemeTokens::light();
-        let native = DefaultCheckboxTheme::new(tokens.clone());
+    fn checkbox_values_follow_the_sdk_tokens() {
+        let palette = ThemeTokens::light().palette;
         let theme = default_theme();
         let config = config();
         let state = |name: &str| config.state(name).expect("state");
         let checkbox = ControlId::new("checkbox");
-        let (indicator, glyph, label) = (PartId::new("indicator"), PartId::new("glyph"), PartId::new("label"));
-        let sheet = theme.stylesheet();
-        let length = |name: &str| sheet.prop::<f32>(checkbox, name).expect("declared");
-
-        for bits in 0..32u8 {
-            let s = InteractionState {
-                hovered: bits & 1 != 0,
-                pressed: bits & 2 != 0,
-                focused: bits & 4 != 0,
-                disabled: bits & 8 != 0,
-                invalid: bits & 16 != 0,
-            };
-            for checked in [false, true] {
-                for scale in [1.0, 1.25, 1.5, 2.0] {
-                    let key = xgpui_luma_style::StyleKey::new(checkbox)
-                        .state_if(state("hover"), s.hovered)
-                        .state_if(state("pressed"), s.pressed)
-                        .state_if(state("focused"), s.focused)
-                        .state_if(state("disabled"), s.disabled)
-                        .state_if(state("invalid"), s.invalid)
-                        .state_if(state("checked"), checked)
-                        .scale(scale);
-                    let case = format!("{s:?} checked={checked} @{scale}x");
-                    let style = theme.resolve(&key);
-                    let palette = native.resolve(checked, s);
-                    let metrics = native.scale(scale);
-
-                    let color = |part: PartId, got: Option<Color>, want: Hsla, what: &str| {
-                        let got = hsla(got).unwrap_or_else(|| panic!("{case}: {what} on {part} is unset"));
-                        assert!(close(got, want), "{case}: {what}: {got:?} != {want:?}");
-                    };
-                    color(
-                        indicator,
-                        style.part(indicator).background(),
-                        palette.indicator_background,
-                        "indicator background",
-                    );
-                    color(indicator, style.part(indicator).border(), palette.indicator_border, "indicator border");
-                    color(glyph, style.part(glyph).foreground(), palette.checkmark_color, "checkmark");
-                    color(label, style.part(label).foreground(), palette.label_color, "label");
-                    color(PartId::ROOT, style.root().focus_border(), palette.focus_border, "focus border");
-                    assert_eq!(style.root().background(), None, "{case}: control background");
-                    assert_eq!(style.root().border(), None, "{case}: control border");
-                    assert_eq!(style.part(indicator).shadow(), None, "{case}: indicator shadow");
-
-                    let root = style.root();
-                    assert_eq!(
-                        root.get(length("indicator_size")),
-                        Some(metrics.indicator_size),
-                        "{case}: indicator_size"
-                    );
-                    assert_eq!(root.get(length("glyph_size")), Some(metrics.glyph_size), "{case}: glyph_size");
-                    assert_eq!(
-                        root.get(length("indicator_radius")),
-                        Some(metrics.indicator_radius),
-                        "{case}: indicator_radius"
-                    );
-                    assert_eq!(
-                        root.get(length("label_baseline_shift")),
-                        Some(metrics.label_baseline_shift),
-                        "{case}: baseline"
-                    );
-                    assert_eq!(root.height(), Some(metrics.height), "{case}: height");
-                    assert_eq!(root.gap(), Some(metrics.gap), "{case}: gap");
-                    assert_eq!(root.radius(), Some(metrics.control_radius), "{case}: control radius");
-                    let number = |name: &str| root.value(name).and_then(Value::as_number);
-                    assert_eq!(number("disabled_opacity"), Some(metrics.disabled_opacity), "{case}: disabled opacity");
-                    assert_eq!(number("border_width"), Some(tokens.metrics.border_width), "{case}: border width");
-
-                    let text = style.part(label);
-                    assert_eq!(text.font_size(), Some(palette.label_typography.size), "{case}: font size");
-                    let lh = text.line_height().expect("line height");
-                    assert!((lh - palette.label_typography.line_height).abs() < 1e-4, "{case}: line height {lh}");
-                    assert_eq!(
-                        number_of(&text, "font_weight"),
-                        Some(palette.label_typography.weight.0),
-                        "{case}: weight"
-                    );
-                    assert_eq!(text.font_family(), Some(palette.label_font_family.as_ref()), "{case}: font family");
-                }
-            }
-        }
+        let resolve =
+            |states: &[&str]| theme.resolve(&states.iter().fold(StyleKey::new(checkbox), |key, s| key.state(state(s))));
+        let background = |states: &[&str]| resolve(states).part(PartId::new("indicator")).background().map(Hsla::from);
+        let expect = |got: Option<Hsla>, want: Hsla, what: &str| {
+            assert!(got.is_some_and(|g| close(g, want)), "{what}: {got:?} != {want:?}");
+        };
+        expect(background(&[]), palette.form.input.background, "unchecked");
+        expect(background(&["hover"]), palette.state.hover.background, "hover");
+        expect(background(&["pressed", "hover"]), palette.state.pressed.background, "pressed");
+        expect(background(&["checked"]), palette.state.selected.background, "checked");
+        expect(background(&["checked", "disabled"]), palette.state.disabled.background, "disabled");
+        let rest = resolve(&[]);
+        let root = rest.root();
+        let length = |name: &str| root.value(name).and_then(Value::as_number);
+        assert_eq!(length("indicator_size"), Some(18.0));
+        assert_eq!(length("glyph_size"), Some(12.0));
+        assert_eq!(length("indicator_radius"), Some(4.0));
+        assert_eq!((root.height(), root.gap()), (Some(36.0), Some(8.0)));
     }
 
     #[test]
@@ -337,9 +268,5 @@ mod tests {
             let end = run.sample(Duration::from_millis(100));
             assert!(end.complete && (end.state.value - 1.0).abs() < 1e-6, "{easing:?}");
         }
-    }
-
-    fn number_of(part: &xgpui_luma_style::PartView<'_>, name: &str) -> Option<f32> {
-        part.value(name).and_then(Value::as_number)
     }
 }

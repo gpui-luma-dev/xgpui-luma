@@ -8,7 +8,7 @@ use super::schema::{InspectColorRow, InspectElevationLayer, InspectElevationSnap
 
 pub fn color_row(label: &'static str, color: &ResolvedColor) -> InspectColorRow {
     InspectColorRow {
-        label,
+        label: label.into(),
         value: color.value,
         source: format_inspect_css_key(&color.source),
         detail: format_inspect_provenance(&color.source),

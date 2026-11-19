@@ -5,7 +5,6 @@ pub(crate) mod autocomplete_builder;
 pub(crate) mod button;
 pub(crate) mod button_builder;
 pub(crate) mod card;
-pub(crate) mod checkbox;
 pub(crate) mod checkbox_builder;
 pub(crate) mod choice_indicator;
 pub(crate) mod combobox_builder;

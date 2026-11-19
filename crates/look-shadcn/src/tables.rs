@@ -9,7 +9,6 @@ pub use crate::controls::accordion::{
 pub use crate::controls::autocomplete::{resolve_autocomplete_chrome_colors, AutocompleteChromeColorTable};
 pub use crate::elements::badge::{BadgeColorTable, resolve_badge_colors};
 pub use crate::controls::button::{resolve_button_colors, ButtonColorPalette};
-pub use crate::controls::checkbox::{resolve_checkbox_colors, CheckboxColorTable};
 pub use crate::controls::control_group::{resolve_control_group_list_colors, ControlGroupListColorTable};
 pub use crate::controls::floating_menu::{
     resolve_floating_menu_colors, resolve_ghost_trigger_colors, FloatingMenuColorTable, GhostTriggerColorTable,
@@ -39,7 +38,6 @@ pub use crate::controls::tabs::{
 pub use crate::controls::textfield::{resolve_textfield_colors, TextFieldColorTable};
 pub use crate::controls::tree_view::{resolve_tree_view_row_colors, TreeViewRowColorTable};
 
-pub use crate::controls::checkbox::{resolve_checkbox_palette, CheckboxResolvedColors};
 pub use crate::controls::radio::{resolve_radio_palette, RadioResolvedColors};
 
 /// Shared metric values and source metadata.

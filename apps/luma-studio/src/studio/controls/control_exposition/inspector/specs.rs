@@ -116,11 +116,6 @@ pub static SELECTED_UNSELECTED_VALUES: [InspectorValueMode; 2] = [
     InspectorValueMode { id: "unselected", label: "unselected" },
 ];
 
-pub static CHECKED_UNCHECKED_VALUES: [InspectorValueMode; 2] = [
-    InspectorValueMode { id: "checked", label: "checked" },
-    InspectorValueMode { id: "unchecked", label: "unchecked" },
-];
-
 pub static ON_OFF_VALUES: [InspectorValueMode; 2] =
     [InspectorValueMode { id: "on", label: "on" }, InspectorValueMode { id: "off", label: "off" }];
 

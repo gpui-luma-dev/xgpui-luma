@@ -192,7 +192,7 @@ impl CheckboxControlExposition {
                 move || left_pane.clone().into_any_element()
             },
             &super::inspector::CHECKBOX_INSPECTOR_SPEC,
-            super::inspector::CheckboxInspectorAdapter::shared(),
+            super::inspector::checkbox_inspector(),
         );
         theme_inspector.update(cx, |inspector, cx| {
             inspector.set_motion_report(

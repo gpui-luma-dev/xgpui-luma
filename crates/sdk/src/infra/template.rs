@@ -52,13 +52,13 @@ where
 /// ```rust
 /// # use xgpui_luma::define_control_template;
 /// # use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
-/// # use xgpui_luma::controls::checkbox::{CheckboxData, CheckboxTheme, default_checkbox_theme};
+/// # use xgpui_luma::controls::radio_button::{RadioButtonData, RadioButtonTheme, default_radio_button_theme};
 /// define_control_template!(
-///     ThemedCheckboxTemplate,
-///     dyn CheckboxTheme,
-///     ButtonRenderModel<CheckboxData>,
-///     ButtonTemplate<CheckboxData>,
-///     default_checkbox_theme()
+///     ThemedRadioButtonTemplate,
+///     dyn RadioButtonTheme,
+///     ButtonRenderModel<RadioButtonData>,
+///     ButtonTemplate<RadioButtonData>,
+///     default_radio_button_theme()
 /// );
 /// ```
 #[macro_export]

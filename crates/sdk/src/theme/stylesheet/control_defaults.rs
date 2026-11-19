@@ -2,7 +2,6 @@ use super::CommonStylesheet;
 use crate::{
     color::GamutMapping,
     controls::{
-        checkbox::{CheckboxScale, CheckboxTheme, DefaultCheckboxTheme},
         context_menu::{ContextMenuTheme, DefaultContextMenuTheme},
         floating_menu::{DefaultFloatingMenuTheme, FloatingMenuTheme},
         overlay_window::{DefaultOverlayWindowTheme, OverlayWindowMode, OverlayWindowTheme},
@@ -18,19 +17,12 @@ use crate::{
 #[test]
 fn choice_baseline_keeps_stock_metrics_at_multiple_display_scales() {
     let metrics = MetricTokens::default();
-    let (indicator_scale, radius, inset, width, height, thumb) = (0.5, 4.0, 3.0, 40.0, 18.0, 14.0);
+    let (indicator_scale, width, height, thumb) = (0.5, 40.0, 18.0, 14.0);
     {
         for scale in [1.0, 1.25, 1.5, 2.0] {
-            let checkbox = CheckboxScale::compute(&metrics, scale);
             let radio = RadioScale::compute(&metrics, scale);
             let switch = SwitchScale::compute(&metrics, scale);
             let indicator = snap_to_pixel(metrics.control_height() * indicator_scale, scale);
-            assert_eq!(checkbox.indicator_size, indicator);
-            assert_eq!(checkbox.indicator_radius, snap_to_pixel(radius, scale));
-            assert_eq!(
-                checkbox.glyph_size,
-                snap_to_pixel((indicator - snap_to_pixel(inset, scale) * 2.0).max(0.0), scale)
-            );
             assert_eq!(radio.indicator_size, indicator);
             assert_eq!(radio.dot_size, snap_to_pixel(metrics.control_height() * 0.24, scale));
             assert_eq!(switch.track_width, snap_to_pixel(width, scale));
@@ -42,14 +34,12 @@ fn choice_baseline_keeps_stock_metrics_at_multiple_display_scales() {
 
 #[test]
 fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
-    let sheet = CommonStylesheet::parse("[common.checkbox.geometry]\nindicator_size=0\nglyph_size=0").unwrap();
+    let sheet = CommonStylesheet::parse("[common.radio.geometry]\nindicator_size=0").unwrap();
     let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
     tokens.metrics.control.control_height = 54.0;
-    let theme = DefaultCheckboxTheme::new(tokens.clone());
-    let scale = theme.scale(1.0);
-    assert_eq!((scale.indicator_size, scale.glyph_size, scale.height), (0.0, 0.0, 54.0));
     assert_eq!(tokens.stylesheet.progress.geometry.size, Some(64.0));
     assert_eq!(RadioScale::compute(&tokens.metrics, 1.0).indicator_size, 27.0);
+    assert_eq!(RadioScale::compute_with_stylesheet(&tokens.metrics, 1.0, &sheet).indicator_size, 0.0);
 }
 
 #[test]
@@ -424,7 +414,7 @@ window_margin=0"])
     assert_eq!(field.helper_geometry.composition_underline_width, 0.0);
     let area = DefaultTextAreaTheme::new(tokens.clone()).resolve_look(Default::default(), true, &scale);
     assert_eq!(area.helper_geometry.textarea_resize_icon_size, 17.0);
-    assert_eq!(CheckboxScale::compute_with_stylesheet(&tokens.metrics, 2.0, &sheet).label_baseline_shift, 0.0);
+    assert_eq!(RadioScale::compute_with_stylesheet(&tokens.metrics, 2.0, &sheet).label_baseline_shift, 0.0);
     assert_eq!(TooltipLook::from_tokens(&tokens, None).placement.margin, 0.0);
     assert!(DefaultTreeViewTheme::new(tokens).drag_preview_shadow().is_empty());
 }

@@ -1,7 +1,7 @@
 //! Inspection regression tests: compare public inspection output to rendered looks.
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::theme::{InteractionState, ThemeMode};
-use crate::{ColorSource, MetricSource, ShadcnButtonStyle, ShadcnLook, ShadcnModeTokens};
+use crate::{MetricSource, ShadcnButtonStyle, ShadcnLook, ShadcnModeTokens};
 use crate::paint;
 use crate::inspect::*;
 use crate::size::ShadcnSize;
@@ -33,13 +33,6 @@ fn choice_colors_match_runtime_for_every_state_style_and_fallback() {
             for style in styles() {
                 for state in states() {
                     for selected in [false, true] {
-                        let actual = inspect_checkbox_color_palette(&mode, theme_mode, style, selected, state);
-                        let painted = paint::checkbox_look(&mode, style, selected, state, ShadcnSize::Md);
-                        assert_eq!(actual.indicator_background.value, painted.indicator_background);
-                        assert_eq!(actual.indicator_border.value, painted.indicator_border);
-                        assert_eq!(actual.checkmark_color.value, painted.checkmark_color);
-                        assert_eq!(actual.label_color.value, painted.label_color);
-
                         let actual = inspect_radio_button_color_palette(&mode, theme_mode, style, selected, state);
                         let painted = paint::radio_button_look(&mode, style, selected, state, ShadcnSize::Md);
                         assert_eq!(actual.indicator_background.value, painted.indicator_background);
@@ -59,27 +52,6 @@ fn choice_colors_match_runtime_for_every_state_style_and_fallback() {
             }
         }
     }
-}
-
-#[test]
-fn focused_checkbox_provenance_and_hover_policy_match_paint() {
-    let mode =
-        ShadcnModeTokens::from_catalog(crate::inspect::test_support::sample_catalog(), ThemeMode::Light).unwrap();
-    let inspect =
-        |state| inspect_checkbox_color_palette(&mode, ThemeMode::Light, ShadcnButtonStyle::Primary, true, state);
-    let focused = inspect(InteractionState { focused: true, ..Default::default() });
-    assert!(matches!(focused.indicator_border.source, ColorSource::CssVar { ref token } if token == "primary"));
-    assert_eq!(focused.indicator_border.value, mode.catalog.color("primary").unwrap());
-    let painted = paint::checkbox_look(
-        &mode,
-        ShadcnButtonStyle::Primary,
-        true,
-        InteractionState { focused: true, ..Default::default() },
-        ShadcnSize::Md,
-    );
-    assert_eq!(painted.focus_border, mode.catalog.color("ring").unwrap());
-    let hovered = inspect(InteractionState { hovered: true, ..Default::default() });
-    assert_eq!(hovered.indicator_background.value, inspect(InteractionState::default()).indicator_background.value);
 }
 
 #[test]

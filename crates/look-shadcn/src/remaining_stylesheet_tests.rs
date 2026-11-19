@@ -798,7 +798,6 @@ radius=17
 #[test]
 fn remaining_control_chrome_inherits_shared_overrides() {
     use xgpui_luma::controls::{
-        checkbox::{DefaultCheckboxTheme, CheckboxTheme},
         radio_button::{DefaultRadioButtonTheme, RadioButtonTheme},
         switch::{DefaultSwitchTheme, SwitchTheme},
         toolbar::{DefaultToolbarTheme, ToolbarTheme, ToolbarVariant},
@@ -808,8 +807,6 @@ fn remaining_control_chrome_inherits_shared_overrides() {
     };
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.checkbox.geometry]
-disabled_opacity=0
 [common.radio.geometry]
 disabled_opacity=0.3
 [common.switch.geometry]
@@ -838,7 +835,6 @@ subtitle_opacity=0.2
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
-    let sdk_checkbox = DefaultCheckboxTheme::new(tokens.clone());
     let sdk_radio = DefaultRadioButtonTheme::new(tokens.clone());
     let sdk_switch = DefaultSwitchTheme::new(tokens.clone());
     let sdk_toolbar = DefaultToolbarTheme::new(tokens.clone());
@@ -846,9 +842,6 @@ subtitle_opacity=0.2
     let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
     let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for scale in [sdk_checkbox.scale(2.0), look.with_size(ShadcnSize::Md).checkbox_theme().scale(2.0)] {
-        assert_eq!(scale.disabled_opacity, 0.0);
-    }
     for scale in [sdk_radio.scale(2.0), look.with_size(ShadcnSize::Md).radio_button_theme().scale(2.0)] {
         assert_eq!(scale.disabled_opacity, 0.3);
     }

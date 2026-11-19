@@ -6,7 +6,6 @@ pub use crate::controls::button::{
     button_look, button_look_semantic, resolve_button_radius_preset, ButtonRadiusPreset, ShadcnButtonStyle,
 };
 pub use crate::controls::toggle::{toggle_icon_look_semantic, toggle_look_semantic, ToggleLayout};
-pub use crate::controls::checkbox::checkbox_look;
 pub use crate::controls::context_menu::context_menu_look;
 pub use crate::controls::control_group::control_group_list_look;
 pub use crate::controls::floating_menu::floating_menu_look;

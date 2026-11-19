@@ -4,12 +4,11 @@ use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::stylesheet::config::{
     AccordionContentColorRule, AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule,
-    CardColorRule, CheckboxColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule,
-    FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, RadioColorRule,
-    ResizablePanelsColorRule, ScrollbarColorRule, SidebarBranchColorRule, SidebarContainerColorRule,
-    SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, SwitchColorRule,
-    TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule, TextfieldColorRule,
-    TreeViewRowColorRule,
+    CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuTriggerColorRule,
+    ListboxListColorRule, ListboxRowColorRule, ProgressColorRule, RadioColorRule, ResizablePanelsColorRule,
+    ScrollbarColorRule, SidebarBranchColorRule, SidebarContainerColorRule, SidebarItemColorRule,
+    SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, SwitchColorRule, TableRowColorRule,
+    TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule, TextfieldColorRule, TreeViewRowColorRule,
 };
 
 use super::{
@@ -93,22 +92,6 @@ pub fn resolve_control_group_list_color_rule(
     fields.insert("background", background.clone());
     let border = resolve_color_ref(resolver, &rule.border, &fields)?;
     Ok(ResolvedControlGroupListColors { background, border })
-}
-
-pub fn resolve_checkbox_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &CheckboxColorRule,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-) -> anyhow::Result<ResolvedCheckboxColors> {
-    let ctx = ResolveContext { style, layer, disabled: layer == InteractionLayer::Disabled };
-    let mut fields = ResolvedFields::default();
-    let indicator_background = resolve_stylesheet_color(resolver, &rule.indicator_background, &fields, &ctx)?;
-    fields.insert("indicator_background", indicator_background.clone());
-    let checkmark_color = resolve_stylesheet_color(resolver, &rule.checkmark_color, &fields, &ctx)?;
-    fields.insert("checkmark_color", checkmark_color.clone());
-    let label_color = resolve_stylesheet_color(resolver, &rule.label_color, &fields, &ctx)?;
-    Ok(ResolvedCheckboxColors { indicator_background, checkmark_color, label_color })
 }
 
 pub fn resolve_radio_color_rule(
@@ -500,13 +483,6 @@ pub struct ResolvedBadgeColors {
 pub struct ResolvedSplitViewColors {
     pub separator: ResolvedColor,
     pub separator_hover: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedCheckboxColors {
-    pub indicator_background: ResolvedColor,
-    pub checkmark_color: ResolvedColor,
-    pub label_color: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]

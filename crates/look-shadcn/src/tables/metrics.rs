@@ -6,7 +6,6 @@ pub use crate::controls::accordion::{AccordionMetricTable, resolve_accordion_met
 pub use crate::elements::badge::{BadgeMetricTable, resolve_badge_metrics};
 pub use crate::controls::button::{ButtonMetricTable, resolve_button_metrics, resolve_button_metrics_with_stylesheet};
 pub use crate::controls::card::{CardMetricTable, resolve_card_metrics};
-pub use crate::controls::checkbox::{CheckboxMetricTable, resolve_checkbox_metrics};
 pub use crate::controls::context_menu::{ContextMenuMetricTable, resolve_context_menu_metrics};
 pub use crate::controls::control_group::{ControlGroupMetricTable, resolve_control_group_metrics};
 pub use crate::controls::floating_menu::{FloatingMenuMetricTable, resolve_floating_menu_metrics};
@@ -32,7 +31,5 @@ pub use crate::controls::textfield::{TextFieldMetricTable, resolve_textfield_met
 pub use crate::controls::toolbar_item::{ToolbarMetricTable, resolve_toolbar_metrics};
 pub use crate::controls::tree_view::{TreeViewMetricTable, resolve_tree_view_metrics};
 
-#[cfg(feature = "inspect")]
-pub(crate) use crate::controls::checkbox::resolve_checkbox_metrics_with_stylesheet;
 #[cfg(feature = "inspect")]
 pub(crate) use crate::controls::radio::resolve_radio_button_metrics_with_stylesheet;

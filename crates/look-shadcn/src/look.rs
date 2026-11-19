@@ -907,10 +907,6 @@ impl ShadcnLook {
         templates::button_family_theme(self.clone())
     }
 
-    pub fn checkbox_theme(&self) -> Arc<dyn xgpui_luma::controls::checkbox::CheckboxTheme> {
-        templates::checkbox_theme(self.clone())
-    }
-
     pub fn switch_theme(&self) -> Arc<dyn xgpui_luma::controls::switch::SwitchTheme> {
         templates::switch_theme(self.clone())
     }
