@@ -25,6 +25,7 @@ mod sample_layout;
 mod sdk_sample;
 mod event_log_view;
 mod style_inspector;
+mod display;
 
 use std::{
     collections::HashMap,
@@ -63,6 +64,7 @@ enum Sample {
     Slider(Entity<color_slider::ColorSliderExpositionLeftPane>),
     Revealed(Entity<color_slider_revealed::ColorSliderRevealedPane>),
     Mixer(Entity<color_multi_mixer::ColorMultiMixerControlExposition>),
+    Display(Entity<display::DisplaySample>),
 }
 
 impl Sample {
@@ -86,6 +88,7 @@ impl Sample {
             Self::Slider(v) => v.clone().into(),
             Self::Revealed(v) => v.clone().into(),
             Self::Mixer(v) => v.clone().into(),
+            Self::Display(v) => v.clone().into(),
         }
     }
 
@@ -109,6 +112,7 @@ impl Sample {
             Self::Slider(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Revealed(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Mixer(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Display(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
         }
     }
 }
@@ -125,8 +129,48 @@ pub(crate) struct Workshop {
     selected: &'static str,
     navigation: Vec<NavigationEntry>,
     samples: HashMap<&'static str, Sample>,
+    /// Style inspectors for each page's `.lss` controls, created with the page.
+    inspectors: HashMap<&'static str, Vec<(&'static str, Entity<style_inspector::StyleInspector>)>>,
     shell_look: Arc<Look>,
     page_look: Arc<Look>,
+}
+
+/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Checkbox has its own
+/// inspector that follows the sample; pages without SDK styling have none.
+fn lss_controls(id: &str) -> &'static [&'static str] {
+    match id {
+        "button" => &["button"],
+        "toolbar" => &["toolbar"],
+        "accordion" => &["accordion"],
+        "pager" => &["pager"],
+        "radio-button" | "radio-group" => &["radio"],
+        "switch" => &["switch"],
+        "toggle" => &["toggle"],
+        "paging-table" => &["table", "pager"],
+        "scrolling-table" => &["table", "scrollbar"],
+        "tree-view" => &["tree_view"],
+        "scrollbar" => &["scrollbar"],
+        "slider" => &["slider"],
+        "textarea" => &["textarea"],
+        "textfield" => &["textfield"],
+        "context-menu" => &["context_menu", "floating_menu"],
+        "popup-menu" => &["popup_menu", "floating_menu"],
+        "split-button" => &["button", "popup_menu"],
+        "dock-panel" => &["dock_splitter"],
+        "resizable-panels" => &["resizable_panels"],
+        "split-view-unified" => &["split_view"],
+        "sidebar" => &["sidebar"],
+        "tabs-navigation" => &["tabs"],
+        "badge" => &["badge", "card"],
+        "progress" => &["progress"],
+        "stepper" => &["stepper"],
+        "dialog-modal" | "dialog-modeless" | "dialog-positioning" | "dialog-draggable" => &["overlay_window"],
+        "selection-panel" => &["selection_panel"],
+        "popup-selector" => &["selector", "floating_menu"],
+        "search-selector" | "combobox" => &["textfield", "floating_menu"],
+        "autocomplete-textfield" => &["autocomplete", "textfield"],
+        _ => &[],
+    }
 }
 
 impl Workshop {
@@ -221,6 +265,7 @@ impl Workshop {
             selected: "color-field",
             navigation,
             samples: HashMap::new(),
+            inspectors: HashMap::new(),
             shell_look,
             page_look,
         };
@@ -269,6 +314,7 @@ impl Workshop {
                 "dialog-modal" => Some(Sample::Feedback(
                     cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Modal, look, cx)),
                 )),
+                "badge" => Some(Sample::Display(cx.new(|cx| display::DisplaySample::new(look, cx)))),
                 "stepper" => Some(Sample::Feedback(
                     cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Stepper, look, cx)),
                 )),
@@ -367,6 +413,18 @@ impl Workshop {
                 self.samples.insert(id, sample);
             }
         }
+        if self.samples.contains_key(id) && !self.inspectors.contains_key(id) {
+            let theme = xgpui_luma::style::default_theme();
+            let inspectors = lss_controls(id)
+                .iter()
+                .filter_map(|&name| {
+                    let control = theme.stylesheet().control(name)?;
+                    let (look, theme) = (self.page_look.clone(), theme.clone());
+                    Some((name, cx.new(|cx| style_inspector::StyleInspector::new(look, theme, control, cx))))
+                })
+                .collect();
+            self.inspectors.insert(id, inspectors);
+        }
         for entry in &self.navigation {
             entry.selected.store(entry.id == id, Ordering::Relaxed);
             entry.button.update(cx, |_, cx| cx.notify());
@@ -384,7 +442,40 @@ impl Workshop {
             };
             sample.sync_look(look, cx);
         }
+        for inspector in self.inspectors.values().flatten().map(|(_, inspector)| inspector) {
+            let look = self.page_look.clone();
+            inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
+        }
         cx.notify();
+    }
+}
+
+impl Workshop {
+    /// Each `.lss` control of the page, inspected: every part and property with the rule and tokens it
+    /// comes from.
+    fn style_column(&self, inspectors: &[(&'static str, Entity<style_inspector::StyleInspector>)]) -> gpui::AnyElement {
+        div()
+            .id("workshop-style-column")
+            .debug_selector(|| "workshop-style-column".into())
+            .flex_none()
+            .w(px(460.))
+            .h_full()
+            .overflow_y_scroll()
+            .p(px(16.))
+            .flex()
+            .flex_col()
+            .gap(px(16.))
+            .children(inspectors.iter().map(|(name, inspector)| {
+                sample_layout::card(
+                    &self.page_look,
+                    name,
+                    name,
+                    "Every themeable value, with the rule and tokens it comes from.",
+                    428.,
+                    inspector.clone(),
+                )
+            }))
+            .into_any_element()
     }
 }
 
@@ -397,9 +488,6 @@ impl Render for Workshop {
             self.page_look.chrome()
         };
         let unavailable_reason = match self.selected {
-            "badge" => Some(
-                "The base SDK does not provide a Badge control. Badge elements belong to the Radix and Shadcn look crates, so no SDK-default sample is available.",
-            ),
             "slide-panel" => Some(
                 "The SDK provides SlidePanelState and overlay rendering helpers, but no standalone Slide Panel control. A default control sample is unavailable.",
             ),
@@ -431,10 +519,21 @@ impl Render for Workshop {
             root = root.child(sample_layout::ruled_background());
         }
         if let Some(sample) = self.samples.get(self.selected) {
-            root = if converted {
-                root.child(sample.view())
+            let content = if converted {
+                sample.view().into_any_element()
             } else {
-                root.child(sdk_sample::isolated(sample.view()))
+                sdk_sample::isolated(sample.view()).into_any_element()
+            };
+            let inspectors = self.inspectors.get(self.selected).filter(|inspectors| !inspectors.is_empty());
+            root = match inspectors {
+                Some(inspectors) => root.child(
+                    div()
+                        .size_full()
+                        .flex()
+                        .child(div().relative().flex_1().min_w_0().h_full().child(content))
+                        .child(self.style_column(inspectors)),
+                ),
+                None => root.child(content),
             };
         } else if let Some((group, entry)) = COMPONENT_CATALOG
             .iter()
@@ -560,7 +659,7 @@ mod tests {
                                 | "prototypes"
                         ) && !matches!(
                             entry.id,
-                            "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset" | "badge"
+                            "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
                         )
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
@@ -575,10 +674,35 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 43);
+            assert_eq!(view.read(cx).samples.len(), 44);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
+    }
+
+    #[test]
+    fn lss_pages_show_a_style_inspector_for_each_control() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        let theme = xgpui_luma::style::default_theme();
+        for group in COMPONENT_CATALOG {
+            for entry in group.entries {
+                view.update(cx, |v, cx| v.select(entry.id, cx));
+                cx.run_until_parked();
+                let names = lss_controls(entry.id);
+                for name in names {
+                    assert!(theme.stylesheet().control(name).is_some(), "{name} is an SDK .lss control");
+                }
+                let shown = cx.update(|_, cx| view.read(cx).inspectors.get(entry.id).map_or(0, Vec::len));
+                assert_eq!(shown, names.len(), "{}", entry.id);
+                assert_eq!(cx.debug_bounds("workshop-style-column").is_some(), !names.is_empty(), "{}", entry.id);
+            }
+        }
+        view.update(cx, |v, cx| v.select("badge", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-sdk-badges").is_some());
+        assert!(cx.debug_bounds("workshop-sdk-card").is_some());
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! The card read from `.lss` (issue #285): `card.lss`. Looks render the element from [`CardLook`].
 
-use gpui::{BoxShadow, Hsla, SharedString};
+use gpui::{AnyElement, BoxShadow, Div, Hsla, IntoElement, SharedString, div, prelude::*, px};
 use xgpui_luma_style::{PartId, PartView, Value};
 
 use crate::style::StyleBinding;
@@ -94,6 +94,93 @@ impl StyledCard {
             body: text(root),
             font_family: root.font_family().unwrap_or("").to_string().into(),
         }
+    }
+}
+
+/// A card drawn from `.lss`: an optional header (title, description) above body content. Looks keep their
+/// own card elements; this is the SDK's.
+pub struct Card {
+    title: Option<SharedString>,
+    description: Option<SharedString>,
+    children: Vec<AnyElement>,
+    styled: StyledCard,
+}
+
+impl Card {
+    /// A card from the SDK's `.lss` alone.
+    pub fn new() -> Self {
+        Self { title: None, description: None, children: Vec::new(), styled: StyledCard::sdk() }
+    }
+
+    pub fn title(mut self, title: impl Into<SharedString>) -> Self {
+        self.title = Some(title.into());
+        self
+    }
+
+    pub fn description(mut self, description: impl Into<SharedString>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
+    /// Draw from `styled` (a look's binding, variant or size) instead of the SDK alone.
+    pub fn styled(mut self, styled: StyledCard) -> Self {
+        self.styled = styled;
+        self
+    }
+}
+
+impl Default for Card {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ParentElement for Card {
+    fn extend(&mut self, elements: impl IntoIterator<Item = AnyElement>) {
+        self.children.extend(elements);
+    }
+}
+
+fn text_block(text: SharedString, color: Hsla, style: &LumaTextStyle) -> Div {
+    div()
+        .text_color(color)
+        .text_size(px(style.size))
+        .line_height(px(style.line_height))
+        .font_weight(style.weight)
+        .child(text)
+}
+
+impl IntoElement for Card {
+    type Element = Div;
+
+    fn into_element(self) -> Div {
+        let look = self.styled.look();
+        let header = (self.title.is_some() || self.description.is_some()).then(|| {
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(look.header_gap))
+                .children(self.title.map(|t| text_block(t, look.title_color, &look.title)))
+                .children(self.description.map(|d| text_block(d, look.description_color, &look.description)))
+        });
+        let body =
+            (!self.children.is_empty()).then(|| div().flex().flex_col().gap(px(look.body_gap)).children(self.children));
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(look.section_gap))
+            .p(px(look.padding))
+            .rounded(px(look.radius))
+            .when_some(look.background, |card, background| card.bg(background))
+            .when_some(look.border, |card, border| card.border(px(look.border_width)).border_color(border))
+            .shadow(look.shadow.clone())
+            .when(!look.font_family.is_empty(), |card| card.font_family(look.font_family.clone()))
+            .text_color(look.body_color)
+            .text_size(px(look.body.size))
+            .line_height(px(look.body.line_height))
+            .font_weight(look.body.weight)
+            .children(header)
+            .children(body)
     }
 }
 
