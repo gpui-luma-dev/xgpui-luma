@@ -1,5 +1,7 @@
 mod control;
 mod model;
+mod styled;
+pub use styled::StyledContextMenuTheme;
 mod template;
 pub(crate) mod theme;
 

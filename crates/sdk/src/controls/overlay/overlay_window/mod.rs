@@ -1,5 +1,7 @@
 mod control;
 mod model;
+mod styled;
+pub use styled::{StyledOverlayWindowTheme, styled_overlay_window_look};
 mod template;
 pub(crate) mod theme;
 

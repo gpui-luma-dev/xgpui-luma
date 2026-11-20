@@ -2,9 +2,8 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
-use crate::controls::selector_list::{SelectorItemsPanelLook, default_selector_items_panel_look};
-use crate::controls::textfield::apply_control_typography;
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::controls::selector_list::SelectorItemsPanelLook;
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 use super::model::SelectorTriggerStyle;
 
@@ -93,104 +92,14 @@ pub trait SelectorTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultSelectorTheme {
-    tokens: ThemeTokens,
-}
-
+/// The SDK's selector theme: `selector.lss` alone.
 pub fn default_selector_theme() -> Arc<dyn SelectorTheme> {
     static THEME: OnceLock<Arc<dyn SelectorTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultSelectorTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledSelectorTheme::sdk())).clone()
 }
 
-impl DefaultSelectorTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl SelectorTheme for DefaultSelectorTheme {
-    fn resolve(
-        &self,
-        trigger_style: SelectorTriggerStyle,
-        state: InteractionState,
-        without_elevation: bool,
-    ) -> SelectorPalette {
-        let _ = without_elevation;
-        let palette = self.tokens.stylesheet.recipes.palette("selector", &self.tokens.palette);
-        let typography = &self.tokens.typography;
-
-        let trigger_background = match state.layer() {
-            InteractionLayer::Disabled => palette.state.disabled.background,
-            InteractionLayer::Pressed => palette.state.pressed.background,
-            InteractionLayer::Hovered => palette.state.hover.background,
-            InteractionLayer::Default => match trigger_style {
-                SelectorTriggerStyle::Outline => palette.app.background,
-                SelectorTriggerStyle::Ghost => gpui::hsla(0.0, 0.0, 0.0, 0.0),
-            },
-        };
-        let trigger_foreground = if state.disabled {
-            palette.state.disabled.foreground
-        } else {
-            palette.app.foreground
-        };
-        let trigger_border = match trigger_style {
-            SelectorTriggerStyle::Outline => Some(palette.border.default),
-            SelectorTriggerStyle::Ghost => None,
-        };
-        let trigger_border =
-            (!state.disabled && state.invalid).then_some(palette.form.input.invalid_border).or(trigger_border);
-
-        SelectorPalette {
-            trigger_focus_border: palette.focus.ring,
-            trigger_background,
-            trigger_foreground,
-            trigger_icon: palette.app.muted_foreground,
-            trigger_border,
-            trigger_shadow: None,
-            trigger_typography: typography.text.label,
-            items_panel: default_selector_items_panel_look(&self.tokens),
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn resolve_look(
-        &self,
-        trigger_style: SelectorTriggerStyle,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        let mut palette = self.resolve(trigger_style, state, without_elevation);
-        apply_control_typography(&mut palette.trigger_typography, &self.tokens.typography);
-        palette.items_panel = default_selector_items_panel_look(&self.tokens);
-        let mut look = compose_selector_look(&palette, scale);
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().selector.authored_geometry();
-        let recipe = self.tokens.stylesheet.selector.authored_geometry().with_fallback(&baseline);
-        look.menu_offset_y = recipe.gap.unwrap_or(scale.gap) * recipe.menu_offset_scale.unwrap_or_default();
-        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.selector, SelectorGeometry, look,
-            [height => trigger_height, padding_x => trigger_padding_x, padding_y => trigger_padding_y,
-             gap => trigger_gap, icon_size => trigger_icon_size, font_size => trigger_typography.size,
-             line_height => trigger_typography.line_height, radius => trigger_radius, menu_offset_y => menu_offset_y],
-            defaults = Default::default());
-        look
-    }
-
-    fn resolve_visual_look(
-        &self,
-        trigger_style: SelectorTriggerStyle,
-        visual_state: SelectorVisualState,
-        scale: &StandardBoxScale,
-        without_elevation: bool,
-    ) -> SelectorLook {
-        self.resolve_look(trigger_style, visual_state.resolved_interaction(), scale, without_elevation)
-    }
-}
-
+/// A selector look from a palette at a box scale (themes that resolve colors only).
 pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardBoxScale) -> SelectorLook {
     SelectorLook {
         trigger_background: palette.trigger_background,
@@ -219,10 +128,11 @@ pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardB
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::theme::ThemeTokens;
 
     #[test]
     fn disabled_state_takes_precedence_over_hover_and_pressed() {
-        let theme = DefaultSelectorTheme::default();
+        let theme = default_selector_theme();
         let state = InteractionState { hovered: true, pressed: true, disabled: true, ..InteractionState::default() };
 
         let disabled = theme.resolve(SelectorTriggerStyle::Outline, state, false);
@@ -239,7 +149,7 @@ mod tests {
 
     #[test]
     fn pressed_state_takes_precedence_over_hover() {
-        let theme = DefaultSelectorTheme::default();
+        let theme = default_selector_theme();
         let pressed = theme.resolve(
             SelectorTriggerStyle::Outline,
             InteractionState { pressed: true, hovered: true, ..InteractionState::default() },
@@ -258,7 +168,7 @@ mod tests {
 
     #[test]
     fn default_theme_does_not_add_focus_visuals() {
-        let theme = DefaultSelectorTheme::default();
+        let theme = default_selector_theme();
         let focused = theme.resolve(
             SelectorTriggerStyle::Outline,
             InteractionState { focused: true, ..InteractionState::default() },
@@ -286,7 +196,7 @@ mod tests {
 
     #[test]
     fn open_state_matches_hover_and_disabled_open_matches_disabled() {
-        let theme = DefaultSelectorTheme::default();
+        let theme = default_selector_theme();
         let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let open = theme.resolve_visual_look(
             SelectorTriggerStyle::Outline,
@@ -325,7 +235,7 @@ mod tests {
 
     #[test]
     fn invalid_state_uses_destructive_border_and_keeps_it_when_focused() {
-        let theme = DefaultSelectorTheme::default();
+        let theme = default_selector_theme();
         let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
         let look = theme.resolve_visual_look(
             SelectorTriggerStyle::Outline,
@@ -338,9 +248,11 @@ mod tests {
             false,
         );
 
-        assert_eq!(look.trigger_border, Some(theme.tokens.palette.form.input.invalid_border));
-        assert_eq!(look.trigger_border, Some(theme.tokens.palette.form.input.invalid_border));
-        assert_eq!(look.trigger_focus_border, theme.tokens.palette.focus.ring);
+        let tokens = ThemeTokens::default();
+        let close =
+            |a: Hsla, b: Hsla| (a.to_rgb().r - b.to_rgb().r).abs() < 2e-3 && (a.to_rgb().g - b.to_rgb().g).abs() < 2e-3;
+        assert!(close(look.trigger_border.unwrap(), tokens.palette.form.input.invalid_border));
+        assert!(close(look.trigger_focus_border, tokens.palette.focus.ring));
     }
 }
 

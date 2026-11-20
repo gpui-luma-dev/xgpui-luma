@@ -1,0 +1,27 @@
+// Shadcn floating menu. Layer: look. The popover panel with `shadow-md`, rows in the label font at the
+// control size that highlight with the accent color, and dividers in the border color.
+
+floating_menu {
+  item_icon_size = metrics.control.icon_size
+
+  part root {
+    background = css.popover
+    foreground = css.popover_foreground
+    border     = css.border
+    shadow     = first(css.shadow_md, [])
+    radius     = exact(first(css.radius, 6))
+    positive   = shadcn.menu_positive
+  }
+
+  part item {
+    foreground  = css.popover_foreground
+    radius      = exact(first(max(css.radius - 4, 0), 2))
+    font_size   = shadcn.control_font_size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    font_weight = typography.text.label.weight
+    :hover    { background = css.accent  foreground = css.accent_foreground }
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  part separator { background = css.border }
+}

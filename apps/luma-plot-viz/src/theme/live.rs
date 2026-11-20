@@ -15,7 +15,7 @@ use xgpui_luma::controls::{
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
     scrollbar::{DefaultScrollbarTheme, ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme},
     selector::{
-        DefaultSelectorTheme, SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState,
+        SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme,
     },
     tabs::{DefaultTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
@@ -26,17 +26,22 @@ struct Snapshot {
     tokens: ThemeTokens,
     button: DefaultButtonFamilyTheme,
     scrollbar: DefaultScrollbarTheme,
-    selector: DefaultSelectorTheme,
+    selector: StyledSelectorTheme,
     tabs: DefaultTabsTheme,
     tooltip: TooltipLook,
 }
 
 impl Snapshot {
-    fn new(tokens: ThemeTokens) -> Self {
+    /// `style` is the SDK's `.lss` theme for the same mode as `tokens`.
+    fn new(tokens: ThemeTokens, style: xgpui_luma::style::lss::Theme) -> Self {
+        let panel_tokens = tokens.clone();
         Self {
             button: DefaultButtonFamilyTheme::new(tokens.clone()),
             scrollbar: DefaultScrollbarTheme::new(tokens.clone()),
-            selector: DefaultSelectorTheme::new(tokens.clone()),
+            selector: StyledSelectorTheme::new(
+                xgpui_luma::style::ThemeSource::Fixed(style),
+                Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
+            ),
             tabs: DefaultTabsTheme::new(tokens.clone()),
             tooltip: TooltipLook::from_tokens(&tokens, None),
             tokens,
@@ -58,8 +63,8 @@ impl AppTheme {
     pub(crate) fn new() -> Self {
         Self(Arc::new(State {
             dark: AtomicBool::new(true),
-            light: Snapshot::new(ThemeTokens::light()),
-            dark_snapshot: Snapshot::new(ThemeTokens::dark()),
+            light: Snapshot::new(ThemeTokens::light(), xgpui_luma::style::default_theme()),
+            dark_snapshot: Snapshot::new(ThemeTokens::dark(), xgpui_luma::style::dark_theme()),
         }))
     }
 
@@ -231,12 +236,14 @@ mod tests {
             let tab = tabs.resolve_item(true, state);
             assert_eq!(tab.label_color, DefaultTabsTheme::new(tokens.clone()).resolve_item(true, state).label_color);
             let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
-            assert_eq!(
-                selector.trigger_background,
-                DefaultSelectorTheme::new(tokens.clone())
-                    .resolve(SelectorTriggerStyle::default(), state, false)
-                    .trigger_background
-            );
+            // The selector trigger is the SDK's `.lss` outline trigger for the mode.
+            let expected = match mode {
+                ThemeMode::Light => tokens.palette.app.background,
+                ThemeMode::Dark => tokens.palette.app.background,
+            }
+            .to_rgb();
+            let got = selector.trigger_background.to_rgb();
+            assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
             let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
             assert_eq!(
                 scrollbar.thumb_background,

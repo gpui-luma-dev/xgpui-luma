@@ -1,0 +1,42 @@
+// Radix floating menu. Layer: look. The surface panel with a soft drop shadow, rows that highlight with the
+// solid tone (soft: tone 4 with the foreground), and inset dividers. Sizes 1–3 scale the rows.
+
+floating_menu {
+  item_icon_size   = 14
+  submenu_offset_x = exact(4)
+  size 1 { item_icon_size = 12 }
+  size 3 { item_icon_size = 16 }
+
+  part root {
+    background = radix.role.surface
+    foreground = radix.role.foreground
+    border     = radix.role.border
+    shadow     = [box_shadow(alpha(black, 0.28), 0, 10, 28, -12)]
+    radius     = exact(6)
+    padding    = exact(6)
+    positive   = radix.menu_positive
+  }
+
+  part item {
+    foreground  = radix.role.foreground
+    height      = exact(28.8)
+    padding_x   = exact(9)
+    gap         = exact(6)
+    radius      = exact(3)
+    font_size   = 14
+    line_height = 20
+    font_weight = 400
+    :hover    { background = tone[9]  foreground = look.tone_contrast }
+    :disabled { foreground = radix.role.muted_foreground }
+  }
+  size 1 { part item { height = exact(21.6)  padding_x = exact(6) } }
+  size 3 { part item { height = exact(36)    padding_x = exact(12) } }
+
+  part separator {
+    background = radix.role.border
+    padding_y  = exact(6)
+    padding_x  = exact(8)
+  }
+
+  variant soft { part item { :hover { background = tone[4]  foreground = radix.role.foreground } } }
+}

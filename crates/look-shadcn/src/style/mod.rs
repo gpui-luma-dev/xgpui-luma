@@ -31,7 +31,20 @@ macro_rules! shadcn_sources {
     };
 }
 
-shadcn_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss", "textfield.lss"];
+shadcn_sources![
+    "tokens.lss",
+    "checkbox.lss",
+    "radio.lss",
+    "switch.lss",
+    "button.lss",
+    "toggle.lss",
+    "textfield.lss",
+    "selector.lss",
+    "floating_menu.lss",
+    "context_menu.lss",
+    "tooltip.lss",
+    "overlay_window.lss"
+];
 
 /// The SDK's files with the Shadcn look's files over them.
 pub fn stylesheet() -> Stylesheet {
@@ -58,6 +71,14 @@ pub fn mode_name(mode: ThemeMode) -> &'static str {
 /// `look`'s catalog bound to the Shadcn stylesheet in the look's current mode.
 pub fn theme(look: &ShadcnLook) -> Result<Theme, Diagnostics> {
     Theme::bind(&stylesheet(), Arc::new(ShadcnTokens::new(look)), mode_name(look.mode()))
+}
+
+/// One mode's tokens bound to the Shadcn stylesheet in that mode. The SDK alone if the catalog cannot bind.
+pub(crate) fn theme_for_mode(tokens: &ShadcnModeTokens) -> Theme {
+    let tokens = Arc::new(tokens.clone());
+    let mode = tokens.theme_mode;
+    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens { light: Arc::clone(&tokens), dark: tokens }), mode_name(mode))
+        .unwrap_or_else(|_| xgpui_luma::style::default_theme())
 }
 
 /// The last bound theme of a look. Keyed by the identity of the mode tokens it was bound to (the cached

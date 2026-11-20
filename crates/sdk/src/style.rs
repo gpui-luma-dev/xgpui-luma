@@ -67,6 +67,12 @@ sdk_sources! {
         "controls/choice/toggle/toggle.lss",
         "controls/text/textfield/textfield.lss",
         "controls/text/textarea/textarea.lss",
+        "controls/selection/selector/selector.lss",
+        "controls/overlay/floating_menu/floating_menu.lss",
+        "controls/overlay/popup_menu/popup_menu.lss",
+        "controls/overlay/context_menu/context_menu.lss",
+        "controls/overlay/tooltip/tooltip.lss",
+        "controls/overlay/overlay_window/overlay_window.lss",
     ],
     light: "theme/palette.lss",
     dark: "theme/palette-dark.lss",
@@ -227,11 +233,27 @@ impl StyleBinding {
 
     /// Resolve with these interaction states (by name) at `scale` device pixels per pixel.
     pub fn resolve(&self, states: &[(&str, bool)], scale: f32) -> Arc<xgpui_luma_style::Resolved> {
+        self.resolve_for(&[], states, scale)
+    }
+
+    /// Resolve with extra attribute values for this call (a trigger style picked per render), then the
+    /// interaction states. An attribute or value the configuration does not declare is ignored.
+    pub fn resolve_for(
+        &self,
+        attrs: &[(&str, &str)],
+        states: &[(&str, bool)],
+        scale: f32,
+    ) -> Arc<xgpui_luma_style::Resolved> {
         let theme = self.theme();
         let config = theme.stylesheet().config();
         let key = xgpui_luma_style::StyleKey::new(xgpui_luma_style::ControlId::new(self.control)).scale(scale);
         let key = self.states.iter().fold(key, |key, state| key.state(*state));
         let mut key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
+        for (name, value) in attrs {
+            if let Some(attr) = config.attribute(name) {
+                key = key.attr(attr, xgpui_luma_style::AttrValue::named(value));
+            }
+        }
         for (name, on) in states {
             if let Some(state) = config.state(name) {
                 key = key.state_if(state, *on);

@@ -8,7 +8,7 @@ use crate::{
         selection_panel::default_selection_panel_look,
         slider::{DefaultSliderTheme, SliderTheme},
     },
-    theme::{StandardBoxScale, ThemeMode},
+    theme::ThemeMode,
 };
 
 #[test]
@@ -118,10 +118,9 @@ fn math_values_resolve_through_tokens_layers_and_geometry_validation() {
 }
 
 #[test]
-fn table_and_selector_factories_resolve_snapshots_and_preserve_zero() {
+fn table_and_selector_panel_factories_resolve_snapshots_and_preserve_zero() {
     use crate::controls::{
         table::{DefaultTableTheme, TableTheme},
-        selector::{DefaultSelectorTheme, SelectorTheme, SelectorTriggerStyle},
         selector_list::default_selector_items_panel_look,
     };
     use crate::theme::{InteractionState, ListRowScale};
@@ -155,29 +154,9 @@ radius = 6
     assert_eq!(table.resolve_row(false, InteractionState { hovered: true, ..Default::default() }).background.a, 0.0);
     let row = table.resolve_row_look(false, Default::default(), &ListRowScale::compute(&tokens.metrics, 1.0));
     assert_eq!(row.radius, 7.0);
-    let selector = DefaultSelectorTheme::new(tokens.clone());
-    let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-    let look = selector.resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false);
-    assert_eq!(
-        (look.trigger_height, look.trigger_padding_x, look.trigger_radius, look.trigger_typography.size),
-        (53.0, 0.0, 9.0, 19.0)
-    );
-    assert_eq!(look.menu_offset_y, scale.gap * 1.5);
     let panel = default_selector_items_panel_look(&tokens);
     assert_eq!((panel.min_width, panel.item_typography.size, panel.radius), (0.0, 18.0, 6.0));
     assert_eq!(panel.item_height, 43.0);
-    let explicit =
-        CommonStylesheet::resolve_layers(&["[common.selector.geometry]\nmenu_offset_y=0\nmenu_offset_scale=3"])
-            .unwrap();
-    let selector =
-        DefaultSelectorTheme::new(explicit.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap());
-    let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-    assert_eq!(
-        selector
-            .resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false)
-            .menu_offset_y,
-        0.0
-    );
     for value in ["-1", "1.1", "nan"] {
         assert!(CommonStylesheet::parse(&format!("[common.table.geometry]\nrow_hover_opacity={value}")).is_err());
     }

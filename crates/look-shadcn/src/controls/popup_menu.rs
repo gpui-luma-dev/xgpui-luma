@@ -6,7 +6,7 @@
 //! | Menu    | floating menu surface            |
 
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::popup_menu::{PopupMenuLook, PopupMenuPalette, PopupMenuTriggerStyle, compose_popup_menu_look};
+use xgpui_luma::controls::popup_menu::{PopupMenuPalette, PopupMenuTriggerStyle};
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 
 use crate::look_context::LookContext;
@@ -63,46 +63,6 @@ pub fn popup_menu_palette(
         trigger_typography: button.typography,
         floating_menu: floating_menu_look(mode, theme_mode, menu_size),
     }
-}
-
-pub fn popup_menu_trigger_scale(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-    state: InteractionState,
-    scale_factor: f32,
-) -> xgpui_luma::theme::StandardBoxScale {
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let mut scale = button_box_scale(&ctx, mode.stylesheet(), size, scale_factor);
-    let geometry = popup_menu_geometry(mode, size, &scale, &mode.typography.text.label);
-    scale.height = xgpui_luma::theme::snap_to_pixel(geometry.height.value_px, scale_factor);
-    scale.padding_x = xgpui_luma::theme::snap_to_pixel(geometry.padding_x.value_px, scale_factor);
-    scale.padding_y = xgpui_luma::theme::snap_to_pixel(geometry.padding_y.value_px, scale_factor);
-    scale.gap = xgpui_luma::theme::snap_to_pixel(geometry.gap.value_px, scale_factor);
-    scale.icon_size = xgpui_luma::theme::snap_to_pixel(geometry.icon_size.value_px, scale_factor);
-    scale
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn popup_menu_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    trigger_style: PopupMenuTriggerStyle,
-    metrics: xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics,
-    size: crate::ShadcnSize,
-    menu_size: crate::ShadcnSize,
-    state: InteractionState,
-    scale_factor: f32,
-    _cx: &mut gpui::App,
-) -> PopupMenuLook {
-    let scale = popup_menu_trigger_scale(mode, theme_mode, size, state, scale_factor);
-    let palette = popup_menu_palette(mode, theme_mode, trigger_style, metrics, size, menu_size, state);
-    let mut look = compose_popup_menu_look(&palette, &scale);
-    look = look.with_stylesheet(&mode.common_for(size).popup_menu, scale_factor);
-    if let Some(radius) = metrics.trigger_radius_override {
-        look.trigger_radius = radius;
-    }
-    look
 }
 
 pub(crate) fn popup_menu_geometry(

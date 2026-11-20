@@ -1,5 +1,7 @@
 mod control;
 mod model;
+mod styled;
+pub use styled::{MenuSource, StyledPopupMenuTheme};
 mod template;
 pub(crate) mod theme;
 

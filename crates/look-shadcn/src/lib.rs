@@ -96,3 +96,11 @@ xgpui_luma::test_stylesheet_motion_contract!(
     },
     crate
 );
+
+/// Colors equal to rounding (`.lss` values pass through f32 color conversions).
+#[cfg(test)]
+pub(crate) fn assert_close(a: gpui::Hsla, b: gpui::Hsla) {
+    let (x, y) = (a.to_rgb(), b.to_rgb());
+    let near = [(x.r, y.r), (x.g, y.g), (x.b, y.b), (x.a, y.a)].iter().all(|(p, q)| (p - q).abs() < 2e-3);
+    assert!(near, "{a:?} vs {b:?}");
+}

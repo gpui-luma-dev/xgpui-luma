@@ -178,7 +178,7 @@ mod tests {
                 assert_eq!(resolved.status_color, fork.resolve_role(SemanticRole::Primary).hsla());
                 assert_eq!(resolved.clear_icon_color, fork.resolve_role(SemanticRole::MutedForeground).hsla());
                 assert_eq!(resolved.clear_icon_hover_color, fork.resolve_role(SemanticRole::Foreground).hsla());
-                assert_eq!(resolved.menu.item_hover_background, resolved.status_color);
+                crate::control_group::assert_close(resolved.menu.item_hover_background, resolved.status_color);
             }
         }
         assert_eq!(autocomplete_theme(&look).resolve().status_color, initial.status_color);

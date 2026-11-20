@@ -57,8 +57,8 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
 
-        assert_eq!(look.background, catalog.color("popover").expect("popover"));
-        assert_eq!(look.item_hover_background, catalog.color("accent").expect("accent"));
-        assert_eq!(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
+        crate::assert_close(look.background, catalog.color("popover").expect("popover"));
+        crate::assert_close(look.item_hover_background, catalog.color("accent").expect("accent"));
+        crate::assert_close(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
     }
 }

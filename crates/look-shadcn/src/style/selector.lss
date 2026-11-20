@@ -1,0 +1,25 @@
+// Shadcn selector trigger. Layer: look. The trigger is this look's outline or ghost button (inherited
+// through `selector extends button`) with the control's own padding, a muted chevron, and a destructive
+// edge and ring when invalid.
+
+selector {
+  padding_x = metrics.control.padding_x
+  size sm { padding_x = metrics.control.padding_x }
+  size lg { padding_x = metrics.control.padding_x }
+
+  part root { icon = css.muted_foreground }
+
+  variant outline {
+    part root {
+      :invalid          { border = css.destructive  focus_border = css.destructive }
+      :disabled:invalid { border = css.border  focus_border = first(css.ring, shadcn.fallback_foreground) }
+    }
+  }
+
+  variant ghost {
+    part root {
+      :invalid          { border = css.destructive  focus_border = css.destructive }
+      :disabled:invalid { border = none  focus_border = first(css.ring, shadcn.fallback_foreground) }
+    }
+  }
+}

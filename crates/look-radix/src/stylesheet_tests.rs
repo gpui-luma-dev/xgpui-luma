@@ -1,6 +1,6 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 use super::*;
-use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
 use xgpui_luma::controls::{
     button_family::ButtonFamilyRole, textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant,
 };
@@ -108,7 +108,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let progress = progress_theme(&fork);
     let toolbar = toolbar_theme(&fork);
     let explicit_toolbar = toolbar_theme_with(&fork, ToolbarStyle { gap: 17.0, ..Default::default() });
-    let tooltip = tooltip_theme(&fork);
     let card = Card::new(&fork).variant(CardVariant::Ghost);
     let explicit_card = Card::new(&fork).style_override(|style| style.padding = 21.0);
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
@@ -116,13 +115,9 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let mut config = fork.common_stylesheet();
     config.progress.sizes.get_mut("2").unwrap().track_height = Some(11.0);
     config.toolbar.geometry.gap = Some(0.0);
-    config.tooltip.geometry.max_width = Some(420.0);
     config.card.sizes.get_mut("1").unwrap().padding = Some(18.0);
     config.avatar.sizes.get_mut("9").unwrap().diameter = Some(190.0);
     config.avatar.sizes.get_mut("9").unwrap().two_letter_font_size = Some(44.0);
-    config.floating_menu.geometry.min_width = Some(222.0);
-    config.context_menu.geometry.min_width = Some(240.0);
-    config.overlay_window.sizes.get_mut("sm").unwrap().min_width = Some(300.0);
     config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
@@ -130,7 +125,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     assert_eq!(progress.resolve(true).track_height, 11.0);
     assert_eq!(toolbar.resolve(true, ToolbarVariant::Outline).gap, 0.0);
     assert_eq!(explicit_toolbar.resolve(true, ToolbarVariant::Outline).gap, 17.0);
-    assert_eq!(tooltip.resolve().max_width, 420.0);
     assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (18.0, -18.0));
     assert_eq!(explicit_card.resolve_style().padding, 21.0);
     assert_eq!(
@@ -138,19 +132,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
         (190.0, 95.0, 44.0)
     );
     assert_eq!(explicit_avatar.resolve_style().diameter, 33.0);
-    assert_eq!(crate::popup_menu::floating_menu_look(&fork, PopupMenuVariant::Soft, Tone::Gray).min_width, 222.0);
-    assert_eq!(
-        context_menu_theme(&fork, ContextMenuVariant::Soft, Tone::Gray)
-            .resolve(InteractionState::default())
-            .target_min_width,
-        240.0
-    );
-    assert_eq!(
-        overlay_window_theme(&fork.with_size(RadixSize::One))
-            .resolve(xgpui_luma::controls::overlay_window::OverlayWindowMode::Modal)
-            .min_width,
-        300.0
-    );
     let box_ =
         crate::button_layout::button_box_with_stylesheet(&fork.common_stylesheet(), ButtonSize::Four, Radius::Full);
     assert_eq!((box_.height, box_.radius), (57.0, 28.5));

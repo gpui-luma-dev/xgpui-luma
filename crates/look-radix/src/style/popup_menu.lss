@@ -1,0 +1,50 @@
+// Radix popup-menu trigger. Layer: look. The base (primary) is this look's solid button; secondary is the
+// tone 3 tint, outline the page background with the border role, ghost no face. Size 2 text at every
+// size, medium weight; the ring is tone 8.
+
+popup_menu {
+  part root {
+    focus_border = tone[8]
+    font_size    = 14
+    line_height  = 20
+    font_weight  = 500
+  }
+  size 1 { part root { font_size = 14  line_height = 20 } }
+  size 3 { part root { font_size = 14  line_height = 20 } }
+
+  variant secondary {
+    part root {
+      background := tone[3]
+      foreground := tone[11]
+      border     := tone[3]
+      shadow     := []
+      :hover    { background = tone[4] }
+      :pressed  { background = tone[4] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant outline {
+    part root {
+      background := radix.role.background
+      foreground := radix.role.foreground
+      border     := radix.role.border
+      shadow     := []
+      :hover    { background = tone[3] }
+      :pressed  { background = tone[3] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant ghost {
+    part root {
+      background := transparent
+      foreground := radix.role.foreground
+      border     := none
+      shadow     := []
+      :hover    { background = tone[3] }
+      :pressed  { background = tone[3] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+}

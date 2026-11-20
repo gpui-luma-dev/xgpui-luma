@@ -104,7 +104,7 @@ pub struct DefaultPopupMenuTheme {
 pub fn default_popup_menu_theme() -> Arc<dyn PopupMenuTheme> {
     static THEME: OnceLock<Arc<dyn PopupMenuTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultPopupMenuTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledPopupMenuTheme::sdk())).clone()
 }
 
 impl DefaultPopupMenuTheme {

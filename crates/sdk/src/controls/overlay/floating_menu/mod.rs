@@ -8,6 +8,8 @@
 //! building a look template or a derived menu surface.
 
 mod model;
+mod styled;
+pub use styled::{StyledFloatingMenuTheme, styled_floating_menu_look};
 mod template;
 pub(crate) mod theme;
 

@@ -48,7 +48,21 @@ macro_rules! radix_sources {
     };
 }
 
-radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss", "textfield.lss"];
+radix_sources![
+    "tokens.lss",
+    "checkbox.lss",
+    "radio.lss",
+    "switch.lss",
+    "button.lss",
+    "toggle.lss",
+    "textfield.lss",
+    "selector.lss",
+    "floating_menu.lss",
+    "popup_menu.lss",
+    "context_menu.lss",
+    "tooltip.lss",
+    "overlay_window.lss"
+];
 
 /// The SDK's files with the Radix look's files over them.
 pub fn stylesheet() -> Stylesheet {

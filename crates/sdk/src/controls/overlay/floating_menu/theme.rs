@@ -68,7 +68,7 @@ pub struct DefaultFloatingMenuTheme {
 pub fn default_floating_menu_theme() -> Arc<dyn FloatingMenuTheme> {
     static THEME: OnceLock<Arc<dyn FloatingMenuTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultFloatingMenuTheme::default())).clone()
+    THEME.get_or_init(super::styled::sdk_theme).clone()
 }
 
 impl DefaultFloatingMenuTheme {

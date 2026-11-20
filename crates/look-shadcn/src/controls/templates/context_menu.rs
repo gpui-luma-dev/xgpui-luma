@@ -1,28 +1,23 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::context_menu::{ContextMenuTheme, ThemedContextMenuTemplate};
-use xgpui_luma::theme::InteractionState;
+use xgpui_luma::controls::context_menu::{ContextMenuTheme, StyledContextMenuTheme, ThemedContextMenuTemplate};
+use xgpui_luma::style::ThemeSource;
 
-use crate::controls::context_menu::context_menu_look;
 use crate::look::ShadcnLook;
 
-struct ShadcnContextMenuTheme {
-    theme: ShadcnLook,
-}
-
-impl ContextMenuTheme for ShadcnContextMenuTheme {
-    fn resolve(&self, state: InteractionState) -> xgpui_luma::controls::context_menu::ContextMenuLook {
-        let tokens = self.theme.mode_tokens();
-        context_menu_look(tokens.as_ref(), self.theme.mode(), state)
-    }
-
-    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics_for(self.theme.size())
-    }
-}
-
+/// The Shadcn context-menu target drawn from `.lss` (`style/context_menu.lss`); its menu is the md floating menu.
 pub fn context_menu_theme(theme: ShadcnLook) -> Arc<dyn ContextMenuTheme> {
-    Arc::new(ShadcnContextMenuTheme { theme: theme.clone() })
+    let style = theme.clone();
+    Arc::new(StyledContextMenuTheme::new(
+        ThemeSource::Live(Arc::new(move || style.style_theme())),
+        Arc::new(move || {
+            crate::controls::floating_menu::floating_menu_look(
+                theme.mode_tokens().as_ref(),
+                theme.mode(),
+                crate::ShadcnSize::Md,
+            )
+        }),
+    ))
 }
 
 pub fn context_menu_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::context_menu::ContextMenuTemplate> {

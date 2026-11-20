@@ -1,0 +1,38 @@
+// Radix selector trigger. Layer: look. The popup-menu trigger: outline is the page background with the
+// border role, ghost has no face; both tint to accent 3 when hovered or pressed. Size 2 text at every
+// size, medium weight; the chevron takes the label color. Radix triggers do not mark invalid.
+
+selector {
+  part root {
+    icon        = foreground
+    font_size   = 14
+    line_height = 20
+    font_weight = 500
+  }
+  size 1 { part root { font_size = 14  line_height = 20 } }
+  size 3 { part root { font_size = 14  line_height = 20 } }
+
+  variant outline {
+    part root {
+      background := radix.role.background
+      foreground := radix.role.foreground
+      border     := radix.role.border
+      shadow     := []
+      :hover    { background = accent[3] }
+      :pressed  { background = accent[3] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant ghost {
+    part root {
+      background := transparent
+      foreground := radix.role.foreground
+      border     := none
+      shadow     := []
+      :hover    { background = accent[3] }
+      :pressed  { background = accent[3] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+}

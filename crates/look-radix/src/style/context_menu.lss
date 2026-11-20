@@ -1,0 +1,21 @@
+// Radix context-menu target. Layer: look. The surface with the border role, the focus role as its edge
+// while focused, and muted text when disabled.
+
+context_menu {
+  part root {
+    background  = radix.role.surface
+    foreground  = radix.role.foreground
+    border      = radix.role.border
+    radius      = exact(4)
+    padding_x   = exact(12)
+    padding_y   = exact(0)
+    font_size   = 14
+    line_height = 20
+    font_weight = 400
+    :hover            { background = radix.role.surface }
+    :pressed          { background = radix.role.surface }
+    :focused          { border = radix.role.focus }
+    :disabled         { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    :focused:disabled { border = radix.role.border }
+  }
+}

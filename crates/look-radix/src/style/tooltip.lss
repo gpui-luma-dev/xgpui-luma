@@ -1,0 +1,14 @@
+// Radix tooltip. Layer: look. The inverted bubble (foreground on background) with compact text.
+
+tooltip {
+  part root {
+    background  = radix.role.foreground
+    foreground  = radix.role.background
+    shadow      = []
+    padding_x   = exact(8)
+    padding_y   = exact(4)
+    radius      = exact(4)
+    font_size   = 12
+    line_height = 16
+  }
+}

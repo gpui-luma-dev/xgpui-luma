@@ -37,8 +37,9 @@ tokens {
     size 4 { button_radius_base = 8 }
 
     // The selected page pill: foreground on light, the accent contrast on dark.
-    mode light { page_selected = radix.role.foreground }
-    mode dark  { page_selected = look.accent_contrast }
+    // The menus' positive (completion) mark.
+    mode light { page_selected = radix.role.foreground   menu_positive = gray(30, 1) }
+    mode dark  { page_selected = look.accent_contrast    menu_positive = gray(75, 1) }
 
     /// Switch `--radius-1` (size 1) or `--radius-2` (sizes 2–3), before the radius factor.
     switch_radius_base = 4

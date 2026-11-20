@@ -28,6 +28,24 @@ pub struct ShadcnModeTokens {
     /// Common stylesheet with each Shadcn size merged into general geometry, in
     /// [`crate::ShadcnSize::ALL`] order. SDK controls only read these pixel values.
     sized_common: Arc<[xgpui_luma::theme::stylesheet::CommonStylesheet; 3]>,
+    /// This mode's catalog bound to the `.lss` stylesheet, made on first use.
+    style_theme: StyleThemeSlot,
+}
+
+/// A lazily bound `.lss` theme. A clone starts empty, so a changed copy of the tokens binds afresh.
+#[derive(Default)]
+struct StyleThemeSlot(std::sync::OnceLock<xgpui_luma::style::lss::Theme>);
+
+impl Clone for StyleThemeSlot {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl std::fmt::Debug for StyleThemeSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("StyleThemeSlot")
+    }
 }
 
 impl ShadcnModeTokens {
@@ -72,7 +90,14 @@ impl ShadcnModeTokens {
             sized_common,
             palette,
             catalog,
+            style_theme: StyleThemeSlot::default(),
         })
+    }
+
+    /// This mode's catalog bound to the look's `.lss` stylesheet, for values read without the look
+    /// (menus built from mode tokens).
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.style_theme.0.get_or_init(|| crate::style::theme_for_mode(self)).clone()
     }
 
     /// Shared metrics whose `control` scale is the given Shadcn size, for SDK geometry.

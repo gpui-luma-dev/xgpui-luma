@@ -1,7 +1,7 @@
 //! Selector property mappings — outline/ghost command-button trigger + accent item panel.
 
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::selector::{SelectorLook, SelectorPalette, SelectorTriggerStyle, SelectorVisualState};
+use xgpui_luma::controls::selector::{SelectorPalette, SelectorTriggerStyle};
 use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 
 use crate::look_context::LookContext;
@@ -48,65 +48,6 @@ pub fn selector_palette(
     }
 }
 
-pub fn selector_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    trigger_style: SelectorTriggerStyle,
-    state: InteractionState,
-    size: ShadcnSize,
-    scale: &StandardBoxScale,
-    without_elevation: bool,
-) -> SelectorLook {
-    let palette = selector_palette(mode, theme_mode, trigger_style, state, without_elevation);
-    let mut typography = palette.trigger_typography;
-    super::typography::apply_button_metrics_typography(&mut typography, mode, size);
-
-    let geometry = selector_geometry(mode, size, scale, &typography);
-    crate::tables::typography::apply_resolved_geometry_typography(
-        &mut typography,
-        &geometry.font_size,
-        &geometry.line_height,
-    );
-    let trigger_border = (!state.disabled && state.invalid)
-        .then_some(mode.palette.destructive_background)
-        .or(palette.trigger_border);
-    SelectorLook {
-        trigger_background: palette.trigger_background,
-        trigger_foreground: palette.trigger_foreground,
-        trigger_icon: palette.trigger_icon,
-        trigger_border,
-        trigger_shadow: palette.trigger_shadow,
-        trigger_typography: typography,
-        trigger_radius: geometry.radius.value_px,
-        trigger_padding_x: geometry.padding_x.value_px,
-        trigger_padding_y: geometry.padding_y.value_px,
-        trigger_gap: geometry.gap.value_px,
-        trigger_height: geometry.height.value_px,
-        trigger_icon_size: geometry.icon_size.value_px,
-        trigger_focus_border: crate::focus::focus_ring_or_fallback(&mode.catalog),
-        menu_offset_y: geometry.menu_offset_y.value_px,
-        items_panel: selector_items_panel_look(mode, theme_mode, size),
-    }
-}
-
-pub fn selector_look_with_visual_state(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    trigger_style: SelectorTriggerStyle,
-    visual_state: SelectorVisualState,
-    size: ShadcnSize,
-    scale: &StandardBoxScale,
-    without_elevation: bool,
-) -> SelectorLook {
-    let state = visual_state.resolved_interaction();
-    let mut look = selector_look(mode, theme_mode, trigger_style, state, size, scale, without_elevation);
-    if visual_state.invalid && !visual_state.interaction.disabled {
-        look.trigger_border = Some(mode.palette.destructive_background);
-        look.trigger_focus_border = mode.palette.destructive_background;
-    }
-    look
-}
-
 pub(crate) fn selector_geometry(
     mode: &ShadcnModeTokens,
     size: ShadcnSize,
@@ -143,182 +84,100 @@ pub(crate) fn selector_geometry(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use gpui::Hsla;
+    use xgpui_luma::controls::selector::{SelectorLook, SelectorTriggerStyle, SelectorVisualState};
+    use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
 
-    use xgpui_luma::controls::button_family::ButtonFamilyRole;
-    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
-    use xgpui_luma::theme::{InteractionState, ThemeMode};
+    use crate::ShadcnLook;
 
-    use crate::catalog::CssTokenMap;
-    use crate::controls::button::{ShadcnButtonStyle, button_palette};
-    use crate::look_context::LookContext;
-    use crate::mode::ShadcnModeTokens;
-    use crate::stylesheet::embedded_stylesheet;
-    use super::{selector_look, selector_look_with_visual_state, selector_palette};
+    fn close(a: Hsla, b: Hsla) -> bool {
+        let (a, b) = (a.to_rgb(), b.to_rgb());
+        [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
+    }
 
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.7200 0.0120 205.0000)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("card".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-            ("popover".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-            ("popover-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("shadow-xs".into(), "0 1px 2px 0px hsl(0 0% 0% / 0.05)".into()),
-            ("shadow-sm".into(), "0 1px 2px 0px hsl(0 0% 0% / 0.10)".into()),
-        ]))
+    fn look() -> ShadcnLook {
+        let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
+        look.set_mode(ThemeMode::Light);
+        look
+    }
+
+    fn css(look: &ShadcnLook, name: &str) -> Hsla {
+        look.mode_tokens().catalog.color(name).unwrap()
+    }
+
+    fn trigger(look: &ShadcnLook, style: SelectorTriggerStyle, state: SelectorVisualState, flat: bool) -> SelectorLook {
+        let theme = look.selector_theme();
+        theme.resolve_visual_look(style, state, &StandardBoxScale::compute(&theme.metrics(), 1.0), flat)
+    }
+
+    fn with(interaction: InteractionState) -> SelectorVisualState {
+        SelectorVisualState { interaction, ..Default::default() }
     }
 
     #[test]
-    fn outline_trigger_matches_outline_command_button() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let state = InteractionState::default();
-        let selector = selector_palette(&mode, ThemeMode::Light, SelectorTriggerStyle::Outline, state, false);
-        let ctx = LookContext::new(&mode, ThemeMode::Light, state);
-        let button = button_palette(
-            &ctx,
-            embedded_stylesheet(),
-            ShadcnButtonStyle::Outline,
-            ButtonFamilyRole::Text,
-            crate::ShadcnSize::Md,
-        );
-
-        assert_eq!(selector.trigger_background, button.background);
-        assert_eq!(selector.trigger_foreground, button.foreground);
-        assert_eq!(selector.trigger_border, button.border);
-        assert!(selector.trigger_shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()));
+    fn outline_is_the_outline_button_with_its_shadow_and_a_muted_chevron() {
+        let look = look();
+        let outline = trigger(&look, SelectorTriggerStyle::Outline, Default::default(), false);
+        assert!(close(outline.trigger_background, css(&look, "background")));
+        assert!(close(outline.trigger_border.unwrap(), css(&look, "border")));
+        assert!(close(outline.trigger_icon, css(&look, "muted-foreground")));
+        assert!(outline.trigger_shadow.as_ref().is_some_and(|layers| !layers.is_empty()));
+        assert!(trigger(&look, SelectorTriggerStyle::Outline, Default::default(), true).trigger_shadow.is_none());
+        assert_eq!(outline.trigger_padding_x, 14.0);
     }
 
     #[test]
-    fn ghost_trigger_matches_ghost_command_button() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let state = InteractionState::default();
-        let selector = selector_palette(&mode, ThemeMode::Light, SelectorTriggerStyle::Ghost, state, false);
-        let ctx = LookContext::new(&mode, ThemeMode::Light, state);
-        let button = button_palette(
-            &ctx,
-            embedded_stylesheet(),
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Text,
-            crate::ShadcnSize::Md,
-        );
-
-        assert_eq!(selector.trigger_background, button.background);
-        assert_eq!(selector.trigger_foreground, button.foreground);
-        assert_eq!(selector.trigger_border, button.border);
-        assert!(selector.trigger_shadow.is_none());
+    fn ghost_has_no_face_edge_or_shadow() {
+        let look = look();
+        let ghost = trigger(&look, SelectorTriggerStyle::Ghost, Default::default(), false);
+        assert_eq!(ghost.trigger_background.a, 0.0);
+        assert!(ghost.trigger_border.is_none_or(|border| border.a == 0.0));
+        assert!(ghost.trigger_shadow.is_none());
     }
 
     #[test]
-    fn outline_without_elevation_clears_shadow() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let selector =
-            selector_palette(&mode, ThemeMode::Light, SelectorTriggerStyle::Outline, InteractionState::default(), true);
-        assert!(selector.trigger_shadow.is_none());
-    }
-
-    #[test]
-    fn open_trigger_uses_hover_palette_but_disabled_still_wins() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Md), 1.0);
-        let open = selector_look_with_visual_state(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            SelectorVisualState { open: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-            &scale,
-            false,
-        );
-        let hover = selector_look(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            InteractionState { hovered: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-            &scale,
-            false,
-        );
-        let disabled_open = selector_look_with_visual_state(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            SelectorVisualState {
-                open: true,
-                interaction: InteractionState { disabled: true, ..Default::default() },
-                ..Default::default()
-            },
-            crate::ShadcnSize::Md,
-            &scale,
-            false,
-        );
-        let disabled = selector_look(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            InteractionState { disabled: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-            &scale,
-            false,
-        );
-
+    fn open_looks_hovered_but_disabled_still_wins() {
+        let look = look();
+        let style = SelectorTriggerStyle::Outline;
+        let open = trigger(&look, style, SelectorVisualState { open: true, ..Default::default() }, false);
+        let hover = trigger(&look, style, with(InteractionState { hovered: true, ..Default::default() }), false);
         assert_eq!(open.trigger_background, hover.trigger_background);
-        assert_eq!(open.trigger_foreground, hover.trigger_foreground);
+        let disabled_state = InteractionState { disabled: true, ..Default::default() };
+        let disabled_open = trigger(
+            &look,
+            style,
+            SelectorVisualState { open: true, interaction: disabled_state, ..Default::default() },
+            false,
+        );
+        let disabled = trigger(&look, style, with(disabled_state), false);
         assert_eq!(disabled_open.trigger_background, disabled.trigger_background);
-        assert_eq!(disabled_open.trigger_foreground, disabled.trigger_foreground);
+        assert_ne!(disabled.trigger_background, hover.trigger_background);
     }
 
     #[test]
-    fn selector_trigger_chevron_uses_muted_icon_color() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Dark).expect("catalog");
-        let palette =
-            selector_palette(&mode, ThemeMode::Dark, SelectorTriggerStyle::Outline, InteractionState::default(), false);
-
-        assert_eq!(palette.trigger_icon, catalog.color("muted-foreground").expect("muted-foreground"));
+    fn invalid_marks_the_edge_and_ring_destructive() {
+        let look = look();
+        let invalid = trigger(
+            &look,
+            SelectorTriggerStyle::Outline,
+            SelectorVisualState { invalid: true, ..Default::default() },
+            false,
+        );
+        assert!(close(invalid.trigger_border.unwrap(), css(&look, "destructive")));
+        assert!(close(invalid.trigger_focus_border, css(&look, "destructive")));
     }
 
     #[test]
-    fn selector_trigger_typography_uses_stylesheet_font_size() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let sm_scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Sm), 1.0);
-        let lg_scale = xgpui_luma::theme::StandardBoxScale::compute(&mode.metrics_for(crate::ShadcnSize::Lg), 1.0);
-
-        let sm = selector_look(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            InteractionState::default(),
-            crate::ShadcnSize::Sm,
-            &sm_scale,
-            false,
+    fn sizes_scale_the_label_font() {
+        let look = look();
+        let size = |s| {
+            trigger(&look.with_size(s), SelectorTriggerStyle::Outline, Default::default(), false)
+                .trigger_typography
+                .size
+        };
+        assert_eq!(
+            (size(crate::ShadcnSize::Sm), size(crate::ShadcnSize::Md), size(crate::ShadcnSize::Lg)),
+            (12.0, 14.0, 16.0)
         );
-        let lg = selector_look(
-            &mode,
-            ThemeMode::Light,
-            SelectorTriggerStyle::Outline,
-            InteractionState::default(),
-            crate::ShadcnSize::Lg,
-            &lg_scale,
-            false,
-        );
-
-        assert_eq!(sm.trigger_typography.size, 12.0);
-        assert_eq!(lg.trigger_typography.size, 16.0);
     }
 }

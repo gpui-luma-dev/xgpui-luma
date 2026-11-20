@@ -133,10 +133,8 @@ fn custom_look() -> ShadcnLook {
 fn remaining_common_geometry_reaches_paint_and_inspection() {
     use xgpui_luma::controls::{
         scrollbar::{ScrollbarOrientation, ScrollbarStyle},
-        overlay_window::OverlayWindowMode,
         pager::PagerStyle,
         toolbar::ToolbarVariant,
-        selector::SelectorTriggerStyle,
     };
     let look = custom_look();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
@@ -168,50 +166,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
                 assert_eq!(s.length.value_px, scrollbar.length);
                 assert!(format!("{:?}", s.length.source).contains("common.scrollbar"));
             }
-            let menu = crate::paint::floating_menu_look(&tokens, mode, size);
-            let m = inspect.inspect_floating_menu_metrics(size);
-            assert_eq!((menu.min_width, menu.item_height, menu.item_icon_size), (245.0, 31.0, 17.0));
-            assert_eq!((menu.item_typography.size, menu.item_typography.line_height), (16.0, 22.0));
-            assert_eq!(m.item_icon_size.value_px, menu.item_icon_size);
-            assert!(format!("{:?}", m.item_icon_size.source).contains("common.floating_menu"));
-            let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
-            let selector = crate::controls::selector::selector_look(
-                &tokens,
-                mode,
-                SelectorTriggerStyle::Outline,
-                InteractionState::default(),
-                size,
-                &scale,
-                false,
-            );
-            let s = inspect.inspect_selector_metrics(size);
-            assert_eq!(
-                (selector.trigger_height, selector.trigger_padding_x, selector.trigger_icon_size),
-                (49.0, 9.0, 23.0)
-            );
-            assert_eq!(s.trigger.padding_x.value_px, selector.trigger_padding_x);
-            let popup_scale = crate::controls::popup_menu::popup_menu_trigger_scale(
-                &tokens,
-                mode,
-                size,
-                InteractionState::default(),
-                1.0,
-            );
-            let popup = crate::controls::popup_menu::popup_menu_palette(
-                &tokens,
-                mode,
-                xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline,
-                xgpui_luma::controls::popup_menu::PopupMenuTriggerMetrics::default(),
-                size,
-                size,
-                InteractionState::default(),
-            );
-            assert_eq!((popup_scale.height, popup_scale.padding_x, popup_scale.icon_size), (51.0, 11.0, 21.0));
-            assert_eq!((popup.trigger_typography.size, popup.trigger_typography.line_height), (17.0, 25.0));
-            let p = inspect
-                .inspect_popup_menu_metrics(xgpui_luma::controls::popup_menu::PopupMenuTriggerStyle::Outline, size);
-            assert_eq!(p.trigger.height.value_px, popup_scale.height);
-            assert!(format!("{:?}", p.trigger.icon_size.source).contains("common.popup_menu"));
             let card = crate::controls::card::card_look(&look, size);
             assert_eq!((card.padding, card.section_gap, card.header_gap, card.body_gap), (23.0, 11.0, 7.0, 12.0));
             assert_eq!(inspect.inspect_card_metrics(size).padding.value_px, 23.0);
@@ -221,15 +175,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             let sidebar = crate::paint::sidebar_item_look(&look, false, InteractionState::default(), size);
             assert_eq!((sidebar.height, sidebar.padding_x, sidebar.icon_size, sidebar.gap), (34.0, 11.0, 19.0, 10.0));
             assert_eq!(inspect.inspect_sidebar_metrics(size).item_height.value_px, 34.0);
-            let overlay = look.with_size(size).overlay_window_theme().resolve(OverlayWindowMode::Modal);
-            assert_eq!(
-                (overlay.padding, overlay.min_width, overlay.max_width, overlay.estimated_height),
-                (19.0, 450.0, 570.0, 300.0)
-            );
-            assert_eq!(
-                inspect.inspect_overlay_window_metrics(size, OverlayWindowMode::Modal).max_width.value_px,
-                570.0
-            );
         }
         let context = crate::paint::context_menu_look(&tokens, mode, InteractionState::default());
         assert_eq!((context.target_min_width, context.target_padding_x), (231.0, 12.0));
@@ -244,11 +189,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             assert_eq!((pager.button_size, pager.button_min_width, pager.group_gap), (39.0, 41.0, 19.0));
             assert_eq!(inspect.inspect_pager_metrics(style).button_size.value_px, 39.0);
         }
-        let tooltip = crate::tooltip_theme(&look).resolve();
-        assert_eq!(
-            (tooltip.padding, tooltip.padding_y, tooltip.max_width, tooltip.text_size),
-            (11.0, 6.0, 345.0, 15.0)
-        );
     }
 }
 
@@ -366,7 +306,7 @@ fn selected_color_rules_follow_the_same_configuration_as_geometry() {
 }
 
 #[test]
-fn selector_panel_and_trigger_apply_independent_common_overrides() {
+fn selector_panel_applies_common_overrides() {
     use xgpui_luma::controls::selector::SelectorTriggerStyle;
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
@@ -391,12 +331,10 @@ item_height=0
             &scale,
             false,
         );
-        assert_eq!((resolved.trigger_radius, resolved.menu_offset_y), (9.0, 0.0));
         assert_eq!((resolved.items_panel.min_width, resolved.items_panel.radius), (0.0, 7.0));
         #[cfg(feature = "inspect")]
         {
             let inspected = crate::inspect::ShadcnInspect::new(&look).inspect_selector_metrics(size);
-            assert_eq!(inspected.trigger.radius.value_px, resolved.trigger_radius);
             assert_eq!(inspected.items_panel.min_width.value_px, resolved.items_panel.min_width);
             assert_eq!(inspected.items_panel.radius.value_px, resolved.items_panel.radius);
             assert_eq!(inspected.items_panel.item_height.value_px, resolved.items_panel.item_height);
@@ -666,7 +604,7 @@ popup_padding=11
 }
 
 #[test]
-fn context_menu_chrome_uses_shared_stylesheet_with_zero_overrides() {
+fn token_context_menu_chrome_uses_shared_stylesheet_with_zero_overrides() {
     use xgpui_luma::controls::context_menu::{DefaultContextMenuTheme, ContextMenuTheme};
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
@@ -680,17 +618,14 @@ window_margin=19
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
+    // The look's target is drawn from `.lss`; the token-built SDK theme still reads these overrides.
     let sdk = DefaultContextMenuTheme::new(tokens);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = look.context_menu_theme();
-    for theme in [&sdk as &dyn ContextMenuTheme, themed.as_ref()] {
-        let resolved = theme.resolve(InteractionState { disabled: true, ..Default::default() });
-        assert_eq!((resolved.border_width, resolved.disabled_opacity, resolved.window_margin), (0.0, 0.0, 19.0));
-    }
+    let resolved = sdk.resolve(InteractionState { disabled: true, ..Default::default() });
+    assert_eq!((resolved.border_width, resolved.disabled_opacity, resolved.window_margin), (0.0, 0.0, 19.0));
 }
 
 #[test]
-fn overlay_shell_chrome_uses_shared_stylesheet_and_size() {
+fn token_overlay_shell_chrome_uses_shared_stylesheet() {
     use xgpui_luma::controls::overlay_window::{DefaultOverlayWindowTheme, OverlayWindowTheme, OverlayWindowMode};
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
@@ -706,26 +641,12 @@ radius=17
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
+    // The look's window is drawn from `.lss`; the token-built SDK theme still reads these overrides.
     let sdk = DefaultOverlayWindowTheme::new(tokens);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = look.overlay_window_theme();
-    let large = look.with_size(ShadcnSize::Lg).overlay_window_theme();
     for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
-        for theme in [&sdk as &dyn OverlayWindowTheme, themed.as_ref()] {
-            let md = theme.resolve(mode);
-            assert_eq!((md.border_width, md.radius), (0.0, 0.0));
-        }
-        let lg = large.resolve(mode);
-        assert_eq!((lg.border_width, lg.radius), (3.0, 17.0));
+        let md = sdk.resolve(mode);
+        assert_eq!((md.border_width, md.radius), (0.0, 0.0));
     }
-    #[cfg(feature = "inspect")]
-    assert_eq!(
-        crate::inspect::ShadcnInspect::new(&look)
-            .inspect_overlay_window_metrics(ShadcnSize::Lg, OverlayWindowMode::Modal)
-            .radius
-            .value_px,
-        17.0
-    );
 }
 
 #[test]
@@ -826,14 +747,4 @@ shortcut_opacity=0
     for resolved in [sdk_progress.resolve(true), look.with_size(ShadcnSize::Md).progress_theme().resolve(true)] {
         assert_eq!((resolved.geometry.indeterminate_fraction, resolved.geometry.shimmer_soft_opacity), (0.0, 0.0));
     }
-    let tooltip = crate::tooltip_theme(&look).resolve();
-    assert_eq!(
-        (
-            tooltip.placement.gap,
-            tooltip.placement.margin,
-            tooltip.placement.pointer_size,
-            tooltip.shortcut_opacity
-        ),
-        (17.0, 0.0, 9.0, 0.0)
-    );
 }

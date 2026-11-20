@@ -41,7 +41,7 @@ pub struct DefaultOverlayWindowTheme {
 pub fn default_overlay_window_theme() -> Arc<dyn OverlayWindowTheme> {
     static THEME: OnceLock<Arc<dyn OverlayWindowTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultOverlayWindowTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledOverlayWindowTheme::sdk())).clone()
 }
 
 impl DefaultOverlayWindowTheme {
