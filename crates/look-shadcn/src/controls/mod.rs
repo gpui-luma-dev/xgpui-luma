@@ -21,7 +21,6 @@ pub(crate) mod sidebar;
 pub(crate) mod sidebar_builder;
 pub(crate) mod pager;
 pub(crate) mod pager_builder;
-pub(crate) mod popup_menu;
 pub(crate) mod popup_menu_builder;
 pub(crate) mod progress;
 pub(crate) mod progress_builder;
@@ -50,7 +49,6 @@ pub(crate) mod toggle;
 pub(crate) mod toggle_builder;
 pub(crate) mod textfield;
 pub(crate) mod textfield_builder;
-pub(crate) mod textarea;
 pub(crate) mod textarea_builder;
 pub(crate) mod toolbar_builder;
 pub(crate) mod toolbar_item;
@@ -58,9 +56,6 @@ pub(crate) mod tree_view;
 pub(crate) mod tree_view_builder;
 pub(crate) mod typography;
 pub(crate) mod overlay_window;
-
-#[cfg(feature = "inspect")]
-pub(crate) use typography::apply_button_metrics_typography;
 
 pub use accordion_builder::Accordion;
 pub use autocomplete_builder::Autocomplete;

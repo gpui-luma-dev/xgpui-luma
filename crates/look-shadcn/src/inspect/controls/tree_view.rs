@@ -2,7 +2,6 @@
 
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
-use crate::size::ShadcnSize;
 
 pub struct TreeViewRowInspectPalette {
     pub background: Option<ResolvedColor>,
@@ -38,15 +37,6 @@ pub fn inspect_tree_view_row_color_palette(
         icon_color: colors.icon_color,
         chevron_color: colors.chevron_color,
     }
-}
-
-pub fn inspect_tree_view_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> TreeViewInspectMetrics {
-    let table = crate::tables::metrics::resolve_tree_view_metrics(mode, theme_mode, size);
-    table.into()
 }
 
 #[cfg(test)]

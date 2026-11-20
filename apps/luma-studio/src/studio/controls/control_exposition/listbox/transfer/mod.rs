@@ -33,7 +33,6 @@ const LAYOUT: ListBoxSampleLayout = ListBoxSampleLayout {
     inset_x: 8.0,
     inset_y: 8.0,
     radius: 8.0,
-    border: 1.0,
 };
 
 type ItemDrop = DropProposal<Side, u32>;

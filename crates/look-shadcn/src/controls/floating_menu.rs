@@ -23,9 +23,7 @@ use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
 use crate::stylesheet::StylesheetConfig;
 use crate::stylesheet::find_floating_menu_surface_color_rule;
-use crate::stylesheet::find_floating_menu_trigger_color_rule;
 use crate::stylesheet::resolve_floating_menu_surface_color_rule;
-use crate::stylesheet::resolve_floating_menu_trigger_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct FloatingMenuColorTable {
@@ -85,26 +83,6 @@ impl GhostTriggerColorTable {
     pub fn fallback() -> Self {
         Self { background: ResolvedColor::transparent(), foreground: ResolvedColor::fallback_foreground() }
     }
-}
-
-pub fn resolve_ghost_trigger_colors(
-    resolver: &LookResolver<'_>,
-    layer: InteractionLayer,
-    disabled: bool,
-) -> anyhow::Result<GhostTriggerColorTable> {
-    resolve_ghost_trigger_colors_with_stylesheet(resolver, resolver.stylesheet(), layer, disabled)
-}
-
-pub fn resolve_ghost_trigger_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    layer: InteractionLayer,
-    disabled: bool,
-) -> anyhow::Result<GhostTriggerColorTable> {
-    let rule = find_floating_menu_trigger_color_rule(stylesheet, disabled, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching ghost trigger color rule"))?;
-    let colors = resolve_floating_menu_trigger_color_rule(resolver, rule, layer)?;
-    Ok(GhostTriggerColorTable { background: colors.background, foreground: colors.foreground })
 }
 
 /// The Shadcn floating menu at `size`, drawn from `.lss` (`style/floating_menu.lss`) for `mode`'s catalog.

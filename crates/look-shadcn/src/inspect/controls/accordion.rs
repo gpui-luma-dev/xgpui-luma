@@ -12,12 +12,6 @@ pub struct AccordionTriggerInspectPalette {
 }
 
 #[derive(Clone, Debug)]
-pub struct AccordionContentInspectPalette {
-    pub background: Option<ResolvedColor>,
-    pub foreground: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
 pub struct AccordionInspectMetrics {
     pub trigger_height: ResolvedMetric,
     pub padding_x: ResolvedMetric,
@@ -47,38 +41,6 @@ pub fn inspect_accordion_trigger_color_palette(
         icon_color: colors.icon_color,
         chevron_color: colors.chevron_color,
     }
-}
-
-pub fn inspect_accordion_content_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    expanded: bool,
-) -> AccordionContentInspectPalette {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), theme_mode, "accordion_content_inspect").with_stylesheet(mode.stylesheet());
-    let colors = crate::tables::resolve_accordion_content_colors(&resolver, expanded)
-        .unwrap_or_else(|_| crate::tables::AccordionContentColorTable::fallback());
-    AccordionContentInspectPalette { background: colors.background, foreground: colors.foreground }
-}
-
-pub fn inspect_accordion_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-) -> AccordionInspectMetrics {
-    inspect_accordion_metrics_at_scale(mode, theme_mode, size, 1.0)
-}
-
-/// Inspect the same pixel-snapped geometry rendered at the window scale factor.
-pub fn inspect_accordion_metrics_at_scale(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-    scale_factor: f32,
-) -> AccordionInspectMetrics {
-    let table = crate::tables::metrics::resolve_accordion_metrics(mode, theme_mode, size, scale_factor);
-    table.into()
 }
 
 #[cfg(test)]

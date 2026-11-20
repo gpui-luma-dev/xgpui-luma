@@ -1,7 +1,6 @@
 //! Inspect metadata for `card`.
 
-use crate::size::ShadcnSize;
-use crate::{ResolvedMetric, ShadcnLook};
+use crate::ResolvedMetric;
 
 #[derive(Clone, Debug)]
 pub struct CardInspectMetrics {
@@ -10,11 +9,6 @@ pub struct CardInspectMetrics {
     pub header_gap: ResolvedMetric,
     pub body_gap: ResolvedMetric,
     pub radius: ResolvedMetric,
-}
-
-pub fn inspect_card_metrics(look: &ShadcnLook, size: ShadcnSize) -> CardInspectMetrics {
-    let table = crate::tables::metrics::resolve_card_metrics(look, size);
-    table.into()
 }
 
 impl From<crate::tables::metrics::CardMetricTable> for CardInspectMetrics {

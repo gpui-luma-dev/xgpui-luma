@@ -18,10 +18,7 @@ use xgpui_luma::controls::listbox::ListBoxItemState;
 use xgpui_luma::theme::InteractionLayer;
 
 use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::{
-    StylesheetConfig, find_listbox_list_color_rule, find_listbox_row_color_rule, resolve_listbox_list_color_rule,
-    resolve_listbox_row_color_rule,
-};
+use crate::stylesheet::{StylesheetConfig, find_listbox_row_color_rule, resolve_listbox_row_color_rule};
 
 impl crate::ShadcnLook {
     /// Styled, content-free row surface. Attach SDK `ListBoxBinding` for input;
@@ -55,24 +52,6 @@ impl ListBoxListColorTable {
             divider: ResolvedColor::fallback_foreground(),
         }
     }
-}
-
-pub fn resolve_listbox_list_colors(
-    resolver: &LookResolver<'_>,
-    enabled: bool,
-) -> anyhow::Result<ListBoxListColorTable> {
-    resolve_listbox_list_colors_with_stylesheet(resolver, resolver.stylesheet(), enabled)
-}
-
-pub fn resolve_listbox_list_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    enabled: bool,
-) -> anyhow::Result<ListBoxListColorTable> {
-    let rule = find_listbox_list_color_rule(stylesheet, enabled)
-        .ok_or_else(|| anyhow::anyhow!("no matching listbox list color rule"))?;
-    let colors = resolve_listbox_list_color_rule(resolver, rule)?;
-    Ok(ListBoxListColorTable { background: colors.background, border: colors.border, divider: colors.divider })
 }
 
 #[derive(Clone, Debug)]

@@ -26,14 +26,10 @@ use crate::mode::ShadcnModeTokens;
 use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
 use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_sidebar_branch_color_rule;
 use crate::stylesheet::find_sidebar_container_color_rule;
 use crate::stylesheet::find_sidebar_item_color_rule;
-use crate::stylesheet::find_sidebar_section_color_rule;
-use crate::stylesheet::resolve_sidebar_branch_color_rule;
 use crate::stylesheet::resolve_sidebar_container_color_rule;
 use crate::stylesheet::resolve_sidebar_item_color_rule;
-use crate::stylesheet::resolve_sidebar_section_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct SidebarContainerColorTable {
@@ -84,23 +80,6 @@ impl SidebarSectionColorTable {
     }
 }
 
-pub fn resolve_sidebar_section_colors(
-    resolver: &LookResolver<'_>,
-    _present: bool,
-) -> anyhow::Result<SidebarSectionColorTable> {
-    resolve_sidebar_section_colors_with_stylesheet(resolver, resolver.stylesheet())
-}
-
-pub fn resolve_sidebar_section_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-) -> anyhow::Result<SidebarSectionColorTable> {
-    let rule = find_sidebar_section_color_rule(stylesheet)
-        .ok_or_else(|| anyhow::anyhow!("no matching navigation sidebar section color rule"))?;
-    let colors = resolve_sidebar_section_color_rule(resolver, rule)?;
-    Ok(SidebarSectionColorTable { label_color: colors.label_color })
-}
-
 #[derive(Clone, Debug)]
 pub struct SidebarBranchColorTable {
     pub foreground: ResolvedColor,
@@ -116,30 +95,6 @@ impl SidebarBranchColorTable {
             background: None,
         }
     }
-}
-
-pub fn resolve_sidebar_branch_colors(
-    resolver: &LookResolver<'_>,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<SidebarBranchColorTable> {
-    resolve_sidebar_branch_colors_with_stylesheet(resolver, resolver.stylesheet(), disabled, layer)
-}
-
-pub fn resolve_sidebar_branch_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<SidebarBranchColorTable> {
-    let rule = find_sidebar_branch_color_rule(stylesheet, disabled, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching navigation sidebar branch color rule"))?;
-    let colors = resolve_sidebar_branch_color_rule(resolver, rule, layer)?;
-    Ok(SidebarBranchColorTable {
-        foreground: colors.foreground,
-        icon_color: colors.icon_color,
-        background: colors.background,
-    })
 }
 
 #[derive(Clone, Debug)]

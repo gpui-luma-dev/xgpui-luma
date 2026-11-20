@@ -2,7 +2,6 @@
 
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
-use crate::size::ShadcnSize;
 
 pub struct ControlGroupListInspectPalette {
     pub background: ResolvedColor,
@@ -28,15 +27,6 @@ pub fn inspect_control_group_list_color_palette(
     let colors = crate::tables::resolve_control_group_list_colors(&resolver, enabled)
         .unwrap_or_else(|_| crate::tables::ControlGroupListColorTable::fallback());
     ControlGroupListInspectPalette { background: colors.background, border: colors.border }
-}
-
-pub fn inspect_control_group_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> ControlGroupInspectMetrics {
-    let table = crate::tables::metrics::resolve_control_group_metrics(mode, theme_mode, size);
-    table.into()
 }
 
 #[cfg(test)]

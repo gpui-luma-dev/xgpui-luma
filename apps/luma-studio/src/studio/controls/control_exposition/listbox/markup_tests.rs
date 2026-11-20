@@ -11,6 +11,22 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 use super::super::{horizontal, vertical};
 use super::super::super::event_stream::ControlEventStream;
 
+/// The geometry the examples' markup lays out, checked against the rendered bounds.
+struct SampleLayout {
+    item_height: f32,
+    spacing: f32,
+    viewport_height: f32,
+    inset_x: f32,
+    inset_y: f32,
+    border: f32,
+}
+
+const VERTICAL: SampleLayout =
+    SampleLayout { item_height: 36.0, spacing: 4.0, viewport_height: 196.0, inset_x: 16.0, inset_y: 8.0, border: 1.0 };
+const HORIZONTAL: SampleLayout =
+    SampleLayout { item_height: 36.0, spacing: 8.0, viewport_height: 36.0, inset_x: 16.0, inset_y: 8.0, border: 1.0 };
+const CARD_WIDTH: f32 = 136.0;
+
 fn bounds(cx: &mut VisualTestContext, selector: &'static str) -> Bounds<Pixels> {
     cx.debug_bounds(selector).unwrap_or_else(|| panic!("missing {selector}"))
 }
@@ -28,15 +44,12 @@ fn exposition_geometry_matches_inspector_metrics() {
     let first = bounds(cx, "listbox-vertical-item-0");
     let second = bounds(cx, "listbox-vertical-item-1");
     assert_eq!(surface.size.width, px(super::super::VERTICAL_LIST_WIDTH));
-    assert_eq!(
-        surface.size.height,
-        px(vertical::LAYOUT.viewport_height + 2.0 * (vertical::LAYOUT.inset_y + vertical::LAYOUT.border)),
-    );
-    assert_eq!(viewport.size.height, px(vertical::LAYOUT.viewport_height));
-    assert_eq!(first.size.height, px(vertical::LAYOUT.item_height));
-    assert_eq!(second.origin.y - first.origin.y - first.size.height, px(vertical::LAYOUT.spacing));
-    assert_eq!(viewport.origin.x - surface.origin.x, px(vertical::LAYOUT.inset_x + vertical::LAYOUT.border));
-    assert_eq!(viewport.origin.y - surface.origin.y, px(vertical::LAYOUT.inset_y + vertical::LAYOUT.border));
+    assert_eq!(surface.size.height, px(VERTICAL.viewport_height + 2.0 * (VERTICAL.inset_y + VERTICAL.border)),);
+    assert_eq!(viewport.size.height, px(VERTICAL.viewport_height));
+    assert_eq!(first.size.height, px(VERTICAL.item_height));
+    assert_eq!(second.origin.y - first.origin.y - first.size.height, px(VERTICAL.spacing));
+    assert_eq!(viewport.origin.x - surface.origin.x, px(VERTICAL.inset_x + VERTICAL.border));
+    assert_eq!(viewport.origin.y - surface.origin.y, px(VERTICAL.inset_y + VERTICAL.border));
 
     let mut app = TestAppContext::single();
     let (_, cx) = app.add_window_view(|_, cx| {
@@ -46,14 +59,14 @@ fn exposition_geometry_matches_inspector_metrics() {
     });
     assert_eq!(
         bounds(cx, "listbox-horizontal-surface").size.height,
-        px(horizontal::LAYOUT.viewport_height + 2.0 * (horizontal::LAYOUT.inset_y + horizontal::LAYOUT.border)),
+        px(HORIZONTAL.viewport_height + 2.0 * (HORIZONTAL.inset_y + HORIZONTAL.border)),
     );
     let first = bounds(cx, "listbox-horizontal-item-0");
     let second = bounds(cx, "listbox-horizontal-item-1");
-    assert_eq!(first.size.width, px(horizontal::CARD_WIDTH));
-    assert_eq!(first.size.height, px(horizontal::LAYOUT.item_height));
-    assert_eq!(second.origin.x - first.origin.x - first.size.width, px(horizontal::LAYOUT.spacing));
-    assert_eq!(bounds(cx, "listbox-horizontal-viewport").size.height, px(horizontal::LAYOUT.viewport_height));
+    assert_eq!(first.size.width, px(CARD_WIDTH));
+    assert_eq!(first.size.height, px(HORIZONTAL.item_height));
+    assert_eq!(second.origin.x - first.origin.x - first.size.width, px(HORIZONTAL.spacing));
+    assert_eq!(bounds(cx, "listbox-horizontal-viewport").size.height, px(HORIZONTAL.viewport_height));
 }
 
 struct Harness {

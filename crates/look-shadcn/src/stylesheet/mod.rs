@@ -13,18 +13,15 @@ pub use config::{ButtonElevationRule, FloatingMenuSurfaceElevationRule, LayeredE
 pub use find::*;
 pub use metadata::*;
 pub use resolve::{
-    resolve_accordion_content_color_rule, resolve_accordion_trigger_color_rule, resolve_button_color_rule,
-    resolve_badge_color_rule, resolve_button_metrics_rule, resolve_card_color_rule,
-    resolve_control_group_list_color_rule, resolve_floating_menu_surface_color_rule,
-    resolve_floating_menu_trigger_color_rule, resolve_table_row_color_rule, resolve_table_surface_color_rule,
-    resolve_listbox_list_color_rule, resolve_listbox_row_color_rule, resolve_sidebar_branch_color_rule,
-    resolve_sidebar_container_color_rule, resolve_sidebar_item_color_rule, resolve_sidebar_metrics,
-    resolve_sidebar_section_color_rule, resolve_autocomplete_chrome_color_rule, resolve_progress_color_rule,
-    resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics, resolve_resizable_panels_color_rule,
-    resolve_scrollbar_color_rule, resolve_scrollbar_metrics, resolve_slider_color_rule, resolve_slider_metrics,
-    resolve_split_view_color_rule, resolve_stylesheet_shadow_token, resolve_layered_elevation_shadow,
-    resolve_stylesheet_metric, resolve_tabs_item_color_rule, resolve_tabs_list_color_rule,
-    resolve_textfield_color_rule, resolve_tree_view_row_color_rule, resolve_typography_rule, ResolvedFields,
+    resolve_accordion_trigger_color_rule, resolve_button_color_rule, resolve_badge_color_rule,
+    resolve_button_metrics_rule, resolve_card_color_rule, resolve_control_group_list_color_rule,
+    resolve_floating_menu_surface_color_rule, resolve_listbox_row_color_rule, resolve_sidebar_container_color_rule,
+    resolve_sidebar_item_color_rule, resolve_sidebar_metrics, resolve_autocomplete_chrome_color_rule,
+    resolve_progress_color_rule, resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics,
+    resolve_resizable_panels_color_rule, resolve_scrollbar_color_rule, resolve_scrollbar_metrics,
+    resolve_slider_color_rule, resolve_slider_metrics, resolve_split_view_color_rule, resolve_stylesheet_shadow_token,
+    resolve_layered_elevation_shadow, resolve_stylesheet_metric, resolve_textfield_color_rule,
+    resolve_tree_view_row_color_rule, resolve_typography_rule, ResolvedFields,
 };
 
 use std::sync::OnceLock;

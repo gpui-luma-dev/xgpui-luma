@@ -1,16 +1,6 @@
 //! Inspect metadata for `toolbar`.
 
-use xgpui_luma::controls::toolbar::ToolbarVariant;
-use xgpui_luma::theme::{ThemeMode};
-use crate::{ResolvedColor, ResolvedMetric, ShadcnModeTokens};
-use crate::size::ShadcnSize;
-
-#[derive(Clone, Debug)]
-pub struct ToolbarInspectPalette {
-    pub background: ResolvedColor,
-    pub border: ResolvedColor,
-    pub separator: ResolvedColor,
-}
+use crate::ResolvedMetric;
 
 #[derive(Clone, Debug)]
 pub struct ToolbarInspectMetrics {
@@ -19,25 +9,6 @@ pub struct ToolbarInspectMetrics {
     pub padding_y: ResolvedMetric,
     pub gap: ResolvedMetric,
     pub separator_height: ResolvedMetric,
-}
-
-pub fn inspect_toolbar_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    enabled: bool,
-    variant: ToolbarVariant,
-) -> ToolbarInspectPalette {
-    let colors = crate::tables::resolve_toolbar_colors(mode, theme_mode, enabled, variant);
-    ToolbarInspectPalette { background: colors.background, border: colors.border, separator: colors.separator }
-}
-
-pub fn inspect_toolbar_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> ToolbarInspectMetrics {
-    let table = crate::tables::metrics::resolve_toolbar_metrics(mode, theme_mode, size);
-    table.into()
 }
 
 impl From<crate::tables::metrics::ToolbarMetricTable> for ToolbarInspectMetrics {

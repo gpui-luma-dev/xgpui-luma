@@ -3,20 +3,11 @@
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
-use super::floating_menu::{FloatingMenuInspectMetrics, FloatingMenuInspectPalette};
-use crate::size::ShadcnSize;
-
 pub struct AutocompleteChromeInspectPalette {
     pub status_color: ResolvedColor,
     pub muted_text_color: ResolvedColor,
     pub clear_icon_color: ResolvedColor,
     pub clear_icon_hover_color: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct AutocompleteInspectMetrics {
-    pub textfield: crate::inspect::controls::textfield::TextFieldInspectMetrics,
-    pub menu: FloatingMenuInspectMetrics,
 }
 
 pub fn inspect_autocomplete_chrome_color_palette(
@@ -34,25 +25,6 @@ pub fn inspect_autocomplete_chrome_color_palette(
         clear_icon_color: colors.clear_icon_color,
         clear_icon_hover_color: colors.clear_icon_hover_color,
     }
-}
-
-pub fn inspect_autocomplete_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> AutocompleteInspectMetrics {
-    AutocompleteInspectMetrics {
-        textfield: crate::inspect::controls::textfield::inspect_textfield_metrics(mode, theme_mode, size),
-        menu: crate::inspect::controls::floating_menu::inspect_floating_menu_metrics(mode, theme_mode, size),
-    }
-}
-
-pub fn inspect_autocomplete_menu_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> FloatingMenuInspectPalette {
-    crate::inspect::controls::floating_menu::inspect_floating_menu_color_palette(mode, theme_mode, size)
 }
 
 #[cfg(test)]

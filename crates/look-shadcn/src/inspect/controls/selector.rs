@@ -3,19 +3,11 @@
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::selector::SelectorTriggerStyle;
 use xgpui_luma::theme::{InteractionState, ThemeMode};
-use crate::{ResolvedColor, ShadcnButtonStyle, ShadcnModeTokens};
+use crate::{ShadcnButtonStyle, ShadcnModeTokens};
 
-use super::button::{inspect_button_color_palette, inspect_button_metrics};
-use super::floating_menu::{FloatingMenuInspectMetrics, FloatingMenuInspectPalette};
+use super::button::inspect_button_metrics;
+use super::floating_menu::FloatingMenuInspectMetrics;
 use crate::size::ShadcnSize;
-
-pub struct SelectorInspectPalette {
-    pub trigger_style: SelectorTriggerStyle,
-    pub trigger_background: ResolvedColor,
-    pub trigger_foreground: ResolvedColor,
-    pub trigger_border: ResolvedColor,
-    pub items_panel: FloatingMenuInspectPalette,
-}
 
 #[derive(Clone, Debug)]
 pub struct SelectorInspectMetrics {
@@ -27,26 +19,6 @@ fn button_style(trigger_style: SelectorTriggerStyle) -> ShadcnButtonStyle {
     match trigger_style {
         SelectorTriggerStyle::Outline => ShadcnButtonStyle::Outline,
         SelectorTriggerStyle::Ghost => ShadcnButtonStyle::Ghost,
-    }
-}
-
-pub fn inspect_selector_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    trigger_style: SelectorTriggerStyle,
-    state: InteractionState,
-    size: ShadcnSize,
-) -> SelectorInspectPalette {
-    let menu = crate::inspect::controls::floating_menu::inspect_floating_menu_color_palette(mode, theme_mode, size);
-    let trigger =
-        inspect_button_color_palette(mode, theme_mode, button_style(trigger_style), ButtonFamilyRole::Text, state);
-
-    SelectorInspectPalette {
-        trigger_style,
-        trigger_background: trigger.background,
-        trigger_foreground: trigger.foreground,
-        trigger_border: trigger.border,
-        items_panel: menu,
     }
 }
 

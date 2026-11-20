@@ -5,13 +5,10 @@ use crate::elements::BadgeVariant;
 use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
 use super::config::{
-    AccordionContentColorRule, AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule,
-    CardColorRule, ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuSurfaceElevationRule,
-    FloatingMenuTriggerColorRule, ListboxListColorRule, ListboxRowColorRule, ProgressColorRule,
-    ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarBranchColorRule,
-    SidebarItemColorRule, SidebarSectionColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
-    TableRowColorRule, TableSurfaceColorRule, TabsItemColorRule, TabsListColorRule, TextfieldColorRule,
-    TreeViewRowColorRule, TypographyRule,
+    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, CardColorRule,
+    ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuSurfaceElevationRule, ListboxRowColorRule,
+    ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarItemColorRule,
+    SliderColorRule, SplitViewColorRule, StylesheetConfig, TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
 
@@ -80,23 +77,12 @@ pub fn find_accordion_trigger_color_rule(
     stylesheet.accordion.trigger.find_color_rule(disabled, layer)
 }
 
-pub fn find_accordion_content_color_rule(
-    stylesheet: &StylesheetConfig,
-    expanded: bool,
-) -> Option<&AccordionContentColorRule> {
-    stylesheet.accordion.content.find_color_rule(expanded)
-}
-
 pub fn find_resizable_panels_color_rule(
     stylesheet: &StylesheetConfig,
     disabled: bool,
     layer: InteractionLayer,
 ) -> Option<&ResizablePanelsColorRule> {
     stylesheet.resizable_panels.find_color_rule(disabled, layer)
-}
-
-pub fn find_listbox_list_color_rule(stylesheet: &StylesheetConfig, enabled: bool) -> Option<&ListboxListColorRule> {
-    stylesheet.listbox.list.find_color_rule(enabled)
 }
 
 pub fn find_listbox_row_color_rule(
@@ -108,49 +94,8 @@ pub fn find_listbox_row_color_rule(
     stylesheet.listbox.row.find_color_rule(disabled, focused, layer)
 }
 
-pub fn find_table_surface_color_rule(stylesheet: &StylesheetConfig, enabled: bool) -> Option<&TableSurfaceColorRule> {
-    stylesheet.table.surface.find_color_rule(enabled)
-}
-
-pub fn find_table_row_color_rule(
-    stylesheet: &StylesheetConfig,
-    selected: bool,
-    focused: bool,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&TableRowColorRule> {
-    stylesheet.table.row.find_color_rule(selected, focused, disabled, layer)
-}
-
 pub fn find_floating_menu_surface_color_rule(stylesheet: &StylesheetConfig) -> Option<&FloatingMenuSurfaceColorRule> {
     stylesheet.floating_menu.surface.color_rule()
-}
-
-pub fn find_floating_menu_surface_elevation_rule(
-    stylesheet: &StylesheetConfig,
-) -> Option<&FloatingMenuSurfaceElevationRule> {
-    stylesheet.floating_menu.surface.elevation_rule()
-}
-
-pub fn find_floating_menu_trigger_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&FloatingMenuTriggerColorRule> {
-    stylesheet.floating_menu.trigger.find_color_rule(disabled, layer)
-}
-
-pub fn find_tabs_list_color_rule(stylesheet: &StylesheetConfig, enabled: bool) -> Option<&TabsListColorRule> {
-    stylesheet.tabs.list.find_color_rule(enabled)
-}
-
-pub fn find_tabs_item_color_rule(
-    stylesheet: &StylesheetConfig,
-    active: bool,
-    layer: InteractionLayer,
-    focused: bool,
-) -> Option<&TabsItemColorRule> {
-    stylesheet.tabs.item.find_color_rule(active, layer, focused)
 }
 
 pub fn find_tree_view_row_color_rule(
@@ -167,18 +112,6 @@ pub fn find_sidebar_metrics(stylesheet: &StylesheetConfig) -> &crate::stylesheet
 
 pub fn find_sidebar_container_color_rule(stylesheet: &StylesheetConfig) -> Option<&SidebarContainerColorRule> {
     stylesheet.sidebar.container.color_rule()
-}
-
-pub fn find_sidebar_section_color_rule(stylesheet: &StylesheetConfig) -> Option<&SidebarSectionColorRule> {
-    stylesheet.sidebar.section.color_rule()
-}
-
-pub fn find_sidebar_branch_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&SidebarBranchColorRule> {
-    stylesheet.sidebar.branch.find_color_rule(disabled, layer)
 }
 
 pub fn find_sidebar_item_color_rule(

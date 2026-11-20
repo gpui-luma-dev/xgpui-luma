@@ -3,30 +3,10 @@
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
 
-pub struct ListBoxListInspectPalette {
-    pub background: ResolvedColor,
-    pub border: ResolvedColor,
-    pub divider: ResolvedColor,
-}
-
 #[derive(Clone, Debug)]
 pub struct ListBoxRowInspectPalette {
     pub background: ResolvedColor,
     pub label_color: ResolvedColor,
-}
-
-pub fn inspect_listbox_list_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    enabled: bool,
-    _focused: bool,
-) -> ListBoxListInspectPalette {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), theme_mode, "listbox_list_inspect").with_stylesheet(mode.stylesheet());
-    let colors = crate::tables::resolve_listbox_list_colors(&resolver, enabled)
-        .unwrap_or_else(|_| crate::tables::ListBoxListColorTable::fallback());
-    ListBoxListInspectPalette { background: colors.background, border: colors.border, divider: colors.divider }
 }
 
 pub fn inspect_listbox_row_color_palette(

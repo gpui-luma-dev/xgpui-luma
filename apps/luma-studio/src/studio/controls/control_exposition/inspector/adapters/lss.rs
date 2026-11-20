@@ -127,8 +127,12 @@ impl LssInspectorAdapter {
         self.indicator_only.filter(|_| choice_indicator_only(selection.part_id))
     }
 
-    /// The parts shown for a selection (the indicator-only path hides its label).
+    /// The parts shown for a selection: the selected `.lss` part when the part selector names one (see
+    /// [`lss_part_selector`]), otherwise every part; the indicator-only path hides its label.
     fn parts<'a>(&self, inspection: &'a Inspection, selection: InspectorSelection<'_>) -> Vec<&'a PartInspection> {
+        if let Some(part) = selected_part(inspection, selection) {
+            return vec![part];
+        }
         let hidden = self.indicator_mode(selection).map_or(&[][..], |i| i.hidden_parts);
         inspection.parts.iter().filter(|p| !hidden.contains(&p.part.name())).collect()
     }
@@ -187,7 +191,9 @@ impl LssInspectorAdapter {
         inspection: &Inspection,
         selection: InspectorSelection<'_>,
     ) -> super::super::schema::InspectLayoutSection {
-        let root = inspection.parts.iter().find(|p| p.part == PartId::ROOT);
+        // The selected part's box when the part selector names one, otherwise the root's.
+        let root =
+            selected_part(inspection, selection).or_else(|| inspection.parts.iter().find(|p| p.part == PartId::ROOT));
         let num = |name: &str| root.and_then(|r| number(r, name)).unwrap_or(0.0);
         let focus = FocusAdorner::new(FocusMetricTokens {
             gap: num("focus_gap"),
@@ -315,6 +321,18 @@ fn provenance(row: &Row) -> String {
         .chain(e.reference_lines())
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// The part selector's `.lss` part: a part id written with `-` for `_` (e.g. `header`, `drag-handle`).
+/// Template-path ids that name no part (`labeled`, `indicator-only`) and `all` select none.
+fn selected_part<'a>(inspection: &'a Inspection, selection: InspectorSelection<'_>) -> Option<&'a PartInspection> {
+    let name = selection.part_id.replace('-', "_");
+    inspection.parts.iter().find(|p| p.part.name() == name && name != "all")
+}
+
+/// A part-selector entry for a `.lss` part (`id` is the part name, `-` for `_`; `all` shows every part).
+pub const fn lss_part(id: &'static str, label: &'static str) -> InspectorPart {
+    InspectorPart { id, label, variants: &[], default_variant_id: "" }
 }
 
 fn number(part: &PartInspection, name: &str) -> Option<f32> {

@@ -2,17 +2,11 @@
 
 use xgpui_luma::theme::{InteractionState, ThemeMode};
 use crate::{LookContext, LookResolver, ResolvedColor, ResolvedMetric, ShadcnModeTokens};
-use crate::size::ShadcnSize;
 
 pub struct SidebarContainerInspectPalette {
     pub background: ResolvedColor,
     pub foreground: ResolvedColor,
     pub border: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct SidebarSectionInspectPalette {
-    pub label_color: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]
@@ -49,36 +43,6 @@ pub fn inspect_sidebar_container_color_palette(
     }
 }
 
-pub fn inspect_sidebar_section_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-) -> SidebarSectionInspectPalette {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), theme_mode, "sidebar_section_inspect").with_stylesheet(mode.stylesheet());
-    let colors = crate::tables::resolve_sidebar_section_colors(&resolver, true)
-        .unwrap_or_else(|_| crate::tables::SidebarSectionColorTable::fallback());
-    SidebarSectionInspectPalette { label_color: colors.label_color }
-}
-
-pub fn inspect_sidebar_branch_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    state: InteractionState,
-) -> SidebarItemInspectPalette {
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let resolver =
-        LookResolver::new(ctx.catalog(), theme_mode, "sidebar_branch_inspect").with_stylesheet(mode.stylesheet());
-    let colors = crate::tables::resolve_sidebar_branch_colors(&resolver, state.disabled, state.layer())
-        .unwrap_or_else(|_| crate::tables::SidebarBranchColorTable::fallback());
-    SidebarItemInspectPalette {
-        background: colors.background,
-        focus_border: crate::tables::resolve_sidebar_focus_border(ctx.catalog(), theme_mode, state),
-        foreground: colors.foreground,
-        icon_color: colors.icon_color,
-    }
-}
-
 pub fn inspect_sidebar_item_color_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
@@ -96,15 +60,6 @@ pub fn inspect_sidebar_item_color_palette(
         foreground: colors.foreground,
         icon_color: colors.icon_color,
     }
-}
-
-pub fn inspect_sidebar_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: ShadcnSize,
-) -> SidebarInspectMetrics {
-    let table = crate::tables::metrics::resolve_sidebar_metrics(mode, theme_mode, size);
-    table.into()
 }
 
 #[cfg(test)]

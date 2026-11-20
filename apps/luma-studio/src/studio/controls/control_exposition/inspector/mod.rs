@@ -1,6 +1,5 @@
 mod adapters;
 pub mod box_model;
-pub mod collection;
 pub mod common;
 pub mod input;
 pub mod metrics;

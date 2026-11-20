@@ -182,44 +182,11 @@ pub(crate) fn inspect_button_elevation_with_stylesheet(
     }
 }
 
-pub fn inspect_layered_elevation(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    state: InteractionState,
-    rule_shadow: String,
-    token: Option<String>,
-    shadows: Option<&Vec<BoxShadow>>,
-    style_key: &str,
-) -> ButtonInspectElevation {
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let catalog_value = token.as_ref().and_then(|t| ctx.catalog().get(t).map(|value| value.to_string()));
-    let layers: Vec<ButtonInspectElevationLayer> = shadows
-        .map(|shadows| shadows.iter().enumerate().map(|(index, shadow)| elevation_layer(index, shadow)).collect())
-        .unwrap_or_default();
-    let applied = !state.disabled && !layers.is_empty();
-    let reserved_shadow_extent = resolved_shadow_extent(shadows);
-
-    ButtonInspectElevation {
-        applied,
-        rule_shadow,
-        style_key: style_key.to_string(),
-        token,
-        catalog_value,
-        layers,
-        shadows: shadows.cloned(),
-        reserved_shadow_extent,
-    }
-}
-
 fn resolved_shadow_extent(shadows: Option<&Vec<BoxShadow>>) -> ResolvedMetric {
     ResolvedMetric {
         value_px: shadow_projection_extent(shadows.map(Vec::as_slice), 1.0, true),
         source: MetricSource::Derived { note: "shadow projection extent at scale 1.0".into() },
     }
-}
-
-pub fn format_inspect_box_shadow_layer(layer: &ButtonInspectElevationLayer) -> String {
-    layer.css.clone()
 }
 
 /// Default medium text-button typography. Use the sized variant for other controls.

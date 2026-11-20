@@ -82,16 +82,6 @@ impl ButtonColorPalette {
     }
 }
 
-pub fn resolve_button_colors(
-    resolver: &LookResolver<'_>,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-    theme_mode: ThemeMode,
-    selected: bool,
-) -> anyhow::Result<ButtonColorPalette> {
-    resolve_button_colors_with_stylesheet(resolver, resolver.stylesheet(), style, layer, theme_mode, selected)
-}
-
 pub fn resolve_button_colors_with_stylesheet(
     resolver: &LookResolver<'_>,
     stylesheet: &StylesheetConfig,
@@ -1211,17 +1201,6 @@ pub struct ButtonMetricTable {
     pub border_width: crate::ResolvedMetric,
     pub focus_ring_width: crate::ResolvedMetric,
     pub focus_ring_offset: crate::ResolvedMetric,
-}
-
-pub fn resolve_button_metrics(
-    mode: &crate::ShadcnModeTokens,
-    theme_mode: xgpui_luma::theme::ThemeMode,
-    style: crate::ShadcnButtonStyle,
-    role: xgpui_luma::controls::button_family::ButtonFamilyRole,
-    size: crate::ShadcnSize,
-    state: xgpui_luma::theme::InteractionState,
-) -> ButtonMetricTable {
-    resolve_button_metrics_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, role, size, state)
 }
 
 pub fn resolve_button_metrics_with_stylesheet(
