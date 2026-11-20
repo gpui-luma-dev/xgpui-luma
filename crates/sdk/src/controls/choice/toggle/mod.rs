@@ -13,12 +13,8 @@ use gpui::{
 };
 
 use crate::motion::VisualTransition;
-use crate::controls::button_family::{
-    ButtonFamilyPalette, ButtonFamilyRole, button_family_effective_border, default_button_family_theme,
-};
-use crate::controls::button::{
-    Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate, DefaultButtonTemplate,
-};
+use crate::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole, button_family_effective_border};
+use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 
 pub type Toggle = Entity<ToggleControl>;
@@ -390,19 +386,12 @@ pub fn apply_toggle_progress_chrome(
         .border_color(button_family_effective_border(palette.border))
 }
 
+/// The SDK toggle: the `.lss` button template drawing the `toggle` control (issue #285).
 pub fn default_toggle_template() -> Arc<dyn ButtonTemplate<ToggleData>> {
-    let button_family_theme = default_button_family_theme();
-    Arc::new(DefaultButtonTemplate::<ToggleData>::new(button_family_theme.clone()).with_modifier(
-        move |element, model| {
-            if model.look.is_some() {
-                return element;
-            }
-
-            let off = button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
-            let on = button_family_theme.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
-            apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
-        },
-    ))
+    static TEMPLATE: std::sync::OnceLock<Arc<dyn ButtonTemplate<ToggleData>>> = std::sync::OnceLock::new();
+    TEMPLATE
+        .get_or_init(|| Arc::new(crate::controls::button::StyledButtonTemplate::<ToggleData>::sdk()))
+        .clone()
 }
 
 #[cfg(test)]

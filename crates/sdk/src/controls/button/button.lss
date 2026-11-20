@@ -1,0 +1,45 @@
+// SDK button family. Layer: sdk. Drawn by the button template (controls/button/styled.rs), which
+// picks `button` or `toggle` by the render model's role and lays out text and icon buttons.
+
+/// A pressable face with a label or an icon.
+button {
+  /// Whole-control opacity when disabled.
+  disabled_opacity: number = metrics.disabled_opacity
+  height    = metrics.control.control_height
+  padding_x = metrics.control.padding_x
+  padding_y = metrics.control.padding_y
+  gap       = metrics.control.gap
+  radius    = exact(metrics.control.radius)
+  border_width = exact(metrics.border_width)
+  /// Icon size for icon buttons, and for icons beside a label.
+  icon_size: length = metrics.control.icon_size
+  text_icon_size: length = exact(font_size)
+  /// Corner radius of icon buttons: a pill.
+  icon_radius: length = exact(999)
+  /// Focus ring geometry (FocusAdorner): gap to the face, stroke width, extra outward offset.
+  focus_gap: length = exact(metrics.focus.gap)
+  focus_width: length = exact(metrics.focus.width)
+  focus_offset: length = exact(metrics.focus.offset)
+  /// Secondary text color offered to button content.
+  muted_foreground: color = palette.app.muted_foreground
+  /// A vertical gradient face, top to bottom, painted over `background` when both are set (a look's
+  /// raised buttons). `background` stays the face color that content and references read.
+  background_start: color = none
+  background_end: color = none
+
+  /// The face.
+  part root {
+    background   = palette.surface.subtle.background
+    foreground   = palette.app.foreground
+    border       = palette.border.default
+    focus_border = palette.focus.ring
+    font_family  = typography.font.sans
+    font_size    = typography.text.label.size
+    line_height  = typography.text.label.line_height
+    font_weight  = typography.text.label.weight
+    transition   = motion.default
+    :hover    { background = palette.state.hover.background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
+  }
+}

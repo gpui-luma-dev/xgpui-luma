@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, DefaultButtonTemplate, StyledButtonTemplate};
 use xgpui_luma::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
 use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
 use xgpui_luma::theme::{InteractionState};
@@ -57,22 +57,27 @@ pub fn button_family_theme(theme: ShadcnLook) -> Arc<dyn ButtonFamilyTheme> {
     styled_button_family_theme(theme, ShadcnButtonStyle::Secondary)
 }
 
+/// The Shadcn button drawn from `.lss` (`style/button.lss`), following the look's mode and catalog.
 pub fn button_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn ButtonTemplate<()>> {
-    Arc::new(DefaultButtonTemplate::new(styled_button_family_theme(theme, style)))
+    Arc::new(styled_button_template::<()>(theme, style))
 }
 
+/// The Shadcn toggle drawn from `.lss` (`style/toggle.lss`): its colors blend with the toggle's progress.
 pub fn toggle_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn ButtonTemplate<ToggleData>> {
-    let button_family_theme = styled_button_family_theme(theme, style);
-    let theme_for_mod = Arc::clone(&button_family_theme);
-    Arc::new(DefaultButtonTemplate::<ToggleData>::new(button_family_theme).with_modifier(move |element, model| {
-        if model.look.is_some() {
-            return element;
-        }
+    Arc::new(styled_button_template::<ToggleData>(theme, style))
+}
 
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
-        apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
-    }))
+fn styled_button_template<D: ButtonData>(theme: ShadcnLook, style: ShadcnButtonStyle) -> StyledButtonTemplate<D> {
+    let size = theme.size();
+    let look = theme.clone();
+    let mut template = StyledButtonTemplate::<D>::live(Arc::new(move || look.style_theme()));
+    if let Some(variant) = super::checkbox::checkbox_variant(style) {
+        template = template.variant(variant);
+    }
+    if size != crate::ShadcnSize::Md {
+        template = template.attr("size", size.key());
+    }
+    template
 }
 
 /// Non-animated toggle chrome for control-group items (`ButtonTemplate<bool>`).

@@ -13,9 +13,22 @@ tokens {
     size sm { control_font_size = 12 }
     size lg { control_font_size = 16 }
 
-    // The content-only switch thumb: the strongest contrast for the mode.
-    mode light { content_only_thumb = white }
-    mode dark  { content_only_thumb = black }
+    // The content-only switch thumb: the strongest contrast for the mode. Outline and ghost button faces
+    // at rest and when active (hover, pressed), and the outline edge.
+    mode light {
+      content_only_thumb = white
+      outline_background = css.background
+      outline_active     = css.accent
+      outline_border     = css.border
+      ghost_active       = css.accent
+    }
+    mode dark {
+      content_only_thumb = black
+      outline_background = alpha(css.input, 0.3)
+      outline_active     = alpha(css.input, 0.5)
+      outline_border     = css.input
+      ghost_active       = alpha(css.accent, 0.5)
+    }
   }
 
   metrics {

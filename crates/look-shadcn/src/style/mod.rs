@@ -31,7 +31,7 @@ macro_rules! shadcn_sources {
     };
 }
 
-shadcn_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss"];
+shadcn_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss"];
 
 /// The SDK's files with the Shadcn look's files over them.
 pub fn stylesheet() -> Stylesheet {
@@ -168,18 +168,22 @@ impl TokenSource for ShadcnTokens {
     fn token(&self, path: &str, cx: &TokenCx<'_>) -> Option<Value> {
         let name = path.strip_prefix("css.")?.replace('_', "-");
         let (tokens, _) = self.mode(cx);
-        let raw = tokens.catalog.get(&name)?;
-        if name.starts_with("shadow") {
-            let layers = crate::shadow::parse_shadow_token(&tokens.catalog, &name).ok()?;
-            return Some(Value::Shadow(layers.iter().map(shadow).collect()));
-        }
-        if name.starts_with("font-") {
-            return Some(Value::Str(first_font_family(raw).into()));
+        // Colors go through the resolver, which also derives `-hover` / `-pressed` states the catalog
+        // may not list.
+        let raw = tokens.catalog.get(&name);
+        if let Some(raw) = raw {
+            if name.starts_with("shadow") {
+                let layers = crate::shadow::parse_shadow_token(&tokens.catalog, &name).ok()?;
+                return Some(Value::Shadow(layers.iter().map(shadow).collect()));
+            }
+            if name.starts_with("font-") {
+                return Some(Value::Str(first_font_family(raw).into()));
+            }
         }
         if let Ok(resolved) = self.resolver(cx).resolve_decl(&name) {
             return Some(color(resolved.hsla()));
         }
-        parse_length_px(raw).map(Value::Number)
+        parse_length_px(raw?).map(Value::Number)
     }
 
     fn function(&self, name: &str) -> Option<FunctionSig> {
@@ -211,3 +215,5 @@ impl TokenSource for ShadcnTokens {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod native_button_parity;

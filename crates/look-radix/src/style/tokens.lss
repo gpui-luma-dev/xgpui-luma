@@ -30,6 +30,16 @@ tokens {
     size 1 { checkbox_radius_scale = 0.875 }
     size 3 { checkbox_radius_scale = 1.25 }
 
+    /// Button `--radius-1..4` for sizes 1–4, before the radius factor.
+    button_radius_base = 4
+    size 1 { button_radius_base = 3 }
+    size 3 { button_radius_base = 6 }
+    size 4 { button_radius_base = 8 }
+
+    // The selected page pill: foreground on light, the accent contrast on dark.
+    mode light { page_selected = radix.role.foreground }
+    mode dark  { page_selected = look.accent_contrast }
+
     /// Switch `--radius-1` (size 1) or `--radius-2` (sizes 2–3), before the radius factor.
     switch_radius_base = 4
     size 1 { switch_radius_base = 3 }

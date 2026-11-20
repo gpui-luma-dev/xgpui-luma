@@ -167,14 +167,16 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
 
 #[test]
 fn toggle_size_four_is_not_collapsed_into_sdk_lg() {
+    use xgpui_luma::style::lss::{AttrValue, ControlId, StyleKey, Value};
     let look = Look::built_in();
-    let theme =
-        crate::button::button_family_theme_for_size(&look, ButtonVariant::Soft, Paint::accent(), ButtonSize::Four);
-    let scale = StandardBoxScale::compute(&look.metrics_for(RadixSize::Three), 1.0);
-    let resolved = theme
-        .resolve_look(ButtonFamilyRole::Toggle { selected: false }, Default::default(), &scale, 999.0)
-        .unwrap();
-    assert_eq!((resolved.height, resolved.padding_x, resolved.typography.size), (48.0, 24.0, 18.0));
+    let config = crate::style::config();
+    let key = StyleKey::new(ControlId::new("toggle"))
+        .attr_opt(config.attribute("variant").unwrap(), Some(AttrValue::new("soft")))
+        .attr_opt(config.attribute("size").unwrap(), Some(AttrValue::new("4")));
+    let resolved = look.style_theme().resolve(&key);
+    let root = resolved.root();
+    let padding_x = root.value("padding_x").and_then(Value::as_number);
+    assert_eq!((root.height(), padding_x, root.font_size()), (Some(48.0), Some(24.0), Some(18.0)));
 }
 
 #[test]

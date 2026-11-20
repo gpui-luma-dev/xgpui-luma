@@ -10,7 +10,9 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
-use xgpui_luma::style::lss::{Color, Config, Diagnostics, Source, Stylesheet, Theme, TokenCx, TokenSource, Value};
+use xgpui_luma::style::lss::{
+    Color, Config, Diagnostics, FunctionSig, Kind, Source, Stylesheet, Theme, TokenCx, TokenSource, Value,
+};
 use xgpui_luma::theme::ThemeMode;
 
 use crate::look::Look;
@@ -46,7 +48,7 @@ macro_rules! radix_sources {
     };
 }
 
-radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss"];
+radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss"];
 
 /// The SDK's files with the Radix look's files over them.
 pub fn stylesheet() -> Stylesheet {
@@ -103,6 +105,8 @@ struct ModeTokens {
     scales: ModeScales,
     /// The color on solid accent faces (custom contrast, or dark labels for bright accents).
     accent_contrast: Hsla,
+    /// The color on solid gray faces: gray 1 in light mode, gray 12 in dark.
+    gray_contrast: Hsla,
 }
 
 /// Native Radix tokens, captured from a [`Look`] for both modes; the bound mode picks one.
@@ -110,6 +114,8 @@ pub struct RadixTokens {
     light: ModeTokens,
     dark: ModeTokens,
     font_sans: Arc<str>,
+    /// The classic button's tuning, live on the look (`Look::set_classic_params` bumps the revision).
+    classic: crate::button::ClassicButtonParams,
 }
 
 impl RadixTokens {
@@ -118,11 +124,16 @@ impl RadixTokens {
             scales: look.scales_for(mode),
             light: look.scales_for(ThemeMode::Light),
             accent_contrast: look.resolve_role_for(SemanticRole::PrimaryForeground, mode).hsla(),
+            gray_contrast: look
+                .scales_for(mode)
+                .resolved(ScaleFamily::Gray, if mode == ThemeMode::Light { 1 } else { 12 })
+                .hsla(),
         };
         Self {
             light: mode(ThemeMode::Light),
             dark: mode(ThemeMode::Dark),
             font_sans: crate::typography::font_family(look).as_ref().into(),
+            classic: look.classic_params(),
         }
     }
 
@@ -144,11 +155,56 @@ impl TokenSource for RadixTokens {
     }
 
     fn token(&self, path: &str, cx: &TokenCx<'_>) -> Option<Value> {
-        match path {
-            "look.accent_contrast" => Some(color(self.mode(cx).accent_contrast)),
-            "look.font_sans" => Some(Value::Str(self.font_sans.clone())),
-            _ => None,
+        let c = &self.classic;
+        Some(match path {
+            "look.accent_contrast" => color(self.mode(cx).accent_contrast),
+            "look.tone_contrast" if cx.attr("tone") == Some("gray") => color(self.mode(cx).gray_contrast),
+            "look.tone_contrast" => color(self.mode(cx).accent_contrast),
+            "look.font_sans" => Value::Str(self.font_sans.clone()),
+            classic => Value::Number(match classic.strip_prefix("look.classic.")? {
+                "radius" => c.radius,
+                "fill_top_delta" => c.fill_top_delta,
+                "fill_bottom_delta" => c.fill_bottom_delta,
+                "border_delta" => c.border_delta,
+                "bevel_darken" => c.bevel_darken,
+                "bevel_offset" => c.bevel_offset,
+                "bevel_alpha" => c.bevel_alpha,
+                "rim_lighten" => c.rim_lighten,
+                "rim_offset" => c.rim_offset,
+                "rim_alpha" => c.rim_alpha,
+                "fade_offset" => c.fade_offset,
+                "fade_blur" => c.fade_blur,
+                "fade_spread" => c.fade_spread,
+                "fade_alpha" => c.fade_alpha,
+                "drop_offset" => c.drop_offset,
+                "drop_blur" => c.drop_blur,
+                "drop_alpha" => c.drop_alpha,
+                "pressed_rim_lightness_scale" => c.pressed_rim_lightness_scale,
+                "pressed_rim_alpha_scale" => c.pressed_rim_alpha_scale,
+                _ => return None,
+            }),
+        })
+    }
+
+    fn function(&self, name: &str) -> Option<FunctionSig> {
+        (name == "shift_lightness").then_some(FunctionSig { min_args: 2, max_args: 2, returns: Kind::Color })
+    }
+
+    /// `shift_lightness(color, delta)`: HSL lightness plus `delta`, kept within the classic tuning's
+    /// lightness bounds (`ClassicButtonParams::lightness_min` / `lightness_max`).
+    fn call(&self, name: &str, args: &[Value], _cx: &TokenCx<'_>) -> Result<Value, String> {
+        if name != "shift_lightness" {
+            return Err(format!("unknown function \"{name}\""));
         }
+        let (Some(base), Some(delta)) =
+            (args.first().and_then(Value::as_color), args.get(1).and_then(Value::as_number))
+        else {
+            return Err("shift_lightness(color, delta)".into());
+        };
+        let hsla = Hsla::from(base);
+        let shifted =
+            Hsla { l: (hsla.l + delta).clamp(self.classic.lightness_min, self.classic.lightness_max), ..hsla };
+        Ok(color(shifted))
     }
 
     /// `gray[n]`, `accent[n]`, `tone[n]` (the accent scale, or gray for `tone gray`), and `light_gray[n]`.
@@ -171,6 +227,8 @@ impl TokenSource for RadixTokens {
         match path {
             "look.accent_contrast" => Some(format!("Radix accent contrast ({})", cx.mode())),
             "look.font_sans" => Some("Radix common stylesheet font.sans".into()),
+            "look.tone_contrast" => Some(format!("Radix tone contrast ({})", cx.mode())),
+            p if p.starts_with("look.classic.") => Some("Radix classic button tuning (Look::classic_params)".into()),
             _ => None,
         }
     }
@@ -178,3 +236,5 @@ impl TokenSource for RadixTokens {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod native_button_parity;

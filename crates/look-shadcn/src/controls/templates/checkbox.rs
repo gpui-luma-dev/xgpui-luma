@@ -20,7 +20,7 @@ pub fn checkbox_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn
     Arc::new(template)
 }
 
-/// The `.lss` variant for a style (checkbox, radio and switch); primary is the base.
+/// The `.lss` variant for a style (choice controls and buttons); primary is the base.
 pub(crate) fn checkbox_variant(style: ShadcnButtonStyle) -> Option<&'static str> {
     match style {
         ShadcnButtonStyle::Primary => None,

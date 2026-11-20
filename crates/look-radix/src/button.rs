@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use gpui::{Background, BoxShadow, Hsla, black, linear_color_stop, linear_gradient, point, prelude::*, px};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use gpui::{BoxShadow, Hsla, black, point, px};
+use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, StyledButtonTemplate};
 use xgpui_luma::controls::button_family::{
     ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, compose_button_family_look,
 };
@@ -154,15 +154,6 @@ pub fn button_family_theme_with(look: &Look, variant: ButtonVariant, paint: Pain
     Arc::new(ButtonFamilyThemeAdapter { look: look.clone(), variant, paint, size: None })
 }
 
-pub(crate) fn button_family_theme_for_size(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    size: ButtonSize,
-) -> Arc<dyn ButtonFamilyTheme> {
-    Arc::new(ButtonFamilyThemeAdapter { look: look.clone(), variant, paint, size: Some(size) })
-}
-
 fn resolve_button_palette(
     look: &Look,
     variant: ButtonVariant,
@@ -283,25 +274,6 @@ pub(crate) fn shift_lightness_with_params(color: Hsla, delta: f32, params: Class
     Hsla { l: (color.l + delta).clamp(params.lightness_min, params.lightness_max), ..color }
 }
 
-/// Vertical wash stops for the Classic face: the light source is overhead, so the top
-/// sits at the accent and the bottom lifts. Pressing flips them so the face reads
-/// recessed.
-fn classic_wash(params: ClassicButtonParams, base: Hsla, pressed: bool) -> (Hsla, Hsla) {
-    let top = shift_lightness_with_params(base, params.fill_top_delta, params);
-    let bottom = shift_lightness_with_params(base, params.fill_bottom_delta, params);
-    if pressed { (bottom, top) } else { (top, bottom) }
-}
-
-fn classic_fill(look: &Look, paint: Paint, role: ButtonFamilyRole, state: InteractionState) -> Background {
-    let base = resolve_button_palette(look, ButtonVariant::Classic, paint, role, state).background;
-    if state.disabled {
-        return base.into();
-    }
-
-    let (top, bottom) = classic_wash(look.classic_params(), base, state.pressed);
-    linear_gradient(180.0, linear_color_stop(top, 0.0), linear_color_stop(bottom, 1.0))
-}
-
 /// Bevel for the Classic face: a crisp specular rim just inside the top border with a
 /// short fade below it, and a shaded lip inside the bottom border. Pressing drops the
 /// lip and inverts the rim so the light reads as coming from below.
@@ -339,33 +311,56 @@ fn classic_shadow(look: &Look, fill: Hsla, state: InteractionState) -> Vec<BoxSh
     shadows
 }
 
-/// Template for a Radix variant × paint cell. Classic keeps its gradient wash.
-pub fn button_template<D: Clone + 'static>(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-) -> Arc<dyn ButtonTemplate<D>> {
-    if matches!(variant, ButtonVariant::Classic) {
-        classic_button_template_with(look, paint)
-    } else {
-        Arc::new(DefaultButtonTemplate::new(button_family_theme_with(look, variant, paint)))
-    }
+/// Template for a Radix variant × paint cell at the look's size, drawn from `.lss` (`style/button.lss`).
+pub fn button_template<D: ButtonData>(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
+    let size = match look.size() {
+        crate::RadixSize::One => ButtonSize::One,
+        crate::RadixSize::Two => ButtonSize::Two,
+        crate::RadixSize::Three => ButtonSize::Three,
+    };
+    Arc::new(styled_button_template::<D>(look, variant, paint, size))
 }
 
-/// Classic needs a gradient face, which [`ButtonFamilyLook`] cannot carry, so the look
-/// ships its own template. Callers that build templates by hand (the style guide matrix)
-/// must use this instead of a bare [`DefaultButtonTemplate`] or they lose the wash.
-pub fn classic_button_template<D: Clone + 'static>(look: &Look) -> Arc<dyn ButtonTemplate<D>> {
-    classic_button_template_with(look, Paint::accent())
+/// The classic variant (its gradient face comes from `background_start` / `background_end`).
+pub fn classic_button_template<D: ButtonData>(look: &Look) -> Arc<dyn ButtonTemplate<D>> {
+    button_template(look, ButtonVariant::Classic, Paint::accent())
 }
 
 /// Classic template with an explicit paint axis (tone / high contrast).
-pub fn classic_button_template_with<D: Clone + 'static>(look: &Look, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
-    let theme = button_family_theme_with(look, ButtonVariant::Classic, paint);
-    let look = look.clone();
-    Arc::new(DefaultButtonTemplate::new(theme).with_modifier(move |root, model: &ButtonRenderModel<D>| {
-        root.bg(classic_fill(&look, paint, model.role, model.state))
-    }))
+pub fn classic_button_template_with<D: ButtonData>(look: &Look, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
+    button_template(look, ButtonVariant::Classic, paint)
+}
+
+/// A `.lss` button-family template (`button`, or `toggle` for [`ToggleData`]) for one variant × paint × size cell.
+pub(crate) fn styled_button_template<D: ButtonData>(
+    look: &Look,
+    variant: ButtonVariant,
+    paint: Paint,
+    size: ButtonSize,
+) -> StyledButtonTemplate<D> {
+    let source = look.clone();
+    let mut template = StyledButtonTemplate::<D>::live(Arc::new(move || source.style_theme()))
+        .state("high_contrast", paint.high_contrast);
+    let variant = match variant {
+        ButtonVariant::Solid => None,
+        ButtonVariant::Classic => Some("classic"),
+        ButtonVariant::Soft => Some("soft"),
+        ButtonVariant::Surface => Some("surface"),
+        ButtonVariant::Outline => Some("outline"),
+        ButtonVariant::Ghost => Some("ghost"),
+        ButtonVariant::GhostQuiet => Some("ghost_quiet"),
+        ButtonVariant::Page => Some("page"),
+    };
+    if let Some(variant) = variant {
+        template = template.variant(variant);
+    }
+    if size != ButtonSize::Two {
+        template = template.attr("size", size.as_str());
+    }
+    if paint.tone == Tone::Gray {
+        template = template.attr("tone", "gray");
+    }
+    template
 }
 
 #[cfg(test)]
@@ -516,11 +511,19 @@ mod tests {
 
     #[test]
     fn classic_face_lightens_toward_the_bottom() {
+        use xgpui_luma::style::lss::{AttrValue, ControlId, StyleKey, Value};
         let look = Look::built_in();
-        let fill = look.resolve_role(SemanticRole::Primary).hsla();
-        let params = look.classic_params();
-        let (top, bottom) = classic_wash(params, fill, false);
-        let (pressed_top, pressed_bottom) = classic_wash(params, fill, true);
+        let config = crate::style::config();
+        let theme = look.style_theme();
+        let wash = |pressed: bool| {
+            let key = StyleKey::new(ControlId::new("button"))
+                .attr_opt(config.attribute("variant").unwrap(), Some(AttrValue::new("classic")))
+                .state_if(config.state("pressed").unwrap(), pressed);
+            let resolved = theme.resolve(&key);
+            let stop = |k: &str| Hsla::from(resolved.root().value(k).and_then(Value::as_color).unwrap());
+            (stop("background_start"), stop("background_end"))
+        };
+        let ((top, bottom), (pressed_top, pressed_bottom)) = (wash(false), wash(true));
 
         assert!(bottom.l > top.l, "the wash lifts toward the bottom, away from the overhead light");
         assert!(pressed_bottom.l < pressed_top.l, "pressing flips the wash so the face reads recessed");

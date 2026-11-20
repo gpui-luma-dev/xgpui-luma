@@ -63,6 +63,8 @@ macro_rules! sdk_sources {
 sdk_sources! {
     shared: ["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss",
         "controls/choice/switch/switch.lss",
+        "controls/button/button.lss",
+        "controls/choice/toggle/toggle.lss",
     ],
     light: "theme/palette.lss",
     dark: "theme/palette-dark.lss",

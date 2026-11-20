@@ -10,6 +10,7 @@ mod control;
 mod core;
 mod model;
 mod template;
+mod styled;
 
 pub mod family;
 pub mod icon_button;
@@ -25,4 +26,5 @@ pub use model::{
     ControlIcon, ControlPresenter, HasPresenter,
 };
 pub use template::{ButtonTemplate, ButtonTemplateModifier, DefaultButtonTemplate, default_button_template};
+pub use styled::{ButtonData, StyledButtonTemplate};
 pub use icon_button::IconButton;
