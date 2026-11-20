@@ -23,7 +23,7 @@ pub use overlay::{tooltip, context_menu, floating_menu, overlay_window, popover_
 
 pub use collection::{listbox, table, tree_view};
 
-pub use display::{badge, card};
+pub use display::{avatar, badge, callout, card, segmented};
 
 pub use selection::{autocomplete, combobox, search_selector, selection_panel, selector, selector_list};
 

@@ -67,12 +67,29 @@ shadcn_sources![
     "color_chrome.lss"
 ];
 
+/// The SDK configuration plus Shadcn's `radius` attribute (the corner presets
+/// `none|small|medium|large|full`; without it a control keeps its size's corner).
+pub fn config() -> Arc<xgpui_luma::style::lss::Config> {
+    static CONFIG: OnceLock<Arc<xgpui_luma::style::lss::Config>> = OnceLock::new();
+    CONFIG
+        .get_or_init(|| {
+            Arc::new(
+                xgpui_luma::style::config()
+                    .extend()
+                    .attributes(&["radius"])
+                    .build()
+                    .expect("the Shadcn style configuration is valid"),
+            )
+        })
+        .clone()
+}
+
 /// The SDK's files with the Shadcn look's files over them.
 pub fn stylesheet() -> Stylesheet {
     static SHEET: OnceLock<Stylesheet> = OnceLock::new();
     SHEET
         .get_or_init(|| {
-            Stylesheet::builder(xgpui_luma::style::config())
+            Stylesheet::builder(config())
                 .layer("sdk", xgpui_luma::style::sources())
                 .layer("look", sources())
                 .compile()
@@ -269,5 +286,3 @@ impl TokenSource for ShadcnTokens {
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod native_button_parity;

@@ -8,6 +8,11 @@ tokens {
     /// Paint for a color the catalog lacks (ResolvedColor::fallback_foreground).
     fallback_foreground = black
 
+    /// The corner radius presets (`--radius-sm`, `--radius-md`, `--radius-lg`), whatever the size.
+    radius_small  = first(max(css.radius - 4, 0), 4)
+    radius_medium = first(max(css.radius - 2, 0), 6)
+    radius_large  = first(css.radius, 8)
+
     /// Control label font size (the button metrics font size for each size).
     control_font_size = 14
     size sm { control_font_size = 12 }

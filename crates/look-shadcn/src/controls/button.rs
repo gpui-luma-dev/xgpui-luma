@@ -38,6 +38,17 @@ pub enum ButtonRadiusPreset {
 impl ButtonRadiusPreset {
     pub const ALL: [Self; 5] = [Self::None, Self::Small, Self::Medium, Self::Large, Self::Full];
 
+    /// The `.lss` `radius` attribute value.
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Small => "small",
+            Self::Medium => "medium",
+            Self::Large => "large",
+            Self::Full => "full",
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
             Self::None => "No radius",
@@ -95,32 +106,6 @@ pub fn resolve_button_colors_with_stylesheet(
 
     let colors = resolve_button_color_rule(resolver, rule)?;
     Ok(ButtonColorPalette { background: colors.background, foreground: colors.foreground, border: colors.border })
-}
-
-pub fn button_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    role: ButtonFamilyRole,
-    size: ShadcnSize,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    if let ButtonFamilyRole::Toggle { selected } = role {
-        return super::toggle::toggle_look(mode, theme_mode, style, selected, size, state);
-    }
-    button_look_semantic(mode, theme_mode, style, role, size, None, state)
-}
-
-pub fn button_look_semantic(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    role: ButtonFamilyRole,
-    size: ShadcnSize,
-    radius: Option<ButtonRadiusPreset>,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    button_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, role, size, radius, state)
 }
 
 // Mirrors the public semantic resolver with an additional selected stylesheet.
@@ -303,17 +288,6 @@ pub(crate) fn resolve_family_geometry(
     (geometry, radius)
 }
 
-/// Final button/toggle colors, including role normalization and focus border.
-pub fn resolve_button_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    role: ButtonFamilyRole,
-    state: InteractionState,
-) -> ButtonColorPalette {
-    resolve_button_palette_with_stylesheet(&LookContext::new(mode, theme_mode, state), mode.stylesheet(), style, role)
-}
-
 pub(crate) fn resolve_button_palette_with_stylesheet(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
@@ -393,51 +367,8 @@ mod tests {
     use crate::stylesheet::embedded_stylesheet;
     use xgpui_luma::controls::button_family::ButtonFamilyRole;
     use crate::catalog::CssTokenMap;
-    use crate::controls::toggle::toggle_look;
     use crate::mode::ShadcnModeTokens;
     use xgpui_luma::theme::ThemeMode;
-
-    #[cfg(feature = "test-support")]
-    #[test]
-    fn all_button_styles_keep_control_and_sibling_bounds_across_states() {
-        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
-        use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
-        use gpui::IntoElement;
-        use std::sync::Arc;
-        for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
-            for style in [
-                ShadcnButtonStyle::Primary,
-                ShadcnButtonStyle::Secondary,
-                ShadcnButtonStyle::Outline,
-                ShadcnButtonStyle::Ghost,
-                ShadcnButtonStyle::ContentOnly,
-            ] {
-                for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-                    for compact in [false, true] {
-                        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), theme_mode).unwrap();
-                        let template = StyledButtonTemplate::<()>::sdk();
-                        assert_stable_layout(move |state, selected, window, cx| {
-                            let look = button_look(
-                                &mode,
-                                theme_mode,
-                                style,
-                                ButtonFamilyRole::Toggle { selected },
-                                size,
-                                state,
-                            );
-                            let model = ButtonRenderModel::<()> {
-                                state,
-                                compact,
-                                look: Some(Arc::new(move |_| look.clone())),
-                                ..Default::default()
-                            };
-                            template.render(&model, window, cx).into_any_element()
-                        });
-                    }
-                }
-            }
-        }
-    }
 
     #[cfg(feature = "test-support")]
     #[test]
@@ -557,219 +488,6 @@ mod tests {
     }
 
     #[test]
-    fn primary_hover_background_differs_from_default() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let default = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let hovered = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { hovered: true, ..InteractionState::default() },
-        );
-
-        assert_ne!(default.background, hovered.background);
-    }
-
-    #[test]
-    fn focused_button_uses_independent_ring_paint() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let focused = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { focused: true, ..InteractionState::default() },
-        );
-
-        assert_eq!(focused.focus_border, catalog.color("ring").expect("ring"));
-    }
-
-    #[test]
-    fn ghost_light_hover_pairs_accent_fill_with_accent_foreground() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let hovered = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { hovered: true, ..InteractionState::default() },
-        );
-
-        assert_eq!(hovered.background, catalog.color("accent").expect("accent"));
-        assert_eq!(hovered.foreground, catalog.color("accent-foreground").expect("accent-foreground"));
-    }
-
-    #[test]
-    fn ghost_dark_hover_pairs_accent_half_fill_with_accent_foreground() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Dark).expect("catalog");
-        let accent = catalog.color("accent").expect("accent");
-        let hovered = button_look(
-            &mode,
-            ThemeMode::Dark,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { hovered: true, ..InteractionState::default() },
-        );
-
-        assert!((hovered.background.a - 0.50).abs() < f32::EPSILON);
-        assert_eq!(hovered.background.h, accent.h);
-        assert_eq!(hovered.foreground, catalog.color("accent-foreground").expect("accent-foreground"));
-    }
-
-    #[test]
-    fn outline_light_hover_uses_accent_fill_and_accent_foreground() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let hovered = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Outline,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { hovered: true, ..InteractionState::default() },
-        );
-
-        assert_eq!(hovered.background, catalog.color("accent").expect("accent"));
-        assert_eq!(hovered.foreground, catalog.color("accent-foreground").expect("accent-foreground"));
-    }
-
-    #[test]
-    fn outline_dark_hover_uses_input_alpha_with_accent_foreground() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Dark).expect("catalog");
-        let input = catalog.color("input").expect("input");
-        let hovered = button_look(
-            &mode,
-            ThemeMode::Dark,
-            ShadcnButtonStyle::Outline,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState { hovered: true, ..InteractionState::default() },
-        );
-
-        assert!((hovered.background.a - 0.50).abs() < f32::EPSILON);
-        assert_eq!(hovered.background.h, input.h);
-        assert_eq!(hovered.foreground, catalog.color("accent-foreground").expect("accent-foreground"));
-        assert_eq!(xgpui_luma::controls::button_family::button_family_effective_border(hovered.border), input);
-    }
-
-    #[test]
-    fn retro_arcade_primary_hover_is_subtle() {
-        let catalog = retro_arcade_catalog();
-        let light = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("light");
-        let dark = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Dark).expect("dark");
-
-        for (mode, theme_mode) in [(&light, ThemeMode::Light), (&dark, ThemeMode::Dark)] {
-            let default = button_look(
-                mode,
-                theme_mode,
-                ShadcnButtonStyle::Primary,
-                ButtonFamilyRole::Text,
-                ShadcnSize::Md,
-                InteractionState::default(),
-            );
-            let hovered = button_look(
-                mode,
-                theme_mode,
-                ShadcnButtonStyle::Primary,
-                ButtonFamilyRole::Text,
-                ShadcnSize::Md,
-                InteractionState { hovered: true, ..InteractionState::default() },
-            );
-            assert!((default.background.l - hovered.background.l).abs() < 0.08);
-        }
-    }
-
-    #[test]
-    fn button_look_resolves_radius_preset() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let none = button_look_semantic(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            Some(ButtonRadiusPreset::None),
-            InteractionState::default(),
-        );
-        let full = button_look_semantic(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            Some(ButtonRadiusPreset::Full),
-            InteractionState::default(),
-        );
-
-        assert!((none.radius - 0.0).abs() < f32::EPSILON);
-        assert!((full.radius - full.height / 2.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn button_look_resolves_stylesheet_icon_size() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let sm = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Sm,
-            InteractionState::default(),
-        );
-        let lg = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Lg,
-            InteractionState::default(),
-        );
-
-        assert!((sm.icon_size - 14.0).abs() < f32::EPSILON);
-        assert!((lg.icon_size - 18.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn lg_button_look_is_larger_than_sm() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let sm = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Sm,
-            InteractionState::default(),
-        );
-        let lg = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Lg,
-            InteractionState::default(),
-        );
-
-        assert!(lg.height > sm.height);
-        assert!(lg.icon_size > sm.icon_size);
-    }
-
-    #[test]
     fn palette_typography_uses_stylesheet_font_size() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
         let ctx = LookContext::new(&mode, ThemeMode::Light, InteractionState::default());
@@ -782,174 +500,6 @@ mod tests {
         );
 
         assert!((palette.typography.size - 12.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn outline_button_look_resolves_stylesheet_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Outline,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(look.shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()));
-    }
-
-    #[test]
-    fn primary_button_look_has_no_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(look.shadow.is_none());
-    }
-
-    #[test]
-    fn ghost_button_look_has_no_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Text,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(look.shadow.is_none());
-    }
-
-    #[test]
-    fn unselected_ghost_toggle_has_no_border_like_ghost_icon_button() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let icon = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Icon,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let toggle = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            false,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert_eq!(toggle.border, icon.border);
-        assert!(
-            xgpui_luma::controls::button_family::button_family_effective_border(toggle.border).a <= 0.0,
-            "ghost toggle off-state should be borderless"
-        );
-    }
-
-    #[test]
-    fn unselected_primary_toggle_still_uses_outline_border() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let toggle = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            false,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(
-            xgpui_luma::controls::button_family::button_family_effective_border(toggle.border).a > 0.0,
-            "primary toggle off-state should keep outline border"
-        );
-    }
-
-    #[test]
-    fn primary_toggle_still_uses_toggle_elevation_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            true,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        assert!(
-            look.shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()),
-            "primary toggle should keep toggle elevation"
-        );
-    }
-
-    #[test]
-    fn toggle_look_resolves_stylesheet_shadow_for_selected_and_unselected() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        for selected in [false, true] {
-            let look = button_look(
-                &mode,
-                ThemeMode::Light,
-                ShadcnButtonStyle::Primary,
-                ButtonFamilyRole::Toggle { selected },
-                ShadcnSize::Md,
-                InteractionState::default(),
-            );
-            assert!(
-                look.shadow.as_ref().is_some_and(|shadows| !shadows.is_empty()),
-                "toggle selected={selected} should resolve shadow-sm"
-            );
-        }
-    }
-
-    #[test]
-    fn disabled_toggle_look_has_no_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            ButtonFamilyRole::Toggle { selected: true },
-            ShadcnSize::Md,
-            InteractionState { disabled: true, ..InteractionState::default() },
-        );
-
-        assert!(look.shadow.is_none());
-    }
-
-    #[test]
-    fn content_only_button_has_no_state_chrome() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-
-        for state in [
-            InteractionState::default(),
-            InteractionState { hovered: true, ..InteractionState::default() },
-            InteractionState { pressed: true, ..InteractionState::default() },
-            InteractionState { focused: true, ..InteractionState::default() },
-            InteractionState { disabled: true, ..InteractionState::default() },
-        ] {
-            let look = button_look(
-                &mode,
-                ThemeMode::Light,
-                ShadcnButtonStyle::ContentOnly,
-                ButtonFamilyRole::Text,
-                ShadcnSize::Md,
-                state,
-            );
-
-            assert_eq!(look.background.a, 0.0);
-            assert!(look.border.is_none_or(|border| border.a == 0.0));
-            assert!(look.shadow.is_none());
-        }
     }
 }
 

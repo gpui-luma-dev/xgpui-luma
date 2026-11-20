@@ -109,8 +109,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.avatar.sizes.get_mut("9").unwrap().diameter = Some(190.0);
-    config.avatar.sizes.get_mut("9").unwrap().two_letter_font_size = Some(44.0);
     config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
@@ -119,9 +117,10 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     // The card is drawn from `.lss`; `[common.card]` no longer reaches it.
     assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (12.0, -12.0));
     assert_eq!(explicit_card.resolve_style().padding, 21.0);
+    // The avatar is drawn from `.lss` too: size 9, a full circle, the two-letter size.
     assert_eq!(
         (avatar.resolve_style().diameter, avatar.resolve_style().radius, avatar.resolve_style().font_size),
-        (190.0, 95.0, 44.0)
+        (160.0, 80.0, 60.0)
     );
     assert_eq!(explicit_avatar.resolve_style().diameter, 33.0);
     let box_ =
@@ -142,20 +141,6 @@ fn toggle_size_four_is_not_collapsed_into_sdk_lg() {
     let root = resolved.root();
     let padding_x = root.value("padding_x").and_then(Value::as_number);
     assert_eq!((root.height(), padding_x, root.font_size()), (Some(48.0), Some(24.0), Some(18.0)));
-}
-
-#[test]
-fn sparse_configuration_keeps_composition_fallbacks_visible_and_zero_distinct() {
-    let look = Look::built_in();
-    let mut stylesheet = xgpui_luma::theme::stylesheet::CommonStylesheet::default();
-    look.set_common_stylesheet(stylesheet.clone());
-    assert!(crate::callout::resolve_geometry(&look).font_size > 0.0);
-    assert!(crate::segmented::resolve_geometry(&look).height > 0.0);
-    stylesheet.callout.geometry.font_size = Some(0.0);
-    stylesheet.segmented.geometry.height = Some(0.0);
-    look.set_common_stylesheet(stylesheet);
-    assert_eq!(crate::callout::resolve_geometry(&look).font_size, 0.0);
-    assert_eq!(crate::segmented::resolve_geometry(&look).height, 0.0);
 }
 
 #[test]

@@ -1,0 +1,21 @@
+// SDK avatar. Layer: sdk. Read by `StyledAvatar` (avatar.rs): a round image or short-text/icon fallback.
+// `root` is the circle (its height is the diameter); the font size is for one letter, the declared
+// two-letter size for two. Looks add variants and sizes.
+
+/// A person or entity's picture, or its initials.
+avatar {
+  /// The font size for a two-letter fallback, and an icon fallback's size.
+  two_letter_font_size: length = typography.text.label.size
+  icon_size: length = exact(24)
+
+  part root {
+    background  = palette.surface.subtle.background
+    foreground  = palette.app.foreground
+    height      = exact(40)
+    radius      = exact(999)
+    font_family = typography.font.sans
+    font_size   = typography.text.label.size
+    line_height = font_size
+    font_weight = 500
+  }
+}

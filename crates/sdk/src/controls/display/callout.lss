@@ -1,0 +1,18 @@
+// SDK callout. Layer: sdk. Read by `StyledCallout` (callout.rs): a tinted message strip with a leading
+// icon. Looks add variants.
+
+/// A highlighted message with an icon.
+callout {
+  /// The leading icon.
+  icon_size: length = exact(metrics.control.icon_size)
+
+  part root {
+    background = palette.state.selected.background
+    foreground = palette.state.selected.foreground
+    radius     = exact(8)
+    padding_x  = exact(12)
+    padding_y  = exact(12)
+    gap        = exact(metrics.control.gap)
+    font_size  = typography.text.label.size
+  }
+}

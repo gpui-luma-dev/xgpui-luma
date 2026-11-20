@@ -24,6 +24,6 @@ pub use crate::controls::split_view::{
 pub use crate::controls::stepper::{StepperMetricTable, resolve_stepper_metrics, resolve_stepper_metrics_for_size};
 pub use crate::controls::table::{TableMetricTable};
 pub use crate::controls::tabs::{TabsMetricTable};
-pub use crate::controls::textfield::{TextFieldMetricTable, resolve_textfield_metrics};
+pub use crate::controls::textfield::{TextFieldMetricTable};
 pub use crate::controls::toolbar_item::{ToolbarMetricTable};
 pub use crate::controls::tree_view::{TreeViewMetricTable};

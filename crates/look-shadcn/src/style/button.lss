@@ -1,5 +1,6 @@
 // Shadcn button. Layer: look, over the SDK button. The base is Shadcn's primary style; secondary,
-// outline, ghost and content_only are variants. Sizes sm, md (base), lg come from the control metrics.
+// outline, ghost and content_only are variants. Sizes sm, md (base), lg come from the control metrics;
+// `radius none|small|medium|large|full` are corner presets (no radius attribute: the size's corner).
 
 button {
   padding_x      = 16
@@ -7,6 +8,12 @@ button {
   muted_foreground = css.muted_foreground
   size sm { padding_x = 12 }
   size lg { padding_x = 20 }
+  // Corner radius presets: the same corner at every size, icon buttons included; full is a pill.
+  radius none   { radius = exact(0)                     icon_radius = exact(0) }
+  radius small  { radius = exact(shadcn.radius_small)   icon_radius = exact(shadcn.radius_small) }
+  radius medium { radius = exact(shadcn.radius_medium)  icon_radius = exact(shadcn.radius_medium) }
+  radius large  { radius = exact(shadcn.radius_large)   icon_radius = exact(shadcn.radius_large) }
+  radius full   { radius = exact(height / 2)            icon_radius = exact(height / 2) }
 
   part root {
     background := css.primary

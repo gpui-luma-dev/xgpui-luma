@@ -52,3 +52,33 @@ pub(crate) fn shadcn_style(
     }
     theme.resolve(&key)
 }
+
+/// A Shadcn control's resolved `.lss` style at `size` with a corner radius preset (the `radius` attribute).
+pub(crate) fn shadcn_radius_style(
+    look: &ShadcnLook,
+    control: &'static str,
+    size: ShadcnSize,
+    preset: xgpui_luma_look_shadcn::ButtonRadiusPreset,
+) -> Arc<Resolved> {
+    let theme = look.style_theme();
+    let config = theme.stylesheet().config().clone();
+    let mut key = StyleKey::new(ControlId::new(control));
+    if let Some(attr) = config.attribute("radius") {
+        key = key.attr(attr, AttrValue::named(preset.key()));
+    }
+    if let Some(attr) = config.attribute("size")
+        && size != ShadcnSize::Md
+    {
+        key = key.attr(attr, AttrValue::named(size.key()));
+    }
+    theme.resolve(&key)
+}
+
+/// A length a resolved style sets on `part` (`None` for the root).
+pub(crate) fn length(style: &Resolved, part: Option<&'static str>, property: &str) -> f32 {
+    let part = match part {
+        Some(name) => style.part(xgpui_luma::style::lss::PartId::new(name)),
+        None => style.root(),
+    };
+    part.value(property).and_then(xgpui_luma::style::lss::Value::as_number).unwrap_or_default()
+}

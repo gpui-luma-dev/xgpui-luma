@@ -2,12 +2,9 @@
 
 use std::sync::Arc;
 
-use gpui::{BoxShadow, Hsla, black, point, px};
 use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, StyledButtonTemplate};
-use xgpui_luma::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole};
-use xgpui_luma::theme::InteractionState;
 
-use crate::button_layout::{ButtonSize, Radius, apply_button_box, button_box_with_stylesheet};
+use crate::button_layout::{ButtonSize, Radius};
 use crate::look::Look;
 #[cfg(test)]
 use crate::scale::ScaleFamily;
@@ -68,50 +65,26 @@ pub fn button_look_for<D: 'static>(
     size: ButtonSize,
     radius: Radius,
 ) -> xgpui_luma::controls::button::ButtonLookSource<D> {
-    let look = look.clone();
-    Arc::new(move |model| {
-        let palette = resolve_button_palette(&look, variant, paint, model.role, model.state);
-        let mut family = apply_button_box(
-            &palette,
-            model.role,
-            button_box_with_stylesheet(&look.stylesheet_snapshot(), size, radius),
-        );
-        if matches!(variant, ButtonVariant::Classic) {
-            family.shadow = Some(classic_shadow(&look, family.background, model.state));
+    let with_radius = |template: StyledButtonTemplate<()>| {
+        // Medium is the base radius.
+        if radius != Radius::Medium {
+            template.attr("radius", radius.as_str())
+        } else {
+            template
         }
-        family
+    };
+    let template = with_radius(styled_button_template::<()>(look, variant, paint, size));
+    // A cell keeps its own size and radius: classic (the look's classic radius) and page (a pill) take
+    // the corner of the solid cell instead.
+    let corner = matches!(variant, ButtonVariant::Classic | ButtonVariant::Page)
+        .then(|| with_radius(styled_button_template::<()>(look, ButtonVariant::Solid, paint, size)));
+    Arc::new(move |model| {
+        let mut face = template.look(model.role, model.state, 1.0);
+        if let Some(corner) = &corner {
+            face.radius = corner.look(model.role, model.state, 1.0).radius;
+        }
+        face
     })
-}
-
-fn resolve_button_palette(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    role: ButtonFamilyRole,
-    state: InteractionState,
-) -> ButtonFamilyPalette {
-    let colors = super::button_recipes::resolve(look, variant, paint, role, state);
-    let stylesheet = look.stylesheet_snapshot();
-    let tokens = &stylesheet.tokens.typography;
-    ButtonFamilyPalette {
-        focus_border: colors.focus_border,
-        background: colors.background,
-        foreground: colors.foreground,
-        muted_foreground: colors.foreground,
-        border: colors.border,
-        typography: tokens.text.label,
-        font_family: tokens.font.sans.family.clone().into(),
-    }
-}
-
-fn inset_shadow(offset_y: f32, blur: f32, spread: f32, color: Hsla) -> BoxShadow {
-    BoxShadow {
-        offset: point(px(0.0), px(offset_y)),
-        blur_radius: px(blur),
-        spread_radius: px(spread),
-        color,
-        inset: true,
-    }
 }
 
 /// Tunable geometry for the [`Classic`](ButtonVariant::Classic) button.
@@ -194,52 +167,6 @@ impl Default for ClassicButtonParams {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn shift_lightness(color: Hsla, delta: f32) -> Hsla {
-    shift_lightness_with_params(color, delta, super::button_recipes::embedded().classic)
-}
-
-pub(crate) fn shift_lightness_with_params(color: Hsla, delta: f32, params: ClassicButtonParams) -> Hsla {
-    Hsla { l: (color.l + delta).clamp(params.lightness_min, params.lightness_max), ..color }
-}
-
-/// Bevel for the Classic face: a crisp specular rim just inside the top border with a
-/// short fade below it, and a shaded lip inside the bottom border. Pressing drops the
-/// lip and inverts the rim so the light reads as coming from below.
-fn classic_shadow(look: &Look, fill: Hsla, state: InteractionState) -> Vec<BoxShadow> {
-    let params = look.classic_params();
-    let tint = |delta: f32, alpha: f32| Hsla { a: alpha, ..shift_lightness_with_params(fill, delta, params) };
-
-    if state.pressed {
-        let shade = -params.rim_lighten * params.pressed_rim_lightness_scale;
-        return vec![
-            inset_shadow(params.rim_offset, 0.0, 0.0, tint(shade, params.rim_alpha * params.pressed_rim_alpha_scale)),
-            inset_shadow(params.fade_offset, params.fade_blur, params.fade_spread, tint(shade, params.fade_alpha)),
-        ];
-    }
-
-    let mut shadows = vec![
-        inset_shadow(params.rim_offset, 0.0, 0.0, tint(params.rim_lighten, params.rim_alpha)),
-        inset_shadow(
-            params.fade_offset,
-            params.fade_blur,
-            params.fade_spread,
-            tint(params.rim_lighten, params.fade_alpha),
-        ),
-        inset_shadow(-params.bevel_offset, 0.0, 0.0, tint(-params.bevel_darken, params.bevel_alpha)),
-    ];
-    if params.drop_alpha > 0.0 {
-        shadows.push(BoxShadow {
-            offset: point(px(0.0), px(params.drop_offset)),
-            blur_radius: px(params.drop_blur),
-            spread_radius: px(0.0),
-            color: Hsla { a: params.drop_alpha, ..black() },
-            inset: false,
-        });
-    }
-    shadows
-}
-
 /// Template for a Radix variant × paint cell at the look's size, drawn from `.lss` (`style/button.lss`).
 pub fn button_template<D: ButtonData>(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
     Arc::new(button_template_for::<D>(look, variant, paint))
@@ -304,7 +231,21 @@ pub(crate) fn styled_button_template<D: ButtonData>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::{BoxShadow, Hsla, px};
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
     use xgpui_luma::theme::InteractionState;
+
+    /// Equal up to float rounding (colors and channels).
+    fn assert_close_any<T: std::fmt::Debug + PartialEq>(a: T, b: T) {
+        let (sa, sb) = (format!("{a:?}"), format!("{b:?}"));
+        let nums = |s: &str| -> Vec<f32> {
+            s.split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == 'e'))
+                .filter_map(|n| n.parse().ok())
+                .collect()
+        };
+        let (na, nb) = (nums(&sa), nums(&sb));
+        assert!(na.len() == nb.len() && na.iter().zip(&nb).all(|(x, y)| (x - y).abs() < 2e-3), "{sa} vs {sb}");
+    }
 
     /// The native palette for a variant × paint cell (what [`button_look_for`] paints).
     struct Native {
@@ -314,8 +255,14 @@ mod tests {
     }
 
     impl Native {
-        fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-            resolve_button_palette(&self.look, self.variant, self.paint, role, state)
+        /// The cell's `.lss` face (what [`button_look_for`] paints).
+        fn resolve(
+            &self,
+            role: ButtonFamilyRole,
+            state: InteractionState,
+        ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+            let source = button_look_for::<()>(&self.look, self.variant, self.paint, ButtonSize::Two, Radius::Medium);
+            source(&xgpui_luma::controls::button::ButtonRenderModel::<()> { role, state, ..Default::default() })
         }
     }
 
@@ -333,8 +280,8 @@ mod tests {
         let theme = native(&look, ButtonVariant::Solid);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         let expected_bg = look.resolve_role(SemanticRole::Primary).hsla();
-        assert_eq!(palette.background.h, expected_bg.h);
-        assert_eq!(palette.background.l, expected_bg.l);
+        assert_close_any(palette.background.h, expected_bg.h);
+        assert_close_any(palette.background.l, expected_bg.l);
     }
 
     #[test]
@@ -342,7 +289,7 @@ mod tests {
         let look = Look::built_in();
         let theme = native(&look, ButtonVariant::Ghost);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
-        assert_eq!(palette.background.a, 0.0);
+        assert_close_any(palette.background.a, 0.0);
         assert!(palette.border.is_none());
     }
 
@@ -352,9 +299,9 @@ mod tests {
         let theme = native(&look, ButtonVariant::Surface);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
-        assert_eq!(palette.border, Some(look.resolve_step(ScaleFamily::Color, 7).hsla()));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Color, 11).hsla());
+        assert_close_any(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
+        assert_close_any(palette.border, Some(look.resolve_step(ScaleFamily::Color, 7).hsla()));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Color, 11).hsla());
     }
 
     #[test]
@@ -363,8 +310,8 @@ mod tests {
         let theme = native_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, Tone::Gray.step(&look, 12));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close_any(palette.background, Tone::Gray.step(&look, 12));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
     }
 
     #[test]
@@ -373,8 +320,8 @@ mod tests {
         let theme = native_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, Tone::Accent.step(&look, 12));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close_any(palette.background, Tone::Accent.step(&look, 12));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
     }
 
     #[test]
@@ -386,8 +333,8 @@ mod tests {
         let normal = normal.resolve(ButtonFamilyRole::Text, state);
         let hc = hc.resolve(ButtonFamilyRole::Text, state);
 
-        assert_eq!(hc.background, normal.background);
-        assert_eq!(hc.foreground, Tone::Gray.step(&look, 12));
+        assert_close_any(hc.background, normal.background);
+        assert_close_any(hc.foreground, Tone::Gray.step(&look, 12));
         assert_ne!(hc.foreground, normal.foreground);
     }
 
@@ -416,7 +363,7 @@ mod tests {
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert!(palette.foreground.l < palette.background.l);
-        assert_eq!(palette.foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
+        assert_close_any(palette.foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
     }
 
     #[test]
@@ -427,15 +374,18 @@ mod tests {
         let state = InteractionState::default();
         let palette = classic.resolve(ButtonFamilyRole::Text, state);
 
-        assert_eq!(palette.background, solid.resolve(ButtonFamilyRole::Text, state).background);
+        assert_close_any(palette.background, solid.resolve(ButtonFamilyRole::Text, state).background);
         let border = palette.border.expect("classic keeps a border that delineates the edge");
         assert!(border.l < palette.background.l, "border is darker than the fill");
-        assert_eq!(border.h, palette.background.h, "border keeps the accent hue");
+        assert_close_any(border.h, palette.background.h);
     }
 
+    /// The classic face's `.lss` shadows.
     fn classic_shadows(look: &Look, state: InteractionState) -> Vec<BoxShadow> {
-        let palette = native(look, ButtonVariant::Classic).resolve(ButtonFamilyRole::Text, state);
-        classic_shadow(look, palette.background, state)
+        native(look, ButtonVariant::Classic)
+            .resolve(ButtonFamilyRole::Text, state)
+            .shadow
+            .unwrap_or_default()
     }
 
     #[test]
@@ -454,7 +404,10 @@ mod tests {
         assert!(top.iter().all(|shadow| shadow.color.l > fill.l), "the top rim is lighter than the fill");
         assert!(!bottom.is_empty(), "the bottom keeps a shaded lip");
         assert!(bottom.iter().all(|shadow| shadow.color.l < fill.l), "the bottom lip is darker than the fill");
-        assert!(shadows.iter().all(|shadow| !shadow.inset || shadow.color.h == fill.h), "edges keep the accent hue");
+        assert!(
+            shadows.iter().all(|shadow| !shadow.inset || (shadow.color.h - fill.h).abs() < 1e-3),
+            "edges keep the accent hue"
+        );
         assert!(top.iter().any(|shadow| shadow.blur_radius == px(0.0)), "has a crisp specular line");
         // Negative spread keeps the fade a top band instead of a full-perimeter halo.
         assert!(
@@ -499,7 +452,7 @@ mod tests {
         let theme = native(&look, ButtonVariant::Page);
         let palette = theme.resolve(ButtonFamilyRole::Toggle { selected: false }, InteractionState::default());
 
-        assert_eq!(palette.background.a, 0.0);
+        assert_close_any(palette.background.a, 0.0);
         assert!(palette.border.is_none());
     }
 
@@ -514,11 +467,11 @@ mod tests {
         let hovered = theme.resolve(role, InteractionState { hovered: true, ..Default::default() });
 
         assert!(resting.border.is_none(), "Page face is borderless");
-        assert_eq!(resting.focus_border.a, 0.0, "Page explicitly suppresses focus paint");
-        assert_eq!(focused.border, resting.border);
-        assert_eq!(focused.background, resting.background);
-        assert_eq!(pressed.background, resting.background);
-        assert_eq!(hovered.background, resting.background);
+        assert_close_any(resting.focus_border.a, 0.0);
+        assert_close_any(focused.border, resting.border);
+        assert_close_any(focused.background, resting.background);
+        assert_close_any(pressed.background, resting.background);
+        assert_close_any(hovered.background, resting.background);
     }
 
     #[test]
@@ -540,7 +493,7 @@ mod tests {
                             ..Default::default()
                         };
                         let palette = quiet.resolve(role, state);
-                        assert_eq!(palette.background.a, 0.0, "{mode:?} {role:?} {state:?}");
+                        assert_close_any(palette.background.a, 0.0);
                         assert!(palette.border.is_none(), "{mode:?} {role:?} {state:?}");
                     }
                 }

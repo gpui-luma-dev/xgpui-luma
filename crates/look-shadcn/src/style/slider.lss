@@ -2,6 +2,17 @@
 // a primary-ringed thumb with `shadow-sm`; secondary uses the secondary foreground. Sizes sm, md, lg.
 
 slider {
+  // Corner radius presets for the track and thumb ends: a corner never exceeds half the part, so medium,
+  // large and full are all pills.
+  radius none   { part track { radius = exact(0) }  part thumb { radius = exact(0) } }
+  radius small  {
+    part track { radius = exact(min(shadcn.radius_small, track_height / 2)) }
+    part thumb { radius = exact(min(shadcn.radius_small, thumb_size / 2)) }
+  }
+  radius medium { part track { radius = exact(track_height / 2) }  part thumb { radius = exact(thumb_size / 2) } }
+  radius large  { part track { radius = exact(track_height / 2) }  part thumb { radius = exact(thumb_size / 2) } }
+  radius full   { part track { radius = exact(track_height / 2) }  part thumb { radius = exact(thumb_size / 2) } }
+
   track_height = exact(6)
   thumb_size   = exact(16)
   size sm { track_height = exact(4)  thumb_size = exact(12) }

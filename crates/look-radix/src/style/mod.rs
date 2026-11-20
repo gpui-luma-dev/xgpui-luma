@@ -80,8 +80,11 @@ radix_sources![
     "dock_splitter.lss",
     "resizable_panels.lss",
     "split_view.lss",
+    "avatar.lss",
     "badge.lss",
-    "card.lss"
+    "card.lss",
+    "callout.lss",
+    "segmented.lss"
 ];
 
 /// The SDK's files with the Radix look's files over them.

@@ -9,7 +9,7 @@ pub use crate::controls::autocomplete::{resolve_autocomplete_chrome_colors, Auto
 pub use crate::elements::badge::{BadgeColorTable, resolve_badge_colors};
 pub use crate::controls::button::{ButtonColorPalette};
 pub use crate::controls::control_group::{resolve_control_group_list_colors, ControlGroupListColorTable};
-pub use crate::controls::floating_menu::{resolve_floating_menu_colors, FloatingMenuColorTable, GhostTriggerColorTable};
+pub use crate::controls::floating_menu::{FloatingMenuColorTable, GhostTriggerColorTable};
 pub use crate::controls::table::{TableRowColorTable, TableSurfaceColorTable};
 pub use crate::controls::listbox::{resolve_listbox_row_colors, ListBoxListColorTable, ListBoxRowColorTable};
 pub use crate::controls::sidebar::{
@@ -28,8 +28,6 @@ pub use crate::controls::tree_view::{resolve_tree_view_row_colors, TreeViewRowCo
 
 /// Shared metric values and source metadata.
 pub mod metrics;
-
-pub use crate::controls::button::resolve_button_palette;
 
 pub use crate::controls::sidebar::resolve_sidebar_focus_border;
 

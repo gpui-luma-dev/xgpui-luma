@@ -19,9 +19,7 @@ pub use crate::controls::accordion::{AccordionStylesheet, AccordionTriggerColorR
 pub use crate::controls::resizable_panels::{ResizablePanelsStylesheet, ResizablePanelsColorRule};
 pub use crate::controls::listbox::{ListboxStylesheet, ListboxRowColorRule};
 pub use crate::controls::table::TableStylesheet;
-pub use crate::controls::floating_menu::{
-    FloatingMenuStylesheet, FloatingMenuSurfaceElevationRule, FloatingMenuSurfaceColorRule,
-};
+pub use crate::controls::floating_menu::{FloatingMenuStylesheet, FloatingMenuSurfaceElevationRule};
 pub use crate::controls::tabs::TabsStylesheet;
 pub use crate::controls::tree_view::{TreeViewStylesheet, TreeViewRowColorRule};
 pub use crate::controls::sidebar::{SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule, SidebarItemColorRule};

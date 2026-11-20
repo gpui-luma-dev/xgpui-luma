@@ -2,6 +2,13 @@
 // Hover and pressed do not recolor the track or thumb, so colors own their property (`:=`).
 
 switch {
+  // Corner radius presets for the track; full is a pill.
+  radius none   { track_radius = exact(0) }
+  radius small  { track_radius = exact(shadcn.radius_small) }
+  radius medium { track_radius = exact(shadcn.radius_medium) }
+  radius large  { track_radius = exact(shadcn.radius_large) }
+  radius full   { track_radius = exact(track_height / 2) }
+
   track_width  = 40
   track_height = 18
   thumb_size   = 14

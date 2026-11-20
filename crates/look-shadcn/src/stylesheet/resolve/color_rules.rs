@@ -4,9 +4,8 @@ use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::stylesheet::config::{
     AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule,
-    FloatingMenuSurfaceColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
-    SidebarContainerColorRule, SidebarItemColorRule, SliderColorRule, SplitViewColorRule, TextfieldColorRule,
-    TreeViewRowColorRule,
+    ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule,
+    SidebarItemColorRule, SliderColorRule, SplitViewColorRule, TextfieldColorRule, TreeViewRowColorRule,
 };
 
 use super::{
@@ -157,33 +156,6 @@ pub fn resolve_listbox_row_color_rule(
     fields.insert("label_color", label_color.clone());
     let background = resolve_stylesheet_color(resolver, &rule.background, &fields, &ctx)?;
     Ok(ResolvedListboxRowColors { label_color, background })
-}
-
-pub fn resolve_floating_menu_surface_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &FloatingMenuSurfaceColorRule,
-) -> anyhow::Result<ResolvedFloatingMenuColors> {
-    let ctx = ResolveContext::default();
-    let mut fields = ResolvedFields::default();
-    let background = resolve_stylesheet_color(resolver, &rule.background, &fields, &ctx)?;
-    fields.insert("background", background.clone());
-    let foreground = resolve_stylesheet_color(resolver, &rule.foreground, &fields, &ctx)?;
-    fields.insert("foreground", foreground.clone());
-    let border = resolve_stylesheet_color(resolver, &rule.border, &fields, &ctx)?;
-    fields.insert("border", border.clone());
-    let item_hover_background = resolve_stylesheet_color(resolver, &rule.item_hover_background, &fields, &ctx)?;
-    fields.insert("item_hover_background", item_hover_background.clone());
-    let item_hover_foreground = resolve_stylesheet_color(resolver, &rule.item_hover_foreground, &fields, &ctx)?;
-    fields.insert("item_hover_foreground", item_hover_foreground.clone());
-    let item_disabled_foreground = resolve_stylesheet_color(resolver, &rule.item_disabled_foreground, &fields, &ctx)?;
-    Ok(ResolvedFloatingMenuColors {
-        background,
-        foreground,
-        border,
-        item_hover_background,
-        item_hover_foreground,
-        item_disabled_foreground,
-    })
 }
 
 pub fn resolve_tree_view_row_color_rule(
@@ -341,16 +313,6 @@ pub struct ResolvedResizablePanelsColors {
 pub struct ResolvedListboxRowColors {
     pub label_color: ResolvedColor,
     pub background: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedFloatingMenuColors {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: ResolvedColor,
-    pub item_hover_background: ResolvedColor,
-    pub item_hover_foreground: ResolvedColor,
-    pub item_disabled_foreground: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]

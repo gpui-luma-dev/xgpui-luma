@@ -14,7 +14,7 @@ use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, Theme
 
 use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
-use crate::controls::{button_look, selection_panel::selection_panel_look, selector_items_panel_look, templates};
+use crate::controls::{selection_panel::selection_panel_look, selector_items_panel_look, templates};
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{
     StylesheetConfig, find_typography_scale_rule, find_typography_semantic_rule, resolve_typography_rule,
@@ -516,8 +516,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Primary, role, size, state)
+        self.button_face(ShadcnButtonStyle::Primary, role, size, None, state)
     }
 
     pub fn resolve_secondary_button(
@@ -526,8 +525,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Secondary, role, size, state)
+        self.button_face(ShadcnButtonStyle::Secondary, role, size, None, state)
     }
 
     pub fn resolve_outline_button(
@@ -536,8 +534,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Outline, role, size, state)
+        self.button_face(ShadcnButtonStyle::Outline, role, size, None, state)
     }
 
     pub fn resolve_ghost_button(
@@ -546,8 +543,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Ghost, role, size, state)
+        self.button_face(ShadcnButtonStyle::Ghost, role, size, None, state)
     }
 
     pub fn resolve_content_only_button(
@@ -556,8 +552,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::ContentOnly, role, size, state)
+        self.button_face(ShadcnButtonStyle::ContentOnly, role, size, None, state)
     }
 
     pub fn switch_template(
@@ -901,6 +896,47 @@ impl ShadcnLook {
         id: impl Into<SharedString>,
     ) -> xgpui_luma::controls::overlay_window::OverlayWindowBuilder {
         xgpui_luma::controls::overlay_window::overlay_window(id).template(self.overlay_window_template())
+    }
+
+    /// A button face from `.lss` for `style` and `role` at `size`, with an optional corner preset (the
+    /// `radius` attribute; none keeps the size's corner). A toggle role draws the toggle.
+    pub fn button_face(
+        &self,
+        style: ShadcnButtonStyle,
+        role: xgpui_luma::controls::button_family::ButtonFamilyRole,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+        state: xgpui_luma::theme::InteractionState,
+    ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+        let template = templates::styled_button_template::<()>(self.with_size(size), style);
+        let template = match radius {
+            Some(preset) => template.attr("radius", preset.key()),
+            None => template,
+        };
+        template.look(role, state, 1.0)
+    }
+
+    /// An icon-only toggle from `.lss`: the toggle's colors, shadow and corner on the icon button's square box.
+    pub fn icon_toggle_face(
+        &self,
+        style: ShadcnButtonStyle,
+        selected: bool,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+        state: xgpui_luma::theme::InteractionState,
+    ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+        use xgpui_luma::controls::button_family::ButtonFamilyRole;
+        let mut face = self.button_face(style, ButtonFamilyRole::Toggle { selected }, size, radius, state);
+        let icon = self.button_face(style, ButtonFamilyRole::Icon, size, radius, state);
+        face.height = icon.height;
+        face.padding_x = 0.0;
+        face.padding_y = 0.0;
+        face.icon_size = icon.icon_size;
+        // A preset sizes the corner to the square box; otherwise the toggle keeps its own corner.
+        if radius.is_some() {
+            face.radius = icon.radius;
+        }
+        face
     }
 
     pub fn toggle_template(

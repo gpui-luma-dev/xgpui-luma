@@ -213,18 +213,7 @@ pub(crate) fn button_look_for_semantic(
     size: ShadcnSize,
     radius: ButtonRadiusPreset,
 ) -> xgpui_luma::controls::button::ButtonLookSource<()> {
-    Arc::new(move |model| {
-        let tokens = theme.mode_tokens();
-        xgpui_luma_look_shadcn::paint::button_look_semantic(
-            tokens.as_ref(),
-            theme.mode(),
-            style,
-            model.role,
-            size,
-            Some(radius),
-            model.state,
-        )
-    })
+    Arc::new(move |model| theme.button_face(style, model.role, size, Some(radius), model.state))
 }
 
 pub(crate) fn button_look_for_style(

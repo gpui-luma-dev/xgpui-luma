@@ -1,0 +1,36 @@
+// Radix avatar. Layer: look. Soft by default (a tone 3 tint with tone 11 text, tone 12 in high contrast);
+// solid (tone 9 with the tone's contrast text, or tone 12 with tone 1). Sizes 1–9 from the Radix Avatar
+// reference; the corner scales with the avatar's radius (a full radius is a circle, the element's own).
+
+avatar {
+  two_letter_font_size = exact(14)
+  icon_size            = exact(19.2)
+
+  part root {
+    background  = tone[3]
+    foreground  = tone[11]
+    height      = exact(32)
+    radius      = exact(4 * radix.radius_factor)
+    font_family = look.font_sans
+    font_size   = 16
+    line_height = font_size
+    font_weight = 500
+    :high_contrast { foreground = tone[12] }
+  }
+  size 1 { two_letter_font_size = exact(12)  icon_size = exact(14.399999999999999)  part root { height = exact(24)  radius = exact(4 * radix.radius_factor)  font_size = 14 } }
+  size 3 { two_letter_font_size = exact(16)  icon_size = exact(24)  part root { height = exact(40)  radius = exact(6 * radix.radius_factor)  font_size = 18 } }
+  size 4 { two_letter_font_size = exact(18)  icon_size = exact(28.799999999999997)  part root { height = exact(48)  radius = exact(6 * radix.radius_factor)  font_size = 20 } }
+  size 5 { two_letter_font_size = exact(24)  icon_size = exact(38.4)  part root { height = exact(64)  radius = exact(8 * radix.radius_factor)  font_size = 24 } }
+  size 6 { two_letter_font_size = exact(28)  icon_size = exact(48)  part root { height = exact(80)  radius = exact(12 * radix.radius_factor)  font_size = 28 } }
+  size 7 { two_letter_font_size = exact(28)  icon_size = exact(57.599999999999994)  part root { height = exact(96)  radius = exact(12 * radix.radius_factor)  font_size = 28 } }
+  size 8 { two_letter_font_size = exact(35)  icon_size = exact(76.8)  part root { height = exact(128)  radius = exact(16 * radix.radius_factor)  font_size = 35 } }
+  size 9 { two_letter_font_size = exact(60)  icon_size = exact(96)  part root { height = exact(160)  radius = exact(16 * radix.radius_factor)  font_size = 60 } }
+
+  variant solid {
+    part root {
+      background = tone[9]
+      foreground = look.tone_contrast
+      :high_contrast { background = tone[12]  foreground = tone[1] }
+    }
+  }
+}

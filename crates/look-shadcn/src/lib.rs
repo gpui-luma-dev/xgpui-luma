@@ -29,7 +29,6 @@ pub use tooltip::tooltip_theme;
 #[cfg(test)]
 mod test_support;
 
-pub mod paint;
 pub mod prelude;
 pub mod tables;
 

@@ -50,15 +50,6 @@ pub struct TextFieldInspectMetrics {
     pub focus_ring_offset: ResolvedMetric,
 }
 
-pub fn inspect_textfield_metrics(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    size: crate::ShadcnSize,
-) -> TextFieldInspectMetrics {
-    let table = crate::tables::metrics::resolve_textfield_metrics(mode, theme_mode, size);
-    table.into()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -250,7 +250,7 @@ fn render_floating_menu_size_cell(
 }
 
 fn floating_menu_look_for_size(look: &Arc<ShadcnLook>, size: ShadcnSize) -> FloatingMenuLook {
-    xgpui_luma_look_shadcn::paint::floating_menu_look(look.mode_tokens().as_ref(), look.mode(), size)
+    look.with_size(size).floating_menu_theme().resolve()
 }
 
 fn render_menu_trigger_state_cell(
@@ -380,9 +380,7 @@ fn menu_trigger_focus_for_sample(sample: &ButtonStateSample) -> PopupMenuControl
 }
 
 fn menu_trigger_radius_px(look: &ShadcnLook, size: ShadcnSize, radius: ButtonRadiusPreset) -> f32 {
-    xgpui_luma_look_shadcn::paint::button_look_semantic(
-        look.mode_tokens().as_ref(),
-        look.mode(),
+    look.button_face(
         ShadcnButtonStyle::Outline,
         ButtonFamilyRole::Text,
         size,

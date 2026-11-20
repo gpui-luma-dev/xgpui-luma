@@ -9,7 +9,9 @@ button {
   padding_y = 0
   gap       = 8
   icon_size = 14
-  radius    = radix.button_radius_base * radix.radius_factor
+  radius    = exact(radix.button_radius_base * radix.radius_factor)
+  // Icon buttons keep the size's corner (a circle only at radius full).
+  icon_radius = exact(radius)
   muted_foreground = foreground
   size 1 { height = 24  padding_x = 8   gap = 4   icon_size = 12 }
   size 3 { height = 40  padding_x = 16  gap = 12  icon_size = 16 }

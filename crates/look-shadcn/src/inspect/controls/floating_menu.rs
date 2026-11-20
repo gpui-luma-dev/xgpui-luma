@@ -1,17 +1,8 @@
 //! Inspect metadata for `floating_menu`.
 
-use xgpui_luma::theme::{InteractionState, ThemeMode};
-use crate::{LookContext, LookResolver, ResolvedColor, ShadcnModeTokens};
+use xgpui_luma::theme::ThemeMode;
+use crate::ShadcnModeTokens;
 use crate::size::ShadcnSize;
-
-pub struct FloatingMenuInspectPalette {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: ResolvedColor,
-    pub item_hover_background: ResolvedColor,
-    pub item_hover_foreground: ResolvedColor,
-    pub item_disabled_foreground: ResolvedColor,
-}
 
 #[derive(Clone, Debug)]
 pub struct FloatingMenuInspectMetrics {
@@ -24,26 +15,6 @@ pub struct FloatingMenuInspectMetrics {
     pub item_icon_size: crate::ResolvedMetric,
     pub item_radius: crate::ResolvedMetric,
     pub submenu_offset_x: crate::ResolvedMetric,
-}
-
-pub fn inspect_floating_menu_color_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    _size: ShadcnSize,
-) -> FloatingMenuInspectPalette {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), theme_mode, "floating_menu_inspect").with_stylesheet(mode.stylesheet());
-    let colors = crate::tables::resolve_floating_menu_colors(&resolver, true)
-        .unwrap_or_else(|_| crate::tables::FloatingMenuColorTable::fallback());
-    FloatingMenuInspectPalette {
-        background: colors.background,
-        foreground: colors.foreground,
-        border: colors.border,
-        item_hover_background: colors.item_hover_background,
-        item_hover_foreground: colors.item_hover_foreground,
-        item_disabled_foreground: colors.item_disabled_foreground,
-    }
 }
 
 pub fn inspect_floating_menu_metrics(

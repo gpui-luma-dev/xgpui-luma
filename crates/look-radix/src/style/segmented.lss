@@ -1,0 +1,28 @@
+// Radix segmented choice. Layer: look. A gray 3 track of gray segments: gray 4 under the pointer, the
+// selected one gray 5 with a gray 6 edge, gray 6 while pressed; gray 12 text, gray 8 when disabled; an
+// accent 8 ring with visible focus.
+
+segmented {
+  part root {
+    background   = gray[3]
+    radius       = exact(5)
+    focus_border = accent[8]
+  }
+
+  part item {
+    background  = gray[3]
+    foreground  = gray[12]
+    border      = gray[3]
+    radius      = exact(4)
+    height      = exact(32)
+    padding_x   = exact(12)
+    font_size   = 14
+    line_height = 20
+    :hover            { background = gray[4]  border = gray[4] }
+    :selected         { background = gray[5]  border = gray[6] }
+    :selected:hover   { background = gray[5]  border = gray[6] }
+    :pressed          { background = gray[6]  border = gray[6] }
+    :selected:pressed { background = gray[6]  border = gray[6] }
+    :disabled         { foreground = gray[8] }
+  }
+}

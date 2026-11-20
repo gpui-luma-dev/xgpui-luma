@@ -6,9 +6,9 @@ use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
 use super::config::{
     AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule,
-    FloatingMenuSurfaceColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
-    SidebarContainerColorRule, SidebarItemColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
-    TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
+    ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule,
+    SidebarItemColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig, TextfieldColorRule,
+    TreeViewRowColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
 
@@ -92,10 +92,6 @@ pub fn find_listbox_row_color_rule(
     layer: InteractionLayer,
 ) -> Option<&ListboxRowColorRule> {
     stylesheet.listbox.row.find_color_rule(disabled, focused, layer)
-}
-
-pub fn find_floating_menu_surface_color_rule(stylesheet: &StylesheetConfig) -> Option<&FloatingMenuSurfaceColorRule> {
-    stylesheet.floating_menu.surface.color_rule()
 }
 
 pub fn find_tree_view_row_color_rule(

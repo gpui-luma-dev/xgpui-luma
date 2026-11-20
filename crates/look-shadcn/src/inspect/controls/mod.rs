@@ -40,10 +40,7 @@ pub use card::{CardInspectMetrics};
 pub use control_group::{
     ControlGroupInspectMetrics, ControlGroupListInspectPalette, inspect_control_group_list_color_palette,
 };
-pub use floating_menu::{
-    FloatingMenuInspectMetrics, FloatingMenuInspectPalette, inspect_floating_menu_color_palette,
-    inspect_floating_menu_metrics,
-};
+pub use floating_menu::{FloatingMenuInspectMetrics, inspect_floating_menu_metrics};
 pub use listbox::{ListBoxRowInspectPalette, inspect_listbox_row_color_palette};
 pub use table::{TableInspectMetrics};
 pub use resizable_panels::{
@@ -60,9 +57,7 @@ pub use progress::{
 pub use stepper::{StepperInspectMetrics, StepperInspectPalette, inspect_stepper_color_palette, inspect_stepper_metrics};
 pub use scrollbar::{ScrollbarInspectMetrics};
 pub use slider::{SliderInspectMetrics};
-pub use textfield::{
-    TextFieldInspectMetrics, TextFieldInspectPalette, inspect_textfield_color_palette, inspect_textfield_metrics,
-};
+pub use textfield::{TextFieldInspectMetrics, TextFieldInspectPalette, inspect_textfield_color_palette};
 pub use tabs::{TabsInspectMetrics};
 pub use toolbar::{ToolbarInspectMetrics};
 pub use tree_view::{TreeViewInspectMetrics, TreeViewRowInspectPalette, inspect_tree_view_row_color_palette};
@@ -73,8 +68,3 @@ pub use sidebar::{
 pub use overlay_window::{OverlayWindowInspectMetrics};
 pub use pager::{PagerInspectMetrics};
 pub use selector::{SelectorInspectMetrics, inspect_selector_metrics};
-
-pub(crate) use button::{
-    inspect_button_color_palette_with_stylesheet, inspect_button_metrics_with_stylesheet,
-    inspect_button_elevation_with_stylesheet,
-};

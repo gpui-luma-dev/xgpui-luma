@@ -14,10 +14,7 @@
 use serde::Deserialize;
 
 use xgpui_luma::controls::textfield::TextFieldState;
-use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::LumaTextStyle;
-use xgpui_luma::theme::StandardBoxScale;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
@@ -131,27 +128,6 @@ pub fn resolve_textfield_palette(
     colors
 }
 
-pub(crate) fn textfield_geometry(
-    mode: &ShadcnModeTokens,
-    size: ShadcnSize,
-    scale: &StandardBoxScale,
-    typography: &LumaTextStyle,
-) -> xgpui_luma::theme::stylesheet::ResolvedTextFieldGeometry {
-    mode.stylesheet().common.textfield.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::TextFieldGeometry {
-            min_height: scale.height,
-            padding_x: scale.padding_x,
-            padding_y: scale.padding_y,
-            gap: scale.gap,
-            icon_size: scale.icon_size,
-            font_size: typography.size,
-            line_height: typography.line_height,
-            ..Default::default()
-        },
-    )
-}
-
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
 pub struct TextfieldStylesheet {
     #[serde(default)]
@@ -262,40 +238,4 @@ pub struct TextFieldMetricTable {
     pub border_width: crate::ResolvedMetric,
     pub focus_ring_width: crate::ResolvedMetric,
     pub focus_ring_offset: crate::ResolvedMetric,
-}
-
-pub fn resolve_textfield_metrics(
-    mode: &crate::ShadcnModeTokens,
-    theme_mode: xgpui_luma::theme::ThemeMode,
-    size: crate::ShadcnSize,
-) -> TextFieldMetricTable {
-    use xgpui_luma::theme::StandardBoxScale;
-
-    use crate::tables::metrics::helpers::{
-        border_width_metric, control_size_key, focus_ring_offset_metric, focus_ring_width_metric, radius_metric,
-        scaffold_control_metric, spacing_control_metric,
-    };
-    use crate::catalog::SpacingField;
-
-    let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let catalog = ctx.catalog();
-    let metrics = ctx.metrics();
-    let scale = StandardBoxScale::compute(&mode.metrics_for(size), 1.0);
-
-    let geometry = crate::controls::textfield::textfield_geometry(mode, size, &scale, &mode.typography.text.body);
-    let mut table = TextFieldMetricTable {
-        min_height: scaffold_control_metric(control_size_key(size), "control_height", scale.height),
-        icon_size: scaffold_control_metric(control_size_key(size), "icon_size", scale.icon_size),
-        padding_x: spacing_control_metric(catalog, size, SpacingField::PaddingX, scale.padding_x),
-        padding_y: spacing_control_metric(catalog, size, SpacingField::PaddingY, scale.padding_y),
-        radius: radius_metric(catalog, size, scale.radius),
-        border_width: border_width_metric(metrics),
-        focus_ring_width: focus_ring_width_metric(metrics),
-        focus_ring_offset: focus_ring_offset_metric(metrics),
-    };
-    table.min_height = crate::tables::metrics::helpers::prefer_shared_metric(geometry.min_height, table.min_height);
-    table.icon_size = crate::tables::metrics::helpers::prefer_shared_metric(geometry.icon_size, table.icon_size);
-    table.padding_x = crate::tables::metrics::helpers::prefer_shared_metric(geometry.padding_x, table.padding_x);
-    table.padding_y = crate::tables::metrics::helpers::prefer_shared_metric(geometry.padding_y, table.padding_y);
-    table
 }

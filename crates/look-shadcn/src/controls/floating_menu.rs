@@ -19,11 +19,7 @@ use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_floating_menu_surface_color_rule;
-use crate::stylesheet::resolve_floating_menu_surface_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct FloatingMenuColorTable {
@@ -46,31 +42,6 @@ impl FloatingMenuColorTable {
             item_disabled_foreground: ResolvedColor::fallback_foreground(),
         }
     }
-}
-
-pub fn resolve_floating_menu_colors(
-    resolver: &LookResolver<'_>,
-    present: bool,
-) -> anyhow::Result<FloatingMenuColorTable> {
-    resolve_floating_menu_colors_with_stylesheet(resolver, resolver.stylesheet(), present)
-}
-
-pub fn resolve_floating_menu_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    _present: bool,
-) -> anyhow::Result<FloatingMenuColorTable> {
-    let rule = find_floating_menu_surface_color_rule(stylesheet)
-        .ok_or_else(|| anyhow::anyhow!("no matching floating menu surface color rule"))?;
-    let colors = resolve_floating_menu_surface_color_rule(resolver, rule)?;
-    Ok(FloatingMenuColorTable {
-        background: colors.background,
-        foreground: colors.foreground,
-        border: colors.border,
-        item_hover_background: colors.item_hover_background,
-        item_hover_foreground: colors.item_hover_foreground,
-        item_disabled_foreground: colors.item_disabled_foreground,
-    })
 }
 
 #[derive(Clone, Debug)]
@@ -309,7 +280,7 @@ pub fn resolve_floating_menu_metrics(
     use crate::catalog::SpacingField;
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let look = crate::paint::floating_menu_look(mode, theme_mode, size);
+    let look = crate::controls::floating_menu::floating_menu_look(mode, theme_mode, size);
     let catalog = ctx.catalog();
 
     let mut table = FloatingMenuMetricTable {

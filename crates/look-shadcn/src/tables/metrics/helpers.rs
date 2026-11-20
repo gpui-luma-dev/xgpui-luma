@@ -98,13 +98,6 @@ pub fn focus_ring_offset_metric(metrics: &xgpui_luma::theme::MetricTokens) -> Re
     )
 }
 
-pub fn border_width_metric(metrics: &xgpui_luma::theme::MetricTokens) -> ResolvedMetric {
-    ResolvedMetric {
-        value_px: metrics.border_width,
-        source: MetricSource::Scaffold { path: "MetricTokens.border_width".into() },
-    }
-}
-
 // Preserve the existing Shadcn inspector API while reporting shared authored paths.
 pub fn inspect_shared_metric(value: xgpui_luma::theme::provenance::ResolvedMetric) -> crate::ResolvedMetric {
     use xgpui_luma::theme::provenance::MetricSource;
