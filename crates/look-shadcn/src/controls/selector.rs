@@ -1,51 +1,5 @@
 //! Selector property mappings — outline/ghost command-button trigger + accent item panel.
 
-#[cfg(feature = "inspect")]
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
-
-#[cfg(feature = "inspect")]
-use crate::look_context::LookContext;
-#[cfg(feature = "inspect")]
-use crate::mode::ShadcnModeTokens;
-
-#[cfg(feature = "inspect")]
-use crate::size::ShadcnSize;
-
-#[cfg(feature = "inspect")]
-pub(crate) fn selector_geometry(
-    mode: &ShadcnModeTokens,
-    size: ShadcnSize,
-    scale: &StandardBoxScale,
-    typography: &xgpui_luma::theme::LumaTextStyle,
-) -> xgpui_luma::theme::stylesheet::ResolvedSelectorGeometry {
-    let icon = super::button::button_box_scale(
-        &LookContext::new(mode, mode.theme_mode, InteractionState::default()),
-        mode.stylesheet(),
-        size,
-        1.0,
-    )
-    .icon_size;
-    let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
-        .selector
-        .authored_geometry_for(size.key());
-    let recipe = mode.stylesheet().common.selector.authored_geometry_for(size.key()).with_fallback(&baseline);
-    mode.stylesheet().common.selector.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::SelectorGeometry {
-            height: scale.height,
-            padding_x: scale.padding_x,
-            padding_y: scale.padding_y,
-            gap: scale.gap,
-            icon_size: icon,
-            font_size: typography.size,
-            line_height: typography.line_height,
-            radius: scale.radius,
-            menu_offset_y: recipe.gap.unwrap_or(scale.gap) * recipe.menu_offset_scale.unwrap_or_default(),
-            ..Default::default()
-        },
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use gpui::Hsla;

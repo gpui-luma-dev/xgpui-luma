@@ -423,12 +423,3 @@ pub struct CardColorRule {
     pub muted_foreground: String,
     pub border: String,
 }
-
-#[derive(Clone, Debug)]
-pub struct CardMetricTable {
-    pub padding: crate::ResolvedMetric,
-    pub section_gap: crate::ResolvedMetric,
-    pub header_gap: crate::ResolvedMetric,
-    pub body_gap: crate::ResolvedMetric,
-    pub radius: crate::ResolvedMetric,
-}

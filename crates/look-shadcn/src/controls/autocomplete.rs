@@ -6,10 +6,7 @@ use xgpui_luma::controls::autocomplete::AutocompleteLook;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::{StylesheetConfig, find_autocomplete_chrome_color_rule, resolve_autocomplete_chrome_color_rule};
-
-use super::floating_menu::floating_menu_look;
+use crate::provenance::ResolvedColor;
 
 #[derive(Clone, Debug)]
 pub struct AutocompleteChromeColorTable {
@@ -30,32 +27,10 @@ impl AutocompleteChromeColorTable {
     }
 }
 
-pub fn resolve_autocomplete_chrome_colors(
-    resolver: &LookResolver<'_>,
-    _present: bool,
-) -> anyhow::Result<AutocompleteChromeColorTable> {
-    resolve_autocomplete_chrome_colors_with_stylesheet(resolver, resolver.stylesheet())
-}
-
-pub fn resolve_autocomplete_chrome_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-) -> anyhow::Result<AutocompleteChromeColorTable> {
-    let rule = find_autocomplete_chrome_color_rule(stylesheet)
-        .ok_or_else(|| anyhow::anyhow!("no matching autocomplete chrome color rule"))?;
-    let colors = resolve_autocomplete_chrome_color_rule(resolver, rule)?;
-    Ok(AutocompleteChromeColorTable {
-        status_color: colors.status_color,
-        muted_text_color: colors.muted_text_color,
-        clear_icon_color: colors.clear_icon_color,
-        clear_icon_hover_color: colors.clear_icon_hover_color,
-    })
-}
-
 /// The Shadcn autocomplete at `size`, drawn from `.lss` (`style/autocomplete.lss`) for `mode`'s catalog.
 pub fn autocomplete_textbox_look(
     mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
+    _theme_mode: ThemeMode,
     size: crate::ShadcnSize,
 ) -> AutocompleteLook {
     let binding =
@@ -65,7 +40,10 @@ pub fn autocomplete_textbox_look(
     } else {
         binding
     };
-    xgpui_luma::controls::autocomplete::styled_autocomplete_look(&binding, floating_menu_look(mode, theme_mode, size))
+    let menu = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+        &super::selector_items_panel::mode_binding(mode, "floating_menu", size),
+    );
+    xgpui_luma::controls::autocomplete::styled_autocomplete_look(&binding, menu)
 }
 
 #[cfg(test)]

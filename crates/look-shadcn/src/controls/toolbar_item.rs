@@ -284,12 +284,3 @@ pub(crate) fn native_toolbar_stylesheet() -> xgpui_luma::theme::stylesheet::Tool
         ..Default::default()
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct ToolbarMetricTable {
-    pub radius: crate::ResolvedMetric,
-    pub padding_x: crate::ResolvedMetric,
-    pub padding_y: crate::ResolvedMetric,
-    pub gap: crate::ResolvedMetric,
-    pub separator_height: crate::ResolvedMetric,
-}

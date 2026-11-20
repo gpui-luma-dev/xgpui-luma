@@ -5,10 +5,9 @@ use crate::elements::BadgeVariant;
 use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
 use super::config::{
-    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule,
-    ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule,
-    SidebarItemColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig, TextfieldColorRule,
-    TreeViewRowColorRule, TypographyRule,
+    AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule, ProgressColorRule,
+    ScrollbarColorRule, SidebarContainerColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
+    TextfieldColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
 
@@ -69,54 +68,12 @@ pub fn find_scrollbar_color_rule<'a>(
     stylesheet.scrollbar.find_color_rule(style, disabled, layer)
 }
 
-pub fn find_accordion_trigger_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&AccordionTriggerColorRule> {
-    stylesheet.accordion.trigger.find_color_rule(disabled, layer)
-}
-
-pub fn find_resizable_panels_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&ResizablePanelsColorRule> {
-    stylesheet.resizable_panels.find_color_rule(disabled, layer)
-}
-
-pub fn find_listbox_row_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    focused: bool,
-    layer: InteractionLayer,
-) -> Option<&ListboxRowColorRule> {
-    stylesheet.listbox.row.find_color_rule(disabled, focused, layer)
-}
-
-pub fn find_tree_view_row_color_rule(
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&TreeViewRowColorRule> {
-    stylesheet.tree_view.row.find_color_rule(disabled, layer)
-}
-
 pub fn find_sidebar_metrics(stylesheet: &StylesheetConfig) -> &crate::stylesheet::config::SidebarMetricsRule {
     &stylesheet.sidebar.metrics
 }
 
 pub fn find_sidebar_container_color_rule(stylesheet: &StylesheetConfig) -> Option<&SidebarContainerColorRule> {
     stylesheet.sidebar.container.color_rule()
-}
-
-pub fn find_sidebar_item_color_rule(
-    stylesheet: &StylesheetConfig,
-    selected: bool,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> Option<&SidebarItemColorRule> {
-    stylesheet.sidebar.item.find_color_rule(selected, disabled, layer)
 }
 
 pub fn find_textfield_color_rule<'a>(

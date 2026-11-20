@@ -205,14 +205,3 @@ pub(crate) fn native_tabs_stylesheet() -> xgpui_luma::theme::stylesheet::TabsSty
         ..Default::default()
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct TabsMetricTable {
-    pub list_radius: crate::ResolvedMetric,
-    pub list_gap: crate::ResolvedMetric,
-    pub list_padding: crate::ResolvedMetric,
-    pub item_padding_x: crate::ResolvedMetric,
-    pub item_height: crate::ResolvedMetric,
-    pub item_radius: crate::ResolvedMetric,
-    pub indicator_height: crate::ResolvedMetric,
-}

@@ -11,11 +11,7 @@ use crate::size::ShadcnSize;
 
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::ColorSource;
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_progress_color_rule;
-use crate::stylesheet::resolve_progress_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct ProgressColorTable {
@@ -30,21 +26,6 @@ impl ProgressColorTable {
             progress_color: ResolvedColor::fallback_foreground(),
         }
     }
-}
-
-pub fn resolve_progress_colors(resolver: &LookResolver<'_>, enabled: bool) -> anyhow::Result<ProgressColorTable> {
-    resolve_progress_colors_with_stylesheet(resolver, resolver.stylesheet(), enabled)
-}
-
-pub fn resolve_progress_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    enabled: bool,
-) -> anyhow::Result<ProgressColorTable> {
-    let rule = find_progress_color_rule(stylesheet, enabled)
-        .ok_or_else(|| anyhow::anyhow!("no matching progress color rule"))?;
-    let colors = resolve_progress_color_rule(resolver, rule)?;
-    Ok(ProgressColorTable { track_color: colors.track_color, progress_color: colors.progress_color })
 }
 
 /// Shadcn progress at `size`, drawn from `.lss` (`style/progress.lss`) for `mode`'s catalog.

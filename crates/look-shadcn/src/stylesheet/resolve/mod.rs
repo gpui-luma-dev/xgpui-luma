@@ -73,15 +73,6 @@ pub fn resolve_stylesheet_color(
     resolver.resolve_decl(raw)
 }
 
-pub fn resolve_optional_stylesheet_color(
-    resolver: &LookResolver<'_>,
-    raw: Option<&str>,
-    fields: &ResolvedFields,
-    ctx: &ResolveContext,
-) -> anyhow::Result<Option<ResolvedColor>> {
-    raw.map(|value| resolve_stylesheet_color(resolver, value, fields, ctx)).transpose()
-}
-
 fn resolve_derived_token(
     resolver: &LookResolver<'_>,
     token: &str,

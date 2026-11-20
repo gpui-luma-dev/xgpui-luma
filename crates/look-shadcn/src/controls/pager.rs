@@ -29,17 +29,3 @@ pub(crate) fn native_pager_stylesheet() -> xgpui_luma::theme::stylesheet::PagerS
         ]),
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct PagerMetricTable {
-    pub control_height: crate::ResolvedMetric,
-    pub button_size: crate::ResolvedMetric,
-    pub button_min_width: crate::ResolvedMetric,
-    pub radius: crate::ResolvedMetric,
-    pub padding_x: crate::ResolvedMetric,
-    pub padding_y: crate::ResolvedMetric,
-    pub gap: crate::ResolvedMetric,
-    pub group_gap: crate::ResolvedMetric,
-    pub font_family: crate::ResolvedTypography,
-    pub reserved_shadow_extent: crate::ResolvedMetric,
-}

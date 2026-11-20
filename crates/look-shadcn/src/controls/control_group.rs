@@ -10,11 +10,7 @@ use crate::stylesheet::config::EnabledColorRule;
 use crate::stylesheet::config::find_enabled_color_rule;
 use serde::Deserialize;
 
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_control_group_list_color_rule;
-use crate::stylesheet::resolve_control_group_list_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct ControlGroupListColorTable {
@@ -26,24 +22,6 @@ impl ControlGroupListColorTable {
     pub fn fallback() -> Self {
         Self { background: ResolvedColor::transparent(), border: ResolvedColor::fallback_foreground() }
     }
-}
-
-pub fn resolve_control_group_list_colors(
-    resolver: &LookResolver<'_>,
-    enabled: bool,
-) -> anyhow::Result<ControlGroupListColorTable> {
-    resolve_control_group_list_colors_with_stylesheet(resolver, resolver.stylesheet(), enabled)
-}
-
-pub fn resolve_control_group_list_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    enabled: bool,
-) -> anyhow::Result<ControlGroupListColorTable> {
-    let rule = find_control_group_list_color_rule(stylesheet, enabled)
-        .ok_or_else(|| anyhow::anyhow!("no matching control group list color rule"))?;
-    let colors = resolve_control_group_list_color_rule(resolver, rule)?;
-    Ok(ControlGroupListColorTable { background: colors.background, border: colors.border })
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -93,12 +71,4 @@ impl EnabledColorRule for ControlGroupListColorRule {
     fn enabled(&self) -> Option<bool> {
         self.enabled
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ControlGroupMetricTable {
-    pub radius: crate::ResolvedMetric,
-    pub padding_x: crate::ResolvedMetric,
-    pub padding_y: crate::ResolvedMetric,
-    pub gap: crate::ResolvedMetric,
 }

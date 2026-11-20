@@ -202,13 +202,3 @@ pub struct TableRowColorRule {
     pub label_color: String,
     pub divider: String,
 }
-
-#[derive(Clone, Debug)]
-pub struct TableMetricTable {
-    pub radius: crate::ResolvedMetric,
-    pub padding_x: crate::ResolvedMetric,
-    pub padding_y: crate::ResolvedMetric,
-    pub row_min_height: crate::ResolvedMetric,
-    pub row_padding_x: crate::ResolvedMetric,
-    pub row_padding_y: crate::ResolvedMetric,
-}

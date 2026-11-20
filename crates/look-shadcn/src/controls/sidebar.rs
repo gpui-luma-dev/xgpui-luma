@@ -19,7 +19,6 @@ use serde::Deserialize;
 
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::ThemeMode;
 
 use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
@@ -27,9 +26,7 @@ use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
 use crate::stylesheet::StylesheetConfig;
 use crate::stylesheet::find_sidebar_container_color_rule;
-use crate::stylesheet::find_sidebar_item_color_rule;
 use crate::stylesheet::resolve_sidebar_container_color_rule;
-use crate::stylesheet::resolve_sidebar_item_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct SidebarContainerColorTable {
@@ -114,32 +111,6 @@ impl SidebarItemColorTable {
     }
 }
 
-pub fn resolve_sidebar_item_colors(
-    resolver: &LookResolver<'_>,
-    selected: bool,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<SidebarItemColorTable> {
-    resolve_sidebar_item_colors_with_stylesheet(resolver, resolver.stylesheet(), selected, disabled, layer)
-}
-
-pub fn resolve_sidebar_item_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    selected: bool,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<SidebarItemColorTable> {
-    let rule = find_sidebar_item_color_rule(stylesheet, selected, disabled, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching navigation sidebar item color rule"))?;
-    let colors = resolve_sidebar_item_color_rule(resolver, rule, layer)?;
-    Ok(SidebarItemColorTable {
-        foreground: colors.foreground,
-        icon_color: colors.icon_color,
-        background: colors.background,
-    })
-}
-
 pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
     let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
     let resolver =
@@ -151,19 +122,6 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
         border: colors.border.hsla(),
         radius: mode.radii.large,
     }
-}
-
-/// Sidebar focus border with the same disabled-state and missing-token behavior as paint.
-pub fn resolve_sidebar_focus_border(
-    catalog: &crate::catalog::CssTokenMap,
-    theme_mode: ThemeMode,
-    state: InteractionState,
-) -> Option<ResolvedColor> {
-    (state.focused && !state.disabled).then(|| {
-        LookResolver::new(catalog, theme_mode, "sidebar_focus")
-            .resolve_decl("ring")
-            .unwrap_or_else(|_| ResolvedColor::fallback_foreground())
-    })
 }
 
 /// Theme colors used by standalone sidebar frames, separate from navigation items.

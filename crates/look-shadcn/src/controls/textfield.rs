@@ -13,26 +13,7 @@
 
 use serde::Deserialize;
 
-use xgpui_luma::controls::textfield::TextFieldState;
-use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::ThemeMode;
-
-use crate::look_context::LookContext;
-use crate::mode::ShadcnModeTokens;
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_textfield_color_rule;
-use crate::stylesheet::resolve_textfield_color_rule;
-
-fn textfield_style_key(style: ShadcnTextFieldStyle) -> &'static str {
-    match style {
-        ShadcnTextFieldStyle::Outline => "outline",
-        ShadcnTextFieldStyle::Input => "input",
-        ShadcnTextFieldStyle::Primary => "primary",
-        ShadcnTextFieldStyle::Surface => "surface",
-    }
-}
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ShadcnTextFieldStyle {
@@ -68,64 +49,6 @@ impl TextFieldColorTable {
             caret: ResolvedColor::fallback_foreground(),
         }
     }
-}
-
-pub fn resolve_textfield_colors(
-    resolver: &LookResolver<'_>,
-    style: ShadcnTextFieldStyle,
-    enabled: bool,
-    invalid: bool,
-    theme_mode: ThemeMode,
-) -> anyhow::Result<TextFieldColorTable> {
-    resolve_textfield_colors_with_stylesheet(resolver, resolver.stylesheet(), style, enabled, invalid, theme_mode)
-}
-
-pub fn resolve_textfield_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    style: ShadcnTextFieldStyle,
-    enabled: bool,
-    invalid: bool,
-    theme_mode: ThemeMode,
-) -> anyhow::Result<TextFieldColorTable> {
-    let rule = find_textfield_color_rule(stylesheet, textfield_style_key(style), enabled, invalid, theme_mode)
-        .ok_or_else(|| anyhow::anyhow!("no matching textfield color rule"))?;
-    let colors = resolve_textfield_color_rule(resolver, rule)?;
-    Ok(TextFieldColorTable {
-        background: colors.background,
-        foreground: colors.foreground,
-        border: colors.border,
-        placeholder: colors.placeholder,
-        icon: colors.icon,
-        selection_background: colors.selection_background,
-        selection_foreground: colors.selection_foreground,
-        caret: colors.caret,
-    })
-}
-
-/// Final textfield colors, including visible focus and dark input hover.
-pub fn resolve_textfield_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnTextFieldStyle,
-    state: TextFieldState,
-    enabled: bool,
-) -> TextFieldColorTable {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let catalog = ctx.catalog();
-    let resolver = LookResolver::new(catalog, ctx.theme_mode, "textfield").with_stylesheet(mode.stylesheet());
-    let mut colors = resolve_textfield_colors(&resolver, style, enabled, state.invalid, ctx.theme_mode)
-        .unwrap_or_else(|_| TextFieldColorTable::fallback());
-    if style == ShadcnTextFieldStyle::Input
-        && theme_mode == ThemeMode::Dark
-        && enabled
-        && state.hovered
-        && let Ok(hover_fill) = resolver.resolve_decl("input/50")
-    {
-        colors.background = hover_fill;
-    }
-
-    colors
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -226,16 +149,4 @@ pub struct TextfieldColorRule {
     pub selection_background: String,
     pub selection_foreground: String,
     pub caret: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct TextFieldMetricTable {
-    pub min_height: crate::ResolvedMetric,
-    pub icon_size: crate::ResolvedMetric,
-    pub padding_x: crate::ResolvedMetric,
-    pub padding_y: crate::ResolvedMetric,
-    pub radius: crate::ResolvedMetric,
-    pub border_width: crate::ResolvedMetric,
-    pub focus_ring_width: crate::ResolvedMetric,
-    pub focus_ring_offset: crate::ResolvedMetric,
 }

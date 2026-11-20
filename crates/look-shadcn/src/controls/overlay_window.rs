@@ -10,12 +10,3 @@ pub(crate) fn native_overlay_window_stylesheet() -> xgpui_luma::theme::styleshee
         ]),
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct OverlayWindowMetricTable {
-    pub radius: crate::ResolvedMetric,
-    pub padding: crate::ResolvedMetric,
-    pub min_width: crate::ResolvedMetric,
-    pub max_width: crate::ResolvedMetric,
-    pub estimated_height: crate::ResolvedMetric,
-}

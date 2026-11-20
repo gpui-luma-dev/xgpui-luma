@@ -3,7 +3,6 @@
 use gpui::{AnyElement, Div, FontWeight, Hsla, IntoElement, SharedString, div, hsla, px, prelude::*};
 use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma_look_shadcn::ShadcnLook;
-use xgpui_luma_look_shadcn::inspect::ButtonInspectMetrics;
 
 #[derive(Clone, Copy, Debug)]
 pub struct BoxModelLayerColors {
@@ -129,46 +128,7 @@ pub struct InspectBoxModelSnapshot {
     pub focus_ring_offset: f32,
 }
 
-impl InspectBoxModelSnapshot {
-    pub fn from_button_metrics(metrics: &ButtonInspectMetrics) -> Self {
-        Self {
-            height: metrics.height.value_px,
-            padding_x: metrics.padding_x.value_px,
-            padding_y: metrics.padding_y.value_px,
-            border_width: metrics.border_width.value_px,
-            gap: metrics.gap.value_px,
-            radius: metrics.radius.value_px,
-            focus_ring_width: metrics.focus_ring_width.value_px,
-            focus_ring_offset: metrics.focus_ring_offset.value_px,
-        }
-    }
-
-    pub fn from_textfield_metrics(metrics: &xgpui_luma_look_shadcn::inspect::TextFieldInspectMetrics) -> Self {
-        Self {
-            height: metrics.min_height.value_px,
-            padding_x: metrics.padding_x.value_px,
-            padding_y: metrics.padding_y.value_px,
-            border_width: metrics.border_width.value_px,
-            gap: 0.0,
-            radius: metrics.radius.value_px,
-            focus_ring_width: metrics.focus_ring_width.value_px,
-            focus_ring_offset: metrics.focus_ring_offset.value_px,
-        }
-    }
-
-    pub fn from_badge_metrics(metrics: &xgpui_luma_look_shadcn::inspect::BadgeInspectMetrics) -> Self {
-        Self {
-            height: metrics.min_height.value_px,
-            padding_x: metrics.padding_x.value_px,
-            padding_y: metrics.padding_y.value_px,
-            border_width: 0.0,
-            gap: metrics.gap.value_px,
-            radius: metrics.radius.value_px,
-            focus_ring_width: 0.0,
-            focus_ring_offset: 0.0,
-        }
-    }
-}
+impl InspectBoxModelSnapshot {}
 
 fn choice_indicator_only_box_model(
     indicator_size: f32,

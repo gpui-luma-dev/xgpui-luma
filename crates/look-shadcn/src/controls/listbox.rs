@@ -17,8 +17,7 @@ use gpui::{Div, ElementId, Stateful};
 use xgpui_luma::controls::listbox::ListBoxItemState;
 use xgpui_luma::theme::InteractionLayer;
 
-use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::{StylesheetConfig, find_listbox_row_color_rule, resolve_listbox_row_color_rule};
+use crate::provenance::ResolvedColor;
 
 impl crate::ShadcnLook {
     /// Styled, content-free row surface. Attach SDK `ListBoxBinding` for input;
@@ -64,28 +63,6 @@ impl ListBoxRowColorTable {
     pub fn fallback() -> Self {
         Self { label_color: ResolvedColor::fallback_foreground(), background: ResolvedColor::transparent() }
     }
-}
-
-pub fn resolve_listbox_row_colors(
-    resolver: &LookResolver<'_>,
-    disabled: bool,
-    focused: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<ListBoxRowColorTable> {
-    resolve_listbox_row_colors_with_stylesheet(resolver, resolver.stylesheet(), disabled, focused, layer)
-}
-
-pub fn resolve_listbox_row_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    focused: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<ListBoxRowColorTable> {
-    let rule = find_listbox_row_color_rule(stylesheet, disabled, focused, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching listbox row color rule"))?;
-    let colors = resolve_listbox_row_color_rule(resolver, rule, layer)?;
-    Ok(ListBoxRowColorTable { label_color: colors.label_color, background: colors.background })
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]

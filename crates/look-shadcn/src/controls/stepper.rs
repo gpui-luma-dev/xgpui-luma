@@ -7,15 +7,9 @@ use std::collections::HashMap;
 use xgpui_luma::controls::stepper::StepperLook;
 use crate::size::ShadcnSize;
 
-use crate::controls::progress::ProgressColorTable;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::ColorSource;
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::resolve_color_ref;
-use crate::stylesheet::ResolvedFields;
-use crate::controls::progress::resolve_progress_colors_with_stylesheet;
 
 #[derive(Clone, Debug)]
 pub struct StepperColorTable {
@@ -47,65 +41,6 @@ impl StepperColorTable {
             track_muted: ResolvedColor { value: gpui::hsla(0.0, 0.0, 0.0, 0.0), source: ColorSource::Transparent },
         }
     }
-}
-
-pub fn resolve_stepper_colors(resolver: &LookResolver<'_>, enabled: bool) -> anyhow::Result<StepperColorTable> {
-    resolve_stepper_colors_with_stylesheet(resolver, resolver.stylesheet(), enabled)
-}
-
-pub fn resolve_stepper_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    enabled: bool,
-) -> anyhow::Result<StepperColorTable> {
-    let progress = resolve_progress_colors_with_stylesheet(resolver, stylesheet, enabled)?;
-    stepper_colors_from_progress(resolver, &progress, enabled)
-}
-
-fn stepper_colors_from_progress(
-    resolver: &LookResolver<'_>,
-    progress: &ProgressColorTable,
-    enabled: bool,
-) -> anyhow::Result<StepperColorTable> {
-    let fields = ResolvedFields::default();
-    let incomplete_bg = resolve_color_ref(resolver, "background", &fields)?;
-    let incomplete_border = resolve_color_ref(resolver, "border", &fields)?;
-    let incomplete_fg = resolve_color_ref(resolver, "muted-foreground", &fields)?;
-
-    let (complete_bg, complete_fg, in_progress_bg, in_progress_fg, track_active, track_muted) = if enabled {
-        (
-            progress.progress_color.clone(),
-            progress.track_color.clone(),
-            progress.progress_color.clone(),
-            progress.track_color.clone(),
-            progress.progress_color.clone(),
-            progress.track_color.clone(),
-        )
-    } else {
-        // Disabled progress collapses track/progress to the same token; badges need
-        // checkbox-like contrast (muted fill + muted-foreground glyph).
-        let muted = resolve_color_ref(resolver, "muted", &fields)?;
-        (
-            muted.clone(),
-            progress.progress_color.clone(),
-            muted.clone(),
-            progress.progress_color.clone(),
-            progress.progress_color.clone(),
-            muted,
-        )
-    };
-
-    Ok(StepperColorTable {
-        complete_bg,
-        complete_fg,
-        in_progress_bg,
-        in_progress_fg,
-        incomplete_bg,
-        incomplete_border,
-        incomplete_fg,
-        track_active,
-        track_muted,
-    })
 }
 
 /// The Shadcn stepper at `size`, drawn from `.lss` (`style/stepper.lss`) for `mode`'s catalog.

@@ -13,12 +13,3 @@ pub(crate) fn native_context_menu_stylesheet() -> xgpui_luma::theme::stylesheet:
         ..Default::default()
     }
 }
-
-#[derive(Clone, Debug)]
-pub struct ContextMenuMetricTable {
-    pub target_padding_x: crate::ResolvedMetric,
-    pub target_padding_y: crate::ResolvedMetric,
-    pub target_radius: crate::ResolvedMetric,
-    pub target_min_width: crate::ResolvedMetric,
-    pub menu: crate::controls::floating_menu::FloatingMenuMetricTable,
-}

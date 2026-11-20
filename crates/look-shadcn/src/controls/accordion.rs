@@ -16,11 +16,7 @@ use serde::Deserialize;
 
 use xgpui_luma::theme::InteractionLayer;
 
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_accordion_trigger_color_rule;
-use crate::stylesheet::resolve_accordion_trigger_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct AccordionTriggerColorTable {
@@ -41,32 +37,6 @@ impl AccordionTriggerColorTable {
             background: None,
         }
     }
-}
-
-pub fn resolve_accordion_trigger_colors(
-    resolver: &LookResolver<'_>,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<AccordionTriggerColorTable> {
-    resolve_accordion_trigger_colors_with_stylesheet(resolver, resolver.stylesheet(), disabled, layer)
-}
-
-pub fn resolve_accordion_trigger_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<AccordionTriggerColorTable> {
-    let rule = find_accordion_trigger_color_rule(stylesheet, disabled, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching accordion trigger color rule"))?;
-    let colors = resolve_accordion_trigger_color_rule(resolver, rule, layer)?;
-    Ok(AccordionTriggerColorTable {
-        foreground: colors.foreground,
-        icon_color: colors.icon_color,
-        chevron_color: colors.chevron_color,
-        border_color: colors.border_color,
-        background: colors.background,
-    })
 }
 
 #[derive(Clone, Debug)]

@@ -14,11 +14,7 @@ use serde::Deserialize;
 
 use xgpui_luma::theme::InteractionLayer;
 
-use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_tree_view_row_color_rule;
-use crate::stylesheet::resolve_tree_view_row_color_rule;
 
 #[derive(Clone, Debug)]
 pub struct TreeViewRowColorTable {
@@ -37,31 +33,6 @@ impl TreeViewRowColorTable {
             background: None,
         }
     }
-}
-
-pub fn resolve_tree_view_row_colors(
-    resolver: &LookResolver<'_>,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<TreeViewRowColorTable> {
-    resolve_tree_view_row_colors_with_stylesheet(resolver, resolver.stylesheet(), disabled, layer)
-}
-
-pub fn resolve_tree_view_row_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    disabled: bool,
-    layer: InteractionLayer,
-) -> anyhow::Result<TreeViewRowColorTable> {
-    let rule = find_tree_view_row_color_rule(stylesheet, disabled, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching tree view row color rule"))?;
-    let colors = resolve_tree_view_row_color_rule(resolver, rule, layer)?;
-    Ok(TreeViewRowColorTable {
-        foreground: colors.foreground,
-        icon_color: colors.icon_color,
-        chevron_color: colors.chevron_color,
-        background: colors.background,
-    })
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -130,15 +101,4 @@ pub struct TreeViewRowColorRule {
     pub icon_color: String,
     pub chevron_color: String,
     pub background: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct TreeViewMetricTable {
-    pub row_height: crate::ResolvedMetric,
-    pub base_padding_x: crate::ResolvedMetric,
-    pub indentation_width: crate::ResolvedMetric,
-    pub inner_gap: crate::ResolvedMetric,
-    pub radius: crate::ResolvedMetric,
-    pub icon_size: crate::ResolvedMetric,
-    pub chevron_size: crate::ResolvedMetric,
 }
