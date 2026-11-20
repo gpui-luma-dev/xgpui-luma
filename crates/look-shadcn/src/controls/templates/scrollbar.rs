@@ -1,36 +1,39 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::scrollbar::{ScrollbarTheme, ThemedScrollbarTemplate};
-use xgpui_luma::theme::InteractionState;
+use xgpui_luma::controls::scrollbar::{
+    ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTemplate, ScrollbarTheme, StyledScrollbarTheme,
+    ThemedScrollbarTemplate,
+};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
 
-use crate::controls::scrollbar::scrollbar_look;
 use crate::look::ShadcnLook;
 
+/// The Shadcn scrollbar from `.lss` (`style/scrollbar.lss`) with the look's live control metrics.
 pub fn scrollbar_theme(theme: ShadcnLook) -> Arc<dyn ScrollbarTheme> {
-    Arc::new(ShadcnScrollbarTheme { theme: theme.clone() })
+    let styled = StyledScrollbarTheme::new(theme.style_binding("scrollbar"), MetricTokens::default());
+    Arc::new(ShadcnScrollbarTheme { theme, styled })
 }
 
 struct ShadcnScrollbarTheme {
     theme: ShadcnLook,
+    styled: StyledScrollbarTheme,
 }
 
 impl ScrollbarTheme for ShadcnScrollbarTheme {
     fn resolve(
         &self,
         state: InteractionState,
-        orientation: xgpui_luma::controls::scrollbar::ScrollbarOrientation,
-        style: xgpui_luma::controls::scrollbar::ScrollbarStyle,
-    ) -> xgpui_luma::controls::scrollbar::ScrollbarLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        scrollbar_look(tokens.as_ref(), state, orientation, size, style)
+        orientation: ScrollbarOrientation,
+        style: ScrollbarStyle,
+    ) -> ScrollbarLook {
+        self.styled.resolve(state, orientation, style)
     }
 
-    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
+    fn metrics(&self) -> MetricTokens {
         self.theme.mode_tokens().metrics_for(self.theme.size())
     }
 }
 
-pub fn scrollbar_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::scrollbar::ScrollbarTemplate> {
-    Arc::new(ThemedScrollbarTemplate::new(Arc::new(ShadcnScrollbarTheme { theme: theme.clone() })))
+pub fn scrollbar_template(theme: ShadcnLook) -> Arc<dyn ScrollbarTemplate> {
+    Arc::new(ThemedScrollbarTemplate::new(scrollbar_theme(theme)))
 }

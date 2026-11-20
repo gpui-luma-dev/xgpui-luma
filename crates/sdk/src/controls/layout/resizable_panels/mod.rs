@@ -22,3 +22,4 @@ mod callback;
 pub use callback::ResizablePanelsEventExt;
 
 pub use model::ResizablePanelsMotion;
+pub use super::styled::StyledResizablePanelsTheme;

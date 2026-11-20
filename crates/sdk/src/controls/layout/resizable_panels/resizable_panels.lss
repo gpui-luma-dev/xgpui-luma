@@ -1,0 +1,25 @@
+// SDK resizable panels. Layer: sdk. Read by `StyledResizablePanelsTheme` (styled.rs): the outer frame, the
+// split dividers and their grips. Handle sizes come from the stylesheet's resize handle metrics. Slide
+// panels draw their resize edge with the same look.
+
+/// Panels split by draggable dividers.
+resizable_panels {
+  /// The divider's painted width and the whole group's opacity when disabled.
+  divider_width: length = exact(1)
+  disabled_opacity: number = 0.45
+  /// A divider, its grip, and the grip under the pointer or while dragged.
+  divider: color = palette.border.strong
+  grip: color = palette.border.strong
+  grip_emphasis: color = palette.state.hover.background
+
+  /// The outer frame.
+  part root {
+    border       = palette.border.default
+    border_width = exact(1)
+    :disabled {
+      divider       = palette.state.disabled.background
+      grip          = palette.state.disabled.foreground
+      grip_emphasis = palette.state.disabled.foreground
+    }
+  }
+}

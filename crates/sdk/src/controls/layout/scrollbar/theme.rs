@@ -41,7 +41,7 @@ pub struct DefaultScrollbarTheme {
 pub fn default_scrollbar_theme() -> Arc<dyn ScrollbarTheme> {
     static THEME: OnceLock<Arc<dyn ScrollbarTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultScrollbarTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::StyledScrollbarTheme::sdk())).clone()
 }
 
 impl DefaultScrollbarTheme {

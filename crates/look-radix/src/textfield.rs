@@ -101,6 +101,17 @@ pub(crate) fn live_source(look: &Look) -> xgpui_luma::style::ThemeSource {
     xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme()))
 }
 
+/// A live binding of `control` to the look's `.lss` at the look's size.
+pub(crate) fn sized_binding(look: &Look, control: &'static str) -> xgpui_luma::style::StyleBinding {
+    let binding = xgpui_luma::style::StyleBinding::new(control, live_source(look));
+    let size = look.size();
+    if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    }
+}
+
 pub fn textfield_theme(look: &Look) -> Arc<dyn TextFieldTheme> {
     textfield_theme_with(look, TextFieldVariant::default())
 }

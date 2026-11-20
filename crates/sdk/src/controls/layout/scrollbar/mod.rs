@@ -17,3 +17,4 @@ pub use theme::{DefaultScrollbarTheme, ScrollbarLook, ScrollbarTheme, default_sc
 
 mod callback;
 pub use callback::ScrollbarEventExt;
+pub use super::styled::StyledScrollbarTheme;

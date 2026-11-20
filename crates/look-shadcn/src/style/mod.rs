@@ -2,7 +2,7 @@
 //!
 //! [`sources`] lists the look's `.lss` files, layered over the SDK's in [`stylesheet`]. [`ShadcnTokens`]
 //! is the native token source: the `css` root reads the bound mode's CSS catalog, and the look functions
-//! (`outline_layer`, `action_layer`, `action_foreground`) call the existing [`LookResolver`]. Sizes
+//! (`outline_layer`, `action_layer`, `action_foreground`, `darken`) call the existing [`LookResolver`]. Sizes
 //! (`size sm`, `size lg`) and variants live only in these files; `md` is the base.
 
 use std::sync::{Arc, OnceLock};
@@ -57,7 +57,11 @@ shadcn_sources![
     "drag_preview.lss",
     "tree_view.lss",
     "table.lss",
-    "listbox.lss"
+    "listbox.lss",
+    "scrollbar.lss",
+    "dock_splitter.lss",
+    "resizable_panels.lss",
+    "split_view.lss"
 ];
 
 /// The SDK's files with the Shadcn look's files over them.
@@ -224,7 +228,7 @@ impl TokenSource for ShadcnTokens {
     fn function(&self, name: &str) -> Option<FunctionSig> {
         let (min_args, max_args) = match name {
             "outline_layer" | "action_foreground" => (1, 1),
-            "action_layer" => (2, 2),
+            "action_layer" | "darken" => (2, 2),
             _ => return None,
         };
         Some(FunctionSig { min_args, max_args, returns: Kind::Color })
@@ -242,6 +246,18 @@ impl TokenSource for ShadcnTokens {
             "outline_layer" => resolver.resolve_outline_layer_decl(layer_arg(args, 0)?),
             "action_layer" => resolver.resolve_action_layer_decl(style_arg(args, 0)?, layer_arg(args, 1)?),
             "action_foreground" => resolver.resolve_action_foreground_decl(style_arg(args, 0)?),
+            "darken" => {
+                let amount = match args.get(1) {
+                    Some(Value::Number(amount)) => *amount,
+                    other => return Err(format!("darken: expected an amount, got {other:?}")),
+                };
+                // A quoted token name: a bare `border` would read the control's own property.
+                let token = match args.first() {
+                    Some(Value::Str(token)) => token.replace('_', "-"),
+                    other => return Err(format!("darken: expected a quoted token name, got {other:?}")),
+                };
+                resolver.resolve_darken_decl(&token, amount)
+            }
             _ => return Err(format!("unknown function \"{name}\"")),
         };
         resolved.map(|c| color(c.hsla())).map_err(|e| format!("{name}: {e}"))

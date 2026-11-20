@@ -348,22 +348,21 @@ radius=11
 
 #[test]
 fn resize_chrome_uses_common_stylesheet_including_zero_width() {
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
+    use xgpui_luma::controls::resizable_panels::{DefaultResizablePanelsTheme, ResizablePanelsTheme};
+    let common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.resizable_panels.geometry]
 border_width=0
 divider_width=3
 disabled_opacity=0.2
 "#])
     .unwrap();
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let theme = look.resizable_panels_theme();
+    // The look's panels and slide panel are drawn from `.lss`; the token-built SDK theme still reads these.
+    let tokens = common.theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
+    let theme = DefaultResizablePanelsTheme::new(tokens);
     let enabled = theme.resolve(InteractionState::default());
     assert_eq!((enabled.border_width, enabled.divider_width), (0.0, 3.0));
     let disabled = theme.resolve(InteractionState { disabled: true, ..Default::default() });
     assert_eq!(disabled.disabled_opacity, 0.2);
-    let slide = crate::controls::slide_panel::slide_panel_panels_look(&look);
-    assert_eq!((slide.border_width, slide.divider_width), (0.0, 3.0));
 }
 
 #[test]
@@ -589,18 +588,16 @@ subtitle_opacity=0.2
     let sdk_dock = DefaultDockSplitterTheme::new(tokens.clone());
     let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
     let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
     // The look's toolbar is drawn from `.lss`; the token-built SDK theme still reads these overrides.
     let resolved = sdk_toolbar.resolve(true, ToolbarVariant::Outline);
     assert_eq!((resolved.border_width, resolved.separator_width), (0.0, 3.0));
-    for resolved in [sdk_dock.resolve(true), look.dock_splitter_theme().resolve(true)] {
-        assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
-    }
+    // The look's splitters are drawn from `.lss` too.
+    let resolved = sdk_dock.resolve(true);
+    assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
     let resolved = sdk_stepper.resolve(true);
     assert_eq!((resolved.geometry.content_gap, resolved.geometry.glyph_scale), (0.0, 0.7));
-    for resolved in [sdk_split.resolve(false, true), look.split_view_theme().resolve(false, true)] {
-        assert_eq!((resolved.geometry.hitbox_width, resolved.geometry.cue_width), (32.0, 0.0));
-    }
+    let resolved = sdk_split.resolve(false, true);
+    assert_eq!((resolved.geometry.hitbox_width, resolved.geometry.cue_width), (32.0, 0.0));
 }
 
 #[test]

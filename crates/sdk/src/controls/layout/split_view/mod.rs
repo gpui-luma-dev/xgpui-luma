@@ -17,3 +17,4 @@ mod callback;
 pub use callback::SplitViewEventExt;
 
 pub use model::SplitViewMotion;
+pub use super::styled::StyledSplitViewTheme;

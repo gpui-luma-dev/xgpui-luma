@@ -34,7 +34,7 @@ pub struct DefaultResizablePanelsTheme {
 pub fn default_resizable_panels_theme() -> Arc<dyn ResizablePanelsTheme> {
     static THEME: OnceLock<Arc<dyn ResizablePanelsTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultResizablePanelsTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::StyledResizablePanelsTheme::sdk())).clone()
 }
 
 impl DefaultResizablePanelsTheme {

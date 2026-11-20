@@ -305,6 +305,21 @@ impl ShadcnLook {
         self.state.style_theme.get(self)
     }
 
+    /// A live binding of `control` to the look's `.lss` at the look's size.
+    pub(crate) fn style_binding(&self, control: &'static str) -> xgpui_luma::style::StyleBinding {
+        let look = self.clone();
+        let binding = xgpui_luma::style::StyleBinding::new(
+            control,
+            xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme())),
+        );
+        let size = self.size();
+        if size != crate::ShadcnSize::Md {
+            binding.attr("size", size.key())
+        } else {
+            binding
+        }
+    }
+
     pub fn catalog(&self) -> Arc<CssTokenCatalog> {
         Arc::clone(&self.snapshot().catalog)
     }

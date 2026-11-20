@@ -75,7 +75,11 @@ radix_sources![
     "drag_preview.lss",
     "tree_view.lss",
     "table.lss",
-    "listbox.lss"
+    "listbox.lss",
+    "scrollbar.lss",
+    "dock_splitter.lss",
+    "resizable_panels.lss",
+    "split_view.lss"
 ];
 
 /// The SDK's files with the Radix look's files over them.

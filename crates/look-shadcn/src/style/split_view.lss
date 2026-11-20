@@ -1,0 +1,11 @@
+// Shadcn split view. Layer: look. A border separator, its hover layer under the pointer; muted foreground
+// when disabled.
+
+split_view {
+  separator       = css.border
+  separator_hover = css.border_hover
+
+  part root {
+    :disabled { separator = css.muted_foreground  separator_hover = css.muted_foreground }
+  }
+}

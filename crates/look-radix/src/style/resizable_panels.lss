@@ -1,0 +1,13 @@
+// Radix resizable panels. Layer: look. A border frame and dividers with muted grips that take the focus
+// color under the pointer; disabled dividers gray 4 and grips muted.
+
+resizable_panels {
+  divider       = radix.role.border
+  grip          = radix.role.muted_foreground
+  grip_emphasis = radix.role.focus
+
+  part root {
+    border = radix.role.border
+    :disabled { divider = gray[4]  grip = radix.role.muted_foreground  grip_emphasis = radix.role.muted_foreground }
+  }
+}

@@ -24,7 +24,7 @@ pub struct DefaultSplitViewTheme {
 pub fn default_split_view_theme() -> Arc<dyn SplitViewTheme> {
     static THEME: OnceLock<Arc<dyn SplitViewTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultSplitViewTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::StyledSplitViewTheme::sdk())).clone()
 }
 
 impl DefaultSplitViewTheme {

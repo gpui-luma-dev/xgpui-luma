@@ -1,0 +1,21 @@
+// Shadcn scrollbar. Layer: look. A border-colored thumb, darker while dragged; the soft track and any
+// disabled track muted, with a muted-foreground thumb when disabled. Sizes sm and lg.
+
+scrollbar {
+  thumb = css.border
+  size sm { thickness = exact(10)  track_thickness = exact(3)  thumb_thickness = exact(6)   min_thumb_length = exact(24) }
+  size lg { thickness = exact(14)  track_thickness = exact(5)  thumb_thickness = exact(10)  min_thumb_length = exact(32) }
+
+  part root {
+    :hover    { thumb = css.border }
+    :pressed  { thumb = darken("border", 0.08) }
+    :disabled { background = css.muted  thumb = css.muted_foreground }
+  }
+
+  variant soft {
+    part root {
+      background := css.muted
+      :disabled { background = css.muted }
+    }
+  }
+}

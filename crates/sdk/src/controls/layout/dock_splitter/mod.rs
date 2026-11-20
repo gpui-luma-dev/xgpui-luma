@@ -14,3 +14,4 @@ pub use theme::{DockSplitterLook, DockSplitterTheme, DefaultDockSplitterTheme, d
 
 mod callback;
 pub use callback::DockSplitterEventExt;
+pub use super::styled::StyledDockSplitterTheme;

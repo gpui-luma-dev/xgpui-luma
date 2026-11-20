@@ -27,7 +27,7 @@ pub struct DefaultDockSplitterTheme {
 pub fn default_dock_splitter_theme() -> Arc<dyn DockSplitterTheme> {
     static THEME: OnceLock<Arc<dyn DockSplitterTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultDockSplitterTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::StyledDockSplitterTheme::sdk())).clone()
 }
 
 impl DefaultDockSplitterTheme {
