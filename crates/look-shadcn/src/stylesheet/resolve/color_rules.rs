@@ -2,7 +2,7 @@ use xgpui_luma::theme::InteractionLayer;
 
 use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::config::{ButtonColorRule, ScrollbarColorRule, SidebarContainerColorRule, SliderColorRule};
+use crate::stylesheet::config::{ButtonColorRule, ScrollbarColorRule, SidebarContainerColorRule};
 
 use super::{ResolveContext, ResolvedFields, resolve_color_ref, resolve_stylesheet_color};
 
@@ -24,24 +24,6 @@ pub fn resolve_button_color_rule(
     };
 
     Ok(ResolvedButtonColors { background, foreground, border })
-}
-
-pub fn resolve_slider_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &SliderColorRule,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-) -> anyhow::Result<ResolvedSliderColors> {
-    let ctx = ResolveContext { style, layer, disabled: layer == InteractionLayer::Disabled };
-    let mut fields = ResolvedFields::default();
-    let track_background = resolve_stylesheet_color(resolver, &rule.track_background, &fields, &ctx)?;
-    fields.insert("track_background", track_background.clone());
-    let fill_background = resolve_stylesheet_color(resolver, &rule.fill_background, &fields, &ctx)?;
-    fields.insert("fill_background", fill_background.clone());
-    let thumb_background = resolve_stylesheet_color(resolver, &rule.thumb_background, &fields, &ctx)?;
-    fields.insert("thumb_background", thumb_background.clone());
-    let thumb_border = resolve_stylesheet_color(resolver, &rule.thumb_border, &fields, &ctx)?;
-    Ok(ResolvedSliderColors { track_background, fill_background, thumb_background, thumb_border })
 }
 
 pub fn resolve_scrollbar_color_rule(
@@ -75,14 +57,6 @@ pub fn resolve_sidebar_container_color_rule(
 pub struct ResolvedStepperMetrics {
     pub step_badge_size: f32,
     pub track_thickness: f32,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedSliderColors {
-    pub track_background: ResolvedColor,
-    pub fill_background: ResolvedColor,
-    pub thumb_background: ResolvedColor,
-    pub thumb_border: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]

@@ -113,20 +113,6 @@ impl ShadcnModeTokens {
         &self.sized_common[index]
     }
 
-    /// Common stylesheet for `size`, reusing the prepared copy when `stylesheet` is this
-    /// snapshot's own configuration.
-    pub(crate) fn sized_common<'a>(
-        &'a self,
-        stylesheet: &'a crate::stylesheet::StylesheetConfig,
-        size: crate::ShadcnSize,
-    ) -> std::borrow::Cow<'a, xgpui_luma::theme::stylesheet::CommonStylesheet> {
-        if std::ptr::eq(stylesheet, self.stylesheet.as_ref()) {
-            std::borrow::Cow::Borrowed(self.common_for(size))
-        } else {
-            std::borrow::Cow::Owned(stylesheet.common.with_size_key(size.key()))
-        }
-    }
-
     /// Standard shadow previews are prepared with this immutable theme snapshot.
     pub(crate) fn shadow_preview(&self, token: &str) -> Option<&[gpui::BoxShadow]> {
         self.shadow_previews.get(token).map(Vec::as_slice)

@@ -9,10 +9,8 @@ use xgpui_luma::controls::slider::{
     TrackPresentation,
 };
 use xgpui_luma::infra::value::ControlRange;
-use xgpui_luma::theme::InteractionState;
 
 use super::button::{ButtonRadiusPreset, ShadcnButtonStyle};
-use super::slider::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset, slider_look};
 use crate::look::{ShadcnLook, resolve_look_from};
 use crate::size::ShadcnSize;
 
@@ -372,16 +370,8 @@ impl Slider {
             .wrapping(self.wrapping)
             .reversed(self.reversed);
         if let Some(preset) = self.radius {
-            let tokens = look.mode_tokens();
-            let resolved =
-                slider_look(tokens.as_ref(), look.mode(), self.style, self.size, InteractionState::default());
-            builder = builder
-                .corner_radius(
-                    px(resolve_slider_track_radius_preset(preset, &tokens.radii, resolved.track_height)).into(),
-                )
-                .thumb_radius(
-                    px(resolve_slider_thumb_radius_preset(preset, &tokens.radii, resolved.thumb_size)).into(),
-                );
+            let (track, thumb) = crate::controls::slider::slider_preset_corners(&look, self.size, preset);
+            builder = builder.corner_radius(px(track).into()).thumb_radius(px(thumb).into());
         }
         if let Some(orientation) = self.orientation {
             builder = builder.orientation(orientation);

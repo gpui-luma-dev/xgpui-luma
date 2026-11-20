@@ -13,51 +13,13 @@
 use crate::stylesheet::config::{LayeredElevationRule, matches_optional_layer};
 use serde::Deserialize;
 
-use xgpui_luma::controls::slider::SliderLook;
-use xgpui_luma::theme::{ControlSizes, InteractionLayer, InteractionState, ThemeMode};
+use xgpui_luma::theme::{ControlSizes, InteractionLayer, ThemeMode};
 
-use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
-use crate::look_context::LookContext;
+use crate::controls::button::ButtonRadiusPreset;
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::{LookResolver, ResolvedColor};
-use crate::shadow::parse_shadow_token;
+use crate::provenance::ResolvedColor;
 use crate::size::ShadcnSize;
-use crate::stylesheet::{
-    StylesheetConfig, find_slider_color_rule, resolve_layered_elevation_shadow, resolve_slider_color_rule,
-};
-
-/// Shared corner-radius preset resolution for slider parts.
-///
-/// Medium/large/full resolve to a pill/circle for the given cross-axis size.
-fn resolve_slider_part_radius_preset(
-    preset: ButtonRadiusPreset,
-    radii: &crate::ShadcnRadii,
-    cross_axis_size: f32,
-) -> f32 {
-    match preset {
-        // A corner never exceeds half the part, which is already a pill.
-        ButtonRadiusPreset::None | ButtonRadiusPreset::Small => radii.get(preset).min(cross_axis_size / 2.0),
-        ButtonRadiusPreset::Medium | ButtonRadiusPreset::Large | ButtonRadiusPreset::Full => cross_axis_size / 2.0,
-    }
-}
-
-/// Thumb corner radius presets for slider controls.
-pub fn resolve_slider_thumb_radius_preset(
-    preset: ButtonRadiusPreset,
-    metrics: &crate::ShadcnRadii,
-    thumb_size: f32,
-) -> f32 {
-    resolve_slider_part_radius_preset(preset, metrics, thumb_size)
-}
-
-/// Track end-cap radius presets for slider controls.
-pub fn resolve_slider_track_radius_preset(
-    preset: ButtonRadiusPreset,
-    metrics: &crate::ShadcnRadii,
-    track_height: f32,
-) -> f32 {
-    resolve_slider_part_radius_preset(preset, metrics, track_height)
-}
+use crate::stylesheet::StylesheetConfig;
 
 #[derive(Clone, Debug)]
 pub struct SliderColorTable {
@@ -75,308 +37,6 @@ impl SliderColorTable {
             thumb_background: ResolvedColor::fallback_foreground(),
             thumb_border: ResolvedColor::fallback_foreground(),
         }
-    }
-}
-
-pub fn resolve_slider_colors(
-    resolver: &LookResolver<'_>,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-) -> anyhow::Result<SliderColorTable> {
-    resolve_slider_colors_with_stylesheet(resolver, resolver.stylesheet(), style, layer)
-}
-
-pub fn resolve_slider_colors_with_stylesheet(
-    resolver: &LookResolver<'_>,
-    stylesheet: &StylesheetConfig,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-) -> anyhow::Result<SliderColorTable> {
-    let style_key = match style {
-        ShadcnButtonStyle::Primary => "primary",
-        ShadcnButtonStyle::Secondary => "secondary",
-        ShadcnButtonStyle::Outline => "outline",
-        ShadcnButtonStyle::Ghost => "ghost",
-        ShadcnButtonStyle::ContentOnly => "primary",
-    };
-    let rule = find_slider_color_rule(stylesheet, style_key, layer)
-        .ok_or_else(|| anyhow::anyhow!("no matching slider color rule"))?;
-    let colors = resolve_slider_color_rule(resolver, rule, style, layer)?;
-    Ok(SliderColorTable {
-        track_background: colors.track_background,
-        fill_background: colors.fill_background,
-        thumb_background: colors.thumb_background,
-        thumb_border: colors.thumb_border,
-    })
-}
-
-pub fn slider_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    size: ShadcnSize,
-    state: InteractionState,
-) -> SliderLook {
-    slider_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, size, state)
-}
-
-pub(crate) fn slider_look_with_stylesheet(
-    mode: &ShadcnModeTokens,
-    stylesheet: &StylesheetConfig,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    size: ShadcnSize,
-    state: InteractionState,
-) -> SliderLook {
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let state = ctx.state;
-    let catalog = ctx.catalog();
-    let layer = state.layer();
-    let thumb_shadow = slider_elevation_shadow(catalog, stylesheet, layer);
-    let resolver = LookResolver::new(catalog, ctx.theme_mode, "slider").with_stylesheet(stylesheet);
-    let colors = resolve_slider_colors(&resolver, style, layer).unwrap_or_else(|_| SliderColorTable::fallback());
-    let (geometry, _, radius) = slider_geometry_with_stylesheet(mode, stylesheet, size);
-
-    SliderLook {
-        thumb_border_width: mode.metrics.border_width,
-        decoration: mode.sized_common(stylesheet, size).slider.decoration(),
-        track_background: colors.track_background.hsla(),
-        fill_background: colors.fill_background.hsla(),
-        thumb_background: colors.thumb_background.hsla(),
-        thumb_border: colors.thumb_border.hsla(),
-        thumb_shadow,
-        width: geometry.width,
-        height: geometry.height,
-        track_height: geometry.track_height,
-        thumb_size: geometry.thumb_size,
-        radius,
-    }
-}
-
-fn slider_elevation_shadow(
-    catalog: &crate::catalog::CssTokenMap,
-    stylesheet: &StylesheetConfig,
-    layer: InteractionLayer,
-) -> Vec<gpui::BoxShadow> {
-    let Some(token) = resolve_layered_elevation_shadow(&stylesheet.slider.elevation_rules, layer) else {
-        return Vec::new();
-    };
-    parse_shadow_token(catalog, &token).unwrap_or_default()
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::BTreeMap;
-    use xgpui_luma::theme::{InteractionState, ThemeMode};
-
-    use super::slider_look;
-    use crate::catalog::CssTokenMap;
-    use crate::controls::button::{ButtonRadiusPreset, ShadcnButtonStyle};
-    use crate::mode::ShadcnModeTokens;
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.8 0.02 200)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("card".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-            ("shadow-sm".into(), "0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)".into()),
-        ]))
-    }
-
-    fn astrovista_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "hsl(15.1765 72.6496% 54.1176%)".into()),
-            ("primary-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("secondary".into(), "hsl(217.2973 44.0476% 32.9412%)".into()),
-            ("secondary-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("background".into(), "hsl(204.0000 12.1951% 91.9608%)".into()),
-            ("foreground".into(), "hsl(0 0% 20%)".into()),
-            ("muted".into(), "hsl(210 20.0000% 98.0392%)".into()),
-            ("muted-foreground".into(), "hsl(220 8.9362% 46.0784%)".into()),
-            ("accent".into(), "hsl(207.6923 46.4286% 89.0196%)".into()),
-            ("border".into(), "hsl(0 0% 80%)".into()),
-            ("input".into(), "hsl(220 15.7895% 96.2745%)".into()),
-            ("ring".into(), "hsl(13.2143 73.0435% 54.9020%)".into()),
-            ("card".into(), "hsl(0 0% 100%)".into()),
-            ("shadow-sm".into(), "0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)".into()),
-        ]))
-    }
-
-    #[test]
-    fn slider_look_resolves_stylesheet_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let look = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(!look.thumb_shadow.is_empty());
-    }
-
-    #[test]
-    fn disabled_slider_look_has_no_shadow() {
-        let mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        let look = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState { disabled: true, ..InteractionState::default() },
-        );
-
-        assert!(look.thumb_shadow.is_empty());
-    }
-
-    #[test]
-    fn primary_slider_uses_border_track_and_primary_fill() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert_eq!(look.track_background, catalog.color("border").expect("border"));
-        assert_eq!(look.fill_background, catalog.color("primary").expect("primary"));
-        assert_eq!(look.thumb_background, catalog.color("background").expect("background"));
-        assert_ne!(look.track_background, catalog.color("secondary").expect("secondary"));
-    }
-
-    #[test]
-    fn secondary_slider_uses_secondary_foreground_fill() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert_eq!(look.track_background, catalog.color("border").expect("border"));
-        assert_eq!(look.fill_background, catalog.color("secondary-foreground").expect("secondary-foreground"));
-        assert_eq!(look.thumb_border, catalog.color("secondary-foreground").expect("secondary-foreground"));
-        assert_eq!(look.thumb_background, catalog.color("background").expect("background"));
-        assert_ne!(look.fill_background, catalog.color("secondary").expect("secondary"));
-    }
-
-    #[test]
-    fn disabled_slider_track_background_matches_enabled() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let enabled = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let disabled = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState { disabled: true, ..InteractionState::default() },
-        );
-
-        assert_eq!(disabled.track_background, enabled.track_background);
-        assert_eq!(disabled.track_background, catalog.color("border").expect("border"));
-    }
-
-    #[test]
-    fn astrovista_light_track_is_border_not_white_muted() {
-        let catalog = astrovista_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        let border = catalog.color("border").expect("border");
-        let muted = catalog.color("muted").expect("muted");
-        let card = catalog.color("card").expect("card");
-
-        assert_eq!(look.track_background, border);
-        assert_eq!(look.fill_background, catalog.color("primary").expect("primary"));
-        assert_ne!(look.track_background, catalog.color("secondary").expect("secondary"));
-        assert!(border.l > muted.l || (border.l - muted.l).abs() > 0.05);
-        assert!(border.l < card.l - 0.05);
-    }
-
-    #[test]
-    fn slider_size_changes_metrics() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-
-        let sm = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Sm,
-            InteractionState::default(),
-        );
-        let md = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let lg = slider_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            crate::ShadcnSize::Lg,
-            InteractionState::default(),
-        );
-
-        assert!(sm.height < md.height);
-        assert!(md.height < lg.height);
-        assert!(sm.track_height < md.track_height);
-        assert!(md.track_height < lg.track_height);
-        assert!(sm.thumb_size < md.thumb_size);
-        assert!(md.thumb_size < lg.thumb_size);
-    }
-
-    #[test]
-    fn slider_radius_presets_use_square_and_pill_shapes() {
-        use super::{resolve_slider_thumb_radius_preset, resolve_slider_track_radius_preset};
-        let metrics = crate::ShadcnRadii::default();
-        let thumb_size = 16.0;
-        let track_height = 6.0;
-        let thumb_circle = thumb_size / 2.0;
-        let track_pill = track_height / 2.0;
-
-        assert_eq!(resolve_slider_thumb_radius_preset(ButtonRadiusPreset::None, &metrics, thumb_size), 0.0);
-        assert_eq!(resolve_slider_track_radius_preset(ButtonRadiusPreset::None, &metrics, track_height), 0.0);
-        assert!(resolve_slider_thumb_radius_preset(ButtonRadiusPreset::Small, &metrics, thumb_size) < thumb_circle);
-        assert!(resolve_slider_track_radius_preset(ButtonRadiusPreset::Small, &metrics, track_height) <= track_pill);
-        assert!(
-            resolve_slider_track_radius_preset(ButtonRadiusPreset::Small, &metrics, track_height * 2.0) < track_height
-        );
-        assert_eq!(resolve_slider_thumb_radius_preset(ButtonRadiusPreset::Medium, &metrics, thumb_size), thumb_circle);
-        assert_eq!(resolve_slider_track_radius_preset(ButtonRadiusPreset::Medium, &metrics, track_height), track_pill);
     }
 }
 
@@ -597,4 +257,29 @@ pub fn resolve_slider_metrics_with_stylesheet(
             pill_radius_metric(&mode.catalog, radius)
         },
     }
+}
+
+/// The track and thumb end radii for a corner preset at `size`, from `.lss` (`style/slider.lss`'s
+/// `radius` attribute).
+pub(crate) fn slider_preset_corners(
+    look: &crate::ShadcnLook,
+    size: crate::ShadcnSize,
+    preset: ButtonRadiusPreset,
+) -> (f32, f32) {
+    use xgpui_luma::style::lss::{PartId, Value};
+    let source = look.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "slider",
+        xgpui_luma::style::ThemeSource::Live(std::sync::Arc::new(move || source.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    let resolved = binding.attr("radius", preset.key()).resolve(&[], 1.0);
+    let radius = |part: &'static str| {
+        resolved.part(PartId::new(part)).value("radius").and_then(Value::as_number).unwrap_or_default()
+    };
+    (radius("track"), radius("thumb"))
 }
