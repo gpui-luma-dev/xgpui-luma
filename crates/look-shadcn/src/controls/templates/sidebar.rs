@@ -42,19 +42,7 @@ impl SidebarTheme for ShadcnSidebarTheme {
         self.theme.mode_tokens().stylesheet().common.sidebar.resolve_geometry(Default::default())
     }
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let palette = &tokens.palette;
-        xgpui_luma::infra::drag_drop::DragDropLook {
-            geometry: self.theme.stylesheet().common.shared_geometry(),
-            background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
-            foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
-            valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
-            invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.control_sizes.radius(size),
-            typography: tokens.typography.text.label,
-            font_family: tokens.typography.font.sans.family.clone().into(),
-        }
+        super::drag::drag_look(&self.theme)
     }
 
     fn foreground(&self) -> gpui::Hsla {

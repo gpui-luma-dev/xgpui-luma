@@ -71,7 +71,11 @@ radix_sources![
     "accordion.lss",
     "pager.lss",
     "tabs.lss",
-    "sidebar.lss"
+    "sidebar.lss",
+    "drag_preview.lss",
+    "tree_view.lss",
+    "table.lss",
+    "listbox.lss"
 ];
 
 /// The SDK's files with the Radix look's files over them.

@@ -1,0 +1,29 @@
+// Radix listbox. Layer: look. A gray 1 surface with a gray 6 edge; rows in the foreground, the selected one
+// on accent 4, accent 5 under the pointer and accent 6 pressed, and the focus color around the active row
+// while focus is visible; muted text when disabled (a selected row keeps its fill).
+
+listbox {
+  part root {
+    background = gray[1]
+    border     = gray[6]
+    radius     = exact(8)
+    :focused  { border = gray[6] }
+    :disabled { background = gray[1] }
+  }
+
+  part row {
+    foreground  = radix.role.foreground
+    radius      = exact(4)
+    padding_x   = exact(8)
+    font_family = look.font_sans
+    font_size   = 14
+    line_height = font_size * 1.618034
+    font_weight = 400
+    :focused           { border = radix.role.focus }
+    :selected          { background = accent[4]  foreground = radix.role.foreground }
+    :hover             { background = accent[5] }
+    :pressed           { background = accent[6] }
+    :disabled          { background = transparent  foreground = radix.role.muted_foreground }
+    :selected:disabled { background = accent[4]  foreground = radix.role.muted_foreground }
+  }
+}

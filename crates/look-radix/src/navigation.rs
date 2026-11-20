@@ -1,27 +1,18 @@
-//! Shared Radix navigation geometry and stepper styling.
+//! Shared Radix navigation pieces: the drag preview and the stepper.
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::stepper::*;
-use xgpui_luma::theme::{ThemeTokens};
-use crate::{Look, SemanticRole};
+use crate::Look;
 
-// Default SDK resolvers are used only for layout; adapters replace every color.
-pub(crate) fn geometry_tokens(look: &Look) -> ThemeTokens {
-    // The look's selected size is resolved to pixels before SDK defaults see it.
-    ThemeTokens {
-        metrics: look.metrics_for(look.size()),
-        stylesheet: look.sized_stylesheet(look.size()),
-        ..Default::default()
-    }
-}
+/// The Radix drag preview, drawn from `.lss` (`style/drag_preview.lss`) at `size`.
 pub(crate) fn drag_look(look: &Look, size: crate::RadixSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
-    let mut drag = xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(&look.with_size(size)));
-    drag.background = look.resolve_role(SemanticRole::Surface).hsla();
-    drag.foreground = look.resolve_role(SemanticRole::Foreground).hsla();
-    drag.valid_marker = look.resolve_role(SemanticRole::Focus).hsla();
-    drag.invalid_marker = look.resolve_role(SemanticRole::Destructive).hsla();
-    drag.font_family = crate::typography::font_family(look);
-    drag
+    let binding = xgpui_luma::style::StyleBinding::new("drag_preview", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::infra::drag_drop::styled_drag_drop_look(&binding)
 }
 /// Live Radix step status and connector colors, with SDK per-size geometry.
 /// Drawn from `.lss` (`style/stepper.lss`) at the look's size.

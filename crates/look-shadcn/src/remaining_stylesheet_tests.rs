@@ -435,7 +435,7 @@ drag_width=310
 }
 
 #[test]
-fn table_row_chrome_uses_selected_stylesheet_and_size() {
+fn token_table_row_chrome_uses_selected_stylesheet() {
     use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
     use xgpui_luma::theme::ListRowScale;
     let mut config = crate::embedded_stylesheet().clone();
@@ -456,32 +456,15 @@ row_radius=11
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
-    let sdk = DefaultTableTheme::new(tokens);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = look.table_theme();
-    let large = look.with_size(ShadcnSize::Lg).table_theme();
-    for (theme, size) in [
-        (&sdk as &dyn TableTheme, ShadcnSize::Md),
-        (themed.as_ref(), ShadcnSize::Md),
-        (large.as_ref(), ShadcnSize::Lg),
-    ] {
-        let (opacity, radius) = if size == ShadcnSize::Lg {
-            (0.3, 11.0)
-        } else {
-            (0.0, 7.0)
-        };
-        {
-            let scale = ListRowScale::compute(&theme.metrics(), 1.0);
-            let row = theme.resolve_row_look(false, InteractionState { disabled: true, ..Default::default() }, &scale);
-            assert_eq!((row.disabled_opacity, row.radius), (opacity, radius));
-            let expected_padding = if size == ShadcnSize::Lg { 19.0 } else { 0.0 };
-            let expected_muted = if size == ShadcnSize::Lg { 0.4 } else { 0.0 };
-            assert_eq!(row.column_padding_x, expected_padding);
-            assert_eq!(row.column_muted_opacity, expected_muted);
-            assert_eq!(theme.resolve_look(true, false).column_padding_x, expected_padding);
-            assert_eq!(row.min_height, scale.min_height);
-        }
-    }
+    // The look's rows are drawn from `.lss`; the token-built SDK theme still reads these overrides.
+    let theme: &dyn TableTheme = &DefaultTableTheme::new(tokens);
+    let scale = ListRowScale::compute(&theme.metrics(), 1.0);
+    let row = theme.resolve_row_look(false, InteractionState { disabled: true, ..Default::default() }, &scale);
+    assert_eq!((row.disabled_opacity, row.radius), (0.0, 7.0));
+    assert_eq!(row.column_padding_x, 0.0);
+    assert_eq!(row.column_muted_opacity, 0.0);
+    assert_eq!(theme.resolve_look(true, false).column_padding_x, 0.0);
+    assert_eq!(row.min_height, scale.min_height);
 }
 
 #[test]

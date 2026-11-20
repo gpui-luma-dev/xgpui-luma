@@ -28,6 +28,56 @@ impl DragDropLook {
         }
     }
 }
+/// The drag preview for `binding` (the `drag_preview` control): its colors, radius and text, with the SDK's
+/// shared helper geometry.
+pub fn styled_drag_drop_look(binding: &crate::style::StyleBinding) -> DragDropLook {
+    use xgpui_luma_style::Value;
+    let resolved = binding.resolve(&[], 1.0);
+    let root = resolved.root();
+    let color =
+        |name: &str| root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black);
+    let number = |name: &str| root.value(name).and_then(Value::as_number).unwrap_or(0.0);
+    DragDropLook {
+        geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+        background: color("background"),
+        foreground: color("foreground"),
+        valid_marker: color("valid_marker"),
+        invalid_marker: color("invalid_marker"),
+        radius: number("radius"),
+        typography: LumaTextStyle {
+            size: root.font_size().unwrap_or(12.5),
+            line_height: root.line_height().unwrap_or(18.0),
+            weight: gpui::FontWeight(number("font_weight").max(100.0)),
+        },
+        font_family: root.font_family().unwrap_or("").to_string().into(),
+    }
+}
+
+#[cfg(test)]
+mod styled_tests {
+    #[test]
+    fn sdk_drag_preview_matches_the_token_preview() {
+        let lss = super::styled_drag_drop_look(&crate::style::StyleBinding::sdk("drag_preview"));
+        let native = super::DragDropLook::from_tokens(&crate::theme::ThemeTokens::default());
+        let rgb = |c: gpui::Hsla| {
+            let c = c.to_rgb();
+            format!("{:.3},{:.3},{:.3},{:.3}", c.r, c.g, c.b, c.a)
+        };
+        for (got, want) in [
+            (lss.background, native.background),
+            (lss.foreground, native.foreground),
+            (lss.valid_marker, native.valid_marker),
+            (lss.invalid_marker, native.invalid_marker),
+        ] {
+            assert_eq!(rgb(got), rgb(want));
+        }
+        assert_eq!(
+            (lss.radius, lss.typography.size, lss.font_family),
+            (native.radius, native.typography.size, native.font_family)
+        );
+    }
+}
+
 pub(crate) struct DragPreview {
     pub label: SharedString,
     pub offset: Point<Pixels>,

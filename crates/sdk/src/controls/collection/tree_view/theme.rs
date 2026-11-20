@@ -107,7 +107,7 @@ pub struct DefaultTreeViewTheme {
 pub fn default_tree_view_theme() -> Arc<dyn TreeViewTheme> {
     static THEME: OnceLock<Arc<dyn TreeViewTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTreeViewTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledTreeViewTheme::sdk())).clone()
 }
 
 impl DefaultTreeViewTheme {

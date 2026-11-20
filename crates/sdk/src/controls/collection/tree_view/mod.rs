@@ -2,6 +2,8 @@
 //! [`FrameBuilder`](crate::controls::frame::FrameBuilder) for optional outer fill,
 //! border, radius, and inset. Rows, focus, selection, and scrolling stay in TreeView.
 
+mod styled;
+pub use styled::{StyledTreeView, StyledTreeViewTheme};
 mod control;
 mod drag;
 pub use drag::{

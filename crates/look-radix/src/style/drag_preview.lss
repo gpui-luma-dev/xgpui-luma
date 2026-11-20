@@ -1,0 +1,13 @@
+// Radix drag preview. Layer: look. The surface, the focus role as the drop marker and the destructive role
+// where a drop is refused; the button radius for the size.
+
+drag_preview {
+  part root {
+    background     = radix.role.surface
+    foreground     = radix.role.foreground
+    valid_marker   = radix.role.focus
+    invalid_marker = look.destructive
+    radius         = exact(radix.button_radius_base * radix.radius_factor)
+    font_family    = look.font_sans
+  }
+}

@@ -10,7 +10,6 @@ use xgpui_luma::theme::InteractionState;
 
 use crate::look::Look;
 use crate::scale::ScaleFamily;
-use crate::semantic::SemanticRole;
 use crate::typography::font_family;
 
 /// Radix `size` prop on Tabs. Default is [`Self::Two`].
@@ -198,17 +197,7 @@ struct TabsThemeAdapter {
 
 impl TabsTheme for TabsThemeAdapter {
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.look.size();
-        let mut drag =
-            xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&xgpui_luma::theme::ThemeTokens::default());
-        drag.background = self.look.resolve_role(SemanticRole::Surface).hsla();
-        drag.foreground = self.look.resolve_role(SemanticRole::Foreground).hsla();
-        drag.valid_marker = self.look.resolve_role(SemanticRole::Focus).hsla();
-        drag.invalid_marker = self.look.resolve_role(SemanticRole::Destructive).hsla();
-        drag.radius = self.look.control_sizes().radius(size);
-        drag.font_family = font_family(&self.look);
-        drag.typography = self.resolve_item(true, Default::default()).label_typography;
-        drag
+        crate::navigation::drag_look(&self.look, self.look.size())
     }
     fn resolve_list(&self, enabled: bool) -> TabsListLook {
         let mut list = self.styled.list(enabled);
@@ -299,6 +288,7 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::semantic::SemanticRole;
     use crate::RadixSize;
 
     #[test]
@@ -480,10 +470,16 @@ mod drag_tests {
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             let drag = tabs_theme(&look).resolve_drag();
-            assert_eq!(drag.background, look.resolve_role(SemanticRole::Surface).hsla());
-            assert_eq!(drag.foreground, look.resolve_role(SemanticRole::Foreground).hsla());
-            assert_eq!(drag.valid_marker, look.resolve_role(SemanticRole::Focus).hsla());
-            assert_eq!(drag.invalid_marker, look.resolve_role(SemanticRole::Destructive).hsla());
+            crate::control_group::assert_close(drag.background, look.resolve_role(crate::SemanticRole::Surface).hsla());
+            crate::control_group::assert_close(
+                drag.foreground,
+                look.resolve_role(crate::SemanticRole::Foreground).hsla(),
+            );
+            crate::control_group::assert_close(drag.valid_marker, look.resolve_role(crate::SemanticRole::Focus).hsla());
+            crate::control_group::assert_close(
+                drag.invalid_marker,
+                look.resolve_role(crate::SemanticRole::Destructive).hsla(),
+            );
         }
     }
 }

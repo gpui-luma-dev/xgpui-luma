@@ -126,7 +126,7 @@ pub struct DefaultTableTheme {
 pub fn default_table_theme() -> Arc<dyn TableTheme> {
     static THEME: OnceLock<Arc<dyn TableTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTableTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledTableTheme::sdk())).clone()
 }
 
 impl DefaultTableTheme {

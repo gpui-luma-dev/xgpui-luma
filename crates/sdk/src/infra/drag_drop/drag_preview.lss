@@ -1,0 +1,20 @@
+// SDK drag preview. Layer: sdk. The floating label under the pointer while a row or tab is dragged, and the
+// insertion markers; read by `styled_drag_drop_look` (appearance.rs). Shared by every reorderable control.
+
+/// A dragged item's preview and drop markers.
+drag_preview {
+  /// The marker where an item can be dropped, and where it cannot.
+  valid_marker: color = palette.focus.ring
+  invalid_marker: color = palette.form.input.invalid_border
+
+  /// The preview.
+  part root {
+    background  = palette.surface.floating.background
+    foreground  = palette.surface.floating.foreground
+    radius      = exact(metrics.control.radius)
+    font_family = typography.font.sans
+    font_size   = typography.text.label.size
+    line_height = typography.text.label.line_height
+    font_weight = typography.text.label.weight
+  }
+}

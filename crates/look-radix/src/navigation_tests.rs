@@ -111,6 +111,6 @@ fn live_palette_edits_remain_local_to_forks() {
     assert_eq!(unchanged.foreground, before.foreground);
     assert_eq!(unchanged.height, before.height);
     let drag = accordion_theme(&fork).resolve_drag();
-    assert_eq!(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
-    assert_eq!(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
+    crate::control_group::assert_close(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
+    crate::control_group::assert_close(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
 }

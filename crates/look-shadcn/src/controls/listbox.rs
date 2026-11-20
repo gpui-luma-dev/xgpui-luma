@@ -13,7 +13,7 @@
 use crate::stylesheet::config::{EnabledColorRule, find_enabled_color_rule, matches_optional_bool, matches_optional_layer};
 use serde::Deserialize;
 
-use gpui::{Div, ElementId, Hsla, Stateful, div, px, prelude::*};
+use gpui::{Div, ElementId, Hsla, Stateful};
 use xgpui_luma::controls::listbox::ListBoxItemState;
 use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle};
 
@@ -43,45 +43,17 @@ pub struct ListBoxRowPalette {
 impl crate::ShadcnLook {
     /// Styled, content-free row surface. Attach SDK `ListBoxBinding` for input;
     /// the host supplies arbitrary content and all layout dimensions.
+    /// The listbox chrome from `.lss` (`style/listbox.lss`).
+    pub fn styled_listbox(&self) -> xgpui_luma::controls::listbox::StyledListBox {
+        let look = self.clone();
+        xgpui_luma::controls::listbox::StyledListBox::new(xgpui_luma::style::StyleBinding::new(
+            "listbox",
+            xgpui_luma::style::ThemeSource::Live(std::sync::Arc::new(move || look.style_theme())),
+        ))
+    }
+
     pub fn listbox_row(&self, id: impl Into<ElementId>, state: ListBoxItemState, focus_visible: bool) -> Stateful<Div> {
-        let mode = self.mode_tokens();
-        let base = listbox_row_palette(
-            &mode,
-            state.selected,
-            InteractionState { disabled: !state.enabled, ..Default::default() },
-            ShadcnSize::Md,
-        );
-        let hover = listbox_row_palette(
-            &mode,
-            state.selected,
-            InteractionState { hovered: true, ..Default::default() },
-            ShadcnSize::Md,
-        );
-        let pressed = listbox_row_palette(
-            &mode,
-            state.selected,
-            InteractionState { pressed: true, ..Default::default() },
-            ShadcnSize::Md,
-        );
-        let border = if state.active && focus_visible {
-            crate::focus::focus_ring_or_fallback(&mode.catalog)
-        } else {
-            gpui::transparent_black()
-        };
-        div()
-            .id(id)
-            .bg(base.background)
-            .text_color(base.label_color)
-            .text_size(px(base.label_typography.size))
-            .line_height(px(base.label_typography.line_height))
-            .font_weight(base.label_typography.weight)
-            .border_1()
-            .border_color(border)
-            .when(state.enabled, |row| {
-                row.cursor_pointer()
-                    .hover(|style| style.bg(hover.background).text_color(hover.label_color))
-                    .active(|style| style.bg(pressed.background).text_color(pressed.label_color))
-            })
+        self.styled_listbox().paint_row(id, state, focus_visible)
     }
 }
 
@@ -337,4 +309,55 @@ pub struct ListboxRowColorRule {
     pub layer: Option<String>,
     pub label_color: String,
     pub background: String,
+}
+
+#[cfg(test)]
+mod lss_tests {
+    use xgpui_luma::controls::listbox::ListBoxItemState;
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
+
+    use super::{listbox_row_palette, listbox_surface_palette};
+    use crate::ShadcnSize;
+
+    #[test]
+    fn lss_rows_match_the_native_rows() {
+        let look = crate::test_support::fallback_look();
+        for mode in [ThemeMode::Light, ThemeMode::Dark] {
+            look.set_mode(mode);
+            let tokens = look.mode_tokens();
+            let styled = look.styled_listbox();
+            for selected in [false, true] {
+                for (enabled, hover, pressed) in
+                    [(true, false, false), (true, true, false), (true, false, true), (false, false, false)]
+                {
+                    let state = ListBoxItemState { selected, active: false, enabled };
+                    let native = listbox_row_palette(
+                        &tokens,
+                        selected,
+                        InteractionState { disabled: !enabled, hovered: hover, pressed, ..Default::default() },
+                        ShadcnSize::Md,
+                    );
+                    let row = styled.row(state, false, hover, pressed);
+                    crate::assert_close(row.background, native.background);
+                    crate::assert_close(row.foreground, native.label_color);
+                    assert!((row.font_size - native.label_typography.size).abs() < 1e-3);
+                    assert!((row.line_height - native.label_typography.line_height).abs() < 1e-3);
+                }
+            }
+            let native = listbox_surface_palette(&tokens, true);
+            let surface = styled.surface(true, false);
+            crate::assert_close(surface.background, native.background);
+            crate::assert_close(surface.border, native.border);
+            crate::assert_close(
+                styled.surface(true, true).border,
+                crate::focus::focus_ring_or_fallback(&tokens.catalog),
+            );
+            crate::assert_close(
+                styled
+                    .row(ListBoxItemState { selected: false, active: true, enabled: true }, true, false, false)
+                    .border,
+                crate::focus::focus_ring_or_fallback(&tokens.catalog),
+            );
+        }
+    }
 }

@@ -53,7 +53,11 @@ shadcn_sources![
     "accordion.lss",
     "pager.lss",
     "tabs.lss",
-    "sidebar.lss"
+    "sidebar.lss",
+    "drag_preview.lss",
+    "tree_view.lss",
+    "table.lss",
+    "listbox.lss"
 ];
 
 /// The SDK's files with the Shadcn look's files over them.

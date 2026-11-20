@@ -5,10 +5,15 @@ use gpui::{App, Context, SharedString, Div, ElementId, Stateful, Window, div, pr
 use xgpui_luma::controls::listbox::{
     ListBoxBuilder as SdkListBoxBuilder, ListBoxControl, ListBoxFlow, ListBoxTemplate, ListBoxRenderModel,
     ListBoxRowRenderModel, ListBoxDragLook, ListBoxMotion, ListBoxItemRenderModel, ListBoxItemState,
-    ListBoxItemTemplate, make_listbox_item_template,
+    ListBoxItemTemplate, StyledListBox, make_listbox_item_template,
 };
-use crate::{Look, ScaleFamily, SemanticRole};
+use crate::{Look, SemanticRole};
 use crate::look::resolve_look;
+
+/// The listbox chrome from `.lss` (`style/listbox.lss`).
+pub fn styled_listbox(look: &Look) -> StyledListBox {
+    StyledListBox::new(xgpui_luma::style::StyleBinding::new("listbox", crate::textfield::live_source(look)))
+}
 
 /// Radix row surface. The SDK binding attaches selection and keyboard input.
 pub fn listbox_row(
@@ -17,37 +22,7 @@ pub fn listbox_row(
     state: ListBoxItemState,
     focus_visible: bool,
 ) -> Stateful<Div> {
-    let step = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
-    div()
-        .id(id)
-        .rounded(px(4.0))
-        .border_1()
-        .border_color(if state.active && focus_visible {
-            look.resolve_role(SemanticRole::Focus).hsla()
-        } else {
-            gpui::transparent_black()
-        })
-        .bg(if state.selected {
-            step(4)
-        } else {
-            gpui::transparent_black()
-        })
-        .text_color(
-            look.resolve_role(if state.enabled {
-                SemanticRole::Foreground
-            } else {
-                SemanticRole::MutedForeground
-            })
-            .hsla(),
-        )
-        .font_family(crate::typography::font_family(look))
-        .text_sm()
-        .px_2()
-        .flex()
-        .items_center()
-        .when(state.enabled, |row| {
-            row.cursor_pointer().hover(|style| style.bg(step(5))).active(|style| style.bg(step(6)))
-        })
+    styled_listbox(look).paint_row(id, state, focus_visible).flex().items_center()
 }
 
 /// Default label content for a Radix listbox. The builder supplies the themed
@@ -107,7 +82,17 @@ struct RadixListBoxTemplate {
 }
 impl ListBoxTemplate for RadixListBoxTemplate {
     fn render(&self, model: &ListBoxRenderModel, _: &mut App) -> Stateful<Div> {
-        crate::tree_view_frame(&self.look).rounded(px(8.0)).p_1().id(model.id).w_full().min_w_0()
+        let surface = styled_listbox(&self.look).surface(true, model.focused);
+        div()
+            .bg(surface.background)
+            .border(px(surface.border_width))
+            .border_color(surface.border)
+            .rounded(px(surface.radius))
+            .overflow_hidden()
+            .p_1()
+            .id(model.id)
+            .w_full()
+            .min_w_0()
     }
     fn render_row(&self, model: &ListBoxRowRenderModel, _: &mut App) -> Stateful<Div> {
         listbox_row(&self.look, model.id.clone(), model.state, model.focus_visible)
@@ -192,3 +177,43 @@ mod virtualization_tests;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "listbox_measured_tests.rs"]
 mod measured_tests;
+
+#[cfg(test)]
+mod lss_tests {
+    use xgpui_luma::controls::listbox::ListBoxItemState;
+
+    use crate::control_group::assert_close;
+    use crate::{Look, ScaleFamily, SemanticRole};
+
+    #[test]
+    fn lss_rows_match_the_native_rows() {
+        let look = Look::built_in();
+        let styled = super::styled_listbox(&look);
+        let step = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
+        let role = |r| look.resolve_role(r).hsla();
+        for selected in [false, true] {
+            for enabled in [true, false] {
+                let state = ListBoxItemState { selected, active: true, enabled };
+                let row = styled.row(state, false, false, false);
+                let fill = if selected { step(4) } else { gpui::transparent_black() };
+                assert_close(row.background, fill);
+                let text = if enabled {
+                    SemanticRole::Foreground
+                } else {
+                    SemanticRole::MutedForeground
+                };
+                assert_close(row.foreground, role(text));
+                assert_close(styled.row(state, true, false, false).border, role(SemanticRole::Focus));
+                if enabled {
+                    assert_close(styled.row(state, false, true, false).background, step(5));
+                    assert_close(styled.row(state, false, false, true).background, step(6));
+                }
+                assert_eq!((row.radius, row.padding_x, row.font_size), (4.0, 8.0, 14.0));
+            }
+        }
+        let surface = styled.surface(true, true);
+        assert_close(surface.background, look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close(surface.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
+        assert_eq!(surface.radius, 8.0);
+    }
+}

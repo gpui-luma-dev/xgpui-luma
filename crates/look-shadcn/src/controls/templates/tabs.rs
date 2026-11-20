@@ -13,19 +13,7 @@ struct ShadcnTabsTheme {
 
 impl TabsTheme for ShadcnTabsTheme {
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let palette = &tokens.palette;
-        xgpui_luma::infra::drag_drop::DragDropLook {
-            geometry: self.theme.stylesheet().common.shared_geometry(),
-            background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
-            foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
-            valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
-            invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.control_sizes.radius(size),
-            typography: tokens.typography.text.label,
-            font_family: tokens.typography.font.sans.family.clone().into(),
-        }
+        super::drag::drag_look(&self.theme)
     }
 
     fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::tabs::TabsListLook {
@@ -73,12 +61,18 @@ mod drag_tests {
             let sidebar = super::super::sidebar::sidebar_theme(look.clone()).resolve_drag();
             let tokens = look.mode_tokens();
             for drag in [tabs, sidebar] {
-                assert_eq!(drag.background, look.token_color("popover").unwrap_or(tokens.palette.panel_background));
-                assert_eq!(drag.foreground, look.token_color("popover-foreground").unwrap_or(tokens.palette.body_text));
-                assert_eq!(drag.valid_marker, look.token_color("ring").unwrap_or(tokens.palette.focus_ring));
-                assert_eq!(
+                crate::assert_close(
+                    drag.background,
+                    look.token_color("popover").unwrap_or(tokens.palette.panel_background),
+                );
+                crate::assert_close(
+                    drag.foreground,
+                    look.token_color("popover-foreground").unwrap_or(tokens.palette.body_text),
+                );
+                crate::assert_close(drag.valid_marker, look.token_color("ring").unwrap_or(tokens.palette.focus_ring));
+                crate::assert_close(
                     drag.invalid_marker,
-                    look.token_color("destructive").unwrap_or(tokens.palette.destructive_background)
+                    look.token_color("destructive").unwrap_or(tokens.palette.destructive_background),
                 );
             }
         }
