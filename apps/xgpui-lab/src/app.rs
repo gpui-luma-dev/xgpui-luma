@@ -333,12 +333,10 @@ impl XgpuiLabApp {
                     .with_template_modifier(|row, _| row.w_full())
                     .on_click(cx, move |this: &mut Self, cx| this.activate(workspace, page, cx))
                     .spawn(cx);
-                let template = xgpui_luma::controls::button::DefaultButtonTemplate::new(
-                    xgpui_luma_look_radix::button_family_theme_with(
-                        &nav_look,
-                        xgpui_luma_look_radix::ButtonVariant::Ghost,
-                        xgpui_luma_look_radix::Paint::gray(),
-                    ),
+                let template = xgpui_luma_look_radix::button_template_for::<()>(
+                    &nav_look,
+                    xgpui_luma_look_radix::ButtonVariant::Ghost,
+                    xgpui_luma_look_radix::Paint::gray(),
                 )
                 .with_modifier(move |row, model| {
                     let colors = entry_look.interaction_colors();

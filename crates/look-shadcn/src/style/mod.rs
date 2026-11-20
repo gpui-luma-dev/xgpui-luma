@@ -61,7 +61,10 @@ shadcn_sources![
     "scrollbar.lss",
     "dock_splitter.lss",
     "resizable_panels.lss",
-    "split_view.lss"
+    "split_view.lss",
+    "badge.lss",
+    "card.lss",
+    "color_chrome.lss"
 ];
 
 /// The SDK's files with the Shadcn look's files over them.

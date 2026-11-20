@@ -1,6 +1,6 @@
 //! Rendered geometry regressions for look variants, not just palette values.
 use gpui::{IntoElement, ParentElement};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::checkbox::CheckboxData;
 use xgpui_luma::controls::radio_button::RadioButtonData;
@@ -26,7 +26,7 @@ fn all_button_variants_keep_control_and_sibling_bounds_across_states() {
                 for compact in [false, true] {
                     let look = Look::built_in();
                     look.set_mode(mode);
-                    let template = DefaultButtonTemplate::new(button_family_theme(&look.with_size(size), variant));
+                    let template = button_template::<()>(&look.with_size(size), variant, crate::Paint::accent());
                     assert_stable_layout(move |state, selected, window, cx| {
                         let model = ButtonRenderModel::<()> {
                             id: "variant".into(),

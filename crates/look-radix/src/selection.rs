@@ -99,28 +99,18 @@ pub fn search_selector_builder(
 /// independent `selection_panel` overrides using Radix size keys `1`–`3`.
 /// Returns a snapshot; resolve again after changing the supplied Look.
 pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPanelLook {
-    let panel = crate::selector_items_panel_look_for(look, PopupMenuVariant::Solid, Tone::Accent, size);
-    SelectionPanelLook {
-        background: panel.background,
-        foreground: panel.foreground,
-        border: panel.border,
-        border_width: panel.border_width,
-        disabled_opacity: panel.disabled_opacity,
-        shadow: panel.shadow,
-        radius: panel.radius,
-        padding: panel.padding,
-        min_width: panel.min_width,
-        item_disabled_foreground: panel.item_disabled_foreground,
-        item_hover_background: panel.item_hover_background,
-        item_hover_foreground: panel.item_hover_foreground,
-        item_typography: panel.item_typography,
-        item_height: panel.item_height,
-        item_padding_x: panel.item_padding_x,
-        item_gap: panel.item_gap,
-        item_icon_size: panel.item_icon_size,
-        item_radius: panel.item_radius,
-    }
-    .with_stylesheet(&look.sized_stylesheet(size).selection_panel)
+    // The `selection_panel` control: the solid accent floating menu unless a look restyles it.
+    let binding = xgpui_luma::style::StyleBinding::new("selection_panel", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::controls::selection_panel::styled_selection_panel_look(
+        &binding,
+        &look.metrics_for(size),
+        &look.sized_stylesheet(size),
+    )
 }
 
 /// Radix SelectionPanel with SDK typed items and embedded/popup interaction policies.

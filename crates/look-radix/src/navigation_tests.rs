@@ -23,8 +23,12 @@ fn group_rows_reuse_radix_button_colors_across_modes_palettes_sizes_and_states()
                     };
                     for selected in [false, true] {
                         let item = theme.default_item_palette(selected, state, &scale);
-                        let button = button_family_theme(&look.with_size(size), ButtonVariant::Ghost)
-                            .resolve(ButtonFamilyRole::Toggle { selected }, state);
+                        let button = crate::button_template_for::<()>(
+                            &look.with_size(size),
+                            ButtonVariant::Ghost,
+                            crate::Paint::accent(),
+                        )
+                        .look(ButtonFamilyRole::Toggle { selected }, state, 1.0);
                         crate::control_group::assert_close(item.background, button.background);
                         crate::control_group::assert_close(item.foreground, button.foreground);
                     }

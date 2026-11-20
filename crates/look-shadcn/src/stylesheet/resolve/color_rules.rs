@@ -3,10 +3,10 @@ use xgpui_luma::theme::InteractionLayer;
 use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::stylesheet::config::{
-    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, CardColorRule,
-    ControlGroupListColorRule, FloatingMenuSurfaceColorRule, ListboxRowColorRule, ProgressColorRule,
-    ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarItemColorRule, SliderColorRule,
-    SplitViewColorRule, TextfieldColorRule, TreeViewRowColorRule,
+    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule,
+    FloatingMenuSurfaceColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
+    SidebarContainerColorRule, SidebarItemColorRule, SliderColorRule, SplitViewColorRule, TextfieldColorRule,
+    TreeViewRowColorRule,
 };
 
 use super::{
@@ -41,20 +41,6 @@ pub fn resolve_progress_color_rule(
         track_color: resolve_color_ref(resolver, &rule.track_color, &ResolvedFields::default())?,
         progress_color: resolve_color_ref(resolver, &rule.progress_color, &ResolvedFields::default())?,
     })
-}
-
-pub fn resolve_card_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &CardColorRule,
-) -> anyhow::Result<ResolvedCardColors> {
-    let mut fields = ResolvedFields::default();
-    let background = resolve_color_ref(resolver, &rule.background, &fields)?;
-    fields.insert("background", background.clone());
-    let foreground = resolve_color_ref(resolver, &rule.foreground, &fields)?;
-    fields.insert("foreground", foreground.clone());
-    let muted_foreground = resolve_color_ref(resolver, &rule.muted_foreground, &fields)?;
-    let border = resolve_color_ref(resolver, &rule.border, &fields)?;
-    Ok(ResolvedCardColors { background, foreground, muted_foreground, border })
 }
 
 pub fn resolve_badge_color_rule(
@@ -305,14 +291,6 @@ pub struct ResolvedProgressColors {
 pub struct ResolvedStepperMetrics {
     pub step_badge_size: f32,
     pub track_thickness: f32,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedCardColors {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub muted_foreground: ResolvedColor,
-    pub border: ResolvedColor,
 }
 
 #[derive(Clone, Debug)]

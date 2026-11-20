@@ -78,17 +78,12 @@ mod tests {
     #[cfg(feature = "test-support")]
     #[test]
     fn transparent_and_visible_paint_share_geometry_and_keep_face_border_independent() {
-        use crate::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
-        use crate::controls::button_family::{default_button_family_theme, compose_button_family_look};
-        use crate::theme::StandardBoxScale;
+        use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
         use std::sync::Arc;
         for compact in [false, true] {
-            let theme = default_button_family_theme();
-            let template = DefaultButtonTemplate::new(theme.clone());
+            let template = Arc::new(StyledButtonTemplate::<()>::sdk());
             testing::assert_stable_layout(move |state, selected, window, cx| {
-                let palette = theme.resolve(Default::default(), state);
-                let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-                let mut look = compose_button_family_look(&palette, Default::default(), &scale, 999.);
+                let mut look = template.look(Default::default(), state, window.scale_factor());
                 // Deliberately vary both face presence and focus alpha independently.
                 look.border = selected.then_some(gpui::red());
                 look.focus_border = if state.focused {

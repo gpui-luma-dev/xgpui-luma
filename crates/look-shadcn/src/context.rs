@@ -11,13 +11,22 @@ thread_local! {
 
 /// Syncs SDK color-control chrome (field/slider/ring borders) from the active shadcn look.
 pub fn sync_color_control_theme(look: &ShadcnLook) {
-    let chrome = crate::tables::resolve_color_chrome(look);
-
+    let chrome = color_chrome(look);
     set_active_color_control_theme(ColorControlTheme::new(
-        chrome.border.hsla(),
-        chrome.background.hsla(),
+        chrome.border,
+        chrome.background,
         matches!(look.mode(), ThemeMode::Dark),
     ));
+}
+
+/// The color controls' chrome from `.lss` (`style/color_chrome.lss`).
+pub fn color_chrome(look: &ShadcnLook) -> xgpui_luma::controls::display::color_chrome::ColorChromeLook {
+    let source = look.clone();
+    xgpui_luma::controls::display::color_chrome::StyledColorChrome::new(xgpui_luma::style::StyleBinding::new(
+        "color_chrome",
+        xgpui_luma::style::ThemeSource::Live(std::sync::Arc::new(move || source.style_theme())),
+    ))
+    .look()
 }
 
 /// Binds the active look to the thread's scope during layout/render block execution.

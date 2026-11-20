@@ -63,7 +63,7 @@ impl VisitorsExample {
                 }
             });
             let replay = button::Button::new("visitors-replay")
-                .template(std::sync::Arc::new(button::DefaultButtonTemplate::new(std::sync::Arc::new(look.clone()))))
+                .template(look.button_template())
                 .label("Replay")
                 .spawn(cx)
                 .on_click(cx, |this, cx| {

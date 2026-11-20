@@ -25,6 +25,6 @@ pub use model::{
     button_content_context, ButtonBuilder, ButtonContentContext, ButtonLookSource, ButtonModel, ButtonRenderModel,
     ControlIcon, ControlPresenter, HasPresenter,
 };
-pub use template::{ButtonTemplate, ButtonTemplateModifier, DefaultButtonTemplate, default_button_template};
-pub use styled::{ButtonData, StyledButtonFamilyTheme, StyledButtonTemplate};
+pub use template::{ButtonTemplate, ButtonTemplateModifier, default_button_template};
+pub use styled::{ButtonData, StyledButtonTemplate};
 pub use icon_button::IconButton;

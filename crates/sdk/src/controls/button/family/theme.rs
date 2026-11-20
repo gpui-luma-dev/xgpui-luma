@@ -1,8 +1,6 @@
-use std::sync::{Arc, OnceLock};
-
 use gpui::{BoxShadow, Hsla, SharedString};
 
-use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
+use crate::theme::{LumaTextStyle, StandardBoxScale};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ButtonFamilyRole {
@@ -45,28 +43,6 @@ pub struct ButtonFamilyLook {
     pub height: f32,
     pub icon_size: f32,
     pub shadow: Option<Vec<BoxShadow>>,
-}
-
-pub trait ButtonFamilyTheme: Send + Sync {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette;
-    fn metrics(&self) -> MetricTokens;
-
-    /// Optional full look resolution for themes that resolve geometry and elevation together.
-    fn resolve_look(
-        &self,
-        _role: ButtonFamilyRole,
-        _state: InteractionState,
-        _scale: &StandardBoxScale,
-        _pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        None
-    }
-}
-
-pub fn default_button_family_theme() -> Arc<dyn ButtonFamilyTheme> {
-    static THEME: OnceLock<Arc<dyn ButtonFamilyTheme>> = OnceLock::new();
-
-    THEME.get_or_init(|| Arc::new(crate::controls::button::StyledButtonFamilyTheme::sdk())).clone()
 }
 
 /// Normalizes absent face-border paint to transparent.

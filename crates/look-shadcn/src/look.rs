@@ -926,10 +926,6 @@ impl ShadcnLook {
         templates::animated_toggle_item_template(self.clone(), style)
     }
 
-    pub fn button_family_theme(&self) -> Arc<dyn xgpui_luma::controls::button_family::ButtonFamilyTheme> {
-        templates::button_family_theme(self.clone())
-    }
-
     pub fn slider_theme(&self) -> Arc<dyn xgpui_luma::controls::slider::SliderTheme> {
         templates::slider_theme(self.clone())
     }

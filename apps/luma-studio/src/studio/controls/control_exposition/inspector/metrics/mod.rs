@@ -5,14 +5,6 @@ use super::box_model::InspectBoxModelSnapshot;
 use super::common::{neutral_box_model_colors, neutral_box_model_label_color};
 use super::schema::InspectLayoutSection;
 
-mod input;
-mod layout;
-mod overlay;
-
-pub use input::*;
-pub use layout::*;
-pub use overlay::*;
-
 pub(crate) fn layout_section(
     look: &ShadcnLook,
     diagram_id: &str,

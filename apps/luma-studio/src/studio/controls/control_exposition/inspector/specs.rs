@@ -13,21 +13,6 @@ pub static COLOR_LAYOUT_CATEGORIES: [InspectorCategory; 2] = [
     InspectorCategory { id: "layout", label: "Layout", icon: LucideIcon::Ruler, expanded_default: true },
 ];
 
-pub static DEFAULT_INTERACTION_STATES: [InspectorStateSpec; 1] = [InspectorStateSpec {
-    id: "default",
-    label: "Default",
-    icon: LucideIcon::Circle,
-    expanded_default: true,
-    categories: &COLOR_LAYOUT_CATEGORIES,
-}];
-
-pub static BADGE_VARIANTS: [InspectorVariant; 4] = [
-    InspectorVariant { id: "default", label: "Default" },
-    InspectorVariant { id: "secondary", label: "Secondary" },
-    InspectorVariant { id: "outline", label: "Outline" },
-    InspectorVariant { id: "ghost", label: "Ghost" },
-];
-
 pub static SPLIT_BUTTON_VARIANTS: [InspectorVariant; 4] = [
     InspectorVariant { id: "primary", label: "Primary" },
     InspectorVariant { id: "secondary", label: "Secondary" },
@@ -92,30 +77,6 @@ pub static POPUP_MENU_STATES: [InspectorStateSpec; 7] = [
         id: "pressed",
         label: "Pressed",
         icon: LucideIcon::MousePointerClick,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_CATEGORIES,
-    },
-];
-
-pub static FLOATING_MENU_ITEM_STATES: [InspectorStateSpec; 3] = [
-    InspectorStateSpec {
-        id: "default",
-        label: "Surface",
-        icon: LucideIcon::Circle,
-        expanded_default: true,
-        categories: &COLOR_LAYOUT_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "disabled",
-        label: "Item Disabled",
-        icon: LucideIcon::CircleOff,
-        expanded_default: false,
-        categories: &COLOR_LAYOUT_CATEGORIES,
-    },
-    InspectorStateSpec {
-        id: "hover",
-        label: "Item Hover",
-        icon: LucideIcon::MousePointer2,
         expanded_default: false,
         categories: &COLOR_LAYOUT_CATEGORIES,
     },

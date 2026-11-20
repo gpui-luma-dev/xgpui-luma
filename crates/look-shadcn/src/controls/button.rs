@@ -400,7 +400,7 @@ mod tests {
     #[cfg(feature = "test-support")]
     #[test]
     fn all_button_styles_keep_control_and_sibling_bounds_across_states() {
-        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+        use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
         use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
         use gpui::IntoElement;
         use std::sync::Arc;
@@ -415,9 +415,7 @@ mod tests {
                 for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
                     for compact in [false, true] {
                         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), theme_mode).unwrap();
-                        let template = DefaultButtonTemplate::new(
-                            xgpui_luma::controls::button_family::default_button_family_theme(),
-                        );
+                        let template = StyledButtonTemplate::<()>::sdk();
                         assert_stable_layout(move |state, selected, window, cx| {
                             let look = button_look(
                                 &mode,

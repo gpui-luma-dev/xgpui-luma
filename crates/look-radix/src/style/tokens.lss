@@ -41,6 +41,10 @@ tokens {
     mode light { page_selected = radix.role.foreground   menu_positive = gray(30, 1) }
     mode dark  { page_selected = look.accent_contrast    menu_positive = gray(75, 1) }
 
+    // The card panel fill; the classic card's edge and its drop and soft shadow strengths.
+    mode light { card_background = gray[1]  card_classic_edge = gray[3]  card_drop_alpha = 0.05  card_soft_alpha = 0.05 }
+    mode dark  { card_background = gray[2]  card_classic_edge = gray[6]  card_drop_alpha = 0.3   card_soft_alpha = 0.2 }
+
     /// Switch `--radius-1` (size 1) or `--radius-2` (sizes 2–3), before the radius factor.
     switch_radius_base = 4
     size 1 { switch_radius_base = 3 }

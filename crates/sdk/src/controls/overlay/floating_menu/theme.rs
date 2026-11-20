@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
-use crate::theme::{LumaTextStyle, ThemeTokens};
+use crate::theme::LumaTextStyle;
 
 #[derive(Clone, Debug)]
 pub struct FloatingMenuLook {
@@ -64,81 +64,6 @@ pub fn default_floating_menu_theme() -> Arc<dyn FloatingMenuTheme> {
     static THEME: OnceLock<Arc<dyn FloatingMenuTheme>> = OnceLock::new();
 
     THEME.get_or_init(super::styled::sdk_theme).clone()
-}
-
-pub(crate) fn default_floating_menu_look(tokens: &ThemeTokens) -> FloatingMenuLook {
-    let palette = tokens.stylesheet.recipes.palette("floating_menu", &tokens.palette);
-    let metrics = &tokens.metrics;
-    let typography = &tokens.typography;
-    let elevation = &tokens.elevation;
-    let item_typography = typography.text.body;
-    let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().floating_menu.authored_geometry();
-    let recipe = tokens.stylesheet.floating_menu.authored_geometry().with_fallback(&baseline);
-    let mut look = FloatingMenuLook {
-        window_margin: tokens
-            .stylesheet
-            .with_sdk_defaults()
-            .popover
-            .authored_geometry_for("panel")
-            .window_margin
-            .unwrap_or_default(),
-        positive: tokens.stylesheet.recipes.palette("floating_menu", &tokens.palette).data.positive,
-        border_width: recipe.border_width.unwrap_or(metrics.border_width),
-        background: palette.surface.floating.background,
-        foreground: palette.surface.floating.foreground,
-        border: palette.surface.floating.border,
-        shadow: elevation.menu.to_box_shadows(),
-        radius: recipe.radius.unwrap_or_default(),
-        padding: metrics.padding_y() * recipe.padding_scale.unwrap_or_default(),
-        min_width: recipe.min_width.unwrap_or_default(),
-        item_disabled_foreground: palette.state.disabled.foreground,
-        item_hover_background: palette.state.hover.background,
-        item_hover_foreground: palette.state.hover.foreground,
-        item_typography,
-        item_height: metrics.control_height() * recipe.item_height_scale.unwrap_or_default(),
-        item_padding_x: metrics.padding_x() * recipe.item_padding_scale.unwrap_or_default(),
-        item_gap: metrics.gap(),
-        item_icon_size: metrics.icon_size(),
-        item_radius: recipe.item_radius.unwrap_or_default(),
-        disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
-        submenu_offset_x: metrics.gap() * recipe.submenu_offset_scale.unwrap_or_default(),
-        separator_color: palette.surface.floating.border,
-        separator_thickness: recipe.separator_thickness.unwrap_or_default(),
-        separator_spacing: metrics.gap() * recipe.submenu_offset_scale.unwrap_or_default(),
-        separator_inset: recipe.separator_inset.unwrap_or_default(),
-    };
-    crate::theme::stylesheet::apply_common_geometry!(tokens.stylesheet.floating_menu, FloatingMenuGeometry, look,
-        [border_width => border_width, padding => padding, min_width => min_width, item_height => item_height,
-         item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
-         font_size => item_typography.size, line_height => item_typography.line_height,
-         submenu_offset_x => submenu_offset_x, separator_thickness => separator_thickness,
-         separator_spacing => separator_spacing, separator_inset => separator_inset,
-         disabled_opacity => disabled_opacity], defaults = Default::default());
-    look
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn default_floating_menu_typography_uses_text_tokens() {
-        let mut tokens = ThemeTokens::default();
-        tokens.typography.text.body.size = 15.0;
-
-        assert_eq!(default_floating_menu_look(&tokens).item_typography.size, 15.0);
-    }
-
-    #[test]
-    fn default_floating_menu_icon_size_uses_control_metric() {
-        let mut tokens = ThemeTokens::default();
-        tokens.typography.text.body.size = 15.5;
-        tokens.metrics.control.icon_size = 17.0;
-
-        let look = default_floating_menu_look(&tokens);
-
-        assert_eq!(look.item_icon_size, 17.0);
-    }
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

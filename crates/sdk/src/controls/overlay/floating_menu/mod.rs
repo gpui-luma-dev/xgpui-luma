@@ -24,4 +24,3 @@ pub use template::{
     render_floating_menu_with_submenu_presence_and_transition, render_floating_menu_with_template,
 };
 pub use theme::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
-pub(crate) use theme::default_floating_menu_look;

@@ -154,57 +154,6 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
     }
 }
 
-/// A button-family theme read from `.lss`: the faces of a [`StyledButtonTemplate`], for chrome that takes a
-/// [`ButtonFamilyTheme`](crate::controls::button_family::ButtonFamilyTheme).
-pub struct StyledButtonFamilyTheme {
-    template: StyledButtonTemplate<()>,
-    metrics: crate::theme::MetricTokens,
-}
-
-impl StyledButtonFamilyTheme {
-    pub fn new(template: StyledButtonTemplate<()>, metrics: crate::theme::MetricTokens) -> Self {
-        Self { template, metrics }
-    }
-
-    /// The SDK alone.
-    pub fn sdk() -> Self {
-        Self::new(StyledButtonTemplate::sdk(), crate::theme::MetricTokens::default())
-    }
-}
-
-impl crate::controls::button_family::ButtonFamilyTheme for StyledButtonFamilyTheme {
-    fn resolve(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-    ) -> crate::controls::button_family::ButtonFamilyPalette {
-        let look = self.template.look(role, state, 1.0);
-        crate::controls::button_family::ButtonFamilyPalette {
-            focus_border: look.focus_border,
-            background: look.background,
-            foreground: look.foreground,
-            muted_foreground: look.muted_foreground,
-            border: look.border,
-            typography: look.typography,
-            font_family: look.font_family,
-        }
-    }
-
-    fn metrics(&self) -> crate::theme::MetricTokens {
-        self.metrics
-    }
-
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        _scale: &crate::theme::StandardBoxScale,
-        _pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        Some(self.template.look(role, state, 1.0))
-    }
-}
-
 /// The SDK's default button template: the SDK's `.lss` files alone.
 pub fn default_template() -> Arc<dyn ButtonTemplate<()>> {
     static TEMPLATE: std::sync::OnceLock<Arc<dyn ButtonTemplate<()>>> = std::sync::OnceLock::new();

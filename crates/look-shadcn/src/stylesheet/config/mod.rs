@@ -9,7 +9,7 @@ pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule, ButtonEle
 pub use crate::controls::toggle::ToggleStylesheet;
 pub use crate::controls::progress::{ProgressStylesheet, ProgressMetricsRule, ProgressColorRule};
 pub use crate::controls::stepper::{StepperStylesheet, StepperMetricsRule};
-pub use crate::controls::card::{CardStylesheet, CardColorRule};
+pub use crate::controls::card::CardStylesheet;
 pub use crate::elements::badge::{BadgeStylesheet, BadgeColorRule};
 pub use crate::controls::split_view::{SplitViewStylesheet, SplitViewColorRule};
 pub use crate::controls::control_group::{ControlGroupStylesheet, ControlGroupListColorRule};

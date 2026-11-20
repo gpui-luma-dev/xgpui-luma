@@ -9,8 +9,7 @@ use std::sync::{
 
 use gpui::SharedString;
 use xgpui_luma::controls::{
-    button::{StyledButtonFamilyTheme, StyledButtonTemplate},
-    button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme},
+    button::StyledButtonTemplate,
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
     scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
     selector::{
@@ -24,7 +23,6 @@ use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeM
 
 struct Snapshot {
     tokens: ThemeTokens,
-    button: StyledButtonFamilyTheme,
     scrollbar: StyledScrollbarTheme,
     selector: StyledSelectorTheme,
     tabs: StyledTabsTheme,
@@ -37,7 +35,6 @@ impl Snapshot {
         let panel_tokens = tokens.clone();
         let binding = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
         Self {
-            button: StyledButtonFamilyTheme::new(StyledButtonTemplate::new(style.clone()), tokens.metrics),
             scrollbar: StyledScrollbarTheme::new(binding("scrollbar"), tokens.metrics),
             tabs: StyledTabsTheme::new(binding("tabs")),
             selector: StyledSelectorTheme::new(
@@ -96,25 +93,6 @@ impl AppTheme {
     }
 }
 
-impl ButtonFamilyTheme for AppTheme {
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        self.current().button.resolve_look(role, state, scale, pill_radius)
-    }
-
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        self.current().button.resolve(role, state)
-    }
-    fn metrics(&self) -> MetricTokens {
-        self.metrics()
-    }
-}
-
 impl AppTheme {
     /// The SDK's `.lss` theme for the current mode: its light or its dark palette.
     pub(crate) fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
@@ -122,6 +100,14 @@ impl AppTheme {
             ThemeMode::Light => xgpui_luma::style::default_theme(),
             ThemeMode::Dark => xgpui_luma::style::dark_theme(),
         }
+    }
+
+    /// The SDK button drawn from `.lss`, following the mode.
+    pub(crate) fn button_template<D: xgpui_luma::controls::button::ButtonData>(
+        &self,
+    ) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<D>> {
+        let theme = self.clone();
+        Arc::new(StyledButtonTemplate::<D>::live(Arc::new(move || theme.style_theme())))
     }
 
     /// The SDK radio drawn from `.lss`, following the mode.
@@ -202,11 +188,11 @@ impl TooltipTheme for AppTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
     #[test]
     fn retained_control_themes_follow_mode_and_preserve_sdk_snapshots() {
         let theme = AppTheme::new();
-        let buttons: Arc<dyn ButtonFamilyTheme> = Arc::new(theme.clone());
         let tabs: Arc<dyn TabsTheme> = Arc::new(theme.clone());
         let selectors: Arc<dyn SelectorTheme> = Arc::new(theme.clone());
         let scrollbars: Arc<dyn ScrollbarTheme> = Arc::new(theme.clone());
@@ -221,12 +207,15 @@ mod tests {
                 ThemeMode::Dark => ThemeTokens::dark(),
             };
             let state = InteractionState::default();
-            let button = buttons.resolve(ButtonFamilyRole::Text, state);
+            let button = StyledButtonTemplate::<()>::live(Arc::new({
+                let theme = theme.clone();
+                move || theme.style_theme()
+            }))
+            .look(ButtonFamilyRole::Text, state, 1.0);
             let style = theme.style_theme();
             let sdk = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
             let expected_button =
-                StyledButtonFamilyTheme::new(StyledButtonTemplate::new(style.clone()), tokens.metrics)
-                    .resolve(ButtonFamilyRole::Text, state);
+                StyledButtonTemplate::<()>::new(style.clone()).look(ButtonFamilyRole::Text, state, 1.0);
             assert_eq!(button.background, expected_button.background);
             let radio_label = theme
                 .style_theme()

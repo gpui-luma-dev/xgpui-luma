@@ -5,7 +5,7 @@ pub(crate) mod helpers;
 pub use crate::controls::accordion::{AccordionMetricTable};
 pub use crate::elements::badge::{BadgeMetricTable, resolve_badge_metrics};
 pub use crate::controls::button::{ButtonMetricTable, resolve_button_metrics_with_stylesheet};
-pub use crate::controls::card::{CardMetricTable, resolve_card_metrics};
+pub use crate::controls::card::{CardMetricTable};
 pub use crate::controls::context_menu::{ContextMenuMetricTable};
 pub use crate::controls::control_group::{ControlGroupMetricTable};
 pub use crate::controls::floating_menu::{FloatingMenuMetricTable, resolve_floating_menu_metrics};

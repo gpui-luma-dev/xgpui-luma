@@ -5,10 +5,10 @@ use crate::elements::BadgeVariant;
 use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
 use super::config::{
-    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, CardColorRule,
-    ControlGroupListColorRule, FloatingMenuSurfaceColorRule, FloatingMenuSurfaceElevationRule, ListboxRowColorRule,
-    ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule, SidebarContainerColorRule, SidebarItemColorRule,
-    SliderColorRule, SplitViewColorRule, StylesheetConfig, TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
+    AccordionTriggerColorRule, AutocompleteChromeColorRule, BadgeColorRule, ButtonColorRule, ControlGroupListColorRule,
+    FloatingMenuSurfaceColorRule, ListboxRowColorRule, ProgressColorRule, ResizablePanelsColorRule, ScrollbarColorRule,
+    SidebarContainerColorRule, SidebarItemColorRule, SliderColorRule, SplitViewColorRule, StylesheetConfig,
+    TextfieldColorRule, TreeViewRowColorRule, TypographyRule,
 };
 use super::selector::{AsSelectorState, ButtonSelectorState, badge_variant_key, theme_mode_key};
 
@@ -147,14 +147,6 @@ pub fn find_autocomplete_chrome_color_rule(stylesheet: &StylesheetConfig) -> Opt
 
 pub fn find_progress_color_rule(stylesheet: &StylesheetConfig, enabled: bool) -> Option<&ProgressColorRule> {
     stylesheet.progress.find_color_rule(enabled)
-}
-
-pub fn find_card_color_rule(stylesheet: &StylesheetConfig) -> Option<&CardColorRule> {
-    stylesheet.card.color_rule()
-}
-
-pub fn find_card_elevation_rule(stylesheet: &StylesheetConfig) -> Option<&FloatingMenuSurfaceElevationRule> {
-    stylesheet.card.elevation_rule()
 }
 
 pub fn find_badge_color_rule(

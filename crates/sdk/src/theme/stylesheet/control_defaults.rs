@@ -68,11 +68,6 @@ fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
     assert_eq!(panel.padding, tokens.metrics.padding_y() * 0.5);
     assert_eq!(panel.item_height, tokens.metrics.control_height() * 0.9);
     assert_eq!(panel.item_padding_x, tokens.metrics.padding_x() * 0.75);
-    let sheet =
-        CommonStylesheet::resolve_layers(&["[common.floating_menu.geometry]\nmin_width=273\nitem_height=31"]).unwrap();
-    let tokens = sheet.theme_tokens(ThemeMode::Dark, GamutMapping::CssLocalMinde).unwrap();
-    let panel = default_selector_items_panel_look(&tokens);
-    assert_eq!((panel.min_width, panel.item_height), (273.0, 31.0));
 }
 
 #[test]
@@ -85,8 +80,6 @@ border_width=3
 window_margin=13
 [common.popover.sizes.panel]
 offset_y=9
-[common.floating_menu.geometry]
-disabled_opacity=0.3
 [common.selection_panel.geometry]
 border_width=0
 disabled_opacity=0
@@ -95,10 +88,8 @@ radius=9
     .unwrap();
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
     let look = default_selector_items_panel_look(&tokens);
-    assert_eq!(
-        (look.border_width, look.disabled_opacity, look.popup_offset_y, look.window_margin),
-        (3.0, 0.3, 9.0, 13.0)
-    );
+    // The menu's colors and rows come from `.lss`; the border width and placement from the sheet.
+    assert_eq!((look.border_width, look.popup_offset_y, look.window_margin), (3.0, 9.0, 13.0));
     let selection = default_selection_panel_look(&tokens);
     assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (0.0, 0.0, 9.0));
     for family in ["selector_list", "selection_panel"] {

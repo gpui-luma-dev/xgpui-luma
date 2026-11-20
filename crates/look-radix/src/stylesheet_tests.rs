@@ -1,9 +1,7 @@
 //! Resolved-output baselines and customization boundaries for migrated families.
 use super::*;
 use xgpui_luma::theme::{StandardBoxScale, ThemeMode};
-use xgpui_luma::controls::{
-    button_family::ButtonFamilyRole, textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant,
-};
+use xgpui_luma::controls::{textfield::TextFieldState, textarea::TextAreaState, toolbar::ToolbarVariant};
 
 #[test]
 fn size_and_state_baselines_survive_shared_geometry_migration() {
@@ -111,15 +109,15 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.card.sizes.get_mut("1").unwrap().padding = Some(18.0);
     config.avatar.sizes.get_mut("9").unwrap().diameter = Some(190.0);
     config.avatar.sizes.get_mut("9").unwrap().two_letter_font_size = Some(44.0);
     config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
-    let scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
+    let _scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
     assert_eq!(explicit_toolbar.resolve(true, ToolbarVariant::Outline).gap, 17.0);
-    assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (18.0, -18.0));
+    // The card is drawn from `.lss`; `[common.card]` no longer reaches it.
+    assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (12.0, -12.0));
     assert_eq!(explicit_card.resolve_style().padding, 21.0);
     assert_eq!(
         (avatar.resolve_style().diameter, avatar.resolve_style().radius, avatar.resolve_style().font_size),
@@ -130,8 +128,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
         crate::button_layout::button_box_with_stylesheet(&fork.common_stylesheet(), ButtonSize::Four, Radius::Full);
     assert_eq!((box_.height, box_.radius), (57.0, 28.5));
     assert_eq!(button_box_for(ButtonSize::Three, Radius::Full).height, 40.0);
-    let theme = button_family_theme(&fork, ButtonVariant::Soft);
-    assert_eq!(theme.resolve_look(ButtonFamilyRole::Icon, Default::default(), &scale, 999.0).unwrap().height, 32.0);
 }
 
 #[test]

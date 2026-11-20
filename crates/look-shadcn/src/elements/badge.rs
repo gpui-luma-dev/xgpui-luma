@@ -1,7 +1,6 @@
 use serde::Deserialize;
 
 use gpui::Div;
-use gpui::FontWeight;
 use gpui::IntoElement;
 use gpui::SharedString;
 use gpui::div;
@@ -9,7 +8,6 @@ use gpui::px;
 use gpui::prelude::*;
 use xgpui_luma::infra::icon::IconSource;
 use xgpui_luma::infra::icon::lucide_icon;
-use xgpui_luma::theme::LumaTextStyle;
 
 use crate::look::ShadcnLook;
 use crate::size::ShadcnSize;
@@ -18,7 +16,6 @@ use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
 use crate::stylesheet::find_badge_color_rule;
 use crate::stylesheet::resolve_badge_color_rule;
-use crate::tokens::ShadcnFont;
 use crate::tokens::ShadcnToken;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -65,20 +62,7 @@ pub struct BadgeColorTable {
     pub border: Option<ResolvedColor>,
 }
 
-#[derive(Clone, Debug)]
-pub struct BadgeLook {
-    pub background: gpui::Hsla,
-    pub foreground: gpui::Hsla,
-    pub border: Option<gpui::Hsla>,
-    pub radius: f32,
-    pub min_height: f32,
-    pub padding_x: f32,
-    pub padding_y: f32,
-    pub gap: f32,
-    pub icon_size: f32,
-    pub typography: LumaTextStyle,
-    pub font_family: SharedString,
-}
+pub use xgpui_luma::controls::badge::BadgeLook;
 
 impl BadgeColorTable {
     pub fn fallback(look: &ShadcnLook, variant: BadgeVariant) -> Self {
@@ -190,50 +174,24 @@ pub fn resolve_badge_colors_with_stylesheet(
     Ok(BadgeColorTable { background: colors.background, foreground: colors.foreground, border: colors.border })
 }
 
+/// The badge from `.lss` (`style/badge.lss`) for `variant` at `size`.
 pub fn badge_look(theme: &ShadcnLook, variant: BadgeVariant, size: ShadcnSize) -> BadgeLook {
-    let tokens = theme.mode_tokens();
-    let control_size = size;
-    let typography = badge_typography(tokens.as_ref(), theme.stylesheet().as_ref(), size);
-    let min_height = typography.line_height + tokens.control_sizes.padding_y(control_size);
-    let colors = resolve_badge_colors(theme, variant).unwrap_or_else(|_| BadgeColorTable::fallback(theme, variant));
-
-    let mut look = BadgeLook {
-        background: colors.background.hsla(),
-        foreground: colors.foreground.hsla(),
-        border: colors.border.map(|border| border.hsla()),
-        radius: tokens.radii.full,
-        min_height,
-        padding_x: tokens.control_sizes.padding_x(control_size),
-        padding_y: ((min_height - typography.line_height) * 0.5).max(0.0),
-        gap: (tokens.control_sizes.gap(control_size) * 0.75).max(4.0),
-        icon_size: typography.size,
-        typography,
-        font_family: theme.font(ShadcnFont::Sans),
+    let look = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "badge",
+        xgpui_luma::style::ThemeSource::Live(std::sync::Arc::new(move || look.style_theme())),
+    );
+    let binding = if size != ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
     };
-    let geometry = tokens.stylesheet().common.badge.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(control_size),
-        xgpui_luma::theme::stylesheet::BadgeGeometry {
-            padding_x: look.padding_x,
-            padding_y: look.padding_y,
-            min_height: look.min_height,
-            gap: look.gap,
-            icon_size: look.icon_size,
-            font_size: look.typography.size,
-            line_height: look.typography.line_height,
-        },
-    );
-    look.padding_x = geometry.padding_x.value_px;
-    look.padding_y = geometry.padding_y.value_px;
-    look.min_height = geometry.min_height.value_px;
-    look.gap = geometry.gap.value_px;
-    look.icon_size = geometry.icon_size.value_px;
-    crate::tables::typography::apply_resolved_geometry_typography(
-        &mut look.typography,
-        &geometry.font_size,
-        &geometry.line_height,
-    );
-
-    look
+    let binding = if variant != BadgeVariant::Default {
+        binding.variant(variant.as_str())
+    } else {
+        binding
+    };
+    xgpui_luma::controls::badge::StyledBadge::new(binding).look()
 }
 
 impl IntoElement for Badge {
@@ -273,17 +231,6 @@ impl IntoElement for Badge {
     }
 }
 
-fn badge_typography(
-    tokens: &crate::mode::ShadcnModeTokens,
-    stylesheet: &crate::stylesheet::StylesheetConfig,
-    size: ShadcnSize,
-) -> LumaTextStyle {
-    let mut typography =
-        crate::tables::typography::resolve_control_typography_with_stylesheet(tokens, stylesheet, size, false).style;
-    typography.weight = FontWeight::MEDIUM;
-    typography
-}
-
 fn render_badge_icon(icon: &IconSource, color: gpui::Hsla, size: f32) -> gpui::AnyElement {
     if let Some(icon) = icon.lucide() {
         return lucide_icon(icon, color, size);
@@ -315,8 +262,8 @@ mod tests {
         let shadcn = sample_look();
         let look = badge_look(&shadcn, BadgeVariant::Default, ShadcnSize::Md);
 
-        assert_eq!(look.background, shadcn.color(ShadcnToken::Primary));
-        assert_eq!(look.foreground, shadcn.color(ShadcnToken::PrimaryForeground));
+        crate::assert_close(look.background, shadcn.color(ShadcnToken::Primary));
+        crate::assert_close(look.foreground, shadcn.color(ShadcnToken::PrimaryForeground));
     }
 
     #[test]
@@ -325,8 +272,8 @@ mod tests {
         shadcn.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         let look = badge_look(&shadcn, BadgeVariant::Outline, ShadcnSize::Md);
 
-        assert_eq!(look.foreground, shadcn.color(ShadcnToken::Foreground));
-        assert_eq!(look.border, Some(shadcn.token_color("input").expect("input")));
+        crate::assert_close(look.foreground, shadcn.color(ShadcnToken::Foreground));
+        crate::assert_close(look.border.expect("outline border"), shadcn.token_color("input").expect("input"));
     }
 
     #[test]

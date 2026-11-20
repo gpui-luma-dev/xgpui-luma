@@ -1,0 +1,9 @@
+// Shadcn color-control chrome. Layer: look. The border edge on the card fill (the background when the
+// theme has no card color).
+
+color_chrome {
+  part root {
+    border     = css.border
+    background = first(css.card, css.background)
+  }
+}

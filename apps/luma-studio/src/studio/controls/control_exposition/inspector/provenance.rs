@@ -1,7 +1,4 @@
-use xgpui_luma_look_shadcn::inspect::{
-    ResolvedColor, ResolvedMetric, format_inspect_css_key, format_inspect_metric_provenance,
-    format_inspect_metric_source, format_inspect_provenance, format_metric_px,
-};
+use xgpui_luma_look_shadcn::inspect::{ResolvedColor, format_inspect_css_key, format_inspect_provenance};
 
 use super::occupation::InspectMetricPropertyData;
 use super::schema::{InspectColorRow, InspectPropertyRow};
@@ -13,19 +10,6 @@ pub fn color_row(label: &'static str, color: &ResolvedColor) -> InspectColorRow 
         source: format_inspect_css_key(&color.source),
         detail: format_inspect_provenance(&color.source),
     }
-}
-
-pub fn metric_row(label: &str, metric: &ResolvedMetric) -> InspectPropertyRow {
-    InspectPropertyRow {
-        label: label.to_owned(),
-        value: format_metric_px(metric.value_px),
-        source: format_inspect_metric_source(&metric.source),
-        detail: format_inspect_metric_provenance(&metric.source),
-    }
-}
-
-pub fn metric_properties(fields: &[(&'static str, &ResolvedMetric)]) -> Vec<InspectPropertyRow> {
-    fields.iter().map(|(label, metric)| metric_row(label, metric)).collect()
 }
 
 pub fn property_rows_from_metric_data(rows: &[InspectMetricPropertyData]) -> Vec<InspectPropertyRow> {

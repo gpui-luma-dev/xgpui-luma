@@ -1,0 +1,7 @@
+// SDK selection panel. Layer: sdk. A popover list of choices: the floating menu's surface and rows, so a
+// look restyles it apart from menus only where it sets `selection_panel` rules. Read by
+// `styled_selection_panel_look` (theme.rs) through the selector items panel.
+
+/// A popover list of choices.
+selection_panel extends floating_menu {
+}

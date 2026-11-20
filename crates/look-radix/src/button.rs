@@ -1,13 +1,11 @@
-//! Radix-owned button variants bound to SDK [`ButtonFamilyTheme`].
+//! Radix-owned button variants: `.lss` templates (`style/button.lss`) and the native palette behind [`button_look_for`].
 
 use std::sync::Arc;
 
 use gpui::{BoxShadow, Hsla, black, point, px};
 use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, StyledButtonTemplate};
-use xgpui_luma::controls::button_family::{
-    ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, compose_button_family_look,
-};
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole};
+use xgpui_luma::theme::InteractionState;
 
 use crate::button_layout::{ButtonSize, Radius, apply_button_box, button_box_with_stylesheet};
 use crate::look::Look;
@@ -62,71 +60,6 @@ impl Paint {
     }
 }
 
-struct ButtonFamilyThemeAdapter {
-    look: Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    size: Option<ButtonSize>,
-}
-
-impl ButtonFamilyTheme for ButtonFamilyThemeAdapter {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        resolve_button_palette(&self.look, self.variant, self.paint, role, state)
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        let size = self.look.size();
-        let mut palette = self.resolve(role, state);
-        let geometry = self.look.stylesheet_snapshot().button.resolve_geometry_for(
-            self.size.map(ButtonSize::as_str).unwrap_or_else(|| size.key()),
-            xgpui_luma::theme::stylesheet::ButtonGeometry {
-                height: scale.height,
-                padding_x: scale.padding_x,
-                padding_y: scale.padding_y,
-                gap: scale.gap,
-                icon_size: scale.icon_size,
-                font_size: palette.typography.size,
-                line_height: palette.typography.line_height,
-            },
-        );
-        palette.typography.size = geometry.font_size;
-        palette.typography.line_height = geometry.line_height;
-        let mut look = compose_button_family_look(&palette, role, scale, pill_radius);
-        look.height = geometry.height;
-        look.gap = geometry.gap;
-        if role != ButtonFamilyRole::Icon {
-            look.padding_x = geometry.padding_x;
-            look.padding_y = geometry.padding_y;
-        } else {
-            look.icon_size = geometry.icon_size;
-        }
-        if matches!(self.variant, ButtonVariant::Page) {
-            look.radius = pill_radius;
-        }
-        if matches!(self.variant, ButtonVariant::Classic) {
-            look.shadow = Some(classic_shadow(&self.look, palette.background, state));
-            // Classic keeps an editable radius knob; default matches Radix size-2 / medium (4px).
-            look.radius = self.look.classic_params().radius;
-        }
-        Some(look)
-    }
-}
-
-/// Accent tone, normal contrast — the default Radix button paint.
-pub fn button_family_theme(look: &Look, variant: ButtonVariant) -> Arc<dyn ButtonFamilyTheme> {
-    button_family_theme_with(look, variant, Paint::accent())
-}
-
 /// Full look resolver for a Radix size × radius cell (All Sizes matrix / previews).
 pub fn button_look_for<D: 'static>(
     look: &Look,
@@ -148,10 +81,6 @@ pub fn button_look_for<D: 'static>(
         }
         family
     })
-}
-
-pub fn button_family_theme_with(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonFamilyTheme> {
-    Arc::new(ButtonFamilyThemeAdapter { look: look.clone(), variant, paint, size: None })
 }
 
 fn resolve_button_palette(
@@ -313,12 +242,21 @@ fn classic_shadow(look: &Look, fill: Hsla, state: InteractionState) -> Vec<BoxSh
 
 /// Template for a Radix variant × paint cell at the look's size, drawn from `.lss` (`style/button.lss`).
 pub fn button_template<D: ButtonData>(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
+    Arc::new(button_template_for::<D>(look, variant, paint))
+}
+
+/// [`button_template`] as the `.lss` template itself, for callers that add modifiers or read its faces.
+pub fn button_template_for<D: ButtonData>(
+    look: &Look,
+    variant: ButtonVariant,
+    paint: Paint,
+) -> StyledButtonTemplate<D> {
     let size = match look.size() {
         crate::RadixSize::One => ButtonSize::One,
         crate::RadixSize::Two => ButtonSize::Two,
         crate::RadixSize::Three => ButtonSize::Three,
     };
-    Arc::new(styled_button_template::<D>(look, variant, paint, size))
+    styled_button_template::<D>(look, variant, paint, size)
 }
 
 /// The classic variant (its gradient face comes from `background_start` / `background_end`).
@@ -368,10 +306,31 @@ mod tests {
     use super::*;
     use xgpui_luma::theme::InteractionState;
 
+    /// The native palette for a variant × paint cell (what [`button_look_for`] paints).
+    struct Native {
+        look: Look,
+        variant: ButtonVariant,
+        paint: Paint,
+    }
+
+    impl Native {
+        fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
+            resolve_button_palette(&self.look, self.variant, self.paint, role, state)
+        }
+    }
+
+    fn native(look: &Look, variant: ButtonVariant) -> Native {
+        native_with(look, variant, Paint::accent())
+    }
+
+    fn native_with(look: &Look, variant: ButtonVariant, paint: Paint) -> Native {
+        Native { look: look.clone(), variant, paint }
+    }
+
     #[test]
     fn solid_default_uses_primary_steps() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Solid);
+        let theme = native(&look, ButtonVariant::Solid);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         let expected_bg = look.resolve_role(SemanticRole::Primary).hsla();
         assert_eq!(palette.background.h, expected_bg.h);
@@ -381,7 +340,7 @@ mod tests {
     #[test]
     fn ghost_default_is_transparent() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Ghost);
+        let theme = native(&look, ButtonVariant::Ghost);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         assert_eq!(palette.background.a, 0.0);
         assert!(palette.border.is_none());
@@ -390,7 +349,7 @@ mod tests {
     #[test]
     fn surface_uses_accent_panel_and_edge() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Surface);
+        let theme = native(&look, ButtonVariant::Surface);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
@@ -401,7 +360,7 @@ mod tests {
     #[test]
     fn solid_high_contrast_uses_step_twelve_on_gray_one() {
         let look = Look::built_in();
-        let theme = button_family_theme_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
+        let theme = native_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, Tone::Gray.step(&look, 12));
@@ -411,7 +370,7 @@ mod tests {
     #[test]
     fn classic_high_contrast_uses_step_twelve() {
         let look = Look::built_in();
-        let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
+        let theme = native_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert_eq!(palette.background, Tone::Accent.step(&look, 12));
@@ -421,8 +380,8 @@ mod tests {
     #[test]
     fn soft_high_contrast_darkens_the_label_only() {
         let look = Look::built_in();
-        let normal = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray());
-        let hc = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray().high_contrast());
+        let normal = native_with(&look, ButtonVariant::Soft, Paint::gray());
+        let hc = native_with(&look, ButtonVariant::Soft, Paint::gray().high_contrast());
         let state = InteractionState::default();
         let normal = normal.resolve(ButtonFamilyRole::Text, state);
         let hc = hc.resolve(ButtonFamilyRole::Text, state);
@@ -435,8 +394,8 @@ mod tests {
     #[test]
     fn classic_high_contrast_shifts_fill_to_step_twelve() {
         let look = Look::built_in();
-        let normal = button_family_theme_with(&look, ButtonVariant::Classic, Paint::gray());
-        let hc = button_family_theme_with(&look, ButtonVariant::Classic, Paint::gray().high_contrast());
+        let normal = native_with(&look, ButtonVariant::Classic, Paint::gray());
+        let hc = native_with(&look, ButtonVariant::Classic, Paint::gray().high_contrast());
         let state = InteractionState::default();
 
         assert_ne!(
@@ -453,7 +412,7 @@ mod tests {
             Default::default(),
             xgpui_luma::theme::ThemeMode::Light,
         );
-        let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent());
+        let theme = native_with(&look, ButtonVariant::Classic, Paint::accent());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert!(palette.foreground.l < palette.background.l);
@@ -463,8 +422,8 @@ mod tests {
     #[test]
     fn classic_shares_the_solid_fill_behind_a_darker_border() {
         let look = Look::built_in();
-        let classic = button_family_theme(&look, ButtonVariant::Classic);
-        let solid = button_family_theme(&look, ButtonVariant::Solid);
+        let classic = native(&look, ButtonVariant::Classic);
+        let solid = native(&look, ButtonVariant::Solid);
         let state = InteractionState::default();
         let palette = classic.resolve(ButtonFamilyRole::Text, state);
 
@@ -475,13 +434,8 @@ mod tests {
     }
 
     fn classic_shadows(look: &Look, state: InteractionState) -> Vec<BoxShadow> {
-        let theme = button_family_theme(&look, ButtonVariant::Classic);
-        let scale = StandardBoxScale::compute(&look.metrics_for(crate::RadixSize::Two), 2.0);
-        theme
-            .resolve_look(ButtonFamilyRole::Text, state, &scale, 999.0)
-            .expect("classic look")
-            .shadow
-            .expect("classic shadows")
+        let palette = native(look, ButtonVariant::Classic).resolve(ButtonFamilyRole::Text, state);
+        classic_shadow(look, palette.background, state)
     }
 
     #[test]
@@ -542,7 +496,7 @@ mod tests {
     #[test]
     fn page_toggle_stays_borderless_when_unselected() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Page);
+        let theme = native(&look, ButtonVariant::Page);
         let palette = theme.resolve(ButtonFamilyRole::Toggle { selected: false }, InteractionState::default());
 
         assert_eq!(palette.background.a, 0.0);
@@ -552,7 +506,7 @@ mod tests {
     #[test]
     fn page_toggle_is_binary_off_on() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Page);
+        let theme = native(&look, ButtonVariant::Page);
         let role = ButtonFamilyRole::Toggle { selected: true };
         let resting = theme.resolve(role, InteractionState::default());
         let focused = theme.resolve(role, InteractionState { focused: true, ..Default::default() });
@@ -573,7 +527,7 @@ mod tests {
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for paint in [Paint::accent(), Paint::gray(), Paint { tone: Tone::Accent, high_contrast: true }] {
-                let quiet = button_family_theme_with(&look, ButtonVariant::GhostQuiet, paint);
+                let quiet = native_with(&look, ButtonVariant::GhostQuiet, paint);
                 for role in
                     [ButtonFamilyRole::Text, ButtonFamilyRole::Icon, ButtonFamilyRole::Toggle { selected: true }]
                 {
@@ -592,7 +546,7 @@ mod tests {
                 }
             }
         }
-        let ghost = button_family_theme(&look, ButtonVariant::Ghost);
+        let ghost = native(&look, ButtonVariant::Ghost);
         assert!(
             ghost
                 .resolve(ButtonFamilyRole::Text, InteractionState { hovered: true, ..Default::default() })

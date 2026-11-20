@@ -175,8 +175,8 @@ pub use size::{RadixControlMetrics, RadixSize};
 pub use avatar::{Avatar, AvatarSize, AvatarStyle, AvatarVariant};
 pub use badge::{Badge, BadgeSize, BadgeVariant};
 pub use button::{
-    ClassicButtonParams, Paint, ButtonVariant, button_family_theme, button_family_theme_with, button_look_for,
-    button_template, classic_button_template, classic_button_template_with,
+    ClassicButtonParams, Paint, ButtonVariant, button_look_for, button_template, button_template_for,
+    classic_button_template, classic_button_template_with,
 };
 pub use button_builder::Button;
 pub use callout::callout;

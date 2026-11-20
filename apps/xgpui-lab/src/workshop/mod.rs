@@ -167,12 +167,10 @@ impl Workshop {
                     .spawn(cx);
                 // Like Explorer, modify the SDK's inner button surface so content
                 // alignment and selected paint apply to the actual interactive row.
-                let template = xgpui_luma::controls::button::DefaultButtonTemplate::new(
-                    xgpui_luma_look_radix::button_family_theme_with(
-                        &shell_look,
-                        xgpui_luma_look_radix::ButtonVariant::Ghost,
-                        xgpui_luma_look_radix::Paint::gray(),
-                    ),
+                let template = xgpui_luma_look_radix::button_template_for::<()>(
+                    &shell_look,
+                    xgpui_luma_look_radix::ButtonVariant::Ghost,
+                    xgpui_luma_look_radix::Paint::gray(),
                 )
                 .with_modifier(move |row, model| {
                     row.debug_selector(move || format!("workshop-{id}"))

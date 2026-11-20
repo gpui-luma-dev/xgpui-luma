@@ -53,6 +53,8 @@ pub struct LssInspectorAdapter {
     on_value: &'static str,
     indicator_only: Option<IndicatorOnly>,
     box_props: Option<BoxProps>,
+    /// A variant used whatever the variant selector says (a combobox field is the `input` text field).
+    fixed_variant: Option<&'static str>,
 }
 
 impl LssInspectorAdapter {
@@ -63,7 +65,14 @@ impl LssInspectorAdapter {
             on_value: value_state,
             indicator_only: None,
             box_props: None,
+            fixed_variant: None,
         }
+    }
+
+    /// Always inspect `variant`, ignoring the variant selector.
+    pub fn fixed_variant(mut self, variant: &'static str) -> Self {
+        self.fixed_variant = Some(variant);
+        self
     }
 
     /// The value-mode id meaning on, when it differs from the state's name (e.g. `on` for `checked`).
@@ -93,7 +102,8 @@ impl LssInspectorAdapter {
         let config = sheet.config();
         let axes = sheet.axes(self.control);
         let mut key = StyleKey::new(self.control).scale(selection.scale_factor);
-        for (axis, id) in [("variant", selection.variant_id), ("size", selection.size_id)] {
+        for (axis, id) in [("variant", self.fixed_variant.unwrap_or(selection.variant_id)), ("size", selection.size_id)]
+        {
             let Some(attr) = config.attribute(axis) else { continue };
             let name = id.replace('-', "_");
             let value = axes
@@ -328,6 +338,45 @@ fn provenance(row: &Row) -> String {
 fn selected_part<'a>(inspection: &'a Inspection, selection: InspectorSelection<'_>) -> Option<&'a PartInspection> {
     let name = selection.part_id.replace('-', "_");
     inspection.parts.iter().find(|p| p.part.name() == name && name != "all")
+}
+
+/// Several `.lss` controls under one spec: the part selector picks the control (by the part ids given),
+/// the first one otherwise. A combobox is its text field and its menu.
+pub struct LssCompositeAdapter {
+    parts: Vec<(&'static str, LssInspectorAdapter)>,
+}
+
+impl LssCompositeAdapter {
+    pub fn new(parts: Vec<(&'static str, LssInspectorAdapter)>) -> Self {
+        Self { parts }
+    }
+
+    pub fn shared(self) -> SharedInspectorResolver {
+        Arc::new(self)
+    }
+
+    fn pick(&self, selection: InspectorSelection<'_>) -> &LssInspectorAdapter {
+        let found = self.parts.iter().find(|(id, _)| *id == selection.part_id);
+        &found.unwrap_or(&self.parts[0]).1
+    }
+}
+
+impl ControlInspectorResolver for LssCompositeAdapter {
+    fn resolve_category(
+        &self,
+        look: &ShadcnLook,
+        selection: InspectorSelection<'_>,
+        category_id: &str,
+    ) -> InspectorCategoryContent {
+        // The control's own rows: the part selector chose the control, not one of its parts.
+        self.pick(selection)
+            .resolve_category(look, InspectorSelection { part_id: "all", ..selection }, category_id)
+    }
+
+    fn category_applies(&self, look: &ShadcnLook, selection: InspectorSelection<'_>, category_id: &str) -> bool {
+        self.pick(selection)
+            .category_applies(look, InspectorSelection { part_id: "all", ..selection }, category_id)
+    }
 }
 
 /// A part-selector entry for a `.lss` part (`id` is the part name, `-` for `_`; `all` shows every part).

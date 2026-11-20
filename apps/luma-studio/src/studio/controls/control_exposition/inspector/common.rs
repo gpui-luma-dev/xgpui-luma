@@ -17,14 +17,6 @@ pub fn interaction_state(state_id: &str) -> InteractionState {
     }
 }
 
-pub fn control_size(size_id: &str) -> xgpui_luma_look_shadcn::ShadcnSize {
-    match size_id {
-        "sm" => xgpui_luma_look_shadcn::ShadcnSize::Sm,
-        "lg" => xgpui_luma_look_shadcn::ShadcnSize::Lg,
-        _ => xgpui_luma_look_shadcn::ShadcnSize::Md,
-    }
-}
-
 pub fn neutral_box_model_colors(mode: ThemeMode) -> BoxModelLayerColors {
     match mode {
         ThemeMode::Dark => BoxModelLayerColors {
@@ -50,14 +42,5 @@ pub fn neutral_box_model_label_color(mode: ThemeMode) -> gpui::Hsla {
     match mode {
         ThemeMode::Dark => hsla(0.0, 0.0, 0.94, 0.96),
         ThemeMode::Light => hsla(0.0, 0.0, 0.14, 0.96),
-    }
-}
-
-pub fn badge_variant(variant_id: &str) -> xgpui_luma_look_shadcn::BadgeVariant {
-    match variant_id {
-        "secondary" => xgpui_luma_look_shadcn::BadgeVariant::Secondary,
-        "outline" => xgpui_luma_look_shadcn::BadgeVariant::Outline,
-        "ghost" => xgpui_luma_look_shadcn::BadgeVariant::Ghost,
-        _ => xgpui_luma_look_shadcn::BadgeVariant::Default,
     }
 }

@@ -79,7 +79,9 @@ radix_sources![
     "scrollbar.lss",
     "dock_splitter.lss",
     "resizable_panels.lss",
-    "split_view.lss"
+    "split_view.lss",
+    "badge.lss",
+    "card.lss"
 ];
 
 /// The SDK's files with the Radix look's files over them.
@@ -273,5 +275,3 @@ impl TokenSource for RadixTokens {
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod native_button_parity;

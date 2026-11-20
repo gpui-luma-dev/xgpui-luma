@@ -37,6 +37,3 @@ pub use crate::controls::sidebar::resolve_sidebar_focus_border;
 pub mod typography;
 
 pub use crate::controls::textfield::resolve_textfield_palette;
-
-mod color_chrome;
-pub use color_chrome::{resolve_color_chrome, ColorChromeTable};

@@ -9,9 +9,7 @@ use perf_measure::measure;
 use gpui::{BoxShadow, ElementId, SharedString};
 use xgpui_luma::{
     controls::{
-        button_family::{ButtonFamilyRole, compose_button_family_look, default_button_family_theme},
-        sidebar::SidebarPanelTemplateHandlers,
-        tree_view::TreeViewTemplateHandlers,
+        button_family::ButtonFamilyRole, sidebar::SidebarPanelTemplateHandlers, tree_view::TreeViewTemplateHandlers,
     },
     theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeTokens},
 };
@@ -81,11 +79,11 @@ fn main() {
         });
     }
 
-    let theme = default_button_family_theme();
-    let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
-    let scale = StandardBoxScale::compute(&metrics, 2.0);
-    let mut look =
-        compose_button_family_look(&palette, ButtonFamilyRole::Text, &scale, xgpui_luma::theme::FULL_RADIUS_PX);
+    let mut look = xgpui_luma::controls::button::StyledButtonTemplate::<()>::sdk().look(
+        ButtonFamilyRole::Text,
+        InteractionState::default(),
+        2.0,
+    );
     measure("Button look/no shadows clone", iterations, || black_box(&look).clone());
     let layer = ThemeTokens::default().elevation.control.to_box_shadows()[0].clone();
     for count in [0, 1, 2, 8] {

@@ -4,7 +4,7 @@
 //! that is no axis value, e.g. `primary` or `md`, selects the base); the value selector turns the control's
 //! value state on or off.
 
-use super::lss::{LSS_INTERACTION_STATES, LssInspectorAdapter, lss_part};
+use super::lss::{LSS_INTERACTION_STATES, LssCompositeAdapter, LssInspectorAdapter, lss_part};
 use super::super::schema::{
     ControlInspectorSpec, InspectorPart, InspectorSize, InspectorValueMode, InspectorVariant, SharedInspectorResolver,
 };
@@ -120,6 +120,29 @@ pub static SELECTOR_INSPECTOR_SPEC: ControlInspectorSpec =
     spec("Selector", "selector-theme-inspector", &[], &TRIGGER_VARIANTS, true, false);
 lss_adapter!(SelectorInspectorAdapter, "selector");
 
+static FIELD_MENU_PARTS: [InspectorPart; 2] = [lss_part("field", "Field"), lss_part("menu", "Menu")];
+
+/// A text field over a menu: the `input` text field and the floating menu.
+fn field_menu_adapter() -> SharedInspectorResolver {
+    LssCompositeAdapter::new(vec![
+        ("field", LssInspectorAdapter::new("textfield", "selected").fixed_variant("input")),
+        ("menu", LssInspectorAdapter::new("floating_menu", "selected")),
+    ])
+    .shared()
+}
+
+pub static COMBOBOX_INSPECTOR_SPEC: ControlInspectorSpec =
+    spec("ComboBox", "combobox-theme-inspector", &FIELD_MENU_PARTS, &[], false, false);
+pub fn combobox_inspector_adapter() -> SharedInspectorResolver {
+    field_menu_adapter()
+}
+
+pub static SEARCH_SELECTOR_INSPECTOR_SPEC: ControlInspectorSpec =
+    spec("SearchSelector", "search-selector-theme-inspector", &FIELD_MENU_PARTS, &[], false, false);
+pub fn search_selector_inspector_adapter() -> SharedInspectorResolver {
+    field_menu_adapter()
+}
+
 // Range.
 
 static SLIDER_PARTS: [InspectorPart; 5] = [
@@ -212,7 +235,29 @@ pub static RESIZABLE_PANELS_INSPECTOR_SPEC: ControlInspectorSpec =
     spec("Resizable Panels", "resizable-panels-theme-inspector", &[], &[], false, false);
 lss_adapter!(ResizablePanelsInspectorAdapter, "resizable_panels");
 
+// Display.
+
+static BADGE_VARIANTS: [InspectorVariant; 4] = [
+    variant("default", "Default"),
+    variant("secondary", "Secondary"),
+    variant("outline", "Outline"),
+    variant("ghost", "Ghost"),
+];
+pub static BADGE_INSPECTOR_SPEC: ControlInspectorSpec =
+    spec("Badge", "badge-theme-inspector", &[], &BADGE_VARIANTS, true, false);
+lss_adapter!(BadgeInspectorAdapter, "badge");
+
 // Overlays.
+
+static SELECTION_PANEL_PARTS: [InspectorPart; 4] = [
+    lss_part("all", "All"),
+    lss_part("root", "Panel"),
+    lss_part("item", "Item"),
+    lss_part("separator", "Separator"),
+];
+pub static SELECTION_PANEL_INSPECTOR_SPEC: ControlInspectorSpec =
+    spec("Selection Panel", "selection-panel-theme-inspector", &SELECTION_PANEL_PARTS, &[], true, false);
+lss_adapter!(SelectionPanelInspectorAdapter, "selection_panel");
 
 pub static POPUP_MENU_INSPECTOR_SPEC: ControlInspectorSpec =
     spec("Popup Menu", "popup-menu-theme-inspector", &[], &TRIGGER_VARIANTS, false, false);
@@ -264,6 +309,15 @@ mod tests {
     }
 
     #[test]
+    fn a_composite_picks_its_control_by_part() {
+        let combobox = combobox_inspector_adapter();
+        let field = colors(&combobox, selection("field", "", ""));
+        let menu = colors(&combobox, selection("menu", "", ""));
+        assert!(field.iter().any(|l| l == "placeholder"), "{field:?}");
+        assert!(menu.iter().any(|l| l.starts_with("item ")), "{menu:?}");
+    }
+
+    #[test]
     fn the_part_selector_filters_rows_to_one_lss_part() {
         let table = TableInspectorAdapter::shared();
         let all = colors(&table, selection("all", "", "unselected"));
@@ -301,6 +355,10 @@ mod tests {
             ("context_menu", ContextMenuInspectorAdapter::shared(), &CONTEXT_MENU_INSPECTOR_SPEC),
             ("floating_menu", FloatingMenuInspectorAdapter::shared(), &FLOATING_MENU_INSPECTOR_SPEC),
             ("overlay_window", OverlayWindowInspectorAdapter::shared(), &OVERLAY_WINDOW_INSPECTOR_SPEC),
+            ("badge", BadgeInspectorAdapter::shared(), &BADGE_INSPECTOR_SPEC),
+            ("selection_panel", SelectionPanelInspectorAdapter::shared(), &SELECTION_PANEL_INSPECTOR_SPEC),
+            ("combobox", combobox_inspector_adapter(), &COMBOBOX_INSPECTOR_SPEC),
+            ("search_selector", search_selector_inspector_adapter(), &SEARCH_SELECTOR_INSPECTOR_SPEC),
         ] {
             let rows =
                 colors(&adapter, selection(spec.default_part_id, spec.default_variant_id, spec.default_value_id));

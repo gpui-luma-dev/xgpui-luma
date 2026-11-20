@@ -26,59 +26,6 @@ use xgpui_luma::theme::LumaTextStyle;
 use xgpui_luma::theme::observe_theme_revision;
 
 use crate::look::ShadcnLook;
-use crate::look_context::LookContext;
-use crate::provenance::ColorSource;
-use crate::provenance::LookResolver;
-use crate::provenance::ResolvedColor;
-use crate::shadow::parse_shadow_token;
-use crate::stylesheet::StylesheetConfig;
-use crate::stylesheet::find_card_color_rule;
-use crate::stylesheet::find_card_elevation_rule;
-use crate::stylesheet::resolve_card_color_rule;
-use crate::stylesheet::resolve_stylesheet_shadow_token;
-use crate::tokens::ShadcnFont;
-use crate::tokens::ShadcnTextRole;
-use crate::tokens::ShadcnTextSize;
-
-#[derive(Clone, Debug)]
-pub struct CardColorTable {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub muted_foreground: ResolvedColor,
-    pub border: ResolvedColor,
-}
-
-impl CardColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            background: ResolvedColor { value: gpui::hsla(0.0, 0.0, 0.0, 0.0), source: ColorSource::Transparent },
-            foreground: ResolvedColor::fallback_foreground(),
-            muted_foreground: ResolvedColor::fallback_foreground(),
-            border: ResolvedColor::fallback_foreground(),
-        }
-    }
-}
-
-pub fn resolve_card_colors(theme: &ShadcnLook) -> anyhow::Result<CardColorTable> {
-    resolve_card_colors_with_stylesheet(theme, theme.mode_tokens().stylesheet())
-}
-
-pub fn resolve_card_colors_with_stylesheet(
-    theme: &ShadcnLook,
-    stylesheet: &crate::stylesheet::StylesheetConfig,
-) -> anyhow::Result<CardColorTable> {
-    let tokens = theme.mode_tokens();
-    let ctx = LookContext::new(tokens.as_ref(), theme.mode(), Default::default());
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "card").with_stylesheet(stylesheet);
-    let rule = find_card_color_rule(stylesheet).ok_or_else(|| anyhow::anyhow!("no card color rule configured"))?;
-    let colors = resolve_card_color_rule(&resolver, rule)?;
-    Ok(CardColorTable {
-        background: colors.background,
-        foreground: colors.foreground,
-        muted_foreground: colors.muted_foreground,
-        border: colors.border,
-    })
-}
 
 #[derive(Clone, Debug)]
 pub struct CardLook {
@@ -99,44 +46,36 @@ pub struct CardLook {
     pub font_family: SharedString,
 }
 
+/// The card from `.lss` (`style/card.lss`) at `size`.
 pub fn card_look(theme: &ShadcnLook, size: ShadcnSize) -> CardLook {
-    let tokens = theme.mode_tokens();
-    let colors = resolve_card_colors(theme).unwrap_or_else(|_| CardColorTable::fallback());
-    let geometry = crate::tables::metrics::resolve_card_metrics(theme, size);
-    let typography = &tokens.typography;
-    let shadow = card_elevation_shadow(&tokens.catalog, theme.mode_tokens().stylesheet());
-
+    let look = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "card",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme())),
+    );
+    let binding = if size != ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    let card = xgpui_luma::controls::card::StyledCard::new(binding).look();
     CardLook {
-        background: colors.background.hsla(),
-        border: colors.border.hsla(),
-        title_color: colors.foreground.hsla(),
-        description_color: colors.muted_foreground.hsla(),
-        body_color: colors.foreground.hsla(),
-        shadow,
-        radius: geometry.radius.value_px,
-        padding: geometry.padding.value_px,
-        section_gap: geometry.section_gap.value_px,
-        header_gap: geometry.header_gap.value_px,
-        body_gap: geometry.body_gap.value_px,
-        title: match size {
-            ShadcnSize::Sm => typography.text.label,
-            ShadcnSize::Md => theme.typography_role(ShadcnTextRole::H4),
-            ShadcnSize::Lg => theme.typography_scale(ShadcnTextSize::Xl),
-        },
-        description: typography.text.caption,
-        body: typography.text.body,
-        font_family: theme.font(ShadcnFont::Sans),
+        background: card.background.unwrap_or_else(gpui::transparent_black),
+        border: card.border.unwrap_or_else(gpui::transparent_black),
+        title_color: card.title_color,
+        description_color: card.description_color,
+        body_color: card.body_color,
+        shadow: card.shadow,
+        radius: card.radius,
+        padding: card.padding,
+        section_gap: card.section_gap,
+        header_gap: card.header_gap,
+        body_gap: card.body_gap,
+        title: card.title,
+        description: card.description,
+        body: card.body,
+        font_family: card.font_family,
     }
-}
-
-fn card_elevation_shadow(catalog: &crate::catalog::CssTokenMap, stylesheet: &StylesheetConfig) -> Vec<BoxShadow> {
-    let Some(rule) = find_card_elevation_rule(stylesheet) else {
-        return Vec::new();
-    };
-    let Some(token) = resolve_stylesheet_shadow_token(&rule.shadow) else {
-        return Vec::new();
-    };
-    parse_shadow_token(catalog, &token).unwrap_or_default()
 }
 
 pub type CardElementRenderer = Arc<dyn Fn(&mut Window, &mut App) -> AnyElement + Send + Sync>;
@@ -441,8 +380,8 @@ mod tests {
         let shadcn = sample_look();
         let look = card_look(&shadcn, ShadcnSize::Md);
 
-        assert_eq!(look.background, shadcn.color(ShadcnToken::Card));
-        assert_eq!(look.title_color, shadcn.color(ShadcnToken::CardForeground));
+        crate::assert_close(look.background, shadcn.color(ShadcnToken::Card));
+        crate::assert_close(look.title_color, shadcn.color(ShadcnToken::CardForeground));
     }
 }
 
@@ -492,52 +431,4 @@ pub struct CardMetricTable {
     pub header_gap: crate::ResolvedMetric,
     pub body_gap: crate::ResolvedMetric,
     pub radius: crate::ResolvedMetric,
-}
-
-pub fn resolve_card_metrics(look: &crate::ShadcnLook, size: crate::ShadcnSize) -> CardMetricTable {
-    let theme_mode = look.mode();
-    let mode = look.mode_tokens();
-    let ctx = crate::LookContext::new(mode.as_ref(), theme_mode, Default::default());
-    let catalog = ctx.catalog();
-    let base_gap = ctx.controls().gap(size);
-
-    let mut table = CardMetricTable {
-        padding: crate::tables::metrics::helpers::spacing_control_metric(
-            catalog,
-            size,
-            crate::catalog::SpacingField::PaddingX,
-            ctx.controls().padding_x(size),
-        ),
-        section_gap: crate::tables::metrics::helpers::spacing_control_metric(
-            catalog,
-            size,
-            crate::catalog::SpacingField::Gap,
-            base_gap,
-        ),
-        header_gap: crate::tables::metrics::helpers::derived_metric(
-            "card header gap = max(gap / 2, 2px)",
-            (base_gap * 0.5).max(2.0),
-        ),
-        body_gap: crate::tables::metrics::helpers::spacing_control_metric(
-            catalog,
-            size,
-            crate::catalog::SpacingField::Gap,
-            base_gap,
-        ),
-        radius: crate::tables::metrics::helpers::radius_metric(catalog, size, look.radius(crate::ShadcnRadius::Lg)),
-    };
-    let geometry = mode.stylesheet().common.card.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::CardGeometry {
-            padding: table.padding.value_px,
-            section_gap: table.section_gap.value_px,
-            header_gap: table.header_gap.value_px,
-            body_gap: table.body_gap.value_px,
-        },
-    );
-    table.padding = crate::tables::metrics::helpers::prefer_shared_metric(geometry.padding, table.padding);
-    table.section_gap = crate::tables::metrics::helpers::prefer_shared_metric(geometry.section_gap, table.section_gap);
-    table.header_gap = crate::tables::metrics::helpers::prefer_shared_metric(geometry.header_gap, table.header_gap);
-    table.body_gap = crate::tables::metrics::helpers::prefer_shared_metric(geometry.body_gap, table.body_gap);
-    table
 }
