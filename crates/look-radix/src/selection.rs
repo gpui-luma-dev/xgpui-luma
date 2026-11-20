@@ -5,45 +5,25 @@ use std::sync::Arc;
 
 use gpui::SharedString;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel};
-use xgpui_luma::controls::autocomplete::{AutocompleteLook, AutocompleteTheme, SelectionItem};
+use xgpui_luma::controls::autocomplete::{AutocompleteTheme, SelectionItem};
 use xgpui_luma::controls::selection_panel::{SelectionPanelItemLike, SelectionPanelLook};
-use xgpui_luma::theme::{LumaTextStyle};
-use crate::{Look, PopupMenuVariant, SemanticRole, TextFieldVariant, Tone};
-
-struct AutocompleteThemeAdapter {
-    look: Look,
-}
-
-impl AutocompleteTheme for AutocompleteThemeAdapter {
-    fn resolve(&self) -> AutocompleteLook {
-        let size = self.look.size();
-        let geometry = self.look.common_stylesheet().autocomplete.resolve_geometry_for(
-            size.key(),
-            xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-                status_font_size: 12.0,
-                status_line_height: 16.0,
-                ..Default::default()
-            },
-        );
-        let muted = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
-        AutocompleteLook {
-            status_color: self.look.resolve_role(SemanticRole::Primary).hsla(),
-            status_typography: LumaTextStyle {
-                size: geometry.status_font_size,
-                line_height: geometry.status_line_height,
-                weight: gpui::FontWeight::NORMAL,
-            },
-            muted_text_color: muted,
-            clear_icon_color: muted,
-            clear_icon_hover_color: self.look.resolve_role(SemanticRole::Foreground).hsla(),
-            menu: crate::floating_menu_look_for(&self.look, PopupMenuVariant::Solid, Tone::Accent, size),
-        }
-    }
-}
+use crate::{Look, PopupMenuVariant, TextFieldVariant, Tone};
 
 /// Live Radix status, clear-affordance, and menu styling shared by search controls.
+/// Drawn from `.lss` (`style/autocomplete.lss`); the popup is the look's solid accent floating menu.
 pub fn autocomplete_theme(look: &Look) -> Arc<dyn AutocompleteTheme> {
-    Arc::new(AutocompleteThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let menu_look = look.clone();
+    let binding = xgpui_luma::style::StyleBinding::new("autocomplete", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(autocomplete::StyledAutocompleteTheme::new(
+        binding,
+        Arc::new(move || crate::floating_menu_look_for(&menu_look, PopupMenuVariant::Solid, Tone::Accent, size)),
+    ))
 }
 
 /// Radix Autocomplete using the SDK builder and its complete callback/policy API.
@@ -161,6 +141,7 @@ pub fn selection_panel_builder<T: SelectionPanelItemLike + 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SemanticRole;
     use xgpui_luma::theme::ThemeMode;
     use crate::{Accent, Gray};
 
@@ -175,9 +156,18 @@ mod tests {
             for accent in [Accent::Red, Accent::Blue] {
                 fork.set_palettes(accent, Gray::Slate);
                 let resolved = theme.resolve();
-                assert_eq!(resolved.status_color, fork.resolve_role(SemanticRole::Primary).hsla());
-                assert_eq!(resolved.clear_icon_color, fork.resolve_role(SemanticRole::MutedForeground).hsla());
-                assert_eq!(resolved.clear_icon_hover_color, fork.resolve_role(SemanticRole::Foreground).hsla());
+                crate::control_group::assert_close(
+                    resolved.status_color,
+                    fork.resolve_role(SemanticRole::Primary).hsla(),
+                );
+                crate::control_group::assert_close(
+                    resolved.clear_icon_color,
+                    fork.resolve_role(SemanticRole::MutedForeground).hsla(),
+                );
+                crate::control_group::assert_close(
+                    resolved.clear_icon_hover_color,
+                    fork.resolve_role(SemanticRole::Foreground).hsla(),
+                );
                 crate::control_group::assert_close(resolved.menu.item_hover_background, resolved.status_color);
             }
         }
@@ -186,15 +176,13 @@ mod tests {
     }
 
     #[test]
-    fn per_size_panel_overrides_and_status_typography_resolve_live() {
+    fn per_size_panel_overrides_resolve_live() {
         let look = Look::built_in();
-        let theme = autocomplete_theme(&look);
         let mut sheet = look.common_stylesheet();
         for (size, height) in [("1", 25.0), ("2", 37.0), ("3", 49.0)] {
             sheet.selector_list.sizes.get_or_default(size).item_height = Some(height);
             sheet.selection_panel.sizes.get_or_default(size).border_width = Some(0.0);
         }
-        sheet.autocomplete.geometry.status_font_size = Some(19.0);
         look.set_common_stylesheet(sheet);
         for (size, height) in
             [(crate::RadixSize::One, 25.0), (crate::RadixSize::Two, 37.0), (crate::RadixSize::Three, 49.0)]
@@ -202,7 +190,6 @@ mod tests {
             let panel = selection_panel_look(&look, size);
             assert_eq!(panel.item_height, height);
             assert_eq!(panel.border_width, 0.0);
-            assert_eq!(theme.resolve().status_typography.size, 19.0);
         }
     }
 }

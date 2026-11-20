@@ -105,7 +105,6 @@ fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
 fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let look = Look::built_in();
     let fork = look.fork();
-    let progress = progress_theme(&fork);
     let toolbar = toolbar_theme(&fork);
     let explicit_toolbar = toolbar_theme_with(&fork, ToolbarStyle { gap: 17.0, ..Default::default() });
     let card = Card::new(&fork).variant(CardVariant::Ghost);
@@ -113,7 +112,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.progress.sizes.get_mut("2").unwrap().track_height = Some(11.0);
     config.toolbar.geometry.gap = Some(0.0);
     config.card.sizes.get_mut("1").unwrap().padding = Some(18.0);
     config.avatar.sizes.get_mut("9").unwrap().diameter = Some(190.0);
@@ -122,7 +120,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
     let scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
-    assert_eq!(progress.resolve(true).track_height, 11.0);
     assert_eq!(toolbar.resolve(true, ToolbarVariant::Outline).gap, 0.0);
     assert_eq!(explicit_toolbar.resolve(true, ToolbarVariant::Outline).gap, 17.0);
     assert_eq!((card.resolve_style().padding, card.resolve_style().margin), (18.0, -18.0));

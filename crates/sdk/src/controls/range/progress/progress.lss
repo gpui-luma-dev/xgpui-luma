@@ -1,0 +1,31 @@
+// SDK progress. Layer: sdk. Read by `styled_progress_look` (styled.rs): a track and the filled amount, as a
+// bar or a ring, with the indeterminate shimmer's shape.
+
+/// Progress toward completion.
+progress {
+  /// Bar thickness, thumb diameter, ring diameter and ring stroke.
+  track_height: length = exact(6)
+  thumb_size: length = exact(16)
+  ring_size: length = exact(64)
+  stroke_width: length = exact(6)
+  /// The indeterminate sweep's length, and the shimmer's soft, mid and core bands (opacity, offset, width).
+  indeterminate_fraction: number = 0.28
+  shimmer_soft_opacity: number = 0.35
+  shimmer_mid_opacity: number = 0.85
+  shimmer_mid_offset: number = 0.2
+  shimmer_mid_width: number = 0.6
+  shimmer_core_offset: number = 0.35
+  shimmer_core_width: number = 0.3
+
+  /// The track.
+  part track {
+    background = palette.surface.subtle.background
+    :disabled { background = palette.state.disabled.background }
+  }
+
+  /// The filled amount.
+  part fill {
+    background = palette.state.selected.background
+    :disabled { background = palette.state.disabled.foreground }
+  }
+}

@@ -1,6 +1,8 @@
 mod behavior;
 mod control;
 mod model;
+mod styled;
+pub use styled::{StyledAutocompleteTheme, styled_autocomplete_look};
 mod template;
 mod text_selection;
 pub(crate) mod theme;

@@ -1,0 +1,43 @@
+// Shadcn slider. Layer: look. A border-colored track, the primary range (its hover and pressed layers) and
+// a primary-ringed thumb with `shadow-sm`; secondary uses the secondary foreground. Sizes sm, md, lg.
+
+slider {
+  track_height = exact(6)
+  thumb_size   = exact(16)
+  size sm { track_height = exact(4)  thumb_size = exact(12) }
+  size lg { track_height = exact(8)  thumb_size = exact(20) }
+
+  part root { height = exact(32) }
+  size sm { part root { height = exact(24) } }
+  size lg { part root { height = exact(40) } }
+
+  part track {
+    background = css.border
+    :disabled { background = css.border }
+  }
+
+  part fill {
+    background = css.primary
+    :hover    { background = css.primary_hover }
+    :pressed  { background = css.primary_pressed }
+    :disabled { background = css.muted_foreground }
+  }
+
+  part thumb {
+    background = first(css.background, css.card)
+    border     = css.primary
+    shadow     = first(css.shadow_sm, [])
+    :disabled { background = first(css.background, css.card)  border = css.muted  shadow = [] }
+  }
+
+  variant secondary {
+    part fill {
+      background := css.secondary_foreground
+      :disabled { background = css.muted_foreground }
+    }
+    part thumb {
+      border := css.secondary_foreground
+      :disabled { border = css.muted }
+    }
+  }
+}

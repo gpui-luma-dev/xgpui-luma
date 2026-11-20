@@ -28,7 +28,7 @@ pub struct DefaultAutocompleteTheme {
 pub fn default_autocomplete_theme() -> Arc<dyn AutocompleteTheme> {
     static THEME: OnceLock<Arc<dyn AutocompleteTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultAutocompleteTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledAutocompleteTheme::sdk())).clone()
 }
 
 impl DefaultAutocompleteTheme {

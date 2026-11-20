@@ -29,7 +29,7 @@ pub struct DefaultProgressTheme {
 pub fn default_progress_theme() -> Arc<dyn ProgressTheme> {
     static THEME: OnceLock<Arc<dyn ProgressTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultProgressTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledProgressTheme::sdk())).clone()
 }
 
 impl DefaultProgressTheme {

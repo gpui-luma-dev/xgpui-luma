@@ -3,9 +3,8 @@
 use serde::Deserialize;
 
 use xgpui_luma::controls::autocomplete::AutocompleteLook;
-use xgpui_luma::theme::{InteractionState, ThemeMode};
+use xgpui_luma::theme::ThemeMode;
 
-use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::stylesheet::{StylesheetConfig, find_autocomplete_chrome_color_rule, resolve_autocomplete_chrome_color_rule};
@@ -53,36 +52,20 @@ pub fn resolve_autocomplete_chrome_colors_with_stylesheet(
     })
 }
 
+/// The Shadcn autocomplete at `size`, drawn from `.lss` (`style/autocomplete.lss`) for `mode`'s catalog.
 pub fn autocomplete_textbox_look(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
     size: crate::ShadcnSize,
 ) -> AutocompleteLook {
-    let ctx = LookContext::new(mode, theme_mode, InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), ctx.theme_mode, "autocomplete_chrome").with_stylesheet(mode.stylesheet());
-    let colors = resolve_autocomplete_chrome_colors(&resolver, true)
-        .unwrap_or_else(|_| AutocompleteChromeColorTable::fallback());
-
-    let geometry = mode.stylesheet().common.autocomplete.resolve_geometry_for(
-        size.key(),
-        xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-            status_font_size: crate::ShadcnTextSize::Sm.native_style().size,
-            status_line_height: crate::ShadcnTextSize::Sm.native_style().line_height,
-            ..Default::default()
-        },
-    );
-    let mut status_typography = crate::ShadcnTextSize::Sm.native_style();
-    status_typography.size = geometry.status_font_size;
-    status_typography.line_height = geometry.status_line_height;
-    AutocompleteLook {
-        status_typography,
-        status_color: colors.status_color.hsla(),
-        muted_text_color: colors.muted_text_color.hsla(),
-        clear_icon_color: colors.clear_icon_color.hsla(),
-        clear_icon_hover_color: colors.clear_icon_hover_color.hsla(),
-        menu: floating_menu_look(ctx.tokens, ctx.theme_mode, size),
-    }
+    let binding =
+        xgpui_luma::style::StyleBinding::new("autocomplete", xgpui_luma::style::ThemeSource::Fixed(mode.style_theme()));
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::controls::autocomplete::styled_autocomplete_look(&binding, floating_menu_look(mode, theme_mode, size))
 }
 
 #[cfg(test)]
@@ -124,8 +107,8 @@ mod tests {
         let catalog = sample_catalog();
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let look = autocomplete_textbox_look(&mode, ThemeMode::Light, ShadcnSize::Md);
-        assert_eq!(look.status_color, catalog.color("primary").expect("primary"));
-        assert_eq!(look.muted_text_color, catalog.color("muted-foreground").expect("muted-foreground"));
+        crate::assert_close(look.status_color, catalog.color("primary").expect("primary"));
+        crate::assert_close(look.muted_text_color, catalog.color("muted-foreground").expect("muted-foreground"));
     }
 }
 

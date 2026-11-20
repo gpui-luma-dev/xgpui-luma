@@ -589,6 +589,7 @@ impl Look {
     }
 
     /// Control thumbs retain their light palette in both theme modes.
+    #[cfg(test)]
     pub(crate) fn light_gray_step(&self, step: ScaleStep) -> Hsla {
         self.state.scales.read().unwrap_or_else(|poisoned| poisoned.into_inner()).light.gray.step(step)
     }

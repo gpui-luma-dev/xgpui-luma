@@ -43,7 +43,10 @@ shadcn_sources![
     "floating_menu.lss",
     "context_menu.lss",
     "tooltip.lss",
-    "overlay_window.lss"
+    "overlay_window.lss",
+    "autocomplete.lss",
+    "slider.lss",
+    "progress.lss"
 ];
 
 /// The SDK's files with the Shadcn look's files over them.

@@ -8,9 +8,7 @@ use std::collections::HashMap;
 
 use xgpui_luma::controls::progress::ProgressLook;
 use crate::size::ShadcnSize;
-use xgpui_luma::theme::InteractionState;
 
-use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::ColorSource;
 use crate::provenance::LookResolver;
@@ -49,50 +47,16 @@ pub fn resolve_progress_colors_with_stylesheet(
     Ok(ProgressColorTable { track_color: colors.track_color, progress_color: colors.progress_color })
 }
 
+/// Shadcn progress at `size`, drawn from `.lss` (`style/progress.lss`) for `mode`'s catalog.
 pub fn progress_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> ProgressLook {
-    let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "progress").with_stylesheet(mode.stylesheet());
-    let colors = resolve_progress_colors(&resolver, enabled).unwrap_or_else(|_| ProgressColorTable::fallback());
-    let stylesheet = mode.stylesheet();
-    let size_key = crate::tables::metrics::helpers::control_size_key(size);
-    let (size, stroke_width, track_height, thumb_size) = stylesheet
-        .progress
-        .metrics_for_size(size)
-        .map(crate::stylesheet::resolve_progress_metrics)
-        .map(|metrics| (metrics.size, metrics.stroke_width, metrics.track_height, metrics.thumb_size))
-        .unwrap_or_else(|| {
-            let baseline = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
-                .progress
-                .resolve_geometry_for(size_key, Default::default());
-            (baseline.size, baseline.stroke_width, baseline.track_height, baseline.thumb_size)
-        });
-
-    let mut look = ProgressLook {
-        geometry: mode.stylesheet().common.progress.resolve_geometry_for(size_key, Default::default()),
-        track_color: colors.track_color.hsla(),
-        progress_color: colors.progress_color.hsla(),
-        thumb_color: colors.progress_color.hsla(),
-        track_height,
-        thumb_size,
-        size,
-        stroke_width,
+    let binding =
+        xgpui_luma::style::StyleBinding::new("progress", xgpui_luma::style::ThemeSource::Fixed(mode.style_theme()));
+    let binding = if size != ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
     };
-    let geometry = mode.stylesheet().common.progress.resolve_geometry_for(
-        size_key,
-        xgpui_luma::theme::stylesheet::ProgressGeometry {
-            size: look.size,
-            stroke_width: look.stroke_width,
-            track_height: look.track_height,
-            thumb_size: look.thumb_size,
-            ..Default::default()
-        },
-    );
-    look.size = geometry.size;
-    look.stroke_width = geometry.stroke_width;
-    look.track_height = geometry.track_height;
-    look.thumb_size = geometry.thumb_size;
-
-    look
+    xgpui_luma::controls::progress::styled_progress_look(&binding, enabled)
 }
 
 #[cfg(test)]
@@ -130,8 +94,8 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let look = progress_look(&mode, true, crate::ShadcnSize::Md);
 
-        assert_eq!(look.track_color, catalog.color("accent").expect("accent"));
-        assert_eq!(look.progress_color, catalog.color("accent-foreground").expect("accent-foreground"));
+        crate::assert_close(look.track_color, catalog.color("accent").expect("accent"));
+        crate::assert_close(look.progress_color, catalog.color("accent-foreground").expect("accent-foreground"));
     }
 
     #[test]

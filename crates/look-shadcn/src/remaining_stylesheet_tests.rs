@@ -142,11 +142,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
         let tokens = look.mode_tokens();
         let inspect = crate::inspect::ShadcnInspect::new(&look);
         for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-            let progress = look.with_size(size).progress_theme().resolve(true);
-            let p = inspect.inspect_progress_metrics_for_size(size);
-            assert_eq!((progress.size, progress.track_height, progress.thumb_size), (83.0, 9.0, 22.0));
-            assert_eq!(p.track_height.value_px, progress.track_height);
-            assert!(format!("{:?}", p.size.source).contains("common.progress"));
             let stepper = look.with_size(size).stepper_theme().resolve(true);
             assert_eq!((stepper.step_badge_size, stepper.track_thickness), (43.0, 4.0));
             assert_eq!(inspect.inspect_stepper_metrics_for_size(size).step_badge_size.value_px, 43.0);
@@ -201,16 +196,14 @@ fn selected_configuration_survives_color_copies_token_edits_and_live_replacement
             xgpui_luma::color::ColorValue::srgb(0.0, 0.0, 0.0, 1.0),
         )]))
         .unwrap();
-    let progress = copy.progress_theme();
-    assert_eq!(progress.resolve(true).size, 83.0);
+    let stepper = copy.stepper_theme();
+    assert_eq!(stepper.resolve(true).step_badge_size, 43.0);
     copy.apply_token_overrides(&HashMap::from([("radius".into(), "10px".into())])).unwrap();
-    assert_eq!(progress.resolve(true).size, 83.0);
-    let stored_tokens = copy.mode_tokens();
+    assert_eq!(stepper.resolve(true).step_badge_size, 43.0);
     let independent = crate::test_support::fallback_look();
     copy.replace_theme(&independent);
-    assert_eq!(progress.resolve(true).size, 64.0);
-    assert_eq!(crate::paint::progress_look(&stored_tokens, true, ShadcnSize::Md).size, 83.0);
-    assert_eq!(look.with_size(ShadcnSize::Md).progress_theme().resolve(true).size, 83.0);
+    assert_eq!(stepper.resolve(true).step_badge_size, 32.0);
+    assert_eq!(look.with_size(ShadcnSize::Md).stepper_theme().resolve(true).step_badge_size, 43.0);
 }
 
 #[test]
@@ -236,37 +229,6 @@ fn migrated_literal_families_keep_their_bundled_size_baselines() {
     }
 }
 
-#[test]
-fn sparse_common_geometry_inherits_sdk_baseline_and_preserves_explicit_zero() {
-    let config = StylesheetConfig::parse(
-        r#"
-[progress.metrics.md]
-size=91
-stroke_width=7
-track_height=8
-thumb_size=19
-[common.progress.geometry]
-track_height=0
-[common.progress.sizes.md]
-size=0
-"#,
-    )
-    .unwrap();
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let progress = look.with_size(ShadcnSize::Md).progress_theme().resolve(true);
-    assert_eq!(
-        (progress.size, progress.stroke_width, progress.track_height, progress.thumb_size),
-        (0.0, 6.0, 0.0, 16.0)
-    );
-    #[cfg(feature = "inspect")]
-    {
-        let p = crate::inspect::ShadcnInspect::new(&look).inspect_progress_metrics_for_size(ShadcnSize::Md);
-        assert_eq!(p.size.value_px, 0.0);
-        assert!(format!("{:?}", p.size.source).contains("common.progress.sizes.md.size"));
-        assert_eq!(p.thumb_size.value_px, 16.0);
-    }
-}
-
 #[cfg(feature = "inspect")]
 #[test]
 fn selector_unset_geometry_retains_sdk_provenance_and_values() {
@@ -279,29 +241,6 @@ fn selector_unset_geometry_retains_sdk_provenance_and_values() {
         assert_eq!(s.trigger.radius.value_px, scale.radius);
         assert!(!format!("{:?}", s.trigger.padding_x.source).contains("button"));
         assert!(!format!("{:?}", s.trigger.height.source).contains("button"));
-    }
-}
-
-#[cfg(feature = "inspect")]
-#[test]
-fn selected_color_rules_follow_the_same_configuration_as_geometry() {
-    let mut config = crate::embedded_stylesheet().clone();
-    for rule in &mut config.progress.color_rules {
-        rule.track_color = "secondary".into();
-        rule.progress_color = "secondary-foreground".into();
-    }
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        let tokens = look.mode_tokens();
-        for enabled in [false, true] {
-            let paint = look.with_size(ShadcnSize::Md).progress_theme().resolve(enabled);
-            let inspect = crate::inspect::ShadcnInspect::new(&look).inspect_progress_color_palette(enabled);
-            assert_eq!(paint.track_color, tokens.catalog.color("secondary").unwrap());
-            assert_eq!(paint.progress_color, tokens.catalog.color("secondary-foreground").unwrap());
-            assert_eq!(inspect.track_color.value, paint.track_color);
-            assert_eq!(inspect.progress_color.value, paint.progress_color);
-        }
     }
 }
 
@@ -706,7 +645,7 @@ subtitle_opacity=0.2
 }
 
 #[test]
-fn range_and_tooltip_decoration_use_selected_common_stylesheet() {
+fn token_range_decoration_uses_selected_common_stylesheet() {
     use xgpui_luma::controls::{
         slider::{DefaultSliderTheme, SliderTheme},
         progress::{DefaultProgressTheme, ProgressTheme},
@@ -733,18 +672,17 @@ shortcut_opacity=0
         .unwrap();
     let sdk_slider = DefaultSliderTheme::new(tokens.clone());
     let sdk_progress = DefaultProgressTheme::new(tokens);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for resolved in [sdk_slider.resolve(Default::default()), look.slider_theme().resolve(Default::default())] {
-        assert_eq!(
-            (
-                resolved.decoration.dial_size,
-                resolved.decoration.track_radius,
-                resolved.decoration.disabled_opacity
-            ),
-            (160.0, 52.0, 0.3)
-        );
-    }
-    for resolved in [sdk_progress.resolve(true), look.with_size(ShadcnSize::Md).progress_theme().resolve(true)] {
-        assert_eq!((resolved.geometry.indeterminate_fraction, resolved.geometry.shimmer_soft_opacity), (0.0, 0.0));
-    }
+    // The look draws range controls and tooltips from `.lss`; the token-built SDK themes still read these
+    // overrides.
+    let resolved = sdk_slider.resolve(Default::default());
+    assert_eq!(
+        (
+            resolved.decoration.dial_size,
+            resolved.decoration.track_radius,
+            resolved.decoration.disabled_opacity
+        ),
+        (160.0, 52.0, 0.3)
+    );
+    let resolved = sdk_progress.resolve(true);
+    assert_eq!((resolved.geometry.indeterminate_fraction, resolved.geometry.shimmer_soft_opacity), (0.0, 0.0));
 }

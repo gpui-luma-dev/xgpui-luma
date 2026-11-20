@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{StyledSliderTheme, styled_slider_look};
 mod constraints;
 mod control;
 mod domain;

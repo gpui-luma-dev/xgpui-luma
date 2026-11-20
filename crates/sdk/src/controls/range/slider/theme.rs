@@ -38,7 +38,7 @@ pub struct DefaultSliderTheme {
 pub fn default_slider_theme() -> Arc<dyn SliderTheme> {
     static THEME: OnceLock<Arc<dyn SliderTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultSliderTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledSliderTheme::sdk())).clone()
 }
 
 impl DefaultSliderTheme {

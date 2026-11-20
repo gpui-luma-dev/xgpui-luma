@@ -284,32 +284,3 @@ fn shared_slider_geometry_preserves_all_sizes_styles_and_states() {
         }
     }
 }
-
-#[test]
-fn selected_slider_geometry_and_legacy_fallback_have_accurate_provenance() {
-    let mut stylesheet = crate::stylesheet::embedded_stylesheet().clone();
-    stylesheet.common.slider.sizes.get_or_default("md").width = Some(300.0);
-    stylesheet.common.slider.sizes.get_or_default("md").height = Some(36.0);
-    stylesheet.common.slider.sizes.get_or_default("lg").thumb_size = Some(25.0);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let painted = look.slider_theme().resolve(Default::default());
-    let actual = ShadcnInspect::new(&look).inspect_slider_metrics();
-    assert_eq!((painted.width, painted.height), (300.0, 36.0));
-    assert_eq!(actual.width.value_px, painted.width);
-    assert!(format_inspect_metric_source(&actual.width.source).contains("common.slider.sizes.md.width"));
-    let large = look.with_size(ShadcnSize::Lg).slider_theme().resolve(Default::default());
-    assert_eq!(large.thumb_size, 25.0);
-    assert_eq!(ShadcnInspect::new(&look).inspect_slider_metrics_for(ShadcnSize::Lg).thumb_size.value_px, 25.0);
-
-    let stylesheet = crate::stylesheet::StylesheetConfig::parse("[slider.metrics.md]\nwidth = 290\nheight = 34\ntrack_height = 7\nthumb_size = 17\nradius = \"2.0\"\n[common.slider.sizes.md]\nwidth = 310").unwrap();
-    let legacy = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let painted = legacy.slider_theme().resolve(Default::default());
-    let actual = ShadcnInspect::new(&legacy).inspect_slider_metrics();
-    assert_eq!(
-        (painted.width, painted.height, painted.track_height, painted.thumb_size, painted.radius),
-        (310.0, 34.0, 7.0, 17.0, 2.0)
-    );
-    assert!(format_inspect_metric_source(&actual.height.source).contains("slider.metrics.md.height"));
-    assert_eq!(actual.thumb_size.value_px, 17.0);
-    assert!(format_inspect_metric_source(&actual.thumb_size.source).contains("slider.metrics.md.thumb_size"));
-}

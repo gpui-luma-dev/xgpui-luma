@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{StyledProgressTheme, styled_progress_look};
 mod control;
 mod direction;
 mod model;
