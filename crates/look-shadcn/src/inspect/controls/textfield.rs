@@ -66,7 +66,7 @@ pub fn inspect_textfield_elevation(
     enabled: bool,
 ) -> crate::inspect::controls::button::ButtonInspectElevation {
     use xgpui_luma::theme::InteractionState;
-    use crate::paint::textfield_palette;
+    use crate::controls::textfield::textfield_palette;
     use crate::stylesheet::{find_textfield_elevation_rule, resolve_stylesheet_shadow_token};
     use crate::inspect::controls::button::inspect_layered_elevation;
 

@@ -291,16 +291,16 @@ fn neighboring_halves_share_one_gap_marker_and_destination() {
     struct GapTheme(f32);
     impl TabsTheme for GapTheme {
         fn resolve_list(&self, enabled: bool) -> TabsListLook {
-            let mut look = DefaultTabsTheme::default().resolve_list(enabled);
+            let mut look = super::StyledTabsTheme::sdk().resolve_list(enabled);
             look.gap = self.0;
             look.padding = 6.;
             look
         }
         fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-            DefaultTabsTheme::default().resolve_item(active, state)
+            super::StyledTabsTheme::sdk().resolve_item(active, state)
         }
         fn font_family(&self) -> gpui::SharedString {
-            DefaultTabsTheme::default().font_family()
+            super::StyledTabsTheme::sdk().font_family()
         }
     }
     for gap in [0., 12.] {

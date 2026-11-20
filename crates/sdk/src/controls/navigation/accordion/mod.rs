@@ -20,10 +20,7 @@ pub use template::{
     AccordionTemplate, AccordionTemplateHandlers, AccordionTemplateModifier, ThemedAccordionTemplate,
     default_accordion_template,
 };
-pub use theme::{
-    AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme, DefaultAccordionTheme,
-    default_accordion_theme,
-};
+pub use theme::{AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme, default_accordion_theme};
 
 pub use crate::infra::state::{CompositeItemState as AccordionItemState, ControlFocusState};
 use gpui::{Entity, SharedString};

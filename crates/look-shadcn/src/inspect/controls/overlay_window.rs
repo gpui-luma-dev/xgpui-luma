@@ -26,7 +26,7 @@ pub fn inspect_overlay_window_color_palette(
     size: ShadcnSize,
     mode: OverlayWindowMode,
 ) -> OverlayWindowInspectPalette {
-    let shell = crate::paint::overlay_window_look(look, size, mode);
+    let shell = crate::controls::overlay_window::overlay_window_look(look, size, mode);
 
     OverlayWindowInspectPalette {
         background: resolved_from_hsla(shell.background, ColorSource::CssVar { token: "popover".into() }),

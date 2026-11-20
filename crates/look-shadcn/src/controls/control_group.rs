@@ -181,7 +181,7 @@ pub fn resolve_control_group_metrics(
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
-    let look = crate::paint::control_group_list_look(mode, true);
+    let look = crate::controls::control_group::control_group_list_look(mode, true);
 
     let mut table = ControlGroupMetricTable {
         radius: radius_metric(catalog, size, look.radius),

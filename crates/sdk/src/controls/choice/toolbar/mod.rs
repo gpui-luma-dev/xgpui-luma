@@ -14,7 +14,7 @@ pub use template::{
     ThemedToolbarTemplate, ToolbarRenderedItem, ToolbarTemplate, ToolbarTemplateModifier, default_toolbar_template,
     toolbar_template_with_theme,
 };
-pub use theme::{DefaultToolbarTheme, ToolbarLook, ToolbarTheme, ToolbarVariant, default_toolbar_theme};
+pub use theme::{ToolbarLook, ToolbarTheme, ToolbarVariant, default_toolbar_theme};
 
 use gpui::{Entity, SharedString};
 

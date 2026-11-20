@@ -351,7 +351,7 @@ mod tests {
     #[test]
     fn inspect_metrics_match_button_look_for_primary_default_md() {
         let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = crate::paint::button_look(
+        let look = crate::controls::button::button_look(
             &mode,
             ThemeMode::Light,
             ShadcnButtonStyle::Primary,

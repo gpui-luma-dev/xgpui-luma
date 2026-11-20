@@ -239,7 +239,7 @@ pub fn resolve_stepper_metrics_for_size(
 ) -> StepperMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
-    let look = crate::paint::stepper_look(mode, true, size);
+    let look = crate::controls::stepper::stepper_look(mode, true, size);
 
     let mut table = StepperMetricTable {
         step_badge_size: derived_metric("stepper badge size", look.step_badge_size),

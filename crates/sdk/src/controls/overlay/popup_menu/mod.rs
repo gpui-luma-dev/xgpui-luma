@@ -15,8 +15,8 @@ pub use template::{
     ThemedPopupMenuTemplate, default_popup_menu_template,
 };
 pub use theme::{
-    DefaultPopupMenuTheme, PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics,
-    compose_popup_menu_look, default_popup_menu_theme,
+    PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, compose_popup_menu_look,
+    default_popup_menu_theme,
 };
 
 pub use crate::infra::presenter::{ControlPresenter, HasPresenter};

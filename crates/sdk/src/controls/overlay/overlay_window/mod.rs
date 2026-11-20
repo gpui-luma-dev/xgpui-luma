@@ -14,7 +14,7 @@ pub use template::{
     OverlayWindowTemplate, OverlayWindowTemplateHandlers, OverlayWindowTemplateModifier, OverlayWindowTemplateParts,
     ThemedOverlayWindowTemplate, default_overlay_window_template,
 };
-pub use theme::{DefaultOverlayWindowTheme, OverlayWindowLook, OverlayWindowTheme, default_overlay_window_theme};
+pub use theme::{OverlayWindowLook, OverlayWindowTheme, default_overlay_window_theme};
 
 use gpui::Entity;
 

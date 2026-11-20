@@ -67,39 +67,3 @@ impl SliderTheme for StyledSliderTheme {
         styled_slider_look(&self.binding, state)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sdk_slider_matches_the_token_slider() {
-        let close = |a: Hsla, b: Hsla| {
-            let (a, b) = (a.to_rgb(), b.to_rgb());
-            [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-        };
-        let native = super::super::theme::DefaultSliderTheme::default();
-        for bits in 0..8u8 {
-            let state = InteractionState {
-                hovered: bits & 1 != 0,
-                pressed: bits & 2 != 0,
-                disabled: bits & 4 != 0,
-                ..Default::default()
-            };
-            let (lss, want) = (StyledSliderTheme::sdk().resolve(state), native.resolve(state));
-            for (got, want, name) in [
-                (lss.track_background, want.track_background, "track"),
-                (lss.fill_background, want.fill_background, "fill"),
-                (lss.thumb_background, want.thumb_background, "thumb"),
-                (lss.thumb_border, want.thumb_border, "thumb border"),
-            ] {
-                assert!(close(got, want), "{state:?} {name}: {got:?} vs {want:?}");
-            }
-            assert_eq!(
-                (lss.width, lss.height, lss.track_height, lss.thumb_size, lss.radius, lss.thumb_border_width),
-                (want.width, want.height, want.track_height, want.thumb_size, want.radius, want.thumb_border_width)
-            );
-            assert_eq!(lss.thumb_shadow.len(), want.thumb_shadow.len());
-        }
-    }
-}

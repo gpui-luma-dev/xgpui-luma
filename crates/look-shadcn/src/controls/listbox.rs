@@ -13,32 +13,15 @@
 use crate::stylesheet::config::{EnabledColorRule, find_enabled_color_rule, matches_optional_bool, matches_optional_layer};
 use serde::Deserialize;
 
-use gpui::{Div, ElementId, Hsla, Stateful};
+use gpui::{Div, ElementId, Stateful};
 use xgpui_luma::controls::listbox::ListBoxItemState;
-use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle};
+use xgpui_luma::theme::InteractionLayer;
 
-use crate::look_context::LookContext;
-use crate::mode::ShadcnModeTokens;
 use crate::provenance::{LookResolver, ResolvedColor};
-use crate::size::ShadcnSize;
 use crate::stylesheet::{
     StylesheetConfig, find_listbox_list_color_rule, find_listbox_row_color_rule, resolve_listbox_list_color_rule,
     resolve_listbox_row_color_rule,
 };
-
-/// Look-owned styling for host-composed list surfaces; not an SDK theme.
-#[derive(Clone, Debug)]
-pub struct ListBoxSurfacePalette {
-    pub background: Hsla,
-    pub border: Hsla,
-}
-
-#[derive(Clone, Debug)]
-pub struct ListBoxRowPalette {
-    pub background: Hsla,
-    pub label_color: Hsla,
-    pub label_typography: LumaTextStyle,
-}
 
 impl crate::ShadcnLook {
     /// Styled, content-free row surface. Attach SDK `ListBoxBinding` for input;
@@ -124,85 +107,6 @@ pub fn resolve_listbox_row_colors_with_stylesheet(
         .ok_or_else(|| anyhow::anyhow!("no matching listbox row color rule"))?;
     let colors = resolve_listbox_row_color_rule(resolver, rule, layer)?;
     Ok(ListBoxRowColorTable { label_color: colors.label_color, background: colors.background })
-}
-
-/// Color palette only; the host owns all surface geometry.
-pub fn listbox_surface_palette(mode: &ShadcnModeTokens, enabled: bool) -> ListBoxSurfacePalette {
-    let ctx = LookContext::new(mode, mode.theme_mode, InteractionState::default());
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "listbox_list").with_stylesheet(mode.stylesheet());
-    let colors = resolve_listbox_list_colors(&resolver, enabled).unwrap_or_else(|_| ListBoxListColorTable::fallback());
-    ListBoxSurfacePalette { background: colors.background.hsla(), border: colors.border.hsla() }
-}
-
-pub fn listbox_row_palette(
-    mode: &ShadcnModeTokens,
-    selected: bool,
-    mut state: InteractionState,
-    size: ShadcnSize,
-) -> ListBoxRowPalette {
-    state.focused |= selected;
-    let ctx = LookContext::new(mode, mode.theme_mode, state);
-    let typography = ctx.typography();
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "listbox_row").with_stylesheet(mode.stylesheet());
-    let colors = resolve_listbox_row_colors(&resolver, state.disabled, state.focused, state.layer())
-        .unwrap_or_else(|_| ListBoxRowColorTable::fallback());
-
-    let mut label_typography = typography.text.label;
-    super::apply_button_metrics_typography(&mut label_typography, mode, size);
-
-    ListBoxRowPalette { background: colors.background.hsla(), label_color: colors.label_color.hsla(), label_typography }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::BTreeMap;
-
-    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
-
-    use crate::catalog::CssTokenMap;
-    use crate::mode::ShadcnModeTokens;
-    use crate::provenance::LookResolver;
-    use super::{listbox_surface_palette, listbox_row_palette, resolve_listbox_row_colors};
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-        ]))
-    }
-
-    #[test]
-    fn listbox_uses_input_border_and_accent_hover() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let list = listbox_surface_palette(&mode, true);
-        let row = listbox_row_palette(
-            &mode,
-            false,
-            xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-        );
-
-        assert_eq!(list.border, catalog.color("input").expect("input"));
-        let resolver = LookResolver::new(&catalog, ThemeMode::Light, "test");
-        let expected = resolve_listbox_row_colors(&resolver, false, false, InteractionLayer::Hovered)
-            .expect("row colors")
-            .background
-            .hsla();
-        assert_eq!(row.background, expected);
-    }
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -309,55 +213,4 @@ pub struct ListboxRowColorRule {
     pub layer: Option<String>,
     pub label_color: String,
     pub background: String,
-}
-
-#[cfg(test)]
-mod lss_tests {
-    use xgpui_luma::controls::listbox::ListBoxItemState;
-    use xgpui_luma::theme::{InteractionState, ThemeMode};
-
-    use super::{listbox_row_palette, listbox_surface_palette};
-    use crate::ShadcnSize;
-
-    #[test]
-    fn lss_rows_match_the_native_rows() {
-        let look = crate::test_support::fallback_look();
-        for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            look.set_mode(mode);
-            let tokens = look.mode_tokens();
-            let styled = look.styled_listbox();
-            for selected in [false, true] {
-                for (enabled, hover, pressed) in
-                    [(true, false, false), (true, true, false), (true, false, true), (false, false, false)]
-                {
-                    let state = ListBoxItemState { selected, active: false, enabled };
-                    let native = listbox_row_palette(
-                        &tokens,
-                        selected,
-                        InteractionState { disabled: !enabled, hovered: hover, pressed, ..Default::default() },
-                        ShadcnSize::Md,
-                    );
-                    let row = styled.row(state, false, hover, pressed);
-                    crate::assert_close(row.background, native.background);
-                    crate::assert_close(row.foreground, native.label_color);
-                    assert!((row.font_size - native.label_typography.size).abs() < 1e-3);
-                    assert!((row.line_height - native.label_typography.line_height).abs() < 1e-3);
-                }
-            }
-            let native = listbox_surface_palette(&tokens, true);
-            let surface = styled.surface(true, false);
-            crate::assert_close(surface.background, native.background);
-            crate::assert_close(surface.border, native.border);
-            crate::assert_close(
-                styled.surface(true, true).border,
-                crate::focus::focus_ring_or_fallback(&tokens.catalog),
-            );
-            crate::assert_close(
-                styled
-                    .row(ListBoxItemState { selected: false, active: true, enabled: true }, true, false, false)
-                    .border,
-                crate::focus::focus_ring_or_fallback(&tokens.catalog),
-            );
-        }
-    }
 }

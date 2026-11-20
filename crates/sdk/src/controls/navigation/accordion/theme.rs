@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{Hsla, SharedString};
 
 use crate::theme::scales::snap_to_pixel;
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AccordionScale {
@@ -104,74 +104,10 @@ pub trait AccordionTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultAccordionTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_accordion_theme() -> Arc<dyn AccordionTheme> {
     static THEME: OnceLock<Arc<dyn AccordionTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledAccordionTheme::sdk())).clone()
-}
-
-impl DefaultAccordionTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl AccordionTheme for DefaultAccordionTheme {
-    fn drag_handle_icon(&self) -> crate::infra::icon::IconSource {
-        self.tokens.stylesheet.icons.resolve(crate::theme::stylesheet::IconRole::DragHandle)
-    }
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens)
-    }
-    fn resolve_trigger(&self, state: InteractionState) -> AccordionPalette {
-        let palette = self.tokens.stylesheet.recipes.palette("accordion", &self.tokens.palette);
-        let typography = &self.tokens.typography;
-        let layer = state.layer();
-
-        let background = match layer {
-            InteractionLayer::Disabled | InteractionLayer::Default => None,
-            InteractionLayer::Hovered => Some(palette.navigation.hover_background),
-            InteractionLayer::Pressed => Some(palette.state.pressed.background),
-        };
-
-        let foreground = if state.disabled {
-            palette.state.disabled.foreground
-        } else {
-            palette.app.foreground
-        };
-
-        let mut trigger_typography = typography.text.label;
-        crate::controls::textfield::apply_control_typography(&mut trigger_typography, typography);
-
-        AccordionPalette {
-            background,
-            foreground,
-            border_color: palette.navigation.border,
-            icon_color: foreground,
-            chevron_color: palette.navigation.muted_foreground,
-            typography: trigger_typography,
-            font_family: typography.font.sans.family.clone().into(),
-        }
-    }
-
-    fn resolve_content(&self, _expanded: bool) -> AccordionContentPalette {
-        let palette = self.tokens.stylesheet.recipes.palette("accordion", &self.tokens.palette);
-
-        AccordionContentPalette { background: None, foreground: palette.app.foreground }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn resolve_scale(&self, scale_factor: f32) -> AccordionScale {
-        AccordionScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
-    }
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

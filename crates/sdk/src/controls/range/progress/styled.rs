@@ -67,22 +67,3 @@ impl ProgressTheme for StyledProgressTheme {
         styled_progress_look(&self.binding, enabled)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sdk_progress_matches_the_token_progress() {
-        let close = |a: Hsla, b: Hsla| {
-            let (a, b) = (a.to_rgb(), b.to_rgb());
-            [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-        };
-        for enabled in [true, false] {
-            let lss = StyledProgressTheme::sdk().resolve(enabled);
-            let want = super::super::theme::DefaultProgressTheme::default().resolve(enabled);
-            assert!(close(lss.track_color, want.track_color) && close(lss.progress_color, want.progress_color));
-            assert_eq!(format!("{:?}", lss.geometry), format!("{:?}", want.geometry));
-        }
-    }
-}

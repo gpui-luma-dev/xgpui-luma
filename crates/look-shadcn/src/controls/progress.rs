@@ -211,7 +211,7 @@ pub fn resolve_progress_metrics_for_size(
 ) -> ProgressMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
-    let look = crate::paint::progress_look(mode, true, size);
+    let look = crate::controls::progress::progress_look(mode, true, size);
 
     let mut table = ProgressMetricTable {
         size: derived_metric("progress ring diameter", look.size),

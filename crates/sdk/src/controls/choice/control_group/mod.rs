@@ -31,8 +31,8 @@ pub use template::{
     make_control_group_item_template, render_control_group_item_elements, shared_control_group_template,
 };
 pub use theme::{
-    ControlGroupItemPalette, ControlGroupItemVisualContext, DefaultControlGroupTheme, ControlGroupListLook,
-    ControlGroupTheme, default_control_group_theme,
+    ControlGroupItemPalette, ControlGroupItemVisualContext, ControlGroupListLook, ControlGroupTheme,
+    default_control_group_theme,
 };
 pub use themed_template::ThemedControlGroupTemplate;
 

@@ -12,7 +12,7 @@ pub use model::{
 };
 pub use template::{PagerTemplate, PagerTemplateHandlers, ThemedPagerTemplate, default_pager_template, numeric_page_items};
 pub(crate) use template::{render_info_slot, render_nav_group, render_page_indicator, render_page_size_select};
-pub use theme::{DefaultPagerTheme, PagerLook, PagerTheme, default_pager_theme};
+pub use theme::{PagerLook, PagerTheme, default_pager_theme};
 
 use gpui::Entity;
 

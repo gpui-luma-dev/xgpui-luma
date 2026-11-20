@@ -22,7 +22,7 @@ pub use template::{
     default_sidebar_panel_template,
 };
 pub(crate) use template::modified_sidebar_panel_template;
-pub use theme::{DefaultSidebarTheme, SidebarItemLook, SidebarSectionLook, SidebarTheme, default_sidebar_theme};
+pub use theme::{SidebarItemLook, SidebarSectionLook, SidebarTheme, default_sidebar_theme};
 
 // Public presentation contracts; the retained engine remains internal.
 pub use model::{NavNodeKind, NavNodeState, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};

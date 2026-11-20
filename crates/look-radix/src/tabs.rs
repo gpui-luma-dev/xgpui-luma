@@ -162,21 +162,18 @@ pub fn tabs_geometry(
     use xgpui_luma::theme::provenance::ResolvedMetric;
     use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
     let surface = variant == TabsVariant::Surface;
-    let defaults = xgpui_luma::controls::tabs::DefaultTabsTheme::new(crate::size::scaffold_tokens(size));
-    let list = defaults.resolve_list(true);
-    let item = defaults.resolve_item(true, InteractionState::default());
-    let mut geometry = look.common_stylesheet().tabs.inspect_geometry(
+    let styled = styled_tabs(look, variant, size);
+    let list = styled.list(true);
+    let item = styled.item(true, InteractionState::default());
+    let geometry = look.common_stylesheet().tabs.inspect_geometry(
         if surface { "surface" } else { "line" },
         ResolvedTabsGeometry {
-            list_gap: ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
-            list_padding: if surface {
-                ResolvedMetric::constant(4.0, "Radix surface list padding")
-            } else {
-                ResolvedMetric::constant(list.padding, "SDK tabs list padding")
-            },
-            indicator_height: ResolvedMetric::constant(item.indicator_height, "SDK tabs indicator height"),
+            list_gap: ResolvedMetric::constant(list.gap, "tabs.lss list gap"),
+            list_padding: ResolvedMetric::constant(list.padding, "tabs.lss list padding"),
+            indicator_height: ResolvedMetric::constant(item.indicator_height, "tabs.lss indicator height"),
         },
     );
+    let mut geometry = geometry;
     if surface {
         geometry.indicator_height = ResolvedMetric::constant(0.0, "Radix surface hides indicator");
     } else if let Some(style) = look.tabs_style_override() {
@@ -258,7 +255,11 @@ pub fn tabs_theme(look: &Look) -> Arc<dyn TabsTheme> {
 }
 
 pub fn tabs_theme_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTheme> {
-    let size = look.size();
+    Arc::new(TabsThemeAdapter { look: look.clone(), variant, styled: styled_tabs(look, variant, look.size()) })
+}
+
+/// The `.lss` tabs (`style/tabs.lss`) for `variant` at `size`, before any [`TabsStyle`] override.
+fn styled_tabs(look: &Look, variant: TabsVariant, size: crate::RadixSize) -> xgpui_luma::controls::tabs::StyledTabs {
     let binding = xgpui_luma::style::StyleBinding::new("tabs", crate::textfield::live_source(look));
     let binding = if variant == TabsVariant::Surface {
         binding.variant("surface")
@@ -270,11 +271,7 @@ pub fn tabs_theme_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTheme> {
     } else {
         binding
     };
-    Arc::new(TabsThemeAdapter {
-        look: look.clone(),
-        variant,
-        styled: xgpui_luma::controls::tabs::StyledTabs::new(binding),
-    })
+    xgpui_luma::controls::tabs::StyledTabs::new(binding)
 }
 
 pub fn tabs_template(look: &Look) -> Arc<dyn TabsTemplate> {

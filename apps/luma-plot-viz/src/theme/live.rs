@@ -9,25 +9,25 @@ use std::sync::{
 
 use gpui::SharedString;
 use xgpui_luma::controls::{
-    button_family::{
-        ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme,
-    },
+    button::{StyledButtonFamilyTheme, StyledButtonTemplate},
+    button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme},
     radio_button::{RadioButtonData, StyledRadioButtonTemplate},
-    scrollbar::{DefaultScrollbarTheme, ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme},
+    scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
     selector::{
         SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme,
     },
-    tabs::{DefaultTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
+    tabs::{StyledTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
 };
+use xgpui_luma::style::ThemeSource;
 use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
-    button: DefaultButtonFamilyTheme,
-    scrollbar: DefaultScrollbarTheme,
+    button: StyledButtonFamilyTheme,
+    scrollbar: StyledScrollbarTheme,
     selector: StyledSelectorTheme,
-    tabs: DefaultTabsTheme,
+    tabs: StyledTabsTheme,
     tooltip: TooltipLook,
 }
 
@@ -35,14 +35,15 @@ impl Snapshot {
     /// `style` is the SDK's `.lss` theme for the same mode as `tokens`.
     fn new(tokens: ThemeTokens, style: xgpui_luma::style::lss::Theme) -> Self {
         let panel_tokens = tokens.clone();
+        let binding = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
         Self {
-            button: DefaultButtonFamilyTheme::new(tokens.clone()),
-            scrollbar: DefaultScrollbarTheme::new(tokens.clone()),
+            button: StyledButtonFamilyTheme::new(StyledButtonTemplate::new(style.clone()), tokens.metrics),
+            scrollbar: StyledScrollbarTheme::new(binding("scrollbar"), tokens.metrics),
+            tabs: StyledTabsTheme::new(binding("tabs")),
             selector: StyledSelectorTheme::new(
-                xgpui_luma::style::ThemeSource::Fixed(style),
+                ThemeSource::Fixed(style),
                 Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
             ),
-            tabs: DefaultTabsTheme::new(tokens.clone()),
             tooltip: TooltipLook::from_tokens(&tokens, None),
             tokens,
         }
@@ -221,7 +222,11 @@ mod tests {
             };
             let state = InteractionState::default();
             let button = buttons.resolve(ButtonFamilyRole::Text, state);
-            let expected_button = DefaultButtonFamilyTheme::new(tokens.clone()).resolve(ButtonFamilyRole::Text, state);
+            let style = theme.style_theme();
+            let sdk = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
+            let expected_button =
+                StyledButtonFamilyTheme::new(StyledButtonTemplate::new(style.clone()), tokens.metrics)
+                    .resolve(ButtonFamilyRole::Text, state);
             assert_eq!(button.background, expected_button.background);
             let radio_label = theme
                 .style_theme()
@@ -234,7 +239,7 @@ mod tests {
             let got = radio_label.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
             let tab = tabs.resolve_item(true, state);
-            assert_eq!(tab.label_color, DefaultTabsTheme::new(tokens.clone()).resolve_item(true, state).label_color);
+            assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
             let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
             // The selector trigger is the SDK's `.lss` outline trigger for the mode.
             let expected = match mode {
@@ -247,7 +252,7 @@ mod tests {
             let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
             assert_eq!(
                 scrollbar.thumb_background,
-                DefaultScrollbarTheme::new(tokens.clone())
+                StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics)
                     .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
                     .thumb_background
             );

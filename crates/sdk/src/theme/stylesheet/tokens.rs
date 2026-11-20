@@ -237,42 +237,4 @@ mod tests {
         overlay(&mut value, toml::from_str("enabled = false").unwrap());
         assert_eq!(value["enabled"].as_bool(), Some(false));
     }
-
-    #[test]
-    fn sdk_control_snapshots_keep_styles_and_programmatic_edits() {
-        use crate::controls::progress::{DefaultProgressTheme, ProgressTheme};
-        let mut sheet = CommonStylesheet::resolve_layers(&["[common.progress.geometry]\ntrack_height = 11"]).unwrap();
-        sheet.progress.geometry.track_height = Some(0.0);
-        let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        sheet.progress.geometry.track_height = Some(30.0);
-        let theme = DefaultProgressTheme::new(tokens);
-        assert_eq!(theme.resolve(true).track_height, 0.0);
-        assert_eq!(theme.resolve(true).size, 64.0);
-        let fresh =
-            DefaultProgressTheme::new(sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap());
-        assert_eq!(fresh.resolve(true).track_height, 30.0);
-    }
-
-    #[test]
-    fn sdk_button_family_resolves_independent_button_and_toggle_geometry() {
-        use crate::{
-            controls::button_family::{ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme},
-            theme::StandardBoxScale,
-        };
-        let sheet = CommonStylesheet::resolve_layers(&[
-            "[common.button.geometry]\npadding_x = 0\nheight = 50\n[common.toggle.geometry]\nheight = 21",
-        ])
-        .unwrap();
-        let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-        let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-        let radius = crate::theme::FULL_RADIUS_PX;
-        let theme = DefaultButtonFamilyTheme::new(tokens);
-        let button = theme.resolve_look(ButtonFamilyRole::Text, Default::default(), &scale, radius).unwrap();
-        let toggle = theme
-            .resolve_look(ButtonFamilyRole::Toggle { selected: true }, Default::default(), &scale, radius)
-            .unwrap();
-        assert_eq!((button.height, button.padding_x), (50.0, 0.0));
-        assert_eq!(toggle.height, 21.0);
-        assert_eq!(toggle.padding_x, scale.padding_x);
-    }
 }

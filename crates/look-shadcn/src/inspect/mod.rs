@@ -58,6 +58,3 @@ pub use controls::{
     inspect_toolbar_color_palette, inspect_toolbar_metrics, inspect_tree_view_metrics,
     inspect_tree_view_row_color_palette, inspect_color_chrome_sections,
 };
-
-#[cfg(test)]
-mod parity_tests;

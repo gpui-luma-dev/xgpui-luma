@@ -110,7 +110,7 @@ pub fn resolve_overlay_window_metrics(
 ) -> OverlayWindowMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
-    let shell = crate::paint::overlay_window_look(look, size, mode);
+    let shell = crate::controls::overlay_window::overlay_window_look(look, size, mode);
     let size_key = match size {
         crate::ShadcnSize::Sm => "sm",
         crate::ShadcnSize::Md => "md",

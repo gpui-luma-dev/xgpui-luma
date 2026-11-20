@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{InteractionLayer, InteractionState, ThemeTokens};
+use crate::theme::InteractionState;
 
 #[derive(Clone, Debug)]
 pub struct ResizablePanelsLook {
@@ -26,55 +26,10 @@ pub trait ResizablePanelsTheme: Send + Sync {
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultResizablePanelsTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_resizable_panels_theme() -> Arc<dyn ResizablePanelsTheme> {
     static THEME: OnceLock<Arc<dyn ResizablePanelsTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::StyledResizablePanelsTheme::sdk())).clone()
-}
-
-impl DefaultResizablePanelsTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl ResizablePanelsTheme for DefaultResizablePanelsTheme {
-    fn resize_handle_metrics(&self) -> super::ResizeHandleMetrics {
-        super::ResizeHandleMetrics::from_stylesheet(&self.tokens.stylesheet)
-    }
-
-    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let palette = self.tokens.stylesheet.recipes.palette("resizable_panels", &self.tokens.palette);
-        let disabled = state.layer() == InteractionLayer::Disabled;
-        let geometry = self.tokens.stylesheet.resizable_panels.resolve_geometry(Default::default());
-
-        ResizablePanelsLook {
-            border: palette.border.default,
-            border_width: geometry.border_width,
-            divider_width: geometry.divider_width,
-            divider: if disabled {
-                palette.state.disabled.background
-            } else {
-                palette.border.strong
-            },
-            grip: if disabled {
-                palette.state.disabled.foreground
-            } else {
-                palette.border.strong
-            },
-            grip_emphasis: if disabled {
-                palette.state.disabled.foreground
-            } else {
-                palette.state.hover.background
-            },
-            disabled_opacity: if disabled { geometry.disabled_opacity } else { 1.0 },
-        }
-    }
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

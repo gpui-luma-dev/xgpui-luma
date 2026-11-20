@@ -59,6 +59,7 @@ pub(crate) mod tree_view_builder;
 pub(crate) mod typography;
 pub(crate) mod overlay_window;
 
+#[cfg(feature = "inspect")]
 pub(crate) use typography::apply_button_metrics_typography;
 
 pub use accordion_builder::Accordion;

@@ -111,38 +111,3 @@ impl AccordionTheme for StyledAccordionTheme {
         self.0.scale(scale_factor)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sdk_accordion_matches_the_token_accordion() {
-        let close = |a: Hsla, b: Hsla| {
-            let (a, b) = (a.to_rgb(), b.to_rgb());
-            [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-        };
-        let native = super::super::theme::DefaultAccordionTheme::default();
-        let lss = StyledAccordionTheme::sdk();
-        for bits in 0..8u8 {
-            let state = InteractionState {
-                hovered: bits & 1 != 0,
-                pressed: bits & 2 != 0,
-                disabled: bits & 4 != 0,
-                ..Default::default()
-            };
-            let (got, want) = (lss.resolve_trigger(state), native.resolve_trigger(state));
-            assert_eq!(got.background.is_some(), want.background.is_some(), "{state:?}");
-            if let (Some(g), Some(w)) = (got.background, want.background) {
-                assert!(close(g, w), "{state:?} background");
-            }
-            assert!(close(got.foreground, want.foreground) && close(got.border_color, want.border_color));
-            assert!(close(got.chevron_color, want.chevron_color), "{state:?} chevron");
-            assert_eq!(
-                (got.typography.size, got.typography.line_height),
-                (want.typography.size, want.typography.line_height)
-            );
-        }
-        assert_eq!(lss.resolve_scale(1.0), native.resolve_scale(1.0));
-    }
-}

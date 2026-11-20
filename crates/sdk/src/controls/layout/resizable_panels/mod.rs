@@ -16,7 +16,7 @@ pub use template::{
     ResizablePanelsTemplate, ResizablePanelsTemplateModifier, ThemedResizablePanelsTemplate,
     default_resizable_panels_template, render_resizable_panels_surface, render_resizable_panels_handle,
 };
-pub use theme::{DefaultResizablePanelsTheme, ResizablePanelsLook, ResizablePanelsTheme, default_resizable_panels_theme};
+pub use theme::{ResizablePanelsLook, ResizablePanelsTheme, default_resizable_panels_theme};
 
 mod callback;
 pub use callback::ResizablePanelsEventExt;

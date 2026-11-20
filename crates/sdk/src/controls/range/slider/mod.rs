@@ -26,7 +26,7 @@ pub use template::{
     ThemedAngularDialTemplate, ThemedCircularRingTemplate, ThemedSliderTemplate, default_angular_dial_template,
     default_circular_ring_template, default_slider_template,
 };
-pub use theme::{DefaultSliderTheme, SliderLook, SliderTheme, default_slider_theme};
+pub use theme::{SliderLook, SliderTheme, default_slider_theme};
 
 pub use layout::{display_position, segment_corner_radii, segment_display_span};
 pub use template::{

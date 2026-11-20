@@ -73,35 +73,3 @@ impl StepperTheme for StyledStepperTheme {
         styled_stepper_look(&self.binding, enabled)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sdk_stepper_matches_the_token_stepper() {
-        let close = |a: Hsla, b: Hsla| {
-            let (a, b) = (a.to_rgb(), b.to_rgb());
-            [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-        };
-        for enabled in [true, false] {
-            let lss = StyledStepperTheme::sdk().resolve(enabled);
-            let want = super::super::theme::DefaultStepperTheme::default().resolve(enabled);
-            for (got, want, name) in [
-                (lss.complete_bg, want.complete_bg, "complete bg"),
-                (lss.complete_fg, want.complete_fg, "complete fg"),
-                (lss.in_progress_bg, want.in_progress_bg, "current bg"),
-                (lss.in_progress_fg, want.in_progress_fg, "current fg"),
-                (lss.incomplete_bg, want.incomplete_bg, "incomplete bg"),
-                (lss.incomplete_border, want.incomplete_border, "incomplete border"),
-                (lss.incomplete_fg, want.incomplete_fg, "incomplete fg"),
-                (lss.track_active_color, want.track_active_color, "track active"),
-                (lss.track_muted_color, want.track_muted_color, "track muted"),
-            ] {
-                assert!(close(got, want), "{enabled} {name}: {got:?} vs {want:?}");
-            }
-            assert_eq!(format!("{:?}", lss.geometry), format!("{:?}", want.geometry));
-            assert_eq!(lss.number_weight, want.number_weight);
-        }
-    }
-}

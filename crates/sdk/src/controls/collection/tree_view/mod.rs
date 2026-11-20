@@ -27,7 +27,7 @@ pub use template::{
     TreeViewTemplate, TreeViewTemplateHandlers, TreeViewTemplateModifier, ThemedTreeViewTemplate,
     default_tree_view_template,
 };
-pub use theme::{DefaultTreeViewTheme, TreeViewPalette, TreeViewScale, TreeViewTheme, default_tree_view_theme};
+pub use theme::{TreeViewPalette, TreeViewScale, TreeViewTheme, default_tree_view_theme};
 
 pub use crate::infra::state::{CompositeItemState as TreeViewItemState, ControlFocusState};
 use gpui::{Entity, SharedString};

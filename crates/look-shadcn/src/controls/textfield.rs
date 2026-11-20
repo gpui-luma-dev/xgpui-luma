@@ -13,6 +13,7 @@
 
 use serde::Deserialize;
 
+#[cfg(feature = "inspect")]
 use xgpui_luma::controls::textfield::TextFieldPalette;
 use xgpui_luma::controls::textfield::TextFieldState;
 use crate::size::ShadcnSize;
@@ -25,11 +26,14 @@ use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
+#[cfg(feature = "inspect")]
 use crate::shadow::parse_shadow_token;
 use crate::stylesheet::StylesheetConfig;
 use crate::stylesheet::find_textfield_color_rule;
+#[cfg(feature = "inspect")]
 use crate::stylesheet::find_textfield_elevation_rule;
 use crate::stylesheet::resolve_textfield_color_rule;
+#[cfg(feature = "inspect")]
 use crate::stylesheet::resolve_stylesheet_shadow_token;
 
 fn textfield_style_key(style: ShadcnTextFieldStyle) -> &'static str {
@@ -110,6 +114,7 @@ pub fn resolve_textfield_colors_with_stylesheet(
     })
 }
 
+#[cfg(feature = "inspect")]
 pub(crate) fn textfield_elevation_shadow(
     ctx: &LookContext,
     stylesheet: &StylesheetConfig,
@@ -146,6 +151,7 @@ pub fn resolve_textfield_palette(
     colors
 }
 
+#[cfg(feature = "inspect")]
 pub fn textfield_palette(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
@@ -156,6 +162,7 @@ pub fn textfield_palette(
     textfield_palette_for_size(mode, theme_mode, style, state, enabled, ShadcnSize::Md)
 }
 
+#[cfg(feature = "inspect")]
 pub fn textfield_palette_for_size(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
@@ -196,6 +203,7 @@ pub(crate) fn textfield_geometry(
     )
 }
 
+#[cfg(feature = "inspect")]
 pub(crate) fn textfield_palette_base_for_size(
     mode: &ShadcnModeTokens,
     theme_mode: ThemeMode,
@@ -235,6 +243,7 @@ pub(crate) fn textfield_palette_base_for_size(
     }
 }
 
+#[cfg(feature = "inspect")]
 /// Scales text-field typography from shared Button font sizes (same curve as buttons/selectors).
 pub fn apply_textfield_control_size_typography(
     typography: &mut LumaTextStyle,
@@ -244,7 +253,7 @@ pub fn apply_textfield_control_size_typography(
     super::apply_button_metrics_typography(typography, mode, size);
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "inspect"))]
 mod tests {
 
     use std::collections::BTreeMap;

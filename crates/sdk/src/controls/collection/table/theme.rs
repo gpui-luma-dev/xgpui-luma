@@ -4,7 +4,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
 
-use crate::theme::{InteractionLayer, InteractionState, ListRowScale, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, ListRowScale, LumaTextStyle, MetricTokens};
 
 #[derive(Clone, Debug)]
 pub struct TableLook {
@@ -118,125 +118,10 @@ pub trait TableTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultTableTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_table_theme() -> Arc<dyn TableTheme> {
     static THEME: OnceLock<Arc<dyn TableTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledTableTheme::sdk())).clone()
-}
-
-impl DefaultTableTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl TableTheme for DefaultTableTheme {
-    fn resolve_drag(&self) -> TableDragLook {
-        let palette = self.tokens.stylesheet.recipes.palette("table", &self.tokens.palette);
-        TableDragLook {
-            geometry: self.tokens.stylesheet.table.with_sdk_defaults().resolve_geometry(Default::default()),
-            background: palette.surface.floating.background,
-            foreground: palette.surface.floating.foreground,
-            valid_marker: palette.focus.ring,
-            invalid_marker: palette.form.input.invalid_border,
-            radius: self.tokens.metrics.radius(),
-        }
-    }
-
-    fn resolve_look(&self, enabled: bool, _focused: bool) -> TableLook {
-        let palette = self.tokens.stylesheet.recipes.palette("table", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().table.authored_geometry();
-        let recipe = self.tokens.stylesheet.table.authored_geometry().with_fallback(&baseline);
-        let mut look = TableLook {
-            row_divider_width: recipe.row_divider_width.unwrap_or_default(),
-            column_padding_x: recipe.column_padding_x.unwrap_or_default(),
-            column_resize_hit_width: recipe.column_resize_hit_width.unwrap_or_default(),
-            column_resize_line_width: recipe.column_resize_line_width.unwrap_or_default(),
-            column_resize_vertical_extension: recipe.column_resize_vertical_extension.unwrap_or_default(),
-
-            background: if enabled {
-                palette.form.input.background
-            } else {
-                palette.state.disabled.background
-            },
-            border: palette.form.input.border,
-            border_width: recipe.border_width.unwrap_or_default(),
-            header_divider_width: recipe.header_divider_width.unwrap_or_default(),
-            header_padding_bottom_scale: recipe.header_padding_bottom_scale.unwrap_or_default(),
-            header_background: if enabled {
-                palette.surface.subtle.background
-            } else {
-                palette.state.disabled.background
-            },
-            header_label_color: if enabled {
-                palette.app.muted_foreground
-            } else {
-                palette.state.disabled.foreground
-            },
-            header_typography: self.tokens.typography.text.caption,
-            radius: metrics.radius(),
-            padding_x: recipe.padding_x.unwrap_or_default(),
-            padding_y: metrics.padding_y() * recipe.padding_y_scale.unwrap_or_default(),
-        };
-        crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.table, TableGeometry, look,
-            [padding_x => padding_x, padding_y => padding_y], defaults = Default::default());
-        look
-    }
-
-    fn resolve_row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
-        let palette = self.tokens.stylesheet.recipes.palette("table", &self.tokens.palette);
-        let typography = &self.tokens.typography;
-
-        let transparent = Hsla { h: 0.0, s: 0.0, l: 0.0, a: 0.0 };
-        let layer = state.layer();
-
-        let selected_background = palette.surface.subtle.background;
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().table.authored_geometry();
-        let recipe = self.tokens.stylesheet.table.authored_geometry().with_fallback(&baseline);
-        let hover_background = Hsla { a: recipe.row_hover_opacity.unwrap_or_default(), ..palette.data.accent_1 };
-
-        let background = if state.disabled && !state.focused {
-            transparent
-        } else if selected || state.focused {
-            selected_background
-        } else {
-            match layer {
-                InteractionLayer::Disabled => transparent,
-                InteractionLayer::Pressed => palette.state.pressed.background,
-                InteractionLayer::Hovered => hover_background,
-                InteractionLayer::Default => transparent,
-            }
-        };
-
-        let label_color = if state.disabled {
-            palette.state.disabled.foreground
-        } else if selected {
-            palette.surface.subtle.foreground
-        } else {
-            palette.app.foreground
-        };
-
-        let mut label_typography = typography.text.label;
-        crate::controls::textfield::apply_control_typography(&mut label_typography, typography);
-
-        TableRowPalette { background, label_color, divider: palette.form.input.border, label_typography }
-    }
-
-    fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        let mut look = TableRowLook::from_palette(&self.resolve_row(selected, state), scale, &self.tokens.stylesheet);
-        look.column_emphasis_weight = self.tokens.typography.text.title.weight;
-        look
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
 }
 
 impl TableRowLook {

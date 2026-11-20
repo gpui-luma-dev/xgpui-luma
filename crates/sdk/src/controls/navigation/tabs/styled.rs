@@ -90,6 +90,10 @@ impl StyledTabs {
 pub struct StyledTabsTheme(StyledTabs);
 
 impl StyledTabsTheme {
+    pub fn new(binding: StyleBinding) -> Self {
+        Self(StyledTabs::new(binding))
+    }
+
     pub fn sdk() -> Self {
         Self(StyledTabs::sdk())
     }
@@ -106,55 +110,5 @@ impl TabsTheme for StyledTabsTheme {
 
     fn font_family(&self) -> SharedString {
         self.0.font_family()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn sdk_tabs_match_the_token_tabs() {
-        let close = |a: Option<Hsla>, b: Option<Hsla>| match (a, b) {
-            (Some(a), Some(b)) => {
-                let (a, b) = (a.to_rgb(), b.to_rgb());
-                [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-            }
-            (None, None) => true,
-            _ => false,
-        };
-        let native = super::super::theme::DefaultTabsTheme::default();
-        let lss = StyledTabsTheme::sdk();
-        for enabled in [true, false] {
-            let (got, want) = (lss.resolve_list(enabled), native.resolve_list(enabled));
-            assert!(close(got.background, want.background), "list {enabled}");
-            assert_eq!(
-                (got.radius, got.padding, got.gap, got.border_width),
-                (want.radius, want.padding, want.gap, want.border_width)
-            );
-        }
-        for active in [true, false] {
-            for bits in 0..16u8 {
-                let state = InteractionState {
-                    hovered: bits & 1 != 0,
-                    pressed: bits & 2 != 0,
-                    focused: bits & 4 != 0,
-                    disabled: bits & 8 != 0,
-                    ..Default::default()
-                };
-                let (got, want) = (lss.resolve_item(active, state), native.resolve_item(active, state));
-                assert!(close(Some(got.label_color), Some(want.label_color)), "{active} {state:?} label");
-                assert!(
-                    close(got.indicator, want.indicator),
-                    "{active} {state:?} indicator {:?} {:?}",
-                    got.indicator,
-                    want.indicator
-                );
-                assert_eq!(
-                    (got.radius, got.padding_x, got.height, got.indicator_height, got.label_typography.size),
-                    (want.radius, want.padding_x, want.height, want.indicator_height, want.label_typography.size)
-                );
-            }
-        }
     }
 }

@@ -16,7 +16,7 @@ pub use template::{
     AutocompleteTemplateModifier, DefaultAutocompleteItemsTemplate, DefaultAutocompleteTemplate,
     default_autocomplete_items_template, default_autocomplete_template,
 };
-pub use theme::{AutocompleteLook, AutocompleteTheme, DefaultAutocompleteTheme, default_autocomplete_theme};
+pub use theme::{AutocompleteLook, AutocompleteTheme, default_autocomplete_theme};
 
 mod callback;
 pub use callback::AutocompleteEventExt;

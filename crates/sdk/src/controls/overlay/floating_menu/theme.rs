@@ -60,27 +60,10 @@ pub trait FloatingMenuTheme: Send + Sync {
     fn resolve(&self) -> FloatingMenuLook;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultFloatingMenuTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_floating_menu_theme() -> Arc<dyn FloatingMenuTheme> {
     static THEME: OnceLock<Arc<dyn FloatingMenuTheme>> = OnceLock::new();
 
     THEME.get_or_init(super::styled::sdk_theme).clone()
-}
-
-impl DefaultFloatingMenuTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl FloatingMenuTheme for DefaultFloatingMenuTheme {
-    fn resolve(&self) -> FloatingMenuLook {
-        default_floating_menu_look(&self.tokens)
-    }
 }
 
 pub(crate) fn default_floating_menu_look(tokens: &ThemeTokens) -> FloatingMenuLook {

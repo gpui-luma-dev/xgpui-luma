@@ -14,7 +14,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 use xgpui_luma::controls::table::TableLook;
-use xgpui_luma::controls::table::TableRowPalette;
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
@@ -162,87 +161,6 @@ pub fn table_look(mode: &ShadcnModeTokens, enabled: bool, _focused: bool, size: 
     look.padding_y = geometry.padding_y;
 
     look
-}
-
-pub fn table_row_palette(
-    mode: &ShadcnModeTokens,
-    selected: bool,
-    state: InteractionState,
-    size: ShadcnSize,
-) -> TableRowPalette {
-    let ctx = LookContext::new(mode, mode.theme_mode, state);
-    let typography = ctx.typography();
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "table_row").with_stylesheet(mode.stylesheet());
-    let colors = resolve_table_row_colors(&resolver, selected, state.focused, state.disabled, state.layer())
-        .unwrap_or_else(|_| TableRowColorTable::fallback());
-
-    let mut label_typography = typography.text.label;
-    super::apply_button_metrics_typography(&mut label_typography, mode, size);
-
-    TableRowPalette {
-        background: colors.background.hsla(),
-        label_color: colors.label_color.hsla(),
-        divider: colors.divider.hsla(),
-        label_typography,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::BTreeMap;
-    use xgpui_luma::theme::ThemeMode;
-
-    use xgpui_luma::theme::{InteractionState};
-
-    use crate::catalog::CssTokenMap;
-    use crate::color::with_alpha;
-    use crate::mode::ShadcnModeTokens;
-    use crate::resolve::resolve_color;
-    use super::table_row_palette;
-
-    const ROW_HOVER_ACCENT_ALPHA: f32 = 0.4;
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("card".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-        ]))
-    }
-
-    #[test]
-    fn table_row_hover_uses_accent_whisper_and_selected_uses_muted() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let hover = table_row_palette(
-            &mode,
-            false,
-            InteractionState { hovered: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-        );
-        let selected = table_row_palette(
-            &mode,
-            true,
-            InteractionState { hovered: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-        );
-
-        let accent = catalog.color("accent").expect("accent");
-        assert_eq!(hover.background, with_alpha(accent, ROW_HOVER_ACCENT_ALPHA));
-        assert_eq!(selected.background, resolve_color(&catalog, "muted").expect("muted"));
-    }
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
@@ -418,7 +336,7 @@ pub fn resolve_table_metrics(
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
     let catalog = ctx.catalog();
-    let look = crate::paint::table_look(mode, true, false, size);
+    let look = crate::controls::table::table_look(mode, true, false, size);
     let row_scale = ListRowScale::compute(&mode.metrics_for(size), 1.0);
     let size_key = control_size_key(size);
 

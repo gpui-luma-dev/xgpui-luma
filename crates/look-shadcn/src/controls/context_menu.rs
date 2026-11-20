@@ -173,7 +173,11 @@ pub fn resolve_context_menu_metrics(
     use crate::catalog::SpacingField;
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let look = crate::paint::context_menu_look(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
+    let look = crate::controls::context_menu::context_menu_look(
+        mode,
+        theme_mode,
+        xgpui_luma::theme::InteractionState::default(),
+    );
     let catalog = ctx.catalog();
 
     let mut table = ContextMenuMetricTable {

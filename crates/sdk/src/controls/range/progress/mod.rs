@@ -13,7 +13,7 @@ pub use template::{
     ThemedProgressTemplate, default_circular_progress_template, default_linear_progress_template,
     default_progress_template,
 };
-pub use theme::{DefaultProgressTheme, ProgressLook, ProgressTheme, default_progress_theme};
+pub use theme::{ProgressLook, ProgressTheme, default_progress_theme};
 
 use gpui::{Entity, SharedString};
 

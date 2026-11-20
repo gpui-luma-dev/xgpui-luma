@@ -148,19 +148,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
     }
 }
 
-/// Former SDK size presets for controls Radix sizes itself; used only for fallback scales.
-fn apply_choice_presets(common: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
-    for (size, track, diameter, stroke, thumb) in
-        [(RadixSize::One, 4.0, 48.0, 5.0, 12.0), (RadixSize::Three, 8.0, 80.0, 8.0, 20.0)]
-    {
-        let progress = common.progress.sizes.get_or_default(size.key());
-        fill(&mut progress.track_height, track);
-        fill(&mut progress.size, diameter);
-        fill(&mut progress.stroke_width, stroke);
-        fill(&mut progress.thumb_size, thumb);
-    }
-}
-
 fn fill(slot: &mut Option<f32>, value: f32) {
     slot.get_or_insert(value);
 }
@@ -174,25 +161,4 @@ pub(crate) fn scaffold_metrics(size: RadixSize) -> xgpui_luma::theme::MetricToke
         RadixSize::Three => ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
     };
     metrics
-}
-
-/// SDK baseline stylesheet with the Radix presets for `size`, for fallback scales.
-pub(crate) fn scaffold_stylesheet(size: RadixSize) -> &'static xgpui_luma::theme::stylesheet::CommonStylesheet {
-    static SHEETS: std::sync::OnceLock<[xgpui_luma::theme::stylesheet::CommonStylesheet; 3]> =
-        std::sync::OnceLock::new();
-    &SHEETS.get_or_init(|| {
-        let mut base = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default().clone();
-        apply_size_presets(&mut base);
-        apply_choice_presets(&mut base);
-        RadixSize::ALL.map(|size| base.with_size_key(size.key()))
-    })[size.index()]
-}
-
-/// Former SDK baseline tokens for `size`, used where Radix starts from SDK defaults.
-pub(crate) fn scaffold_tokens(size: RadixSize) -> xgpui_luma::theme::ThemeTokens {
-    xgpui_luma::theme::ThemeTokens {
-        metrics: scaffold_metrics(size),
-        stylesheet: std::sync::Arc::new(scaffold_stylesheet(size).clone()),
-        ..Default::default()
-    }
 }

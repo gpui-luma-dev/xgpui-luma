@@ -13,7 +13,7 @@ pub use template::{
     ThemedScrollbarTemplate, default_scrollbar_template,
 };
 
-pub use theme::{DefaultScrollbarTheme, ScrollbarLook, ScrollbarTheme, default_scrollbar_theme};
+pub use theme::{ScrollbarLook, ScrollbarTheme, default_scrollbar_theme};
 
 mod callback;
 pub use callback::ScrollbarEventExt;

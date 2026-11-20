@@ -101,9 +101,7 @@ pub use row::render_table_row;
 pub use template::{
     DefaultTableShellTemplate, TableTemplate, TableTemplateModifier, default_table_template, table_template_with_theme,
 };
-pub use theme::{
-    DefaultTableTheme, TableDragLook, TableLook, TableRowLook, TableRowPalette, TableTheme, default_table_theme,
-};
+pub use theme::{TableDragLook, TableLook, TableRowLook, TableRowPalette, TableTheme, default_table_theme};
 
 use gpui::{Entity, SharedString};
 

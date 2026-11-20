@@ -90,10 +90,6 @@ pub fn resolve_tabs_item_colors_with_stylesheet(
     Ok(TabsItemColorTable { label_color: colors.label_color, indicator: colors.indicator })
 }
 
-pub fn tabs_list_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> TabsListLook {
-    tabs_list_look_with_stylesheet(mode, mode.stylesheet(), enabled, size)
-}
-
 pub fn tabs_list_look_with_stylesheet(
     mode: &ShadcnModeTokens,
     stylesheet: &StylesheetConfig,
@@ -119,15 +115,6 @@ pub fn tabs_list_look_with_stylesheet(
         padding: geometry.list_padding.value_px,
         gap: geometry.list_gap.value_px,
     }
-}
-
-pub fn tabs_item_look(
-    mode: &ShadcnModeTokens,
-    active: bool,
-    state: InteractionState,
-    size: ShadcnSize,
-) -> TabsItemLook {
-    tabs_item_look_with_stylesheet(mode, mode.stylesheet(), active, state, size)
 }
 
 pub fn tabs_item_look_with_stylesheet(
@@ -169,29 +156,7 @@ pub fn tabs_item_look_with_stylesheet(
 #[cfg(test)]
 mod tests {
 
-    use std::collections::BTreeMap;
-
     use xgpui_luma::theme::{InteractionState, ThemeMode};
-
-    use crate::catalog::CssTokenMap;
-    use crate::mode::ShadcnModeTokens;
-    use super::tabs_item_look;
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-        ]))
-    }
 
     #[test]
     fn embedded_tabs_preserve_geometry_across_modes_sizes_and_states() {
@@ -238,45 +203,6 @@ mod tests {
                     .is_err()
             );
         }
-    }
-
-    #[test]
-    fn active_and_inactive_tabs_use_foreground() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let active = tabs_item_look(&mode, true, InteractionState::default(), crate::ShadcnSize::Md);
-        let inactive = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Md);
-
-        assert_eq!(active.label_color, catalog.color("foreground").expect("foreground"));
-        assert_eq!(inactive.label_color, catalog.color("foreground").expect("foreground"));
-        assert_eq!(active.indicator, Some(catalog.color("primary").expect("primary")));
-        assert!(active.background.is_none());
-    }
-
-    #[test]
-    fn focused_active_tab_uses_primary_indicator() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let focused = tabs_item_look(
-            &mode,
-            true,
-            InteractionState { focused: true, ..InteractionState::default() },
-            crate::ShadcnSize::Md,
-        );
-
-        assert_eq!(focused.indicator, Some(catalog.color("primary").expect("primary")));
-    }
-
-    #[test]
-    fn tab_typography_changes_with_size() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog, ThemeMode::Light).expect("catalog");
-        let small = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Sm);
-        let medium = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Md);
-        let large = tabs_item_look(&mode, false, InteractionState::default(), crate::ShadcnSize::Lg);
-
-        assert!(small.label_typography.size < medium.label_typography.size);
-        assert!(medium.label_typography.size < large.label_typography.size);
     }
 }
 

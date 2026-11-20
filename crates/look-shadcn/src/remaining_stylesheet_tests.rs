@@ -1,6 +1,6 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
 use std::collections::HashMap;
-use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 use crate::{ShadcnLook, StylesheetConfig};
 use crate::size::ShadcnSize;
 
@@ -128,58 +128,6 @@ fn custom_look() -> ShadcnLook {
     ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap()
 }
 
-#[cfg(feature = "inspect")]
-#[test]
-fn remaining_common_geometry_reaches_paint_and_inspection() {
-    use xgpui_luma::controls::{
-        scrollbar::{ScrollbarOrientation, ScrollbarStyle},
-        pager::PagerStyle,
-    };
-    let look = custom_look();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        let tokens = look.mode_tokens();
-        let inspect = crate::inspect::ShadcnInspect::new(&look);
-        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-            for orientation in [ScrollbarOrientation::Horizontal, ScrollbarOrientation::Vertical] {
-                let scrollbar = crate::paint::scrollbar_look(
-                    &tokens,
-                    InteractionState::default(),
-                    orientation,
-                    size,
-                    ScrollbarStyle::Ghost,
-                );
-                let s = inspect.inspect_scrollbar_metrics_for_size(orientation, ScrollbarStyle::Ghost, size);
-                assert_eq!(
-                    (scrollbar.thickness, scrollbar.thumb_thickness, scrollbar.min_thumb_length),
-                    (15.0, 10.0, 34.0)
-                );
-                assert_eq!(s.length.value_px, scrollbar.length);
-                assert!(format!("{:?}", s.length.source).contains("common.scrollbar"));
-            }
-            let card = crate::controls::card::card_look(&look, size);
-            assert_eq!((card.padding, card.section_gap, card.header_gap, card.body_gap), (23.0, 11.0, 7.0, 12.0));
-            assert_eq!(inspect.inspect_card_metrics(size).padding.value_px, 23.0);
-            let sidebar = crate::paint::sidebar_item_look(&look, false, InteractionState::default(), size);
-            assert_eq!((sidebar.height, sidebar.padding_x, sidebar.icon_size, sidebar.gap), (34.0, 11.0, 19.0, 10.0));
-            assert_eq!(inspect.inspect_sidebar_metrics(size).item_height.value_px, 34.0);
-        }
-        let context = crate::paint::context_menu_look(&tokens, mode, InteractionState::default());
-        assert_eq!((context.target_min_width, context.target_padding_x), (231.0, 12.0));
-        let group = crate::paint::control_group_list_look(&tokens, true);
-        assert_eq!((group.padding_x, group.padding_y, group.gap), (12.0, 7.0, 10.0));
-        let table = crate::paint::table_look(&tokens, true, false, ShadcnSize::Md);
-        assert_eq!((table.padding_x, table.padding_y), (4.0, 7.0));
-        let badge = crate::badge_look(&look, crate::BadgeVariant::Default, crate::ShadcnSize::Md);
-        assert_eq!((badge.min_height, badge.padding_x, badge.gap, badge.icon_size), (29.0, 13.0, 7.0, 17.0));
-        for style in [PagerStyle::Minimal, PagerStyle::MinimalEdge, PagerStyle::Numeric] {
-            let pager = crate::paint::pager_look(&look, true, style);
-            assert_eq!((pager.button_size, pager.button_min_width, pager.group_gap), (39.0, 41.0, 19.0));
-            assert_eq!(inspect.inspect_pager_metrics(style).button_size.value_px, 39.0);
-        }
-    }
-}
-
 #[test]
 fn selected_configuration_survives_color_copies_token_edits_and_live_replacement() {
     let look = custom_look();
@@ -212,7 +160,7 @@ fn migrated_literal_families_keep_their_bundled_size_baselines() {
         let progress = look.with_size(size).progress_theme().resolve(true);
         assert_eq!((progress.size, progress.track_height, progress.thumb_size), (diameter, track, thumb));
         assert_eq!(look.with_size(size).stepper_theme().resolve(true).step_badge_size, badge);
-        let scrollbar = crate::paint::scrollbar_look(
+        let scrollbar = crate::controls::scrollbar::scrollbar_look(
             &look.mode_tokens(),
             InteractionState::default(),
             ScrollbarOrientation::Horizontal,
@@ -347,64 +295,7 @@ radius=11
 }
 
 #[test]
-fn resize_chrome_uses_common_stylesheet_including_zero_width() {
-    use xgpui_luma::controls::resizable_panels::{DefaultResizablePanelsTheme, ResizablePanelsTheme};
-    let common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.resizable_panels.geometry]
-border_width=0
-divider_width=3
-disabled_opacity=0.2
-"#])
-    .unwrap();
-    // The look's panels and slide panel are drawn from `.lss`; the token-built SDK theme still reads these.
-    let tokens = common.theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde).unwrap();
-    let theme = DefaultResizablePanelsTheme::new(tokens);
-    let enabled = theme.resolve(InteractionState::default());
-    assert_eq!((enabled.border_width, enabled.divider_width), (0.0, 3.0));
-    let disabled = theme.resolve(InteractionState { disabled: true, ..Default::default() });
-    assert_eq!(disabled.disabled_opacity, 0.2);
-}
-
-#[test]
-fn table_strokes_and_header_padding_use_selected_stylesheet() {
-    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.table.geometry]
-border_width=0
-header_divider_width=3
-header_padding_bottom_scale="math(1 / 2)"
-column_resize_hit_width=24
-column_resize_line_width=0
-column_resize_vertical_extension=7
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    let sdk = DefaultTableTheme::new(tokens).resolve_look(true, false);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = crate::controls::table::table_look(&look.mode_tokens(), true, false, ShadcnSize::Md);
-    for resolved in [sdk, themed] {
-        assert_eq!(
-            (
-                resolved.column_resize_hit_width,
-                resolved.column_resize_line_width,
-                resolved.column_resize_vertical_extension
-            ),
-            (24.0, 0.0, 7.0)
-        );
-        assert_eq!(
-            (resolved.border_width, resolved.header_divider_width, resolved.header_padding_bottom_scale),
-            (0.0, 3.0, 0.5)
-        );
-    }
-}
-
-#[test]
 fn table_drag_preview_uses_selected_size_and_zero_strokes() {
-    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.table.geometry]
@@ -418,227 +309,9 @@ drag_marker_width=0
 drag_width=310
 "#])
     .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    let sdk = DefaultTableTheme::new(tokens);
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = look.table_theme();
-    for theme in [&sdk as &dyn TableTheme, themed.as_ref()] {
-        let md = theme.resolve_drag().geometry;
-        assert_eq!((md.drag_offset, md.drag_width, md.drag_padding_x, md.drag_padding_y), (5.0, 180.0, 7.0, 3.0));
-        assert_eq!((md.drag_border_width, md.drag_marker_width), (0.0, 0.0));
-    }
+    let md = look.table_theme().resolve_drag().geometry;
+    assert_eq!((md.drag_offset, md.drag_width, md.drag_padding_x, md.drag_padding_y), (5.0, 180.0, 7.0, 3.0));
+    assert_eq!((md.drag_border_width, md.drag_marker_width), (0.0, 0.0));
     assert_eq!(look.with_size(ShadcnSize::Lg).table_theme().resolve_drag().geometry.drag_width, 310.0);
-}
-
-#[test]
-fn token_table_row_chrome_uses_selected_stylesheet() {
-    use xgpui_luma::controls::table::{DefaultTableTheme, TableTheme};
-    use xgpui_luma::theme::ListRowScale;
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.table.geometry]
-column_padding_x=0
-column_muted_opacity=0
-row_disabled_opacity=0
-row_radius=7
-[common.table.sizes.lg]
-column_padding_x=19
-column_muted_opacity=0.4
-row_disabled_opacity=0.3
-row_radius=11
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    // The look's rows are drawn from `.lss`; the token-built SDK theme still reads these overrides.
-    let theme: &dyn TableTheme = &DefaultTableTheme::new(tokens);
-    let scale = ListRowScale::compute(&theme.metrics(), 1.0);
-    let row = theme.resolve_row_look(false, InteractionState { disabled: true, ..Default::default() }, &scale);
-    assert_eq!((row.disabled_opacity, row.radius), (0.0, 7.0));
-    assert_eq!(row.column_padding_x, 0.0);
-    assert_eq!(row.column_muted_opacity, 0.0);
-    assert_eq!(theme.resolve_look(true, false).column_padding_x, 0.0);
-    assert_eq!(row.min_height, scale.min_height);
-}
-
-#[test]
-fn pager_popup_chrome_uses_shared_stylesheet_and_presentation_overrides() {
-    use xgpui_luma::controls::pager::{DefaultPagerTheme, PagerStyle, PagerTheme};
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.pager.geometry]
-border_width=0
-page_size_label_gap=17
-popup_offset_y=9
-popup_gap=0
-popup_padding=7
-popup_item_padding_y=6
-popup_item_radius_inset=0
-[common.pager.sizes.minimal-edge]
-popup_padding=11
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    // The look's pager is drawn from `.lss`; the token-built SDK theme still reads these overrides.
-    let sdk = DefaultPagerTheme::new(tokens);
-    {
-        let theme = &sdk as &dyn PagerTheme;
-        let numeric = theme.resolve(true, PagerStyle::Numeric);
-        assert_eq!(
-            (numeric.border_width, numeric.page_size_label_gap, numeric.popup_offset_y, numeric.popup_gap),
-            (0.0, 17.0, 9.0, 0.0)
-        );
-        assert_eq!(
-            (numeric.popup_padding, numeric.popup_item_padding_y, numeric.popup_item_radius_inset),
-            (7.0, 6.0, 0.0)
-        );
-        assert_eq!(theme.resolve(true, PagerStyle::MinimalEdge).popup_padding, 11.0);
-    }
-}
-
-#[test]
-fn token_context_menu_chrome_uses_shared_stylesheet_with_zero_overrides() {
-    use xgpui_luma::controls::context_menu::{DefaultContextMenuTheme, ContextMenuTheme};
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.context_menu.geometry]
-border_width=0
-disabled_opacity=0
-window_margin=19
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    // The look's target is drawn from `.lss`; the token-built SDK theme still reads these overrides.
-    let sdk = DefaultContextMenuTheme::new(tokens);
-    let resolved = sdk.resolve(InteractionState { disabled: true, ..Default::default() });
-    assert_eq!((resolved.border_width, resolved.disabled_opacity, resolved.window_margin), (0.0, 0.0, 19.0));
-}
-
-#[test]
-fn token_overlay_shell_chrome_uses_shared_stylesheet() {
-    use xgpui_luma::controls::overlay_window::{DefaultOverlayWindowTheme, OverlayWindowTheme, OverlayWindowMode};
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.overlay_window.geometry]
-border_width=0
-radius=0
-[common.overlay_window.sizes.lg]
-border_width=3
-radius=17
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    // The look's window is drawn from `.lss`; the token-built SDK theme still reads these overrides.
-    let sdk = DefaultOverlayWindowTheme::new(tokens);
-    for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
-        let md = sdk.resolve(mode);
-        assert_eq!((md.border_width, md.radius), (0.0, 0.0));
-    }
-}
-
-#[test]
-fn remaining_control_chrome_inherits_shared_overrides() {
-    use xgpui_luma::controls::{
-        toolbar::{DefaultToolbarTheme, ToolbarTheme, ToolbarVariant},
-        stepper::{DefaultStepperTheme, StepperTheme},
-        split_view::{DefaultSplitViewTheme, SplitViewTheme},
-        dock_splitter::{DefaultDockSplitterTheme, DockSplitterTheme},
-    };
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.toolbar.geometry]
-border_width=0
-separator_width=3
-[common.dock_splitter.geometry]
-thumb_width=9
-thumb_rest_opacity=0
-[common.stepper.geometry]
-content_gap=0
-glyph_scale=0.7
-[common.split_view.geometry]
-hitbox_width=32
-cue_width=0
-[common.accordion.geometry]
-disabled_opacity=0
-drag_handle_padding=9
-[common.sidebar.geometry]
-container_gap=0
-subtitle_opacity=0.2
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    let sdk_toolbar = DefaultToolbarTheme::new(tokens.clone());
-    let sdk_dock = DefaultDockSplitterTheme::new(tokens.clone());
-    let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
-    let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
-    // The look's toolbar is drawn from `.lss`; the token-built SDK theme still reads these overrides.
-    let resolved = sdk_toolbar.resolve(true, ToolbarVariant::Outline);
-    assert_eq!((resolved.border_width, resolved.separator_width), (0.0, 3.0));
-    // The look's splitters are drawn from `.lss` too.
-    let resolved = sdk_dock.resolve(true);
-    assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
-    let resolved = sdk_stepper.resolve(true);
-    assert_eq!((resolved.geometry.content_gap, resolved.geometry.glyph_scale), (0.0, 0.7));
-    let resolved = sdk_split.resolve(false, true);
-    assert_eq!((resolved.geometry.hitbox_width, resolved.geometry.cue_width), (32.0, 0.0));
-}
-
-#[test]
-fn token_range_decoration_uses_selected_common_stylesheet() {
-    use xgpui_luma::controls::{
-        slider::{DefaultSliderTheme, SliderTheme},
-        progress::{DefaultProgressTheme, ProgressTheme},
-    };
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.slider.geometry]
-dial_size=160
-track_radius=52
-disabled_opacity=0.3
-[common.progress.geometry]
-indeterminate_fraction=0
-shimmer_soft_opacity=0
-[common.tooltip.geometry]
-target_gap=17
-window_margin=0
-pointer_size=9
-shortcut_opacity=0
-"#])
-    .unwrap();
-    let tokens = config
-        .common
-        .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
-        .unwrap();
-    let sdk_slider = DefaultSliderTheme::new(tokens.clone());
-    let sdk_progress = DefaultProgressTheme::new(tokens);
-    // The look draws range controls and tooltips from `.lss`; the token-built SDK themes still read these
-    // overrides.
-    let resolved = sdk_slider.resolve(Default::default());
-    assert_eq!(
-        (
-            resolved.decoration.dial_size,
-            resolved.decoration.track_radius,
-            resolved.decoration.disabled_opacity
-        ),
-        (160.0, 52.0, 0.3)
-    );
-    let resolved = sdk_progress.resolve(true);
-    assert_eq!((resolved.geometry.indeterminate_fraction, resolved.geometry.shimmer_soft_opacity), (0.0, 0.0));
 }

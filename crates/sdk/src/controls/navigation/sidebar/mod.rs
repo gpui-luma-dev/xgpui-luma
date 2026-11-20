@@ -16,7 +16,7 @@ pub use theme::{SidebarMetricScale, SidebarPresentation};
 
 // Look-bound flush theme / template surface (presentation engine).
 pub use engine::{
-    DefaultSidebarTheme, SidebarItemLook, SidebarSectionLook, SidebarPanelTemplate, SidebarPanelTemplateHandlers,
+    SidebarItemLook, SidebarSectionLook, SidebarPanelTemplate, SidebarPanelTemplateHandlers,
     SidebarPanelTemplateModifier, SidebarTheme, StyledSidebar, StyledSidebarTheme, ThemedSidebarPanelTemplate,
     default_sidebar_panel_template, default_sidebar_theme,
 };

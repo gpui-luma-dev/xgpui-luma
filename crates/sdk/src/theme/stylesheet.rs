@@ -538,21 +538,18 @@ impl CommonStylesheet {
         Self::parse(&toml::to_string(&document)?)
     }
 
-    /// Prepare an immutable SDK-only or custom-look snapshot. Rebuild tokens
-    /// after editing the sheet; existing themes retain their captured styling.
+    /// Prepare an immutable SDK-only or custom-look token snapshot. Rebuild tokens after editing the sheet.
     ///
     /// ```
     /// use xgpui_luma::{
     ///     color::GamutMapping,
-    ///     controls::progress::{DefaultProgressTheme, ProgressTheme},
     ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
     ///     sheet.progress.geometry.track_height = Some(9.0);
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-    /// let theme = DefaultProgressTheme::new(tokens);
-    /// assert_eq!(theme.resolve(true).track_height, 9.0);
+    /// assert_eq!(tokens.stylesheet.progress.geometry.track_height, Some(9.0));
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(

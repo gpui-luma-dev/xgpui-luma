@@ -154,6 +154,57 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
     }
 }
 
+/// A button-family theme read from `.lss`: the faces of a [`StyledButtonTemplate`], for chrome that takes a
+/// [`ButtonFamilyTheme`](crate::controls::button_family::ButtonFamilyTheme).
+pub struct StyledButtonFamilyTheme {
+    template: StyledButtonTemplate<()>,
+    metrics: crate::theme::MetricTokens,
+}
+
+impl StyledButtonFamilyTheme {
+    pub fn new(template: StyledButtonTemplate<()>, metrics: crate::theme::MetricTokens) -> Self {
+        Self { template, metrics }
+    }
+
+    /// The SDK alone.
+    pub fn sdk() -> Self {
+        Self::new(StyledButtonTemplate::sdk(), crate::theme::MetricTokens::default())
+    }
+}
+
+impl crate::controls::button_family::ButtonFamilyTheme for StyledButtonFamilyTheme {
+    fn resolve(
+        &self,
+        role: ButtonFamilyRole,
+        state: InteractionState,
+    ) -> crate::controls::button_family::ButtonFamilyPalette {
+        let look = self.template.look(role, state, 1.0);
+        crate::controls::button_family::ButtonFamilyPalette {
+            focus_border: look.focus_border,
+            background: look.background,
+            foreground: look.foreground,
+            muted_foreground: look.muted_foreground,
+            border: look.border,
+            typography: look.typography,
+            font_family: look.font_family,
+        }
+    }
+
+    fn metrics(&self) -> crate::theme::MetricTokens {
+        self.metrics
+    }
+
+    fn resolve_look(
+        &self,
+        role: ButtonFamilyRole,
+        state: InteractionState,
+        _scale: &crate::theme::StandardBoxScale,
+        _pill_radius: f32,
+    ) -> Option<ButtonFamilyLook> {
+        Some(self.template.look(role, state, 1.0))
+    }
+}
+
 /// The SDK's default button template: the SDK's `.lss` files alone.
 pub fn default_template() -> Arc<dyn ButtonTemplate<()>> {
     static TEMPLATE: std::sync::OnceLock<Arc<dyn ButtonTemplate<()>>> = std::sync::OnceLock::new();
@@ -355,176 +406,5 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
             root_element = root_element.cursor_pointer();
         }
         root_element
-    }
-}
-
-/// Checks against the native button-family theme while it still exists (icon button, split button and
-/// control groups use it). Delete together with the native code.
-#[cfg(test)]
-mod native_parity {
-    use super::*;
-    use crate::controls::button_family::{ButtonFamilyTheme, DefaultButtonFamilyTheme};
-    use crate::theme::{InteractionState, StandardBoxScale, ThemeTokens};
-
-    fn close(a: Hsla, b: Hsla) -> bool {
-        let (a, b) = (a.to_rgb(), b.to_rgb());
-        [(a.r, b.r), (a.g, b.g), (a.b, b.b), (a.a, b.a)].iter().all(|(x, y)| (x - y).abs() < 2e-3)
-    }
-
-    #[test]
-    fn button_matches_native() {
-        for (tokens, theme) in [
-            (ThemeTokens::light(), crate::style::default_theme()),
-            (ThemeTokens::dark(), crate::style::dark_theme()),
-        ] {
-            let native = DefaultButtonFamilyTheme::new(tokens.clone());
-            let template = StyledButtonTemplate::<()>::new(theme.clone());
-            for role in [
-                ButtonFamilyRole::Text,
-                ButtonFamilyRole::Icon,
-                ButtonFamilyRole::Toggle { selected: false },
-                ButtonFamilyRole::Toggle { selected: true },
-            ] {
-                for bits in 0..32u8 {
-                    let s = InteractionState {
-                        hovered: bits & 1 != 0,
-                        pressed: bits & 2 != 0,
-                        focused: bits & 4 != 0,
-                        disabled: bits & 8 != 0,
-                        invalid: bits & 16 != 0,
-                    };
-                    for scale in [1.0, 1.25, 1.5, 2.0] {
-                        let box_scale = StandardBoxScale::compute(&native.metrics(), scale);
-                        let want = native.resolve_look(role, s, &box_scale, crate::theme::FULL_RADIUS_PX).unwrap();
-                        let selected = matches!(role, ButtonFamilyRole::Toggle { selected: true });
-                        let r = theme.resolve(&template.key(&theme, role, s, selected, scale));
-                        let got = look_from(r.root(), r.root(), role);
-                        let case = format!("{role:?} {s:?} @{scale}");
-                        assert!(
-                            close(got.background, want.background),
-                            "{case} bg {:?} {:?}",
-                            got.background,
-                            want.background
-                        );
-                        assert!(close(got.foreground, want.foreground), "{case} fg");
-                        assert!(close(got.muted_foreground, want.muted_foreground), "{case} muted");
-                        assert!(close(got.border.unwrap(), want.border.unwrap()), "{case} border");
-                        assert!(close(got.focus_border, want.focus_border), "{case} focus");
-                        assert_eq!(
-                            (got.height, got.padding_x, got.padding_y, got.gap),
-                            (want.height, want.padding_x, want.padding_y, want.gap),
-                            "{case} box"
-                        );
-                        assert_eq!(got.radius, want.radius, "{case} radius");
-                        assert_eq!(got.icon_size, want.icon_size, "{case} icon");
-                        assert_eq!(
-                            (got.typography.size, got.typography.line_height, got.typography.weight),
-                            (want.typography.size, want.typography.line_height, want.typography.weight),
-                            "{case} type"
-                        );
-                        assert_eq!(got.font_family, want.font_family, "{case} font");
-                        assert_eq!(got.shadow.is_some(), want.shadow.is_some(), "{case} shadow");
-                        assert_eq!(
-                            r.root().value("disabled_opacity").and_then(Value::as_number),
-                            Some(native.metrics().disabled_opacity)
-                        );
-                    }
-                }
-            }
-        }
-    }
-
-    #[cfg(feature = "test-support")]
-    #[test]
-    fn button_and_toggle_bounds_match_native() {
-        use crate::controls::button::DefaultButtonTemplate;
-        use crate::controls::toggle::{ToggleData, default_toggle_template};
-        use gpui::{AnyElement, Context, IntoElement, Render, TestAppContext, div};
-        type R2 = Box<dyn Fn(InteractionState, u8, &mut Window, &mut App) -> (AnyElement, AnyElement)>;
-        struct H {
-            render: R2,
-            bits: u8,
-            variant: u8,
-        }
-        impl Render for H {
-            fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-                let s = InteractionState {
-                    focused: self.bits & 1 != 0,
-                    hovered: self.bits & 2 != 0,
-                    pressed: self.bits & 4 != 0,
-                    disabled: self.bits & 8 != 0,
-                    invalid: false,
-                };
-                let (a, b) = (self.render)(s, self.variant, window, cx);
-                div()
-                    .flex()
-                    .flex_col()
-                    .items_start()
-                    .child(div().flex_none().debug_selector(|| "native".into()).child(a))
-                    .child(div().flex_none().debug_selector(|| "styled".into()).child(b))
-            }
-        }
-        let native_button =
-            DefaultButtonTemplate::<()>::new(crate::controls::button_family::default_button_family_theme());
-        let styled_button = StyledButtonTemplate::<()>::sdk();
-        let native_toggle = default_toggle_template();
-        let styled_toggle = StyledButtonTemplate::<ToggleData>::sdk();
-        let render: R2 = Box::new(move |state, variant, window, cx| {
-            let role = match variant % 3 {
-                0 => ButtonFamilyRole::Text,
-                1 => ButtonFamilyRole::Icon,
-                _ => ButtonFamilyRole::Toggle { selected: variant & 4 != 0 },
-            };
-            let content: crate::infra::presenter::ControlPresenter<crate::controls::button::ButtonContentContext<()>> =
-                Arc::new(|_, _| div().w(px(30.0)).h(px(10.0)).into_any_element());
-            if variant >= 8 {
-                let on = variant & 4 != 0;
-                let m = ButtonRenderModel {
-                    data: ToggleData::new(on),
-                    state,
-                    role: ButtonFamilyRole::Toggle { selected: on },
-                    round: variant & 1 != 0,
-                    ..Default::default()
-                };
-                (
-                    native_toggle.render(&m, window, cx).into_any_element(),
-                    styled_toggle.render(&m, window, cx).into_any_element(),
-                )
-            } else {
-                let m = ButtonRenderModel {
-                    data: (),
-                    state,
-                    role,
-                    content,
-                    round: variant & 1 != 0 && variant % 3 == 0,
-                    compact: variant & 2 != 0,
-                    ..Default::default()
-                };
-                (
-                    native_button.render(&m, window, cx).into_any_element(),
-                    styled_button.render(&m, window, cx).into_any_element(),
-                )
-            }
-        });
-        let mut app = TestAppContext::single();
-        let (view, cx) = app.add_window_view(|_, _| H { render, bits: 0, variant: 0 });
-        for scale in [1.0, 1.5, 2.0] {
-            cx.simulate_scale_factor_change(scale);
-            for variant in 0..16 {
-                for bits in 0..16 {
-                    view.update(cx, |v, cx| {
-                        v.bits = bits;
-                        v.variant = variant;
-                        cx.notify();
-                    });
-                    cx.run_until_parked();
-                    assert_eq!(
-                        cx.debug_bounds("native").unwrap().size,
-                        cx.debug_bounds("styled").unwrap().size,
-                        "v{variant} {bits} @{scale}"
-                    );
-                }
-            }
-        }
     }
 }

@@ -140,7 +140,7 @@ pub fn resolve_pager_metrics(
 ) -> PagerMetricTable {
     use crate::tables::metrics::helpers::derived_metric;
 
-    let pager = crate::paint::pager_look(look, true, style);
+    let pager = crate::controls::pager::pager_look(look, true, style);
     let style_label = pager_style_label(style);
     let button = look.resolve_outline_button(
         xgpui_luma::controls::button_family::ButtonFamilyRole::Toggle { selected: false },

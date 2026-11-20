@@ -17,9 +17,6 @@ use crate::stylesheet::config::matches_optional_bool;
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use xgpui_luma::controls::sidebar::SidebarItemLook;
-use xgpui_luma::controls::sidebar::SidebarSectionLook;
-use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::ThemeMode;
@@ -28,7 +25,6 @@ use crate::look_context::LookContext;
 use crate::mode::ShadcnModeTokens;
 use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
-use crate::look::ShadcnLook;
 use crate::stylesheet::StylesheetConfig;
 use crate::stylesheet::find_sidebar_branch_color_rule;
 use crate::stylesheet::find_sidebar_container_color_rule;
@@ -38,7 +34,6 @@ use crate::stylesheet::resolve_sidebar_branch_color_rule;
 use crate::stylesheet::resolve_sidebar_container_color_rule;
 use crate::stylesheet::resolve_sidebar_item_color_rule;
 use crate::stylesheet::resolve_sidebar_section_color_rule;
-use crate::tokens::ShadcnTextSize;
 
 #[derive(Clone, Debug)]
 pub struct SidebarContainerColorTable {
@@ -198,159 +193,8 @@ pub fn sidebar_container_look(mode: &ShadcnModeTokens) -> SidebarContainerLook {
         resolve_sidebar_container_colors(&resolver, true).unwrap_or_else(|_| SidebarContainerColorTable::fallback());
     SidebarContainerLook {
         background: colors.background.hsla(),
-        foreground: colors.foreground.hsla(),
         border: colors.border.hsla(),
         radius: mode.radii.large,
-    }
-}
-
-pub fn sidebar_section_look(theme: &ShadcnLook) -> SidebarSectionLook {
-    let tokens = theme.mode_tokens();
-    let ctx = LookContext::new(tokens.as_ref(), theme.mode(), InteractionState::default());
-    let resolver =
-        LookResolver::new(ctx.catalog(), ctx.theme_mode, "sidebar_section").with_stylesheet(ctx.tokens.stylesheet());
-    let colors =
-        resolve_sidebar_section_colors(&resolver, true).unwrap_or_else(|_| SidebarSectionColorTable::fallback());
-    SidebarSectionLook {
-        label_color: colors.label_color.hsla(),
-        typography: theme.typography_scale(ShadcnTextSize::Xs),
-        height: crate::tables::metrics::resolve_sidebar_metrics(tokens.as_ref(), theme.mode(), ShadcnSize::Md)
-            .section_height
-            .value_px,
-    }
-}
-
-fn base_item_look(_theme: &ShadcnLook, ctx: &LookContext, size: ShadcnSize) -> SidebarItemLook {
-    let state = ctx.state;
-    let typography = ctx.typography();
-    let resolved_metrics = crate::tables::metrics::resolve_sidebar_metrics(ctx.tokens, ctx.theme_mode, size);
-    let resolver =
-        LookResolver::new(ctx.catalog(), ctx.theme_mode, "sidebar_item_base").with_stylesheet(ctx.tokens.stylesheet());
-    let colors = resolve_sidebar_branch_colors(&resolver, state.disabled, state.layer())
-        .unwrap_or_else(|_| SidebarBranchColorTable::fallback());
-
-    SidebarItemLook {
-        background: None,
-        focus_border: resolve_sidebar_focus_border(ctx.catalog(), ctx.theme_mode, state).map(|color| color.hsla()),
-        foreground: colors.foreground.hsla(),
-        icon_color: colors.icon_color.hsla(),
-        typography: typography.text.label,
-        radius: resolved_metrics.item_radius.value_px,
-        height: resolved_metrics.item_height.value_px,
-        padding_x: resolved_metrics.item_padding_x.value_px,
-        gap: resolved_metrics.item_gap.value_px,
-        icon_size: resolved_metrics.item_icon_size.value_px,
-    }
-}
-
-pub fn sidebar_branch_look(theme: &ShadcnLook, state: InteractionState, size: ShadcnSize) -> SidebarItemLook {
-    let tokens = theme.mode_tokens();
-    let ctx = LookContext::new(tokens.as_ref(), theme.mode(), state);
-    let mut look = base_item_look(theme, &ctx, size);
-    let resolver =
-        LookResolver::new(ctx.catalog(), ctx.theme_mode, "sidebar_branch").with_stylesheet(ctx.tokens.stylesheet());
-    let colors = resolve_sidebar_branch_colors(&resolver, state.disabled, state.layer())
-        .unwrap_or_else(|_| SidebarBranchColorTable::fallback());
-
-    look.background = colors.background.map(|color| color.hsla());
-    look.foreground = colors.foreground.hsla();
-    look.icon_color = colors.icon_color.hsla();
-
-    look
-}
-
-pub fn sidebar_item_look(
-    theme: &ShadcnLook,
-    selected: bool,
-    state: InteractionState,
-    size: ShadcnSize,
-) -> SidebarItemLook {
-    let tokens = theme.mode_tokens();
-    let ctx = LookContext::new(tokens.as_ref(), theme.mode(), state);
-    let mut look = base_item_look(theme, &ctx, size);
-    let resolver =
-        LookResolver::new(ctx.catalog(), ctx.theme_mode, "sidebar_item").with_stylesheet(ctx.tokens.stylesheet());
-    let colors = resolve_sidebar_item_colors(&resolver, selected, state.disabled, state.layer())
-        .unwrap_or_else(|_| SidebarItemColorTable::fallback());
-
-    look.background = colors.background.map(|color| color.hsla());
-    look.foreground = colors.foreground.hsla();
-    look.icon_color = colors.icon_color.hsla();
-
-    look
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::BTreeMap;
-
-    use xgpui_luma::theme::{InteractionState, ThemeMode};
-
-    use crate::catalog::CssTokenMap;
-    use crate::look::ShadcnLook;
-    use crate::mode::ShadcnModeTokens;
-    use super::{sidebar_container_look, sidebar_item_look, sidebar_section_look};
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("card".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-            ("sidebar".into(), "oklch(0.9306 0.0260 92.4020)".into()),
-            ("sidebar-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("sidebar-primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("sidebar-primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("sidebar-accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("sidebar-accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("sidebar-border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("sidebar-ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-        ]))
-    }
-
-    #[test]
-    fn sidebar_uses_sidebar_tokens() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let look = ShadcnLook::from_css_str(
-            ":root { --background: oklch(0.9735 0.0261 90.0953); --foreground: oklch(0.3092 0.0518 219.6516); --card: oklch(0.9306 0.0260 92.4020); --card-foreground: oklch(0.3092 0.0518 219.6516); --primary: oklch(0.5924 0.2025 355.8943); --primary-foreground: oklch(1 0 0); --secondary: oklch(0.6437 0.1019 187.3840); --secondary-foreground: oklch(1 0 0); --accent: oklch(0.5808 0.1732 39.5003); --accent-foreground: oklch(1 0 0); --muted: oklch(0.6979 0.0159 196.7940); --muted-foreground: oklch(0.3092 0.0518 219.6516); --border: oklch(0.6537 0.0197 205.2618); --input: oklch(0.6537 0.0197 205.2618); --ring: oklch(0.5924 0.2025 355.8943); --sidebar: oklch(0.9306 0.0260 92.4020); --sidebar-foreground: oklch(0.3092 0.0518 219.6516); --sidebar-primary: oklch(0.5924 0.2025 355.8943); --sidebar-primary-foreground: oklch(1 0 0); --sidebar-accent: oklch(0.5808 0.1732 39.5003); --sidebar-accent-foreground: oklch(1 0 0); --sidebar-border: oklch(0.6537 0.0197 205.2618); --sidebar-ring: oklch(0.5924 0.2025 355.8943); } .dark { --background: oklch(0.9735 0.0261 90.0953); --foreground: oklch(0.3092 0.0518 219.6516); --card: oklch(0.9306 0.0260 92.4020); --card-foreground: oklch(0.3092 0.0518 219.6516); --primary: oklch(0.5924 0.2025 355.8943); --primary-foreground: oklch(1 0 0); --secondary: oklch(0.6437 0.1019 187.3840); --secondary-foreground: oklch(1 0 0); --accent: oklch(0.5808 0.1732 39.5003); --accent-foreground: oklch(1 0 0); --muted: oklch(0.6979 0.0159 196.7940); --muted-foreground: oklch(0.3092 0.0518 219.6516); --border: oklch(0.6537 0.0197 205.2618); --input: oklch(0.6537 0.0197 205.2618); --ring: oklch(0.5924 0.2025 355.8943); --sidebar: oklch(0.9306 0.0260 92.4020); --sidebar-foreground: oklch(0.3092 0.0518 219.6516); --sidebar-primary: oklch(0.5924 0.2025 355.8943); --sidebar-primary-foreground: oklch(1 0 0); --sidebar-accent: oklch(0.5808 0.1732 39.5003); --sidebar-accent-foreground: oklch(1 0 0); --sidebar-border: oklch(0.6537 0.0197 205.2618); --sidebar-ring: oklch(0.5924 0.2025 355.8943); }"
-        ).expect("look");
-        let container = sidebar_container_look(&mode);
-        let section = sidebar_section_look(&look);
-        let selected = sidebar_item_look(&look, true, InteractionState::default(), crate::ShadcnSize::Md);
-
-        assert_eq!(container.background, catalog.color("sidebar").expect("sidebar"));
-        assert_eq!(section.label_color, catalog.color("muted-foreground").expect("muted-foreground"));
-        assert_eq!(selected.background, Some(catalog.color("sidebar-primary").expect("sidebar-primary")));
-        assert_eq!(
-            selected.foreground,
-            catalog.color("sidebar-primary-foreground").expect("sidebar-primary-foreground")
-        );
-    }
-
-    #[test]
-    fn focused_sidebar_item_does_not_panic_when_ring_token_is_missing() {
-        let mut mode = ShadcnModeTokens::from_catalog(sample_catalog(), ThemeMode::Light).expect("catalog");
-        mode.catalog.tokens.remove("ring");
-        let ctx = crate::look_context::LookContext::new(
-            &mode,
-            ThemeMode::Light,
-            InteractionState { focused: true, ..InteractionState::default() },
-        );
-        let look = super::base_item_look(&ShadcnLook::built_in(), &ctx, crate::ShadcnSize::Md);
-
-        assert_eq!(look.focus_border, Some(crate::provenance::ResolvedColor::fallback_foreground().hsla()));
     }
 }
 
@@ -371,7 +215,6 @@ pub fn resolve_sidebar_focus_border(
 #[derive(Clone, Copy, Debug)]
 pub struct SidebarContainerLook {
     pub background: gpui::Hsla,
-    pub foreground: gpui::Hsla,
     pub border: gpui::Hsla,
     pub radius: f32,
 }

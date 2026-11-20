@@ -12,15 +12,8 @@
 use crate::stylesheet::config::matches_optional_layer;
 use serde::Deserialize;
 
-use xgpui_luma::controls::tree_view::TreeViewPalette;
-use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionLayer;
-use xgpui_luma::theme::InteractionState;
 
-use super::apply_button_metrics_typography;
-
-use crate::look_context::LookContext;
-use crate::mode::ShadcnModeTokens;
 use crate::provenance::LookResolver;
 use crate::provenance::ResolvedColor;
 use crate::stylesheet::StylesheetConfig;
@@ -69,124 +62,6 @@ pub fn resolve_tree_view_row_colors_with_stylesheet(
         chevron_color: colors.chevron_color,
         background: colors.background,
     })
-}
-
-pub fn tree_view_row_palette(
-    mode: &ShadcnModeTokens,
-    selected: bool,
-    state: InteractionState,
-    size: ShadcnSize,
-) -> TreeViewPalette {
-    let ctx = LookContext::new(mode, mode.theme_mode, state);
-    let typography = ctx.typography();
-    let resolver = LookResolver::new(ctx.catalog(), ctx.theme_mode, "tree_view_row").with_stylesheet(mode.stylesheet());
-    let colors = resolve_tree_view_row_colors(&resolver, state.disabled, state.layer())
-        .unwrap_or_else(|_| TreeViewRowColorTable::fallback());
-
-    let mut row_typography = typography.text.label;
-    apply_button_metrics_typography(&mut row_typography, mode, size);
-
-    // Selection persists independently of hover and the active keyboard row.
-    // Keep the matching foreground on labels and icons for themed contrast.
-    let selected = selected && !state.disabled;
-    let foreground = if selected {
-        mode.palette.selected_foreground
-    } else {
-        colors.foreground.hsla()
-    };
-
-    TreeViewPalette {
-        background: if selected {
-            Some(mode.palette.selected_background)
-        } else {
-            colors.background.map(|color| color.hsla())
-        },
-        foreground,
-        icon_color: if selected { foreground } else { colors.icon_color.hsla() },
-        chevron_color: if selected {
-            foreground
-        } else {
-            colors.chevron_color.hsla()
-        },
-        typography: row_typography,
-        font_family: typography.font.sans.family.clone().into(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::collections::BTreeMap;
-
-    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
-
-    use crate::catalog::CssTokenMap;
-    use crate::mode::ShadcnModeTokens;
-    use crate::provenance::LookResolver;
-    use super::{resolve_tree_view_row_colors, tree_view_row_palette};
-
-    fn sample_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("primary-foreground".into(), "oklch(1 0 0)".into()),
-            ("secondary".into(), "oklch(0.6437 0.1019 187.3840)".into()),
-            ("secondary-foreground".into(), "oklch(1 0 0)".into()),
-            ("accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-            ("accent-foreground".into(), "oklch(1 0 0)".into()),
-            ("background".into(), "oklch(0.9735 0.0261 90.0953)".into()),
-            ("foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("muted".into(), "oklch(0.6979 0.0159 196.7940)".into()),
-            ("muted-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("border".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("input".into(), "oklch(0.6537 0.0197 205.2618)".into()),
-            ("ring".into(), "oklch(0.5924 0.2025 355.8943)".into()),
-            ("sidebar-foreground".into(), "oklch(0.3092 0.0518 219.6516)".into()),
-            ("sidebar-accent".into(), "oklch(0.5808 0.1732 39.5003)".into()),
-        ]))
-    }
-
-    #[test]
-    fn tree_view_hovered_row_uses_sidebar_accent_background() {
-        let catalog = sample_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let palette = tree_view_row_palette(
-            &mode,
-            false,
-            xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-            crate::ShadcnSize::Md,
-        );
-        let resolver = LookResolver::new(&catalog, ThemeMode::Light, "test");
-        let expected = resolve_tree_view_row_colors(&resolver, false, InteractionLayer::Hovered)
-            .expect("row colors")
-            .background
-            .map(|color| color.hsla());
-        assert_eq!(palette.background, expected);
-    }
-
-    #[test]
-    fn tree_view_selection_remains_visible_without_hover_or_focus_in_both_modes() {
-        for theme_mode in [ThemeMode::Light, ThemeMode::Dark] {
-            let mode = ShadcnModeTokens::from_catalog(sample_catalog(), theme_mode).expect("catalog");
-            for state in [
-                xgpui_luma::theme::InteractionState::default(),
-                xgpui_luma::theme::InteractionState { hovered: true, ..Default::default() },
-                xgpui_luma::theme::InteractionState { pressed: true, ..Default::default() },
-            ] {
-                let selected = tree_view_row_palette(&mode, true, state, crate::ShadcnSize::Md);
-                assert_eq!(selected.background, Some(mode.palette.selected_background));
-                assert_eq!(selected.foreground, mode.palette.selected_foreground);
-                assert_eq!(selected.icon_color, selected.foreground);
-                assert_eq!(selected.chevron_color, selected.foreground);
-            }
-            let idle = tree_view_row_palette(&mode, false, Default::default(), crate::ShadcnSize::Md);
-            assert_eq!(idle.background, None);
-            let disabled = xgpui_luma::theme::InteractionState { disabled: true, ..Default::default() };
-            let selected = tree_view_row_palette(&mode, true, disabled, crate::ShadcnSize::Md);
-            let unselected = tree_view_row_palette(&mode, false, disabled, crate::ShadcnSize::Md);
-            assert_eq!(selected.background, unselected.background);
-            assert_eq!(selected.foreground, unselected.foreground);
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]

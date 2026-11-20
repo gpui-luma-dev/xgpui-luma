@@ -32,7 +32,7 @@ pub fn inspect_pager_shell_color_palette(
     enabled: bool,
     style: PagerStyle,
 ) -> PagerShellInspectPalette {
-    let pager = crate::paint::pager_look(look, enabled, style);
+    let pager = crate::controls::pager::pager_look(look, enabled, style);
 
     PagerShellInspectPalette {
         panel_background: resolved_shell_background(enabled, pager.panel_background),

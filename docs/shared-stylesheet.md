@@ -191,15 +191,13 @@ logical geometry is snapped only where the existing control recipe requires it.
 ```rust
 use xgpui_luma::{
     color::GamutMapping,
-    controls::progress::{DefaultProgressTheme, ProgressTheme},
     theme::{ThemeMode, stylesheet::CommonStylesheet},
 };
 let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
     sheet.progress.geometry.track_height = Some(9.0);
 });
 let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-let theme = DefaultProgressTheme::new(tokens);
-assert_eq!(theme.resolve(true).track_height, 9.0);
+assert_eq!(tokens.stylesheet.progress.geometry.track_height, Some(9.0));
 ```
 
 Use the same resolved common sheet in a custom look, create its theme factories,

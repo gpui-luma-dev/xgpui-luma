@@ -3,12 +3,17 @@
 use serde::Deserialize;
 use std::collections::HashMap;
 
+#[cfg(feature = "inspect")]
 use xgpui_luma::theme::{LumaTextStyle};
 
+#[cfg(feature = "inspect")]
 use crate::mode::ShadcnModeTokens;
+#[cfg(feature = "inspect")]
 use crate::stylesheet::{resolve_button_metrics_rule};
+#[cfg(feature = "inspect")]
 use crate::size::ShadcnSize;
 
+#[cfg(feature = "inspect")]
 /// Preserve the supplied typography ratio while applying configured button sizes.
 pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &ShadcnModeTokens, size: ShadcnSize) {
     if let Some(rule) = mode.stylesheet().button.metrics_for_size(size) {
@@ -22,6 +27,7 @@ pub fn apply_button_metrics_typography(typography: &mut LumaTextStyle, mode: &Sh
     apply_common_button_typography(typography, mode.stylesheet(), size);
 }
 
+#[cfg(feature = "inspect")]
 pub(crate) fn apply_common_button_typography(
     typography: &mut LumaTextStyle,
     stylesheet: &crate::stylesheet::StylesheetConfig,

@@ -1,53 +1,17 @@
 //! Selector property mappings — outline/ghost command-button trigger + accent item panel.
 
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::selector::{SelectorPalette, SelectorTriggerStyle};
-use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
+#[cfg(feature = "inspect")]
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 
+#[cfg(feature = "inspect")]
 use crate::look_context::LookContext;
+#[cfg(feature = "inspect")]
 use crate::mode::ShadcnModeTokens;
 
-use super::button::{ShadcnButtonStyle, button_elevation_shadow, button_palette};
-use super::selector_items_panel::selector_items_panel_look;
+#[cfg(feature = "inspect")]
 use crate::size::ShadcnSize;
 
-fn shadcn_button_style(trigger_style: SelectorTriggerStyle) -> ShadcnButtonStyle {
-    match trigger_style {
-        SelectorTriggerStyle::Outline => ShadcnButtonStyle::Outline,
-        SelectorTriggerStyle::Ghost => ShadcnButtonStyle::Ghost,
-    }
-}
-
-pub fn selector_palette(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    trigger_style: SelectorTriggerStyle,
-    state: InteractionState,
-    without_elevation: bool,
-) -> SelectorPalette {
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let stylesheet = mode.stylesheet();
-    let button_style = shadcn_button_style(trigger_style);
-    let button = button_palette(&ctx, stylesheet, button_style, ButtonFamilyRole::Text, ShadcnSize::Md);
-    let trigger_shadow = if without_elevation {
-        None
-    } else {
-        button_elevation_shadow(&ctx, stylesheet, button_style)
-    };
-    let icon = ctx.catalog().color("muted-foreground").unwrap_or(button.foreground);
-
-    SelectorPalette {
-        trigger_focus_border: button.focus_border,
-        trigger_background: button.background,
-        trigger_foreground: button.foreground,
-        trigger_icon: icon,
-        trigger_border: button.border,
-        trigger_shadow,
-        trigger_typography: button.typography,
-        items_panel: selector_items_panel_look(mode, theme_mode, ShadcnSize::Md),
-    }
-}
-
+#[cfg(feature = "inspect")]
 pub(crate) fn selector_geometry(
     mode: &ShadcnModeTokens,
     size: ShadcnSize,

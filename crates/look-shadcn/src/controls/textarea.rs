@@ -1,10 +1,14 @@
 //! Text area — surface/filled/soft variants share the text field token resolver.
 
+#[cfg(feature = "inspect")]
 use xgpui_luma::theme::StandardBoxScale;
 
+#[cfg(feature = "inspect")]
 use crate::mode::ShadcnModeTokens;
+#[cfg(feature = "inspect")]
 use crate::size::ShadcnSize;
 
+#[cfg(feature = "inspect")]
 pub(crate) fn textarea_geometry(
     mode: &ShadcnModeTokens,
     size: ShadcnSize,
