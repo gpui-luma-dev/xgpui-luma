@@ -1,0 +1,47 @@
+// SDK tabs. Layer: sdk. Read by `StyledTabs` (styled.rs): the tab list, each tab (`selected` is the active
+// tab), and the active tab's indicator.
+
+/// A row of tabs.
+tabs {
+  /// Accessory glyph size and gap, and the indicator's thickness.
+  accessory_size: length = exact(12)
+  accessory_gap: length = exact(4)
+  indicator_height: length = exact(2)
+  /// The active tab's indicator; transparent paints none.
+  indicator: color = transparent
+
+  part root {
+    :selected                  { indicator = palette.state.selected.background }
+    :selected:pressed          { indicator = palette.state.pressed.background }
+    :selected:focused          { indicator = palette.focus.ring }
+    :selected:pressed:focused  { indicator = palette.focus.ring }
+    :selected:disabled         { indicator = palette.state.disabled.foreground }
+    :selected:focused:disabled { indicator = palette.state.disabled.foreground }
+  }
+
+  /// The list holding the tabs.
+  part list {
+    background   = transparent
+    border_width = exact(metrics.border_width)
+    radius       = exact(metrics.control.radius)
+    padding      = exact(0)
+    gap          = exact(metrics.control.gap)
+    :disabled { background = palette.state.disabled.background }
+  }
+
+  /// A tab.
+  part item {
+    background  = transparent
+    foreground  = palette.app.foreground
+    radius      = exact(metrics.control.radius)
+    padding_x   = exact(metrics.control.padding_x)
+    height      = exact(typography.text.label.line_height + metrics.control.padding_y * 2)
+    font_size   = typography.text.label.size
+    line_height = typography.text.label.line_height
+    font_weight = typography.text.label.weight
+    :selected          { foreground = palette.state.selected.background }
+    :selected:pressed  { foreground = palette.state.pressed.background }
+    :disabled          { foreground = palette.state.disabled.foreground }
+    :selected:disabled { foreground = palette.state.disabled.foreground }
+  }
+}

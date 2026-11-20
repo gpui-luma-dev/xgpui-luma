@@ -112,7 +112,7 @@ pub struct DefaultAccordionTheme {
 pub fn default_accordion_theme() -> Arc<dyn AccordionTheme> {
     static THEME: OnceLock<Arc<dyn AccordionTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultAccordionTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledAccordionTheme::sdk())).clone()
 }
 
 impl DefaultAccordionTheme {

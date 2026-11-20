@@ -1,10 +1,6 @@
-use gpui::FontWeight;
-use xgpui_luma::controls::button_family::ButtonFamilyLook;
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::pager::PagerLook;
 use xgpui_luma::controls::pager::PagerStyle;
 use crate::size::ShadcnSize;
-use xgpui_luma::theme::InteractionState;
 
 use crate::look::ShadcnLook;
 
@@ -88,35 +84,6 @@ pub fn pager_look(theme: &ShadcnLook, enabled: bool, style: PagerStyle) -> Pager
         &geometry.font_size,
         &geometry.line_height,
     );
-
-    look
-}
-
-pub fn pager_button_look(
-    theme: &ShadcnLook,
-    pager_look: &PagerLook,
-    role: ButtonFamilyRole,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    let mut look = theme.resolve_outline_button(role, ShadcnSize::Sm, state);
-    look.height = pager_look.button_size;
-    look.radius = pager_look.radius;
-    look.gap = pager_look.gap;
-    look.typography.size = pager_look.typography.size;
-    look.typography.line_height = pager_look.typography.line_height;
-    look.typography.weight = if matches!(role, ButtonFamilyRole::Toggle { selected: true }) {
-        FontWeight::SEMIBOLD
-    } else {
-        pager_look.typography.weight
-    };
-
-    if matches!(role, ButtonFamilyRole::Icon) {
-        look.padding_x = 0.0;
-        look.padding_y = 0.0;
-    } else {
-        look.padding_x = pager_look.padding_x;
-        look.padding_y = 0.0;
-    }
 
     look
 }

@@ -231,16 +231,13 @@ mod tests {
     }
 
     #[test]
-    fn custom_stylesheets_validate_geometry_and_missing_fields_use_sdk_fallback() {
+    fn custom_stylesheets_validate_tab_geometry() {
         for value in ["-1", "nan", "inf"] {
             assert!(
                 crate::stylesheet::StylesheetConfig::parse(&format!("[common.tabs.geometry]\nlist_padding = {value}"))
                     .is_err()
             );
         }
-        let stylesheet = crate::stylesheet::StylesheetConfig::default();
-        let look = crate::ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-        assert_eq!(look.tabs_theme().resolve_item(true, Default::default()).indicator_height, 2.0);
     }
 
     #[test]

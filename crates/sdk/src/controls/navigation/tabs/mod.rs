@@ -126,6 +126,8 @@
 //! Relative layouts need no measurement; `measure_viewport(true)` opts into bounds
 //! and its post-layout redraw. Animation frames invalidate only the body slot.
 //!
+mod styled;
+pub use styled::{StyledTabs, StyledTabsTheme};
 mod content;
 mod transition;
 mod control;

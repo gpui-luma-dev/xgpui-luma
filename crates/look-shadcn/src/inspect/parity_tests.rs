@@ -209,55 +209,6 @@ fn incomplete_accordion_and_context_menu_palettes_share_safe_fallbacks() {
 }
 
 #[test]
-fn selected_tabs_stylesheet_matches_paint_and_reports_shared_paths() {
-    let mut stylesheet = crate::stylesheet::embedded_stylesheet().clone();
-    stylesheet.common.tabs.geometry.list_gap = Some(7.0);
-    stylesheet.common.tabs.geometry.list_padding = Some(0.0);
-    stylesheet.common.tabs.geometry.indicator_height = Some(4.0);
-    for rule in &mut stylesheet.tabs.item.color_rules {
-        rule.label_color = "primary".into();
-    }
-    for rule in &mut stylesheet.tabs.list.color_rules {
-        rule.disabled_background = "primary".into();
-    }
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, stylesheet).unwrap();
-    let theme = look.tabs_theme();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-            let inspector = ShadcnInspect::new(&look);
-            let actual = inspector.inspect_tabs_metrics(size);
-            assert_eq!(actual.list_gap.value_px, 7.0);
-            assert_eq!(actual.list_padding.value_px, 0.0);
-            assert_eq!(actual.indicator_height.value_px, 4.0);
-            assert!(
-                format_inspect_metric_source(&actual.indicator_height.source)
-                    .contains("common.tabs.geometry.indicator_height")
-            );
-            for enabled in [true, false] {
-                let painted = theme.resolve_list(enabled);
-                assert_eq!(painted.gap, actual.list_gap.value_px);
-                assert_eq!(painted.padding, actual.list_padding.value_px);
-                assert_eq!(
-                    painted.background,
-                    inspector.inspect_tabs_list_color_palette(enabled).background.map(|color| color.value)
-                );
-            }
-            for state in states() {
-                for active in [false, true] {
-                    let painted = theme.resolve_item(active, state);
-                    let colors = inspector.inspect_tabs_item_color_palette(active, state);
-                    assert_eq!(painted.label_color, colors.label_color.value);
-                    assert_eq!(painted.label_color, look.mode_tokens().catalog.color("primary").unwrap());
-                    assert_eq!(painted.indicator, colors.indicator.map(|color| color.value));
-                    assert_eq!(painted.indicator_height, actual.indicator_height.value_px);
-                }
-            }
-        }
-    }
-}
-
-#[test]
 fn shared_slider_geometry_preserves_all_sizes_styles_and_states() {
     let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {

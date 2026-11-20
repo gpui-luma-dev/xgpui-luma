@@ -57,32 +57,41 @@ fn navigation_colors_and_disabled_precedence_follow_the_bound_look() {
                     let trigger = accordion.resolve_trigger(state);
                     let item = sidebar.resolve_item(true, state);
                     if state.disabled {
-                        assert_eq!(trigger.foreground, look.resolve_role(SemanticRole::MutedForeground).hsla());
-                        assert_eq!(item.foreground, trigger.foreground);
+                        crate::control_group::assert_close(
+                            trigger.foreground,
+                            look.resolve_role(SemanticRole::MutedForeground).hsla(),
+                        );
+                        crate::control_group::assert_close(item.foreground, trigger.foreground);
                         assert_eq!(item.background, None);
                         assert_eq!(item.focus_border, None);
                         assert_eq!(trigger.background, None);
                     } else {
-                        assert_eq!(trigger.foreground, look.resolve_role(SemanticRole::Foreground).hsla());
-                        assert_eq!(item.foreground, Tone::Accent.step(&look, 11));
+                        crate::control_group::assert_close(
+                            trigger.foreground,
+                            look.resolve_role(SemanticRole::Foreground).hsla(),
+                        );
+                        crate::control_group::assert_close(item.foreground, Tone::Accent.step(&look, 11));
                         assert_eq!(item.focus_border.is_some(), state.focused);
                     }
                 }
                 let steps = stepper.resolve(true);
-                assert_eq!(steps.complete_bg, Tone::Accent.step(&look, 9));
-                assert_eq!(steps.complete_fg, Tone::Accent.contrast(&look));
-                assert_eq!(steps.in_progress_fg, Tone::Accent.step(&look, 11));
+                crate::control_group::assert_close(steps.complete_bg, Tone::Accent.step(&look, 9));
+                crate::control_group::assert_close(steps.complete_fg, Tone::Accent.contrast(&look));
+                crate::control_group::assert_close(steps.in_progress_fg, Tone::Accent.step(&look, 11));
                 let disabled = stepper.resolve(false);
                 assert_ne!(disabled.complete_bg, steps.complete_bg);
                 assert!(steps.step_badge_size > 0.0);
             }
             for style in [PagerStyle::Minimal, PagerStyle::MinimalEdge, PagerStyle::Numeric] {
                 let resolved = pager.resolve(true, style);
-                assert_eq!(resolved.panel_background, look.resolve_role(SemanticRole::Surface).hsla());
-                assert_eq!(resolved.selected_foreground, Tone::Accent.step(&look, 11));
-                assert_eq!(
+                crate::control_group::assert_close(
+                    resolved.panel_background,
+                    look.resolve_role(SemanticRole::Surface).hsla(),
+                );
+                crate::control_group::assert_close(resolved.selected_foreground, Tone::Accent.step(&look, 11));
+                crate::control_group::assert_close(
                     pager.resolve(false, style).body_text,
-                    look.resolve_role(SemanticRole::MutedForeground).hsla()
+                    look.resolve_role(SemanticRole::MutedForeground).hsla(),
                 );
             }
         }
@@ -90,31 +99,18 @@ fn navigation_colors_and_disabled_precedence_follow_the_bound_look() {
 }
 
 #[test]
-fn live_geometry_and_palette_edits_remain_local_to_forks() {
+fn live_palette_edits_remain_local_to_forks() {
     let base = Look::built_in();
     let fork = base.fork();
-    let accordion = accordion_theme(&fork);
-    let pager = pager_theme(&fork);
-    let steps = stepper_theme(&fork);
     let sidebar = sidebar_theme(&fork);
     let before = sidebar.resolve_item(true, Default::default());
-    let mut sheet = fork.common_stylesheet();
-    sheet.accordion.geometry.trigger_height = Some(52.0);
-    sheet.pager.geometry.button_min_width = Some(47.0);
-    sheet.stepper.sizes.get_or_default("2").step_badge_size = Some(43.0);
-    sheet.sidebar.geometry.engine_item_height = Some(49.0);
-    fork.set_common_stylesheet(sheet);
     fork.set_mode(ThemeMode::Dark);
     fork.set_palettes(Accent::Red, Gray::Slate);
-    assert_eq!(accordion.resolve_scale(1.0).trigger_height, 52.0);
-    assert_eq!(pager.resolve(true, PagerStyle::Numeric).button_min_width, 47.0);
-    assert_eq!(steps.resolve(true).step_badge_size, 43.0);
-    assert_eq!(sidebar.resolve_item(true, Default::default()).height, 49.0);
     assert_ne!(sidebar.resolve_item(true, Default::default()).foreground, before.foreground);
     let unchanged = sidebar_theme(&base).resolve_item(true, Default::default());
     assert_eq!(unchanged.foreground, before.foreground);
     assert_eq!(unchanged.height, before.height);
-    let drag = accordion.resolve_drag();
+    let drag = accordion_theme(&fork).resolve_drag();
     assert_eq!(drag.valid_marker, fork.resolve_role(SemanticRole::Focus).hsla());
     assert_eq!(drag.invalid_marker, fork.resolve_role(SemanticRole::Destructive).hsla());
 }

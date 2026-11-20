@@ -88,7 +88,7 @@ pub struct DefaultTabsTheme {
 pub fn default_tabs_theme() -> Arc<dyn TabsTheme> {
     static THEME: OnceLock<Arc<dyn TabsTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTabsTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledTabsTheme::sdk())).clone()
 }
 
 impl DefaultTabsTheme {

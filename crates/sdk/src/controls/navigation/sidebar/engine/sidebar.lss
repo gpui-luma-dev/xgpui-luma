@@ -1,0 +1,40 @@
+// SDK sidebar. Layer: sdk. Read by `StyledSidebar` (styled.rs): section labels and navigation rows
+// (`selected` is the current page). The shell layout, typography roles and drag preview are the theme's.
+
+/// Navigation down the side of a window.
+sidebar {
+  /// Row icon size.
+  item_icon_size: length = exact(16)
+
+  /// A section label.
+  part section {
+    foreground  = palette.navigation.muted_foreground
+    height      = exact(20)
+    font_size   = typography.text.caption.size
+    line_height = typography.text.caption.line_height
+    font_weight = typography.text.caption.weight
+  }
+
+  /// A navigation row (a page, or a branch that opens more).
+  part item {
+    background   = transparent
+    foreground   = palette.navigation.foreground
+    focus_border = transparent
+    radius       = exact(metrics.control.radius)
+    height       = exact(30)
+    padding_x    = exact(8)
+    gap          = exact(metrics.control.gap)
+    font_size    = typography.text.label.size
+    line_height  = typography.text.label.line_height
+    font_weight  = typography.text.label.weight
+    :hover             { background = palette.navigation.hover_background }
+    :pressed           { background = palette.state.pressed.background }
+    :focused           { focus_border = palette.focus.ring }
+    :selected          { background = palette.navigation.selected_background  foreground = palette.navigation.selected_foreground }
+    :selected:hover    { background = palette.navigation.hover_background }
+    :selected:pressed  { background = palette.state.pressed.background }
+    :disabled          { background = transparent  foreground = palette.state.disabled.foreground  focus_border = transparent }
+    :selected:disabled { background = transparent  foreground = palette.state.disabled.foreground }
+    :focused:disabled  { focus_border = transparent }
+  }
+}

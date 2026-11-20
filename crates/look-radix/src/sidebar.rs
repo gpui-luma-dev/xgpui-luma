@@ -2,37 +2,13 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::sidebar::*;
-use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
-use crate::{Look, PopupMenuVariant, ScaleFamily, SemanticRole, Tone};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
+use crate::{Look, PopupMenuVariant, Tone};
+/// The Radix sidebar: rows and section labels from `.lss` (`style/sidebar.lss`); the shell layout,
+/// typography roles, section font features and drag preview from the look.
 struct SidebarThemeAdapter {
     look: Look,
-}
-impl SidebarThemeAdapter {
-    fn item(&self, selected: bool, state: InteractionState, size: crate::RadixSize) -> SidebarItemLook {
-        let mut item = DefaultSidebarTheme::new(crate::navigation::geometry_tokens(&self.look.with_size(size)))
-            .resolve_item(selected, state);
-        let accent = |step| Tone::Accent.step(&self.look, step);
-        item.background = match (selected, state.layer()) {
-            (_, InteractionLayer::Disabled) => None,
-            (_, InteractionLayer::Pressed) => Some(accent(5)),
-            (_, InteractionLayer::Hovered) => Some(accent(4)),
-            (true, _) => Some(accent(3)),
-            _ => None,
-        };
-        item.foreground = if state.disabled {
-            self.look.resolve_role(SemanticRole::MutedForeground).hsla()
-        } else if state.invalid {
-            self.look.resolve_role(SemanticRole::Destructive).hsla()
-        } else if selected {
-            accent(11)
-        } else {
-            self.look.resolve_role(SemanticRole::Foreground).hsla()
-        };
-        item.icon_color = item.foreground;
-        item.focus_border =
-            (state.focused && !state.disabled).then(|| self.look.resolve_role(SemanticRole::Focus).hsla());
-        item
-    }
+    styled: StyledSidebar,
 }
 impl SidebarTheme for SidebarThemeAdapter {
     fn typography(&self) -> xgpui_luma::theme::LumaTypography {
@@ -47,20 +23,16 @@ impl SidebarTheme for SidebarThemeAdapter {
         self.look.common_stylesheet().sidebar.resolve_geometry(Default::default())
     }
     fn foreground(&self) -> gpui::Hsla {
-        self.look.resolve_role(SemanticRole::Foreground).hsla()
+        self.styled.foreground()
     }
     fn resolve_section(&self) -> SidebarSectionLook {
-        let mut section = DefaultSidebarTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_section();
-        section.label_color = self.look.resolve_step(ScaleFamily::Gray, 11).hsla();
-        section
+        self.styled.section()
     }
     fn resolve_branch(&self, state: InteractionState) -> SidebarItemLook {
-        let size = self.look.size();
-        self.item(false, state, size)
+        self.styled.branch(state)
     }
     fn resolve_item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        let size = self.look.size();
-        self.item(selected, state, size)
+        self.styled.item(selected, state)
     }
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
@@ -80,7 +52,14 @@ impl xgpui_luma::controls::floating_menu::FloatingMenuTheme for RailMenuTheme {
 }
 /// Live Radix navigation rows, section labels, focus and drag feedback.
 pub fn sidebar_theme(look: &Look) -> Arc<dyn SidebarTheme> {
-    Arc::new(SidebarThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("sidebar", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(SidebarThemeAdapter { look: look.clone(), styled: StyledSidebar::new(binding) })
 }
 /// SDK sidebar template, including Radix floating menus for collapsed branches.
 pub fn sidebar_template(look: &Look) -> Arc<dyn SidebarPanelTemplate> {

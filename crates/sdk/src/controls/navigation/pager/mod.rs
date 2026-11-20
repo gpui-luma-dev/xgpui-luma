@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{PagerButtonSource, StyledPagerTheme, styled_pager_look};
 mod control;
 mod model;
 mod template;

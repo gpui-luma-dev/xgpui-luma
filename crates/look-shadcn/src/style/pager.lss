@@ -1,0 +1,27 @@
+// Shadcn pager. Layer: look. Small (28px) page buttons on the card surface with the border edge; the current
+// page in the primary colors and a hovered one in the accent; extra-small text.
+
+pager {
+  button_size      = exact(28)
+  button_min_width = exact(32)
+
+  part root {
+    background          = first(css.card, css.popover)
+    foreground          = css.foreground
+    border              = css.border
+    height              = exact(28)
+    radius              = exact(first(max(css.radius - 4, 0), 2))
+    padding_x           = exact(8)
+    padding_y           = exact(8)
+    font_size           = 12
+    line_height         = 16
+    font_weight         = 500
+    muted_text          = css.muted_foreground
+    selected_background = css.primary
+    selected_foreground = css.primary_foreground
+    hover_background    = css.accent
+    :disabled { background = css.muted  foreground = css.muted_foreground  muted_text = css.muted_foreground }
+  }
+
+  variant minimal { button_min_width = exact(28) }
+}

@@ -141,9 +141,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
         let tokens = look.mode_tokens();
         let inspect = crate::inspect::ShadcnInspect::new(&look);
         for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-            let stepper = look.with_size(size).stepper_theme().resolve(true);
-            assert_eq!((stepper.step_badge_size, stepper.track_thickness), (43.0, 4.0));
-            assert_eq!(inspect.inspect_stepper_metrics_for_size(size).step_badge_size.value_px, 43.0);
             for orientation in [ScrollbarOrientation::Horizontal, ScrollbarOrientation::Vertical] {
                 let scrollbar = crate::paint::scrollbar_look(
                     &tokens,
@@ -192,14 +189,15 @@ fn selected_configuration_survives_color_copies_token_edits_and_live_replacement
             xgpui_luma::color::ColorValue::srgb(0.0, 0.0, 0.0, 1.0),
         )]))
         .unwrap();
-    let stepper = copy.stepper_theme();
-    assert_eq!(stepper.resolve(true).step_badge_size, 43.0);
+    // The card still reads the selected configuration (`[common.card…]` in `custom_look`).
+    let padding = |look: &ShadcnLook| crate::controls::card::card_look(look, ShadcnSize::Md).padding;
+    assert_eq!(padding(&copy), 23.0);
     copy.apply_token_overrides(&HashMap::from([("radius".into(), "10px".into())])).unwrap();
-    assert_eq!(stepper.resolve(true).step_badge_size, 43.0);
+    assert_eq!(padding(&copy), 23.0);
     let independent = crate::test_support::fallback_look();
     copy.replace_theme(&independent);
-    assert_eq!(stepper.resolve(true).step_badge_size, 32.0);
-    assert_eq!(look.with_size(ShadcnSize::Md).stepper_theme().resolve(true).step_badge_size, 43.0);
+    assert_eq!(padding(&copy), padding(&independent));
+    assert_eq!(padding(&look), 23.0);
 }
 
 #[test]
@@ -280,7 +278,6 @@ item_height=0
 
 #[test]
 fn pager_and_resize_handle_overrides_reach_paint_and_inspection() {
-    use xgpui_luma::controls::pager::PagerStyle;
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
 [common.pager.geometry]
@@ -301,8 +298,6 @@ edge_max_viewport_ratio="math(2 / 3)"
 "#])
     .unwrap();
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let pager = look.pager_theme().resolve(true, PagerStyle::Minimal);
-    assert_eq!((pager.radius, pager.disabled_opacity, pager.button_size), (13.0, 0.0, 0.0));
     let handle = look.resizable_panels_theme().resize_handle_metrics();
     assert_eq!(
         (handle.lane_px, handle.hit_target_px, handle.grip_main_axis_px, handle.grip_radius),
@@ -320,9 +315,6 @@ edge_max_viewport_ratio="math(2 / 3)"
         assert_eq!(inspected.lane_px.value_px, handle.lane_px);
         assert_eq!(inspected.hit_target_px.value_px, handle.hit_target_px);
         assert_eq!(inspected.grip_main_axis_px.value_px, handle.grip_main_axis_px);
-        let pager_metrics = inspector.inspect_pager_metrics(PagerStyle::Minimal);
-        assert_eq!(pager_metrics.radius.value_px, pager.radius);
-        assert_eq!(pager_metrics.button_size.value_px, pager.button_size);
     }
 }
 
@@ -513,10 +505,10 @@ popup_padding=11
         .common
         .theme_tokens(ThemeMode::Light, xgpui_luma::color::GamutMapping::CssLocalMinde)
         .unwrap();
+    // The look's pager is drawn from `.lss`; the token-built SDK theme still reads these overrides.
     let sdk = DefaultPagerTheme::new(tokens);
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let themed = look.pager_theme();
-    for theme in [&sdk as &dyn PagerTheme, themed.as_ref()] {
+    {
+        let theme = &sdk as &dyn PagerTheme;
         let numeric = theme.resolve(true, PagerStyle::Numeric);
         assert_eq!(
             (numeric.border_width, numeric.page_size_label_gap, numeric.popup_offset_y, numeric.popup_gap),
@@ -621,9 +613,8 @@ subtitle_opacity=0.2
     for resolved in [sdk_dock.resolve(true), look.dock_splitter_theme().resolve(true)] {
         assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
     }
-    for resolved in [sdk_stepper.resolve(true), look.with_size(ShadcnSize::Md).stepper_theme().resolve(true)] {
-        assert_eq!((resolved.geometry.content_gap, resolved.geometry.glyph_scale), (0.0, 0.7));
-    }
+    let resolved = sdk_stepper.resolve(true);
+    assert_eq!((resolved.geometry.content_gap, resolved.geometry.glyph_scale), (0.0, 0.7));
     for resolved in [sdk_split.resolve(false, true), look.split_view_theme().resolve(false, true)] {
         assert_eq!((resolved.geometry.hitbox_width, resolved.geometry.cue_width), (32.0, 0.0));
     }

@@ -71,7 +71,7 @@ pub struct DefaultSidebarTheme {
 pub fn default_sidebar_theme() -> Arc<dyn SidebarTheme> {
     static THEME: OnceLock<Arc<dyn SidebarTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultSidebarTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledSidebarTheme::sdk())).clone()
 }
 
 impl DefaultSidebarTheme {

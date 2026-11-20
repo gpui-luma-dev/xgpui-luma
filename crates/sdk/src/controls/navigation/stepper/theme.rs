@@ -34,7 +34,7 @@ pub struct DefaultStepperTheme {
 pub fn default_stepper_theme() -> Arc<dyn StepperTheme> {
     static THEME: OnceLock<Arc<dyn StepperTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultStepperTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledStepperTheme::sdk())).clone()
 }
 
 impl DefaultStepperTheme {

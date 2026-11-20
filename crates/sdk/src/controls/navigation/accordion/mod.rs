@@ -4,6 +4,8 @@
 //! Item dividers, trigger states, content padding, and animated clipping belong
 //! to Accordion, independently of the frame's outer decoration and inset.
 
+mod styled;
+pub use styled::{StyledAccordion, StyledAccordionTheme};
 mod control;
 mod model;
 mod template;

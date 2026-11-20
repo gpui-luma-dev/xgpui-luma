@@ -1,0 +1,32 @@
+// Radix stepper. Layer: look. Finished badges solid accent, the current one an accent 4 tint with accent 11
+// numbers, unstarted badges gray 2 with a gray 6 edge; the track is accent 9 ahead and gray 5 behind. Gray
+// when disabled. Sizes 1–3.
+
+stepper {
+  step_badge_size = exact(32)
+  size 1 { step_badge_size = exact(24) }
+  size 3 { step_badge_size = exact(40)  track_thickness = exact(3) }
+
+  part root {
+    complete_background   = accent[9]
+    complete_foreground   = look.accent_contrast
+    current_background    = accent[4]
+    current_foreground    = accent[11]
+    incomplete_background = gray[2]
+    incomplete_border     = gray[6]
+    incomplete_foreground = gray[11]
+    track_active          = accent[9]
+    track_muted           = gray[5]
+    :disabled {
+      complete_background   = gray[3]
+      complete_foreground   = gray[8]
+      current_background    = gray[3]
+      current_foreground    = gray[8]
+      incomplete_background = gray[2]
+      incomplete_border     = gray[6]
+      incomplete_foreground = gray[8]
+      track_active          = gray[5]
+      track_muted           = gray[5]
+    }
+  }
+}

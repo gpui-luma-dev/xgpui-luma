@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{StyledStepperTheme, styled_stepper_look};
 mod control;
 mod model;
 mod template;

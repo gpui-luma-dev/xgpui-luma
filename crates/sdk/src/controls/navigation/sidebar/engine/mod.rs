@@ -6,6 +6,8 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
+mod styled;
+pub use styled::{StyledSidebar, StyledSidebarTheme};
 mod control;
 mod model;
 mod template;

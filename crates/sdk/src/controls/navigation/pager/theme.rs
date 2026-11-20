@@ -62,7 +62,7 @@ pub struct DefaultPagerTheme {
 pub fn default_pager_theme() -> Arc<dyn PagerTheme> {
     static THEME: OnceLock<Arc<dyn PagerTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultPagerTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledPagerTheme::sdk())).clone()
 }
 
 impl DefaultPagerTheme {

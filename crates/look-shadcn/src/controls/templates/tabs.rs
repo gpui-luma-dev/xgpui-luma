@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::controls::tabs::{StyledTabs, TabsTemplate, TabsTheme, ThemedTabsTemplate};
 use xgpui_luma::theme::{InteractionState};
 
-use crate::controls::tabs::{tabs_item_look_with_stylesheet, tabs_list_look_with_stylesheet};
 use crate::look::ShadcnLook;
 
+/// The Shadcn tabs: list and tabs from `.lss` (`style/tabs.lss`); the drag preview from the look.
 struct ShadcnTabsTheme {
     theme: ShadcnLook,
+    styled: StyledTabs,
 }
 
 impl TabsTheme for ShadcnTabsTheme {
@@ -28,15 +29,11 @@ impl TabsTheme for ShadcnTabsTheme {
     }
 
     fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::tabs::TabsListLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        tabs_list_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), enabled, size)
+        self.styled.list(enabled)
     }
 
     fn resolve_item(&self, active: bool, state: InteractionState) -> xgpui_luma::controls::tabs::TabsItemLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        tabs_item_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), active, state, size)
+        self.styled.item(active, state)
     }
 
     fn font_family(&self) -> gpui::SharedString {
@@ -49,7 +46,18 @@ pub fn tabs_template(theme: ShadcnLook) -> Arc<dyn TabsTemplate> {
 }
 
 pub fn tabs_theme(theme: ShadcnLook) -> Arc<dyn TabsTheme> {
-    Arc::new(ShadcnTabsTheme { theme: theme.clone() })
+    let size = theme.size();
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "tabs",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(ShadcnTabsTheme { theme, styled: StyledTabs::new(binding) })
 }
 
 #[cfg(test)]
