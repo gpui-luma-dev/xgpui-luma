@@ -16,7 +16,7 @@ use super::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, button_family_effective_border};
 use crate::controls::choice::styled::{ThemeProvider, focus_adorner, hsl, length, transparent};
 use crate::infra::template::{Modifier, TemplateWithModifiers};
-use crate::theme::LumaTextStyle;
+use crate::theme::{InteractionState, LumaTextStyle};
 
 /// Button data, as the button template needs it: any cloneable data. Toggle data
 /// ([`ToggleData`](crate::controls::toggle::ToggleData)) is on or off, and blends between the two.
@@ -95,6 +95,15 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
             }
         }
         self
+    }
+
+    /// The settled face for `role` in `state`, as a button-family look: for chrome a look draws itself
+    /// (control-group rows) from the same `.lss` values.
+    pub fn look(&self, role: ButtonFamilyRole, state: InteractionState, scale_factor: f32) -> ButtonFamilyLook {
+        let theme = self.theme();
+        let selected = matches!(role, ButtonFamilyRole::Toggle { selected: true });
+        let resolved = theme.resolve_with(&self.key(&theme, role, state, selected, scale_factor), &self.overrides);
+        look_from(resolved.root(), resolved.root(), role)
     }
 
     /// Values set on this instance.

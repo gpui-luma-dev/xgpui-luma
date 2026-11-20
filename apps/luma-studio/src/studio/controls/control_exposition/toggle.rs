@@ -231,8 +231,13 @@ impl ToggleControlExposition {
                     "State",
                     motion_toggles,
                     |toggle| toggle.motion_enabled(),
-                    |toggle| toggle.motion_profile().state.clone(),
-                    |look| look.motion_defaults().toggle.state.clone(),
+                    |toggle| toggle.current_transition(),
+                    // The look's `.lss` `transition` toward selected (the toggle has no motion defaults).
+                    |look| {
+                        look.toggle_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
+                            .transition(&xgpui_luma::controls::toggle::ToggleData::new(true))
+                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
+                    },
                 )),
                 cx,
             );

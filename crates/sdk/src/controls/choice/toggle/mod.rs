@@ -1,7 +1,3 @@
-crate::motion_profile!(ToggleMotion => toggle {
-    state: crate::motion::Transition,
-});
-
 mod callback;
 pub use callback::{ToggleCallbacks, ToggleEventExt};
 
@@ -9,11 +5,11 @@ use std::sync::Arc;
 
 use gpui::{
     AnyElement, App, AppContext, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, ParentElement,
-    Render, SharedString, Subscription, Window, div, hsla, prelude::*,
+    Render, SharedString, Subscription, Window, div,
 };
 
-use crate::motion::VisualTransition;
-use crate::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole, button_family_effective_border};
+use crate::motion::{Transition, VisualTransition};
+use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 
@@ -54,7 +50,10 @@ pub struct ToggleControl {
     selected: bool,
     motion_enabled: bool,
     transition: VisualTransition,
-    motion: ToggleMotion,
+    /// Set on this instance; replaces the template's `transition`.
+    transition_override: Option<Transition>,
+    /// The button's template, kept here so transitions resolve without reading the button.
+    template: Arc<dyn ButtonTemplate<ToggleData>>,
     button: Entity<Button<ToggleData>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -62,17 +61,39 @@ pub struct ToggleControl {
 impl EventEmitter<ToggleEvent> for ToggleControl {}
 
 impl ToggleControl {
-    /// Motion roles captured when this control was created.
-    pub fn motion_profile(&self) -> &ToggleMotion {
-        &self.motion
+    /// The transition toward `selected`: this instance's override, else the template's `transition`
+    /// (`.lss`), else the SDK toggle's.
+    fn transition_toward(
+        template: &dyn ButtonTemplate<ToggleData>,
+        transition_override: Option<&Transition>,
+        selected: bool,
+    ) -> Transition {
+        let data = ToggleData::new(selected);
+        transition_override
+            .cloned()
+            .or_else(|| template.transition(&data))
+            .or_else(|| default_toggle_template().transition(&data))
+            .unwrap_or_else(Transition::instant)
+    }
+
+    /// The transition the next selection change animates with.
+    pub fn current_transition(&self) -> Transition {
+        Self::transition_toward(self.template.as_ref(), self.transition_override.as_ref(), self.selected)
+    }
+
+    fn retarget(&mut self) {
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
+        self.transition.set_target(if self.selected { 1.0 } else { 0.0 });
     }
 
     fn from_builder(builder: ToggleBuilder, cx: &mut Context<Self>) -> Self {
         let selected = builder.button.model.data.selected;
         let motion_enabled = builder.motion_enabled;
-        let motion = builder.motion_profile();
+        let transition_override = builder.transition;
         let progress = if selected { 1.0 } else { 0.0 };
-        let transition = VisualTransition::with_transition(progress, motion.state.enabled(motion_enabled));
+        let template = builder.button.model.template.clone();
+        let initial = Self::transition_toward(template.as_ref(), transition_override.as_ref(), selected);
+        let transition = VisualTransition::with_transition(progress, initial.enabled(motion_enabled));
 
         let mut button_builder = builder.button;
         button_builder.model.data = ToggleData { selected, progress };
@@ -85,7 +106,15 @@ impl ToggleControl {
         });
         let subscription = cx.subscribe(&button, Self::handle_button_event);
 
-        Self { selected, motion_enabled, transition, motion, button, _subscriptions: vec![subscription] }
+        Self {
+            selected,
+            motion_enabled,
+            transition,
+            transition_override,
+            template,
+            button,
+            _subscriptions: vec![subscription],
+        }
     }
 
     fn push_button_data(&mut self, cx: &mut Context<Self>) {
@@ -108,7 +137,7 @@ impl ToggleControl {
             return;
         }
         self.selected = selected;
-        self.transition.set_target(if selected { 1.0 } else { 0.0 });
+        self.retarget();
         self.push_button_data(cx);
         cx.notify();
     }
@@ -126,8 +155,7 @@ impl ToggleControl {
             return;
         }
         self.motion_enabled = motion_enabled;
-        self.transition.set_transition(self.motion.state.enabled(motion_enabled));
-        self.transition.set_target(if self.selected { 1.0 } else { 0.0 });
+        self.retarget();
         self.push_button_data(cx);
         cx.notify();
     }
@@ -147,6 +175,8 @@ impl ToggleControl {
     }
 
     pub fn set_template(&mut self, template: Arc<dyn ButtonTemplate<ToggleData>>, cx: &mut Context<Self>) {
+        self.template = Arc::clone(&template);
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.button.update(cx, |button, cx| button.set_template(template, cx));
         cx.notify();
     }
@@ -156,7 +186,7 @@ impl ToggleControl {
             ButtonEvent::Click => {
                 let selected = !self.selected;
                 self.selected = selected;
-                self.transition.set_target(if selected { 1.0 } else { 0.0 });
+                self.retarget();
                 self.push_button_data(cx);
                 cx.emit(ToggleEvent::Change { selected });
                 cx.notify();
@@ -200,11 +230,15 @@ pub struct ToggleBuilder {
     callbacks: ToggleCallbacks,
     button: ButtonBuilder<ToggleData>,
     motion_enabled: bool,
-    motion: crate::motion::MotionConfig<ToggleMotion>,
+    transition: Option<Transition>,
 }
 
 impl ToggleBuilder {
-    crate::motion_methods!(ToggleMotion, motion);
+    /// Animate selection changes with `transition` instead of the template's `transition` (`.lss`).
+    pub fn transition(mut self, transition: Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Append an owner-bound callback; registrations are additive and owners are weak.
     pub fn on_event<M: 'static>(
@@ -331,59 +365,8 @@ pub fn new(id: impl Into<SharedString>) -> ToggleBuilder {
         callbacks: ToggleCallbacks::default(),
         button: button_builder(id),
         motion_enabled: true,
-        motion: Default::default(),
+        transition: None,
     }
-}
-
-fn lerp_f32(start: f32, end: f32, t: f32) -> f32 {
-    start + ((end - start) * t)
-}
-
-fn lerp_hsla(start: gpui::Hsla, end: gpui::Hsla, t: f32) -> gpui::Hsla {
-    hsla(
-        lerp_f32(start.h, end.h, t),
-        lerp_f32(start.s, end.s, t),
-        lerp_f32(start.l, end.l, t),
-        lerp_f32(start.a, end.a, t),
-    )
-}
-
-fn lerp_optional_hsla(start: Option<gpui::Hsla>, end: Option<gpui::Hsla>, t: f32) -> Option<gpui::Hsla> {
-    match (start, end) {
-        (Some(a), Some(b)) => Some(lerp_hsla(a, b, t)),
-        (Some(a), None) if t < 0.5 => Some(a),
-        (None, Some(b)) if t >= 0.5 => Some(b),
-        (Some(_), None) | (None, Some(_)) => None,
-        (None, None) => None,
-    }
-}
-
-fn lerp_toggle_palette(off: &ButtonFamilyPalette, on: &ButtonFamilyPalette, progress: f32) -> ButtonFamilyPalette {
-    let t = progress.clamp(0.0, 1.0);
-    let settled = if t >= 0.5 { on } else { off };
-    ButtonFamilyPalette {
-        focus_border: lerp_hsla(off.focus_border, on.focus_border, t),
-        background: lerp_hsla(off.background, on.background, t),
-        foreground: lerp_hsla(off.foreground, on.foreground, t),
-        muted_foreground: lerp_hsla(off.muted_foreground, on.muted_foreground, t),
-        border: lerp_optional_hsla(off.border, on.border, t),
-        typography: settled.typography,
-        font_family: settled.font_family.clone(),
-    }
-}
-
-/// Applies interpolated toggle chrome from off/on palettes for `model.data.progress`.
-pub fn apply_toggle_progress_chrome(
-    element: gpui::Stateful<gpui::Div>,
-    off: &ButtonFamilyPalette,
-    on: &ButtonFamilyPalette,
-    progress: f32,
-) -> gpui::Stateful<gpui::Div> {
-    let palette = lerp_toggle_palette(off, on, progress);
-    element
-        .bg(palette.background)
-        .text_color(palette.foreground)
-        .border_color(button_family_effective_border(palette.border))
 }
 
 /// The SDK toggle: the `.lss` button template drawing the `toggle` control (issue #285).

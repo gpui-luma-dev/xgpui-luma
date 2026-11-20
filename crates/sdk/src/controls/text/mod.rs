@@ -3,6 +3,8 @@
 mod editing;
 mod runs;
 mod state;
+mod styled;
+pub use styled::{StyledTextAreaTheme, StyledTextFieldTheme};
 
 pub mod textarea;
 pub mod textfield;

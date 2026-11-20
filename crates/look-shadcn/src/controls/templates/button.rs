@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, DefaultButtonTemplate, StyledButtonTemplate};
+use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, StyledButtonTemplate};
 use xgpui_luma::controls::button_family::{ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
-use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
+use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::theme::{InteractionState};
 
 use crate::controls::button::{ShadcnButtonStyle, button_look_with_stylesheet, button_palette};
@@ -67,7 +67,10 @@ pub fn toggle_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn B
     Arc::new(styled_button_template::<ToggleData>(theme, style))
 }
 
-fn styled_button_template<D: ButtonData>(theme: ShadcnLook, style: ShadcnButtonStyle) -> StyledButtonTemplate<D> {
+pub(crate) fn styled_button_template<D: ButtonData>(
+    theme: ShadcnLook,
+    style: ShadcnButtonStyle,
+) -> StyledButtonTemplate<D> {
     let size = theme.size();
     let look = theme.clone();
     let mut template = StyledButtonTemplate::<D>::live(Arc::new(move || look.style_theme()));
@@ -80,21 +83,16 @@ fn styled_button_template<D: ButtonData>(theme: ShadcnLook, style: ShadcnButtonS
     template
 }
 
-/// Non-animated toggle chrome for control-group items (`ButtonTemplate<bool>`).
+/// Toggle chrome for control-group items (`ButtonTemplate<bool>`), drawn from `.lss`; the item's role
+/// carries its selection.
 pub fn toggle_item_template(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn ButtonTemplate<bool>> {
-    Arc::new(DefaultButtonTemplate::new(styled_button_family_theme(theme, style)))
+    Arc::new(styled_button_template::<bool>(theme, style))
 }
 
-/// Animated toggle chrome for control-group items carrying [`ToggleData`].
+/// Animated toggle chrome for control-group items carrying [`ToggleData`], drawn from `.lss`.
 pub fn animated_toggle_item_template(
     theme: ShadcnLook,
     style: ShadcnButtonStyle,
 ) -> Arc<dyn ButtonTemplate<ToggleData>> {
-    let button_family_theme = styled_button_family_theme(theme, style);
-    let theme_for_mod = Arc::clone(&button_family_theme);
-    Arc::new(DefaultButtonTemplate::<ToggleData>::new(button_family_theme).with_modifier(move |element, model| {
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
-        apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
-    }))
+    Arc::new(styled_button_template::<ToggleData>(theme, style))
 }

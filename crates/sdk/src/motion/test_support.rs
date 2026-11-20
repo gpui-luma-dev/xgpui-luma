@@ -13,7 +13,6 @@ macro_rules! test_look_motion_contract {
             let look = $make_look;
             look.motion(|m| {
                 let transition = Transition::timed(Duration::from_secs(1), Easing::Linear);
-                m.toggle.state = transition.clone();
                 m.slider.thumb = transition.clone();
                 m.progress.value = transition.clone();
                 m.tree_view.expansion = transition.clone();
@@ -34,7 +33,6 @@ macro_rules! test_look_motion_contract {
                             values.push(sample(&entity.read(cx).motion_profile().$role));
                         }};
                     }
-                    check!($api::Toggle::new("toggle"), state);
                     check!($api::Slider::new("slider"), thumb);
                     check!($api::Progress::new("progress"), value);
                     check!($api::TreeView::<()>::new("tree"), expansion);
@@ -48,6 +46,10 @@ macro_rules! test_look_motion_contract {
                     assert_eq!(sample(&checkbox.read(cx).current_transition()), sample(&lss));
                     let switch = $api::Switch::new("switch").look(&look).spawn(cx);
                     assert_eq!(sample(&switch.read(cx).current_transition()), sample(&lss));
+                    let toggle = $api::Toggle::new("toggle").look(&look).spawn(cx);
+                    assert_eq!(sample(&toggle.read(cx).current_transition()), sample(&lss));
+                    let edited_toggle = $api::Toggle::new("edited-toggle").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited_toggle.read(cx).current_transition()), 1.0);
                     let radio = $api::Radio::new("radio").look(&look).spawn(cx);
                     assert_eq!(sample(&radio.read(cx).current_transition()), sample(&lss));
                     let edited_radio = $api::Radio::new("edited-radio").transition(Transition::instant()).look(&look).spawn(cx);
@@ -99,7 +101,7 @@ easing = "linear"
             let look = ($make_look)(source);
             let vanilla = xgpui_luma::theme::MotionDefaults::vanilla();
             let inherited = look.motion_defaults();
-            assert_eq!(inherited.toggle.state.description(), vanilla.toggle.state.description());
+            assert_eq!(inherited.stepper.selection.description(), vanilla.stepper.selection.description());
             assert_eq!(
                 inherited.slide_panel.presence.enter.description(),
                 vanilla.slide_panel.presence.enter.description()

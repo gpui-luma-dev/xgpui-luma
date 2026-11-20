@@ -65,6 +65,8 @@ sdk_sources! {
         "controls/choice/switch/switch.lss",
         "controls/button/button.lss",
         "controls/choice/toggle/toggle.lss",
+        "controls/text/textfield/textfield.lss",
+        "controls/text/textarea/textarea.lss",
     ],
     light: "theme/palette.lss",
     dark: "theme/palette-dark.lss",
@@ -140,6 +142,102 @@ pub fn transition(motion: &xgpui_luma_style::Motion) -> crate::motion::Transitio
             Transition::timed(std::time::Duration::from_nanos(nanos), easing)
         }
         Motion::Spring { stiffness, damping } => Transition::spring(stiffness, damping),
+    }
+}
+
+/// Where a control's styles come from: one theme, or a provider asked on every resolve (a look's live
+/// theme, which follows its mode and edits).
+#[derive(Clone)]
+pub enum ThemeSource {
+    Fixed(Theme),
+    Live(Arc<dyn Fn() -> Theme + Send + Sync>),
+}
+
+impl ThemeSource {
+    pub fn theme(&self) -> Theme {
+        match self {
+            Self::Fixed(theme) => theme.clone(),
+            Self::Live(provider) => provider(),
+        }
+    }
+}
+
+/// One control's styles bound for rendering: the theme source, the control, and the attribute
+/// values and states every instance has (a look's variant, size or tone). A control's theme adapter
+/// adds its interaction states and resolves.
+#[derive(Clone)]
+pub struct StyleBinding {
+    source: ThemeSource,
+    control: &'static str,
+    attrs: Vec<(xgpui_luma_style::AttrId, xgpui_luma_style::AttrValue)>,
+    states: Vec<xgpui_luma_style::StateId>,
+    overrides: xgpui_luma_style::Overrides,
+}
+
+impl StyleBinding {
+    pub fn new(control: &'static str, source: ThemeSource) -> Self {
+        Self {
+            source,
+            control,
+            attrs: Vec::new(),
+            states: Vec::new(),
+            overrides: xgpui_luma_style::Overrides::new(),
+        }
+    }
+
+    /// The control in the SDK's own theme.
+    pub fn sdk(control: &'static str) -> Self {
+        Self::new(control, ThemeSource::Fixed(default_theme()))
+    }
+
+    pub fn theme(&self) -> Theme {
+        self.source.theme()
+    }
+
+    /// Shorthand for `attr("variant", variant)`.
+    pub fn variant(self, variant: &str) -> Self {
+        self.attr("variant", variant)
+    }
+
+    /// An attribute value for every instance. An attribute the configuration does not declare is ignored.
+    pub fn attr(mut self, name: &str, value: &str) -> Self {
+        if let Some(attr) = self.theme().stylesheet().config().attribute(name) {
+            self.attrs.retain(|(a, _)| *a != attr);
+            self.attrs.push((attr, xgpui_luma_style::AttrValue::named(value)));
+        }
+        self
+    }
+
+    /// A state that is always on or off. A state the configuration does not declare is ignored.
+    pub fn state(mut self, name: &str, on: bool) -> Self {
+        if let Some(state) = self.theme().stylesheet().config().state(name) {
+            self.states.retain(|s| *s != state);
+            if on {
+                self.states.push(state);
+            }
+        }
+        self
+    }
+
+    /// Values set on this instance.
+    pub fn overrides(mut self, overrides: xgpui_luma_style::Overrides) -> Self {
+        self.overrides = overrides;
+        self
+    }
+
+    /// Resolve with these interaction states (by name) at `scale` device pixels per pixel.
+    pub fn resolve(&self, states: &[(&str, bool)], scale: f32) -> Arc<xgpui_luma_style::Resolved> {
+        let theme = self.theme();
+        let config = theme.stylesheet().config();
+        let key = xgpui_luma_style::StyleKey::new(xgpui_luma_style::ControlId::new(self.control)).scale(scale);
+        let key = self.states.iter().fold(key, |key, state| key.state(*state));
+        let mut key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
+        for (name, on) in states {
+            if let Some(state) = config.state(name) {
+                key = key.state_if(state, *on);
+            }
+        }
+        theme.resolve_with(&key, &self.overrides)
     }
 }
 

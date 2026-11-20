@@ -37,4 +37,25 @@ toggle {
       :selected:disabled { background = radix.page_selected  foreground = radix.role.muted_foreground }
     }
   }
+
+  // A face in a joined icon group: the group draws the edges, separators and focus ring, so the face has
+  // none. Unselected it is the surface, selected an accent tint.
+  variant icon_group {
+    padding_x = exact(max((height - 16) / 2, 0))
+    padding_y = 0
+    part root {
+      background   := radix.role.surface
+      foreground   := gray[11]
+      border       := none
+      focus_border := none
+      shadow       := []
+      :hover             { background = gray[3] }
+      :pressed           { background = gray[4] }
+      :selected          { background = accent[3]  foreground = accent[11] }
+      :selected:hover    { background = accent[4] }
+      :selected:pressed  { background = accent[5] }
+      :disabled          { background = radix.role.surface  foreground = gray[8] }
+      :selected:disabled { background = radix.role.surface  foreground = gray[8] }
+    }
+  }
 }

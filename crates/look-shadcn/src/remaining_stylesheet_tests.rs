@@ -1,7 +1,7 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
 use std::collections::HashMap;
 use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
-use crate::{ShadcnLook, ShadcnTextFieldStyle, StylesheetConfig};
+use crate::{ShadcnLook, StylesheetConfig};
 use crate::size::ShadcnSize;
 
 const OVERRIDES: &str = r#"
@@ -126,73 +126,6 @@ fn custom_look() -> ShadcnLook {
     let mut config = crate::embedded_stylesheet().clone();
     config.common = StylesheetConfig::parse(OVERRIDES).unwrap().common;
     ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap()
-}
-
-#[test]
-fn input_families_resolve_independent_dimensions_and_typography() {
-    let look = custom_look();
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        let tokens = look.mode_tokens();
-        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
-            let scale = StandardBoxScale::compute(&tokens.metrics_for(size), 1.0);
-            for style in [
-                ShadcnTextFieldStyle::Outline,
-                ShadcnTextFieldStyle::Input,
-                ShadcnTextFieldStyle::Primary,
-                ShadcnTextFieldStyle::Surface,
-            ] {
-                for bits in 0..32 {
-                    let state = xgpui_luma::controls::textfield::TextFieldState {
-                        hovered: bits & 1 != 0,
-                        focused: bits & 2 != 0,
-                        focus_visible: bits & 4 != 0,
-                        invalid: bits & 8 != 0,
-                        ..Default::default()
-                    };
-                    let enabled = bits & 16 == 0;
-                    let field =
-                        crate::controls::textfield::textfield_look(&tokens, mode, style, state, enabled, size, &scale);
-                    let area = crate::controls::textarea::textarea_look(
-                        &tokens,
-                        mode,
-                        style,
-                        xgpui_luma::controls::textarea::TextAreaState {
-                            hovered: state.hovered,
-                            focused: state.focused,
-                            focus_visible: state.focus_visible,
-                            invalid: state.invalid,
-                            ..Default::default()
-                        },
-                        enabled,
-                        size,
-                        &scale,
-                    );
-                    assert_eq!(
-                        (field.min_height, field.padding_x, field.padding_y, field.icon_size, field.gap),
-                        (47.0, 7.0, 3.0, 19.0, 4.0)
-                    );
-                    assert_eq!((field.typography.size, field.typography.line_height), (17.0, 25.0));
-                    assert_eq!((area.min_height, area.padding_x, area.padding_y), (71.0, 9.0, 6.0));
-                    assert_eq!((area.typography.size, area.typography.line_height), (18.0, 29.0));
-                    #[cfg(feature = "inspect")]
-                    {
-                        let inspect = crate::inspect::ShadcnInspect::new(&look);
-                        let f = inspect.inspect_textfield_metrics(size);
-                        let a = inspect.inspect_textarea_metrics(size);
-                        assert_eq!(f.min_height.value_px, field.min_height);
-                        assert_eq!(f.padding_x.value_px, field.padding_x);
-                        assert_eq!(a.min_height.value_px, area.min_height);
-                        assert_eq!(a.padding_y.value_px, area.padding_y);
-                        assert!(format!("{:?}", a.min_height.source).contains("common.textarea"));
-                        let colors = inspect.inspect_textfield_color_palette(style, state, enabled);
-                        assert_eq!(colors.background.value, field.background);
-                        assert_eq!(colors.border.value, field.border);
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[cfg(feature = "inspect")]

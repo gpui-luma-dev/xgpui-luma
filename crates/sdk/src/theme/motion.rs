@@ -18,7 +18,6 @@ pub struct MotionDefaults {
     pub scroll_container: crate::controls::scroll_container::ScrollContainerMotion,
     pub popover: crate::controls::popover_button::PopoverMotion,
 
-    pub toggle: crate::controls::toggle::ToggleMotion,
     pub control_group: crate::controls::control_group::ControlGroupMotion,
     pub slider: crate::controls::slider::SliderMotion,
     pub progress: crate::controls::progress::ProgressMotion,
@@ -65,15 +64,15 @@ impl CommonStylesheet {
     /// Resolve motion without depending on a look crate.
     ///
     /// ```
-    /// use xgpui_luma::{controls::toggle, theme::stylesheet::CommonStylesheet};
+    /// use xgpui_luma::{controls::stepper::StepperBuilder, theme::stylesheet::CommonStylesheet};
     /// let sheet = CommonStylesheet::parse(r#"
-    /// [common.motion.toggle.state]
+    /// [common.motion.stepper.selection]
     /// kind = "spring"
     /// stiffness = 300.0
     /// damping = 28.0
     /// "#)?;
-    /// let builder = toggle::new("bold")
-    ///     .motion_defaults(sheet.motion_defaults().toggle);
+    /// let builder = StepperBuilder::new("steps", 3)
+    ///     .motion_defaults(sheet.motion_defaults().stepper);
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn motion_defaults(&self) -> MotionDefaults {
@@ -106,7 +105,6 @@ mod tests {
             ($ms:expr; $($role:expr),+ $(,)?) => { $(check(&$role, $ms, stringify!($role));)+ };
         }
         timed!(200;
-            m.toggle.state,
             m.control_group.selection, m.slider.thumb, m.progress.value, m.stepper.selection,
             m.accordion.expansion, m.tree_view.expansion, m.tree_view.position, m.sidebar.expansion,
             m.sidebar.popup.enter, m.sidebar.popup.exit, m.split_view.extent, m.resizable_panels.extent,

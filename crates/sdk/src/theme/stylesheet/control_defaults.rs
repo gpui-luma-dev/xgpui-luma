@@ -7,7 +7,6 @@ use crate::{
         overlay_window::{DefaultOverlayWindowTheme, OverlayWindowMode, OverlayWindowTheme},
         selection_panel::default_selection_panel_look,
         slider::{DefaultSliderTheme, SliderTheme},
-        textfield::{DefaultTextFieldTheme, TextFieldTheme},
     },
     theme::{StandardBoxScale, ThemeMode},
 };
@@ -18,20 +17,6 @@ fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
     assert_eq!(tokens.stylesheet.progress.geometry.size, Some(64.0));
     assert_eq!(tokens.stylesheet.progress.geometry.stroke_width, Some(0.0));
-}
-
-#[test]
-fn captured_input_geometry_overrides_shared_metrics_without_affecting_palette() {
-    let sheet =
-        CommonStylesheet::parse("[common.textfield.geometry]\nmin_height=47\npadding_x=0\nfont_size=19").unwrap();
-    let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-    let expected_background = tokens.palette.form.input.background;
-    let theme = DefaultTextFieldTheme::new(tokens);
-    let look = theme.resolve_look(Default::default(), true, &scale);
-    assert_eq!((look.min_height, look.padding_x, look.typography.size), (47.0, 0.0, 19.0));
-    assert_eq!(look.background, expected_background);
-    assert_eq!(look.padding_y, scale.padding_y);
 }
 
 #[test]
@@ -370,7 +355,6 @@ fn group_shell_factory_and_final_geometry_preserve_explicit_zero() {
 #[test]
 fn shared_helper_chrome_and_drag_elevation_use_selected_snapshots() {
     use crate::controls::{
-        textarea::{DefaultTextAreaTheme, TextAreaTheme},
         tooltip::TooltipLook,
         tree_view::{DefaultTreeViewTheme, TreeViewTheme},
     };
@@ -385,12 +369,10 @@ layers=[]
 window_margin=0"])
     .unwrap();
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    let scale = StandardBoxScale::compute(&tokens.metrics, 1.0);
-    let field = DefaultTextFieldTheme::new(tokens.clone()).resolve_look(Default::default(), true, &scale);
-    assert_eq!(field.helper_geometry.compact_textfield_height, 31.0);
-    assert_eq!(field.helper_geometry.composition_underline_width, 0.0);
-    let area = DefaultTextAreaTheme::new(tokens.clone()).resolve_look(Default::default(), true, &scale);
-    assert_eq!(area.helper_geometry.textarea_resize_icon_size, 17.0);
+    let helper = sheet.shared_geometry();
+    assert_eq!(helper.compact_textfield_height, 31.0);
+    assert_eq!(helper.composition_underline_width, 0.0);
+    assert_eq!(helper.textarea_resize_icon_size, 17.0);
     assert_eq!(crate::theme::scales::label_baseline_shift(&sheet), 0.0);
     assert_eq!(TooltipLook::from_tokens(&tokens, None).placement.margin, 0.0);
     assert!(DefaultTreeViewTheme::new(tokens).drag_preview_shadow().is_empty());

@@ -265,13 +265,13 @@ mod tests {
         use xgpui_luma::motion::{Easing, MotionState, Transition};
         use std::time::Duration;
         let look = Look::built_in();
-        look.motion(|m| m.toggle.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
+        look.motion(|m| m.stepper.selection = Transition::timed(Duration::from_millis(400), Easing::Linear));
         let copy = look.fork();
-        look.motion(|m| m.toggle.state = Transition::instant());
+        look.motion(|m| m.stepper.selection = Transition::instant());
         assert_eq!(
             copy.motion_defaults()
-                .toggle
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::from_millis(100))
                 .state
@@ -280,8 +280,8 @@ mod tests {
         );
         assert!(
             look.motion_defaults()
-                .toggle
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::ZERO)
                 .complete

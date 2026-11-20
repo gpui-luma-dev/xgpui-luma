@@ -13,10 +13,8 @@
 
 use serde::Deserialize;
 
-use xgpui_luma::controls::textfield::TextFieldLook;
 use xgpui_luma::controls::textfield::TextFieldPalette;
 use xgpui_luma::controls::textfield::TextFieldState;
-use xgpui_luma::controls::textfield::compose_textfield_look;
 use crate::size::ShadcnSize;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma::theme::LumaTextStyle;
@@ -244,31 +242,6 @@ pub fn apply_textfield_control_size_typography(
     size: ShadcnSize,
 ) {
     super::apply_button_metrics_typography(typography, mode, size);
-}
-
-pub fn textfield_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnTextFieldStyle,
-    state: TextFieldState,
-    enabled: bool,
-    size: ShadcnSize,
-    scale: &StandardBoxScale,
-) -> TextFieldLook {
-    let palette = textfield_palette_for_size(mode, theme_mode, style, state, enabled, size);
-    let geometry = textfield_geometry(mode, size, scale, &palette.typography);
-    let mut scale = *scale;
-    scale.height = geometry.min_height.value_px;
-    scale.padding_x = geometry.padding_x.value_px;
-    scale.padding_y = geometry.padding_y.value_px;
-    scale.gap = geometry.gap.value_px;
-    scale.icon_size = geometry.icon_size.value_px;
-    let mut look = compose_textfield_look(&palette, &scale, mode.metrics.border_width);
-    look.helper_geometry = mode.stylesheet().common.shared_geometry();
-    look.caret_width = geometry.caret_width.value_px;
-    look.caret_height_extra = geometry.caret_height_extra.value_px;
-    look.disabled_opacity = geometry.disabled_opacity.value_px;
-    look
 }
 
 #[cfg(test)]

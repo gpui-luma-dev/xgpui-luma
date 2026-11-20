@@ -48,7 +48,7 @@ macro_rules! radix_sources {
     };
 }
 
-radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss"];
+radix_sources!["tokens.lss", "checkbox.lss", "radio.lss", "switch.lss", "button.lss", "toggle.lss", "textfield.lss"];
 
 /// The SDK's files with the Radix look's files over them.
 pub fn stylesheet() -> Stylesheet {
@@ -107,6 +107,8 @@ struct ModeTokens {
     accent_contrast: Hsla,
     /// The color on solid gray faces: gray 1 in light mode, gray 12 in dark.
     gray_contrast: Hsla,
+    /// The destructive role (an invalid field's edge).
+    destructive: Hsla,
 }
 
 /// Native Radix tokens, captured from a [`Look`] for both modes; the bound mode picks one.
@@ -128,6 +130,7 @@ impl RadixTokens {
                 .scales_for(mode)
                 .resolved(ScaleFamily::Gray, if mode == ThemeMode::Light { 1 } else { 12 })
                 .hsla(),
+            destructive: look.resolve_role_for(SemanticRole::Destructive, mode).hsla(),
         };
         Self {
             light: mode(ThemeMode::Light),
@@ -161,6 +164,7 @@ impl TokenSource for RadixTokens {
             "look.tone_contrast" if cx.attr("tone") == Some("gray") => color(self.mode(cx).gray_contrast),
             "look.tone_contrast" => color(self.mode(cx).accent_contrast),
             "look.font_sans" => Value::Str(self.font_sans.clone()),
+            "look.destructive" => color(self.mode(cx).destructive),
             classic => Value::Number(match classic.strip_prefix("look.classic.")? {
                 "radius" => c.radius,
                 "fill_top_delta" => c.fill_top_delta,
@@ -228,6 +232,7 @@ impl TokenSource for RadixTokens {
             "look.accent_contrast" => Some(format!("Radix accent contrast ({})", cx.mode())),
             "look.font_sans" => Some("Radix common stylesheet font.sans".into()),
             "look.tone_contrast" => Some(format!("Radix tone contrast ({})", cx.mode())),
+            "look.destructive" => Some(format!("Radix destructive role ({})", cx.mode())),
             p if p.starts_with("look.classic.") => Some("Radix classic button tuning (Look::classic_params)".into()),
             _ => None,
         }

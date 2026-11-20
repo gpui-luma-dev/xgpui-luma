@@ -304,13 +304,13 @@ mod tests {
         use xgpui_luma::motion::{Easing, MotionState, Transition};
         use std::time::Duration;
         let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
-        look.motion(|m| m.toggle.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
+        look.motion(|m| m.stepper.selection = Transition::timed(Duration::from_millis(400), Easing::Linear));
         let copy = look.with_color_overrides(&Default::default()).unwrap();
-        look.motion(|m| m.toggle.state = Transition::instant());
+        look.motion(|m| m.stepper.selection = Transition::instant());
         assert_eq!(
             copy.motion_defaults()
-                .toggle
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::from_millis(100))
                 .state
@@ -319,8 +319,8 @@ mod tests {
         );
         assert!(
             look.motion_defaults()
-                .toggle
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::ZERO)
                 .complete

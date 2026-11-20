@@ -1,27 +1,31 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
 use std::sync::Arc;
 use gpui::{AnyElement, App, BoxShadow, SharedString, Window, div, point, prelude::*, px};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
-use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
+use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::controls::control_group::*;
-use xgpui_luma::controls::button_family::{
-    ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, compose_button_family_look,
-};
+use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
 use crate::{ButtonVariant, Look, ScaleFamily, SemanticRole};
 
+/// A control-group row face: the `.lss` ghost toggle at `size`.
 fn item_look(
     look: &Look,
     selected: bool,
     state: InteractionState,
     size: crate::RadixSize,
-    scale: &StandardBoxScale,
+    scale_factor: f32,
 ) -> ButtonFamilyLook {
-    let theme = crate::button_family_theme(&look.with_size(size), ButtonVariant::Ghost);
-    let role = ButtonFamilyRole::Toggle { selected };
-    theme
-        .resolve_look(role, state, scale, scale.radius)
-        .unwrap_or_else(|| compose_button_family_look(&theme.resolve(role, state), role, scale, scale.radius))
+    let size = match size {
+        crate::RadixSize::One => crate::ButtonSize::One,
+        crate::RadixSize::Two => crate::ButtonSize::Two,
+        crate::RadixSize::Three => crate::ButtonSize::Three,
+    };
+    crate::button::styled_button_template::<()>(look, ButtonVariant::Ghost, crate::Paint::accent(), size).look(
+        ButtonFamilyRole::Toggle { selected },
+        state,
+        scale_factor,
+    )
 }
 
 struct GroupTheme {
@@ -42,10 +46,10 @@ impl ControlGroupTheme for GroupTheme {
         &self,
         selected: bool,
         state: InteractionState,
-        scale: &StandardBoxScale,
+        _scale: &StandardBoxScale,
     ) -> ControlGroupItemPalette {
         let size = self.look.size();
-        let palette = item_look(&self.look, selected, state, size, scale);
+        let palette = item_look(&self.look, selected, state, size, 1.0);
         ControlGroupItemPalette {
             foreground: palette.foreground,
             background: palette.background,
@@ -94,7 +98,7 @@ fn item_template<T: ControlGroupItemLike + 'static>(
     Arc::new(move |item, custom, window, cx| {
         let scale = StandardBoxScale::compute(&look.metrics_for(size), window.scale_factor());
         let state = InteractionState { focused: item.state.focus_visible, ..item.state.interaction_state() };
-        let palette = item_look(&look, item.selected, state, size, &scale);
+        let palette = item_look(&look, item.selected, state, size, window.scale_factor());
         let content = match custom {
             Some(custom) => {
                 let content_model = ControlGroupItemRenderModel {
@@ -193,40 +197,6 @@ struct IconGroupToggleTemplate {
     layout: ControlGroupLayout,
 }
 
-fn icon_group_palette(look: &Look, selected: bool, state: InteractionState) -> ButtonFamilyPalette {
-    let mut palette =
-        crate::button_family_theme(look, ButtonVariant::Ghost).resolve(ButtonFamilyRole::Toggle { selected }, state);
-    let accent = |step| look.resolve_step(ScaleFamily::Color, step).hsla();
-    let gray = |step| look.resolve_step(ScaleFamily::Gray, step).hsla();
-    palette.background = if state.disabled {
-        look.resolve_role(SemanticRole::Surface).hsla()
-    } else if selected {
-        accent(if state.pressed {
-            5
-        } else if state.hovered {
-            4
-        } else {
-            3
-        })
-    } else if state.pressed {
-        gray(4)
-    } else if state.hovered {
-        gray(3)
-    } else {
-        look.resolve_role(SemanticRole::Surface).hsla()
-    };
-    palette.foreground = if state.disabled {
-        gray(8)
-    } else if selected {
-        accent(11)
-    } else {
-        gray(11)
-    };
-    palette.border = None;
-    palette.focus_border = look.resolve_role(SemanticRole::Focus).hsla();
-    palette
-}
-
 impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
     fn render(
         &self,
@@ -234,25 +204,14 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
         window: &mut Window,
         cx: &mut App,
     ) -> gpui::Stateful<gpui::Div> {
-        let off = icon_group_palette(&self.look, false, model.state);
-        let on = icon_group_palette(&self.look, true, model.state);
-        let palette = if model.data.selected { &on } else { &off };
-        let mut look = crate::button_look_for(
+        let template = crate::button::styled_button_template::<ToggleData>(
             &self.look,
-            ButtonVariant::Ghost,
+            ButtonVariant::Solid,
             crate::Paint::accent(),
             self.size,
-            crate::Radius::None,
-        )(model);
-        look.background = palette.background;
-        look.foreground = palette.foreground;
-        look.border = None;
-        let focus_color = palette.focus_border;
-        // The shared button's uniform ring is replaced by the position-aware adorner below.
-        look.focus_border = gpui::transparent_black();
-        look.padding_y = 0.0;
-        look.padding_x = ((look.height - 16.0) / 2.0).max(0.0);
-        let height = look.height;
+        )
+        .variant("icon_group");
+        let height = template.look(model.role, model.state, window.scale_factor()).height;
         let model = ButtonRenderModel {
             id: model.id.clone(),
             data: model.data,
@@ -263,9 +222,9 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             elevation: false,
             round: false,
             radius_override: std::cell::Cell::new(Some(self.look.radii().medium)),
-            look: Some(Arc::new(move |_| look.clone())),
             ..Default::default()
         };
+        let focus_color = self.look.resolve_role(SemanticRole::Focus).hsla();
         let first = self.first;
         let last = self.last;
         let radius = px(self.look.radii().medium);
@@ -285,10 +244,9 @@ impl ButtonTemplate<ToggleData> for IconGroupToggleTemplate {
             .when(last && !vertical, |ring| ring.rounded_tr(focus_radius).rounded_br(focus_radius))
             .when(first && vertical, |ring| ring.rounded_tl(focus_radius).rounded_tr(focus_radius))
             .when(last && vertical, |ring| ring.rounded_bl(focus_radius).rounded_br(focus_radius));
-        DefaultButtonTemplate::<ToggleData>::new(crate::button_family_theme(&self.look, ButtonVariant::Ghost))
-            .with_modifier(move |face, model| {
-                apply_toggle_progress_chrome(face, &off, &on, model.data.progress)
-                    .border_0()
+        template
+            .with_modifier(move |face, _| {
+                face.border_0()
                     .rounded_none()
                     .min_w(px(height))
                     .when(first && !vertical, |face| face.rounded_tl(radius).rounded_bl(radius))
@@ -329,6 +287,14 @@ pub fn icon_group_builder<T: ControlGroupItemLike + 'static>(
         .template(icon_group_template(look))
         .stylesheet(&look.sized_stylesheet(look.size()))
         .motion_defaults(look.motion_defaults().control_group)
+}
+
+/// Colors equal to rounding (`.lss` values pass through f32 HSL conversions).
+#[cfg(test)]
+pub(crate) fn assert_close(a: gpui::Hsla, b: gpui::Hsla) {
+    let (x, y) = (a.to_rgb(), b.to_rgb());
+    let near = [(x.r, y.r), (x.g, y.g), (x.b, y.b), (x.a, y.a)].iter().all(|(p, q)| (p - q).abs() < 2e-3);
+    assert!(near, "{a:?} vs {b:?}");
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -616,16 +582,23 @@ mod tests {
             let look = Look::built_in();
             look.set_mode(mode);
             for hovered in [false, true] {
-                let toggle = icon_group_palette(&look, true, InteractionState { hovered, ..Default::default() });
-                let field = crate::textfield::resolve_text_chrome_palette(
+                let toggle = crate::button::styled_button_template::<ToggleData>(
                     &look,
-                    crate::TextFieldVariant::Soft,
-                    hovered,
-                    false,
-                    true,
+                    ButtonVariant::Solid,
+                    crate::Paint::accent(),
+                    crate::ButtonSize::Two,
+                )
+                .variant("icon_group")
+                .look(
+                    ButtonFamilyRole::Toggle { selected: true },
+                    InteractionState { hovered, ..Default::default() },
+                    1.0,
                 );
-                assert_eq!(toggle.background, field.background);
-                assert_eq!(toggle.focus_border, field.focus_border);
+                let field = crate::textfield::textfield_theme_with(&look, crate::TextFieldVariant::Soft)
+                    .resolve(xgpui_luma::controls::textfield::TextFieldState { hovered, ..Default::default() }, true);
+                crate::control_group::assert_close(toggle.background, field.background);
+                // The group draws the ring in the focus role, as the soft field does.
+                crate::control_group::assert_close(look.resolve_role(SemanticRole::Focus).hsla(), field.focus_border);
             }
         }
     }

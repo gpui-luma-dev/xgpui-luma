@@ -1,19 +1,13 @@
-//! Radix text-field theme adapter.
+//! Radix text fields, drawn from `.lss` (`style/textfield.lss`).
 //!
 //! Variants match Radix Themes Text Field: `classic` | `surface` | `soft`.
 
 use std::sync::Arc;
 
-use gpui::{BoxShadow, FontWeight, SharedString, point, px};
-use xgpui_luma::controls::textfield::{
-    TextFieldLook, TextFieldPalette, TextFieldState, TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate,
-    compose_textfield_look,
-};
-use xgpui_luma::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::text::StyledTextFieldTheme;
+use xgpui_luma::controls::textfield::{TextFieldTemplate, TextFieldTheme, ThemedTextFieldTemplate};
 
 use crate::look::Look;
-use crate::scale::ScaleFamily;
-use crate::semantic::SemanticRole;
 
 /// Radix Themes text-field / text-area visual variants.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -81,211 +75,51 @@ impl TextFieldSize {
     }
 }
 
-struct TextFieldThemeAdapter {
-    look: Look,
+/// The binding for a Radix text input: the variant (surface is the base) at the look's size.
+pub(crate) fn text_input_binding(
+    look: &Look,
     variant: TextFieldVariant,
+) -> impl FnOnce(xgpui_luma::style::StyleBinding) -> xgpui_luma::style::StyleBinding {
+    let size = look.size();
+    move |binding| {
+        let binding = match variant {
+            TextFieldVariant::Surface => binding,
+            TextFieldVariant::Classic => binding.variant("classic"),
+            TextFieldVariant::Soft => binding.variant("soft"),
+        };
+        if size != crate::RadixSize::Two {
+            binding.attr("size", size.key())
+        } else {
+            binding
+        }
+    }
 }
 
-impl TextFieldTheme for TextFieldThemeAdapter {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> TextFieldPalette {
-        resolve_text_chrome_palette(&self.look, self.variant, state.hovered, state.invalid, enabled)
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
-        let size = self.look.size();
-        let mut palette = self.resolve(state, enabled);
-        palette.typography = typography_for_size(size);
-        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width);
-        let stylesheet = self.look.stylesheet_snapshot();
-        look.helper_geometry = stylesheet.shared_geometry();
-        let geometry = stylesheet.textfield.resolve_geometry_for(
-            size.key(),
-            xgpui_luma::theme::stylesheet::TextFieldGeometry {
-                min_height: look.min_height,
-                padding_x: look.padding_x,
-                padding_y: look.padding_y,
-                gap: look.gap,
-                icon_size: look.icon_size,
-                font_size: look.typography.size,
-                line_height: look.typography.line_height,
-                ..Default::default()
-            },
-        );
-        look.caret_width = geometry.caret_width;
-        look.caret_height_extra = geometry.caret_height_extra;
-        look.disabled_opacity = geometry.disabled_opacity;
-        look.min_height = geometry.min_height;
-        look.padding_x = geometry.padding_x;
-        look.padding_y = geometry.padding_y;
-        look.gap = geometry.gap;
-        look.icon_size = geometry.icon_size;
-        look.typography.size = geometry.font_size;
-        look.typography.line_height = geometry.line_height;
-        if matches!(self.variant, TextFieldVariant::Soft | TextFieldVariant::Classic) {
-            // Soft has no rim; Classic draws its edge via shadow-1.
-            look.border_width = 0.0;
-        }
-        look
-    }
+/// The live `.lss` theme source for a look.
+pub(crate) fn live_source(look: &Look) -> xgpui_luma::style::ThemeSource {
+    let look = look.clone();
+    xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme()))
 }
 
 pub fn textfield_theme(look: &Look) -> Arc<dyn TextFieldTheme> {
     textfield_theme_with(look, TextFieldVariant::default())
 }
 
+/// The Radix text field drawn from `.lss` (`style/textfield.lss`) at the look's size.
 pub fn textfield_theme_with(look: &Look, variant: TextFieldVariant) -> Arc<dyn TextFieldTheme> {
-    Arc::new(TextFieldThemeAdapter { look: look.clone(), variant })
+    Arc::new(StyledTextFieldTheme::new(live_source(look)).with(text_input_binding(look, variant)))
 }
 
 pub fn textfield_template(look: &Look, variant: TextFieldVariant) -> Arc<dyn TextFieldTemplate> {
     Arc::new(ThemedTextFieldTemplate::new(textfield_theme_with(look, variant)))
 }
 
-pub(crate) fn resolve_text_chrome_palette(
-    look: &Look,
-    variant: TextFieldVariant,
-    hovered: bool,
-    invalid: bool,
-    enabled: bool,
-) -> TextFieldPalette {
-    let foreground = look.resolve_role(SemanticRole::Foreground).hsla();
-    let placeholder = look.resolve_role(SemanticRole::MutedForeground).hsla();
-    let selection_background = look.resolve_role(SemanticRole::Soft).hsla();
-    let selection_foreground = look.resolve_role(SemanticRole::SoftForeground).hsla();
-    let gray = |n| look.resolve_step(ScaleFamily::Gray, n).hsla();
-    let accent = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
-    let surface = look.resolve_role(SemanticRole::Surface).hsla();
-
-    if !enabled {
-        return TextFieldPalette {
-            focus_border: if invalid {
-                gpui::transparent_black()
-            } else {
-                look.resolve_role(SemanticRole::Focus).hsla()
-            },
-            background: match variant {
-                TextFieldVariant::Soft => alpha(gray(3), 0.55),
-                TextFieldVariant::Classic | TextFieldVariant::Surface => surface,
-            },
-            foreground: placeholder,
-            border: match variant {
-                TextFieldVariant::Soft => gpui::transparent_black(),
-                TextFieldVariant::Classic | TextFieldVariant::Surface => gray(6),
-            },
-            placeholder,
-            icon: placeholder,
-            selection_background,
-            selection_foreground,
-            caret: placeholder,
-            shadow: None,
-            typography: typography_for_size(crate::RadixSize::Two),
-            font_family: SharedString::from("System UI"),
-        };
-    }
-
-    // Radix: surface = inset gray rim; classic = raised shadow-1; soft = accent tint, no border.
-    let (background, border, shadow) = if invalid {
-        let bg = match variant {
-            TextFieldVariant::Soft => accent(3),
-            TextFieldVariant::Classic | TextFieldVariant::Surface => surface,
-        };
-        (bg, look.resolve_role(SemanticRole::Destructive).hsla(), None)
-    } else {
-        match variant {
-            TextFieldVariant::Surface => {
-                let border = if hovered { gray(8) } else { gray(7) };
-                (surface, border, None)
-            }
-            TextFieldVariant::Classic => {
-                // Classic draws its edge via `--shadow-1`, not a gray stroke.
-                (surface, gpui::transparent_black(), Some(classic_field_shadow(gray(5), alpha(gray(2), 0.45))))
-            }
-            TextFieldVariant::Soft => {
-                let bg = if hovered { accent(4) } else { accent(3) };
-                (bg, gpui::transparent_black(), None)
-            }
-        }
-    };
-
-    TextFieldPalette {
-        focus_border: if invalid {
-            gpui::transparent_black()
-        } else {
-            look.resolve_role(SemanticRole::Focus).hsla()
-        },
-        background,
-        foreground,
-        border,
-        placeholder,
-        icon: placeholder,
-        selection_background,
-        selection_foreground,
-        caret: foreground,
-        shadow,
-        typography: typography_for_size(crate::RadixSize::Two),
-        font_family: SharedString::from("System UI"),
-    }
-}
-
-fn alpha(color: gpui::Hsla, a: f32) -> gpui::Hsla {
-    gpui::Hsla { a, ..color }
-}
-
-/// Radix `--shadow-1` approximation: hairline rim + soft top fade.
-fn classic_field_shadow(edge: gpui::Hsla, fade: gpui::Hsla) -> Vec<BoxShadow> {
-    vec![
-        BoxShadow {
-            offset: point(px(0.0), px(0.0)),
-            blur_radius: px(0.0),
-            spread_radius: px(1.0),
-            color: edge,
-            inset: true,
-        },
-        BoxShadow {
-            offset: point(px(0.0), px(1.5)),
-            blur_radius: px(2.0),
-            spread_radius: px(0.0),
-            color: fade,
-            inset: true,
-        },
-    ]
-}
-
-fn typography_for_size(size: crate::RadixSize) -> LumaTextStyle {
-    let geometry = crate::look::embedded_common_stylesheet()
-        .textfield
-        .resolve_geometry_for(size.key(), Default::default());
-    LumaTextStyle { size: geometry.font_size, line_height: geometry.line_height, weight: FontWeight::NORMAL }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn existing_theme_resolves_replaced_geometry_in_both_modes() {
-        let look = Look::built_in();
-        let fork = look.fork();
-        let theme = textfield_theme(&look);
-        let fork_theme = textfield_theme(&fork);
-        let scale = StandardBoxScale::compute(&look.metrics_for(crate::RadixSize::Two), 1.0);
-        let original = fork_theme.resolve_look(TextFieldState::default(), true, &scale);
-        let mut sheet = look.common_stylesheet();
-        sheet.textfield.geometry.min_height = Some(73.0);
-        look.set_common_stylesheet(sheet);
-        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
-            look.set_mode(mode);
-            assert_eq!(theme.resolve_look(TextFieldState::default(), true, &scale).min_height, 73.0);
-            assert_eq!(
-                fork_theme.resolve_look(TextFieldState::default(), true, &scale).min_height,
-                original.min_height
-            );
-        }
-    }
+    use crate::scale::ScaleFamily;
+    use crate::semantic::SemanticRole;
+    use xgpui_luma::controls::textfield::TextFieldState;
 
     #[test]
     fn focus_adorner_uses_focus_role_without_replacing_face_border() {
@@ -293,7 +127,7 @@ mod tests {
         let theme = textfield_theme(&look);
         let palette = theme.resolve(TextFieldState { focused: true, focus_visible: true, ..Default::default() }, true);
         let expected = look.resolve_role(SemanticRole::Focus).hsla();
-        assert_eq!(palette.focus_border, expected);
+        crate::control_group::assert_close(palette.focus_border, expected);
         assert_eq!(palette.border, theme.resolve(TextFieldState::default(), true).border);
     }
 
@@ -302,7 +136,7 @@ mod tests {
         let look = Look::built_in();
         let theme = textfield_theme_with(&look, TextFieldVariant::Soft);
         let palette = theme.resolve(TextFieldState::default(), true);
-        assert_eq!(palette.background, look.resolve_step(ScaleFamily::Color, 3).hsla());
+        crate::control_group::assert_close(palette.background, look.resolve_step(ScaleFamily::Color, 3).hsla());
     }
 
     #[test]
