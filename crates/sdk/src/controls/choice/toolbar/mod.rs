@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{StyledToolbarTheme, styled_toolbar_look};
 mod control;
 mod model;
 mod template;

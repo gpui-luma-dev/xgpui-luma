@@ -134,7 +134,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
     use xgpui_luma::controls::{
         scrollbar::{ScrollbarOrientation, ScrollbarStyle},
         pager::PagerStyle,
-        toolbar::ToolbarVariant,
     };
     let look = custom_look();
     for mode in [ThemeMode::Light, ThemeMode::Dark] {
@@ -164,9 +163,6 @@ fn remaining_common_geometry_reaches_paint_and_inspection() {
             let card = crate::controls::card::card_look(&look, size);
             assert_eq!((card.padding, card.section_gap, card.header_gap, card.body_gap), (23.0, 11.0, 7.0, 12.0));
             assert_eq!(inspect.inspect_card_metrics(size).padding.value_px, 23.0);
-            let toolbar = look.with_size(size).toolbar_theme().resolve(true, ToolbarVariant::Outline);
-            assert_eq!((toolbar.padding_x, toolbar.padding_y, toolbar.gap), (10.0, 6.0, 12.0));
-            assert_eq!(inspect.inspect_toolbar_metrics(size).gap.value_px, 12.0);
             let sidebar = crate::paint::sidebar_item_look(&look, false, InteractionState::default(), size);
             assert_eq!((sidebar.height, sidebar.padding_x, sidebar.icon_size, sidebar.gap), (34.0, 11.0, 19.0, 10.0));
             assert_eq!(inspect.inspect_sidebar_metrics(size).item_height.value_px, 34.0);
@@ -349,8 +345,6 @@ radius=11
 "#])
     .unwrap();
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let shell = look.control_group_theme().resolve_list(true);
-    assert_eq!((shell.padding_x, shell.radius), (0.0, 7.0));
     let list = look.selector_items_panel_look(crate::ShadcnSize::Md);
     assert_eq!(
         (list.border_width, list.disabled_opacity, list.popup_offset_y, list.window_margin),
@@ -358,12 +352,6 @@ radius=11
     );
     let selection = look.selection_panel_look(crate::ShadcnSize::Md);
     assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (3.0, 0.2, 11.0));
-    #[cfg(feature = "inspect")]
-    {
-        let inspected = crate::inspect::ShadcnInspect::new(&look).inspect_control_group_metrics(ShadcnSize::Md);
-        assert_eq!(inspected.radius.value_px, shell.radius);
-        assert_eq!(inspected.padding_x.value_px, shell.padding_x);
-    }
 }
 
 #[test]
@@ -627,12 +615,9 @@ subtitle_opacity=0.2
     let sdk_stepper = DefaultStepperTheme::new(tokens.clone());
     let sdk_split = DefaultSplitViewTheme::new(tokens.clone());
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    for resolved in [
-        sdk_toolbar.resolve(true, ToolbarVariant::Outline),
-        look.with_size(ShadcnSize::Md).toolbar_theme().resolve(true, ToolbarVariant::Outline),
-    ] {
-        assert_eq!((resolved.border_width, resolved.separator_width), (0.0, 3.0));
-    }
+    // The look's toolbar is drawn from `.lss`; the token-built SDK theme still reads these overrides.
+    let resolved = sdk_toolbar.resolve(true, ToolbarVariant::Outline);
+    assert_eq!((resolved.border_width, resolved.separator_width), (0.0, 3.0));
     for resolved in [sdk_dock.resolve(true), look.dock_splitter_theme().resolve(true)] {
         assert_eq!((resolved.geometry.thumb_width, resolved.geometry.thumb_rest_opacity), (9.0, 0.0));
     }

@@ -1,3 +1,5 @@
+mod styled;
+pub use styled::{MetricsSource, StyledControlGroupTheme};
 mod menu_choice_template;
 mod button_item_template;
 mod toggle_button_item_template;

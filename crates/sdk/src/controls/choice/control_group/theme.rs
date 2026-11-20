@@ -94,7 +94,7 @@ pub struct DefaultControlGroupTheme {
 pub fn default_control_group_theme() -> Arc<dyn ControlGroupTheme> {
     static THEME: OnceLock<Arc<dyn ControlGroupTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultControlGroupTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledControlGroupTheme::sdk())).clone()
 }
 
 impl DefaultControlGroupTheme {

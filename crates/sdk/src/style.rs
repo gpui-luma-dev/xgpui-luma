@@ -65,6 +65,8 @@ sdk_sources! {
         "controls/choice/switch/switch.lss",
         "controls/button/button.lss",
         "controls/choice/toggle/toggle.lss",
+        "controls/choice/control_group/control_group.lss",
+        "controls/choice/toolbar/toolbar.lss",
         "controls/text/textfield/textfield.lss",
         "controls/text/textarea/textarea.lss",
         "controls/selection/selector/selector.lss",

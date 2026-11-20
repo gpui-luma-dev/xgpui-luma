@@ -93,14 +93,12 @@ fn navigation_colors_and_disabled_precedence_follow_the_bound_look() {
 fn live_geometry_and_palette_edits_remain_local_to_forks() {
     let base = Look::built_in();
     let fork = base.fork();
-    let group = control_group_theme(&fork);
     let accordion = accordion_theme(&fork);
     let pager = pager_theme(&fork);
     let steps = stepper_theme(&fork);
     let sidebar = sidebar_theme(&fork);
     let before = sidebar.resolve_item(true, Default::default());
     let mut sheet = fork.common_stylesheet();
-    sheet.control_group.geometry.gap = Some(17.0);
     sheet.accordion.geometry.trigger_height = Some(52.0);
     sheet.pager.geometry.button_min_width = Some(47.0);
     sheet.stepper.sizes.get_or_default("2").step_badge_size = Some(43.0);
@@ -108,7 +106,6 @@ fn live_geometry_and_palette_edits_remain_local_to_forks() {
     fork.set_common_stylesheet(sheet);
     fork.set_mode(ThemeMode::Dark);
     fork.set_palettes(Accent::Red, Gray::Slate);
-    assert_eq!(group.resolve_list(true).gap, 17.0);
     assert_eq!(accordion.resolve_scale(1.0).trigger_height, 52.0);
     assert_eq!(pager.resolve(true, PagerStyle::Numeric).button_min_width, 47.0);
     assert_eq!(steps.resolve(true).step_badge_size, 43.0);

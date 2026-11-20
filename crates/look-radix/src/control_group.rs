@@ -5,7 +5,7 @@ use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::controls::control_group::*;
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 use crate::{ButtonVariant, Look, ScaleFamily, SemanticRole};
 
 /// A control-group row face: the `.lss` ghost toggle at `size`.
@@ -28,40 +28,20 @@ fn item_look(
     )
 }
 
-struct GroupTheme {
-    look: Look,
-}
-impl ControlGroupTheme for GroupTheme {
-    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook {
-        let mut shell =
-            DefaultControlGroupTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_list(enabled);
-        shell.background = self.look.resolve_role(SemanticRole::Surface).hsla();
-        shell.border = self.look.resolve_role(SemanticRole::Border).hsla();
-        shell
-    }
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-    fn default_item_palette(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        _scale: &StandardBoxScale,
-    ) -> ControlGroupItemPalette {
-        let size = self.look.size();
-        let palette = item_look(&self.look, selected, state, size, 1.0);
-        ControlGroupItemPalette {
-            foreground: palette.foreground,
-            background: palette.background,
-            muted_foreground: palette.muted_foreground,
-            typography: palette.typography,
-            font_family: palette.font_family,
-        }
-    }
-}
-/// Live Radix shell and item palettes; mutations require notifying affected owners.
+/// The Radix control-group frame drawn from `.lss` (`style/control_group.lss`); rows are the ghost toggle at
+/// the look's size. Follows the look's later edits.
 pub fn control_group_theme(look: &Look) -> Arc<dyn ControlGroupTheme> {
-    Arc::new(GroupTheme { look: look.clone() })
+    let size = match look.size() {
+        crate::RadixSize::One => crate::ButtonSize::One,
+        crate::RadixSize::Two => crate::ButtonSize::Two,
+        crate::RadixSize::Three => crate::ButtonSize::Three,
+    };
+    let metrics = look.clone();
+    Arc::new(StyledControlGroupTheme::new(
+        xgpui_luma::style::StyleBinding::new("control_group", crate::textfield::live_source(look)),
+        crate::button::styled_button_template::<()>(look, ButtonVariant::Ghost, crate::Paint::accent(), size),
+        Arc::new(move || metrics.metrics_for(metrics.size())),
+    ))
 }
 /// SDK group shell. Pair with [`control_group_item_template`] for Radix item chrome.
 pub fn control_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {

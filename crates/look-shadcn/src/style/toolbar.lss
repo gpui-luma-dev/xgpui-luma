@@ -1,0 +1,12 @@
+// Shadcn toolbar. Layer: look. A muted shell (also when disabled) with the border edge and separators, and
+// the medium control radius at every size.
+
+toolbar {
+  part root {
+    background = css.muted
+    border     = css.border
+    radius     = exact(first(max(css.radius - 2, 0), 4))
+    :disabled { background = css.muted }
+  }
+  part separator { background = css.border }
+}

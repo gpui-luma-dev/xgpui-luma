@@ -1,45 +1,22 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::toolbar::{ThemedToolbarTemplate, ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant};
+use xgpui_luma::controls::toolbar::{StyledToolbarTheme, ThemedToolbarTemplate, ToolbarTemplate, ToolbarTheme};
 
 use crate::look::ShadcnLook;
 
-struct ShadcnToolbarTheme {
-    theme: ShadcnLook,
-}
-
-impl ToolbarTheme for ShadcnToolbarTheme {
-    fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let metrics = crate::tables::metrics::resolve_toolbar_metrics(&tokens, self.theme.mode(), size);
-        let colors = crate::tables::resolve_toolbar_colors(&tokens, self.theme.mode(), enabled, variant);
-
-        let chrome = tokens.stylesheet().common.toolbar.resolve_geometry_for(
-            size.key(),
-            xgpui_luma::theme::stylesheet::ToolbarGeometry {
-                border_width: tokens.metrics.border_width,
-                separator_width: tokens.metrics.border_width,
-                ..Default::default()
-            },
-        );
-        ToolbarLook {
-            border_width: chrome.border_width,
-            separator_width: chrome.separator_width,
-            background: colors.background.hsla(),
-            border: colors.border.hsla(),
-            separator: colors.separator.hsla(),
-            radius: metrics.radius.value_px,
-            padding_x: metrics.padding_x.value_px,
-            padding_y: metrics.padding_y.value_px,
-            gap: metrics.gap.value_px,
-            separator_height: metrics.separator_height.value_px,
-        }
-    }
-}
-
+/// The Shadcn toolbar drawn from `.lss` (`style/toolbar.lss`) at the look's size.
 pub fn toolbar_theme(theme: ShadcnLook) -> Arc<dyn ToolbarTheme> {
-    Arc::new(ShadcnToolbarTheme { theme: theme.clone() })
+    let size = theme.size();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "toolbar",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || theme.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(StyledToolbarTheme::new(binding))
 }
 
 pub fn toolbar_template(theme: ShadcnLook) -> Arc<dyn ToolbarTemplate> {

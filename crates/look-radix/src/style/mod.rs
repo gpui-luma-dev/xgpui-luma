@@ -64,7 +64,9 @@ radix_sources![
     "overlay_window.lss",
     "autocomplete.lss",
     "slider.lss",
-    "progress.lss"
+    "progress.lss",
+    "control_group.lss",
+    "toolbar.lss"
 ];
 
 /// The SDK's files with the Radix look's files over them.

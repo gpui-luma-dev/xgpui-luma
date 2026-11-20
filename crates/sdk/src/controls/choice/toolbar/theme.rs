@@ -51,7 +51,7 @@ impl DefaultToolbarTheme {
 
 pub fn default_toolbar_theme() -> Arc<dyn ToolbarTheme> {
     static THEME: OnceLock<Arc<dyn ToolbarTheme>> = OnceLock::new();
-    THEME.get_or_init(|| Arc::new(DefaultToolbarTheme::default())).clone()
+    THEME.get_or_init(|| Arc::new(super::styled::StyledToolbarTheme::sdk())).clone()
 }
 
 impl ToolbarTheme for DefaultToolbarTheme {

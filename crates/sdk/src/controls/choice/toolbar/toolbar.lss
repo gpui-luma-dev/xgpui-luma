@@ -1,0 +1,31 @@
+// SDK toolbar. Layer: sdk. The shell around hosted controls, read by `styled_toolbar_look` (styled.rs). The
+// base is the outlined, filled shell; `variant ghost` has no fill or edge.
+
+/// A row of controls.
+toolbar {
+  /// Separator thickness and height.
+  separator_width: length = exact(metrics.border_width)
+  separator_height: length = exact(metrics.control.height)
+
+  /// The shell.
+  part root {
+    background   = palette.surface.subtle.background
+    border       = palette.border.default
+    border_width = exact(metrics.border_width)
+    radius       = exact(6)
+    padding_x    = exact(6)
+    padding_y    = exact(4)
+    gap          = exact(metrics.control.gap)
+    :disabled { background = palette.state.disabled.background }
+  }
+
+  /// A separator between groups of controls.
+  part separator { background = palette.border.default }
+
+  variant ghost {
+    part root {
+      background := transparent
+      border     := transparent
+    }
+  }
+}
