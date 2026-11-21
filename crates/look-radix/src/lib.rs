@@ -129,6 +129,7 @@ mod radio_builder;
 mod radio_group;
 mod scale;
 mod size;
+pub mod style;
 mod segmented;
 mod selector;
 mod selector_list;
@@ -174,18 +175,15 @@ pub use size::{RadixControlMetrics, RadixSize};
 pub use avatar::{Avatar, AvatarSize, AvatarStyle, AvatarVariant};
 pub use badge::{Badge, BadgeSize, BadgeVariant};
 pub use button::{
-    ClassicButtonParams, Paint, ButtonVariant, button_family_theme, button_family_theme_with, button_look_for,
-    button_template, classic_button_template, classic_button_template_with,
+    ClassicButtonParams, Paint, ButtonVariant, button_look_for, button_template, button_template_for,
+    classic_button_template, classic_button_template_with,
 };
 pub use button_builder::Button;
 pub use callout::callout;
 pub use context_menu::{ContextMenuVariant, context_menu_template, context_menu_theme};
 pub use context_menu_builder::ContextMenu;
 pub use card::{Card, CardSize, CardStyle, CardVariant};
-pub use checkbox::{
-    CheckboxSize, CheckboxVariant, checkbox_scale_for, checkbox_template, checkbox_template_for, checkbox_theme,
-    checkbox_theme_for, checkbox_theme_with, resolve_checkbox_radius,
-};
+pub use checkbox::{CheckboxSize, CheckboxVariant, checkbox_template, checkbox_template_for};
 pub use checkbox_builder::Checkbox;
 pub use checkbox_group::{CheckboxGroup, checkbox_group_template};
 pub use popup_menu::{PopupMenuVariant, floating_menu_look, floating_menu_look_for, popup_menu_template, popup_menu_theme};
@@ -194,10 +192,7 @@ pub use progress::{
     ProgressSize, ProgressVariant, progress_template, progress_theme, progress_theme_with, resolve_progress_radius,
 };
 pub use progress_builder::Progress;
-pub use radio::{
-    RadioSize, RadioVariant, radio_scale_for, radio_template, radio_template_for, radio_theme, radio_theme_for,
-    radio_theme_with,
-};
+pub use radio::{RadioSize, RadioVariant, radio_template, radio_template_for};
 pub use radio_builder::Radio;
 pub use radio_group::{RadioGroup, radio_group_template};
 pub use slider::{
@@ -205,10 +200,7 @@ pub use slider::{
     slider_theme_with,
 };
 pub use slider_builder::Slider;
-pub use switch::{
-    SwitchSize, SwitchVariant, resolve_switch_radius, switch_scale_for, switch_template, switch_template_for,
-    switch_theme, switch_theme_for, switch_theme_with, switch_geometry,
-};
+pub use switch::{SwitchSize, SwitchVariant, switch_template, switch_template_for};
 pub use switch_builder::Switch;
 pub use tabs::{
     TabsBaselineStyle, TabsMetrics, TabsStyle, TabsSize, TabsVariant, tabs_template, tabs_template_for, tabs_theme,

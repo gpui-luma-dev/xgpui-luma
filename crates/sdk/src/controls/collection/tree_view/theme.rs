@@ -3,7 +3,7 @@ use std::sync::{Arc, OnceLock};
 use gpui::{Hsla, SharedString};
 
 use crate::theme::scales::snap_to_pixel;
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TreeViewScale {
@@ -99,116 +99,10 @@ pub trait TreeViewTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultTreeViewTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_tree_view_theme() -> Arc<dyn TreeViewTheme> {
     static THEME: OnceLock<Arc<dyn TreeViewTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTreeViewTheme::default())).clone()
-}
-
-impl DefaultTreeViewTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl TreeViewTheme for DefaultTreeViewTheme {
-    fn drag_preview_shadow(&self) -> Vec<gpui::BoxShadow> {
-        self.tokens.elevation.drag_preview.to_box_shadows()
-    }
-
-    fn icon(&self, role: crate::theme::stylesheet::IconRole) -> crate::infra::icon::IconSource {
-        self.tokens.stylesheet.icons.resolve(role)
-    }
-    fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
-        let palette = self.tokens.stylesheet.recipes.palette("tree_view", &self.tokens.palette);
-        let typography = &self.tokens.typography;
-        let layer = state.layer();
-
-        let selected = selected && !state.disabled;
-        let background = match layer {
-            _ if selected => Some(palette.navigation.selected_background),
-            InteractionLayer::Disabled | InteractionLayer::Default => None,
-            InteractionLayer::Hovered => Some(palette.navigation.hover_background),
-            InteractionLayer::Pressed => Some(palette.state.pressed.background),
-        };
-
-        let foreground = if state.disabled {
-            palette.state.disabled.foreground
-        } else if selected {
-            palette.navigation.selected_foreground
-        } else {
-            palette.app.foreground
-        };
-
-        let mut row_typography = typography.text.label;
-        crate::controls::textfield::apply_control_typography(&mut row_typography, typography);
-
-        TreeViewPalette {
-            background,
-            foreground,
-            icon_color: if selected {
-                foreground
-            } else {
-                palette.navigation.muted_foreground
-            },
-            chevron_color: if selected {
-                foreground
-            } else {
-                palette.navigation.muted_foreground
-            },
-            typography: row_typography,
-            font_family: typography.font.sans.family.clone().into(),
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
-        TreeViewScale::compute_with_stylesheet(&self.tokens.metrics, scale_factor, &self.tokens.stylesheet)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{DefaultTreeViewTheme, TreeViewScale, TreeViewTheme};
-    use crate::theme::{InteractionState, MetricTokens, ThemeTokens};
-
-    #[test]
-    fn selected_rows_remain_highlighted_without_hover_or_focus() {
-        for tokens in [ThemeTokens::light(), ThemeTokens::dark()] {
-            let theme = DefaultTreeViewTheme::new(tokens.clone());
-            for state in [
-                InteractionState::default(),
-                InteractionState { hovered: true, ..Default::default() },
-                InteractionState { pressed: true, ..Default::default() },
-            ] {
-                let selected = theme.resolve_row(state, true);
-                assert_eq!(selected.background, Some(tokens.palette.navigation.selected_background));
-                assert_eq!(selected.foreground, tokens.palette.navigation.selected_foreground);
-                assert_eq!(selected.icon_color, selected.foreground);
-                assert_eq!(selected.chevron_color, selected.foreground);
-            }
-            assert_eq!(theme.resolve_row(InteractionState::default(), false).background, None);
-            let disabled = InteractionState { disabled: true, ..Default::default() };
-            assert_eq!(theme.resolve_row(disabled, true).background, None);
-            assert_eq!(theme.resolve_row(disabled, true).foreground, tokens.palette.state.disabled.foreground);
-        }
-    }
-
-    #[test]
-    fn affordance_sizes_follow_control_scale() {
-        let scale = TreeViewScale::compute(&MetricTokens::default(), 1.0);
-
-        assert_eq!(scale.icon_size, 16.0);
-        assert_eq!(scale.chevron_size, 14.0);
-    }
+    THEME.get_or_init(|| Arc::new(super::styled::StyledTreeViewTheme::sdk())).clone()
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

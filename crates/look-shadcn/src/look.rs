@@ -14,7 +14,7 @@ use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, Theme
 
 use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
-use crate::controls::{button_look, selection_panel::selection_panel_look, selector_items_panel_look, templates};
+use crate::controls::{selection_panel::selection_panel_look, selector_items_panel_look, templates};
 use crate::mode::ShadcnModeTokens;
 use crate::stylesheet::{
     StylesheetConfig, find_typography_scale_rule, find_typography_semantic_rule, resolve_typography_rule,
@@ -67,6 +67,8 @@ struct ShadcnLookState {
     motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     snapshot: RwLock<Arc<ShadcnLookSnapshot>>,
     mode: AtomicU8,
+    /// The `.lss` theme last bound, keyed by its mode tokens and mode (see [`ShadcnLook::style_theme`]).
+    style_theme: crate::style::ThemeCache,
 }
 
 struct ShadcnLookSnapshot {
@@ -199,6 +201,7 @@ impl ShadcnLook {
                     crate::stylesheet::embedded_stylesheet().clone(),
                 )?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })
@@ -215,6 +218,7 @@ impl ShadcnLook {
                 motion: RwLock::new(Default::default()),
                 snapshot: RwLock::new(Arc::new(ShadcnLookSnapshot::new(catalog, stylesheet)?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })
@@ -283,6 +287,36 @@ impl ShadcnLook {
         match self.mode() {
             ThemeMode::Light => Arc::clone(&snapshot.light),
             ThemeMode::Dark => Arc::clone(&snapshot.dark),
+        }
+    }
+
+    /// Mode tokens for `mode`, whatever the current mode is (style token sources hold both).
+    pub(crate) fn mode_tokens_for(&self, mode: ThemeMode) -> Arc<ShadcnModeTokens> {
+        let snapshot = self.snapshot();
+        match mode {
+            ThemeMode::Light => Arc::clone(&snapshot.light),
+            ThemeMode::Dark => Arc::clone(&snapshot.dark),
+        }
+    }
+
+    /// The look's catalog bound to the Shadcn `.lss` files in the current mode. Cached: rebinds only
+    /// after the mode or the catalog changed.
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.state.style_theme.get(self)
+    }
+
+    /// A live binding of `control` to the look's `.lss` at the look's size.
+    pub(crate) fn style_binding(&self, control: &'static str) -> xgpui_luma::style::StyleBinding {
+        let look = self.clone();
+        let binding = xgpui_luma::style::StyleBinding::new(
+            control,
+            xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme())),
+        );
+        let size = self.size();
+        if size != crate::ShadcnSize::Md {
+            binding.attr("size", size.key())
+        } else {
+            binding
         }
     }
 
@@ -455,6 +489,7 @@ impl ShadcnLook {
                 motion: RwLock::new(lock::read(&self.state.motion).clone()),
                 snapshot: RwLock::new(Arc::new(next)),
                 mode: AtomicU8::new(self.state.mode.load(Ordering::Relaxed)),
+                style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
         })
@@ -481,8 +516,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Primary, role, size, state)
+        self.button_face(ShadcnButtonStyle::Primary, role, size, None, state)
     }
 
     pub fn resolve_secondary_button(
@@ -491,8 +525,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Secondary, role, size, state)
+        self.button_face(ShadcnButtonStyle::Secondary, role, size, None, state)
     }
 
     pub fn resolve_outline_button(
@@ -501,8 +534,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Outline, role, size, state)
+        self.button_face(ShadcnButtonStyle::Outline, role, size, None, state)
     }
 
     pub fn resolve_ghost_button(
@@ -511,8 +543,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::Ghost, role, size, state)
+        self.button_face(ShadcnButtonStyle::Ghost, role, size, None, state)
     }
 
     pub fn resolve_content_only_button(
@@ -521,8 +552,7 @@ impl ShadcnLook {
         size: ShadcnSize,
         state: InteractionState,
     ) -> ButtonFamilyLook {
-        let tokens = self.mode_tokens();
-        button_look(tokens.as_ref(), self.mode(), ShadcnButtonStyle::ContentOnly, role, size, state)
+        self.button_face(ShadcnButtonStyle::ContentOnly, role, size, None, state)
     }
 
     pub fn switch_template(
@@ -545,6 +575,14 @@ impl ShadcnLook {
     ) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<xgpui_luma::controls::radio_button::RadioButtonData>>
     {
         templates::radio_button_template(self.clone(), style)
+    }
+
+    /// The `.lss` radio template before it is shared, for adding modifiers.
+    pub fn styled_radio_button_template(
+        &self,
+        style: ShadcnButtonStyle,
+    ) -> xgpui_luma::controls::radio_button::StyledRadioButtonTemplate {
+        templates::styled_radio_button_template(self.clone(), style)
     }
 
     pub fn button_template(
@@ -860,6 +898,47 @@ impl ShadcnLook {
         xgpui_luma::controls::overlay_window::overlay_window(id).template(self.overlay_window_template())
     }
 
+    /// A button face from `.lss` for `style` and `role` at `size`, with an optional corner preset (the
+    /// `radius` attribute; none keeps the size's corner). A toggle role draws the toggle.
+    pub fn button_face(
+        &self,
+        style: ShadcnButtonStyle,
+        role: xgpui_luma::controls::button_family::ButtonFamilyRole,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+        state: xgpui_luma::theme::InteractionState,
+    ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+        let template = templates::styled_button_template::<()>(self.with_size(size), style);
+        let template = match radius {
+            Some(preset) => template.attr("radius", preset.key()),
+            None => template,
+        };
+        template.look(role, state, 1.0)
+    }
+
+    /// An icon-only toggle from `.lss`: the toggle's colors, shadow and corner on the icon button's square box.
+    pub fn icon_toggle_face(
+        &self,
+        style: ShadcnButtonStyle,
+        selected: bool,
+        size: ShadcnSize,
+        radius: Option<crate::ButtonRadiusPreset>,
+        state: xgpui_luma::theme::InteractionState,
+    ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+        use xgpui_luma::controls::button_family::ButtonFamilyRole;
+        let mut face = self.button_face(style, ButtonFamilyRole::Toggle { selected }, size, radius, state);
+        let icon = self.button_face(style, ButtonFamilyRole::Icon, size, radius, state);
+        face.height = icon.height;
+        face.padding_x = 0.0;
+        face.padding_y = 0.0;
+        face.icon_size = icon.icon_size;
+        // A preset sizes the corner to the square box; otherwise the toggle keeps its own corner.
+        if radius.is_some() {
+            face.radius = icon.radius;
+        }
+        face
+    }
+
     pub fn toggle_template(
         &self,
         style: ShadcnButtonStyle,
@@ -881,22 +960,6 @@ impl ShadcnLook {
         style: ShadcnButtonStyle,
     ) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<xgpui_luma::controls::toggle::ToggleData>> {
         templates::animated_toggle_item_template(self.clone(), style)
-    }
-
-    pub fn button_family_theme(&self) -> Arc<dyn xgpui_luma::controls::button_family::ButtonFamilyTheme> {
-        templates::button_family_theme(self.clone())
-    }
-
-    pub fn checkbox_theme(&self) -> Arc<dyn xgpui_luma::controls::checkbox::CheckboxTheme> {
-        templates::checkbox_theme(self.clone())
-    }
-
-    pub fn switch_theme(&self) -> Arc<dyn xgpui_luma::controls::switch::SwitchTheme> {
-        templates::switch_theme(self.clone())
-    }
-
-    pub fn radio_button_theme(&self) -> Arc<dyn xgpui_luma::controls::radio_button::RadioButtonTheme> {
-        templates::radio_button_theme(self.clone())
     }
 
     pub fn slider_theme(&self) -> Arc<dyn xgpui_luma::controls::slider::SliderTheme> {

@@ -6,7 +6,6 @@
 //! - radius from `--radius-{size}` × `--radius-factor`, or pill when `full`
 
 use gpui::FontWeight;
-use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole};
 use xgpui_luma::theme::{ControlMetricTokens, LumaTextStyle, MetricTokens};
 
 /// Radix `size` prop on Button. Default is [`Self::Two`].
@@ -231,35 +230,6 @@ fn button_box_height(size: ButtonSize) -> f32 {
         .button
         .resolve_geometry_for(size.as_str(), Default::default())
         .height
-}
-
-/// Applies Radix size/radius geometry onto a resolved color palette.
-pub fn apply_button_box(palette: &ButtonFamilyPalette, role: ButtonFamilyRole, box_: ButtonBox) -> ButtonFamilyLook {
-    ButtonFamilyLook {
-        focus_border: palette.focus_border,
-        background: palette.background,
-        foreground: palette.foreground,
-        muted_foreground: palette.muted_foreground,
-        border: palette.border,
-        typography: box_.typography,
-        font_family: palette.font_family.clone(),
-        radius: box_.radius,
-        padding_x: match role {
-            ButtonFamilyRole::Icon => 0.0,
-            _ => box_.padding_x,
-        },
-        padding_y: match role {
-            ButtonFamilyRole::Icon => 0.0,
-            _ => box_.padding_y,
-        },
-        gap: box_.gap,
-        height: box_.height,
-        icon_size: match role {
-            ButtonFamilyRole::Icon => box_.icon_size,
-            _ => box_.typography.size,
-        },
-        shadow: None,
-    }
 }
 
 #[cfg(test)]

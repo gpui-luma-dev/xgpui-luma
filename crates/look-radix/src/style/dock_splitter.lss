@@ -1,0 +1,16 @@
+// Radix dock splitter. Layer: look. A border line, the focus color under the pointer and on the grip; muted
+// foreground when disabled.
+
+dock_splitter {
+  line       = radix.role.border
+  hover_line = radix.role.focus
+  thumb      = radix.role.focus
+
+  part root {
+    :disabled {
+      line       = radix.role.muted_foreground
+      hover_line = radix.role.muted_foreground
+      thumb      = radix.role.muted_foreground
+    }
+  }
+}

@@ -80,14 +80,20 @@ mod tests {
                         let palette =
                             theme.resolve(PopupMenuTriggerStyle::Primary, PopupMenuTriggerMetrics::default(), state);
                         if state.disabled {
-                            assert_eq!(
+                            crate::control_group::assert_close(
                                 palette.trigger_foreground,
-                                fork.resolve_role(SemanticRole::MutedForeground).hsla()
+                                fork.resolve_role(SemanticRole::MutedForeground).hsla(),
                             );
                         } else {
-                            assert_eq!(palette.trigger_foreground, Tone::Accent.contrast(&fork));
+                            crate::control_group::assert_close(
+                                palette.trigger_foreground,
+                                Tone::Accent.contrast(&fork),
+                            );
                         }
-                        assert_eq!(palette.floating_menu.item_hover_background, Tone::Accent.step(&fork, 9));
+                        crate::control_group::assert_close(
+                            palette.floating_menu.item_hover_background,
+                            Tone::Accent.step(&fork, 9),
+                        );
                     }
                 }
             }

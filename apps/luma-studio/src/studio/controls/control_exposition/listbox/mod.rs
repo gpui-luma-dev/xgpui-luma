@@ -33,7 +33,7 @@ use super::inspector_split::InspectorSplitShell;
 use super::model::ControlExpositionLayout;
 use super::template::render_control_exposition_card;
 
-/// Read-only layout values supplied independently by each example to its inspector.
+/// Layout values an example's markup uses.
 #[derive(Clone, Copy)]
 pub(super) struct ListBoxSampleLayout {
     pub item_height: f32,
@@ -43,7 +43,6 @@ pub(super) struct ListBoxSampleLayout {
     pub inset_x: f32,
     pub inset_y: f32,
     pub radius: f32,
-    pub border: f32,
 }
 
 pub(super) const ITEM_CONTENT_GAP: f32 = 6.0;

@@ -372,8 +372,13 @@ pub fn resolve_scrollbar_metrics_for_size(
     use crate::tables::metrics::helpers::{derived_metric, pill_radius_metric};
 
     let ctx = crate::LookContext::new(mode, theme_mode, xgpui_luma::theme::InteractionState::default());
-    let look =
-        crate::paint::scrollbar_look(mode, xgpui_luma::theme::InteractionState::default(), orientation, size, style);
+    let look = crate::controls::scrollbar::scrollbar_look(
+        mode,
+        xgpui_luma::theme::InteractionState::default(),
+        orientation,
+        size,
+        style,
+    );
     let catalog = ctx.catalog();
 
     let mut table = ScrollbarMetricTable {

@@ -2,111 +2,38 @@
 
 use std::sync::Arc;
 
-use gpui::{BoxShadow, FontWeight, SharedString, black, point, px};
-use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode, OverlayWindowTheme};
-use xgpui_luma::theme::{LumaTextStyle};
+use xgpui_luma::controls::overlay_window::{OverlayWindowTheme, StyledOverlayWindowTheme};
 
 use crate::look::Look;
-use crate::semantic::SemanticRole;
 
-struct OverlayWindowThemeAdapter {
-    look: Look,
-}
-
-impl OverlayWindowTheme for OverlayWindowThemeAdapter {
-    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
-        let size = self.look.size();
-        let fallback = xgpui_luma::controls::overlay_window::default_overlay_window_theme().resolve(mode);
-        let mut resolved = OverlayWindowLook {
-            viewport_padding: fallback.viewport_padding,
-            window_margin: fallback.window_margin,
-            drag_header_height: fallback.drag_header_height,
-
-            border_width: fallback.border_width,
-            background: self.look.resolve_role(SemanticRole::Surface).hsla(),
-            border: self.look.resolve_role(SemanticRole::Border).hsla(),
-            foreground: self.look.resolve_role(SemanticRole::Foreground).hsla(),
-            backdrop_background: if mode == OverlayWindowMode::Modal {
-                gpui::Hsla { a: 0.42, ..black() }
-            } else {
-                gpui::Hsla { a: 0.0, ..black() }
-            },
-            shadow: vec![BoxShadow {
-                offset: point(px(0.0), px(18.0)),
-                blur_radius: px(38.0),
-                spread_radius: px(-16.0),
-                color: gpui::Hsla { a: 0.22, ..black() },
-                inset: false,
-            }],
-            radius: crate::RadixRadii::DEFAULT.xl,
-            padding: self.look.control_sizes().padding_x(size),
-            min_width: fallback.min_width,
-            max_width: fallback.max_width,
-            estimated_height: fallback.estimated_height,
-            body: LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight::NORMAL },
-            font_family: SharedString::from("System UI"),
-        };
-        let key = match size {
-            crate::RadixSize::One => "sm",
-            crate::RadixSize::Two => "md",
-            crate::RadixSize::Three => "lg",
-        };
-        let geometry = self.look.common_stylesheet().overlay_window.resolve_geometry_for(
-            key,
-            xgpui_luma::theme::stylesheet::OverlayWindowGeometry {
-                padding: resolved.padding,
-                min_width: resolved.min_width,
-                max_width: resolved.max_width,
-                estimated_height: resolved.estimated_height,
-                font_size: resolved.body.size,
-                line_height: resolved.body.line_height,
-                backdrop_opacity: resolved.backdrop_background.a,
-                border_width: resolved.border_width,
-                viewport_padding: resolved.viewport_padding,
-                window_margin: resolved.window_margin,
-                drag_header_height: resolved.drag_header_height,
-
-                radius: resolved.radius,
-            },
-        );
-        resolved.viewport_padding = geometry.viewport_padding;
-        resolved.window_margin = geometry.window_margin;
-        resolved.drag_header_height = geometry.drag_header_height;
-        resolved.border_width = geometry.border_width;
-        resolved.radius = geometry.radius;
-        resolved.padding = geometry.padding;
-        resolved.min_width = geometry.min_width;
-        resolved.max_width = geometry.max_width;
-        resolved.estimated_height = geometry.estimated_height;
-        if mode == OverlayWindowMode::Modal {
-            resolved.backdrop_background.a = geometry.backdrop_opacity;
-        }
-        resolved.body.size = geometry.font_size;
-        resolved.body.line_height = geometry.line_height;
-        resolved
-    }
-}
-
+/// The Radix overlay window drawn from `.lss` (`style/overlay_window.lss`) at the look's size; follows the
+/// look's later edits.
 pub fn overlay_window_theme(look: &Look) -> Arc<dyn OverlayWindowTheme> {
-    Arc::new(OverlayWindowThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("overlay_window", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(StyledOverlayWindowTheme::new(binding))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::controls::overlay_window::OverlayWindowMode;
+
     #[test]
-    fn overlay_chrome_uses_selected_common_stylesheet() {
+    fn sizes_and_modes_match_the_radix_window() {
         let look = Look::built_in();
-        look.set_common_stylesheet(
-            xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
-                "[common.overlay_window.geometry]\nborder_width=0\nradius=19",
-            ])
-            .unwrap(),
-        );
-        for mode in [OverlayWindowMode::Modal, OverlayWindowMode::Modeless] {
-            let resolved = overlay_window_theme(&look).resolve(mode);
-            assert_eq!((resolved.border_width, resolved.radius), (0.0, 19.0));
-        }
+        let at = |size, mode| overlay_window_theme(&look.with_size(size)).resolve(mode);
+        let modal = at(crate::RadixSize::Two, OverlayWindowMode::Modal);
+        assert_eq!((modal.radius, modal.padding, modal.min_width, modal.max_width), (8.0, 12.0, 360.0, 440.0));
+        assert!((modal.backdrop_background.a - 0.42).abs() < 1e-3);
+        assert_eq!(at(crate::RadixSize::Two, OverlayWindowMode::Modeless).backdrop_background.a, 0.0);
+        let small = at(crate::RadixSize::One, OverlayWindowMode::Modeless);
+        assert_eq!((small.padding, small.min_width, small.estimated_height), (8.0, 280.0, 180.0));
     }
 }
 

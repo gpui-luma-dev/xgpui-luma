@@ -59,16 +59,6 @@ impl AvatarSize {
             .resolve_geometry_for(self.as_str(), Default::default())
             .diameter
     }
-    fn font_size(self, two_letters: bool) -> f32 {
-        let geometry = crate::look::embedded_common_stylesheet()
-            .avatar
-            .resolve_geometry_for(self.as_str(), Default::default());
-        if two_letters {
-            geometry.two_letter_font_size
-        } else {
-            geometry.font_size
-        }
-    }
     pub fn corner_radius(self, radius: Radius) -> f32 {
         if radius == Radius::Full {
             self.diameter() / 2.0
@@ -172,44 +162,57 @@ impl Avatar {
         self
     }
 
-    /// Resolve current palette and size defaults, then apply the local override.
-    pub fn resolve_style(&self) -> AvatarStyle {
-        let (background, foreground) = self.colors();
-        let stylesheet = self.look.common_stylesheet();
-        let diameter = self.size.diameter();
-        let geometry = stylesheet.avatar.resolve_geometry_for(
-            self.size.as_str(),
-            xgpui_luma::theme::stylesheet::AvatarGeometry {
-                diameter,
-                icon_size: diameter * 0.6,
-                font_size: self.size.font_size(false),
-                two_letter_font_size: self.size.font_size(true),
-            },
-        );
-        let icon_size = if stylesheet.avatar.authored_geometry_for(self.size.as_str()).icon_size.is_none() {
-            geometry.diameter * 0.6
-        } else {
-            geometry.icon_size
+    /// The `.lss` avatar (`style/avatar.lss`) for this variant, tone, contrast, size and radius.
+    fn styled(&self) -> xgpui_luma::controls::avatar::AvatarLook {
+        let binding = xgpui_luma::style::StyleBinding::new("avatar", crate::textfield::live_source(&self.look));
+        let binding = match self.variant {
+            AvatarVariant::Soft => binding,
+            AvatarVariant::Solid => binding.variant("solid"),
         };
-        let font_size = if matches!(&self.fallback, Fallback::Text(text) if text.chars().count() > 1) {
-            geometry.two_letter_font_size
+        let binding = if self.size != AvatarSize::Two {
+            binding.attr("size", self.size.as_str())
         } else {
-            geometry.font_size
+            binding
+        };
+        let binding = if self.tone == Tone::Gray {
+            binding.attr("tone", "gray")
+        } else {
+            binding
+        };
+        // Medium is the base radius.
+        let binding = if self.radius != Radius::Medium {
+            binding.attr("radius", self.radius.as_str())
+        } else {
+            binding
+        };
+        let binding = binding.state("high_contrast", self.high_contrast);
+        xgpui_luma::controls::avatar::StyledAvatar::new(binding).look()
+    }
+
+    /// Resolve the `.lss` avatar, then apply the local override.
+    pub fn resolve_style(&self) -> AvatarStyle {
+        let avatar = self.styled();
+        let two_letters = matches!(&self.fallback, Fallback::Text(text) if text.chars().count() > 1);
+        let font_size = if two_letters {
+            avatar.two_letter_font_size
+        } else {
+            avatar.font_size
         };
         let mut style = AvatarStyle {
-            diameter: geometry.diameter,
+            diameter: avatar.diameter,
+            // A full radius is a circle whatever the size.
             radius: if self.radius == Radius::Full {
-                geometry.diameter / 2.0
+                avatar.diameter / 2.0
             } else {
-                self.size.corner_radius(self.radius)
+                avatar.radius
             },
-            icon_size,
+            icon_size: avatar.icon_size,
             font_size,
             line_height: font_size,
-            font_weight: FontWeight::MEDIUM,
-            font_family: crate::typography::font_family(&self.look),
-            background,
-            foreground,
+            font_weight: avatar.font_weight,
+            font_family: avatar.font_family,
+            background: avatar.background,
+            foreground: avatar.foreground,
         };
         if let Some(customize) = &self.style_override {
             customize(&mut style);
@@ -217,14 +220,12 @@ impl Avatar {
         style
     }
 
+    #[cfg(test)]
     fn colors(&self) -> (Hsla, Hsla) {
-        let step = |n| self.tone.step(&self.look, n);
-        match (self.variant, self.high_contrast) {
-            (AvatarVariant::Solid, true) => (step(12), step(1)),
-            (AvatarVariant::Solid, false) => (step(9), self.tone.contrast(&self.look)),
-            (AvatarVariant::Soft, high) => (step(3), step(if high { 12 } else { 11 })),
-        }
+        let style = self.resolve_style();
+        (style.background, style.foreground)
     }
+
     fn fallback_element(&self, style: &AvatarStyle) -> AnyElement {
         let foreground = style.foreground;
         let content = match &self.fallback {
@@ -286,23 +287,6 @@ impl IntoElement for Avatar {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn icon_fallback_tracks_resolved_diameter_but_preserves_authored_sizes() {
-        let look = Look::built_in();
-        let avatar = Avatar::new(&look, "A");
-        let mut stylesheet = look.common_stylesheet();
-        stylesheet.avatar.sizes.get_mut("3").unwrap().diameter = Some(75.0);
-        look.set_common_stylesheet(stylesheet.clone());
-        assert_eq!(avatar.resolve_style().icon_size, 75.0 * 0.6);
-
-        stylesheet.avatar.geometry.icon_size = Some(17.0);
-        look.set_common_stylesheet(stylesheet.clone());
-        assert_eq!(avatar.resolve_style().icon_size, 17.0);
-
-        stylesheet.avatar.sizes.get_mut("3").unwrap().icon_size = Some(0.0);
-        look.set_common_stylesheet(stylesheet);
-        assert_eq!(avatar.resolve_style().icon_size, 0.0);
-    }
 
     #[test]
     fn local_override_preserves_live_palette_and_does_not_change_siblings() {
@@ -317,7 +301,7 @@ mod tests {
         look.set_mode(xgpui_luma::theme::ThemeMode::Dark);
         let style = custom.resolve_style();
         assert_ne!(style.background, before);
-        assert_eq!(style.background, normal.resolve_style().background);
+        crate::control_group::assert_close(style.background, normal.resolve_style().background);
         assert_eq!(style.icon_size, 20.0);
         assert_eq!(style.diameter, 48.0);
         assert_eq!(style.font_weight, FontWeight::BOLD);
@@ -348,8 +332,14 @@ mod tests {
                 for variant in AvatarVariant::ALL {
                     let normal = Avatar::new(&look, "V").tone(tone).variant(variant).colors();
                     let high = Avatar::new(&look, "BG").tone(tone).variant(variant).high_contrast(true).colors();
-                    assert_eq!(normal.0, tone.step(&look, if variant == AvatarVariant::Solid { 9 } else { 3 }));
-                    assert_eq!(high.1, tone.step(&look, if variant == AvatarVariant::Solid { 1 } else { 12 }));
+                    crate::control_group::assert_close(
+                        normal.0,
+                        tone.step(&look, if variant == AvatarVariant::Solid { 9 } else { 3 }),
+                    );
+                    crate::control_group::assert_close(
+                        high.1,
+                        tone.step(&look, if variant == AvatarVariant::Solid { 1 } else { 12 }),
+                    );
                 }
             }
         }

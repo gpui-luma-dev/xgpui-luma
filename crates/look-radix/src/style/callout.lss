@@ -1,0 +1,15 @@
+// Radix callout. Layer: look. A soft accent 3 strip with accent 11 text and icon.
+
+callout {
+  icon_size = exact(15)
+
+  part root {
+    background = accent[3]
+    foreground = accent[11]
+    radius     = exact(8)
+    padding_x  = exact(12)
+    padding_y  = exact(12)
+    gap        = exact(12)
+    font_size  = 14
+  }
+}

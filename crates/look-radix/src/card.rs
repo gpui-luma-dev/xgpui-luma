@@ -1,9 +1,10 @@
 //! Look-owned, non-interactive content container with Radix Card treatments.
 //! Size metrics follow the Radix Themes Card; application content stays external.
 use std::sync::Arc;
-use gpui::{Hsla, SharedString, AnyElement, BoxShadow, Div, IntoElement, div, point, prelude::*, px};
+use gpui::{Hsla, SharedString, AnyElement, BoxShadow, Div, IntoElement, div, prelude::*, px};
+#[cfg(test)]
 use xgpui_luma::theme::ThemeMode;
-use crate::{Look, Tone};
+use crate::Look;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CardVariant {
@@ -122,57 +123,34 @@ impl ParentElement for Card {
     }
 }
 impl Card {
-    /// Resolve current palette and size defaults, then apply the local override.
+    /// Resolve the `.lss` card (`style/card.lss`) for this variant and size, then apply the local override.
     pub fn resolve_style(&self) -> CardStyle {
-        let gray = |step| Tone::Gray.step(&self.look, step);
-        let dark = self.look.mode() == ThemeMode::Dark;
-        let geometry = self.look.common_stylesheet().card.resolve_geometry_for(
-            self.size.as_str(),
-            xgpui_luma::theme::stylesheet::CardGeometry { padding: self.size.padding(), ..Default::default() },
-        );
-        let mut style = CardStyle {
-            padding: geometry.padding,
-            radius: self.size.radius(),
-            margin: 0.0,
-            background: None,
-            foreground: gray(12),
-            font_family: crate::typography::font_family(&self.look),
-            shadows: Vec::new(),
+        let binding = xgpui_luma::style::StyleBinding::new("card", crate::textfield::live_source(&self.look));
+        let binding = match self.variant {
+            CardVariant::Surface => binding,
+            CardVariant::Classic => binding.variant("classic"),
+            CardVariant::Ghost => binding.variant("ghost"),
         };
-        if self.variant == CardVariant::Ghost {
-            style.margin = -style.padding;
+        let binding = if self.size != CardSize::Two {
+            binding.attr("size", self.size.as_str())
         } else {
-            // Solid scale equivalents of Radix's panel and translucent neutral borders.
-            let edge = gray(match self.variant {
-                CardVariant::Classic if dark => 6,
-                CardVariant::Classic => 3,
-                _ => 5,
-            });
-            let mut shadows = vec![BoxShadow {
-                offset: point(px(0.0), px(0.0)),
-                blur_radius: px(0.0),
-                spread_radius: px(1.0),
-                color: edge,
-                inset: true,
-            }];
-            if self.variant == CardVariant::Classic {
-                for (y, blur, spread, opacity) in [
-                    (1.0, 1.0, -1.0, if dark { 0.3 } else { 0.05 }),
-                    (2.0, 1.0, -2.0, if dark { 0.3 } else { 0.05 }),
-                    (1.0, 3.0, -1.0, if dark { 0.2 } else { 0.05 }),
-                ] {
-                    shadows.push(BoxShadow {
-                        offset: point(px(0.0), px(y)),
-                        blur_radius: px(blur),
-                        spread_radius: px(spread),
-                        color: gpui::hsla(0.0, 0.0, 0.0, opacity),
-                        inset: false,
-                    });
-                }
-            }
-            style.background = Some(gray(if dark { 2 } else { 1 }));
-            style.shadows = shadows;
-        }
+            binding
+        };
+        let card = xgpui_luma::controls::card::StyledCard::new(binding).look();
+        let mut style = CardStyle {
+            padding: card.padding,
+            radius: card.radius,
+            // Ghost cancels its padding, as in Radix Themes.
+            margin: if self.variant == CardVariant::Ghost {
+                -card.padding
+            } else {
+                0.0
+            },
+            background: card.background,
+            foreground: card.body_color,
+            font_family: card.font_family,
+            shadows: card.shadow,
+        };
         if let Some(customize) = &self.style_override {
             customize(&mut style);
         }
@@ -200,6 +178,7 @@ impl IntoElement for Card {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn local_override_preserves_live_palette_and_default_elevation() {
         let look = Look::built_in();

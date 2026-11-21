@@ -14,7 +14,7 @@ use crate::stylesheet::{StylesheetConfig};
 use crate::size::ShadcnSize;
 
 use super::button::{
-    ButtonRadiusPreset, ShadcnButtonStyle, button_box_scale, button_elevation_shadow, resolve_button_radius_preset,
+    ButtonRadiusPreset, ShadcnButtonStyle, button_elevation_shadow, resolve_button_radius_preset,
     toggle_elevation_shadow,
 };
 
@@ -30,29 +30,6 @@ impl ToggleLayout {
     pub fn from_round(round: bool) -> Self {
         if round { Self::Square } else { Self::Inline }
     }
-}
-
-pub fn toggle_look(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    selected: bool,
-    size: ShadcnSize,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    toggle_look_semantic(mode, theme_mode, style, selected, size, None, state)
-}
-
-pub fn toggle_look_semantic(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    selected: bool,
-    size: ShadcnSize,
-    radius: Option<ButtonRadiusPreset>,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    toggle_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, selected, size, radius, state)
 }
 
 // Mirrors the public semantic resolver with an additional selected stylesheet.
@@ -94,47 +71,7 @@ fn toggle_shadow(
     }
 }
 
-/// Square icon toggle sizing (matches icon-button metrics); radius preset controls corners.
-pub fn toggle_icon_look_semantic(
-    mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    selected: bool,
-    size: ShadcnSize,
-    radius: Option<ButtonRadiusPreset>,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    toggle_icon_look_with_stylesheet(mode, mode.stylesheet(), theme_mode, style, selected, size, radius, state)
-}
-
 // Mirrors the public semantic resolver with an additional selected stylesheet.
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn toggle_icon_look_with_stylesheet(
-    mode: &ShadcnModeTokens,
-    stylesheet: &StylesheetConfig,
-    theme_mode: ThemeMode,
-    style: ShadcnButtonStyle,
-    selected: bool,
-    size: ShadcnSize,
-    radius: Option<ButtonRadiusPreset>,
-    state: InteractionState,
-) -> ButtonFamilyLook {
-    let role = ButtonFamilyRole::Toggle { selected };
-    let ctx = LookContext::new(mode, theme_mode, state);
-    let palette = toggle_palette(&ctx, stylesheet, style, selected, size);
-    let mut scale = button_box_scale(&ctx, stylesheet, size, 1.0);
-    scale.padding_x = 0.0;
-    scale.padding_y = 0.0;
-    let mut look = compose_button_family_look(&palette, role, &scale, ctx.radii().full);
-    if super::button::has_family_icon_override(stylesheet, size, false) {
-        look.icon_size = scale.icon_size;
-    }
-    if let Some(radius) = radius {
-        look.radius = resolve_button_radius_preset(radius, ctx.radii(), look.height);
-    }
-    look.shadow = toggle_shadow(&ctx, stylesheet, style);
-    look
-}
 
 pub fn toggle_box_scale(
     ctx: &LookContext,
@@ -178,198 +115,6 @@ pub fn toggle_palette(
         border,
         typography: typography.style,
         font_family: typography.font_family,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
-
-    use super::*;
-    use crate::controls::button::button_look;
-    use crate::catalog::CssTokenMap;
-    use crate::controls::button::ButtonRadiusPreset;
-    use crate::mode::ShadcnModeTokens;
-    use xgpui_luma::theme::ThemeMode;
-
-    fn retro_arcade_catalog() -> CssTokenMap {
-        CssTokenMap::from_map(BTreeMap::from([
-            ("primary".into(), "hsl(330.9554 64.0816% 51.9608%)".into()),
-            ("primary-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("secondary".into(), "hsl(175.4622 58.6207% 39.8039%)".into()),
-            ("secondary-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("background".into(), "hsl(43.8462 86.6667% 94.1176%)".into()),
-            ("foreground".into(), "hsl(192.2034 80.8219% 14.3137%)".into()),
-            ("muted".into(), "hsl(180 6.9307% 60.3922%)".into()),
-            ("muted-foreground".into(), "hsl(192.2034 80.8219% 14.3137%)".into()),
-            ("accent".into(), "hsl(17.5691 80.4444% 44.1176%)".into()),
-            ("accent-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("destructive".into(), "hsl(1.0405 71.1934% 52.3529%)".into()),
-            ("destructive-foreground".into(), "hsl(0 0% 100%)".into()),
-            ("border".into(), "hsl(186.3158 8.2969% 55.0980%)".into()),
-            ("input".into(), "hsl(186.3158 8.2969% 55.0980%)".into()),
-            ("ring".into(), "hsl(330.9554 64.0816% 51.9608%)".into()),
-            ("card".into(), "hsl(45.6000 42.3729% 88.4314%)".into()),
-            ("radius".into(), "0.25rem".into()),
-            ("spacing".into(), "0.25rem".into()),
-            ("font-sans".into(), "ui-sans-serif, system-ui, 'Outfit', sans-serif".into()),
-            ("shadow-xs".into(), "0 1px 3px 0px hsl(0 0% 0% / 0.05)".into()),
-            ("shadow-sm".into(), "0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10)".into()),
-        ]))
-    }
-
-    #[test]
-    fn toggle_look_uses_toggle_metrics_not_button_metrics() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let sm = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            true,
-            ShadcnSize::Sm,
-            InteractionState::default(),
-        );
-        let lg = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            true,
-            ShadcnSize::Lg,
-            InteractionState::default(),
-        );
-
-        assert!((sm.height - 36.0).abs() < f32::EPSILON);
-        assert!((sm.padding_x - 10.0).abs() < f32::EPSILON);
-        assert!((lg.height - 44.0).abs() < f32::EPSILON);
-        assert!((lg.padding_x - 20.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn toggle_inline_look_has_horizontal_padding() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let look = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            false,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert!(look.padding_x > 0.0);
-    }
-
-    #[test]
-    fn focused_toggle_uses_independent_ring_paint() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let focused = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::ContentOnly,
-            false,
-            ShadcnSize::Md,
-            InteractionState { focused: true, ..InteractionState::default() },
-        );
-
-        assert_eq!(focused.focus_border, catalog.color("ring").expect("ring"));
-    }
-
-    #[test]
-    fn outline_toggle_selected_uses_selected_button_colors() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let icon = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Outline,
-            ButtonFamilyRole::Icon,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let toggle = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Outline,
-            true,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert_ne!(toggle.background, icon.background);
-        assert_ne!(toggle.foreground, icon.foreground);
-        assert_eq!(toggle.shadow, icon.shadow);
-    }
-
-    #[test]
-    fn ghost_toggle_selected_uses_selected_button_colors() {
-        let catalog = retro_arcade_catalog();
-        let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
-        let icon = button_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            ButtonFamilyRole::Icon,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let toggle = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Ghost,
-            true,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-
-        assert_ne!(toggle.background, icon.background);
-        assert_ne!(toggle.foreground, icon.foreground);
-        assert_eq!(toggle.border, icon.border);
-        assert!(toggle.shadow.is_none());
-        assert!(icon.shadow.is_none());
-    }
-
-    #[test]
-    fn toggle_icon_look_uses_button_metrics_not_toggle_inline_metrics() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let inline = toggle_look(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            true,
-            ShadcnSize::Md,
-            InteractionState::default(),
-        );
-        let icon = toggle_icon_look_semantic(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Primary,
-            true,
-            ShadcnSize::Md,
-            None,
-            InteractionState::default(),
-        );
-
-        assert!(inline.padding_x > 0.0);
-        assert_eq!(icon.padding_x, 0.0);
-        assert_eq!(icon.padding_y, 0.0);
-        assert_ne!(inline.height, icon.height);
-    }
-
-    #[test]
-    fn toggle_look_resolves_radius_preset() {
-        let mode = ShadcnModeTokens::from_catalog(retro_arcade_catalog(), ThemeMode::Light).expect("catalog");
-        let full = toggle_look_semantic(
-            &mode,
-            ThemeMode::Light,
-            ShadcnButtonStyle::Secondary,
-            true,
-            ShadcnSize::Md,
-            Some(ButtonRadiusPreset::Full),
-            InteractionState::default(),
-        );
-
-        assert!((full.radius - full.height / 2.0).abs() < f32::EPSILON);
     }
 }
 

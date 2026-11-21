@@ -1,63 +1,40 @@
+//! The Shadcn pager drawn from `.lss` (`style/pager.lss`); page buttons are this look's `.lss` outline button at
+//! the small size, sized and spaced by the pager.
+
 use std::sync::Arc;
 
-use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
-use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme};
-use xgpui_luma::controls::pager::{PagerLook, PagerTemplate, PagerTheme, ThemedPagerTemplate};
-use xgpui_luma::theme::{InteractionState};
+use gpui::{FontWeight, prelude::*};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
+use xgpui_luma::controls::pager::{PagerLook, PagerTemplate, PagerTheme, StyledPagerTheme, ThemedPagerTemplate};
+use xgpui_luma::style::lss::{Overrides, PartId, Prop};
 
-use crate::controls::button::{ShadcnButtonStyle, button_palette};
-use crate::controls::pager::{pager_button_look, pager_look};
+use crate::controls::button::ShadcnButtonStyle;
 use crate::look::ShadcnLook;
-use crate::look_context::LookContext;
 
-struct ShadcnPagerTheme {
-    theme: ShadcnLook,
-}
-
-struct ShadcnPagerButtonTheme {
-    theme: ShadcnLook,
-    pager_look: PagerLook,
-}
-
-impl ButtonFamilyTheme for ShadcnPagerButtonTheme {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let stylesheet = self.theme.stylesheet();
-        let ctx = LookContext::new(tokens.as_ref(), self.theme.mode(), state);
-        button_palette(&ctx, stylesheet.as_ref(), ShadcnButtonStyle::Outline, role, size)
-    }
-
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        _scale: &xgpui_luma::theme::StandardBoxScale,
-        _pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        Some(pager_button_look(&self.theme, &self.pager_look, role, state))
-    }
-
-    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics_for(self.theme.size())
-    }
-}
-
-impl PagerTheme for ShadcnPagerTheme {
-    fn resolve(
-        &self,
-        enabled: bool,
-        style: xgpui_luma::controls::pager::PagerStyle,
-    ) -> xgpui_luma::controls::pager::PagerLook {
-        pager_look(&self.theme, enabled, style)
-    }
-
-    fn button_template(&self, pager_look: &PagerLook) -> Arc<dyn ButtonTemplate<()>> {
-        Arc::new(DefaultButtonTemplate::new(Arc::new(ShadcnPagerButtonTheme {
-            theme: self.theme.clone(),
-            pager_look: pager_look.clone(),
-        })))
-    }
+/// The page buttons for a resolved pager: the small outline button with the pager's height, radius, gap,
+/// padding and text, and the current page in semibold.
+fn page_buttons(theme: &ShadcnLook, pager: &PagerLook) -> Arc<dyn ButtonTemplate<()>> {
+    let root = PartId::ROOT;
+    let overrides = Overrides::new()
+        .set(root, Prop::<f32>::new("height"), pager.button_size)
+        .set(root, Prop::<f32>::new("radius"), pager.radius)
+        .set(root, Prop::<f32>::new("gap"), pager.gap)
+        .set(root, Prop::<f32>::new("padding_x"), pager.padding_x)
+        .set(root, Prop::<f32>::new("padding_y"), 0.0)
+        .set(root, Prop::<f32>::new("font_size"), pager.typography.size)
+        .set(root, Prop::<f32>::new("line_height"), pager.typography.line_height);
+    let template =
+        super::button::styled_button_template::<()>(theme.with_size(crate::ShadcnSize::Sm), ShadcnButtonStyle::Outline)
+            .overrides(overrides)
+            .with_modifier(|root, model| {
+                if matches!(model.role, ButtonFamilyRole::Toggle { selected: true }) {
+                    root.font_weight(FontWeight::SEMIBOLD)
+                } else {
+                    root
+                }
+            });
+    Arc::new(template)
 }
 
 pub fn pager_template(theme: ShadcnLook) -> Arc<dyn PagerTemplate> {
@@ -65,5 +42,10 @@ pub fn pager_template(theme: ShadcnLook) -> Arc<dyn PagerTemplate> {
 }
 
 pub fn pager_theme(theme: ShadcnLook) -> Arc<dyn PagerTheme> {
-    Arc::new(ShadcnPagerTheme { theme })
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "pager",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    Arc::new(StyledPagerTheme::new(binding, Arc::new(move |pager: &PagerLook| page_buttons(&theme, pager))))
 }

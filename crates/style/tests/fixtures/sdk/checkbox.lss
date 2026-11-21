@@ -1,0 +1,57 @@
+// SDK checkbox (converted from #94 checkbox/style.hcl and the #282 CheckboxStyle). Layer: sdk.
+
+/// An indicator box with a checkmark, and a label.
+checkbox {
+  /// Whole-control opacity when disabled.
+  disabled_opacity: number = metrics.disabled_opacity
+  /// Minimum row height.
+  height = metrics.control.control_height
+  /// Space between the indicator and the label.
+  gap    = metrics.control.gap
+  radius = exact(metrics.control.radius)
+  border_width = exact(metrics.border_width)
+
+  /// Indicator size as a fraction of the control height.
+  indicator_scale: number = 0.5
+  /// Indicator box size.
+  indicator_size: length = metrics.control.control_height * indicator_scale
+  /// Corner radius of the indicator box.
+  indicator_radius: length = 4
+  /// Checkmark inset inside the indicator.
+  glyph_inset: length = 3
+  /// Checkmark size.
+  glyph_size: length = max(indicator_size - glyph_inset * 2, 0)
+
+  /// The whole control row.
+  part root {
+    focus_border = palette.focus.ring
+    transition   = motion.default
+  }
+
+  /// The checkbox box.
+  part indicator {
+    background = palette.form.input.background
+    border     = palette.form.input.border
+    :hover         { background = palette.state.hover.background }
+    :pressed       { background = palette.state.pressed.background }
+    :checked       { background = palette.state.selected.background  border = background }
+    :checked:hover { background = palette.state.selected.background }
+    :disabled      { background = palette.state.disabled.background  border = palette.form.input.border }
+  }
+
+  /// The checkmark.
+  part glyph {
+    foreground = palette.app.foreground
+    :checked  { foreground = palette.state.selected.foreground }
+    :disabled { foreground = palette.state.disabled.foreground }
+  }
+
+  /// The label text.
+  part label {
+    foreground  = palette.app.foreground
+    font_family = typography.font.sans
+    font_size   = typography.text.body.size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    :disabled { foreground = palette.state.disabled.foreground }
+  }
+}

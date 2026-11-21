@@ -1,3 +1,3 @@
 pub(crate) mod badge;
 
-pub use badge::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look, resolve_badge_colors};
+pub use badge::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look};

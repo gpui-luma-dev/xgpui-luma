@@ -28,6 +28,24 @@ pub struct ShadcnModeTokens {
     /// Common stylesheet with each Shadcn size merged into general geometry, in
     /// [`crate::ShadcnSize::ALL`] order. SDK controls only read these pixel values.
     sized_common: Arc<[xgpui_luma::theme::stylesheet::CommonStylesheet; 3]>,
+    /// This mode's catalog bound to the `.lss` stylesheet, made on first use.
+    style_theme: StyleThemeSlot,
+}
+
+/// A lazily bound `.lss` theme. A clone starts empty, so a changed copy of the tokens binds afresh.
+#[derive(Default)]
+struct StyleThemeSlot(std::sync::OnceLock<xgpui_luma::style::lss::Theme>);
+
+impl Clone for StyleThemeSlot {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl std::fmt::Debug for StyleThemeSlot {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("StyleThemeSlot")
+    }
 }
 
 impl ShadcnModeTokens {
@@ -72,7 +90,14 @@ impl ShadcnModeTokens {
             sized_common,
             palette,
             catalog,
+            style_theme: StyleThemeSlot::default(),
         })
+    }
+
+    /// This mode's catalog bound to the look's `.lss` stylesheet, for values read without the look
+    /// (menus built from mode tokens).
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.style_theme.0.get_or_init(|| crate::style::theme_for_mode(self)).clone()
     }
 
     /// Shared metrics whose `control` scale is the given Shadcn size, for SDK geometry.
@@ -86,20 +111,6 @@ impl ShadcnModeTokens {
     pub fn common_for(&self, size: crate::ShadcnSize) -> &xgpui_luma::theme::stylesheet::CommonStylesheet {
         let index = crate::ShadcnSize::ALL.iter().position(|candidate| *candidate == size).unwrap_or(1);
         &self.sized_common[index]
-    }
-
-    /// Common stylesheet for `size`, reusing the prepared copy when `stylesheet` is this
-    /// snapshot's own configuration.
-    pub(crate) fn sized_common<'a>(
-        &'a self,
-        stylesheet: &'a crate::stylesheet::StylesheetConfig,
-        size: crate::ShadcnSize,
-    ) -> std::borrow::Cow<'a, xgpui_luma::theme::stylesheet::CommonStylesheet> {
-        if std::ptr::eq(stylesheet, self.stylesheet.as_ref()) {
-            std::borrow::Cow::Borrowed(self.common_for(size))
-        } else {
-            std::borrow::Cow::Owned(stylesheet.common.with_size_key(size.key()))
-        }
     }
 
     /// Standard shadow previews are prepared with this immutable theme snapshot.

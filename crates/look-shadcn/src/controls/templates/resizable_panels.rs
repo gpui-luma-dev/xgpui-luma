@@ -1,30 +1,32 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::resizable_panels::ResizablePanelsTheme;
+use xgpui_luma::controls::resizable_panels::{
+    ResizablePanelsLook, ResizablePanelsTheme, ResizeHandleMetrics, StyledResizablePanelsTheme,
+};
 use xgpui_luma::theme::InteractionState;
 
-use crate::controls::resizable_panels::resizable_panels_look;
 use crate::look::ShadcnLook;
 
+/// The Shadcn resizable panels from `.lss` (`style/resizable_panels.lss`); handle sizes from the look's
+/// sized stylesheet.
 pub fn resizable_panels_theme(theme: ShadcnLook) -> Arc<dyn ResizablePanelsTheme> {
-    Arc::new(ShadcnResizablePanelsTheme { theme: theme.clone() })
+    let styled =
+        StyledResizablePanelsTheme::new(theme.style_binding("resizable_panels"), ResizeHandleMetrics::default());
+    Arc::new(ShadcnResizablePanelsTheme { theme, styled })
 }
 
 struct ShadcnResizablePanelsTheme {
     theme: ShadcnLook,
+    styled: StyledResizablePanelsTheme,
 }
 
 impl ResizablePanelsTheme for ShadcnResizablePanelsTheme {
-    /// Handle pixels for the Look's Shadcn size.
-    fn resize_handle_metrics(&self) -> xgpui_luma::controls::resizable_panels::ResizeHandleMetrics {
-        let tokens = self.theme.mode_tokens();
-        xgpui_luma::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(
-            &tokens.common_for(self.theme.size()),
-        )
+    /// Handle pixels for the look's Shadcn size.
+    fn resize_handle_metrics(&self) -> ResizeHandleMetrics {
+        ResizeHandleMetrics::from_stylesheet(&self.theme.mode_tokens().common_for(self.theme.size()))
     }
 
-    fn resolve(&self, state: InteractionState) -> xgpui_luma::controls::resizable_panels::ResizablePanelsLook {
-        let tokens = self.theme.mode_tokens();
-        resizable_panels_look(tokens.as_ref(), self.theme.mode(), state)
+    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
+        self.styled.resolve(state)
     }
 }

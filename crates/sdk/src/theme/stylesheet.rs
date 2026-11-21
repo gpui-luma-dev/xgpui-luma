@@ -16,14 +16,10 @@ pub use geometry::*;
 pub use crate::controls::navigation::tabs::theme::{
     TabsStylesheet, TabsGeometryStylesheet, TabsGeometry, ResolvedTabsGeometry,
 };
-pub use crate::controls::choice::switch::theme::{
-    SwitchStylesheet, SwitchGeometryStylesheet, ResolvedSwitchGeometry, native_sdk_switch_recipes, define_sdk_switch,
-};
 pub use crate::controls::range::slider::theme::{
     SliderStylesheet, SliderGeometryStylesheet, SliderGeometry, SliderGeometrySources, SliderDecoration,
     native_sdk_slider_recipes, define_sdk_slider,
 };
-pub use crate::controls::choice::checkbox::theme::{native_sdk_checkbox_recipes, define_sdk_checkbox};
 mod motion;
 pub use motion::*;
 mod colors;
@@ -110,12 +106,9 @@ common_stylesheet! {
     tree_view: TreeViewStylesheet,
     accordion: AccordionStylesheet,
     tabs: TabsStylesheet,
-    switch: SwitchStylesheet,
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     toggle: ToggleStylesheet,
-    checkbox: CheckboxStylesheet,
-    radio: RadioStylesheet,
     textfield: TextFieldStylesheet,
     textarea: TextAreaStylesheet,
     progress: ProgressStylesheet,
@@ -196,7 +189,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            radio: RadioStylesheet::native_default(),
             progress: ProgressStylesheet::native_default(),
             stepper: StepperStylesheet::native_default(),
             scrollbar: ScrollbarStylesheet::native_default(),
@@ -289,8 +281,6 @@ impl CommonStylesheet {
             ..Default::default()
         };
         define_sdk_slider(&mut sheet);
-        define_sdk_switch(&mut sheet);
-        define_sdk_checkbox(&mut sheet);
         use PaletteRole::*;
         for (family, roles) in [
             (
@@ -312,21 +302,6 @@ impl CommonStylesheet {
             (
                 "control_group",
                 &[AppMutedForeground, BorderDefault, StateDisabledBackground, SurfaceSubtleBackground][..],
-            ),
-            (
-                "radio_button",
-                &[
-                    AppForeground,
-                    FocusRing,
-                    FormInputBackground,
-                    FormInputBorder,
-                    StateDisabledBackground,
-                    StateDisabledForeground,
-                    StateHoverBackground,
-                    StatePressedBackground,
-                    StateSelectedBackground,
-                    StateSelectedForeground,
-                ][..],
             ),
             (
                 "table",
@@ -563,21 +538,18 @@ impl CommonStylesheet {
         Self::parse(&toml::to_string(&document)?)
     }
 
-    /// Prepare an immutable SDK-only or custom-look snapshot. Rebuild tokens
-    /// after editing the sheet; existing themes retain their captured styling.
+    /// Prepare an immutable SDK-only or custom-look token snapshot. Rebuild tokens after editing the sheet.
     ///
     /// ```
     /// use xgpui_luma::{
     ///     color::GamutMapping,
-    ///     controls::progress::{DefaultProgressTheme, ProgressTheme},
     ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
     ///     sheet.progress.geometry.track_height = Some(9.0);
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-    /// let theme = DefaultProgressTheme::new(tokens);
-    /// assert_eq!(theme.resolve(true).track_height, 9.0);
+    /// assert_eq!(tokens.stylesheet.progress.geometry.track_height, Some(9.0));
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(
@@ -648,8 +620,7 @@ mod tests {
     }
 
     #[test]
-    fn slider_and_switch_size_keys_are_look_defined() {
-        use crate::controls::switch::SwitchScale;
+    fn slider_size_keys_are_look_defined() {
         for key in ["1", "4", "compact"] {
             let parsed = CommonStylesheet::parse(&format!("[common.slider.sizes.{key}]\nheight = 16")).unwrap();
             assert_eq!(parsed.slider.sizes.get(key).unwrap().height, Some(16.0));
@@ -659,12 +630,6 @@ mod tests {
                 if source == format!("common.slider.sizes.{key}.height")));
             assert_eq!(parsed.slider.inspect_geometry(&SliderGeometry::default()).0.height, 0.0);
         }
-        let stylesheet =
-            CommonStylesheet::parse("[common.switch.sizes.\"1\"]\ngap=5\n[common.switch.sizes.compact]\ngap=7")
-                .unwrap();
-        let fallback = SwitchScale::compute(&Default::default(), 1.0);
-        assert_eq!(stylesheet.switch.inspect_geometry_for("1", fallback, 1.0).gap.value_px, 5.0);
-        assert_eq!(stylesheet.switch.inspect_geometry_for("compact", fallback, 1.0).gap.value_px, 7.0);
     }
 
     #[test]
@@ -691,34 +656,6 @@ mod tests {
             if key == "common.slider.sizes.2.thumb_size"));
         let (value, _) = stylesheet.slider.inspect_geometry(&fallback);
         assert_eq!((value.width, value.thumb_size), (100.0, 17.0));
-    }
-
-    #[test]
-    fn switch_geometry_rejects_invalid_lengths_and_sizes() {
-        for size in ["geometry", "sizes.1", "sizes.custom"] {
-            for field in ["track_width", "track_height", "track_padding", "thumb_size", "gap"] {
-                for value in ["-1", "nan", "inf", "1e100", "\"4px\""] {
-                    assert!(CommonStylesheet::parse(&format!("[common.switch.{size}]\n{field} = {value}")).is_err());
-                }
-            }
-        }
-        assert!(CommonStylesheet::parse("[common.switch.xl]\ngap = 2").is_err());
-    }
-
-    #[test]
-    fn switch_size_precedence_zero_fallback_and_pixel_snapping() {
-        use crate::controls::switch::SwitchScale;
-        let stylesheet = CommonStylesheet::parse("[common.switch.geometry]\ngap = 9.0\ntrack_padding = 1.25\n[common.switch.sizes.2]\ngap = 0\ntrack_width = 41.25").unwrap();
-        let fallback = SwitchScale::compute(&Default::default(), 2.0);
-        let geometry = stylesheet.switch.inspect_geometry_for("2", fallback, 2.0);
-        assert_eq!(geometry.gap.value_px, 0.0);
-        assert_eq!(geometry.track_width.value_px, 41.5);
-        assert_eq!(geometry.track_padding.value_px, 1.5);
-        assert_eq!(geometry.thumb_size.value_px, fallback.thumb_size);
-        assert!(
-            matches!(geometry.gap.source, crate::theme::provenance::MetricSource::Authored { key } if key == "common.switch.sizes.2.gap")
-        );
-        assert_eq!(stylesheet.switch.inspect_geometry(fallback, 2.0).gap.value_px, 9.0);
     }
 
     #[test]
@@ -800,41 +737,5 @@ mod tests {
         assert_eq!(size1.track_height, Some(4.0));
         assert_eq!(size1.thumb_size, Some(12.0));
         assert_eq!(sheet.slider.sizes.get("2").unwrap().height, Some(20.0));
-    }
-
-    #[test]
-    fn switch_builder_methods_configure_geometry_and_sizes_fluently() {
-        let mut sheet = CommonStylesheet::default();
-        sheet.switch.track_padding(1.0).gap(8.0).size("1", |m| {
-            m.dimensions(28.0, 16.0, 14.0);
-        });
-
-        assert_eq!(sheet.switch.geometry.track_padding, Some(1.0));
-        assert_eq!(sheet.switch.geometry.gap, Some(8.0));
-        let size1 = sheet.switch.sizes.get("1").unwrap();
-        assert_eq!(size1.track_width, Some(28.0));
-        assert_eq!(size1.track_height, Some(16.0));
-        assert_eq!(size1.thumb_size, Some(14.0));
-
-        let sheet = CommonStylesheet::default().with(|s| {
-            s.switch.size("compact", |m| {
-                m.scales(32.0 / 28.0, 13.0 / 28.0, 9.0 / 28.0);
-            });
-        });
-        assert_eq!(sheet.switch.sizes.get("compact").unwrap().track_width_scale, Some(32.0 / 28.0));
-    }
-
-    #[test]
-    fn checkbox_builder_methods_configure_geometry_and_sizes_fluently() {
-        let mut sheet = CommonStylesheet::default();
-        sheet.checkbox.disabled_opacity(0.56).gap(8.0).size("1", |m| {
-            m.indicator_size(14.0).glyph_size(9.0);
-        });
-
-        assert_eq!(sheet.checkbox.geometry.disabled_opacity, Some(0.56));
-        assert_eq!(sheet.checkbox.geometry.gap, Some(8.0));
-        let size1 = sheet.checkbox.sizes.get("1").unwrap();
-        assert_eq!(size1.indicator_size, Some(14.0));
-        assert_eq!(size1.glyph_size, Some(9.0));
     }
 }

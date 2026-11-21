@@ -10,7 +10,7 @@ use crate::size::ShadcnSize;
 
 /// Builder in the guise of a radio: Shadcn axes plus SDK options, until `.spawn(cx)`.
 pub struct Radio {
-    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::radio_button::RadioMotion>,
+    transition: Option<xgpui_luma::motion::Transition>,
     callbacks: xgpui_luma::infra::callbacks::EventCallbacks<xgpui_luma::controls::radio_button::RadioButtonEvent>,
 
     id: SharedString,
@@ -97,7 +97,7 @@ impl Radio {
 
             id: id.into(),
             look: None,
-            motion: Default::default(),
+            transition: None,
             style: ShadcnButtonStyle::Primary,
             size: ShadcnSize::Md,
             selected: false,
@@ -111,7 +111,11 @@ impl Radio {
         }
     }
 
-    xgpui_luma::forward_motion!(xgpui_luma::controls::radio_button::RadioMotion, edits motion);
+    /// Animate selection changes with `transition` instead of the look's `.lss` `transition`.
+    pub fn transition(mut self, transition: xgpui_luma::motion::Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &ShadcnLook) -> Self {
@@ -210,8 +214,6 @@ impl Radio {
         let look = look.with_size(self.size);
         let template = look.radio_button_template(self.style);
         let mut builder = xgpui_luma::controls::radio_button::new(self.id)
-            .motion_defaults(look.motion_defaults().radio)
-            .with_motion_overrides(self.motion)
             .template(template)
             .with_data(self.selected)
             .enabled(self.enabled)
@@ -219,6 +221,9 @@ impl Radio {
             .motion_enabled(self.motion_enabled);
         if let Some(role) = self.role {
             builder = builder.role(role);
+        }
+        if let Some(transition) = self.transition {
+            builder = builder.transition(transition);
         }
         if self.compact {
             builder = builder.compact();

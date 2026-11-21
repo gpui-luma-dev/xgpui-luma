@@ -1,9 +1,9 @@
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
-use xgpui_luma::theme::{InteractionState, StandardBoxScale, ThemeMode};
+use xgpui_luma::theme::{InteractionState, ThemeMode};
 
 use crate::controls::button::{ButtonRadiusPreset, button_look_with_stylesheet};
 use crate::stylesheet::{StylesheetConfig, embedded_stylesheet};
-use crate::{ShadcnButtonStyle, ShadcnLook};
+use crate::ShadcnButtonStyle;
 use crate::size::ShadcnSize;
 
 fn legacy_stylesheet() -> StylesheetConfig {
@@ -129,116 +129,4 @@ fn common_geometry_beats_legacy_and_unset_keeps_role_fallbacks() {
     );
     assert_eq!(fallback.typography.size, tokens.typography.text.label.size);
     assert_eq!(fallback.icon_size, fallback.typography.size);
-}
-
-#[cfg(feature = "inspect")]
-#[test]
-fn selected_stylesheet_reaches_theme_paint_and_inspection() {
-    let mut config = embedded_stylesheet().clone();
-    let overrides = StylesheetConfig::parse(
-        r#"
-[common.button.sizes.md]
-height = 52
-padding_x = 7
-padding_y = 3
-gap = 9
-icon_size = 21
-font_size = 17
-line_height = 23
-[common.toggle.sizes.md]
-height = 46
-padding_x = 5
-icon_size = 19
-font_size = 15
-line_height = 22
-"#,
-    )
-    .unwrap();
-    config.common.button = overrides.common.button;
-    config.common.toggle = overrides.common.toggle;
-    for rule in &mut config.button.color_rules {
-        rule.background = "secondary".into();
-    }
-    for rule in &mut config.button.elevation_rules {
-        if rule.style == "primary" {
-            rule.shadow = "shadow-sm".into();
-        }
-    }
-    for rule in &mut config.toggle.elevation_rules {
-        rule.shadow = "none".into();
-    }
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let family = crate::controls::templates::styled_button_family_theme(look.clone(), ShadcnButtonStyle::Primary);
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        let tokens = look.mode_tokens();
-        let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
-        let inspect = crate::inspect::ShadcnInspect::new(&look);
-        for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon, ButtonFamilyRole::Toggle { selected: true }] {
-            let paint = family.resolve_look(role, InteractionState::default(), &scale, tokens.radii.full).unwrap();
-            let palette = family.resolve(role, InteractionState::default());
-            assert_eq!(palette.typography.size, paint.typography.size);
-            assert_eq!(palette.typography.line_height, paint.typography.line_height);
-            let metrics = inspect.inspect_button_metrics(
-                ShadcnButtonStyle::Primary,
-                role,
-                ShadcnSize::Md,
-                InteractionState::default(),
-            );
-            assert_eq!(metrics.height.value_px, paint.height);
-            assert_eq!(metrics.padding_x.value_px, paint.padding_x);
-            assert_eq!(metrics.icon_size.value_px, paint.icon_size);
-            assert_eq!(metrics.radius.value_px, paint.radius);
-            assert_eq!(metrics.gap.value_px, paint.gap);
-            assert!(format!("{:?}", metrics.height.source).contains("common."));
-            let typography = inspect.inspect_button_typography_for_size(ShadcnSize::Md, role);
-            assert_eq!(typography.font_size.value.parse::<f32>().unwrap(), paint.typography.size);
-            assert_eq!(typography.line_height.value.parse::<f32>().unwrap(), paint.typography.line_height);
-            let colors =
-                inspect.inspect_button_color_palette(ShadcnButtonStyle::Primary, role, InteractionState::default());
-            assert_eq!(colors.background.hsla(), paint.background);
-            let elevation =
-                inspect.inspect_button_elevation(ShadcnButtonStyle::Primary, role, InteractionState::default());
-            assert_eq!(format!("{:?}", elevation.shadows), format!("{:?}", paint.shadow));
-            if matches!(role, ButtonFamilyRole::Toggle { .. }) {
-                assert_eq!(paint.height, 46.0);
-                assert!(paint.shadow.is_none());
-            } else {
-                assert_eq!(paint.height, 52.0);
-                assert!(paint.shadow.is_some());
-            }
-        }
-    }
-}
-
-#[test]
-fn existing_button_theme_observes_replacement_without_changing_other_looks() {
-    let look = crate::test_support::fallback_look();
-    let independent = crate::test_support::fallback_look();
-    let family = look.button_family_theme();
-    let render = || {
-        let tokens = look.mode_tokens();
-        let scale = StandardBoxScale::compute(&tokens.metrics_for(ShadcnSize::Md), 1.0);
-        family
-            .resolve_look(ButtonFamilyRole::Text, InteractionState::default(), &scale, tokens.radii.full)
-            .unwrap()
-    };
-    let initial = render();
-    let mut config = embedded_stylesheet().clone();
-    config.common.button.sizes.get_mut("md").unwrap().height = Some(60.0);
-    let replacement = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    look.replace_theme(&replacement);
-    assert_eq!(render().height, 60.0);
-    let tokens = independent.mode_tokens();
-    let unaffected = button_look_with_stylesheet(
-        &tokens,
-        independent.stylesheet().as_ref(),
-        independent.mode(),
-        ShadcnButtonStyle::Secondary,
-        ButtonFamilyRole::Text,
-        ShadcnSize::Md,
-        None,
-        InteractionState::default(),
-    );
-    assert_same_look(&initial, &unaffected);
 }

@@ -1,51 +1,27 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::controls::control_group::{
-    ControlGroupItemLike, ControlGroupItemPalette, ControlGroupTemplate, ControlGroupTheme,
+    ControlGroupItemLike, ControlGroupTemplate, ControlGroupTheme, StyledControlGroupTheme,
     control_group_template_with_theme,
 };
-use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 
-use crate::controls::control_group::control_group_list_look;
 use crate::look::ShadcnLook;
 
-struct ShadcnControlGroupTheme {
-    theme: ShadcnLook,
-}
-
-impl ControlGroupTheme for ShadcnControlGroupTheme {
-    fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::control_group::ControlGroupListLook {
-        let tokens = self.theme.mode_tokens();
-        control_group_list_look(tokens.as_ref(), enabled)
-    }
-
-    fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
-        self.theme.mode_tokens().metrics_for(self.theme.size())
-    }
-
-    fn default_item_palette(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        _scale: &StandardBoxScale,
-    ) -> ControlGroupItemPalette {
-        let size = self.theme.size();
-        let look = self.theme.resolve_ghost_button(ButtonFamilyRole::Toggle { selected }, size, state);
-        let chrome = self.theme.chrome();
-
-        ControlGroupItemPalette {
-            foreground: look.foreground,
-            background: look.background,
-            muted_foreground: chrome.muted_text,
-            typography: look.typography,
-            font_family: look.font_family.clone(),
-        }
-    }
-}
-
+/// The Shadcn control-group frame drawn from `.lss` (`style/control_group.lss`); rows are this look's ghost
+/// toggle at the look's size.
 pub fn control_group_theme(theme: ShadcnLook) -> Arc<dyn ControlGroupTheme> {
-    Arc::new(ShadcnControlGroupTheme { theme: theme.clone() })
+    let style = theme.clone();
+    let metrics = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "control_group",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let rows = super::button::styled_button_template::<()>(theme, crate::ShadcnButtonStyle::Ghost);
+    Arc::new(StyledControlGroupTheme::new(
+        binding,
+        rows,
+        Arc::new(move || metrics.mode_tokens().metrics_for(metrics.size())),
+    ))
 }
 
 pub fn control_group_template<T>(theme: ShadcnLook) -> ControlGroupTemplate<T>

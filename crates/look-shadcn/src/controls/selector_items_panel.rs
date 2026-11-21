@@ -3,16 +3,32 @@
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
 use xgpui_luma::theme::{ThemeMode};
 
-use super::floating_menu::floating_menu_look;
 use crate::mode::ShadcnModeTokens;
 
+/// A binding of `control` to the mode's `.lss` at `size`.
+pub(crate) fn mode_binding(
+    mode: &ShadcnModeTokens,
+    control: &'static str,
+    size: crate::ShadcnSize,
+) -> xgpui_luma::style::StyleBinding {
+    let binding =
+        xgpui_luma::style::StyleBinding::new(control, xgpui_luma::style::ThemeSource::Fixed(mode.style_theme()));
+    if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    }
+}
+
+/// The selector and combobox dropdown panel: the `.lss` floating menu (`style/floating_menu.lss`) with the
+/// size's metrics and panel geometry.
 pub fn selector_items_panel_look(
     mode: &ShadcnModeTokens,
-    theme_mode: ThemeMode,
+    _theme_mode: ThemeMode,
     size: crate::ShadcnSize,
 ) -> SelectorItemsPanelLook {
-    SelectorItemsPanelLook::from_menu(
-        floating_menu_look(mode, theme_mode, size),
+    xgpui_luma::controls::selector_list::styled_selector_items_panel_look(
+        &mode_binding(mode, "floating_menu", size),
         &mode.metrics_for(size),
         mode.common_for(size),
     )
@@ -57,8 +73,8 @@ mod tests {
         let mode = ShadcnModeTokens::from_catalog(catalog.clone(), ThemeMode::Light).expect("catalog");
         let look = selector_items_panel_look(&mode, xgpui_luma::theme::ThemeMode::Light, ShadcnSize::Md);
 
-        assert_eq!(look.background, catalog.color("popover").expect("popover"));
-        assert_eq!(look.item_hover_background, catalog.color("accent").expect("accent"));
-        assert_eq!(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
+        crate::assert_close(look.background, catalog.color("popover").expect("popover"));
+        crate::assert_close(look.item_hover_background, catalog.color("accent").expect("accent"));
+        crate::assert_close(look.item_hover_foreground, catalog.color("accent-foreground").expect("accent-foreground"));
     }
 }

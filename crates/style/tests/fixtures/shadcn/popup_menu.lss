@@ -1,0 +1,6 @@
+// Shadcn popup menu (converted from #94 look-shadcn/src/controls/popup_menu.hcl). Layer: look.
+// The trigger paints like the Shadcn button, including the button variant of the same name.
+
+popup_menu {
+  part trigger extends button.root { }
+}

@@ -9,29 +9,20 @@ pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule, ButtonEle
 pub use crate::controls::toggle::ToggleStylesheet;
 pub use crate::controls::progress::{ProgressStylesheet, ProgressMetricsRule, ProgressColorRule};
 pub use crate::controls::stepper::{StepperStylesheet, StepperMetricsRule};
-pub use crate::controls::card::{CardStylesheet, CardColorRule};
+pub use crate::controls::card::CardStylesheet;
 pub use crate::elements::badge::{BadgeStylesheet, BadgeColorRule};
 pub use crate::controls::split_view::{SplitViewStylesheet, SplitViewColorRule};
 pub use crate::controls::control_group::{ControlGroupStylesheet, ControlGroupListColorRule};
-pub use crate::controls::checkbox::{CheckboxStylesheet, CheckboxColorRule};
-pub use crate::controls::radio::{RadioStylesheet, RadioColorRule};
-pub use crate::controls::switch::{SwitchStylesheet, SwitchMetricsRule, SwitchColorRule};
 pub use crate::controls::slider::{SliderStylesheet, SliderMetricsRule, SliderColorRule};
 pub use crate::controls::scrollbar::{ScrollbarStylesheet, ScrollbarMetricsRule, ScrollbarColorRule};
-pub use crate::controls::accordion::{AccordionStylesheet, AccordionTriggerColorRule, AccordionContentColorRule};
-pub use crate::controls::resizable_panels::{ResizablePanelsStylesheet, ResizablePanelsColorRule};
-pub use crate::controls::listbox::{ListboxStylesheet, ListboxListColorRule, ListboxRowColorRule};
-pub use crate::controls::table::{TableStylesheet, TableSurfaceColorRule, TableRowColorRule};
-pub use crate::controls::floating_menu::{
-    FloatingMenuStylesheet, FloatingMenuSurfaceElevationRule, FloatingMenuSurfaceColorRule,
-    FloatingMenuTriggerColorRule,
-};
-pub use crate::controls::tabs::{TabsStylesheet, TabsListColorRule, TabsItemColorRule};
-pub use crate::controls::tree_view::{TreeViewStylesheet, TreeViewRowColorRule};
-pub use crate::controls::sidebar::{
-    SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule, SidebarSectionColorRule, SidebarBranchColorRule,
-    SidebarItemColorRule,
-};
+pub use crate::controls::accordion::AccordionStylesheet;
+pub use crate::controls::resizable_panels::ResizablePanelsStylesheet;
+pub use crate::controls::listbox::ListboxStylesheet;
+pub use crate::controls::table::TableStylesheet;
+pub use crate::controls::floating_menu::{FloatingMenuStylesheet, FloatingMenuSurfaceElevationRule};
+pub use crate::controls::tabs::TabsStylesheet;
+pub use crate::controls::tree_view::TreeViewStylesheet;
+pub use crate::controls::sidebar::{SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule};
 pub use crate::controls::textfield::{TextfieldStylesheet, TextfieldElevationRule, TextfieldColorRule};
 pub use crate::controls::autocomplete::{AutocompleteStylesheet, AutocompleteChromeColorRule};
 
@@ -45,12 +36,6 @@ pub struct StylesheetConfig {
     pub button: ButtonStylesheet,
     #[serde(default)]
     pub toggle: ToggleStylesheet,
-    #[serde(default)]
-    pub checkbox: CheckboxStylesheet,
-    #[serde(default)]
-    pub radio: RadioStylesheet,
-    #[serde(default)]
-    pub switch: SwitchStylesheet,
     #[serde(default)]
     pub slider: SliderStylesheet,
     #[serde(default)]
@@ -97,9 +82,6 @@ impl StylesheetConfig {
             typography: TypographyStylesheet::native_default(),
             button: ButtonStylesheet::native_default(),
             toggle: ToggleStylesheet::native_default(),
-            checkbox: super::native_shadcn_checkbox(),
-            radio: RadioStylesheet::native_default(),
-            switch: super::native_shadcn_switch(),
             slider: super::native_shadcn_slider(),
             scrollbar: ScrollbarStylesheet::native_default(),
             accordion: AccordionStylesheet::native_default(),

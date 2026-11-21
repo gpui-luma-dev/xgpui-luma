@@ -1,42 +1,27 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::tabs::{TabsTemplate, TabsTheme, ThemedTabsTemplate};
+use xgpui_luma::controls::tabs::{StyledTabs, TabsTemplate, TabsTheme, ThemedTabsTemplate};
 use xgpui_luma::theme::{InteractionState};
 
-use crate::controls::tabs::{tabs_item_look_with_stylesheet, tabs_list_look_with_stylesheet};
 use crate::look::ShadcnLook;
 
+/// The Shadcn tabs: list and tabs from `.lss` (`style/tabs.lss`); the drag preview from the look.
 struct ShadcnTabsTheme {
     theme: ShadcnLook,
+    styled: StyledTabs,
 }
 
 impl TabsTheme for ShadcnTabsTheme {
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let palette = &tokens.palette;
-        xgpui_luma::infra::drag_drop::DragDropLook {
-            geometry: self.theme.stylesheet().common.shared_geometry(),
-            background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
-            foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
-            valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
-            invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.control_sizes.radius(size),
-            typography: tokens.typography.text.label,
-            font_family: tokens.typography.font.sans.family.clone().into(),
-        }
+        super::drag::drag_look(&self.theme)
     }
 
     fn resolve_list(&self, enabled: bool) -> xgpui_luma::controls::tabs::TabsListLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        tabs_list_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), enabled, size)
+        self.styled.list(enabled)
     }
 
     fn resolve_item(&self, active: bool, state: InteractionState) -> xgpui_luma::controls::tabs::TabsItemLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        tabs_item_look_with_stylesheet(tokens.as_ref(), &self.theme.stylesheet(), active, state, size)
+        self.styled.item(active, state)
     }
 
     fn font_family(&self) -> gpui::SharedString {
@@ -49,7 +34,18 @@ pub fn tabs_template(theme: ShadcnLook) -> Arc<dyn TabsTemplate> {
 }
 
 pub fn tabs_theme(theme: ShadcnLook) -> Arc<dyn TabsTheme> {
-    Arc::new(ShadcnTabsTheme { theme: theme.clone() })
+    let size = theme.size();
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "tabs",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(ShadcnTabsTheme { theme, styled: StyledTabs::new(binding) })
 }
 
 #[cfg(test)]
@@ -65,12 +61,18 @@ mod drag_tests {
             let sidebar = super::super::sidebar::sidebar_theme(look.clone()).resolve_drag();
             let tokens = look.mode_tokens();
             for drag in [tabs, sidebar] {
-                assert_eq!(drag.background, look.token_color("popover").unwrap_or(tokens.palette.panel_background));
-                assert_eq!(drag.foreground, look.token_color("popover-foreground").unwrap_or(tokens.palette.body_text));
-                assert_eq!(drag.valid_marker, look.token_color("ring").unwrap_or(tokens.palette.focus_ring));
-                assert_eq!(
+                crate::assert_close(
+                    drag.background,
+                    look.token_color("popover").unwrap_or(tokens.palette.panel_background),
+                );
+                crate::assert_close(
+                    drag.foreground,
+                    look.token_color("popover-foreground").unwrap_or(tokens.palette.body_text),
+                );
+                crate::assert_close(drag.valid_marker, look.token_color("ring").unwrap_or(tokens.palette.focus_ring));
+                crate::assert_close(
                     drag.invalid_marker,
-                    look.token_color("destructive").unwrap_or(tokens.palette.destructive_background)
+                    look.token_color("destructive").unwrap_or(tokens.palette.destructive_background),
                 );
             }
         }

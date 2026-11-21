@@ -3,10 +3,11 @@ use std::sync::Arc;
 use gpui::{AnyElement, Pixels, SharedString, Size};
 use xgpui_luma::controls::{resizable_panels::*, slide_panel::*};
 use xgpui_luma::theme::InteractionState;
-use crate::{Look, ScaleFamily, SemanticRole};
+use crate::{Look, SemanticRole};
 
 struct PanelsTheme {
     look: Look,
+    styled: StyledResizablePanelsTheme,
 }
 impl ResizablePanelsTheme for PanelsTheme {
     /// Handle pixels for the Look's Radix size.
@@ -14,31 +15,16 @@ impl ResizablePanelsTheme for PanelsTheme {
         ResizeHandleMetrics::from_stylesheet(&self.look.sized_stylesheet(self.look.size()))
     }
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        let geometry = self.look.common_stylesheet().resizable_panels.resolve_geometry(Default::default());
-        let muted = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
-        ResizablePanelsLook {
-            border: self.look.resolve_role(SemanticRole::Border).hsla(),
-            border_width: geometry.border_width,
-            divider_width: geometry.divider_width,
-            divider: if state.disabled {
-                self.look.resolve_step(ScaleFamily::Gray, 4).hsla()
-            } else {
-                self.look.resolve_role(SemanticRole::Border).hsla()
-            },
-            grip: muted,
-            grip_emphasis: if state.disabled {
-                muted
-            } else {
-                self.look.resolve_role(SemanticRole::Focus).hsla()
-            },
-            disabled_opacity: if state.disabled { geometry.disabled_opacity } else { 1.0 },
-        }
+        self.styled.resolve(state)
     }
 }
-/// Live Radix frame, divider, grip, disabled styling and SDK handle geometry.
+/// Live Radix frame, divider, grip and disabled styling from `.lss` (`style/resizable_panels.lss`), with
+/// the sized stylesheet's handle geometry.
 /// Notify affected owners after editing the supplied Look.
 pub fn resizable_panels_theme(look: &Look) -> Arc<dyn ResizablePanelsTheme> {
-    Arc::new(PanelsTheme { look: look.clone() })
+    let binding = crate::textfield::sized_binding(look, "resizable_panels");
+    let styled = StyledResizablePanelsTheme::new(binding, ResizeHandleMetrics::default());
+    Arc::new(PanelsTheme { look: look.clone(), styled })
 }
 /// Native SDK panel template; pair with [`resizable_panels_theme`] when composing manually.
 pub fn resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
@@ -153,8 +139,9 @@ mod tests {
                     focused: true,
                     ..Default::default()
                 });
-                assert_eq!(normal.grip_emphasis, look.resolve_role(SemanticRole::Focus).hsla());
-                assert_eq!(disabled.grip_emphasis, look.resolve_role(SemanticRole::MutedForeground).hsla());
+                let role = |r| look.resolve_role(r).hsla();
+                crate::control_group::assert_close(normal.grip_emphasis, role(SemanticRole::Focus));
+                crate::control_group::assert_close(disabled.grip_emphasis, role(SemanticRole::MutedForeground));
                 assert!(disabled.disabled_opacity < normal.disabled_opacity);
                 assert_eq!(slide_panel_look(&look).divider, normal.divider);
                 let sizes = crate::RadixSize::ALL

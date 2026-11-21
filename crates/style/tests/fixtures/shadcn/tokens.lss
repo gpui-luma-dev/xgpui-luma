@@ -1,0 +1,106 @@
+// Shadcn look tokens (converted from #94 crates/look-shadcn/assets/shadcn.hcl, trimmed). Layer: look.
+// Native root `css` is the active Shadcn CSS catalog; it already holds the mode's values.
+// Look functions: px, css_shadow, css_font, layer, first_layer (see the test token source).
+
+const {
+  radius_base = first(px(css.radius), 8)   // DEFAULT_BASE_RADIUS_PX when the catalog has none
+  spacing     = first(px(css.spacing), 4)
+}
+
+tokens {
+  shadcn {
+    radius {
+      none = 0
+      sm   = max(radius_base - 4, 0)
+      md   = max(radius_base - 2, 0)
+      lg   = radius_base
+      full = full_radius
+    }
+    shadow {
+      xs = css_shadow(css.shadow_xs)
+    }
+
+    // Action roles. Button styles read these.
+    primary {
+      background = css.primary
+      foreground = css.primary_foreground
+      hover      = layer(css.primary, hover)
+      pressed    = layer(css.primary, pressed)
+    }
+    secondary {
+      background = css.secondary
+      foreground = css.secondary_foreground
+      hover      = layer(css.secondary, hover)
+      pressed    = layer(css.secondary, pressed)
+    }
+    // Outline, ghost and content-only act with the foreground color.
+    foreground_action {
+      background = css.foreground
+      foreground = css.background
+      hover      = layer(css.foreground, hover)
+      pressed    = layer(css.foreground, pressed)
+    }
+    // Unfilled indicator backgrounds by interaction.
+    outline_layer {
+      default = first(css.card, css.background)
+      hover   = first_layer(css.accent, css.muted, hover)
+      pressed = css.muted
+    }
+    accent            = first(css.accent, css.muted)
+    accent_foreground = first(css.accent_foreground, css.foreground)
+
+    mode light {
+      outline {
+        background = css.background
+        hover      = css.accent
+        border     = css.border
+      }
+      ghost { hover = css.accent }
+    }
+    mode dark {
+      outline {
+        background = alpha(css.input, 0.3)
+        hover      = alpha(css.input, 0.5)
+        border     = css.input
+      }
+      ghost { hover = alpha(shadcn.accent, 0.5) }
+    }
+  }
+
+  // Size-dependent SDK metrics: Shadcn owns the size keys.
+  metrics {
+    control {
+      size sm { height = 28  padding_x = spacing * 2.5  gap = spacing * 1.5  radius = shadcn.radius.sm  icon_size = 14 }
+      size md { height = 36  padding_x = spacing * 3.5  gap = spacing * 2    radius = shadcn.radius.md  icon_size = 16 }
+      size lg { height = 44  padding_x = spacing * 4.5  gap = spacing * 2.5  radius = shadcn.radius.lg  icon_size = 18 }
+    }
+  }
+
+  typography {
+    font { sans = first(css_font(css.font_sans), "System UI") }
+  }
+
+  // The SDK palette, mapped onto the catalog.
+  palette {
+    app {
+      background       = css.background
+      foreground       = css.foreground
+      muted_foreground = css.muted_foreground
+    }
+    surface {
+      subtle   { background = css.muted  foreground = css.muted_foreground }
+      floating { background = first(css.popover, css.card)  foreground = css.foreground  border = css.border }
+    }
+    state {
+      hover    { background = shadcn.accent  foreground = shadcn.accent_foreground }
+      pressed  { background = layer(css.accent, pressed) }
+      selected { background = css.primary  foreground = css.primary_foreground }
+      disabled { background = css.muted  foreground = css.muted_foreground }
+    }
+    form {
+      input { background = css.background  foreground = css.foreground  border = css.input }
+    }
+    focus  { ring = css.ring }
+    border { default = css.border }
+  }
+}

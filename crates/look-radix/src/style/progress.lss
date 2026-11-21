@@ -1,0 +1,30 @@
+// Radix progress. Layer: look. A bar the height of its track: a gray 3 track with the tone 9 amount (soft:
+// gray 4 and tone 8; high contrast: tone 12); gray 8 when disabled. Sizes 1–3.
+
+progress {
+  track_height = exact(6)
+  thumb_size   = exact(0)
+  ring_size    = exact(6)
+  stroke_width = exact(6)
+  size 1 { track_height = exact(4)  ring_size = exact(4)  stroke_width = exact(4) }
+  size 3 { track_height = exact(8)  ring_size = exact(8)  stroke_width = exact(8) }
+
+  part track { background = gray[3] }
+
+  part fill {
+    background = tone[9]
+    :high_contrast { background = tone[12] }
+    :disabled      { background = gray[8] }
+    :high_contrast:disabled { background = gray[8] }
+  }
+
+  variant soft {
+    part track { background := gray[4] }
+    part fill {
+      background := tone[8]
+      :high_contrast { background = tone[12] }
+      :disabled      { background = gray[8] }
+      :high_contrast:disabled { background = gray[8] }
+    }
+  }
+}

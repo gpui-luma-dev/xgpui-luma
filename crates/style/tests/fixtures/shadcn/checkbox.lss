@@ -1,0 +1,50 @@
+// Shadcn checkbox (converted from #94 look-shadcn/src/controls/checkbox.hcl). Layer: look.
+// Variants: the base is Shadcn's primary style; secondary, outline, ghost, content_only.
+// Sizes: sm, md (SDK values), lg.
+
+checkbox {
+  size sm { indicator_size = metrics.control.control_height * 0.45  indicator_radius = 2  glyph_inset = 2 }
+  size lg { indicator_size = metrics.control.control_height * 0.55  indicator_radius = 6  glyph_inset = 4 }
+
+  part indicator {
+    background = shadcn.outline_layer.default
+    border     = css.border
+    shadow     = shadcn.shadow.xs
+    :checked         { background = shadcn.primary.background  border = background }
+    :checked:hover   { background = shadcn.primary.hover }
+    :checked:pressed { background = shadcn.primary.pressed }
+    :hover           { background = shadcn.outline_layer.hover }
+    :pressed         { background = shadcn.outline_layer.pressed }
+    :disabled        { background = css.muted  border = css.border  shadow = none }
+  }
+  part glyph {
+    foreground = css.foreground
+    :checked  { foreground = shadcn.primary.foreground }
+    :disabled { foreground = css.muted_foreground }
+  }
+  part label {
+    foreground = css.foreground
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  variant secondary {
+    part indicator {
+      :checked         { background = shadcn.secondary.background }
+      :checked:hover   { background = shadcn.secondary.hover }
+      :checked:pressed { background = shadcn.secondary.pressed }
+    }
+    part glyph { :checked { foreground = shadcn.secondary.foreground } }
+  }
+
+  variant outline {
+    part indicator {
+      :checked         { background = shadcn.foreground_action.background }
+      :checked:hover   { background = shadcn.foreground_action.hover }
+      :checked:pressed { background = shadcn.foreground_action.pressed }
+    }
+    part glyph { :checked { foreground = shadcn.foreground_action.foreground } }
+  }
+
+  variant ghost extends outline { }
+  variant content_only extends outline { }
+}

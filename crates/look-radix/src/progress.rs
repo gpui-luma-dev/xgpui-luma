@@ -1,7 +1,7 @@
 //! Radix progress bar styling and SDK template adapter.
 use std::sync::Arc;
 use gpui::{BoxShadow, div, point, prelude::*, px};
-use xgpui_luma::controls::progress::{ProgressLook, ProgressTemplate, ProgressTheme, ThemedLinearProgressTemplate};
+use xgpui_luma::controls::progress::{ProgressTemplate, ProgressTheme, StyledProgressTheme, ThemedLinearProgressTemplate};
 use crate::RadixSize;
 use crate::{Look, Paint, Radius, ScaleFamily, Tone};
 
@@ -77,60 +77,30 @@ fn progress_radius_for_height(h: f32, radius: Radius) -> f32 {
     };
     (radius.factor() * (h / 3.0).max(thumb)).min(h / 2.0)
 }
-struct ProgressThemeAdapter {
-    look: Look,
-    variant: ProgressVariant,
-    paint: Paint,
-}
-impl ProgressTheme for ProgressThemeAdapter {
-    fn resolve(&self, enabled: bool) -> ProgressLook {
-        let size = self.look.size();
-        let family = match self.paint.tone {
-            Tone::Accent => ScaleFamily::Color,
-            Tone::Gray => ScaleFamily::Gray,
-        };
-        let gray = |n| self.look.resolve_step(ScaleFamily::Gray, n).hsla();
-        let step = |n| self.look.resolve_step(family, n).hsla();
-        let track = match self.variant {
-            ProgressVariant::Surface => gray(3),
-            ProgressVariant::Soft => gray(4),
-        };
-        let fill = if !enabled {
-            gray(8)
-        } else if self.paint.high_contrast {
-            step(12)
-        } else {
-            step(match self.variant {
-                ProgressVariant::Surface => 9,
-                ProgressVariant::Soft => 8,
-            })
-        };
-        let height = self
-            .look
-            .stylesheet_snapshot()
-            .progress
-            .resolve_geometry_for(
-                size.key(),
-                xgpui_luma::theme::stylesheet::ProgressGeometry { track_height: height(size), ..Default::default() },
-            )
-            .track_height;
-        ProgressLook {
-            geometry: self.look.stylesheet_snapshot().progress.resolve_geometry_for(size.key(), Default::default()),
-            track_color: track,
-            progress_color: fill,
-            thumb_color: fill,
-            track_height: height,
-            thumb_size: 0.0,
-            size: height,
-            stroke_width: height,
-        }
-    }
-}
 pub fn progress_theme(look: &Look) -> Arc<dyn ProgressTheme> {
     progress_theme_with(look, ProgressVariant::Surface, Paint::accent())
 }
+/// Radix progress drawn from `.lss` (`style/progress.lss`) at the look's size; follows the look's later edits.
 pub fn progress_theme_with(look: &Look, variant: ProgressVariant, paint: Paint) -> Arc<dyn ProgressTheme> {
-    Arc::new(ProgressThemeAdapter { look: look.clone(), variant, paint })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("progress", crate::textfield::live_source(look))
+        .state("high_contrast", paint.high_contrast);
+    let binding = if variant == ProgressVariant::Soft {
+        binding.variant("soft")
+    } else {
+        binding
+    };
+    let binding = if paint.tone == Tone::Gray {
+        binding.attr("tone", "gray")
+    } else {
+        binding
+    };
+    let binding = if size != RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(StyledProgressTheme::new(binding))
 }
 pub fn progress_template(
     look: &Look,
@@ -198,8 +168,14 @@ mod tests {
                         } else {
                             9
                         };
-                        assert_eq!(normal.progress_color, look.resolve_step(family, step).hsla());
-                        assert_eq!(theme.resolve(false).progress_color, look.resolve_step(ScaleFamily::Gray, 8).hsla());
+                        crate::control_group::assert_close(
+                            normal.progress_color,
+                            look.resolve_step(family, step).hsla(),
+                        );
+                        crate::control_group::assert_close(
+                            theme.resolve(false).progress_color,
+                            look.resolve_step(ScaleFamily::Gray, 8).hsla(),
+                        );
                     }
                 }
             }

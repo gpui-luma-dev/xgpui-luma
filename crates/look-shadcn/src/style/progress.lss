@@ -1,0 +1,21 @@
+// Shadcn progress. Layer: look. An accent track with the accent foreground amount; both muted when
+// disabled. Sizes sm, md, lg.
+
+progress {
+  track_height = exact(6)
+  thumb_size   = exact(16)
+  ring_size    = exact(64)
+  stroke_width = exact(6)
+  size sm { track_height = exact(4)  thumb_size = exact(12)  ring_size = exact(48)  stroke_width = exact(5) }
+  size lg { track_height = exact(8)  thumb_size = exact(20)  ring_size = exact(80)  stroke_width = exact(8) }
+
+  part track {
+    background = css.accent
+    :disabled { background = css.muted_foreground }
+  }
+
+  part fill {
+    background = css.accent_foreground
+    :disabled { background = css.muted_foreground }
+  }
+}

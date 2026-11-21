@@ -7,25 +7,12 @@ use xgpui_luma::controls::listbox::{ListBoxInput, ListBoxSnapshot, ListBoxState,
 use xgpui_luma::hstack;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
-use super::{ListBoxSampleLayout};
 use super::presentation::{ExamplePresentation, SelectionMark};
 use super::markup::listbox;
 use xgpui_luma::controls::listbox::{ListBoxControl, ListBoxVirtualization};
 use super::super::event_stream::ControlEventStream;
 
 const ID: &str = "listbox-horizontal";
-pub(in super::super) const CARD_WIDTH: f32 = 136.0;
-// Inspector mirror of the markup below; headless geometry tests guard against drift.
-pub(in super::super) const LAYOUT: ListBoxSampleLayout = ListBoxSampleLayout {
-    item_height: 36.0,
-    spacing: 8.0,
-    item_padding: 12.0,
-    viewport_height: 36.0,
-    inset_x: 16.0,
-    inset_y: 8.0,
-    radius: 8.0,
-    border: 1.0,
-};
 
 struct CardItem {
     id: u32,

@@ -1,47 +1,21 @@
 //! Tooltip presentation bound to the control's mutable Shadcn look.
 use std::sync::Arc;
-use xgpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
-use crate::{ShadcnLook, ShadcnToken, ShadcnRadius};
-struct ShadcnTooltipTheme(ShadcnLook);
-impl TooltipTheme for ShadcnTooltipTheme {
-    fn resolve(&self) -> TooltipLook {
-        let tokens = self.0.mode_tokens();
-        let geometry = tokens.stylesheet().common.tooltip.resolve_geometry_for(
-            "default",
-            xgpui_luma::theme::stylesheet::TooltipGeometry {
-                padding: 8.0,
-                padding_y: 4.0,
-                max_width: 260.0,
-                font_size: 12.0,
-                line_height: 16.0,
-                ..Default::default()
-            },
-        );
-        TooltipLook {
-            placement: (&geometry).into(),
-            shortcut_gap: geometry.shortcut_gap,
-            shortcut_font_size: geometry.shortcut_font_size,
-            shortcut_opacity: geometry.shortcut_opacity,
-            background: self.0.color(ShadcnToken::Foreground),
-            foreground: self.0.color(ShadcnToken::Background),
-            padding: geometry.padding,
-            padding_y: geometry.padding_y,
-            radius: self.0.radius(ShadcnRadius::Md),
-            max_width: geometry.max_width,
-            text_size: geometry.font_size,
-            line_height: geometry.line_height,
-            shadow: Vec::new(),
-        }
-    }
-}
-/// Resolve tooltip tokens on each presentation, including mode changes.
+use xgpui_luma::controls::tooltip::{StyledTooltipTheme, TooltipTheme};
+use crate::ShadcnLook;
+/// Tooltip presentation drawn from `.lss` (`style/tooltip.lss`), resolved on each presentation, including
+/// mode changes.
 pub fn tooltip_theme(look: &ShadcnLook) -> Arc<dyn TooltipTheme> {
-    Arc::new(ShadcnTooltipTheme(look.clone()))
+    let look = look.clone();
+    Arc::new(StyledTooltipTheme::new(xgpui_luma::style::StyleBinding::new(
+        "tooltip",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || look.style_theme())),
+    )))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ShadcnToken;
     use xgpui_luma::theme::ThemeMode;
     #[test]
     fn tooltip_tracks_bound_look_mode() {
@@ -51,14 +25,15 @@ mod tests {
         look.set_mode(ThemeMode::Dark);
         let dark = theme.resolve();
         assert_ne!(light.background, dark.background);
-        assert_eq!(dark.background, look.color(ShadcnToken::Foreground));
-        assert_eq!(dark.foreground, look.color(ShadcnToken::Background));
+        crate::assert_close(dark.background, look.color(ShadcnToken::Foreground));
+        crate::assert_close(dark.foreground, look.color(ShadcnToken::Background));
     }
 }
 
 #[cfg(all(test, feature = "test-support"))]
 mod coverage_tests {
     use super::*;
+    use crate::ShadcnToken;
     use gpui::{AnyView, Context, IntoElement, Render, TestAppContext, Window};
     use xgpui_luma::{
         controls::tooltip::{Tooltip, bubble},
@@ -101,10 +76,9 @@ mod coverage_tests {
                     ..Default::default()
                 });
                 cx.run_until_parked();
-                assert_eq!(
-                    colors.lock().unwrap().last(),
-                    Some(&(look.color(ShadcnToken::Foreground), look.color(ShadcnToken::Background)))
-                );
+                let (background, foreground) = *colors.lock().unwrap().last().expect("a tooltip was drawn");
+                crate::assert_close(background, look.color(ShadcnToken::Foreground));
+                crate::assert_close(foreground, look.color(ShadcnToken::Background));
                 look.set_mode(ThemeMode::Dark);
                 cx.update(|window, _| window.refresh());
                 cx.run_until_parked();
@@ -120,10 +94,9 @@ mod coverage_tests {
                     ..Default::default()
                 });
                 cx.run_until_parked();
-                assert_eq!(
-                    colors.lock().unwrap().last(),
-                    Some(&(look.color(ShadcnToken::Foreground), look.color(ShadcnToken::Background)))
-                );
+                let (background, foreground) = *colors.lock().unwrap().last().expect("a tooltip was drawn");
+                crate::assert_close(background, look.color(ShadcnToken::Foreground));
+                crate::assert_close(foreground, look.color(ShadcnToken::Background));
             }
         };
     }
@@ -265,17 +238,15 @@ mod coverage_tests {
             ..Default::default()
         });
         cx.run_until_parked();
-        assert_eq!(
-            colors.lock().unwrap().last(),
-            Some(&(look.color(ShadcnToken::Foreground), look.color(ShadcnToken::Background)))
-        );
+        let (background, foreground) = *colors.lock().unwrap().last().expect("a tooltip was drawn");
+        crate::assert_close(background, look.color(ShadcnToken::Foreground));
+        crate::assert_close(foreground, look.color(ShadcnToken::Background));
         look.set_mode(ThemeMode::Dark);
         cx.update(|window, _| window.refresh());
         cx.run_until_parked();
-        assert_eq!(
-            colors.lock().unwrap().last(),
-            Some(&(look.color(ShadcnToken::Foreground), look.color(ShadcnToken::Background)))
-        );
+        let (background, foreground) = *colors.lock().unwrap().last().expect("a tooltip was drawn");
+        crate::assert_close(background, look.color(ShadcnToken::Foreground));
+        crate::assert_close(foreground, look.color(ShadcnToken::Background));
     }
 }
 

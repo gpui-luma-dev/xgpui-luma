@@ -1,0 +1,41 @@
+// SDK slider. Layer: sdk. Read by `styled_slider_look` (styled.rs): a track, the filled range and a thumb.
+
+/// A value picked by dragging a thumb along a track.
+slider {
+  /// Track thickness and thumb diameter.
+  track_height: length = exact(max(metrics.control.gap - 2, 2))
+  thumb_size: length = exact(16)
+  /// The radial (dial and ring) templates' size and track radius, and disabled opacity.
+  dial_size: length = exact(200)
+  dial_track_radius: length = exact(72)
+  disabled_opacity: number = 0.56
+
+  /// The whole control.
+  part root {
+    width  = exact(260)
+    height = exact(metrics.control.control_height - 4)
+    radius = exact(999)
+  }
+
+  /// The unfilled track.
+  part track {
+    background = palette.surface.subtle.background
+    :disabled { background = palette.state.disabled.background }
+  }
+
+  /// The filled range.
+  part fill {
+    background = palette.state.selected.background
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.foreground }
+  }
+
+  /// The thumb.
+  part thumb {
+    background   = palette.surface.panel.background
+    border       = palette.state.selected.background
+    border_width = exact(metrics.border_width)
+    shadow       = elevation.thumb
+    :disabled { background = palette.state.disabled.foreground  border = palette.state.disabled.background }
+  }
+}

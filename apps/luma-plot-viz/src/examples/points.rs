@@ -1,5 +1,4 @@
 use xgpui_luma::controls::radio_group;
-use xgpui_luma::controls::radio_button;
 use xgpui_luma::controls::radio_group::RadioGroupEventExt;
 use gpui::{App, Context, Entity, IntoElement, Render, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::{
@@ -48,9 +47,7 @@ impl PointExamples {
                 ])
                 .selected("slice")
                 .template(radio_group::radio_group_buttons_template(
-                    std::sync::Arc::new(radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(
-                        look.clone(),
-                    ))),
+                    look.radio_template(),
                     radio_group::RadioGroupLayout::Horizontal,
                 ))
                 .spawn(cx);
@@ -69,9 +66,7 @@ impl PointExamples {
                 ])
                 .selected("smooth")
                 .template(radio_group::radio_group_buttons_template(
-                    std::sync::Arc::new(radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(
-                        look.clone(),
-                    ))),
+                    look.radio_template(),
                     radio_group::RadioGroupLayout::Horizontal,
                 ))
                 .spawn(cx);
@@ -90,9 +85,7 @@ impl PointExamples {
                 ])
                 .selected("above")
                 .template(radio_group::radio_group_buttons_template(
-                    std::sync::Arc::new(radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(
-                        look.clone(),
-                    ))),
+                    look.radio_template(),
                     radio_group::RadioGroupLayout::Horizontal,
                 ))
                 .spawn(cx);

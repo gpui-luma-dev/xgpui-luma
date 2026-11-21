@@ -1,0 +1,18 @@
+// SDK autocomplete. Layer: sdk. The status line and clear button beside the field; the field is the text
+// field and the popup the floating menu. Read by `styled_autocomplete_look` (styled.rs).
+
+/// A text field that suggests matches.
+autocomplete {
+  /// The status mark, de-emphasised text, and the clear button at rest and hovered.
+  status: color = palette.state.selected.background
+  muted_text: color = palette.surface.floating.foreground
+  clear_icon: color = palette.surface.floating.foreground
+  clear_icon_hover: color = palette.form.input.foreground
+
+  /// The status line's text.
+  part root {
+    font_size   = 12.5
+    line_height = 18
+    font_weight = typography.text.body.weight
+  }
+}

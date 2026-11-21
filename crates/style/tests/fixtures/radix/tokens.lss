@@ -1,0 +1,28 @@
+// Radix look tokens (converted from #94 crates/look-radix/assets/radix.hcl, trimmed). Layer: look.
+// Native roots: gray[n], accent[n] (n = 1..12) for the active mode, and tone[n], which is the accent
+// scale, or gray when the instance has `tone gray`.
+
+tokens {
+  radix {
+    role {
+      background       = gray[1]
+      surface          = gray[2]
+      border           = gray[6]
+      foreground       = gray[12]
+      muted_foreground = gray[11]
+      primary          = accent[9]
+      focus            = accent[8]
+    }
+    mode light { role { primary_foreground = accent[1] } }
+    mode dark  { role { primary_foreground = gray[12] } }
+  }
+
+  palette {
+    app {
+      background       = radix.role.background
+      foreground       = radix.role.foreground
+      muted_foreground = radix.role.muted_foreground
+    }
+    focus { ring = radix.role.focus }
+  }
+}

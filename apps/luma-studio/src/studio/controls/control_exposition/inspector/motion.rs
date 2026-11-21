@@ -22,7 +22,6 @@ use xgpui_luma::controls::sidebar::{SidebarControl, SidebarMotion};
 use xgpui_luma::controls::slide_panel::SlidePanelMotion;
 use xgpui_luma::controls::slider::{SliderControl, SliderMotion};
 use xgpui_luma::controls::stepper::{Stepper, StepperMotion};
-use xgpui_luma::controls::switch::{Switch, SwitchMotion};
 use xgpui_luma::controls::table::{TableControl, TableMotion};
 use xgpui_luma::controls::tabs::{Tabs, TabsMotion};
 use xgpui_luma::controls::tree_view::{TreeView, TreeViewMotion};
@@ -85,6 +84,10 @@ pub fn format_transition(transition: &Transition) -> String {
             Easing::Linear => format!("{} ms · linear", duration.as_millis()),
             Easing::OutCubic => format!("{} ms · ease-out", duration.as_millis()),
             Easing::InOutCubic => format!("{} ms · ease-in-out", duration.as_millis()),
+            Easing::InQuad => format!("{} ms · ease-in (quad)", duration.as_millis()),
+            Easing::OutQuad => format!("{} ms · ease-out (quad)", duration.as_millis()),
+            Easing::InOutQuad => format!("{} ms · ease-in-out (quad)", duration.as_millis()),
+            Easing::InCubic => format!("{} ms · ease-in", duration.as_millis()),
         },
         TransitionDescription::Spring { stiffness, damping } => format!("spring · {stiffness} / {damping}"),
         TransitionDescription::Instant => "instant".into(),
@@ -114,30 +117,6 @@ pub fn transition_row(role: &str, example: &Transition, defaults: &Transition) -
     }
 }
 
-pub struct SwitchMotionReport {
-    samples: Vec<(SharedString, Switch)>,
-}
-
-impl SwitchMotionReport {
-    pub fn new(examples: impl IntoIterator<Item = (impl Into<SharedString>, Switch)>) -> Self {
-        Self { samples: examples.into_iter().map(|(label, switch)| (label.into(), switch)).collect() }
-    }
-}
-
-impl MotionReport for SwitchMotionReport {
-    fn examples(&self, look: &ShadcnLook, cx: &App) -> Vec<MotionExample> {
-        let defaults = look.motion_defaults().switch;
-        self.samples
-            .iter()
-            .map(|(label, switch)| {
-                let switch = switch.read(cx);
-                motion_example(label.clone(), switch.motion_enabled(), switch_rows(switch.motion_profile(), &defaults))
-            })
-            .collect()
-    }
-}
-
-/// One captured transition role, read from each displayed example.
 pub struct StateMotionReport<T: 'static> {
     role: &'static str,
     samples: Vec<(SharedString, Entity<T>)>,
@@ -228,10 +207,6 @@ pub fn tabs_rows(example: &TabsMotion, defaults: &TabsMotion) -> Vec<MotionRow> 
         transition_row("Disclosure", &example.disclosure, &defaults.disclosure),
         transition_row("Drop layout", &example.drop_layout, &defaults.drop_layout),
     ]
-}
-
-pub fn switch_rows(example: &SwitchMotion, defaults: &SwitchMotion) -> Vec<MotionRow> {
-    vec![transition_row("State", &example.state, &defaults.state)]
 }
 
 pub fn control_group_rows(example: &ControlGroupMotion, defaults: &ControlGroupMotion) -> Vec<MotionRow> {
@@ -724,19 +699,6 @@ mod tests {
         assert!(!row.inherited);
         assert_eq!(row.example, "instant");
         assert_eq!(row.look_default, "180 ms · ease-out");
-    }
-
-    #[test]
-    fn switch_state_row_marks_an_override() {
-        let defaults = SwitchMotion::default();
-        let mut edited = defaults.clone();
-        edited.state = Transition::timed(Duration::from_millis(400), Easing::Linear);
-        let rows = switch_rows(&edited, &defaults);
-        assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].role, "State");
-        assert!(!rows[0].inherited);
-        assert_eq!(rows[0].example, "400 ms · linear");
-        assert!(switch_rows(&defaults, &defaults)[0].inherited);
     }
 
     #[test]

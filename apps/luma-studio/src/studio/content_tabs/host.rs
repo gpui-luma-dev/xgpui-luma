@@ -7,7 +7,6 @@ use gpui::{AnyElement, App, Bounds, Context, Entity, Focusable, Pixels, Render, 
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
 use xgpui_luma::controls::tabs::{Tabs, TabsContent, TabsEvent, TabsItem, TabsTemplate, TabsWidthMode};
 use xgpui_luma_look_shadcn::ShadcnSize;
-use xgpui_luma_look_shadcn::paint::floating_menu_look;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
@@ -180,8 +179,7 @@ impl ContentPaneHost {
     }
 
     pub(super) fn render_catalog_picker(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let menu_look =
-            floating_menu_look(self.board.look.mode_tokens().as_ref(), self.board.look.mode(), ShadcnSize::Sm);
+        let menu_look = self.board.look.with_size(ShadcnSize::Sm).floating_menu_theme().resolve();
         let selected_entry_id = self.controls_panel.read(cx).selected_entry_id();
         render_control_catalog_picker(&menu_look, Some(selected_entry_id), true, cx, |host, exposition_id, _, cx| {
             host.controls_panel.update(cx, |panel, cx| panel.select_entry(exposition_id, cx));

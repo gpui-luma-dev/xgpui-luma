@@ -41,8 +41,7 @@ pub trait RunningMotion: Debug + Send + Sync {
 /// ```no_run
 /// use xgpui_luma::{controls::{switch, tabs::Tabs}, motion::Transition};
 ///
-/// let switch = switch::new("notifications")
-///     .motion(|m| m.state = Transition::spring(300.0, 28.0));
+/// let switch = switch::new("notifications").transition(Transition::spring(300.0, 28.0));
 /// let tabs = Tabs::new("settings")
 ///     .motion(|m| {
 ///         m.indicator = Transition::spring(300.0, 28.0);
@@ -137,6 +136,10 @@ pub enum Easing {
     OutCubic,
     /// Cubic acceleration followed by cubic deceleration, with zero endpoint velocity.
     InOutCubic,
+    InQuad,
+    OutQuad,
+    InOutQuad,
+    InCubic,
 }
 
 #[derive(Debug)]
@@ -177,6 +180,11 @@ impl RunningMotion for TimedRun {
             Easing::OutCubic => (super::ease_out_cubic(t), 3.0 * (1.0 - t).powi(2)),
             Easing::InOutCubic if t < 0.5 => (4.0 * t.powi(3), 12.0 * t.powi(2)),
             Easing::InOutCubic => (1.0 - 4.0 * (1.0 - t).powi(3), 12.0 * (1.0 - t).powi(2)),
+            Easing::InQuad => (t * t, 2.0 * t),
+            Easing::OutQuad => (1.0 - (1.0 - t).powi(2), 2.0 * (1.0 - t)),
+            Easing::InOutQuad if t < 0.5 => (2.0 * t * t, 4.0 * t),
+            Easing::InOutQuad => (1.0 - 2.0 * (1.0 - t).powi(2), 4.0 * (1.0 - t)),
+            Easing::InCubic => (t.powi(3), 3.0 * t * t),
         };
         let distance = self.target - self.from;
         MotionSample {

@@ -1,0 +1,10 @@
+// Radix control group. Layer: look. The surface frame with the border role, enabled or not.
+
+control_group {
+  part root {
+    background = radix.role.surface
+    border     = radix.role.border
+    radius     = exact(4)
+    :disabled { background = radix.role.surface }
+  }
+}

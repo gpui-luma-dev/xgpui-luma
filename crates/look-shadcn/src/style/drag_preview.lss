@@ -1,0 +1,11 @@
+// Shadcn drag preview. Layer: look. The popover surface, the ring as the drop marker and the destructive
+// color where a drop is refused.
+
+drag_preview {
+  part root {
+    background     = first(css.popover, css.card)
+    foreground     = first(css.popover_foreground, css.card_foreground)
+    valid_marker   = css.ring
+    invalid_marker = css.destructive
+  }
+}

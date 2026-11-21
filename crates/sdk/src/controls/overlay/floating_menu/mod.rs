@@ -8,6 +8,8 @@
 //! building a look template or a derived menu surface.
 
 mod model;
+mod styled;
+pub use styled::{StyledFloatingMenuTheme, styled_floating_menu_look};
 mod template;
 pub(crate) mod theme;
 
@@ -21,5 +23,4 @@ pub use template::{
     render_floating_menu_with_submenu_hovers_and_icons_and_transition, render_floating_menu_with_submenu_presence,
     render_floating_menu_with_submenu_presence_and_transition, render_floating_menu_with_template,
 };
-pub use theme::{DefaultFloatingMenuTheme, FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
-pub(crate) use theme::default_floating_menu_look;
+pub use theme::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};

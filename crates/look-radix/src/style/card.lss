@@ -1,0 +1,29 @@
+// Radix card. Layer: look. Surface by default: the panel fill (gray 1, gray 2 when dark) inside a gray 5
+// inset edge; classic adds a mode-dependent edge and a three-layer drop shadow; ghost has no fill or edge
+// (its negative margin is the card's). Gray 12 text. Sizes 1–3.
+
+card {
+  part root {
+    background   = radix.card_background
+    foreground   = gray[12]
+    border       = transparent
+    border_width = exact(0)
+    shadow       = [inset_shadow(gray[5], 0, 0, 0, 1)]
+    radius       = exact(8)
+    padding_x    = exact(16)
+    padding_y    = exact(16)
+    font_family  = look.font_sans
+  }
+  size 1 { part root { padding_x = exact(12)  padding_y = exact(12) } }
+  size 3 { part root { padding_x = exact(24)  padding_y = exact(24)  radius = exact(12) } }
+
+  variant classic {
+    part root {
+      shadow = [inset_shadow(radix.card_classic_edge, 0, 0, 0, 1),
+                box_shadow(alpha(black, radix.card_drop_alpha), 0, 1, 1, 0 - 1),
+                box_shadow(alpha(black, radix.card_drop_alpha), 0, 2, 1, 0 - 2),
+                box_shadow(alpha(black, radix.card_soft_alpha), 0, 1, 3, 0 - 1)]
+    }
+  }
+  variant ghost { part root { background = transparent  shadow = [] } }
+}

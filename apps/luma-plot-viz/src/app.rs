@@ -1,5 +1,4 @@
 use xgpui_luma::controls::radio_group;
-use xgpui_luma::controls::radio_button;
 use xgpui_luma::controls::tabs;
 use xgpui_luma::motion::{Transition, Easing};
 use xgpui_luma::controls::tabs::TabsEventExt;
@@ -48,7 +47,7 @@ impl PlotVizApp {
             ])
             .selected(theme::mode_id(look.mode()))
             .template(radio_group::radio_group_buttons_template(
-                std::sync::Arc::new(radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new((*look).clone()))),
+                look.radio_template(),
                 radio_group::RadioGroupLayout::Horizontal,
             ))
             .spawn(cx);

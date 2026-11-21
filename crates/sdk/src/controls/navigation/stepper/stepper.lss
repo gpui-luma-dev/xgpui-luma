@@ -1,0 +1,48 @@
+// SDK stepper. Layer: sdk. Read by `styled_stepper_look` (styled.rs): step badges in three states and the
+// connecting track, with the layout the templates share.
+
+/// Numbered steps joined by a track.
+stepper {
+  /// Badge diameter and track thickness.
+  step_badge_size: length = exact(32)
+  track_thickness: length = exact(2)
+  /// Label and content layout.
+  side_label_width: length = exact(120)
+  label_width: length = exact(48)
+  content_gap: length = exact(16)
+  label_gap: length = exact(6)
+  side_label_gap: length = exact(10)
+  content_height: length = exact(120)
+  /// Badge glyph and number size as a fraction of the badge.
+  glyph_scale: number = 0.45
+  number_scale: number = 0.38
+  /// A finished step's badge, the current step's, an unstarted step's (with its edge), and the track ahead
+  /// of and behind the current step.
+  complete_background: color = palette.state.selected.background
+  complete_foreground: color = palette.surface.subtle.background
+  current_background: color = palette.state.selected.background
+  current_foreground: color = palette.surface.subtle.background
+  incomplete_background: color = palette.surface.subtle.background
+  incomplete_border: color = palette.border.default
+  incomplete_foreground: color = palette.surface.subtle.foreground
+  track_active: color = palette.state.selected.background
+  track_muted: color = palette.surface.subtle.background
+
+  part root {
+    border_width = exact(1)
+    font_size    = 12
+    line_height  = 16
+    font_weight  = typography.text.label.weight
+    :disabled {
+      complete_background   = palette.surface.subtle.background
+      complete_foreground   = palette.state.disabled.foreground
+      current_background    = palette.surface.subtle.background
+      current_foreground    = palette.state.disabled.foreground
+      incomplete_background = palette.state.disabled.background
+      incomplete_border     = palette.state.disabled.foreground
+      incomplete_foreground = palette.state.disabled.foreground
+      track_active          = palette.state.disabled.foreground
+      track_muted           = palette.surface.subtle.background
+    }
+  }
+}

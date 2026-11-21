@@ -1,0 +1,51 @@
+// Shadcn text field. Layer: look, over the SDK text field. The base is shadcn's Input (outline: a light
+// transparent or dark `input/30` fill and the border edge); input (selector and combobox triggers, which
+// fill more when hovered in dark mode), primary (opaque, with `shadow-xs`) and surface (muted, no edge)
+// are variants. The textarea extends the text field, so it draws the same.
+
+textfield {
+  part root {
+    background           := shadcn.field_background
+    foreground           := css.foreground
+    border               := css.border
+    focus_border         := first(css.ring, shadcn.fallback_foreground)
+    shadow               := []
+    placeholder          := css.muted_foreground
+    icon                 := css.muted_foreground
+    selection_background := css.primary
+    selection_foreground := css.primary_foreground
+    caret                := css.foreground
+    font_family           = typography.font.sans
+    font_size             = shadcn.control_font_size
+    line_height           = font_size * typography.text.body.line_height / typography.text.body.size
+    :invalid  { border = css.destructive  focus_border = transparent }
+    :disabled {
+      background           = css.muted
+      foreground           = css.muted_foreground
+      border               = css.border
+      selection_background = css.muted_foreground
+      selection_foreground = css.muted_foreground
+      caret                = css.muted_foreground
+    }
+    :disabled:invalid { border = css.border }
+  }
+
+  variant input { part root { :hover { background = shadcn.field_hover } } }
+
+  variant primary {
+    part root {
+      background := css.background
+      shadow     := first(css.shadow_xs, [])
+      :disabled { background = css.muted }
+    }
+  }
+
+  variant surface {
+    part root {
+      background := css.muted
+      border     := transparent
+      :invalid          { border = css.destructive }
+      :disabled:invalid { border = transparent }
+    }
+  }
+}

@@ -8,10 +8,10 @@ use gpui::{
 
 use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
-use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole, default_button_family_theme};
+use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
 use crate::infra::lock;
-use crate::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
     ControlGroupBoundsHandler, ControlGroupClickHandler, ControlGroupHoverHandler, ControlGroupItemHandlerExt,
     ControlGroupMouseDownHandler, ControlGroupMouseUpHandler, ControlGroupRenderModel, ControlGroupTemplate,
@@ -557,9 +557,7 @@ fn resolve_tabs_overlay_placement(
 fn tab_button_template() -> Arc<dyn ButtonTemplate<TabsButtonData>> {
     static TEMPLATE: OnceLock<Arc<dyn ButtonTemplate<TabsButtonData>>> = OnceLock::new();
 
-    TEMPLATE
-        .get_or_init(|| Arc::new(DefaultButtonTemplate::<TabsButtonData>::new(default_button_family_theme())))
-        .clone()
+    TEMPLATE.get_or_init(|| Arc::new(StyledButtonTemplate::<TabsButtonData>::sdk())).clone()
 }
 
 pub fn render_tab_button(

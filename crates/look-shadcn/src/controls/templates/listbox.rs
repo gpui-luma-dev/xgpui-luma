@@ -6,28 +6,21 @@ use xgpui_luma::controls::listbox::{
     ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxDragLook, ListBoxMotion,
 };
 use crate::ShadcnLook;
-const CORNER_RADIUS: f32 = 8.0;
 struct ShadcnListBoxTemplate {
     look: ShadcnLook,
 }
 impl ListBoxTemplate for ShadcnListBoxTemplate {
     fn render(&self, model: &ListBoxRenderModel, cx: &mut App) -> Stateful<Div> {
-        let mode = self.look.mode_tokens();
-        let palette = crate::controls::listbox::listbox_surface_palette(&mode, true);
-        let border = if model.focused {
-            crate::focus::focus_ring_or_fallback(&mode.catalog)
-        } else {
-            palette.border
-        };
+        let surface = self.look.styled_listbox().surface(true, model.focused);
         FrameBuilder::new(format!("{}-surface", model.id))
             // The viewport plus inset determines height, not Frame's full-size default.
             .h_auto()
             // Keep flex parents from shrinking the surface below its fixed viewport.
             .min_h(gpui::Length::Auto)
-            .bg(palette.background)
-            .border_1()
-            .border_color(border)
-            .rounded(px(CORNER_RADIUS))
+            .bg(surface.background)
+            .border(px(surface.border_width))
+            .border_color(surface.border)
+            .rounded(px(surface.radius))
             .px(px(model.layout.inset_x))
             .py(px(model.layout.inset_y))
             .render(cx)

@@ -1,0 +1,35 @@
+// SDK overlay window. Layer: sdk. Read by `styled_overlay_window_look` (styled.rs). The base is a modeless
+// window; `variant modal` dims the page behind it and casts the dialog shadow.
+
+/// A floating window over the page.
+overlay_window {
+  /// Placement inset, clamp margin, draggable header height, and the height assumed before layout.
+  viewport_padding: length = exact(24)
+  window_margin: length = exact(12)
+  drag_header_height: length = exact(56)
+  estimated_height: length = exact(228)
+  /// The scrim behind a modal window.
+  backdrop: color = transparent
+
+  /// The window.
+  part root {
+    background   = palette.surface.floating.background
+    foreground   = palette.surface.floating.foreground
+    border       = palette.surface.floating.border
+    border_width = exact(1)
+    shadow       = elevation.overlay_window
+    radius       = exact(12)
+    padding      = exact(metrics.control.padding_x)
+    min_width    = exact(400)
+    max_width    = exact(520)
+    font_family  = typography.font.sans
+    font_size    = typography.text.body.size
+    line_height  = typography.text.body.line_height
+    font_weight  = typography.text.body.weight
+  }
+
+  variant modal {
+    backdrop = alpha(black, 0.44)
+    part root { shadow = elevation.dialog }
+  }
+}

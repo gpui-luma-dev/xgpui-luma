@@ -1,0 +1,27 @@
+// Shadcn sidebar. Layer: look. Rows in the sidebar foreground; the current page in the sidebar primary
+// colors (its hover and pressed layers), other rows the accent when hovered or pressed; the ring when
+// focused; muted when disabled. Muted extra-small section labels.
+
+sidebar {
+  part section {
+    foreground  = css.muted_foreground
+    font_size   = 12
+    line_height = 16
+    font_weight = 500
+  }
+
+  part item {
+    foreground   = first(css.sidebar_foreground, css.foreground)
+    :hover             { background = css.accent  foreground = css.accent_foreground }
+    :pressed           { background = css.accent  foreground = css.accent_foreground }
+    :focused           { focus_border = first(css.sidebar_ring, css.ring) }
+    :selected          { background = first(css.sidebar_primary, css.primary)
+                         foreground = first(css.sidebar_primary_foreground, css.primary_foreground) }
+    :selected:hover    { background = first(css.sidebar_primary_hover, css.primary_hover)
+                         foreground = first(css.sidebar_primary_foreground, css.primary_foreground) }
+    :selected:pressed  { background = first(css.sidebar_primary_pressed, css.primary_pressed)
+                         foreground = first(css.sidebar_primary_foreground, css.primary_foreground) }
+    :disabled          { background = transparent  foreground = css.muted_foreground }
+    :selected:disabled { background = transparent  foreground = css.muted_foreground }
+  }
+}

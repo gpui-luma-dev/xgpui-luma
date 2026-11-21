@@ -1,0 +1,22 @@
+// SDK split view. Layer: sdk. Read by `StyledSplitViewTheme` (styled.rs): the separator between sidebar and
+// content, its color under the pointer, and the separator's hit area and collapse cue.
+
+/// A collapsible sidebar beside content.
+split_view {
+  /// The separator's hit width; the expand cue's inset and position; the collapse cue's inset, radius and
+  /// width, resting and under the pointer.
+  hitbox_width: length = exact(20)
+  expand_inset_y: length = exact(10)
+  expand_cue_left: length = exact(2)
+  cue_inset_y: length = exact(16)
+  cue_radius: length = exact(4)
+  cue_width: length = exact(4)
+  cue_hovered_width: length = exact(8)
+  /// The separator, resting and under the pointer.
+  separator: color = palette.border.default
+  separator_hover: color = palette.border.strong
+
+  part root {
+    :disabled { separator = palette.state.disabled.background  separator_hover = palette.state.disabled.foreground }
+  }
+}

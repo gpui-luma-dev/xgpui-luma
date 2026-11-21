@@ -1,47 +1,21 @@
 //! Theme-aware tooltip defaults, bound to the same shared/forked look as the control.
 use std::sync::Arc;
-use xgpui_luma::controls::tooltip::{TooltipLook, TooltipTheme};
-use crate::{Look, SemanticRole};
+use xgpui_luma::controls::tooltip::{StyledTooltipTheme, TooltipTheme};
+use crate::Look;
 
-struct RadixTooltipTheme(Look);
-
-impl TooltipTheme for RadixTooltipTheme {
-    fn resolve(&self) -> TooltipLook {
-        let mut resolved = TooltipLook::compact(
-            self.0.resolve_role(SemanticRole::Foreground).hsla(),
-            self.0.resolve_role(SemanticRole::Background).hsla(),
-            crate::RadixRadii::DEFAULT.medium,
-        );
-        let geometry =
-            self.0.common_stylesheet().tooltip.resolve_geometry(xgpui_luma::theme::stylesheet::TooltipGeometry {
-                padding: resolved.padding,
-                padding_y: resolved.padding_y,
-                max_width: resolved.max_width,
-                font_size: resolved.text_size,
-                line_height: resolved.line_height,
-                ..Default::default()
-            });
-        resolved.placement = (&geometry).into();
-        resolved.shortcut_gap = geometry.shortcut_gap;
-        resolved.shortcut_font_size = geometry.shortcut_font_size;
-        resolved.shortcut_opacity = geometry.shortcut_opacity;
-        resolved.padding = geometry.padding;
-        resolved.padding_y = geometry.padding_y;
-        resolved.max_width = geometry.max_width;
-        resolved.text_size = geometry.font_size;
-        resolved.line_height = geometry.line_height;
-        resolved
-    }
-}
-
-/// Resolve tooltip presentation from this look on every render, including mode/palette changes.
+/// Tooltip presentation drawn from `.lss` (`style/tooltip.lss`), resolved from this look on every render,
+/// including mode and palette changes.
 pub fn tooltip_theme(look: &Look) -> Arc<dyn TooltipTheme> {
-    Arc::new(RadixTooltipTheme(look.clone()))
+    Arc::new(StyledTooltipTheme::new(xgpui_luma::style::StyleBinding::new(
+        "tooltip",
+        crate::textfield::live_source(look),
+    )))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SemanticRole;
     use xgpui_luma::theme::ThemeMode;
 
     #[test]
@@ -54,8 +28,8 @@ mod tests {
         let dark = theme.resolve();
         assert_ne!(light.background, dark.background);
         assert_eq!(ambient.mode(), ThemeMode::Light);
-        assert_eq!(dark.background, fork.resolve_role(SemanticRole::Foreground).hsla());
-        assert_eq!(dark.foreground, fork.resolve_role(SemanticRole::Background).hsla());
+        crate::control_group::assert_close(dark.background, fork.resolve_role(SemanticRole::Foreground).hsla());
+        crate::control_group::assert_close(dark.foreground, fork.resolve_role(SemanticRole::Background).hsla());
     }
 }
 

@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
 
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, ThemeTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct TabsListLook {
@@ -80,98 +80,10 @@ pub trait TabsTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultTabsTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_tabs_theme() -> Arc<dyn TabsTheme> {
     static THEME: OnceLock<Arc<dyn TabsTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTabsTheme::default())).clone()
-}
-
-impl DefaultTabsTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl TabsTheme for DefaultTabsTheme {
-    fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {
-        crate::infra::drag_drop::DragDropLook::from_tokens(&self.tokens)
-    }
-    fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        let palette = self.tokens.stylesheet.recipes.palette("tabs", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-
-        TabsListLook {
-            border_width: metrics.border_width,
-            background: (!enabled).then_some(palette.state.disabled.background),
-            border: None,
-            radius: metrics.radius(),
-            padding: self.tokens.stylesheet.tabs.geometry.list_padding.unwrap_or_default(),
-            gap: self.tokens.stylesheet.tabs.geometry.list_gap.unwrap_or_else(|| metrics.gap()),
-        }
-    }
-
-    fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let palette = self.tokens.stylesheet.recipes.palette("tabs", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-        let typography = &self.tokens.typography;
-        let layer = state.layer();
-        let label_typography = typography.text.label;
-
-        let active_color = match layer {
-            InteractionLayer::Disabled => palette.state.disabled.foreground,
-            InteractionLayer::Pressed => palette.state.pressed.background,
-            InteractionLayer::Hovered => palette.state.selected.background,
-            InteractionLayer::Default => palette.state.selected.background,
-        };
-
-        let (accessory_size, accessory_gap) = self.tokens.stylesheet.tabs.accessory_metrics("");
-        TabsItemLook {
-            accessory_size,
-            accessory_gap,
-            label_color: match (active, state.disabled) {
-                (_, true) => palette.state.disabled.foreground,
-                (true, false) => active_color,
-                (false, false) => palette.app.foreground,
-            },
-            indicator: active.then_some(if state.focused && !state.disabled {
-                palette.focus.ring
-            } else {
-                active_color
-            }),
-            background: None,
-            label_typography,
-            radius: metrics.radius(),
-            padding_x: metrics.padding_x(),
-            height: label_typography.line_height + metrics.padding_y() * 2.0,
-            indicator_height: self.tokens.stylesheet.tabs.geometry.indicator_height.unwrap_or_default(),
-        }
-    }
-
-    fn font_family(&self) -> SharedString {
-        self.tokens.typography.font.sans.family.clone().into()
-    }
-}
-
-#[cfg(test)]
-mod state_audit_tests {
-    use super::*;
-
-    #[test]
-    fn disabled_active_tab_does_not_paint_a_focus_indicator() {
-        let tokens = ThemeTokens::default();
-        let theme = DefaultTabsTheme::new(tokens.clone());
-        let look = theme.resolve_item(
-            true,
-            InteractionState { disabled: true, focused: true, hovered: true, pressed: true, ..Default::default() },
-        );
-        assert_eq!(look.label_color, tokens.palette.state.disabled.foreground);
-        assert_eq!(look.indicator, Some(tokens.palette.state.disabled.foreground));
-    }
+    THEME.get_or_init(|| Arc::new(super::styled::StyledTabsTheme::sdk())).clone()
 }
 
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]

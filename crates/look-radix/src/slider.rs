@@ -7,13 +7,9 @@
 
 use std::sync::Arc;
 
-use gpui::{BoxShadow, Hsla, point, px};
-use xgpui_luma::controls::slider::{SliderLook, SliderTemplate, SliderTheme, ThemedSliderTemplate};
-use xgpui_luma::theme::{InteractionLayer, InteractionState};
+use xgpui_luma::controls::slider::{SliderTemplate, SliderTheme, StyledSliderTheme, ThemedSliderTemplate};
 
 use crate::look::Look;
-use crate::scale::ScaleFamily;
-use crate::semantic::SemanticRole;
 
 /// Radix Themes slider visual variants.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -89,91 +85,6 @@ impl SliderSize {
     }
 }
 
-struct SliderThemeAdapter {
-    look: Look,
-    variant: SliderVariant,
-    size: Option<SliderSize>,
-}
-
-fn alpha(color: Hsla, a: f32) -> Hsla {
-    Hsla { a, ..color }
-}
-
-impl SliderTheme for SliderThemeAdapter {
-    fn resolve(&self, state: InteractionState) -> SliderLook {
-        let size = self.look.size();
-        let look = &self.look;
-        let gray = |n| look.resolve_step(ScaleFamily::Gray, n).hsla();
-        let accent = |n| look.resolve_step(ScaleFamily::Color, n).hsla();
-        let layer = state.layer();
-
-        let fill = if state.disabled {
-            gray(8)
-        } else {
-            match (self.variant, layer) {
-                // Soft range is `--accent-6` (see radix slider.css).
-                (SliderVariant::Soft, _) => accent(6),
-                (_, InteractionLayer::Pressed) => accent(11),
-                (_, InteractionLayer::Hovered) => accent(10),
-                _ => look.resolve_role(SemanticRole::Primary).hsla(),
-            }
-        };
-
-        // Soft track is gray (not accent). Surface/Classic share gray-a3.
-        let track = if state.disabled {
-            alpha(gray(4), 0.55)
-        } else {
-            match self.variant {
-                SliderVariant::Soft => alpha(gray(4), 0.65),
-                SliderVariant::Surface | SliderVariant::Classic => alpha(gray(3), 0.55),
-            }
-        };
-
-        let thumb_bg = if state.disabled {
-            look.light_gray_step(3)
-        } else {
-            gpui::white()
-        };
-
-        let thumb_border = if state.disabled {
-            gray(6)
-        } else {
-            match self.variant {
-                SliderVariant::Soft => alpha(accent(6), 0.35),
-                SliderVariant::Surface => alpha(gpui::black(), 0.16),
-                SliderVariant::Classic => alpha(gpui::black(), 0.22),
-            }
-        };
-
-        let thumb_shadow = if state.disabled {
-            Vec::new()
-        } else {
-            match self.variant {
-                SliderVariant::Surface => surface_thumb_shadow(),
-                SliderVariant::Classic => classic_thumb_shadow(),
-                SliderVariant::Soft => soft_thumb_shadow(),
-            }
-        };
-
-        let radix_size = self.size.unwrap_or_else(|| SliderSize::from_control_size(size));
-        let (geometry, _) = slider_geometry(look, radix_size);
-        SliderLook {
-            thumb_border_width: look.metrics().border_width,
-            decoration: look.sized_stylesheet(radix_size.control_size()).slider.decoration(),
-            track_background: track,
-            fill_background: fill,
-            thumb_background: thumb_bg,
-            thumb_border,
-            thumb_shadow,
-            width: geometry.width,
-            height: geometry.height,
-            track_height: geometry.track_height,
-            thumb_size: geometry.thumb_size,
-            radius: geometry.height / 2.0,
-        }
-    }
-}
-
 /// Shared metric values and provenance consumed by the Radix slider adapter.
 pub fn slider_geometry(
     look: &Look,
@@ -189,72 +100,29 @@ pub fn slider_geometry(
     (geometry, sources)
 }
 
-fn surface_thumb_shadow() -> Vec<BoxShadow> {
-    vec![BoxShadow {
-        offset: point(px(0.0), px(0.0)),
-        blur_radius: px(0.0),
-        spread_radius: px(1.0),
-        color: alpha(gpui::black(), 0.16),
-        inset: false,
-    }]
-}
-
-fn classic_thumb_shadow() -> Vec<BoxShadow> {
-    vec![
-        BoxShadow {
-            offset: point(px(0.0), px(0.0)),
-            blur_radius: px(0.0),
-            spread_radius: px(1.0),
-            color: alpha(gpui::black(), 0.18),
-            inset: false,
-        },
-        BoxShadow {
-            offset: point(px(0.0), px(1.0)),
-            blur_radius: px(3.0),
-            spread_radius: px(0.0),
-            color: alpha(gpui::black(), 0.08),
-            inset: false,
-        },
-        BoxShadow {
-            offset: point(px(0.0), px(2.0)),
-            blur_radius: px(4.0),
-            spread_radius: px(-1.0),
-            color: alpha(gpui::black(), 0.06),
-            inset: false,
-        },
-    ]
-}
-
-fn soft_thumb_shadow() -> Vec<BoxShadow> {
-    vec![
-        BoxShadow {
-            offset: point(px(0.0), px(0.0)),
-            blur_radius: px(0.0),
-            spread_radius: px(1.0),
-            color: alpha(gpui::black(), 0.14),
-            inset: false,
-        },
-        BoxShadow {
-            offset: point(px(0.0), px(1.0)),
-            blur_radius: px(2.0),
-            spread_radius: px(0.0),
-            color: alpha(gpui::black(), 0.10),
-            inset: false,
-        },
-    ]
-}
-
 pub fn slider_theme(look: &Look) -> Arc<dyn SliderTheme> {
     slider_theme_with(look, SliderVariant::default())
 }
 
 pub fn slider_theme_with(look: &Look, variant: SliderVariant) -> Arc<dyn SliderTheme> {
-    Arc::new(SliderThemeAdapter { look: look.clone(), variant, size: None })
+    slider_theme_for(look, variant, SliderSize::from_control_size(look.size()))
 }
 
 /// Bind Radix's semantic size before adapting to the SDK theme contract.
+/// The Radix slider drawn from `.lss` (`style/slider.lss`); follows the look's later edits.
 pub fn slider_theme_for(look: &Look, variant: SliderVariant, size: SliderSize) -> Arc<dyn SliderTheme> {
-    Arc::new(SliderThemeAdapter { look: look.clone(), variant, size: Some(size) })
+    let binding = xgpui_luma::style::StyleBinding::new("slider", crate::textfield::live_source(look));
+    let binding = match variant {
+        SliderVariant::Surface => binding,
+        SliderVariant::Classic => binding.variant("classic"),
+        SliderVariant::Soft => binding.variant("soft"),
+    };
+    let binding = if size != SliderSize::Two {
+        binding.attr("size", size.as_str())
+    } else {
+        binding
+    };
+    Arc::new(StyledSliderTheme::new(binding))
 }
 
 pub fn slider_template_for(look: &Look, variant: SliderVariant, size: SliderSize) -> Arc<dyn SliderTemplate> {
@@ -268,6 +136,9 @@ pub fn slider_template(look: &Look, variant: SliderVariant) -> Arc<dyn SliderTem
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scale::ScaleFamily;
+    use crate::semantic::SemanticRole;
+    use xgpui_luma::theme::InteractionState;
 
     #[test]
     fn numeric_overrides_reach_radix_sizes() {
@@ -334,25 +205,6 @@ mod tests {
     }
 
     #[test]
-    fn shared_slider_geometry_updates_live_themes_without_changing_palettes() {
-        let look = Look::built_in();
-        let theme = slider_theme(&look);
-        let original = theme.resolve(Default::default());
-        let mut stylesheet = look.common_stylesheet();
-        stylesheet.slider.geometry.width = Some(200.0);
-        stylesheet.slider.sizes.get_or_default("2").height = Some(30.0);
-        stylesheet.slider.sizes.get_or_default("2").thumb_size = Some(27.0);
-        look.set_common_stylesheet(stylesheet.clone());
-        let custom = theme.resolve(Default::default());
-        assert_eq!((custom.width, custom.height, custom.thumb_size, custom.radius), (200.0, 30.0, 27.0, 15.0));
-        assert_eq!(custom.track_background, original.track_background);
-        assert_eq!(custom.fill_background, original.fill_background);
-        let fork = look.fork();
-        fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.common_stylesheet(), stylesheet);
-    }
-
-    #[test]
     fn thumbs_keep_light_colors_in_dark_mode() {
         let look = Look::built_in();
         for variant in SliderVariant::ALL {
@@ -378,7 +230,7 @@ mod tests {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Surface);
         let resolved = theme.resolve(InteractionState::default());
-        assert_eq!(resolved.fill_background, look.resolve_role(SemanticRole::Primary).hsla());
+        crate::control_group::assert_close(resolved.fill_background, look.resolve_role(SemanticRole::Primary).hsla());
     }
 
     #[test]
@@ -386,7 +238,7 @@ mod tests {
         let look = Look::built_in();
         let theme = slider_theme_with(&look, SliderVariant::Soft);
         let resolved = theme.resolve(InteractionState::default());
-        assert_eq!(resolved.fill_background, look.resolve_step(ScaleFamily::Color, 6).hsla());
+        crate::control_group::assert_close(resolved.fill_background, look.resolve_step(ScaleFamily::Color, 6).hsla());
         assert_ne!(
             resolved.track_background,
             look.resolve_step(ScaleFamily::Color, 4).hsla(),

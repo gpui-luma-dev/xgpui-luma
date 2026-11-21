@@ -1,5 +1,7 @@
 mod control;
 mod model;
+mod styled;
+pub use styled::{StyledOverlayWindowTheme, styled_overlay_window_look};
 mod template;
 pub(crate) mod theme;
 
@@ -12,7 +14,7 @@ pub use template::{
     OverlayWindowTemplate, OverlayWindowTemplateHandlers, OverlayWindowTemplateModifier, OverlayWindowTemplateParts,
     ThemedOverlayWindowTemplate, default_overlay_window_template,
 };
-pub use theme::{DefaultOverlayWindowTheme, OverlayWindowLook, OverlayWindowTheme, default_overlay_window_theme};
+pub use theme::{OverlayWindowLook, OverlayWindowTheme, default_overlay_window_theme};
 
 use gpui::Entity;
 

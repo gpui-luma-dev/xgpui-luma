@@ -1,0 +1,36 @@
+// Shadcn table. Layer: look. The background frame with the border edge, a muted header with muted text,
+// rows in the foreground that wash with the accent under the pointer, and selected or focused rows on the
+// muted fill; muted text when disabled. Row text at the control font size.
+
+table {
+  part root {
+    background = css.background
+    border     = css.border
+    :disabled { background = css.muted }
+  }
+
+  part header {
+    background = css.muted
+    foreground = css.muted_foreground
+    :disabled { background = css.muted  foreground = css.muted_foreground }
+  }
+
+  part row {
+    foreground  = css.foreground
+    border      = css.border
+    font_size   = shadcn.control_font_size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    :hover                     { background = alpha(css.accent, 0.4) }
+    :pressed                   { background = alpha(css.accent_pressed, 0.4) }
+    :focused                   { background = css.muted }
+    :hover:focused             { background = css.muted }
+    :pressed:focused           { background = css.muted }
+    :selected                  { background = css.muted  foreground = css.foreground }
+    :selected:hover            { background = css.muted }
+    :selected:pressed          { background = css.muted }
+    :disabled                  { background = transparent  foreground = css.muted_foreground }
+    :selected:disabled         { background = transparent  foreground = css.muted_foreground }
+    :focused:disabled          { background = transparent }
+    :selected:focused:disabled { background = transparent }
+  }
+}

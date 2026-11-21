@@ -1,0 +1,54 @@
+// Shadcn radio button. Layer: look, over the SDK radio.
+// The base is Shadcn's primary style (a filled indicator); secondary, outline and ghost draw a ring.
+// Indicator, dot and label colors ignore hover and pressed, so they own their property (`:=`).
+
+radio {
+  size sm { indicator_scale = 0.45 }
+  size lg { indicator_scale = 0.55 }
+
+  part root {
+    focus_border = first(css.ring, shadcn.fallback_foreground)
+  }
+
+  part indicator {
+    background := outline_layer(default)
+    border     := first(css.border, shadcn.fallback_foreground)
+    shadow     := first(css.shadow_xs, [])
+    :selected { background = action_layer(primary, default)  border = action_layer(primary, default) }
+    :disabled { background = css.muted  border = first(css.border, shadcn.fallback_foreground)  shadow = none }
+  }
+
+  part dot {
+    foreground := css.foreground
+    :selected { foreground = action_foreground(primary) }
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  part label {
+    foreground := css.foreground
+    font_size   = shadcn.control_font_size
+    :disabled { foreground = css.muted_foreground }
+  }
+
+  // Ring styles: an outline face with the style's color as the ring and the dot.
+  variant secondary {
+    part indicator { :selected { background = outline_layer(default)  border = action_layer(secondary, default) } }
+    part dot { :selected { foreground = action_foreground(secondary) } }
+  }
+
+  variant outline {
+    part indicator { :selected { background = outline_layer(default)  border = action_layer(outline, default) } }
+    part dot { :selected { foreground = action_foreground(outline) } }
+  }
+
+  variant ghost {
+    part indicator { :selected { background = outline_layer(default)  border = action_layer(ghost, default) } }
+    part dot { :selected { foreground = action_foreground(ghost) } }
+  }
+
+  // The primary indicator with no focus ring paint and no shadow.
+  variant content_only {
+    part root { focus_border = transparent }
+    part indicator { shadow := none }
+  }
+}

@@ -365,8 +365,8 @@ fn slider_thumb_radius_px(
     size: xgpui_luma_look_shadcn::ShadcnSize,
     preset: ButtonRadiusPreset,
 ) -> f32 {
-    let (radii, look) = slider_size_metrics(look, size);
-    xgpui_luma_look_shadcn::paint::resolve_slider_thumb_radius_preset(preset, &radii, look.thumb_size)
+    let style = crate::studio::style::shared::lss::shadcn_radius_style(look, "slider", size, preset);
+    crate::studio::style::shared::lss::length(&style, Some("thumb"), "radius")
 }
 
 fn slider_track_radius_px(
@@ -374,18 +374,6 @@ fn slider_track_radius_px(
     size: xgpui_luma_look_shadcn::ShadcnSize,
     preset: ButtonRadiusPreset,
 ) -> f32 {
-    let (radii, look) = slider_size_metrics(look, size);
-    xgpui_luma_look_shadcn::paint::resolve_slider_track_radius_preset(preset, &radii, look.track_height)
-}
-
-fn slider_size_metrics(
-    look: &ShadcnLook,
-    size: xgpui_luma_look_shadcn::ShadcnSize,
-) -> (xgpui_luma_look_shadcn::ShadcnRadii, xgpui_luma::controls::slider::SliderLook) {
-    use xgpui_luma_look_shadcn::paint::slider_look;
-
-    let tokens = look.mode_tokens();
-    let slider_look =
-        slider_look(tokens.as_ref(), look.mode(), ShadcnButtonStyle::Primary, size, InteractionState::default());
-    (tokens.radii, slider_look)
+    let style = crate::studio::style::shared::lss::shadcn_radius_style(look, "slider", size, preset);
+    crate::studio::style::shared::lss::length(&style, Some("track"), "radius")
 }

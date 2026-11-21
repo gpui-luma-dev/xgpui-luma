@@ -1,7 +1,7 @@
 //! Look defaults use the SDK controls' own typed roles. This is configuration,
 //! not a runtime: controls retain targets, accessibility, presence, and scheduling.
 
-use crate::controls::{switch::SwitchMotion, tabs::TabsMotion};
+use crate::controls::tabs::TabsMotion;
 use crate::motion::Transition;
 use super::stylesheet::CommonStylesheet;
 
@@ -18,9 +18,6 @@ pub struct MotionDefaults {
     pub scroll_container: crate::controls::scroll_container::ScrollContainerMotion,
     pub popover: crate::controls::popover_button::PopoverMotion,
 
-    pub checkbox: crate::controls::checkbox::CheckboxMotion,
-    pub radio: crate::controls::radio_button::RadioMotion,
-    pub toggle: crate::controls::toggle::ToggleMotion,
     pub control_group: crate::controls::control_group::ControlGroupMotion,
     pub slider: crate::controls::slider::SliderMotion,
     pub progress: crate::controls::progress::ProgressMotion,
@@ -38,7 +35,6 @@ pub struct MotionDefaults {
     pub combobox: crate::controls::combobox::ComboBoxMotion,
     pub table: crate::controls::table::TableMotion,
 
-    pub switch: SwitchMotion,
     pub tabs: TabsMotion,
 }
 
@@ -68,15 +64,15 @@ impl CommonStylesheet {
     /// Resolve motion without depending on a look crate.
     ///
     /// ```
-    /// use xgpui_luma::{controls::switch, theme::stylesheet::CommonStylesheet};
+    /// use xgpui_luma::{controls::stepper::StepperBuilder, theme::stylesheet::CommonStylesheet};
     /// let sheet = CommonStylesheet::parse(r#"
-    /// [common.motion.switch.state]
+    /// [common.motion.stepper.selection]
     /// kind = "spring"
     /// stiffness = 300.0
     /// damping = 28.0
     /// "#)?;
-    /// let builder = switch::new("notifications")
-    ///     .motion_defaults(sheet.motion_defaults().switch);
+    /// let builder = StepperBuilder::new("steps", 3)
+    ///     .motion_defaults(sheet.motion_defaults().stepper);
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn motion_defaults(&self) -> MotionDefaults {
@@ -109,7 +105,6 @@ mod tests {
             ($ms:expr; $($role:expr),+ $(,)?) => { $(check(&$role, $ms, stringify!($role));)+ };
         }
         timed!(200;
-            m.checkbox.state, m.radio.state, m.toggle.state, m.switch.state,
             m.control_group.selection, m.slider.thumb, m.progress.value, m.stepper.selection,
             m.accordion.expansion, m.tree_view.expansion, m.tree_view.position, m.sidebar.expansion,
             m.sidebar.popup.enter, m.sidebar.popup.exit, m.split_view.extent, m.resizable_panels.extent,

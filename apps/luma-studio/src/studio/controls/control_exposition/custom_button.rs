@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Render, Window, div, prelude::*, px, rgb};
 use xgpui_luma::controls::button::ButtonEventExt;
-use xgpui_luma::controls::button_family::default_button_family_theme;
-use xgpui_luma::controls::button::{Button, ButtonEvent, ButtonTemplate, DefaultButtonTemplate, HasPresenter};
+use xgpui_luma::controls::button::{Button, ButtonEvent, ButtonTemplate, HasPresenter, StyledButtonTemplate};
 use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -416,7 +415,7 @@ fn render_example_card(
 }
 
 fn modified_button_template<D: Clone + 'static>() -> Arc<dyn ButtonTemplate<D>> {
-    let mut template = DefaultButtonTemplate::new(default_button_family_theme());
+    let mut template = StyledButtonTemplate::<D>::sdk();
 
     template = template
         .with_modifier(|el, model| {

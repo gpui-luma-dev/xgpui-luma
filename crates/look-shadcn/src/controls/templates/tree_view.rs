@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::tree_view::{TreeViewTemplate, TreeViewTheme, ThemedTreeViewTemplate};
+use xgpui_luma::controls::tree_view::{StyledTreeView, TreeViewTemplate, TreeViewTheme, ThemedTreeViewTemplate};
 use xgpui_luma::theme::{InteractionState};
 
-use crate::controls::tree_view::tree_view_row_palette;
 use crate::look::ShadcnLook;
 
+/// The Shadcn tree view: rows and layout from `.lss` (`style/tree_view.lss`); icons and the drag shadow from
+/// the look.
 struct ShadcnTreeViewTheme {
     theme: ShadcnLook,
+    styled: StyledTreeView,
 }
 
 impl TreeViewTheme for ShadcnTreeViewTheme {
@@ -24,18 +26,15 @@ impl TreeViewTheme for ShadcnTreeViewTheme {
         self.theme.mode_tokens().stylesheet().common.icons.resolve(role)
     }
     fn resolve_row(&self, state: InteractionState, selected: bool) -> xgpui_luma::controls::tree_view::TreeViewPalette {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        tree_view_row_palette(tokens.as_ref(), selected, state, size)
+        self.styled.row(state, selected)
+    }
+
+    fn row_outline(&self, state: InteractionState) -> Option<gpui::Hsla> {
+        self.styled.outline(state)
     }
 
     fn resolve_scale(&self, scale_factor: f32) -> xgpui_luma::controls::tree_view::TreeViewScale {
-        let size = self.theme.size();
-        xgpui_luma::controls::tree_view::TreeViewScale::compute_with_stylesheet(
-            &self.metrics(),
-            scale_factor,
-            self.theme.mode_tokens().common_for(size),
-        )
+        self.styled.scale(scale_factor)
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
@@ -51,5 +50,16 @@ where
 }
 
 pub fn tree_view_theme(theme: ShadcnLook) -> Arc<dyn TreeViewTheme> {
-    Arc::new(ShadcnTreeViewTheme { theme: theme.clone() })
+    let size = theme.size();
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "tree_view",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(ShadcnTreeViewTheme { theme, styled: StyledTreeView::new(binding) })
 }

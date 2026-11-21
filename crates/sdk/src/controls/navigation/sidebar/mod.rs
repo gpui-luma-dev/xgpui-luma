@@ -16,9 +16,9 @@ pub use theme::{SidebarMetricScale, SidebarPresentation};
 
 // Look-bound flush theme / template surface (presentation engine).
 pub use engine::{
-    DefaultSidebarTheme, SidebarItemLook, SidebarSectionLook, SidebarPanelTemplate, SidebarPanelTemplateHandlers,
-    SidebarPanelTemplateModifier, SidebarTheme, ThemedSidebarPanelTemplate, default_sidebar_panel_template,
-    default_sidebar_theme,
+    SidebarItemLook, SidebarSectionLook, SidebarPanelTemplate, SidebarPanelTemplateHandlers,
+    SidebarPanelTemplateModifier, SidebarTheme, StyledSidebar, StyledSidebarTheme, ThemedSidebarPanelTemplate,
+    default_sidebar_panel_template, default_sidebar_theme,
 };
 
 use gpui::SharedString;

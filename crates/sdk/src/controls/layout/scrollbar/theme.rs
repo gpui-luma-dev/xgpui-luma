@@ -1,10 +1,10 @@
 use std::sync::{Arc, OnceLock};
 
-use gpui::{Hsla, hsla};
+use gpui::Hsla;
 
 use crate::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
 
-use crate::theme::{InteractionLayer, InteractionState, MetricTokens, ThemeTokens};
+use crate::theme::{InteractionState, MetricTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ScrollbarLook {
@@ -33,70 +33,10 @@ pub trait ScrollbarTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultScrollbarTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_scrollbar_theme() -> Arc<dyn ScrollbarTheme> {
     static THEME: OnceLock<Arc<dyn ScrollbarTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultScrollbarTheme::default())).clone()
-}
-
-impl DefaultScrollbarTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl ScrollbarTheme for DefaultScrollbarTheme {
-    fn resolve(
-        &self,
-        state: InteractionState,
-        orientation: ScrollbarOrientation,
-        style: ScrollbarStyle,
-    ) -> ScrollbarLook {
-        let geometry = self
-            .tokens
-            .stylesheet
-            .scrollbar
-            .resolve_geometry(crate::theme::stylesheet::ScrollbarGeometry::default());
-        let palette = self.tokens.stylesheet.recipes.palette("scrollbar", &self.tokens.palette);
-        let thumb_background = match state.layer() {
-            InteractionLayer::Disabled => palette.state.disabled.foreground,
-            InteractionLayer::Pressed => palette.state.pressed.background,
-            InteractionLayer::Hovered => palette.state.hover.background,
-            InteractionLayer::Default => palette.border.default,
-        };
-
-        let length = match orientation {
-            ScrollbarOrientation::Horizontal => geometry.length_h,
-            ScrollbarOrientation::Vertical => geometry.length_v,
-        };
-
-        ScrollbarLook {
-            disabled_opacity: geometry.disabled_opacity,
-            track_background: if state.disabled {
-                palette.state.disabled.background
-            } else if style == ScrollbarStyle::Soft {
-                palette.surface.subtle.background
-            } else {
-                hsla(0.0, 0.0, 0.0, 0.0)
-            },
-            thumb_background,
-            length,
-            thickness: geometry.thickness,
-            track_thickness: geometry.track_thickness,
-            thumb_thickness: geometry.thumb_thickness,
-            min_thumb_length: geometry.min_thumb_length,
-            radius: crate::theme::FULL_RADIUS_PX,
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
+    THEME.get_or_init(|| Arc::new(super::StyledScrollbarTheme::sdk())).clone()
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

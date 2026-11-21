@@ -1,0 +1,4 @@
+// SDK textarea. Layer: sdk. A multi-line text field: the same values as the text field.
+
+/// A multi-line text input.
+textarea extends textfield {}

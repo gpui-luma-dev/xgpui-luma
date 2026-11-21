@@ -341,16 +341,7 @@ fn toggle_icon_look_for_style(
     style: ShadcnButtonStyle,
 ) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
-        let tokens = theme.mode_tokens();
-        xgpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
-            tokens.as_ref(),
-            theme.mode(),
-            style,
-            model.data.selected,
-            theme.size(),
-            Some(ButtonRadiusPreset::Full),
-            model.state,
-        )
+        theme.icon_toggle_face(style, model.data.selected, theme.size(), Some(ButtonRadiusPreset::Full), model.state)
     })
 }
 
@@ -361,18 +352,7 @@ fn toggle_icon_look_for_semantic(
     radius: ButtonRadiusPreset,
     selected: bool,
 ) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
-    Arc::new(move |model| {
-        let tokens = theme.mode_tokens();
-        xgpui_luma_look_shadcn::paint::toggle_icon_look_semantic(
-            tokens.as_ref(),
-            theme.mode(),
-            style,
-            selected,
-            size,
-            Some(radius),
-            model.state,
-        )
-    })
+    Arc::new(move |model| theme.icon_toggle_face(style, selected, size, Some(radius), model.state))
 }
 
 fn toggle_look_for_semantic(
@@ -383,16 +363,7 @@ fn toggle_look_for_semantic(
     selected: bool,
 ) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
     Arc::new(move |model| {
-        let tokens = theme.mode_tokens();
-        xgpui_luma_look_shadcn::paint::toggle_look_semantic(
-            tokens.as_ref(),
-            theme.mode(),
-            style,
-            selected,
-            size,
-            Some(radius),
-            model.state,
-        )
+        theme.button_face(style, ButtonFamilyRole::Toggle { selected }, size, Some(radius), model.state)
     })
 }
 

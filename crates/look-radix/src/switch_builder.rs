@@ -27,7 +27,7 @@ pub struct Switch {
     compact: bool,
     without_elevation: bool,
     motion_enabled: bool,
-    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::switch::SwitchMotion>,
+    transition: Option<xgpui_luma::motion::Transition>,
     orientation: Option<SwitchOrientation>,
     content: Option<ControlPresenter<ButtonContentContext<SwitchData>>>,
 }
@@ -98,7 +98,7 @@ impl Switch {
             compact: false,
             without_elevation: false,
             motion_enabled: true,
-            motion: Default::default(),
+            transition: None,
             orientation: None,
             content: None,
         }
@@ -183,7 +183,11 @@ impl Switch {
         self
     }
 
-    xgpui_luma::forward_motion!(xgpui_luma::controls::switch::SwitchMotion, edits motion);
+    /// Animate changes with `transition` instead of the look's `.lss` `transition`.
+    pub fn transition(mut self, transition: xgpui_luma::motion::Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     pub fn motion_enabled(mut self, motion_enabled: bool) -> Self {
         self.motion_enabled = motion_enabled;
@@ -222,9 +226,10 @@ impl Switch {
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
             .motion_enabled(self.motion_enabled)
-            .motion_defaults(look.motion_defaults().switch)
-            .with_motion_overrides(self.motion)
             .with_callbacks(self.callbacks);
+        if let Some(transition) = self.transition {
+            builder = builder.transition(transition);
+        }
         if let Some(orientation) = self.orientation {
             builder = builder.orientation(orientation);
         }
@@ -260,13 +265,13 @@ mod tests {
         use xgpui_luma::motion::{Easing, MotionState, Transition};
         use std::time::Duration;
         let look = Look::built_in();
-        look.motion(|m| m.switch.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
+        look.motion(|m| m.stepper.selection = Transition::timed(Duration::from_millis(400), Easing::Linear));
         let copy = look.fork();
-        look.motion(|m| m.switch.state = Transition::instant());
+        look.motion(|m| m.stepper.selection = Transition::instant());
         assert_eq!(
             copy.motion_defaults()
-                .switch
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::from_millis(100))
                 .state
@@ -275,30 +280,12 @@ mod tests {
         );
         assert!(
             look.motion_defaults()
-                .switch
-                .state
+                .stepper
+                .selection
                 .start(MotionState::default(), 1.0)
                 .sample(Duration::ZERO)
                 .complete
         );
-    }
-
-    #[test]
-    fn switch_inherits_look_motion_and_forwards_sdk_overrides() {
-        use xgpui_luma::motion::{Easing, MotionState, Transition};
-        use std::time::Duration;
-        let look = Look::built_in();
-        look.motion(|m| m.switch.state = Transition::timed(Duration::from_millis(400), Easing::Linear));
-        let inherited = Switch::new("inherited").into_sdk_builder(look.clone());
-        let edited =
-            Switch::new("edited").motion(|m| m.state = Transition::instant()).look(&look).into_sdk_builder(look);
-        let sample = inherited
-            .motion_profile()
-            .state
-            .start(MotionState::default(), 1.0)
-            .sample(Duration::from_millis(100));
-        assert_eq!(sample.state.value, 0.25);
-        assert!(edited.motion_profile().state.start(MotionState::default(), 1.0).sample(Duration::ZERO).complete);
     }
 
     #[test]

@@ -50,13 +50,9 @@ impl Features {
             .into_iter()
             .enumerate()
             {
-                let button = button::Button::new(id)
-                    .template(std::sync::Arc::new(button::DefaultButtonTemplate::new(std::sync::Arc::new(
-                        look.clone(),
-                    ))))
-                    .label(label)
-                    .spawn(cx)
-                    .on_click(cx, move |this: &mut Self, cx| {
+                let button = button::Button::new(id).template(look.button_template()).label(label).spawn(cx).on_click(
+                    cx,
+                    move |this: &mut Self, cx| {
                         let change = match index {
                             0 => this.viewport.zoom_at(1.5, 0.5, 0.5),
                             1 => this.viewport.zoom_at(1.0 / 1.5, 0.5, 0.5),
@@ -67,7 +63,8 @@ impl Features {
                         if change.is_some() {
                             cx.notify();
                         }
-                    });
+                    },
+                );
                 buttons.push(button);
             }
             // Known finite sample limits; construction does not depend on external input.

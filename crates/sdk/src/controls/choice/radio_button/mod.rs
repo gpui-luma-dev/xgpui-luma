@@ -1,15 +1,6 @@
-crate::motion_profile!(RadioMotion => radio {
-    state: crate::motion::Transition,
-});
-
-mod template;
-pub(crate) mod theme;
-
-pub use template::{ThemedRadioButtonTemplate, default_template as default_radio_button_template};
-pub use theme::{
-    DefaultRadioButtonTheme, RadioButtonLook, RadioButtonPalette, RadioButtonTheme, RadioScale,
-    default_radio_button_theme,
-};
+mod styled;
+/// The radio button renders from `.lss` (issue #285): the SDK's files, plus a look's.
+pub use styled::{StyledRadioButtonTemplate, default_template as default_radio_button_template};
 
 use std::sync::Arc;
 
@@ -18,7 +9,7 @@ use gpui::{
     Render, SharedString, Subscription, Window, div,
 };
 
-use crate::motion::VisualTransition;
+use crate::motion::{Transition, VisualTransition};
 use crate::controls::button_family::ButtonFamilyRole;
 use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, ButtonEvent, ButtonTemplate};
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
@@ -60,7 +51,10 @@ pub struct RadioButtonControl {
     selected: bool,
     motion_enabled: bool,
     transition: VisualTransition,
-    motion: RadioMotion,
+    /// Set on this instance; replaces the template's `transition`.
+    transition_override: Option<Transition>,
+    /// The button's template, kept here so transitions resolve without reading the button.
+    template: Arc<dyn ButtonTemplate<RadioButtonData>>,
     button: Entity<Button<RadioButtonData>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -68,17 +62,30 @@ pub struct RadioButtonControl {
 impl EventEmitter<RadioButtonEvent> for RadioButtonControl {}
 
 impl RadioButtonControl {
-    /// Motion roles captured when this control was created.
-    pub fn motion_profile(&self) -> &RadioMotion {
-        &self.motion
+    /// The transition the next selection change animates with: this instance's override, else the
+    /// template's `transition` (`.lss`), else the SDK radio's.
+    pub fn current_transition(&self) -> Transition {
+        super::styled::choice_transition(
+            self.template.as_ref(),
+            default_radio_button_template().as_ref(),
+            self.transition_override.as_ref(),
+            self.selected,
+        )
     }
 
     fn from_builder(builder: RadioButtonBuilder, cx: &mut Context<Self>) -> Self {
         let selected = builder.button.model.data.selected;
         let motion_enabled = builder.motion_enabled;
-        let motion = builder.motion_profile();
+        let transition_override = builder.transition;
+        let template = builder.button.model.template.clone();
         let progress = if selected { 1.0 } else { 0.0 };
-        let transition = VisualTransition::with_transition(progress, motion.state.enabled(motion_enabled));
+        let initial = super::styled::choice_transition(
+            template.as_ref(),
+            default_radio_button_template().as_ref(),
+            transition_override.as_ref(),
+            selected,
+        );
+        let transition = VisualTransition::with_transition(progress, initial.enabled(motion_enabled));
 
         let mut button_builder = builder.button;
         button_builder.model.data = RadioButtonData { selected, progress };
@@ -90,7 +97,15 @@ impl RadioButtonControl {
         });
         let subscription = cx.subscribe(&button, Self::handle_button_event);
 
-        Self { selected, motion_enabled, transition, motion, button, _subscriptions: vec![subscription] }
+        Self {
+            selected,
+            motion_enabled,
+            transition,
+            transition_override,
+            template,
+            button,
+            _subscriptions: vec![subscription],
+        }
     }
 
     fn push_button_data(&mut self, cx: &mut Context<Self>) {
@@ -109,6 +124,7 @@ impl RadioButtonControl {
             return;
         }
         self.selected = selected;
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.transition.set_target(if selected { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -127,7 +143,7 @@ impl RadioButtonControl {
             return;
         }
         self.motion_enabled = motion_enabled;
-        self.transition.set_transition(self.motion.state.enabled(motion_enabled));
+        self.transition.set_transition(self.current_transition().enabled(motion_enabled));
         self.transition.set_target(if self.selected { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -148,6 +164,8 @@ impl RadioButtonControl {
     }
 
     pub fn set_template(&mut self, template: Arc<dyn ButtonTemplate<RadioButtonData>>, cx: &mut Context<Self>) {
+        self.template = template.clone();
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.button.update(cx, |button, cx| button.set_template(template, cx));
         cx.notify();
     }
@@ -202,11 +220,15 @@ pub struct RadioButtonBuilder {
 
     button: ButtonBuilder<RadioButtonData>,
     motion_enabled: bool,
-    motion: crate::motion::MotionConfig<RadioMotion>,
+    transition: Option<Transition>,
 }
 
 impl RadioButtonBuilder {
-    crate::motion_methods!(RadioMotion, motion);
+    /// Animate selection changes with `transition` instead of the template's `transition` (`.lss`).
+    pub fn transition(mut self, transition: Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Append an owner-bound handler for every semantic event.
     /// Registrations append in order; released owners are skipped.
@@ -325,7 +347,7 @@ pub fn new(id: impl Into<SharedString>) -> RadioButtonBuilder {
 
         button: ButtonBuilder::new(id).typed(RadioButtonData::default()).template(default_radio_button_template()),
         motion_enabled: true,
-        motion: Default::default(),
+        transition: None,
     }
 }
 

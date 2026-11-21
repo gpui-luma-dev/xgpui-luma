@@ -10,8 +10,11 @@ use xgpui_luma::theme::{InteractionState, MetricTokens};
 
 use crate::{Look, ScaleFamily};
 
+/// The Radix tree view: rows, outline and layout from `.lss` (`style/tree_view.lss`); icons and the drag
+/// shadow from the look.
 struct RadixTreeViewTheme {
     look: Look,
+    styled: xgpui_luma::controls::tree_view::StyledTreeView,
 }
 
 /// Neutral frame for a tree viewport. The application supplies its dimensions.
@@ -36,53 +39,15 @@ impl TreeViewTheme for RadixTreeViewTheme {
         self.look.common_stylesheet().icons.resolve(role)
     }
     fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
-        let size = self.look.size();
-        let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
-        let accent = |step| self.look.resolve_step(ScaleFamily::Color, step).hsla();
-        let background = if state.disabled {
-            None
-        } else if state.pressed {
-            Some(accent(5))
-        } else if selected {
-            Some(accent(3))
-        } else if state.focused {
-            Some(accent(4))
-        } else {
-            None
-        };
-        let foreground = if state.disabled {
-            gray(11)
-        } else if selected {
-            accent(12)
-        } else {
-            gray(12)
-        };
-        let icon = if selected && !state.disabled {
-            foreground
-        } else {
-            gray(9)
-        };
-        TreeViewPalette {
-            background,
-            foreground,
-            icon_color: icon,
-            chevron_color: icon,
-            typography: crate::typography::label_typography(size),
-            font_family: crate::typography::font_family(&self.look),
-        }
+        self.styled.row(state, selected)
     }
 
     fn row_outline(&self, state: InteractionState) -> Option<gpui::Hsla> {
-        (state.hovered && !state.disabled).then(|| self.look.resolve_step(ScaleFamily::Color, 8).hsla())
+        self.styled.outline(state)
     }
 
     fn resolve_scale(&self, scale_factor: f32) -> xgpui_luma::controls::tree_view::TreeViewScale {
-        let size = self.look.size();
-        xgpui_luma::controls::tree_view::TreeViewScale::compute_with_stylesheet(
-            &self.metrics(),
-            scale_factor,
-            &self.look.sized_stylesheet(size),
-        )
+        self.styled.scale(scale_factor)
     }
 
     fn metrics(&self) -> MetricTokens {
@@ -93,7 +58,17 @@ impl TreeViewTheme for RadixTreeViewTheme {
 /// Live theme adapter; rows resolve current colors when rendered.
 /// Notify affected views after mutating the look; see [`Look`].
 pub fn tree_view_theme(look: &Look) -> Arc<dyn TreeViewTheme> {
-    Arc::new(RadixTreeViewTheme { look: look.clone() })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("tree_view", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(RadixTreeViewTheme {
+        look: look.clone(),
+        styled: xgpui_luma::controls::tree_view::StyledTreeView::new(binding),
+    })
 }
 
 /// SDK row shells retain selection, disclosure, and keyboard behavior.
@@ -498,13 +473,19 @@ mod tests {
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             let selected = theme.resolve_row(Default::default(), true);
-            assert_eq!(selected.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));
-            assert_eq!(selected.foreground, look.resolve_step(ScaleFamily::Color, 12).hsla());
+            crate::control_group::assert_close(
+                selected.background.unwrap(),
+                look.resolve_step(ScaleFamily::Color, 3).hsla(),
+            );
+            crate::control_group::assert_close(selected.foreground, look.resolve_step(ScaleFamily::Color, 12).hsla());
             let before = selected.background;
             look.set_accent_seed(xgpui_luma::color::gpui_bridge::from_rgba(gpui::rgb(0xd6409f))).unwrap();
             let custom = theme.resolve_row(Default::default(), true);
             assert_ne!(custom.background, before);
-            assert_eq!(custom.background, Some(look.resolve_step(ScaleFamily::Color, 3).hsla()));
+            crate::control_group::assert_close(
+                custom.background.unwrap(),
+                look.resolve_step(ScaleFamily::Color, 3).hsla(),
+            );
             look.set_palettes(crate::Accent::Indigo, crate::Gray::Auto);
         }
     }
@@ -521,7 +502,10 @@ mod tests {
                 theme.resolve_row(hovered, true).background,
                 theme.resolve_row(Default::default(), true).background,
             );
-            assert_eq!(theme.row_outline(hovered), Some(look.resolve_step(ScaleFamily::Color, 8).hsla()),);
+            crate::control_group::assert_close(
+                theme.row_outline(hovered).unwrap(),
+                look.resolve_step(ScaleFamily::Color, 8).hsla(),
+            );
             assert_eq!(theme.row_outline(Default::default()), None);
             assert_eq!(theme.row_outline(InteractionState { disabled: true, ..hovered }), None);
         }
@@ -537,7 +521,7 @@ mod tests {
                 InteractionState { disabled: true, hovered: true, pressed: true, focused: true, invalid: false };
             let row = theme.resolve_row(state, true);
             assert_eq!(row.background, None);
-            assert_eq!(row.foreground, look.resolve_step(ScaleFamily::Gray, 11).hsla());
+            crate::control_group::assert_close(row.foreground, look.resolve_step(ScaleFamily::Gray, 11).hsla());
         }
     }
 }

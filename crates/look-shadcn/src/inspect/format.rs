@@ -1,23 +1,7 @@
 //! Display formatting for inspection source metadata.
 
 use xgpui_luma::theme::InteractionLayer;
-use crate::{ColorSource, MetricSource, TypographySource};
-
-/// Full CSS custom-property form, e.g. `--accent/50`.
-pub fn format_color_source(source: &ColorSource) -> String {
-    match source {
-        ColorSource::Transparent => "transparent".to_string(),
-        ColorSource::CssVar { token } => format!("--{token}"),
-        ColorSource::TokenAlpha { token, alpha_percent } => format!("--{token}/{alpha_percent}"),
-        ColorSource::StateVar { base_token, layer } => {
-            format!("--{}", state_var_token(base_token, *layer))
-        }
-        ColorSource::Algorithmic { base_token, layer } => {
-            format!("--{} · algorithmic · {}", base_token, layer_label(*layer))
-        }
-        ColorSource::Derived { note } => note.clone(),
-    }
-}
+use crate::{ColorSource, MetricSource};
 
 /// CSS custom property that exists in the loaded theme file (grep target for the inspector).
 pub fn format_inspect_css_key(source: &ColorSource) -> String {
@@ -50,33 +34,6 @@ pub fn format_inspect_metric_provenance(source: &MetricSource) -> Option<String>
         MetricSource::CssVar { token } => Some(format!("catalog · --{token}")),
         MetricSource::Scaffold { .. } | MetricSource::Constant { .. } => None,
     }
-}
-
-/// Primary source label for typography inspector rows.
-pub fn format_inspect_typography_source(source: &TypographySource) -> String {
-    match source {
-        TypographySource::Constant { label } => label.clone(),
-        TypographySource::Derived { note } => note.clone(),
-        TypographySource::CssVar { token } => format!("--{token}"),
-        TypographySource::Scaffold { path } => format!("scaffold · {path}"),
-    }
-}
-
-/// Secondary provenance line for typography when the source is a catalog token.
-pub fn format_inspect_typography_provenance(source: &TypographySource) -> Option<String> {
-    match source {
-        TypographySource::CssVar { token } => Some(format!("catalog · --{token}")),
-        TypographySource::Scaffold { .. } | TypographySource::Constant { .. } => None,
-        TypographySource::Derived { note } => Some(note.clone()),
-    }
-}
-
-pub fn format_typography_px(value: f32) -> String {
-    format_metric_px(value)
-}
-
-pub fn format_font_weight(value: gpui::FontWeight) -> String {
-    format!("{}", value.0)
 }
 
 pub fn format_metric_px(value: f32) -> String {

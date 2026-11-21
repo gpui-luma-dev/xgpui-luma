@@ -129,18 +129,6 @@ profile!(PopoverMotionStylesheet => crate::controls::popover_button::PopoverMoti
     presence: PresenceMotionStylesheet,
 });
 
-profile!(CheckboxMotionStylesheet => crate::controls::checkbox::CheckboxMotion {
-    state: Option<TransitionSpec>,
-});
-
-profile!(RadioMotionStylesheet => crate::controls::radio_button::RadioMotion {
-    state: Option<TransitionSpec>,
-});
-
-profile!(ToggleMotionStylesheet => crate::controls::toggle::ToggleMotion {
-    state: Option<TransitionSpec>,
-});
-
 profile!(ControlGroupMotionStylesheet => crate::controls::control_group::ControlGroupMotion {
     selection: Option<TransitionSpec>,
 });
@@ -236,10 +224,6 @@ profile!(TableMotionStylesheet => crate::controls::table::TableMotion {
     drop_layout: Option<TransitionSpec>,
 });
 
-profile!(SwitchMotionStylesheet => crate::controls::switch::SwitchMotion {
-    state: Option<TransitionSpec>,
-});
-
 profile!(TabsMotionStylesheet => crate::controls::tabs::TabsMotion {
     indicator: Option<TransitionSpec>,
     content: Option<TransitionSpec>,
@@ -254,9 +238,6 @@ profile!(MotionStylesheet => MotionDefaults {
     listbox: ListBoxMotionStylesheet,
     scroll_container: ScrollContainerMotionStylesheet,
     popover: PopoverMotionStylesheet,
-    checkbox: CheckboxMotionStylesheet,
-    radio: RadioMotionStylesheet,
-    toggle: ToggleMotionStylesheet,
     control_group: ControlGroupMotionStylesheet,
     slider: SliderMotionStylesheet,
     progress: ProgressMotionStylesheet,
@@ -273,7 +254,6 @@ profile!(MotionStylesheet => MotionDefaults {
     autocomplete: AutocompleteMotionStylesheet,
     combobox: ComboBoxMotionStylesheet,
     table: TableMotionStylesheet,
-    switch: SwitchMotionStylesheet,
     tabs: TabsMotionStylesheet,
 });
 
@@ -295,9 +275,6 @@ impl MotionStylesheet {
             listbox: ListBoxMotionStylesheet { scroll: Some(timed.clone()), drop_layout: Some(timed.clone()) },
             scroll_container: ScrollContainerMotionStylesheet { scroll: Some(timed.clone()) },
             popover: PopoverMotionStylesheet { presence: presence.clone() },
-            checkbox: CheckboxMotionStylesheet::native_default(),
-            radio: RadioMotionStylesheet { state: Some(timed.clone()) },
-            toggle: ToggleMotionStylesheet { state: Some(timed.clone()) },
             control_group: ControlGroupMotionStylesheet { selection: Some(timed.clone()) },
             slider: SliderMotionStylesheet::native_default(),
             progress: ProgressMotionStylesheet { value: Some(timed.clone()), period_ms: Some(1200) },
@@ -334,7 +311,6 @@ impl MotionStylesheet {
             autocomplete: AutocompleteMotionStylesheet { presence: dismissal.clone() },
             combobox: ComboBoxMotionStylesheet { presence: dismissal },
             table: TableMotionStylesheet { drop_layout: Some(timed.clone()) },
-            switch: SwitchMotionStylesheet::native_default(),
             tabs: TabsMotionStylesheet {
                 indicator: Some(timed.clone()),
                 content: Some(TransitionSpec::Instant {}),
@@ -371,7 +347,7 @@ stiffness = 300.0
 damping = 28.0
 [common.motion.tabs.content]
 kind = "instant"
-[common.motion.switch.state]
+[common.motion.stepper.selection]
 kind = "timed"
 duration_ms = 800
 easing = "linear"
@@ -387,7 +363,7 @@ period_ms = 0
         let defaults = sheet.motion_defaults();
         let run = |t: &Transition, ms| t.start(MotionState::default(), 1.0).sample(Duration::from_millis(ms));
         assert!(run(&defaults.tabs.content, 0).complete);
-        assert_eq!(run(&defaults.switch.state, 200).state.value, 0.25);
+        assert_eq!(run(&defaults.stepper.selection, 200).state.value, 0.25);
         assert!(!run(&defaults.tabs.indicator, 200).complete);
         assert!(run(&defaults.tabs.indicator, 10_000).complete);
         assert!(!run(&defaults.tabs.drop_layout, 199).complete);
@@ -402,18 +378,18 @@ period_ms = 0
     fn in_out_cubic_stylesheet_round_trips_and_reaches_runtime() {
         let sheet = CommonStylesheet::parse(
             r#"
-[common.motion.switch.state]
+[common.motion.stepper.selection]
 kind = "timed"
 duration_ms = 1000
 easing = "in_out_cubic"
 "#,
         )
         .unwrap();
-        let spec = sheet.motion.switch.state.as_ref().unwrap();
+        let spec = sheet.motion.stepper.selection.as_ref().unwrap();
         let encoded = toml::to_string(spec).unwrap();
         assert!(encoded.contains("in_out_cubic"));
         assert_eq!(toml::from_str::<TransitionSpec>(&encoded).unwrap(), *spec);
-        let transition = sheet.motion_defaults().switch.state;
+        let transition = sheet.motion_defaults().stepper.selection;
         assert_eq!(
             transition.description(),
             crate::motion::TransitionDescription::Timed {
@@ -430,21 +406,21 @@ easing = "in_out_cubic"
     fn invalid_motion_is_rejected_at_parse_time() {
         for source in [
             "[common.motion.unknown.state]\nkind = 'instant'",
-            "[common.motion.switch.unknown]\nkind = 'instant'",
-            "[common.motion.switch.state]\nkind = 'unknown'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = 20",
-            "[common.motion.switch.state]\nkind = 'timed'\neasing = 'linear'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = -1\neasing = 'linear'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = 1.5\neasing = 'linear'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = 4294967296\neasing = 'linear'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = 20\neasing = 'bounce'",
-            "[common.motion.switch.state]\nkind = 'timed'\nduration_ms = 20\neasing = 'linear'\ndamping = 20.0",
-            "[common.motion.switch.state]\nkind = 'instant'\nduration_ms = 20",
-            "[common.motion.switch.state]\nkind = 'spring'\nstiffness = 300.0",
-            "[common.motion.switch.state]\nkind = 'spring'\nstiffness = 0.0\ndamping = 20.0",
-            "[common.motion.switch.state]\nkind = 'spring'\nstiffness = 300.0\ndamping = -1.0",
-            "[common.motion.switch.state]\nkind = 'spring'\nstiffness = nan\ndamping = 20.0",
-            "[common.motion.switch.state]\nkind = 'spring'\nstiffness = 300.0\ndamping = inf",
+            "[common.motion.stepper.unknown]\nkind = 'instant'",
+            "[common.motion.stepper.selection]\nkind = 'unknown'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = 20",
+            "[common.motion.stepper.selection]\nkind = 'timed'\neasing = 'linear'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = -1\neasing = 'linear'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = 1.5\neasing = 'linear'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = 4294967296\neasing = 'linear'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = 20\neasing = 'bounce'",
+            "[common.motion.stepper.selection]\nkind = 'timed'\nduration_ms = 20\neasing = 'linear'\ndamping = 20.0",
+            "[common.motion.stepper.selection]\nkind = 'instant'\nduration_ms = 20",
+            "[common.motion.stepper.selection]\nkind = 'spring'\nstiffness = 300.0",
+            "[common.motion.stepper.selection]\nkind = 'spring'\nstiffness = 0.0\ndamping = 20.0",
+            "[common.motion.stepper.selection]\nkind = 'spring'\nstiffness = 300.0\ndamping = -1.0",
+            "[common.motion.stepper.selection]\nkind = 'spring'\nstiffness = nan\ndamping = 20.0",
+            "[common.motion.stepper.selection]\nkind = 'spring'\nstiffness = 300.0\ndamping = inf",
             "[common.motion.progress]\nperiod_ms = -1",
             "[common.motion.progress]\nperiod_ms = 1.5",
         ] {
@@ -495,7 +471,6 @@ easing = "out_cubic"
             tabs_overlay { enter, exit }, slide_panel { presence.enter, presence.exit },
             listbox { scroll, drop_layout }, scroll_container { scroll },
             popover { presence.enter, presence.exit },
-            checkbox { state }, radio { state }, toggle { state }, switch { state },
             control_group { selection }, slider { thumb }, progress { value }, stepper { selection },
             accordion { expansion, drop_layout }, tree_view { expansion, position, drop_layout },
             sidebar { expansion, popup.enter, popup.exit, drop_layout },

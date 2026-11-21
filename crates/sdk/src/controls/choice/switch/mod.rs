@@ -1,11 +1,9 @@
 mod callback;
 pub use callback::{SwitchCallbacks, SwitchEventExt};
 
-mod template;
-pub(crate) mod theme;
-
-pub use template::{ThemedSwitchTemplate, default_template as default_switch_template};
-pub use theme::{DefaultSwitchTheme, SwitchLook, SwitchPalette, SwitchScale, SwitchTheme, default_switch_theme};
+mod styled;
+/// The switch renders from `.lss` (issue #285): the SDK's files, plus a look's.
+pub use styled::{StyledSwitchTemplate, default_template as default_switch_template};
 
 use std::sync::Arc;
 
@@ -19,11 +17,6 @@ use crate::controls::button::{Button, ButtonBuilder, ButtonContentContext, Butto
 use crate::infra::presenter::{ControlPresenter, HasPresenter};
 
 pub type Switch = Entity<SwitchControl>;
-
-// State progress drives thumb position and bounded colors.
-crate::motion_profile!(SwitchMotion => switch {
-    state: Transition,
-});
 
 /// Typed payload for [`Button<SwitchData>`] / [`ButtonTemplate<SwitchData>`].
 ///
@@ -60,7 +53,10 @@ pub struct SwitchControl {
     on: bool,
     motion_enabled: bool,
     transition: VisualTransition,
-    motion: SwitchMotion,
+    /// Set on this instance; replaces the template's `transition`.
+    transition_override: Option<Transition>,
+    /// The button's template, kept here so transitions resolve without reading the button.
+    template: Arc<dyn ButtonTemplate<SwitchData>>,
     button: Entity<Button<SwitchData>>,
     _subscriptions: Vec<Subscription>,
 }
@@ -68,24 +64,30 @@ pub struct SwitchControl {
 impl EventEmitter<SwitchEvent> for SwitchControl {}
 
 impl SwitchControl {
-    /// Motion roles captured when this control was created.
-    pub fn motion_profile(&self) -> &SwitchMotion {
-        &self.motion
+    /// The transition the next change animates with (thumb position and colors): this instance's
+    /// override, else the template's `transition` (`.lss`), else the SDK switch's.
+    pub fn current_transition(&self) -> Transition {
+        super::styled::choice_transition(
+            self.template.as_ref(),
+            default_switch_template().as_ref(),
+            self.transition_override.as_ref(),
+            self.on,
+        )
     }
 
     fn from_builder(builder: SwitchBuilder, cx: &mut Context<Self>) -> Self {
         let on = builder.button.model.data.checked;
         let motion_enabled = builder.motion_enabled;
-        let motion = builder.motion_profile();
+        let transition_override = builder.transition;
+        let template = builder.button.model.template.clone();
         let progress = if on { 1.0 } else { 0.0 };
-        let transition = VisualTransition::with_transition(
-            progress,
-            if motion_enabled {
-                motion.state.clone()
-            } else {
-                Transition::instant()
-            },
+        let initial = super::styled::choice_transition(
+            template.as_ref(),
+            default_switch_template().as_ref(),
+            transition_override.as_ref(),
+            on,
         );
+        let transition = VisualTransition::with_transition(progress, initial.enabled(motion_enabled));
 
         let mut button_builder = builder.button;
         button_builder.model.data = SwitchData { checked: on, progress };
@@ -97,7 +99,15 @@ impl SwitchControl {
         });
         let subscription = cx.subscribe(&button, Self::handle_button_event);
 
-        Self { on, motion_enabled, transition, motion, button, _subscriptions: vec![subscription] }
+        Self {
+            on,
+            motion_enabled,
+            transition,
+            transition_override,
+            template,
+            button,
+            _subscriptions: vec![subscription],
+        }
     }
 
     fn push_button_data(&mut self, cx: &mut Context<Self>) {
@@ -116,6 +126,7 @@ impl SwitchControl {
             return;
         }
         self.on = on;
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.transition.set_target(if on { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -134,11 +145,7 @@ impl SwitchControl {
             return;
         }
         self.motion_enabled = motion_enabled;
-        self.transition.set_transition(if motion_enabled {
-            self.motion.state.clone()
-        } else {
-            Transition::instant()
-        });
+        self.transition.set_transition(self.current_transition().enabled(motion_enabled));
         self.transition.set_target(if self.on { 1.0 } else { 0.0 });
         self.push_button_data(cx);
         cx.notify();
@@ -159,6 +166,8 @@ impl SwitchControl {
     }
 
     pub fn set_template(&mut self, template: Arc<dyn ButtonTemplate<SwitchData>>, cx: &mut Context<Self>) {
+        self.template = template.clone();
+        self.transition.set_transition(self.current_transition().enabled(self.motion_enabled));
         self.button.update(cx, |button, cx| button.set_template(template, cx));
         cx.notify();
     }
@@ -256,11 +265,15 @@ pub struct SwitchBuilder {
     callbacks: SwitchCallbacks,
     button: ButtonBuilder<SwitchData>,
     motion_enabled: bool,
-    motion: crate::motion::MotionConfig<SwitchMotion>,
+    transition: Option<Transition>,
 }
 
 impl SwitchBuilder {
-    crate::motion_methods!(SwitchMotion, motion);
+    /// Animate changes with `transition` instead of the template's `transition` (`.lss`).
+    pub fn transition(mut self, transition: Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Append an owner-bound callback; registrations are additive and owners are weak.
     pub fn on_event<M: 'static>(
@@ -465,7 +478,7 @@ pub fn new(id: impl Into<SharedString>) -> SwitchBuilder {
         callbacks: SwitchCallbacks::default(),
         button: ButtonBuilder::new(id).typed(SwitchData::default()).template(default_switch_template()),
         motion_enabled: true,
-        motion: Default::default(),
+        transition: None,
     }
 }
 

@@ -173,11 +173,7 @@ impl FontFeaturesStylesheet {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        color::GamutMapping,
-        theme::{ThemeMode, InteractionState},
-    };
-    use crate::controls::button_family::{ButtonFamilyTheme, ButtonFamilyRole, DefaultButtonFamilyTheme};
+    use crate::{color::GamutMapping, theme::ThemeMode};
     use super::super::CommonStylesheet;
 
     #[test]
@@ -218,16 +214,8 @@ mod tests {
         let mut source = tokens.palette.source().clone();
         source.state.selected.background = crate::color::ColorValue::srgb(0.0, 0.75, 0.25, 1.0);
         tokens.palette = source.snapshot_srgb(GamutMapping::CssLocalMinde).unwrap();
-        let expected = tokens.palette.state.selected.background;
         let swapped = sheet.recipes.palette("button", &tokens.palette);
         assert_eq!(swapped.state.selected.background, tokens.palette.state.hover.background);
-        let theme = DefaultButtonFamilyTheme::new(tokens);
-        assert_eq!(
-            theme
-                .resolve(ButtonFamilyRole::Text, InteractionState { hovered: true, ..Default::default() })
-                .background,
-            expected
-        );
         assert!(
             CommonStylesheet::parse(
                 "[common.recipes.button]

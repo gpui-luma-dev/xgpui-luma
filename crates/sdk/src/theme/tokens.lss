@@ -1,0 +1,77 @@
+// SDK tokens: the one neutral default theme. Layer: sdk.
+//
+// Converted from #94's crates/sdk/assets/sdk.hcl, whose values were checked against the Rust
+// ThemeTokens::light(). `theme::style::tests` checks this file against ThemeTokens::light() again,
+// so the two cannot drift while both exist.
+//
+// The SDK has no light/dark modes: another SDK theme is another token file. Looks map these
+// groups onto their own data in their token files.
+
+const {
+  full_radius = 999   // FULL_RADIUS_PX: fully rounded corners
+
+  // Motion shared by control files (MotionStylesheet::native_default()).
+  default_timed = timed(200, out_cubic)
+}
+
+tokens {
+  metrics {
+    disabled_opacity = 0.56
+    border_width     = 1
+
+    focus {
+      gap    = 1
+      width  = 1
+      offset = 0
+    }
+
+    // The single SDK control scale.
+    control {
+      height         = 36
+      control_height = height   // interactive target height; defaults to height
+      padding_x      = 14
+      padding_y      = 8
+      gap            = 8
+      radius         = 6
+      icon_size      = 16
+    }
+  }
+
+  typography {
+    const {
+      body  = text(14, 20, 400)
+      title = text(20, 28, 600)
+    }
+
+    font {
+      sans  = "System UI"
+      mono  = "Monaco"
+      serif = "New York"
+    }
+
+    text {
+      body    = body
+      label   = text(12.5, 18, 500)
+      caption = text(11, 16, 500)
+      title   = title
+      code    = text(13, 18, 400)
+
+      role {
+        h1 = text(44, 52, 700)
+        h2 = text(28, 36, 600)
+        h3 = title
+        h4 = text(16, 22, 500)
+        p  = body
+      }
+    }
+  }
+
+  // Shared geometry (CommonStylesheet::shared_geometry()).
+  geometry {
+    label_baseline = 1
+  }
+
+  motion {
+    default = default_timed
+  }
+}

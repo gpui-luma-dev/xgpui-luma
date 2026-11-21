@@ -7,6 +7,7 @@ use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use super::{
     event_stream::ControlEventStream,
     sample_layout::{card, page},
+    style_inspector::StyleInspector,
 };
 
 #[derive(Clone, Copy, Debug)]
@@ -73,6 +74,8 @@ pub(super) struct ChoiceSample {
     control: Control,
     state: String,
     events: Entity<ControlEventStream>,
+    /// For controls styled with `.lss` (the SDK checkbox so far): every value and where it came from.
+    inspector: Option<Entity<StyleInspector>>,
 }
 impl ChoiceSample {
     pub(super) fn new(kind: ChoiceKind, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
@@ -151,6 +154,9 @@ impl ChoiceSample {
                 cx.subscribe(v, |this: &mut Self, _, event: &checkbox::CheckboxEvent, cx| {
                     if let checkbox::CheckboxEvent::Change { checked } = event {
                         this.state = format!("Checked: {checked}");
+                        if let Some(inspector) = &this.inspector {
+                            inspector.update(cx, |inspector, cx| inspector.set_state("checked", *checked, cx));
+                        }
                     }
                     this.record(event, cx);
                 })
@@ -224,7 +230,13 @@ impl ChoiceSample {
                 "Interact with the sample to see its SDK events.",
             )
         });
-        Self { kind, look, control, state, events }
+        let inspector = matches!(kind, ChoiceKind::Checkbox).then(|| {
+            let theme = xgpui_luma::style::default_theme();
+            let checkbox = theme.stylesheet().control("checkbox").expect("the SDK styles the checkbox");
+            let look = look.clone();
+            cx.new(|cx| StyleInspector::new(look, theme, checkbox, cx))
+        });
+        Self { kind, look, control, state, events, inspector }
     }
     fn record(&mut self, event: &impl std::fmt::Debug, cx: &mut Context<Self>) {
         let line = format!("{event:?}");
@@ -233,7 +245,10 @@ impl ChoiceSample {
     }
     pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
-        self.events.update(cx, |events, cx| events.sync_look(look, cx));
+        self.events.update(cx, |events, cx| events.sync_look(look.clone(), cx));
+        if let Some(inspector) = &self.inspector {
+            inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
+        }
         cx.notify();
     }
 }
@@ -261,6 +276,16 @@ impl Render for ChoiceSample {
                             .child(self.state.clone()),
                     ),
                 ))
+                .children(self.inspector.clone().map(|inspector| {
+                    card(
+                        &self.look,
+                        "workshop-choice-style",
+                        "Style",
+                        "Every themeable value of the sample, with the rule and tokens it comes from.",
+                        640.,
+                        inspector,
+                    )
+                }))
                 .child(self.events.clone()),
         )
     }
@@ -290,6 +315,40 @@ mod tests {
             _ => panic!("missing Choice sample"),
         })
     }
+    #[test]
+    fn checkbox_page_shows_the_style_inspector_and_follows_the_sample() {
+        let mut app = TestAppContext::single();
+        let (workshop, cx) = setup(&mut app);
+        let sample = select(&workshop, "checkbox", cx);
+        assert!(cx.debug_bounds("style-inspector").is_some(), "inspector rendered");
+        assert!(cx.debug_bounds("style-inspector-part-indicator").is_some(), "indicator section rendered");
+        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some(), "background row rendered");
+
+        let inspector =
+            cx.update(|_, cx| sample.read(cx).inspector.clone().expect("the checkbox page has an inspector"));
+        let winner_states = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|_, cx| {
+                let inspection = inspector.read(cx).inspection();
+                let indicator = inspection.parts.iter().find(|p| p.part.name() == "indicator").expect("part");
+                let row = indicator.rows.iter().find(|r| r.property == "background").expect("row");
+                row.explanation.winner.as_ref().map(|w| w.states.clone()).unwrap_or_default()
+            })
+        };
+        assert_eq!(winner_states(cx), "");
+
+        // Checking the sample switches the inspector to the :checked rule.
+        let focus = cx.update(|_, cx| match &sample.read(cx).control {
+            Control::Checkbox(v) => v.read(cx).focus_handle(cx),
+            _ => unreachable!(),
+        });
+        cx.update(|window, cx| focus.focus(window, cx));
+        cx.run_until_parked();
+        cx.simulate_keystrokes("space");
+        cx.run_until_parked();
+        // The sample is focused now, but the inspector's key follows only `checked`.
+        assert_eq!(winner_states(cx), ":checked");
+    }
+
     #[test]
     fn choice_boolean_controls_use_keyboard_and_retain_state_across_navigation_and_app_theme() {
         let mut app = TestAppContext::single();

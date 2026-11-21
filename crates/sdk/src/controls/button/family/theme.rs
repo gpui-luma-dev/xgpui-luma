@@ -1,8 +1,6 @@
-use std::sync::{Arc, OnceLock};
-
 use gpui::{BoxShadow, Hsla, SharedString};
 
-use crate::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::theme::{LumaTextStyle, StandardBoxScale};
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ButtonFamilyRole {
@@ -45,104 +43,6 @@ pub struct ButtonFamilyLook {
     pub height: f32,
     pub icon_size: f32,
     pub shadow: Option<Vec<BoxShadow>>,
-}
-
-pub trait ButtonFamilyTheme: Send + Sync {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette;
-    fn metrics(&self) -> MetricTokens;
-
-    /// Optional full look resolution for themes that resolve geometry and elevation together.
-    fn resolve_look(
-        &self,
-        _role: ButtonFamilyRole,
-        _state: InteractionState,
-        _scale: &StandardBoxScale,
-        _pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        None
-    }
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct DefaultButtonFamilyTheme {
-    tokens: ThemeTokens,
-}
-
-pub fn default_button_family_theme() -> Arc<dyn ButtonFamilyTheme> {
-    static THEME: OnceLock<Arc<dyn ButtonFamilyTheme>> = OnceLock::new();
-
-    THEME.get_or_init(|| Arc::new(DefaultButtonFamilyTheme::default())).clone()
-}
-
-impl DefaultButtonFamilyTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl ButtonFamilyTheme for DefaultButtonFamilyTheme {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        native_button_palette(&self.tokens, role, state)
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        let palette = self.resolve(role, state);
-        let mut look = compose_button_family_look(&palette, role, scale, pill_radius);
-        if matches!(role, ButtonFamilyRole::Toggle { .. }) {
-            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.toggle, ToggleGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
-        } else {
-            crate::theme::stylesheet::apply_common_geometry!(self.tokens.stylesheet.button, ButtonGeometry, look, [height => height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height]);
-        }
-        Some(look)
-    }
-}
-
-fn native_button_palette(tokens: &ThemeTokens, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-    let palette = tokens.stylesheet.recipes.palette("button", &tokens.palette);
-    let typography = &tokens.typography;
-    let layer = state.layer();
-
-    let (base_background, base_foreground, default_border) = match role {
-        ButtonFamilyRole::Toggle { selected: true } => {
-            (palette.state.selected.background, palette.state.selected.foreground, palette.border.default)
-        }
-        _ => (palette.surface.subtle.background, palette.app.foreground, palette.border.default),
-    };
-
-    let border = default_border;
-
-    let foreground = if state.disabled {
-        palette.state.disabled.foreground
-    } else {
-        base_foreground
-    };
-
-    let background = match layer {
-        InteractionLayer::Disabled => palette.state.disabled.background,
-        InteractionLayer::Pressed => palette.state.pressed.background,
-        InteractionLayer::Hovered => palette.state.hover.background,
-        InteractionLayer::Default => base_background,
-    };
-
-    ButtonFamilyPalette {
-        focus_border: palette.focus.ring,
-        background,
-        foreground,
-        muted_foreground: palette.app.muted_foreground,
-        border: Some(border),
-        typography: typography.text.label,
-        font_family: typography.font.sans.family.clone().into(),
-    }
 }
 
 /// Normalizes absent face-border paint to transparent.

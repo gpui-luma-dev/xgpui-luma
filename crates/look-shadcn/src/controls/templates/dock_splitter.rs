@@ -1,35 +1,10 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::dock_splitter::DockSplitterTheme;
+use xgpui_luma::controls::dock_splitter::{DockSplitterTheme, StyledDockSplitterTheme};
 
 use crate::look::ShadcnLook;
 
+/// The Shadcn dock splitter from `.lss` (`style/dock_splitter.lss`).
 pub fn dock_splitter_theme(theme: ShadcnLook) -> Arc<dyn DockSplitterTheme> {
-    Arc::new(ShadcnDockSplitterTheme { theme: theme.clone() })
-}
-
-struct ShadcnDockSplitterTheme {
-    theme: ShadcnLook,
-}
-
-impl DockSplitterTheme for ShadcnDockSplitterTheme {
-    fn resolve(&self, enabled: bool) -> xgpui_luma::controls::dock_splitter::DockSplitterLook {
-        let tokens = self.theme.mode_tokens();
-        let border = tokens.palette.border_default;
-        let disabled = tokens.palette.disabled_foreground;
-
-        let geometry = tokens.stylesheet().common.dock_splitter.resolve_geometry_for("md", Default::default());
-        xgpui_luma::controls::dock_splitter::DockSplitterLook {
-            line_color: if enabled { border } else { disabled },
-            hover_color: if enabled { border } else { disabled },
-            thumb_color: if enabled {
-                tokens.palette.primary.background
-            } else {
-                disabled
-            },
-            hit_target_px: geometry.hit_target,
-            visible_line_px: geometry.visible_line,
-            geometry,
-        }
-    }
+    Arc::new(StyledDockSplitterTheme::new(theme.style_binding("dock_splitter")))
 }

@@ -6,7 +6,7 @@ use xgpui_luma::controls::toolbar::{
     ToolbarLook, ToolbarTemplate, ToolbarTheme, ToolbarVariant, toolbar_template_with_theme,
 };
 
-use crate::{Look, ScaleFamily};
+use crate::Look;
 
 /// Toolbar shell geometry in logical pixels. Colors still follow the bound look.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -25,65 +25,49 @@ impl Default for ToolbarStyle {
     }
 }
 
+/// The `.lss` toolbar (`style/toolbar.lss`), with an instance's explicit shell geometry over it.
 struct RadixToolbarTheme {
+    binding: xgpui_luma::style::StyleBinding,
     look: Look,
     style: Option<ToolbarStyle>,
 }
 
 impl ToolbarTheme for RadixToolbarTheme {
     fn resolve(&self, enabled: bool, variant: ToolbarVariant) -> ToolbarLook {
-        let size = self.look.size();
-        let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
-        let transparent = gpui::hsla(0.0, 0.0, 0.0, 0.0);
-        let metrics = self.look.metrics();
-        let control = self.look.control_sizes().for_size(size);
-        let (background, border) = match variant {
-            ToolbarVariant::Outline => (gray(if enabled { 1 } else { 2 }), gray(6)),
-            ToolbarVariant::Ghost => (transparent, transparent),
-        };
-        let fallback = ToolbarStyle::default();
-        let geometry =
-            self.look
-                .common_stylesheet()
-                .toolbar
-                .resolve_geometry(xgpui_luma::theme::stylesheet::ToolbarGeometry {
-                    padding_x: fallback.padding_x,
-                    padding_y: fallback.padding_y,
-                    gap: fallback.gap,
-                    border_width: metrics.border_width,
-                    separator_width: metrics.border_width,
-                    radius: crate::RadixRadii::DEFAULT.medium,
-                });
-        let style = self.style.unwrap_or(ToolbarStyle {
-            padding_x: geometry.padding_x,
-            padding_y: geometry.padding_y,
-            gap: geometry.gap,
-            ..fallback
-        });
-        ToolbarLook {
-            border_width: geometry.border_width,
-            separator_width: geometry.separator_width,
-            background,
-            border,
-            separator: gray(6),
-            radius: style.radius.unwrap_or(geometry.radius),
-            padding_x: style.padding_x,
-            padding_y: style.padding_y,
-            gap: style.gap,
-            separator_height: control.height * style.separator_height_ratio,
+        let mut resolved = xgpui_luma::controls::toolbar::styled_toolbar_look(&self.binding, enabled, variant);
+        if let Some(style) = self.style {
+            resolved.padding_x = style.padding_x;
+            resolved.padding_y = style.padding_y;
+            resolved.gap = style.gap;
+            if let Some(radius) = style.radius {
+                resolved.radius = radius;
+            }
+            resolved.separator_height =
+                self.look.control_sizes().for_size(self.look.size()).height * style.separator_height_ratio;
         }
+        resolved
+    }
+}
+
+fn toolbar_binding(look: &Look) -> xgpui_luma::style::StyleBinding {
+    let binding = xgpui_luma::style::StyleBinding::new("toolbar", crate::textfield::live_source(look));
+    let size = look.size();
+    if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
     }
 }
 
 /// Toolbar shell colors resolve from the current mode and palette on render.
 /// Notify affected views after mutating the look; see [`Look`].
 pub fn toolbar_theme(look: &Look) -> Arc<dyn ToolbarTheme> {
-    Arc::new(RadixToolbarTheme { look: look.clone(), style: None })
+    Arc::new(RadixToolbarTheme { binding: toolbar_binding(look), look: look.clone(), style: None })
 }
 
 /// Override shell geometry without replacing palette resolution or SDK behavior.
 pub fn toolbar_theme_with(look: &Look, style: ToolbarStyle) -> Arc<dyn ToolbarTheme> {
-    Arc::new(RadixToolbarTheme { look: look.clone(), style: Some(style) })
+    Arc::new(RadixToolbarTheme { binding: toolbar_binding(look), look: look.clone(), style: Some(style) })
 }
 
 pub fn toolbar_template_with(look: &Look, style: ToolbarStyle) -> Arc<dyn ToolbarTemplate> {
@@ -98,6 +82,7 @@ pub fn toolbar_template(look: &Look) -> Arc<dyn ToolbarTemplate> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ScaleFamily;
     use xgpui_luma::theme::ThemeMode;
 
     #[test]
@@ -124,7 +109,7 @@ mod tests {
         look.set_mode(ThemeMode::Dark);
         let dark = theme.resolve(true, ToolbarVariant::Outline);
         assert_ne!(light.background, dark.background);
-        assert_eq!(dark.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
+        crate::control_group::assert_close(dark.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
         let ghost = theme.resolve(true, ToolbarVariant::Ghost);
         assert_eq!(ghost.background.a, 0.0);
         assert_eq!(ghost.border.a, 0.0);

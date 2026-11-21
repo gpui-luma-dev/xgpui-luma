@@ -1,0 +1,75 @@
+// Shadcn button. Layer: look, over the SDK button. The base is Shadcn's primary style; secondary,
+// outline, ghost and content_only are variants. Sizes sm, md (base), lg come from the control metrics;
+// `radius none|small|medium|large|full` are corner presets (no radius attribute: the size's corner).
+
+button {
+  padding_x      = 16
+  text_icon_size = icon_size
+  muted_foreground = css.muted_foreground
+  size sm { padding_x = 12 }
+  size lg { padding_x = 20 }
+  // Corner radius presets: the same corner at every size, icon buttons included; full is a pill.
+  radius none   { radius = exact(0)                     icon_radius = exact(0) }
+  radius small  { radius = exact(shadcn.radius_small)   icon_radius = exact(shadcn.radius_small) }
+  radius medium { radius = exact(shadcn.radius_medium)  icon_radius = exact(shadcn.radius_medium) }
+  radius large  { radius = exact(shadcn.radius_large)   icon_radius = exact(shadcn.radius_large) }
+  radius full   { radius = exact(height / 2)            icon_radius = exact(height / 2) }
+
+  part root {
+    background := css.primary
+    foreground := css.primary_foreground
+    border     := background
+    shadow     := []
+    focus_border = first(css.ring, shadcn.fallback_foreground)
+    font_size    = shadcn.control_font_size
+    line_height  = font_size * typography.text.label.line_height / typography.text.label.size
+    :hover    { background = css.primary_hover }
+    :pressed  { background = css.primary_pressed }
+    :disabled { background = css.muted  foreground = css.muted_foreground }
+  }
+
+  variant secondary {
+    part root {
+      background := css.secondary
+      foreground := css.secondary_foreground
+      :hover    { background = css.secondary_hover }
+      :pressed  { background = css.secondary_pressed }
+      :disabled { background = css.muted  foreground = css.muted_foreground }
+    }
+  }
+
+  variant outline {
+    part root {
+      background := shadcn.outline_background
+      foreground := css.foreground
+      border     := shadcn.outline_border
+      shadow     := first(css.shadow_xs, [])
+      :selected { background = css.accent  foreground = css.accent_foreground }
+      :hover    { background = shadcn.outline_active  foreground = css.accent_foreground }
+      :pressed  { background = shadcn.outline_active  foreground = css.accent_foreground }
+      :disabled { background = transparent  foreground = css.muted_foreground  border = css.border }
+    }
+  }
+
+  variant ghost {
+    part root {
+      background := transparent
+      foreground := css.foreground
+      border     := none
+      :selected { background = css.accent  foreground = css.accent_foreground }
+      :hover    { background = shadcn.ghost_active  foreground = css.accent_foreground }
+      :pressed  { background = shadcn.ghost_active  foreground = css.accent_foreground }
+      :disabled { background = transparent  foreground = css.muted_foreground }
+    }
+  }
+
+  // No face at all, and no focus ring paint.
+  variant content_only {
+    part root {
+      background   := transparent
+      foreground   := css.foreground
+      border       := transparent
+      focus_border  = transparent
+    }
+  }
+}

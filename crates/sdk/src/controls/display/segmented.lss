@@ -1,0 +1,31 @@
+// SDK segmented choice. Layer: sdk. Read by `StyledSegmented` (segmented.rs): a track (`root`) of equal
+// segments (`item`, `selected` for the chosen one). The focus ring is drawn instead of the edge while
+// focus is visible.
+
+/// A row of mutually exclusive segments.
+segmented {
+  /// The track; its focus border is the edge of a segment with visible focus.
+  part root {
+    background   = palette.surface.subtle.background
+    radius       = exact(5)
+    focus_border = palette.focus.ring
+  }
+
+  /// A segment.
+  part item {
+    background  = palette.surface.subtle.background
+    foreground  = palette.app.foreground
+    border      = palette.surface.subtle.background
+    radius      = exact(4)
+    height      = exact(metrics.control.height)
+    padding_x   = exact(metrics.control.padding_x)
+    font_size   = typography.text.label.size
+    line_height = typography.text.label.line_height
+    :hover            { background = palette.state.hover.background  border = palette.state.hover.background }
+    :selected         { background = palette.state.selected.background  border = palette.border.default }
+    :selected:hover   { background = palette.state.selected.background  border = palette.border.default }
+    :pressed          { background = palette.state.pressed.background  border = palette.state.pressed.background }
+    :selected:pressed { background = palette.state.pressed.background  border = palette.border.default }
+    :disabled         { foreground = palette.state.disabled.foreground }
+  }
+}

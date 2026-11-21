@@ -1,0 +1,43 @@
+// Shadcn tabs. Layer: look. Labels keep the foreground (muted when disabled); the active tab's indicator is
+// the primary color with its hover and pressed layers, and none when disabled. Text and height follow the
+// size: caption (sm), label (md), body (lg).
+
+tabs {
+  indicator_height = exact(3)
+
+  part root {
+    :selected                  { indicator = css.primary }
+    :selected:hover            { indicator = css.primary_hover }
+    :selected:pressed          { indicator = css.primary_pressed }
+    :selected:focused          { indicator = css.primary }
+    :selected:pressed:focused  { indicator = css.primary_pressed }
+    :selected:disabled         { indicator = transparent }
+    :selected:focused:disabled { indicator = transparent }
+  }
+
+  part list { :disabled { background = css.muted } }
+
+  part item {
+    foreground = css.foreground
+    :selected          { foreground = css.foreground }
+    :selected:pressed  { foreground = css.foreground }
+    :disabled          { foreground = css.muted_foreground }
+    :selected:disabled { foreground = css.muted_foreground }
+  }
+  size sm {
+    part item {
+      height      = exact(typography.text.caption.line_height + metrics.control.padding_y * 2)
+      font_size   = typography.text.caption.size
+      line_height = typography.text.caption.line_height
+      font_weight = typography.text.caption.weight
+    }
+  }
+  size lg {
+    part item {
+      height      = exact(typography.text.body.line_height + metrics.control.padding_y * 2)
+      font_size   = typography.text.body.size
+      line_height = typography.text.body.line_height
+      font_weight = typography.text.body.weight
+    }
+  }
+}

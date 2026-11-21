@@ -40,11 +40,26 @@ pub struct SelectorItemsPanelLook {
     pub item_radius: f32,
 }
 
+/// The SDK's selector items panel: the SDK's `.lss` floating menu with `tokens`' metrics and geometry.
 pub fn default_selector_items_panel_look(tokens: &ThemeTokens) -> SelectorItemsPanelLook {
-    SelectorItemsPanelLook::from_menu(
-        crate::controls::floating_menu::default_floating_menu_look(tokens),
+    styled_selector_items_panel_look(
+        &crate::style::StyleBinding::sdk("floating_menu"),
         &tokens.metrics,
         &tokens.stylesheet,
+    )
+}
+
+/// A selector items panel from a `.lss` floating-menu binding (the `floating_menu` control, or one that
+/// extends it), with the panel placement and selector-list geometry from `stylesheet`.
+pub fn styled_selector_items_panel_look(
+    binding: &crate::style::StyleBinding,
+    metrics: &crate::theme::MetricTokens,
+    stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+) -> SelectorItemsPanelLook {
+    SelectorItemsPanelLook::from_menu(
+        crate::controls::floating_menu::styled_floating_menu_look(binding),
+        metrics,
+        stylesheet,
     )
 }
 

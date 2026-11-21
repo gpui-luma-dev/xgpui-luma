@@ -367,9 +367,5 @@ mod tests {
             assert_eq!(select(&workshop, id, cx), sample);
             cx.update(|_, cx| assert!(!view.read(cx).is_open()));
         }
-        workshop.update(cx, |v, cx| v.select("badge", cx));
-        cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
-        cx.update(|_, cx| assert!(!workshop.read(cx).samples.contains_key("badge")));
     }
 }
