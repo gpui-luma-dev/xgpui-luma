@@ -42,7 +42,7 @@
 <div class="event-table"><table>
 <thead><tr><th>Layer</th><th>Where</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td>SDK</td><td><code>crates/sdk/src/controls/**/&lt;control&gt;.lss</code>, <code>crates/sdk/src/theme/{tokens,palette,palette-dark}.lss</code></td><td>Declares controls, parts and properties; sets defaults from SDK tokens.</td></tr>
+<tr><td>SDK</td><td><code>crates/sdk/src/controls/**/&lt;control&gt;.lss</code>, <code>crates/sdk/src/theme/{tokens,palette}.lss</code> (palette: light values, <code>mode dark</code> overrides)</td><td>Declares controls, parts and properties; sets defaults from SDK tokens.</td></tr>
 <tr><td>Shadcn</td><td><code>crates/look-shadcn/src/style/*.lss</code></td><td>Restyles controls with the theme’s CSS variables (<code>css.*</code>).</td></tr>
 <tr><td>Radix</td><td><code>crates/look-radix/src/style/*.lss</code></td><td>Restyles controls with Radix color scales (<code>gray[n]</code>, <code>accent[n]</code>, <code>tone[n]</code>).</td></tr>
 </tbody></table></div>

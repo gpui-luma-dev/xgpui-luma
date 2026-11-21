@@ -1,9 +1,10 @@
 //! The SDK's styles in the Luma style language (issue #285).
 //!
 //! [`config`] is the one global configuration every stylesheet shares. [`sources`] lists the SDK's
-//! `.lss` files: the token file and one file beside each migrated control. [`default_theme`] is the
-//! SDK alone, bound with no native tokens and no mode (the SDK has no light/dark; another SDK theme
-//! is another token file). Looks layer their own files over [`sources`].
+//! `.lss` files: the token files and one file beside each migrated control. The config declares the
+//! SDK's theme modes, `light` and `dark`; `theme/palette.lss` gives light values and `mode dark { … }`
+//! overrides. [`default_theme`] is the SDK alone in light mode and [`dark_theme`] in dark mode. Looks
+//! layer their own files over [`sources`] and may add modes with `Config::extend`.
 
 use std::sync::{Arc, OnceLock};
 
@@ -27,6 +28,9 @@ pub fn config() -> Arc<Config> {
                     // Generic axes with no values: looks write the values (`size sm`, `size 2`) in their
                     // files and add their own axes with `config().extend()` (Radix `tone`, `radius`).
                     .attributes(&["variant", "size"])
+                    // Theme modes; `theme/palette.lss` holds light values and `mode dark` overrides. Looks
+                    // add their own (e.g. a high-contrast mode) with `config().extend().modes(…)`.
+                    .modes(&["light", "dark"])
                     .snap(SnapPolicy::Lengths)
                     .build()
                     .expect("the SDK style configuration is valid"),
@@ -36,32 +40,20 @@ pub fn config() -> Arc<Config> {
 }
 
 macro_rules! sdk_sources {
-    (shared: [$($path:literal),+ $(,)?], light: $light:literal, dark: $dark:literal $(,)?) => {
-        fn shared_sources() -> Vec<Source> {
+    ($($path:literal),+ $(,)?) => {
+        /// The SDK's style files, for the `sdk` layer.
+        pub fn sources() -> Vec<Source> {
             vec![$(Source::new(concat!("sdk/", $path), include_str!($path))),+]
         }
 
-        /// The SDK's style files, for the `sdk` layer: the shared files and the light palette.
-        pub fn sources() -> Vec<Source> {
-            let mut sources = shared_sources();
-            sources.push(Source::new(concat!("sdk/", $light), include_str!($light)));
-            sources
-        }
-
-        /// The SDK's files with the dark palette instead of the light one.
-        pub fn dark_sources() -> Vec<Source> {
-            let mut sources = shared_sources();
-            sources.push(Source::new(concat!("sdk/", $dark), include_str!($dark)));
-            sources
-        }
-
         #[cfg(test)]
-        const SOURCE_PATHS: &[&str] = &[$($path,)+ $light, $dark];
+        const SOURCE_PATHS: &[&str] = &[$($path,)+];
     };
 }
 
 sdk_sources! {
-    shared: ["theme/tokens.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss",
+    "theme/tokens.lss",
+    "theme/palette.lss", "controls/choice/checkbox/checkbox.lss", "controls/choice/radio_button/radio.lss",
         "controls/choice/switch/switch.lss",
         "controls/button/button.lss",
         "controls/choice/toggle/toggle.lss",
@@ -98,9 +90,6 @@ sdk_sources! {
         "controls/display/segmented.lss",
         "controls/display/color_chrome.lss",
         "controls/selection/selection_panel/selection_panel.lss",
-    ],
-    light: "theme/palette.lss",
-    dark: "theme/palette-dark.lss",
 }
 
 /// The SDK's files compiled on their own.
@@ -116,36 +105,20 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// The SDK's files with the dark palette, compiled on their own.
-pub fn dark_stylesheet() -> Stylesheet {
-    static SHEET: OnceLock<Stylesheet> = OnceLock::new();
-    SHEET
-        .get_or_init(|| {
-            Stylesheet::builder(config())
-                .layer("sdk", dark_sources())
-                .compile()
-                .unwrap_or_else(|d| panic!("the SDK dark style files compile:\n{d}"))
-        })
-        .clone()
-}
-
-/// The SDK alone with its dark palette (another SDK theme, not a mode).
+/// The SDK alone in dark mode.
 pub fn dark_theme() -> Theme {
     static THEME: OnceLock<Theme> = OnceLock::new();
     THEME
-        .get_or_init(|| {
-            Theme::bind(&dark_stylesheet(), Arc::new(NoNativeTokens), "")
-                .unwrap_or_else(|d| panic!("the SDK dark theme binds:\n{d}"))
-        })
+        .get_or_init(|| default_theme().with_mode("dark").unwrap_or_else(|d| panic!("the SDK dark theme binds:\n{d}")))
         .clone()
 }
 
-/// The SDK alone: no native tokens, no mode.
+/// The SDK alone in light mode, with no native tokens.
 pub fn default_theme() -> Theme {
     static THEME: OnceLock<Theme> = OnceLock::new();
     THEME
         .get_or_init(|| {
-            Theme::bind(&stylesheet(), Arc::new(NoNativeTokens), "")
+            Theme::bind(&stylesheet(), Arc::new(NoNativeTokens), "light")
                 .unwrap_or_else(|d| panic!("the SDK theme binds:\n{d}"))
         })
         .clone()
@@ -388,7 +361,7 @@ mod tests {
                 .stylesheet()
                 .with_source("sdk", Source::new("probe.lss", format!("probe {{\n{decls}}}")))
                 .expect("probe compiles");
-            let probe = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+            let probe = theme.with_stylesheet(&sheet).expect("binds in the theme's mode");
             let resolved = probe.resolve(&xgpui_luma_style::StyleKey::new(ControlId::new("probe")));
             for (i, (path, expected)) in colors.iter().enumerate() {
                 let got = resolved.root().value(&format!("c{i}")).and_then(Value::as_color).map(Hsla::from);

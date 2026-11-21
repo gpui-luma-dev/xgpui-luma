@@ -13,11 +13,13 @@ pub enum SnapPolicy {
     Lengths,
 }
 
-/// Layers, states, the exclusive state group, attributes and snapping.
+/// Layers, states, the exclusive state group, attributes, modes and snapping.
 #[derive(Clone, Debug)]
 pub struct Config {
     pub(crate) layers: Vec<String>,
     pub(crate) states: Vec<String>,
+    /// Theme modes (`mode <name> { … }` in token files), in declaration order.
+    pub(crate) modes: Vec<String>,
     /// Indices into `states`, strongest first.
     pub(crate) exclusive: Vec<usize>,
     pub(crate) attributes: Vec<String>,
@@ -33,7 +35,7 @@ impl Config {
     /// `radius`, `high_contrast`). Existing attributes and states keep their positions, so handles
     /// from this config stay valid in the extended one.
     pub fn extend(&self) -> ConfigExtension {
-        ConfigExtension { base: self.clone(), attributes: Vec::new(), states: Vec::new() }
+        ConfigExtension { base: self.clone(), attributes: Vec::new(), states: Vec::new(), modes: Vec::new() }
     }
 
     /// Attribute names, in handle order.
@@ -73,6 +75,12 @@ impl Config {
         names.iter().filter_map(|n| self.state(n)).collect()
     }
 
+    /// The declared theme modes, in declaration order (e.g. `light`, `dark`). A token file's
+    /// `mode <name> { … }` block must name one; a theme is bound to one of them.
+    pub fn modes(&self) -> impl Iterator<Item = &str> {
+        self.modes.iter().map(String::as_str)
+    }
+
     /// The exclusive state group, strongest first. When several of its states are active, only the
     /// strongest counts (e.g. `disabled` over `pressed` over `hover`), so tools can treat the group as
     /// one choice rather than independent states.
@@ -109,6 +117,7 @@ impl Config {
 pub struct ConfigBuilder {
     layers: Vec<String>,
     states: Vec<String>,
+    modes: Vec<String>,
     exclusive: Vec<String>,
     attributes: Vec<String>,
     snap: SnapPolicy,
@@ -124,6 +133,13 @@ impl ConfigBuilder {
     /// State names (at most 32).
     pub fn states(mut self, states: &[&str]) -> Self {
         self.states = states.iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// Theme modes, in display order (e.g. `["light", "dark"]`). Token files may give values per mode
+    /// with `mode <name> { … }`; a mode with no such block still exists and uses the shared values.
+    pub fn modes(mut self, modes: &[&str]) -> Self {
+        self.modes = modes.iter().map(|s| s.to_string()).collect();
         self
     }
 
@@ -155,6 +171,9 @@ impl ConfigBuilder {
         if self.attributes.len() > MAX_ATTRIBUTES {
             return fail(format!("config allows at most {MAX_ATTRIBUTES} attributes"));
         }
+        if let Some(name) = duplicate(&self.modes) {
+            return fail(format!("mode \"{name}\" is declared twice"));
+        }
         let mut exclusive = Vec::new();
         for name in &self.exclusive {
             match self.states.iter().position(|s| s == name) {
@@ -162,15 +181,14 @@ impl ConfigBuilder {
                 None => return fail(format!("exclusive state \"{name}\" is not a declared state")),
             }
         }
-        Ok(
-            Config {
-                layers: self.layers,
-                states: self.states,
-                exclusive,
-                attributes: self.attributes,
-                snap: self.snap,
-            },
-        )
+        Ok(Config {
+            layers: self.layers,
+            states: self.states,
+            modes: self.modes,
+            exclusive,
+            attributes: self.attributes,
+            snap: self.snap,
+        })
     }
 }
 
@@ -180,6 +198,7 @@ pub struct ConfigExtension {
     base: Config,
     attributes: Vec<String>,
     states: Vec<String>,
+    modes: Vec<String>,
 }
 
 impl ConfigExtension {
@@ -192,6 +211,12 @@ impl ConfigExtension {
     /// States to add after the base config's.
     pub fn states(mut self, names: &[&str]) -> Self {
         self.states.extend(names.iter().map(|s| s.to_string()));
+        self
+    }
+
+    /// Theme modes to add after the base config's (e.g. a look's `hi-contrast`).
+    pub fn modes(mut self, names: &[&str]) -> Self {
+        self.modes.extend(names.iter().map(|s| s.to_string()));
         self
     }
 
@@ -212,11 +237,22 @@ impl ConfigExtension {
         if config.attributes.len() > MAX_ATTRIBUTES {
             return Err(Diagnostic::error(Code::Config, format!("config allows at most {MAX_ATTRIBUTES} attributes")));
         }
+        for name in self.modes {
+            if config.modes.contains(&name) {
+                return Err(Diagnostic::error(Code::Config, format!("mode \"{name}\" is already declared")));
+            }
+            config.modes.push(name);
+        }
         if config.states.len() > 32 {
             return Err(Diagnostic::error(Code::Config, "config allows at most 32 states"));
         }
         Ok(config)
     }
+}
+
+/// The first name that appears twice.
+fn duplicate(names: &[String]) -> Option<&str> {
+    names.iter().enumerate().find(|(i, n)| names[..*i].contains(n)).map(|(_, n)| n.as_str())
 }
 
 #[cfg(test)]
@@ -234,5 +270,15 @@ mod tests {
         assert_eq!(config.exclusive_states().collect::<Vec<_>>(), ["disabled", "pressed", "hover"]);
         let none = Config::builder().layers(&["base"]).states(&["hover"]).build().unwrap();
         assert_eq!(none.exclusive_states().count(), 0);
+    }
+
+    #[test]
+    fn modes_are_declared_in_order_and_looks_add_their_own() {
+        let sdk = Config::builder().layers(&["sdk", "look"]).modes(&["light", "dark"]).build().unwrap();
+        assert_eq!(sdk.modes().collect::<Vec<_>>(), ["light", "dark"]);
+        let look = sdk.extend().modes(&["hi-contrast"]).build().unwrap();
+        assert_eq!(look.modes().collect::<Vec<_>>(), ["light", "dark", "hi-contrast"]);
+        assert!(sdk.extend().modes(&["dark"]).build().is_err(), "a mode can't be declared twice");
+        assert!(Config::builder().layers(&["sdk"]).modes(&["light", "light"]).build().is_err());
     }
 }

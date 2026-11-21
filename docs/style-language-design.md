@@ -122,7 +122,7 @@ tokens {                                  // a Shadcn file
 
 - Groups nest; a token's path is its group path (`palette.focus.ring`).
 - Tokens can be scoped by attribute, like controls: `metrics { control { size sm { height = 28 } } }`. The most specific scope matching the instance wins, so `metrics.control.control_height` follows the instance's size (Shadcn needs this).
-- `mode light { … }` / `mode dark { … }` hold values used only in that mode. Control blocks never branch on mode.
+- `mode light { … }` / `mode dark { … }` hold values used only in that mode. The modes are declared in the config (the SDK declares `light` and `dark`; looks may add more), and a block must name a declared one. A token a mode doesn't define uses its shared value, so a mode writes only what differs. Control blocks never branch on mode.
 - Token kinds are inferred from their values: function return kinds give `color`, `shadow`, `text`, `motion`; strings give `font`; plain numbers give `number`, which may be used in any `length` or `number` property (the property's kind decides the meaning). An optional annotation, `height: length = 36`, makes the kind exact and can carry a `///` doc.
 - A token overridden in a later layer must keep the original's kind; a token defined in several `mode` blocks must have the same kind in each.
 - **Native roots** come from Rust through the token source, not from files: Shadcn `css.*` (the CSS catalog), Radix `gray[n]`, `accent[n]`, `tone[n]`, `destructive[n]`.
