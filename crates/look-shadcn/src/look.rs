@@ -67,6 +67,9 @@ struct ShadcnLookState {
     motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     snapshot: RwLock<Arc<ShadcnLookSnapshot>>,
     mode: AtomicU8,
+    /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by
+    /// [`ShadcnLook::set_style_mode`].
+    style_mode: RwLock<Option<String>>,
     /// The `.lss` theme last bound, keyed by its mode tokens and mode (see [`ShadcnLook::style_theme`]).
     style_theme: crate::style::ThemeCache,
 }
@@ -201,6 +204,7 @@ impl ShadcnLook {
                     crate::stylesheet::embedded_stylesheet().clone(),
                 )?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -218,6 +222,7 @@ impl ShadcnLook {
                 motion: RwLock::new(Default::default()),
                 snapshot: RwLock::new(Arc::new(ShadcnLookSnapshot::new(catalog, stylesheet)?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -278,8 +283,37 @@ impl ShadcnLook {
         u8_to_mode(self.state.mode.load(Ordering::Relaxed))
     }
 
+    /// Change the active scheme (light or dark); the style mode becomes the one of the same name.
     pub fn set_mode(&self, mode: ThemeMode) {
+        if let Ok(mut style_mode) = self.state.style_mode.write() {
+            *style_mode = None;
+        }
         self.state.mode.store(mode_to_u8(mode), Ordering::Relaxed);
+    }
+
+    /// The style mode the look's `.lss` theme binds: one set with [`ShadcnLook::set_style_mode`], else
+    /// the scheme's own (`"light"` or `"dark"`).
+    pub fn style_mode(&self) -> String {
+        let named = self.state.style_mode.read().ok().and_then(|m| m.clone());
+        named.unwrap_or_else(|| xgpui_luma::style::scheme_name(self.mode()).to_string())
+    }
+
+    /// Choose a declared style mode by name (e.g. a `hi_contrast` mode based on `light`). The scheme
+    /// follows the mode's base, so the CSS values and window appearance match. Errors for a mode the
+    /// Shadcn config doesn't declare, or one that comes down to neither light nor dark.
+    pub fn set_style_mode(&self, mode: &str) -> Result<(), String> {
+        let config = crate::style::config();
+        let scheme = xgpui_luma::style::mode_scheme(&config, mode).ok_or_else(|| {
+            let modes: Vec<&str> = config.modes().collect();
+            format!("unknown style mode \"{mode}\" (modes: {})", modes.join(", "))
+        })?;
+        self.set_mode(scheme);
+        if mode != xgpui_luma::style::scheme_name(scheme)
+            && let Ok(mut style_mode) = self.state.style_mode.write()
+        {
+            *style_mode = Some(mode.to_string());
+        }
+        Ok(())
     }
 
     pub fn mode_tokens(&self) -> Arc<ShadcnModeTokens> {
@@ -489,6 +523,7 @@ impl ShadcnLook {
                 motion: RwLock::new(lock::read(&self.state.motion).clone()),
                 snapshot: RwLock::new(Arc::new(next)),
                 mode: AtomicU8::new(self.state.mode.load(Ordering::Relaxed)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -1054,6 +1089,19 @@ fn first_font_family(raw: &str) -> SharedString {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn style_mode_is_the_scheme_unless_set_by_name_and_follows_set_mode() {
+        // Its own look: `built_in()` is shared, and other tests read its mode.
+        let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS parses");
+        assert_eq!(look.style_mode(), "light");
+        look.set_style_mode("dark").expect("declared");
+        assert_eq!((look.mode(), look.style_mode().as_str()), (ThemeMode::Dark, "dark"));
+        assert_eq!(look.style_theme().mode(), "dark", "the theme binds the style mode");
+        assert!(look.set_style_mode("sepia").is_err(), "undeclared");
+        look.set_mode(ThemeMode::Light);
+        assert_eq!(look.style_mode(), "light");
+    }
+
     use super::*;
 
     #[test]

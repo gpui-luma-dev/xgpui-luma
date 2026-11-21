@@ -34,6 +34,10 @@ config.state("checked")      // Option<StateId>
 config.attribute("variant")  // Option<AttrId>
 config.exclusive_states()    // "disabled", "pressed", "hover": the exclusive group, strongest first
 config.modes()               // "light", "dark": declared theme modes, in order
+config.scheme("hi_contrast") // "light": the end of a mode's base chain
+
+// A look adds a mode based on a declared one; it falls back to the base's values, then the shared ones.
+let look = Arc::new(config.extend().mode_based_on("hi_contrast", "light").build()?);
 
 // A look adds its own axes; SDK handles keep their positions.
 let radix = Arc::new(config.extend().attributes(&["tone", "radius"]).states(&["high_contrast"]).build()?);
@@ -41,7 +45,8 @@ let radix = Arc::new(config.extend().attributes(&["tone", "radius"]).states(&["h
 
 - **The SDK knows axes, not values.** It declares generic attributes (`variant`, `size`) and its own states. Size keys (`sm`/`md`/`lg`, `1`–`4`), tones, radius steps and look states such as `high_contrast` exist only in look files and look configs. SDK files are compiled against the SDK config alone, so they cannot mention a look's axes.
 - **The default size is the look's.** A look's base values are its default size (Shadcn base = md, Radix base = 2); a key with no size gets them. A look may also write the default explicitly (`size md { }`) so pickers list it. `sheet.axes(control)` reads the values from the files.
-- **Modes are declared in the config** (`.modes(&["light", "dark"])` in the SDK; a look adds its own with `config.extend().modes(&[…])`). Token files give values per mode with `mode <name> { … }`; a `mode` block naming an undeclared mode is a compile error. A declared mode with no block, and any token a mode leaves out, uses the shared value. The SDK's `theme/palette.lss` holds light values and `mode dark` overrides.
+- **Modes are declared in the config** (`.modes(&["light", "dark"])` in the SDK; a look adds its own with `config.extend().modes(&[…])`). Token files give values per mode with `mode <name> { … }`; a `mode` block naming an undeclared mode is a compile error. A declared mode with no block, and any token a mode leaves out, uses the shared value. The SDK's `theme/palette.lss` holds light values and `mode dark` overrides. Mode names are identifiers (`hi_contrast`).
+- **Modes based on another.** `mode_based_on("hi_contrast", "light")` declares a mode that falls back to `light`'s values, then the shared ones; its base must be declared first. Its **scheme** is the end of that chain (`light`). Native token sources with light and dark data choose by `TokenCx::scheme()`, not `mode()`, so a `hi_contrast` theme uses light scales and CSS values. `theme.scheme()` reports it. Looks keep `ThemeMode` as the scheme and bind a named style mode (`look.style_mode()` / `look.set_style_mode(name)`).
 
 ## 3. Setup: files, compile, bind (topic 3)
 
@@ -153,7 +158,7 @@ pub trait TokenSource: Send + Sync {
 }
 ```
 
-- `TokenCx` gives the mode and the instance's attributes (`cx.attr("tone")`).
+- `TokenCx` gives the mode, its scheme (`cx.scheme()`: what to choose light or dark data by) and the instance's attributes (`cx.attr("tone")`).
 - File tokens (`tokens { … }`) and native tokens share one namespace. Look functions receive an absent token as `Value::None`.
 - Built-in functions: `min`, `max`, `first`, `exact`, `alpha`, `mix`, `gray`, `srgb`, `hsla`, `oklch`, `oklab`, `color(space, …)`, `shadow`, `box_shadow`, `inset_shadow`, `text`, `timed`, `spring`. Built-in keywords: `none`, `transparent`, `black`, `white`, `instant`, easing names. Which further functions are built in or belong to a look is decided per function: built in if it needs no look data.
 

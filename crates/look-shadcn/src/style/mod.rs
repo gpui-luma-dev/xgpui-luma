@@ -98,36 +98,29 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// The style mode name for a theme mode.
-pub fn mode_name(mode: ThemeMode) -> &'static str {
-    match mode {
-        ThemeMode::Light => "light",
-        ThemeMode::Dark => "dark",
-    }
-}
-
-/// `look`'s catalog bound to the Shadcn stylesheet in the look's current mode.
+/// `look`'s catalog bound to the Shadcn stylesheet in the look's style mode ([`ShadcnLook::style_mode`]).
 pub fn theme(look: &ShadcnLook) -> Result<Theme, Diagnostics> {
-    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens::new(look)), mode_name(look.mode()))
+    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens::new(look)), &look.style_mode())
 }
 
 /// One mode's tokens bound to the Shadcn stylesheet in that mode. The SDK alone if the catalog cannot bind.
 pub(crate) fn theme_for_mode(tokens: &ShadcnModeTokens) -> Theme {
     let tokens = Arc::new(tokens.clone());
     let mode = tokens.theme_mode;
-    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens { light: Arc::clone(&tokens), dark: tokens }), mode_name(mode))
+    let mode = xgpui_luma::style::scheme_name(mode);
+    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens { light: Arc::clone(&tokens), dark: tokens }), mode)
         .unwrap_or_else(|_| xgpui_luma::style::default_theme())
 }
 
 /// The last bound theme of a look. Keyed by the identity of the mode tokens it was bound to (the cached
-/// theme keeps them alive, so the key cannot be reused) and the mode.
+/// theme keeps them alive, so the key cannot be reused) and the style mode.
 #[derive(Default)]
-pub(crate) struct ThemeCache(std::sync::Mutex<Option<(usize, ThemeMode, Theme)>>);
+pub(crate) struct ThemeCache(std::sync::Mutex<Option<(usize, String, Theme)>>);
 
 impl ThemeCache {
     pub(crate) fn get(&self, look: &ShadcnLook) -> Theme {
-        let mode = look.mode();
-        let tokens = look.mode_tokens_for(mode);
+        let mode = look.style_mode();
+        let tokens = look.mode_tokens_for(look.mode());
         let id = Arc::as_ptr(&tokens) as usize;
         let mut cached = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some((cached_id, cached_mode, theme)) = cached.as_ref()
@@ -157,7 +150,8 @@ impl ShadcnTokens {
     }
 
     fn mode(&self, cx: &TokenCx<'_>) -> (&ShadcnModeTokens, ThemeMode) {
-        if cx.mode() == "dark" {
+        // By scheme, so a mode based on light or dark uses that mode's CSS values.
+        if cx.scheme() == "dark" {
             (&self.dark, ThemeMode::Dark)
         } else {
             (&self.light, ThemeMode::Light)
