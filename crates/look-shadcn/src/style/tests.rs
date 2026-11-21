@@ -171,7 +171,7 @@ fn missing_ring_and_border_fall_back() {
     tokens.catalog.tokens.remove("ring");
     tokens.catalog.tokens.remove("border");
     let tokens = std::sync::Arc::new(tokens);
-    let source = ShadcnTokens { light: tokens.clone(), dark: tokens };
+    let source = ShadcnTokens { light: tokens.clone(), dark: tokens, modes: Default::default() };
     let theme = Theme::bind(&stylesheet(), std::sync::Arc::new(source), "light").expect("binds");
     let config = xgpui_luma::style::config();
     let resolved =

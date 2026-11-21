@@ -158,12 +158,10 @@ impl Stylesheet {
         self.model.prop_kind(self.model.control(control.name())?, prop)
     }
 
-    /// Modes the token files define, e.g. `["dark", "light"]`. Empty for the SDK alone.
+    /// The config's declared modes, in declaration order (e.g. `["light", "dark"]`). Token files give values
+    /// per mode with `mode <name> { … }`; a declared mode with no such block uses the shared values.
     pub fn modes(&self) -> Vec<String> {
-        let mut modes: Vec<String> = self.model.tokens.defs.values().flatten().filter_map(|d| d.mode.clone()).collect();
-        modes.sort();
-        modes.dedup();
-        modes
+        self.model.config.modes().map(str::to_string).collect()
     }
 }
 
@@ -358,6 +356,21 @@ impl Compiler {
                 TokenItem::Mode { name, items } => {
                     if mode.is_some() {
                         self.err(name.span, Code::Syntax, "mode blocks cannot be nested");
+                        continue;
+                    }
+                    if !self.model.config.modes.contains(&name.text) {
+                        let modes: Vec<&str> = self.model.config.modes().collect();
+                        let message = if modes.is_empty() {
+                            format!("unknown mode \"{}\" (the config declares no modes)", name.text)
+                        } else {
+                            format!(
+                                "unknown mode \"{}\" (modes: {}){}",
+                                name.text,
+                                modes.join(", "),
+                                crate::diag::suggest(&name.text, modes.iter().copied())
+                            )
+                        };
+                        self.err(name.span, Code::UnknownMode, message);
                         continue;
                     }
                     self.add_tokens(items, group, Some(&name.text), attrs, scope, layer);

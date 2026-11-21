@@ -12,7 +12,7 @@ use xgpui_luma::style::lss::{
 
 use xgpui_luma::prelude::HasPresenter;
 
-use crate::lab_controls::Segmented;
+use super::box_model;
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
 pub(super) struct StyleInspector {
@@ -21,7 +21,12 @@ pub(super) struct StyleInspector {
     control: ControlId,
     key: StyleKey,
     states: Vec<(StateId, xgpui_luma::controls::switch::Switch)>,
-    attributes: Vec<(AttrId, Segmented)>,
+    /// One Radix toggle group per attribute, with the attribute's name as its label.
+    attributes: Vec<(
+        AttrId,
+        String,
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
+    )>,
 }
 
 impl StyleInspector {
@@ -54,22 +59,34 @@ impl StyleInspector {
                 let name = config.attribute_name(attr).to_string();
                 let mut options: Vec<String> = vec!["base".into()];
                 options.extend(values.iter().map(|v| v.name().to_string()));
-                let refs: Vec<&str> = options.iter().map(String::as_str).collect();
                 let values = values.clone();
-                let segmented = Segmented::new(
-                    format!("style-inspector-attr-{name}"),
-                    &name,
+                let group = xgpui_luma_look_radix::control_group_builder(
                     look.as_ref(),
-                    &refs,
-                    0,
-                    cx,
-                    move |this: &mut Self, index, cx| {
-                        let value: Option<AttrValue> = index.checked_sub(1).and_then(|i| values.get(i).copied());
-                        this.key = this.key.attr_opt(attr, value);
-                        cx.notify();
+                    format!("style-inspector-attr-{name}"),
+                    look.size(),
+                )
+                .horizontal()
+                .single_required()
+                .items(options.iter().enumerate().map(|(index, option)| {
+                    xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(option.clone())
+                }))
+                .selected_ids(["0"])
+                .spawn(cx);
+                cx.subscribe(
+                    &group,
+                    move |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                        if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } =
+                            event
+                            && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                        {
+                            let value: Option<AttrValue> = index.checked_sub(1).and_then(|i| values.get(i).copied());
+                            this.key = this.key.attr_opt(attr, value);
+                            cx.notify();
+                        }
                     },
-                );
-                (attr, segmented)
+                )
+                .detach();
+                (attr, name, group)
             })
             .collect();
         Self { look, theme, control, key: StyleKey::new(control), states, attributes }
@@ -80,39 +97,34 @@ impl StyleInspector {
         cx.notify();
     }
 
-    /// Follow a live sample: set a state by name (e.g. the sample checkbox's `checked`).
+    /// Follow a live sample: set a state by name (e.g. the sample checkbox's `checked`). A state this
+    /// control does not declare is ignored.
     pub(super) fn set_state(&mut self, name: &str, on: bool, cx: &mut Context<Self>) {
         let Some(state) = self.theme.stylesheet().config().state(name) else {
             return;
         };
-        self.key = self.key.set_state(state, on);
-        if let Some((_, switch)) = self.states.iter().find(|(s, _)| *s == state)
-            && *switch.read(cx).data() != on
-        {
+        let Some((_, switch)) = self.states.iter().find(|(s, _)| *s == state) else {
+            return;
+        };
+        if *switch.read(cx).data() != on {
             switch.update(cx, |switch, cx| switch.set_data(on, cx));
         }
+        self.key = self.key.set_state(state, on);
         cx.notify();
     }
 
-    /// The current inspection, for tests.
+    /// Whether a state is on in the inspected key, for tests.
     #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn inspection(&self) -> Inspection {
-        self.theme.inspect(&self.key, None)
+    pub(super) fn state_on(&self, name: &str) -> bool {
+        self.theme
+            .stylesheet()
+            .config()
+            .state(name)
+            .is_some_and(|state| self.key.active_states().contains(state))
     }
 
     fn part(&self, part: &PartInspection) -> AnyElement {
         let chrome = self.look.chrome();
-        let small = self.look.typography_scale(TextSize::Xs);
-        let b = &part.box_model;
-        let size = |v: Option<f32>| v.map_or("auto".to_string(), trim);
-        let box_line = format!(
-            "box  {} × {}  ·  padding {} / {}  ·  border {}",
-            size(b.width.or(b.min_width)),
-            size(b.height.or(b.min_height)),
-            trim(b.padding.top),
-            trim(b.padding.left),
-            trim(b.border_width),
-        );
         let categories = [
             (Category::Colors, "Colors"),
             (Category::Layout, "Layout"),
@@ -124,11 +136,17 @@ impl StyleInspector {
         let sections = categories.into_iter().filter_map(|(category, title)| {
             let rows: Vec<AnyElement> =
                 part.rows.iter().filter(|r| r.category == category).map(|r| self.row(part, r)).collect();
-            (!rows.is_empty()).then(|| {
+            // Layout always opens with the box-model diagram, as in Studio's inspector.
+            let diagram = (category == Category::Layout).then(|| {
+                let id = format!("style-inspector-box-{}", part.part.name());
+                div().pb(px(6.)).child(box_model::diagram(id.into(), &part.box_model, self.look.mode()))
+            });
+            (diagram.is_some() || !rows.is_empty()).then(|| {
                 div()
                     .flex()
                     .flex_col()
                     .child(div().pt(px(6.)).pb(px(2.)).text_color(chrome.muted_text).child(title))
+                    .children(diagram)
                     .children(rows)
             })
         });
@@ -156,7 +174,6 @@ impl StyleInspector {
                     )
                     .children(part.doc.clone().map(|d| div().text_color(chrome.muted_text).child(d))),
             )
-            .child(div().typography_style(small).font_family(MONO_FAMILY).text_color(chrome.muted_text).child(box_line))
             .children(sections)
             .into_any_element()
     }
@@ -222,11 +239,6 @@ impl StyleInspector {
     }
 }
 
-fn trim(n: f32) -> String {
-    let s = format!("{n:.2}");
-    s.trim_end_matches('0').trim_end_matches('.').to_string()
-}
-
 impl Render for StyleInspector {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
@@ -267,7 +279,11 @@ impl Render for StyleInspector {
                     .children(inspection.doc.clone().map(|d| div().text_color(chrome.muted_text).child(d))),
             )
             .child(div().flex().flex_wrap().gap(px(10.)).children(self.states.iter().map(|(_, s)| s.clone())))
-            .children(self.attributes.iter().map(|(_, s)| s.clone()))
+            .children(
+                self.attributes.iter().map(|(_, name, group)| {
+                    div().flex().items_center().gap_2().child(name.clone()).child(group.clone())
+                }),
+            )
             .child(div().font_family(MONO_FAMILY).text_color(chrome.muted_text).child(format!("key  {key_line}")))
             .children(inspection.parts.iter().map(|p| self.part(p)))
     }

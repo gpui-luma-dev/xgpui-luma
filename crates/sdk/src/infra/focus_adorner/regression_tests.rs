@@ -11,7 +11,7 @@ fn custom_checkbox_focus_border_is_stable() {
             Source::new("app/focus.lss", "checkbox { part root { :focused { border = srgb(0, 0, 1) } } }"),
         )
         .expect("compiles");
-    let theme = Theme::bind(&sheet, std::sync::Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, std::sync::Arc::new(NoNativeTokens), "light").expect("binds");
     for role in [
         crate::controls::button_family::ButtonFamilyRole::Text,
         crate::controls::button_family::ButtonFamilyRole::Icon,
@@ -41,7 +41,7 @@ fn custom_radio_focus_border_is_stable() {
     let sheet = crate::style::stylesheet()
         .with_source("app", Source::new("app/focus.lss", "radio { part root { :focused { border = srgb(0, 0, 1) } } }"))
         .expect("compiles");
-    let theme = Theme::bind(&sheet, std::sync::Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, std::sync::Arc::new(NoNativeTokens), "light").expect("binds");
     for role in [
         crate::controls::button_family::ButtonFamilyRole::Text,
         crate::controls::button_family::ButtonFamilyRole::Icon,

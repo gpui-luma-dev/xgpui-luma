@@ -113,12 +113,12 @@ fn graph(
     artworks: &[Artwork],
     budgets: &[u64],
     merged: bool,
-    view: crate::lab_controls::Segmented,
+    view: xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
 ) -> AnyElement {
     let raster = PanelShell::new("Raster time by zoom")
         .subtitle("Median of five samples on a logarithmic axis, one chart per artwork or merged. Bars stop growing where the budget caps the output. Hover a bar for its whole zoom group.")
         .child(svg_chart::legend(look, budgets))
-        .action(view)
+        .action(div().flex().items_center().gap_2().child("View").child(view))
         .child(svg_chart::raster(look, cases, artworks, budgets, merged));
     let output = PanelShell::new("Output size")
         .subtitle("Megapixels rendered at each zoom, averaged over the artwork. Red points are capped.")
@@ -224,9 +224,15 @@ impl Page {
                 "Measure how parse and raster time grow with zoom for artwork of different size and complexity, \
                  and where the raster budget caps the output.",
             )
-            .control(labeled_control(&look, self.svg_budget_choice.clone().into_element()))
+            .control(labeled_control(
+                &look,
+                div().flex().items_center().gap_2().child("Budget").child(self.svg_budget_choice.clone()),
+            ))
             .control(self.svg_baseline_toggle.clone())
-            .control(labeled_control(&look, self.svg_zoom_choice.clone().into_element()))
+            .control(labeled_control(
+                &look,
+                div().flex().items_center().gap_2().child("Zoom").child(self.svg_zoom_choice.clone()),
+            ))
             .control(build)
             .action(self.buttons[0].clone())
             .action(self.cancel_button.clone())

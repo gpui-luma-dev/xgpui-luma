@@ -296,11 +296,14 @@ pub struct Page {
     svg_zooms: Vec<f32>,
     svg_budgets: Vec<usize>,
     svg_cases: Vec<Value>,
-    svg_zoom_choice: crate::lab_controls::Segmented,
+    svg_zoom_choice:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
     /// Facets (one raster chart per artwork) or one merged chart.
-    svg_raster_view: crate::lab_controls::Segmented,
+    svg_raster_view:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
     svg_raster_merged: bool,
-    svg_budget_choice: crate::lab_controls::Segmented,
+    svg_budget_choice:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
     svg_budget_index: usize,
     /// Adds the uncapped 256 MiB budget to the chosen ones.
     svg_baseline: bool,
@@ -366,43 +369,68 @@ impl Page {
             .label("Export…")
             .on_click(cx, |this: &mut Self, cx| this.export_svg(cx))
             .spawn(cx);
-        let svg_raster_view = crate::lab_controls::Segmented::new(
-            "svg-raster-view",
-            "View",
-            &look,
-            &["Facets", "Merged"],
-            0,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.svg_raster_merged = index == 1;
-                cx.notify();
+        let svg_raster_view = xgpui_luma_look_radix::control_group_builder(&look, "svg-raster-view", look.size())
+            .horizontal()
+            .single_required()
+            .items(["Facets", "Merged"].iter().enumerate().map(|(index, label)| {
+                xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+            }))
+            .selected_ids([(0).to_string()])
+            .spawn(cx);
+        cx.subscribe(
+            &svg_raster_view,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.svg_raster_merged = index == 1;
+                    cx.notify();
+                }
             },
-        );
-        let svg_zoom_choice = crate::lab_controls::Segmented::new(
-            "svg-comparison-zoom",
-            "Zoom",
-            &look,
-            &svg_screen::ZOOM_LABELS,
-            0,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.svg_zooms = svg_screen::zooms(index);
-                this.reset_comparison(cx);
+        )
+        .detach();
+        let svg_zoom_choice = xgpui_luma_look_radix::control_group_builder(&look, "svg-comparison-zoom", look.size())
+            .horizontal()
+            .single_required()
+            .items(svg_screen::ZOOM_LABELS.iter().enumerate().map(|(index, label)| {
+                xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+            }))
+            .selected_ids([(0).to_string()])
+            .spawn(cx);
+        cx.subscribe(
+            &svg_zoom_choice,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.svg_zooms = svg_screen::zooms(index);
+                    this.reset_comparison(cx);
+                }
             },
-        );
-        let svg_budget_choice = crate::lab_controls::Segmented::new(
-            "svg-comparison-budget",
-            "Budget",
-            &look,
-            &svg_screen::BUDGET_LABELS,
-            svg_screen::DEFAULT_BUDGET_CHOICE,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.svg_budget_index = index;
-                this.svg_budgets = svg_screen::budgets(index, this.svg_baseline);
-                this.reset_comparison(cx);
+        )
+        .detach();
+        let svg_budget_choice =
+            xgpui_luma_look_radix::control_group_builder(&look, "svg-comparison-budget", look.size())
+                .horizontal()
+                .single_required()
+                .items(svg_screen::BUDGET_LABELS.iter().enumerate().map(|(index, label)| {
+                    xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+                }))
+                .selected_ids([(svg_screen::DEFAULT_BUDGET_CHOICE).to_string()])
+                .spawn(cx);
+        cx.subscribe(
+            &svg_budget_choice,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.svg_budget_index = index;
+                    this.svg_budgets = svg_screen::budgets(index, this.svg_baseline);
+                    this.reset_comparison(cx);
+                }
             },
-        );
+        )
+        .detach();
         let svg_baseline = baseline_flag(&std::env::args().collect::<Vec<_>>());
         let svg_baseline_toggle = radix::Toggle::new("svg-baseline")
             .look(&look)
@@ -489,7 +517,7 @@ impl Page {
             }
             if argument(&args, "--svg-view") == Some("merged") {
                 page.svg_raster_merged = true;
-                page.svg_raster_view.group.update(cx, |group, cx| group.set_selected("1", cx));
+                page.svg_raster_view.update(cx, |group, cx| group.set_selected_ids(["1"], cx));
             }
             if argument(&args, "--svg-tab") == Some("table") {
                 page.svg_tab = svg_screen::Tab::Table;
@@ -669,7 +697,7 @@ impl Page {
             )
         };
         for choice in [&self.svg_zoom_choice, &self.svg_budget_choice] {
-            choice.set_enabled(false, cx);
+            choice.update(cx, |choice, cx| choice.set_enabled(false, cx));
         }
         self.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(false, cx));
         self.svg_started = Some(Instant::now());
@@ -840,7 +868,7 @@ impl Page {
                     });
                 }
                 for choice in [&this.svg_zoom_choice, &this.svg_budget_choice] {
-                    choice.set_enabled(true, cx);
+                    choice.update(cx, |choice, cx| choice.set_enabled(true, cx));
                 }
                 this.svg_baseline_toggle.update(cx, |toggle, cx| toggle.set_enabled(true, cx));
                 if let Some(output) = &output
@@ -1068,7 +1096,7 @@ mod tests {
         assert!(cx.debug_bounds("svg-raster-facet-3").is_some(), "four facets by default");
         assert!(cx.debug_bounds("svg-raster-merged").is_none());
         let view = cx.update(|_, cx| page.read(cx).svg_raster_view.clone());
-        cx.update(|_, cx| view.select(1, cx));
+        cx.update(|_, cx| crate::lab_controls::choose(&view, 1, cx));
         cx.run_until_parked();
         assert!(cx.update(|_, cx| page.read(cx).svg_raster_merged));
         assert!(cx.debug_bounds("svg-raster-merged").is_some(), "one merged chart");
@@ -1145,8 +1173,8 @@ mod tests {
             let page = page.read(cx);
             (page.svg_zoom_choice.clone(), page.svg_budget_choice.clone())
         });
-        cx.update(|_, cx| zoom.select(3, cx));
-        cx.update(|_, cx| budget.select(0, cx));
+        cx.update(|_, cx| crate::lab_controls::choose(&zoom, 3, cx));
+        cx.update(|_, cx| crate::lab_controls::choose(&budget, 0, cx));
         cx.run_until_parked();
         cx.update(|_, cx| {
             let p = page.read(cx);

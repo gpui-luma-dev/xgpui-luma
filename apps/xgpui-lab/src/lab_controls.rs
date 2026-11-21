@@ -96,68 +96,20 @@ impl IntoElement for Choice {
     }
 }
 
-/// A labeled toggle group: every option visible as one segment, one selected.
-/// Use it for short option lists (two to five); `Choice` is the dropdown for longer ones.
-#[derive(Clone)]
-pub(crate) struct Segmented {
-    pub group: xgpui_luma::controls::radio_group::RadioGroup<xgpui_luma::controls::radio_group::RadioGroupItem>,
-    label: SharedString,
-}
-
-impl Segmented {
-    pub fn new<M: 'static>(
-        id: impl Into<SharedString>,
-        label: &str,
-        look: &Look,
-        options: &[&str],
-        selected: usize,
-        cx: &mut Context<M>,
-        on_change: impl Fn(&mut M, usize, &mut Context<M>) + 'static,
-    ) -> Self {
-        use xgpui_luma::controls::radio_group::{self, RadioGroupItem};
-        let count = options.len();
-        let accessible_label = SharedString::from(label.to_owned());
-        let group = radio_group::horizontal(id)
-            .single_required()
-            .selection_follows_active(true)
-            .items(
-                options
-                    .iter()
-                    .enumerate()
-                    .map(|(index, label)| RadioGroupItem::new(index.to_string()).label(*label)),
-            )
-            .selected(selected.to_string())
-            .template(xgpui_luma_look_radix::segmented_radio_template(look))
-            .with_template_modifier(move |root, _| root.aria_label(accessible_label.clone()))
-            .on_value_changed(cx, move |owner, value, cx| {
-                if let Some(index) = value.as_ref().and_then(|id| id.parse::<usize>().ok())
-                    && index < count
-                {
-                    on_change(owner, index, cx);
-                }
-            })
-            .spawn(cx);
-        Self { group, label: label.to_owned().into() }
-    }
-
-    pub fn set_enabled(&self, enabled: bool, cx: &mut gpui::App) {
-        self.group.update(cx, |group, cx| group.set_enabled(enabled, cx));
-    }
-
-    #[cfg(all(test, feature = "test-support"))]
-    pub fn select(&self, index: usize, cx: &mut gpui::App) {
-        self.group.update(cx, |group, cx| {
-            group.set_selected(index.to_string(), cx);
-            cx.emit(xgpui_luma::controls::radio_group::RadioGroupEvent::Change {
-                value: Some(index.to_string().into()),
-            });
+/// Choose an option of a Radix toggle group as a person would, by index, for tests.
+#[cfg(all(test, feature = "test-support"))]
+pub(crate) fn choose(
+    group: &xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
+    index: usize,
+    cx: &mut gpui::App,
+) {
+    let ids: Vec<SharedString> = vec![index.to_string().into()];
+    group.update(cx, |group, cx| {
+        group.set_selected_ids(ids.clone(), cx);
+        cx.emit(xgpui_luma::controls::control_group::ControlGroupEvent::Change {
+            changed_id: ids[0].clone(),
+            selected: true,
+            selected_ids: ids,
         });
-    }
-}
-
-impl IntoElement for Segmented {
-    type Element = gpui::Div;
-    fn into_element(self) -> Self::Element {
-        div().flex().items_center().gap_2().child(self.label).child(self.group)
-    }
+    });
 }

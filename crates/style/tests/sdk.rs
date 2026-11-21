@@ -163,7 +163,7 @@ fn docs_parts_and_modes_come_from_the_style_files() {
     assert_eq!(sheet.doc("checkbox.glyph_size"), Some("Checkmark size."));
     let parts: Vec<_> = sheet.parts(checkbox).iter().map(|p| p.name()).collect();
     assert_eq!(parts, ["root", "indicator", "glyph", "label"]);
-    assert!(sheet.modes().is_empty(), "the SDK has no light/dark");
+    assert_eq!(sheet.modes(), ["light", "dark"], "the config declares the SDK's modes");
 }
 
 #[test]

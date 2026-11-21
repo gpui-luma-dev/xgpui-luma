@@ -25,7 +25,7 @@ pub fn radix_config() -> Arc<Config> {
     )
 }
 
-/// What `xgpui_luma::style::config()` returns: SDK states and generic attributes only.
+/// What `xgpui_luma::style::config()` returns: SDK states, generic attributes and the SDK's modes.
 pub fn luma_config() -> Arc<Config> {
     Arc::new(
         Config::builder()
@@ -36,6 +36,7 @@ pub fn luma_config() -> Arc<Config> {
             ])
             .exclusive(&["disabled", "pressed", "hover"])
             .attributes(&["variant", "size"])
+            .modes(&["light", "dark"])
             .snap(SnapPolicy::Lengths)
             .build()
             .expect("valid config"),
@@ -98,9 +99,9 @@ pub fn radix_sheet() -> Stylesheet {
         .unwrap_or_else(|d| panic!("{d}"))
 }
 
-/// The SDK alone: no native tokens and no modes.
+/// The SDK alone: no native tokens, light mode.
 pub fn sdk_theme() -> Theme {
-    Theme::bind(&sdk_sheet(), Arc::new(NoNativeTokens), "").unwrap_or_else(|d| panic!("{d}"))
+    Theme::bind(&sdk_sheet(), Arc::new(NoNativeTokens), "light").unwrap_or_else(|d| panic!("{d}"))
 }
 
 pub fn shadcn_theme(mode: &str) -> Theme {

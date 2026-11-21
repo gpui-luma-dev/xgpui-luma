@@ -16,6 +16,14 @@ pub trait ButtonTemplate<D = ()>: Send + Sync {
     fn transition(&self, _data: &D) -> Option<crate::motion::Transition> {
         None
     }
+
+    /// The `.lss` states this template sets in its style key from the control's interaction and
+    /// data (e.g. `hover`, `focused`, `checked`), by name. Tools use it to offer states the template
+    /// draws even when no rule mentions them, such as the focus ring. Empty for templates that do
+    /// not render from `.lss`.
+    fn style_states(&self) -> Vec<&'static str> {
+        Vec::new()
+    }
 }
 
 struct ModifiedButtonTemplate<D = ()> {
@@ -72,6 +80,10 @@ impl<D: 'static> ButtonTemplate<D> for ModifiedButtonTemplate<D> {
 
     fn transition(&self, data: &D) -> Option<crate::motion::Transition> {
         self.base.transition(data)
+    }
+
+    fn style_states(&self) -> Vec<&'static str> {
+        self.base.style_states()
     }
 }
 

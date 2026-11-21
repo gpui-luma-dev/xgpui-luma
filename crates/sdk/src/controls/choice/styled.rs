@@ -258,6 +258,11 @@ pub(crate) fn transparent() -> Hsla {
 }
 
 impl<D: ChoiceData> ButtonTemplate<D> for StyledChoiceTemplate<D> {
+    /// The states [`StyledChoiceTemplate::key`] sets: interaction states and the control's on-state.
+    fn style_states(&self) -> Vec<&'static str> {
+        vec!["hover", "pressed", "focused", "disabled", "invalid", D::ON_STATE]
+    }
+
     /// The root's `transition`, chosen by the destination state (on or off).
     fn transition(&self, data: &D) -> Option<crate::motion::Transition> {
         let key = self.base_key().state_if(self.handles.on, data.is_on());

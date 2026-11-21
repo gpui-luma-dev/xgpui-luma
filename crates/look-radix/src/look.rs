@@ -150,6 +150,8 @@ struct LookState {
     /// Radix control metrics for sizes 1–3; `metrics.control` is size 2.
     control_sizes: crate::RadixControlMetrics,
     mode: AtomicU8,
+    /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by [`Look::set_style_mode`].
+    style_mode: RwLock<Option<String>>,
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
     button_recipes: RwLock<Arc<crate::button_recipes::Recipes>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
@@ -190,6 +192,7 @@ impl Look {
                 metrics,
                 control_sizes: crate::RadixControlMetrics::from_button_boxes(metrics.control),
                 mode: AtomicU8::new(mode_to_u8(mode)),
+                style_mode: RwLock::new(None),
                 classic_shadow: RwLock::new(None),
                 button_recipes: RwLock::new(Arc::new(crate::button_recipes::embedded().clone())),
                 tabs_style: RwLock::new(None),
@@ -429,12 +432,42 @@ impl Look {
         mode_from_u8(self.state.mode.load(Ordering::Relaxed))
     }
 
-    /// Change the active mode. Notify affected views afterward; see [`Look`].
+    /// Change the active scheme (light or dark); the style mode becomes the one of the same name.
+    /// Notify affected views afterward; see [`Look`].
     pub fn set_mode(&self, mode: ThemeMode) {
+        if let Ok(mut style_mode) = self.state.style_mode.write() {
+            *style_mode = None;
+        }
         self.state.mode.store(mode_to_u8(mode), Ordering::Relaxed);
         if let Ok(mut rev) = self.state.revision.write() {
             *rev = rev.wrapping_add(1);
         }
+    }
+
+    /// The style mode the look's `.lss` theme binds: one set with [`Look::set_style_mode`], else the
+    /// scheme's own (`"light"` or `"dark"`).
+    pub fn style_mode(&self) -> String {
+        let named = self.state.style_mode.read().ok().and_then(|m| m.clone());
+        named.unwrap_or_else(|| xgpui_luma::style::scheme_name(self.mode()).to_string())
+    }
+
+    /// Choose a declared style mode by name (e.g. a `hi_contrast` mode based on `light`). The scheme
+    /// follows the mode's base, so native scales and window appearance match. Errors for a mode the
+    /// Radix config doesn't declare, or one that comes down to neither light nor dark. Notify affected
+    /// views afterward; see [`Look`].
+    pub fn set_style_mode(&self, mode: &str) -> Result<(), String> {
+        let config = crate::style::config();
+        let scheme = xgpui_luma::style::mode_scheme(&config, mode).ok_or_else(|| {
+            let modes: Vec<&str> = config.modes().collect();
+            format!("unknown style mode \"{mode}\" (modes: {})", modes.join(", "))
+        })?;
+        self.set_mode(scheme);
+        if mode != xgpui_luma::style::scheme_name(scheme)
+            && let Ok(mut style_mode) = self.state.style_mode.write()
+        {
+            *style_mode = Some(mode.to_string());
+        }
+        Ok(())
     }
 
     /// Rebuilds both accent scales using Radix's custom-color generator.
@@ -648,6 +681,20 @@ fn mode_from_u8(value: u8) -> ThemeMode {
 mod tests {
     use super::*;
     use xgpui_luma::color::gpui_bridge;
+
+    #[test]
+    fn style_mode_is_the_scheme_unless_set_by_name_and_follows_set_mode() {
+        let look = Look::built_in();
+        assert_eq!(look.style_mode(), "light");
+        look.set_style_mode("dark").expect("declared");
+        assert_eq!((look.mode(), look.style_mode().as_str()), (ThemeMode::Dark, "dark"));
+        assert_eq!(look.style_theme().mode(), "dark", "the theme binds the style mode");
+        let err = look.set_style_mode("sepia").expect_err("undeclared");
+        assert!(err.contains("unknown style mode \"sepia\" (modes: light, dark)"), "{err}");
+        assert_eq!(look.mode(), ThemeMode::Dark, "a failed set changes nothing");
+        look.set_mode(ThemeMode::Light);
+        assert_eq!(look.style_mode(), "light");
+    }
 
     #[test]
     fn shared_stylesheet_readers_survive_replacement_and_fork_edits() {

@@ -32,7 +32,7 @@ mod test_support;
 pub mod prelude;
 pub mod tables;
 
-pub use catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
+pub use catalog::{CssMode, CssTokenCatalog, CssTokenMap, parse_css_catalog};
 pub use context::{sync_color_control_theme, with_look};
 /// Look-agnostic provenance types (shared with other looks via the SDK).
 pub use xgpui_luma::theme::provenance::{

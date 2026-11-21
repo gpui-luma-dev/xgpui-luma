@@ -67,6 +67,9 @@ struct ShadcnLookState {
     motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     snapshot: RwLock<Arc<ShadcnLookSnapshot>>,
     mode: AtomicU8,
+    /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by
+    /// [`ShadcnLook::set_style_mode`].
+    style_mode: RwLock<Option<String>>,
     /// The `.lss` theme last bound, keyed by its mode tokens and mode (see [`ShadcnLook::style_theme`]).
     style_theme: crate::style::ThemeCache,
 }
@@ -75,6 +78,8 @@ struct ShadcnLookSnapshot {
     catalog: Arc<CssTokenCatalog>,
     light: Arc<ShadcnModeTokens>,
     dark: Arc<ShadcnModeTokens>,
+    /// Tokens for the modes the CSS adds with class blocks (`hi_contrast`, …), by name.
+    modes: Vec<(String, Arc<ShadcnModeTokens>)>,
     stylesheet: Arc<StylesheetConfig>,
 }
 
@@ -94,6 +99,7 @@ impl ShadcnLookSnapshot {
                 ThemeMode::Dark,
                 Arc::clone(&stylesheet),
             )?),
+            modes: build_css_modes(&catalog, &stylesheet, |map, _| Ok(map))?,
             catalog: Arc::new(catalog),
             stylesheet,
         })
@@ -113,14 +119,26 @@ impl ShadcnLookSnapshot {
                 catalog: Arc::clone(&self.catalog),
                 light: Arc::clone(&self.light),
                 dark: Arc::clone(&self.dark),
+                modes: self.modes.clone(),
                 stylesheet: Arc::clone(&self.stylesheet),
             });
         }
 
         let light_catalog = apply_color_overrides_to_catalog(self.light.catalog.clone(), light_overrides)?;
         let dark_catalog = apply_color_overrides_to_catalog(self.dark.catalog.clone(), dark_overrides)?;
+        let modes = build_css_modes(&self.catalog, &self.stylesheet, |map, base| {
+            apply_color_overrides_to_catalog(
+                map,
+                if base == ThemeMode::Light {
+                    light_overrides
+                } else {
+                    dark_overrides
+                },
+            )
+        })?;
 
         Ok(Self {
+            modes,
             catalog: Arc::clone(&self.catalog),
             light: Arc::new(ShadcnModeTokens::from_catalog_with_stylesheet(
                 light_catalog,
@@ -142,14 +160,19 @@ impl ShadcnLookSnapshot {
                 catalog: Arc::clone(&self.catalog),
                 light: Arc::clone(&self.light),
                 dark: Arc::clone(&self.dark),
+                modes: self.modes.clone(),
                 stylesheet: Arc::clone(&self.stylesheet),
             });
         }
 
         let light_catalog = apply_string_overrides_to_catalog(self.light.catalog.clone(), overrides);
         let dark_catalog = apply_string_overrides_to_catalog(self.dark.catalog.clone(), overrides);
+        let modes = build_css_modes(&self.catalog, &self.stylesheet, |map, _| {
+            Ok(apply_string_overrides_to_catalog(map, overrides))
+        })?;
 
         Ok(Self {
+            modes,
             catalog: Arc::clone(&self.catalog),
             light: Arc::new(ShadcnModeTokens::from_catalog_with_stylesheet(
                 light_catalog,
@@ -201,6 +224,7 @@ impl ShadcnLook {
                     crate::stylesheet::embedded_stylesheet().clone(),
                 )?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -218,6 +242,7 @@ impl ShadcnLook {
                 motion: RwLock::new(Default::default()),
                 snapshot: RwLock::new(Arc::new(ShadcnLookSnapshot::new(catalog, stylesheet)?)),
                 mode: AtomicU8::new(mode_to_u8(ThemeMode::Light)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -278,16 +303,70 @@ impl ShadcnLook {
         u8_to_mode(self.state.mode.load(Ordering::Relaxed))
     }
 
+    /// Change the active scheme (light or dark); the style mode becomes the one of the same name.
     pub fn set_mode(&self, mode: ThemeMode) {
+        if let Ok(mut style_mode) = self.state.style_mode.write() {
+            *style_mode = None;
+        }
         self.state.mode.store(mode_to_u8(mode), Ordering::Relaxed);
     }
 
+    /// The style mode the look's `.lss` theme binds: one set with [`ShadcnLook::set_style_mode`], else
+    /// the scheme's own (`"light"` or `"dark"`).
+    pub fn style_mode(&self) -> String {
+        // A named mode the current stylesheet no longer declares (the CSS changed) falls back to the scheme.
+        let named = self.state.style_mode.read().ok().and_then(|m| m.clone());
+        named
+            .filter(|m| self.style_stylesheet().config().modes().any(|declared| declared == m))
+            .unwrap_or_else(|| xgpui_luma::style::scheme_name(self.mode()).to_string())
+    }
+
+    /// The modes this look's CSS adds with class blocks, with their bases (see [`crate::CssMode`]).
+    pub fn css_modes(&self) -> Vec<(String, ThemeMode)> {
+        self.snapshot().catalog.modes.iter().map(|m| (m.name.clone(), m.base)).collect()
+    }
+
+    /// The Shadcn stylesheet with this look's CSS modes declared (the shared one when it adds none).
+    pub fn style_stylesheet(&self) -> xgpui_luma::style::lss::Stylesheet {
+        crate::style::stylesheet_with_modes(&self.css_modes())
+    }
+
+    /// Choose a declared style mode by name: `light`, `dark`, or a mode the CSS adds (`.hi-contrast`
+    /// is `hi_contrast`, based on light). The scheme follows the mode's base, so the CSS values and window
+    /// appearance match. Errors for a mode the look's stylesheet doesn't declare, or one that comes down
+    /// to neither light nor dark.
+    pub fn set_style_mode(&self, mode: &str) -> Result<(), String> {
+        let sheet = self.style_stylesheet();
+        let config = sheet.config();
+        let scheme = xgpui_luma::style::mode_scheme(&config, mode).ok_or_else(|| {
+            let modes: Vec<&str> = config.modes().collect();
+            format!("unknown style mode \"{mode}\" (modes: {})", modes.join(", "))
+        })?;
+        self.set_mode(scheme);
+        if mode != xgpui_luma::style::scheme_name(scheme)
+            && let Ok(mut style_mode) = self.state.style_mode.write()
+        {
+            *style_mode = Some(mode.to_string());
+        }
+        Ok(())
+    }
+
+    /// The tokens for the current style mode: a CSS mode's own, else the scheme's.
     pub fn mode_tokens(&self) -> Arc<ShadcnModeTokens> {
         let snapshot = self.snapshot();
+        let mode = self.style_mode();
+        if let Some((_, tokens)) = snapshot.modes.iter().find(|(name, _)| *name == mode) {
+            return Arc::clone(tokens);
+        }
         match self.mode() {
             ThemeMode::Light => Arc::clone(&snapshot.light),
             ThemeMode::Dark => Arc::clone(&snapshot.dark),
         }
+    }
+
+    /// Tokens for each mode the CSS adds, by name (style token sources hold them all).
+    pub(crate) fn css_mode_tokens(&self) -> Vec<(String, Arc<ShadcnModeTokens>)> {
+        self.snapshot().modes.clone()
     }
 
     /// Mode tokens for `mode`, whatever the current mode is (style token sources hold both).
@@ -489,6 +568,7 @@ impl ShadcnLook {
                 motion: RwLock::new(lock::read(&self.state.motion).clone()),
                 snapshot: RwLock::new(Arc::new(next)),
                 mode: AtomicU8::new(self.state.mode.load(Ordering::Relaxed)),
+                style_mode: RwLock::new(None),
                 style_theme: Default::default(),
             }),
             size: crate::ShadcnSize::DEFAULT,
@@ -997,6 +1077,24 @@ fn apply_color_overrides_to_catalog(
     Ok(catalog)
 }
 
+/// Mode tokens for each class-block mode in `catalog`: its base's values with the block's over them,
+/// then `adjust` (the look's overrides for that base).
+fn build_css_modes(
+    catalog: &CssTokenCatalog,
+    stylesheet: &Arc<StylesheetConfig>,
+    adjust: impl Fn(CssTokenMap, ThemeMode) -> anyhow::Result<CssTokenMap>,
+) -> anyhow::Result<Vec<(String, Arc<ShadcnModeTokens>)>> {
+    catalog
+        .modes
+        .iter()
+        .map(|mode| {
+            let map = adjust(catalog.mode_map(mode), mode.base)?;
+            let tokens = ShadcnModeTokens::from_catalog_with_stylesheet(map, mode.base, Arc::clone(stylesheet))?;
+            Ok((mode.name.clone(), Arc::new(tokens)))
+        })
+        .collect()
+}
+
 fn apply_string_overrides_to_catalog(mut catalog: CssTokenMap, overrides: &HashMap<String, String>) -> CssTokenMap {
     for (token, value) in overrides {
         let key = token.strip_prefix("--").unwrap_or(token.as_str()).to_string();
@@ -1054,6 +1152,48 @@ fn first_font_family(raw: &str) -> SharedString {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_css_class_block_is_a_style_mode_based_on_light() {
+        let css = format!("{}\n.hi-contrast {{ --primary: oklch(0.45 0.2 260); }}", crate::FALLBACK_CSS);
+        let look = ShadcnLook::from_css_str(&css).expect("parses");
+        assert_eq!(look.css_modes(), [("hi_contrast".to_string(), ThemeMode::Light)]);
+        assert_eq!(look.style_stylesheet().modes(), ["light", "dark", "hi_contrast"]);
+
+        let light = look.style_theme();
+        look.set_style_mode("hi_contrast").expect("the CSS declares it");
+        assert_eq!((look.mode(), look.style_mode().as_str()), (ThemeMode::Light, "hi_contrast"));
+        let high = look.style_theme();
+        assert_eq!((high.mode(), high.scheme()), ("hi_contrast", "light"));
+
+        // The block's value, the rest from `:root`.
+        let tokens = look.mode_tokens();
+        assert_eq!(tokens.catalog.get("primary"), Some("oklch(0.45 0.2 260)"));
+        assert_eq!(tokens.catalog.get("background"), look.mode_tokens_for(ThemeMode::Light).catalog.get("background"));
+        let checked = |theme: &xgpui_luma::style::lss::Theme| {
+            let key = theme.key_named("checkbox", &[], &["checked"]).expect("key");
+            theme.resolve(&key).part(xgpui_luma::style::lss::PartId::new("indicator")).background()
+        };
+        assert_ne!(checked(&light), checked(&high), "the checked indicator reads the mode's --primary");
+
+        let plain = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("parses");
+        assert!(plain.css_modes().is_empty());
+        assert_eq!(plain.style_stylesheet().modes(), ["light", "dark"], "no CSS modes: the shared stylesheet");
+        assert!(plain.set_style_mode("hi_contrast").is_err());
+    }
+
+    #[test]
+    fn style_mode_is_the_scheme_unless_set_by_name_and_follows_set_mode() {
+        // Its own look: `built_in()` is shared, and other tests read its mode.
+        let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS parses");
+        assert_eq!(look.style_mode(), "light");
+        look.set_style_mode("dark").expect("declared");
+        assert_eq!((look.mode(), look.style_mode().as_str()), (ThemeMode::Dark, "dark"));
+        assert_eq!(look.style_theme().mode(), "dark", "the theme binds the style mode");
+        assert!(look.set_style_mode("sepia").is_err(), "undeclared");
+        look.set_mode(ThemeMode::Light);
+        assert_eq!(look.style_mode(), "light");
+    }
+
     use super::*;
 
     #[test]
