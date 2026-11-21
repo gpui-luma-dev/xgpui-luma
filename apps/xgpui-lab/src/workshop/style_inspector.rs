@@ -13,7 +13,6 @@ use xgpui_luma::style::lss::{
 use xgpui_luma::prelude::HasPresenter;
 
 use super::box_model;
-use crate::lab_controls::Segmented;
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
 pub(super) struct StyleInspector {
@@ -22,7 +21,12 @@ pub(super) struct StyleInspector {
     control: ControlId,
     key: StyleKey,
     states: Vec<(StateId, xgpui_luma::controls::switch::Switch)>,
-    attributes: Vec<(AttrId, Segmented)>,
+    /// One Radix toggle group per attribute, with the attribute's name as its label.
+    attributes: Vec<(
+        AttrId,
+        String,
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
+    )>,
 }
 
 impl StyleInspector {
@@ -55,22 +59,34 @@ impl StyleInspector {
                 let name = config.attribute_name(attr).to_string();
                 let mut options: Vec<String> = vec!["base".into()];
                 options.extend(values.iter().map(|v| v.name().to_string()));
-                let refs: Vec<&str> = options.iter().map(String::as_str).collect();
                 let values = values.clone();
-                let segmented = Segmented::new(
-                    format!("style-inspector-attr-{name}"),
-                    &name,
+                let group = xgpui_luma_look_radix::control_group_builder(
                     look.as_ref(),
-                    &refs,
-                    0,
-                    cx,
-                    move |this: &mut Self, index, cx| {
-                        let value: Option<AttrValue> = index.checked_sub(1).and_then(|i| values.get(i).copied());
-                        this.key = this.key.attr_opt(attr, value);
-                        cx.notify();
+                    format!("style-inspector-attr-{name}"),
+                    look.size(),
+                )
+                .horizontal()
+                .single_required()
+                .items(options.iter().enumerate().map(|(index, option)| {
+                    xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(option.clone())
+                }))
+                .selected_ids(["0"])
+                .spawn(cx);
+                cx.subscribe(
+                    &group,
+                    move |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                        if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } =
+                            event
+                            && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                        {
+                            let value: Option<AttrValue> = index.checked_sub(1).and_then(|i| values.get(i).copied());
+                            this.key = this.key.attr_opt(attr, value);
+                            cx.notify();
+                        }
                     },
-                );
-                (attr, segmented)
+                )
+                .detach();
+                (attr, name, group)
             })
             .collect();
         Self { look, theme, control, key: StyleKey::new(control), states, attributes }
@@ -263,7 +279,11 @@ impl Render for StyleInspector {
                     .children(inspection.doc.clone().map(|d| div().text_color(chrome.muted_text).child(d))),
             )
             .child(div().flex().flex_wrap().gap(px(10.)).children(self.states.iter().map(|(_, s)| s.clone())))
-            .children(self.attributes.iter().map(|(_, s)| s.clone()))
+            .children(
+                self.attributes.iter().map(|(_, name, group)| {
+                    div().flex().items_center().gap_2().child(name.clone()).child(group.clone())
+                }),
+            )
             .child(div().font_family(MONO_FAMILY).text_color(chrome.muted_text).child(format!("key  {key_line}")))
             .children(inspection.parts.iter().map(|p| self.part(p)))
     }

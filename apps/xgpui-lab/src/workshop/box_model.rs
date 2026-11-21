@@ -2,18 +2,15 @@
 //! each edge's value, laid out like Luma Studio's theme inspector (copied, not shared, so the Lab keeps
 //! no dependency on Studio).
 
-use gpui::{Div, FontWeight, Hsla, SharedString, div, hsla, prelude::*, px};
+use gpui::{Div, Hsla, SharedString, div, hsla, prelude::*, px};
 use xgpui_luma::style::lss::{BoxModel, Edges};
 use xgpui_luma::theme::ThemeMode;
 
-use crate::theme::MONO_FAMILY;
+use super::pane_type;
 
 const EDGE_BAND: f32 = 22.0;
 const EDGE_SIDE: f32 = 28.0;
 const CONTENT_HEIGHT: f32 = 36.0;
-const LAYER_LABEL_SIZE: f32 = 10.0;
-const EDGE_VALUE_SIZE: f32 = 10.0;
-const CONTENT_LABEL_SIZE: f32 = 11.0;
 
 /// Neutral layer fills, as in Studio's inspector.
 #[derive(Clone, Copy)]
@@ -65,8 +62,8 @@ pub(super) fn diagram(id: SharedString, model: &BoxModel, mode: ThemeMode) -> Di
         .border_color(colors.stroke)
         .child(
             div()
-                .font_family(MONO_FAMILY)
-                .text_size(px(CONTENT_LABEL_SIZE))
+                .font_family(pane_type::MONO)
+                .text_size(pane_type::BOX_CONTENT_LABEL)
                 .line_height(px(14.0))
                 .text_color(colors.label)
                 .child(format!(
@@ -110,9 +107,9 @@ fn layer(label: &'static str, edges: &Edges, fill: Hsla, dashed: bool, colors: C
                     .absolute()
                     .top(px(2.0))
                     .left(px(4.0))
-                    .text_size(px(LAYER_LABEL_SIZE))
+                    .text_size(pane_type::BOX_LAYER_LABEL)
                     .line_height(px(12.0))
-                    .font_weight(FontWeight::MEDIUM)
+                    .font_weight(pane_type::BOX_LAYER_WEIGHT)
                     .text_color(colors.label)
                     .child(label),
             ),
@@ -131,8 +128,8 @@ fn layer(label: &'static str, edges: &Edges, fill: Hsla, dashed: bool, colors: C
 
 fn edge_value(value: f32, colors: Colors) -> Div {
     div()
-        .font_family(MONO_FAMILY)
-        .text_size(px(EDGE_VALUE_SIZE))
+        .font_family(pane_type::MONO)
+        .text_size(pane_type::BOX_EDGE_VALUE)
         .line_height(px(12.0))
         .text_color(colors.label)
         .child(format_value(value))

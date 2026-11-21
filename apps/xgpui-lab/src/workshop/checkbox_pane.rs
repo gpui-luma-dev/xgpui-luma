@@ -4,8 +4,9 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, FontWeight, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
+use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::switch::Switch;
@@ -17,15 +18,16 @@ use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
 use super::sample_layout::ruled_background;
-use crate::screen::{LabMetrics, TextRole, text};
-use crate::lab_controls::{Segmented, TabBar};
-use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
+use super::pane_type;
+use crate::screen::{LabMetrics, text};
+use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
 /// Initial height of the lower panel (states and events) under the stage.
-const LOWER_HEIGHT: f32 = 300.;
+const LOWER_HEIGHT: f32 = 400.;
 const MIN_STAGE_HEIGHT: f32 = 160.;
-const MIN_LOWER_HEIGHT: f32 = 120.;
+/// The lower panel never gets shorter than this, so the states strip and the events stay on screen.
+const MIN_LOWER_HEIGHT: f32 = 400.;
 /// The workshop canvas's inner corner radius (`CANVAS_RADIUS` less its border); the pane's outer
 /// corners match it so nothing square shows past the rounded canvas.
 const CANVAS_INNER_RADIUS: f32 = 9.;
@@ -101,19 +103,25 @@ impl CheckboxPane {
             .py(px(14.))
             .border_b_1()
             .border_color(chrome.border)
-            .child(text(look, TextRole::Crumb, format!("Workshop · {group}")))
+            .child(text(look, pane_type::CRUMB, format!("Workshop · {group}")))
             .child(
                 div()
                     .flex()
                     .flex_wrap()
                     .items_baseline()
                     .gap(px(12.))
-                    .child(text(look, TextRole::Title, "Checkbox"))
-                    .child(text(look, TextRole::Value, self.control.to_string()))
-                    .child(text(look, TextRole::Value, source).text_color(chrome.muted_text)),
+                    .child(text(look, pane_type::TITLE, "Checkbox"))
+                    .child(text(look, pane_type::CONTROL, self.control.to_string()))
+                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
             )
-            .children(inspection.doc.map(|d| text(look, TextRole::Lede, d)))
+            .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
             .into_any_element()
+    }
+
+    /// The pane look's light/dark, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn look_mode(&self) -> xgpui_luma::theme::ThemeMode {
+        self.look.mode()
     }
 
     /// The control side, for tests.
@@ -141,7 +149,7 @@ impl Render for CheckboxPane {
             .when(self.left_rounded, |d| d.rounded_tl(px(CANVAS_INNER_RADIUS)).rounded_bl(px(CANVAS_INNER_RADIUS)))
             .bg(chrome.content_background)
             .text_color(chrome.body_text)
-            .typography_style(self.look.typography_scale(TextSize::Xs))
+            .typography_style(pane_type::body(&self.look))
             .flex()
             .flex_col()
             .child(self.title())
@@ -167,7 +175,8 @@ pub(super) struct ControlSide {
     /// The inspected theme in the mode chosen with `modes`.
     theme: Theme,
     /// The stylesheet's declared modes (e.g. light, dark), one selected.
-    modes: Option<Segmented>,
+    /// A Radix toggle group (one on).
+    modes: Option<ControlGroup<ControlGroupItem>>,
     /// `theme`'s stylesheet plus a probe control reading `palette.app.background`, for the stage.
     stage_probe: Option<Stylesheet>,
     /// The mode's app background, painted behind the control.
@@ -175,7 +184,8 @@ pub(super) struct ControlSide {
     control: ControlId,
     checkbox: checkbox::Checkbox,
     stage: Stage,
-    stage_tabs: TabBar,
+    /// Radix tabs: Control · State matrix.
+    stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     /// The key's states, in config order: those the file's rules use, then any the template sets
     /// that no rule uses.
     states: Vec<KeyState>,
@@ -217,17 +227,22 @@ impl ControlSide {
         })
         .detach();
 
-        let stage_tabs = TabBar::new(
-            "workshop-checkbox-stage",
-            look.as_ref(),
-            &["Control", "State matrix"],
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.stage = if i == 0 { Stage::Control } else { Stage::Matrix };
+        let stage_tabs = xgpui_luma_look_radix::Tabs::new("workshop-checkbox-stage")
+            .look(look.as_ref())
+            .items([
+                xgpui_luma::controls::tabs::TabsItem::new("control").label("Control"),
+                xgpui_luma::controls::tabs::TabsItem::new("matrix").label("State matrix"),
+            ])
+            .active("control")
+            .on_value_changed(cx, |this: &mut Self, id, _, cx| {
+                this.stage = if id.as_ref() == "matrix" {
+                    Stage::Matrix
+                } else {
+                    Stage::Control
+                };
                 cx.notify();
-            },
-        );
+            })
+            .spawn(cx);
         // States the file's rules use, plus states the template sets with no rule (e.g. `focused`).
         let rule_states = theme.stylesheet().axes(control).states;
         let template_states: Vec<StateId> = checkbox::default_checkbox_template()
@@ -293,22 +308,22 @@ impl ControlSide {
             .spawn(cx);
         let mode_names: Vec<String> = theme.stylesheet().modes();
         let modes = (!mode_names.is_empty()).then(|| {
-            let names: Vec<&str> = mode_names.iter().map(String::as_str).collect();
-            let selected = names.iter().position(|m| *m == theme.mode()).unwrap_or(0);
-            let choices = mode_names.clone();
-            Segmented::new(
-                "workshop-checkbox-mode",
-                "",
-                look.as_ref(),
-                &names,
-                selected,
-                cx,
-                move |this: &mut Self, i, cx| {
-                    if let Some(mode) = choices.get(i) {
-                        this.set_mode(mode, cx);
-                    }
-                },
-            )
+            let group =
+                xgpui_luma_look_radix::control_group_builder(look.as_ref(), "workshop-checkbox-mode", look.size())
+                    .horizontal()
+                    .single_required()
+                    .items(mode_names.iter().map(|m| ControlGroupItem::new(m.clone()).label(m.clone())))
+                    .selected_ids([theme.mode().to_string()])
+                    .spawn(cx);
+            cx.subscribe(&group, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+                if let ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(mode) = selected_ids.first()
+                {
+                    this.set_mode(mode, cx);
+                }
+            })
+            .detach();
+            group
         });
         let stage_probe = theme
             .stylesheet()
@@ -476,9 +491,9 @@ impl ControlSide {
         let template = StyledCheckboxTemplate::new(self.theme.clone());
         let label = |text: String, current: bool| {
             div()
-                .font_family(MONO_FAMILY)
+                .font_family(pane_type::MONO)
                 .text_color(if current { accent } else { chrome.muted_text })
-                .when(current, |d| d.font_weight(FontWeight::SEMIBOLD))
+                .when(current, |d| d.font_weight(pane_type::LABEL_WEIGHT))
                 .child(text)
         };
         let (columns, rows) = self.matrix_axes();
@@ -539,7 +554,7 @@ impl ControlSide {
             div()
                 .w(px(STRIP_LABEL_WIDTH))
                 .flex_shrink_0()
-                .font_weight(FontWeight::SEMIBOLD)
+                .font_weight(pane_type::LABEL_WEIGHT)
                 .text_color(chrome.muted_text)
                 .child(text.to_uppercase())
         };
@@ -604,7 +619,7 @@ impl ControlSide {
                             .rounded(px(6.))
                             .border_1()
                             .border_color(chrome.border)
-                            .font_family(MONO_FAMILY)
+                            .font_family(pane_type::MONO)
                             .child(lss_inspector::key_line(&self.theme, self.control, &self.key)),
                     )
                     .child(self.reset.clone()),
@@ -671,7 +686,7 @@ impl ControlSide {
     /// Show the state matrix, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_matrix(&self, cx: &mut gpui::App) {
-        self.stage_tabs.select(1, cx);
+        lss_inspector::choose_tab(&self.stage_tabs, "matrix", cx);
     }
 }
 
@@ -713,7 +728,7 @@ impl Render for ControlSide {
             .flex()
             .flex_col()
             .text_color(chrome.body_text)
-            .typography_style(self.look.typography_scale(TextSize::Xs))
+            .typography_style(pane_type::body(&self.look))
             .child(self.tab_row())
             .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
@@ -888,6 +903,98 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
+    }
+
+    #[test]
+    fn property_rows_are_one_line_columns_under_a_header() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        assert!(cx.debug_bounds("lss-inspector-list-header").is_some(), "column header");
+        // Names start at the Property column, whatever their length (the button must not centre them).
+        let header = cx.debug_bounds("lss-inspector-header-property").expect("header").left();
+        for id in [
+            "lss-inspector-name-gap",
+            "lss-inspector-name-disabled_opacity",
+            "lss-inspector-name-indicator_scale",
+        ] {
+            assert_eq!(cx.debug_bounds(id).expect(id).left(), header, "{id} starts at the Property column");
+        }
+        let column = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
+        let (value, rule) = (column("lss-inspector-header-value", cx), column("lss-inspector-header-rule", cx));
+        assert_eq!(column("lss-inspector-value-height", cx).left(), value.left(), "values line up with Value");
+        assert_eq!(column("lss-inspector-rule-height", cx).right(), rule.right(), "rules line up with Rule");
+        // A literal shows no expression; a token reference shows it; the base rule has no selector.
+        let summary = |part: &str, property: &'static str, cx: &mut VisualTestContext| {
+            cx.update(|_, cx| inspector.read(cx).row_summary(part, property)).expect("row rendered")
+        };
+        assert_eq!(summary("root", "indicator_scale", cx), ("0.5".into(), String::new(), None));
+        assert_eq!(summary("root", "height", cx), ("36px".into(), "metrics.control.control_height".into(), None));
+
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        inspector.update(cx, |inspector, cx| inspector.select_part("indicator", cx));
+        cx.run_until_parked();
+        let (_, expression, selector) = summary("indicator", "background", cx);
+        assert_eq!(expression, "palette.state.selected.background");
+        assert_eq!(selector.as_deref(), Some(":checked"), "a state rule shows its selector");
+    }
+
+    #[test]
+    fn the_pane_chrome_follows_the_app_light_and_dark() {
+        let mut app = TestAppContext::single();
+        let (workshop, pane, cx) = open(&mut app);
+        for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
+            workshop.update(cx, |v, cx| v.sync_theme(mode, cx));
+            cx.run_until_parked();
+            assert_eq!(cx.update(|_, cx| pane.read(cx).look_mode()), mode);
+        }
+    }
+
+    #[test]
+    fn picked_parts_each_get_an_accordion_section() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let (side, inspector) = cx.update(|_, cx| (pane.read(cx).side(), pane.read(cx).inspector()));
+        assert!(cx.debug_bounds("style-inspector-part-root").is_some(), "root is picked at first");
+        assert!(cx.debug_bounds("style-inspector-part-indicator").is_none());
+
+        // Working on the checked state: indicator and glyph together, one section each.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        inspector.update(cx, |inspector, cx| inspector.pick_parts(&["indicator", "glyph"], cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("style-inspector-part-root").is_none(), "root unpicked");
+        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some());
+        assert!(cx.debug_bounds("style-inspector-row-glyph-foreground").is_some());
+    }
+
+    #[test]
+    fn toggling_parts_turns_each_on_without_turning_others_off() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        // No modifier keys: Right moves to the next part, Space toggles it, as a plain click does.
+        let picker = cx.update(|_, cx| inspector.read(cx).part_picker_focus(cx));
+        cx.update(|window, cx| picker.focus(window, cx));
+        cx.run_until_parked();
+        cx.simulate_keystrokes("right space right space");
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).picked()), [0, 1, 2], "root, indicator and glyph");
+        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some());
+        assert!(cx.debug_bounds("style-inspector-row-glyph-foreground").is_some());
+        // Toggling a picked part turns just that one off.
+        cx.simulate_keystrokes("space");
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).picked()), [0, 1], "glyph off, the others stay");
+    }
+
+    #[test]
+    fn the_lower_panel_minimum_fits_the_whole_states_strip() {
+        let mut app = TestAppContext::single();
+        let (_, _pane, cx) = open(&mut app);
+        let key = cx.debug_bounds("workshop-checkbox-key").expect("states strip");
+        // The strip plus room for the events heading below it.
+        assert!(f32::from(key.size.height) + 40. <= MIN_LOWER_HEIGHT, "states strip is {:?}", key.size.height);
     }
 
     #[test]
