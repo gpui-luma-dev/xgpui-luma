@@ -134,6 +134,10 @@ pub(crate) struct ThemeInner {
     pub(crate) sheet: Stylesheet,
     pub(crate) tokens: Arc<dyn TokenSource>,
     pub(crate) mode: String,
+    /// The mode, then its base modes (empty when the config declares no modes).
+    pub(crate) mode_chain: Vec<String>,
+    /// What the mode comes down to (see [`Config::scheme`](crate::Config::scheme)), for native tokens.
+    pub(crate) scheme: String,
     pub(crate) roots: HashSet<String>,
     pub(crate) token_values: HashMap<String, Value>,
     generation: u64,
@@ -218,11 +222,15 @@ impl Theme {
             diags.retain(|d| seen.insert((d.line, d.column, d.message.clone())));
             return Err(Diagnostics(diags));
         }
+        let mode_chain = sheet.config().mode_chain(mode).into_iter().map(str::to_string).collect();
+        let scheme = sheet.config().scheme(mode).to_string();
         Ok(Theme {
             inner: Arc::new(ThemeInner {
                 sheet,
                 tokens,
                 mode: mode.to_string(),
+                mode_chain,
+                scheme,
                 roots,
                 token_values,
                 generation: next_generation(),
@@ -282,6 +290,11 @@ impl Theme {
 
     pub fn mode(&self) -> &str {
         &self.inner.mode
+    }
+
+    /// The scheme the bound mode comes down to (e.g. `light` for a `hi_contrast` mode based on light).
+    pub fn scheme(&self) -> &str {
+        &self.inner.scheme
     }
 
     /// Changes with every new theme; tells consumers when to refresh.
@@ -877,7 +890,7 @@ impl<'t> Evaluator<'t> {
     }
 
     fn token_cx<'k>(&'k self, key: &'k KeyData) -> TokenCx<'k> {
-        TokenCx { mode: &self.theme.mode, attrs: &key.attrs }
+        TokenCx { mode: &self.theme.mode, scheme: &self.theme.scheme, attrs: &key.attrs }
     }
 
     fn eval(&self, expr: &Expr, ctx: Ctx<'_>, key: &KeyData, as_arg: bool) -> Result<Value, EvalErr> {
@@ -1088,12 +1101,17 @@ impl<'t> Evaluator<'t> {
         }
         let model = self.model();
         let defs = &model.tokens.defs[path];
-        let mode = &self.theme.mode;
+        // A mode's own values beat its base's, which beat the shared ones.
+        let chain = &self.theme.mode_chain;
+        let mode_rank = |mode: Option<&str>| match mode {
+            None => Some(0),
+            Some(m) => chain.iter().position(|c| c == m).map(|i| chain.len() - i),
+        };
         let best = defs
             .iter()
-            .filter(|d| d.mode.as_deref().is_none_or(|m| m == mode))
+            .filter(|d| mode_rank(d.mode.as_deref()).is_some())
             .filter(|d| d.attrs.iter().all(|(a, v)| key.attrs.iter().any(|(ka, kv)| ka == a && kv == v)))
-            .max_by_key(|d| (d.attrs.len(), d.layer, d.mode.is_some(), d.order));
+            .max_by_key(|d| (d.attrs.len(), d.layer, mode_rank(d.mode.as_deref()), d.order));
         let Some(def) = best else {
             return Err(EvalErr::Absent(path.to_string()));
         };

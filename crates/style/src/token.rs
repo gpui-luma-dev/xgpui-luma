@@ -5,13 +5,20 @@ use crate::value::{Kind, Value};
 /// What a native token lookup or look function can see about the instance being styled.
 pub struct TokenCx<'a> {
     pub(crate) mode: &'a str,
+    pub(crate) scheme: &'a str,
     pub(crate) attrs: &'a [(&'static str, &'static str)],
 }
 
 impl TokenCx<'_> {
-    /// The bound mode, e.g. `"light"`.
+    /// The bound mode, e.g. `"light"` or a look's `"hi_contrast"`.
     pub fn mode(&self) -> &str {
         self.mode
+    }
+
+    /// The scheme the bound mode comes down to through its bases (`"light"` for a `hi_contrast` mode
+    /// based on light). Native token sources with light and dark data choose by this, not the mode.
+    pub fn scheme(&self) -> &str {
+        self.scheme
     }
 
     /// An instance attribute, e.g. `attr("tone")` for Radix `tone[n]`.

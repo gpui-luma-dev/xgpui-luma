@@ -101,17 +101,9 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// The style mode name for a theme mode.
-pub fn mode_name(mode: ThemeMode) -> &'static str {
-    match mode {
-        ThemeMode::Light => "light",
-        ThemeMode::Dark => "dark",
-    }
-}
-
-/// `look`'s scales bound to the Radix stylesheet in the look's current mode.
+/// `look`'s scales bound to the Radix stylesheet in the look's style mode ([`Look::style_mode`]).
 pub fn theme(look: &Look) -> Result<Theme, Diagnostics> {
-    Theme::bind(&stylesheet(), Arc::new(RadixTokens::new(look)), mode_name(look.mode()))
+    Theme::bind(&stylesheet(), Arc::new(RadixTokens::new(look)), &look.style_mode())
 }
 
 /// The last bound theme of a look, keyed by the look's revision (bumped by every setter) and mode.
@@ -178,7 +170,8 @@ impl RadixTokens {
     }
 
     fn mode(&self, cx: &TokenCx<'_>) -> &ModeTokens {
-        if cx.mode() == "dark" { &self.dark } else { &self.light }
+        // By scheme, so a mode based on light or dark uses that scale.
+        if cx.scheme() == "dark" { &self.dark } else { &self.light }
     }
 }
 

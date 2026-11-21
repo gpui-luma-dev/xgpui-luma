@@ -124,6 +124,28 @@ pub fn default_theme() -> Theme {
         .clone()
 }
 
+/// The mode named after a scheme: `"light"` or `"dark"`.
+pub fn scheme_name(mode: crate::theme::ThemeMode) -> &'static str {
+    match mode {
+        crate::theme::ThemeMode::Light => "light",
+        crate::theme::ThemeMode::Dark => "dark",
+    }
+}
+
+/// The light or dark scheme a declared mode comes down to through its bases (see
+/// [`Config::scheme`]), e.g. light for a look's `hi_contrast` based on `light`. `None` when `config`
+/// doesn't declare `mode` or it comes down to neither.
+pub fn mode_scheme(config: &Config, mode: &str) -> Option<crate::theme::ThemeMode> {
+    if !config.modes().any(|m| m == mode) {
+        return None;
+    }
+    match config.scheme(mode) {
+        "light" => Some(crate::theme::ThemeMode::Light),
+        "dark" => Some(crate::theme::ThemeMode::Dark),
+        _ => None,
+    }
+}
+
 /// The SDK motion runtime's transition for a `transition` property value.
 pub fn transition(motion: &xgpui_luma_style::Motion) -> crate::motion::Transition {
     use crate::motion::{Easing, Transition};
