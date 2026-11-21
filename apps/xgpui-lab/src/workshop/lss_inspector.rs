@@ -208,6 +208,12 @@ impl LssInspector {
         cx.notify();
     }
 
+    /// Inspect with `theme`: the same stylesheet in another mode (the pane's Modes picker).
+    pub(super) fn set_theme(&mut self, theme: Theme, cx: &mut Context<Self>) {
+        self.theme = theme;
+        cx.notify();
+    }
+
     /// Inspect the control for `key` (the pane's style key).
     pub(super) fn set_key(&mut self, key: StyleKey, cx: &mut Context<Self>) {
         self.key = key;
@@ -732,6 +738,12 @@ impl LssInspector {
         self.view_tabs.select(2, cx);
     }
 
+    /// The bound mode, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn mode(&self) -> String {
+        self.theme.mode().to_string()
+    }
+
     /// The palette file's name and the text of each line the current key reads, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn palette_lines_used(&self) -> (String, Vec<String>) {
@@ -867,7 +879,11 @@ pub(super) fn key_line(theme: &Theme, control: ControlId, key: &StyleKey) -> Str
         .filter(|n| config.state(n).is_some_and(|s| key.active_states().contains(s)))
         .map(|n| format!(":{n}"))
         .collect();
-    format!("{control}{states}")
+    if theme.mode().is_empty() {
+        format!("{control}{states}")
+    } else {
+        format!("{control}{states} · {}", theme.mode())
+    }
 }
 
 /// The file and layer a control's rules come from, read from the first rule that sets a value.
