@@ -1,0 +1,28 @@
+// SDK context menu. Layer: sdk. The target area a context menu opens from; the menu is the floating menu.
+// Read by the `.lss` context-menu theme (styled.rs).
+
+/// An area that opens a menu on secondary click.
+context_menu {
+  /// Whole-target opacity when disabled, and the menu's edge margin.
+  disabled_opacity: number = 0.56
+  window_margin: length = exact(8)
+
+  /// The target.
+  part root {
+    background   = palette.app.background
+    foreground   = palette.app.foreground
+    border       = palette.border.default
+    border_width = exact(1)
+    radius       = exact(metrics.control.radius)
+    padding_x    = exact(metrics.control.padding_x)
+    padding_y    = exact(metrics.control.padding_y)
+    min_width    = exact(200)
+    font_family  = typography.font.sans
+    font_size    = typography.text.label.size
+    line_height  = typography.text.label.line_height
+    font_weight  = typography.text.label.weight
+    :hover    { background = palette.state.hover.background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
+  }
+}

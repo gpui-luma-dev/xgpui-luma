@@ -1,0 +1,24 @@
+// SDK badge. Layer: sdk. Read by `StyledBadge` (badge.rs): a non-interactive label's colors, frame, text
+// and icon size. Looks add variants and sizes; the border is drawn only when it has color.
+
+/// A small non-interactive label.
+badge {
+  /// An icon beside the label.
+  icon_size: length = typography.text.label.size
+
+  part root {
+    background   = palette.surface.subtle.background
+    foreground   = palette.app.foreground
+    border       = transparent
+    border_width = exact(1)
+    radius       = exact(999)
+    padding_x    = exact(metrics.control.padding_x)
+    padding_y    = exact(metrics.control.padding_y / 2)
+    gap          = exact(metrics.control.gap * 0.75)
+    font_family  = typography.font.sans
+    font_size    = typography.text.label.size
+    line_height  = typography.text.label.line_height
+    font_weight  = 500
+    min_height   = exact(line_height + padding_y * 2)
+  }
+}

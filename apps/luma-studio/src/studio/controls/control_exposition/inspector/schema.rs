@@ -83,7 +83,7 @@ pub enum InspectorCategoryContent {
 
 #[derive(Clone, Debug)]
 pub struct InspectColorRow {
-    pub label: &'static str,
+    pub label: SharedString,
     pub value: Hsla,
     pub source: String,
     pub detail: Option<String>,
@@ -97,11 +97,7 @@ pub struct InspectPropertyRow {
     pub detail: Option<String>,
 }
 
-impl InspectPropertyRow {
-    pub fn new(label: impl Into<String>, value: impl Into<String>, source: impl Into<String>) -> Self {
-        Self { label: label.into(), value: value.into(), source: source.into(), detail: None }
-    }
-}
+impl InspectPropertyRow {}
 
 #[derive(Clone, Debug)]
 pub struct InspectLayoutSection {

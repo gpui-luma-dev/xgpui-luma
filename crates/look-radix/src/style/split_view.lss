@@ -1,0 +1,11 @@
+// Radix split view. Layer: look. A border separator that takes the focus color under the pointer; gray 4
+// and muted foreground when disabled.
+
+split_view {
+  separator       = radix.role.border
+  separator_hover = radix.role.focus
+
+  part root {
+    :disabled { separator = gray[4]  separator_hover = radix.role.muted_foreground }
+  }
+}

@@ -1,0 +1,14 @@
+// Radix autocomplete. Layer: look. A primary status mark, muted text and clear button, the foreground
+// when the clear button is hovered, and compact status text.
+
+autocomplete {
+  part root {
+    status           = radix.role.primary
+    muted_text       = radix.role.muted_foreground
+    clear_icon       = radix.role.muted_foreground
+    clear_icon_hover = radix.role.foreground
+    font_size        = 12
+    line_height      = 16
+    font_weight      = 400
+  }
+}

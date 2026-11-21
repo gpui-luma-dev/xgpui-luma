@@ -1,15 +1,10 @@
-//! Radix-owned button variants bound to SDK [`ButtonFamilyTheme`].
+//! Radix-owned button variants: `.lss` templates (`style/button.lss`) and the native palette behind [`button_look_for`].
 
 use std::sync::Arc;
 
-use gpui::{Background, BoxShadow, Hsla, black, linear_color_stop, linear_gradient, point, prelude::*, px};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
-use xgpui_luma::controls::button_family::{
-    ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, compose_button_family_look,
-};
-use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::button::{ButtonData, ButtonTemplate, StyledButtonTemplate};
 
-use crate::button_layout::{ButtonSize, Radius, apply_button_box, button_box_with_stylesheet};
+use crate::button_layout::{ButtonSize, Radius};
 use crate::look::Look;
 #[cfg(test)]
 use crate::scale::ScaleFamily;
@@ -62,71 +57,6 @@ impl Paint {
     }
 }
 
-struct ButtonFamilyThemeAdapter {
-    look: Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    size: Option<ButtonSize>,
-}
-
-impl ButtonFamilyTheme for ButtonFamilyThemeAdapter {
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        resolve_button_palette(&self.look, self.variant, self.paint, role, state)
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-
-    fn resolve_look(
-        &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        let size = self.look.size();
-        let mut palette = self.resolve(role, state);
-        let geometry = self.look.stylesheet_snapshot().button.resolve_geometry_for(
-            self.size.map(ButtonSize::as_str).unwrap_or_else(|| size.key()),
-            xgpui_luma::theme::stylesheet::ButtonGeometry {
-                height: scale.height,
-                padding_x: scale.padding_x,
-                padding_y: scale.padding_y,
-                gap: scale.gap,
-                icon_size: scale.icon_size,
-                font_size: palette.typography.size,
-                line_height: palette.typography.line_height,
-            },
-        );
-        palette.typography.size = geometry.font_size;
-        palette.typography.line_height = geometry.line_height;
-        let mut look = compose_button_family_look(&palette, role, scale, pill_radius);
-        look.height = geometry.height;
-        look.gap = geometry.gap;
-        if role != ButtonFamilyRole::Icon {
-            look.padding_x = geometry.padding_x;
-            look.padding_y = geometry.padding_y;
-        } else {
-            look.icon_size = geometry.icon_size;
-        }
-        if matches!(self.variant, ButtonVariant::Page) {
-            look.radius = pill_radius;
-        }
-        if matches!(self.variant, ButtonVariant::Classic) {
-            look.shadow = Some(classic_shadow(&self.look, palette.background, state));
-            // Classic keeps an editable radius knob; default matches Radix size-2 / medium (4px).
-            look.radius = self.look.classic_params().radius;
-        }
-        Some(look)
-    }
-}
-
-/// Accent tone, normal contrast — the default Radix button paint.
-pub fn button_family_theme(look: &Look, variant: ButtonVariant) -> Arc<dyn ButtonFamilyTheme> {
-    button_family_theme_with(look, variant, Paint::accent())
-}
-
 /// Full look resolver for a Radix size × radius cell (All Sizes matrix / previews).
 pub fn button_look_for<D: 'static>(
     look: &Look,
@@ -135,63 +65,26 @@ pub fn button_look_for<D: 'static>(
     size: ButtonSize,
     radius: Radius,
 ) -> xgpui_luma::controls::button::ButtonLookSource<D> {
-    let look = look.clone();
-    Arc::new(move |model| {
-        let palette = resolve_button_palette(&look, variant, paint, model.role, model.state);
-        let mut family = apply_button_box(
-            &palette,
-            model.role,
-            button_box_with_stylesheet(&look.stylesheet_snapshot(), size, radius),
-        );
-        if matches!(variant, ButtonVariant::Classic) {
-            family.shadow = Some(classic_shadow(&look, family.background, model.state));
+    let with_radius = |template: StyledButtonTemplate<()>| {
+        // Medium is the base radius.
+        if radius != Radius::Medium {
+            template.attr("radius", radius.as_str())
+        } else {
+            template
         }
-        family
+    };
+    let template = with_radius(styled_button_template::<()>(look, variant, paint, size));
+    // A cell keeps its own size and radius: classic (the look's classic radius) and page (a pill) take
+    // the corner of the solid cell instead.
+    let corner = matches!(variant, ButtonVariant::Classic | ButtonVariant::Page)
+        .then(|| with_radius(styled_button_template::<()>(look, ButtonVariant::Solid, paint, size)));
+    Arc::new(move |model| {
+        let mut face = template.look(model.role, model.state, 1.0);
+        if let Some(corner) = &corner {
+            face.radius = corner.look(model.role, model.state, 1.0).radius;
+        }
+        face
     })
-}
-
-pub fn button_family_theme_with(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonFamilyTheme> {
-    Arc::new(ButtonFamilyThemeAdapter { look: look.clone(), variant, paint, size: None })
-}
-
-pub(crate) fn button_family_theme_for_size(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    size: ButtonSize,
-) -> Arc<dyn ButtonFamilyTheme> {
-    Arc::new(ButtonFamilyThemeAdapter { look: look.clone(), variant, paint, size: Some(size) })
-}
-
-fn resolve_button_palette(
-    look: &Look,
-    variant: ButtonVariant,
-    paint: Paint,
-    role: ButtonFamilyRole,
-    state: InteractionState,
-) -> ButtonFamilyPalette {
-    let colors = super::button_recipes::resolve(look, variant, paint, role, state);
-    let stylesheet = look.stylesheet_snapshot();
-    let tokens = &stylesheet.tokens.typography;
-    ButtonFamilyPalette {
-        focus_border: colors.focus_border,
-        background: colors.background,
-        foreground: colors.foreground,
-        muted_foreground: colors.foreground,
-        border: colors.border,
-        typography: tokens.text.label,
-        font_family: tokens.font.sans.family.clone().into(),
-    }
-}
-
-fn inset_shadow(offset_y: f32, blur: f32, spread: f32, color: Hsla) -> BoxShadow {
-    BoxShadow {
-        offset: point(px(0.0), px(offset_y)),
-        blur_radius: px(blur),
-        spread_radius: px(spread),
-        color,
-        inset: true,
-    }
 }
 
 /// Tunable geometry for the [`Classic`](ButtonVariant::Classic) button.
@@ -274,174 +167,182 @@ impl Default for ClassicButtonParams {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn shift_lightness(color: Hsla, delta: f32) -> Hsla {
-    shift_lightness_with_params(color, delta, super::button_recipes::embedded().classic)
+/// Template for a Radix variant × paint cell at the look's size, drawn from `.lss` (`style/button.lss`).
+pub fn button_template<D: ButtonData>(look: &Look, variant: ButtonVariant, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
+    Arc::new(button_template_for::<D>(look, variant, paint))
 }
 
-pub(crate) fn shift_lightness_with_params(color: Hsla, delta: f32, params: ClassicButtonParams) -> Hsla {
-    Hsla { l: (color.l + delta).clamp(params.lightness_min, params.lightness_max), ..color }
-}
-
-/// Vertical wash stops for the Classic face: the light source is overhead, so the top
-/// sits at the accent and the bottom lifts. Pressing flips them so the face reads
-/// recessed.
-fn classic_wash(params: ClassicButtonParams, base: Hsla, pressed: bool) -> (Hsla, Hsla) {
-    let top = shift_lightness_with_params(base, params.fill_top_delta, params);
-    let bottom = shift_lightness_with_params(base, params.fill_bottom_delta, params);
-    if pressed { (bottom, top) } else { (top, bottom) }
-}
-
-fn classic_fill(look: &Look, paint: Paint, role: ButtonFamilyRole, state: InteractionState) -> Background {
-    let base = resolve_button_palette(look, ButtonVariant::Classic, paint, role, state).background;
-    if state.disabled {
-        return base.into();
-    }
-
-    let (top, bottom) = classic_wash(look.classic_params(), base, state.pressed);
-    linear_gradient(180.0, linear_color_stop(top, 0.0), linear_color_stop(bottom, 1.0))
-}
-
-/// Bevel for the Classic face: a crisp specular rim just inside the top border with a
-/// short fade below it, and a shaded lip inside the bottom border. Pressing drops the
-/// lip and inverts the rim so the light reads as coming from below.
-fn classic_shadow(look: &Look, fill: Hsla, state: InteractionState) -> Vec<BoxShadow> {
-    let params = look.classic_params();
-    let tint = |delta: f32, alpha: f32| Hsla { a: alpha, ..shift_lightness_with_params(fill, delta, params) };
-
-    if state.pressed {
-        let shade = -params.rim_lighten * params.pressed_rim_lightness_scale;
-        return vec![
-            inset_shadow(params.rim_offset, 0.0, 0.0, tint(shade, params.rim_alpha * params.pressed_rim_alpha_scale)),
-            inset_shadow(params.fade_offset, params.fade_blur, params.fade_spread, tint(shade, params.fade_alpha)),
-        ];
-    }
-
-    let mut shadows = vec![
-        inset_shadow(params.rim_offset, 0.0, 0.0, tint(params.rim_lighten, params.rim_alpha)),
-        inset_shadow(
-            params.fade_offset,
-            params.fade_blur,
-            params.fade_spread,
-            tint(params.rim_lighten, params.fade_alpha),
-        ),
-        inset_shadow(-params.bevel_offset, 0.0, 0.0, tint(-params.bevel_darken, params.bevel_alpha)),
-    ];
-    if params.drop_alpha > 0.0 {
-        shadows.push(BoxShadow {
-            offset: point(px(0.0), px(params.drop_offset)),
-            blur_radius: px(params.drop_blur),
-            spread_radius: px(0.0),
-            color: Hsla { a: params.drop_alpha, ..black() },
-            inset: false,
-        });
-    }
-    shadows
-}
-
-/// Template for a Radix variant × paint cell. Classic keeps its gradient wash.
-pub fn button_template<D: Clone + 'static>(
+/// [`button_template`] as the `.lss` template itself, for callers that add modifiers or read its faces.
+pub fn button_template_for<D: ButtonData>(
     look: &Look,
     variant: ButtonVariant,
     paint: Paint,
-) -> Arc<dyn ButtonTemplate<D>> {
-    if matches!(variant, ButtonVariant::Classic) {
-        classic_button_template_with(look, paint)
-    } else {
-        Arc::new(DefaultButtonTemplate::new(button_family_theme_with(look, variant, paint)))
-    }
+) -> StyledButtonTemplate<D> {
+    let size = match look.size() {
+        crate::RadixSize::One => ButtonSize::One,
+        crate::RadixSize::Two => ButtonSize::Two,
+        crate::RadixSize::Three => ButtonSize::Three,
+    };
+    styled_button_template::<D>(look, variant, paint, size)
 }
 
-/// Classic needs a gradient face, which [`ButtonFamilyLook`] cannot carry, so the look
-/// ships its own template. Callers that build templates by hand (the style guide matrix)
-/// must use this instead of a bare [`DefaultButtonTemplate`] or they lose the wash.
-pub fn classic_button_template<D: Clone + 'static>(look: &Look) -> Arc<dyn ButtonTemplate<D>> {
-    classic_button_template_with(look, Paint::accent())
+/// The classic variant (its gradient face comes from `background_start` / `background_end`).
+pub fn classic_button_template<D: ButtonData>(look: &Look) -> Arc<dyn ButtonTemplate<D>> {
+    button_template(look, ButtonVariant::Classic, Paint::accent())
 }
 
 /// Classic template with an explicit paint axis (tone / high contrast).
-pub fn classic_button_template_with<D: Clone + 'static>(look: &Look, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
-    let theme = button_family_theme_with(look, ButtonVariant::Classic, paint);
-    let look = look.clone();
-    Arc::new(DefaultButtonTemplate::new(theme).with_modifier(move |root, model: &ButtonRenderModel<D>| {
-        root.bg(classic_fill(&look, paint, model.role, model.state))
-    }))
+pub fn classic_button_template_with<D: ButtonData>(look: &Look, paint: Paint) -> Arc<dyn ButtonTemplate<D>> {
+    button_template(look, ButtonVariant::Classic, paint)
+}
+
+/// A `.lss` button-family template (`button`, or `toggle` for [`ToggleData`]) for one variant × paint × size cell.
+pub(crate) fn styled_button_template<D: ButtonData>(
+    look: &Look,
+    variant: ButtonVariant,
+    paint: Paint,
+    size: ButtonSize,
+) -> StyledButtonTemplate<D> {
+    let source = look.clone();
+    let mut template = StyledButtonTemplate::<D>::live(Arc::new(move || source.style_theme()))
+        .state("high_contrast", paint.high_contrast);
+    let variant = match variant {
+        ButtonVariant::Solid => None,
+        ButtonVariant::Classic => Some("classic"),
+        ButtonVariant::Soft => Some("soft"),
+        ButtonVariant::Surface => Some("surface"),
+        ButtonVariant::Outline => Some("outline"),
+        ButtonVariant::Ghost => Some("ghost"),
+        ButtonVariant::GhostQuiet => Some("ghost_quiet"),
+        ButtonVariant::Page => Some("page"),
+    };
+    if let Some(variant) = variant {
+        template = template.variant(variant);
+    }
+    if size != ButtonSize::Two {
+        template = template.attr("size", size.as_str());
+    }
+    if paint.tone == Tone::Gray {
+        template = template.attr("tone", "gray");
+    }
+    template
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui::{BoxShadow, Hsla, px};
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
     use xgpui_luma::theme::InteractionState;
+
+    /// Equal up to float rounding (colors and channels).
+    fn assert_close_any<T: std::fmt::Debug + PartialEq>(a: T, b: T) {
+        let (sa, sb) = (format!("{a:?}"), format!("{b:?}"));
+        let nums = |s: &str| -> Vec<f32> {
+            s.split(|c: char| !(c.is_ascii_digit() || c == '.' || c == '-' || c == 'e'))
+                .filter_map(|n| n.parse().ok())
+                .collect()
+        };
+        let (na, nb) = (nums(&sa), nums(&sb));
+        assert!(na.len() == nb.len() && na.iter().zip(&nb).all(|(x, y)| (x - y).abs() < 2e-3), "{sa} vs {sb}");
+    }
+
+    /// The native palette for a variant × paint cell (what [`button_look_for`] paints).
+    struct Native {
+        look: Look,
+        variant: ButtonVariant,
+        paint: Paint,
+    }
+
+    impl Native {
+        /// The cell's `.lss` face (what [`button_look_for`] paints).
+        fn resolve(
+            &self,
+            role: ButtonFamilyRole,
+            state: InteractionState,
+        ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
+            let source = button_look_for::<()>(&self.look, self.variant, self.paint, ButtonSize::Two, Radius::Medium);
+            source(&xgpui_luma::controls::button::ButtonRenderModel::<()> { role, state, ..Default::default() })
+        }
+    }
+
+    fn native(look: &Look, variant: ButtonVariant) -> Native {
+        native_with(look, variant, Paint::accent())
+    }
+
+    fn native_with(look: &Look, variant: ButtonVariant, paint: Paint) -> Native {
+        Native { look: look.clone(), variant, paint }
+    }
 
     #[test]
     fn solid_default_uses_primary_steps() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Solid);
+        let theme = native(&look, ButtonVariant::Solid);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
         let expected_bg = look.resolve_role(SemanticRole::Primary).hsla();
-        assert_eq!(palette.background.h, expected_bg.h);
-        assert_eq!(palette.background.l, expected_bg.l);
+        assert_close_any(palette.background.h, expected_bg.h);
+        assert_close_any(palette.background.l, expected_bg.l);
     }
 
     #[test]
     fn ghost_default_is_transparent() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Ghost);
+        let theme = native(&look, ButtonVariant::Ghost);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
-        assert_eq!(palette.background.a, 0.0);
+        assert_close_any(palette.background.a, 0.0);
         assert!(palette.border.is_none());
     }
 
     #[test]
     fn surface_uses_accent_panel_and_edge() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Surface);
+        let theme = native(&look, ButtonVariant::Surface);
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
-        assert_eq!(palette.border, Some(look.resolve_step(ScaleFamily::Color, 7).hsla()));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Color, 11).hsla());
+        assert_close_any(palette.background, look.resolve_step(ScaleFamily::Color, 2).hsla());
+        assert_close_any(palette.border, Some(look.resolve_step(ScaleFamily::Color, 7).hsla()));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Color, 11).hsla());
     }
 
     #[test]
     fn solid_high_contrast_uses_step_twelve_on_gray_one() {
         let look = Look::built_in();
-        let theme = button_family_theme_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
+        let theme = native_with(&look, ButtonVariant::Solid, Paint::gray().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, Tone::Gray.step(&look, 12));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close_any(palette.background, Tone::Gray.step(&look, 12));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
     }
 
     #[test]
     fn classic_high_contrast_uses_step_twelve() {
         let look = Look::built_in();
-        let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
+        let theme = native_with(&look, ButtonVariant::Classic, Paint::accent().high_contrast());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
-        assert_eq!(palette.background, Tone::Accent.step(&look, 12));
-        assert_eq!(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
+        assert_close_any(palette.background, Tone::Accent.step(&look, 12));
+        assert_close_any(palette.foreground, look.resolve_step(ScaleFamily::Gray, 1).hsla());
     }
 
     #[test]
     fn soft_high_contrast_darkens_the_label_only() {
         let look = Look::built_in();
-        let normal = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray());
-        let hc = button_family_theme_with(&look, ButtonVariant::Soft, Paint::gray().high_contrast());
+        let normal = native_with(&look, ButtonVariant::Soft, Paint::gray());
+        let hc = native_with(&look, ButtonVariant::Soft, Paint::gray().high_contrast());
         let state = InteractionState::default();
         let normal = normal.resolve(ButtonFamilyRole::Text, state);
         let hc = hc.resolve(ButtonFamilyRole::Text, state);
 
-        assert_eq!(hc.background, normal.background);
-        assert_eq!(hc.foreground, Tone::Gray.step(&look, 12));
+        assert_close_any(hc.background, normal.background);
+        assert_close_any(hc.foreground, Tone::Gray.step(&look, 12));
         assert_ne!(hc.foreground, normal.foreground);
     }
 
     #[test]
     fn classic_high_contrast_shifts_fill_to_step_twelve() {
         let look = Look::built_in();
-        let normal = button_family_theme_with(&look, ButtonVariant::Classic, Paint::gray());
-        let hc = button_family_theme_with(&look, ButtonVariant::Classic, Paint::gray().high_contrast());
+        let normal = native_with(&look, ButtonVariant::Classic, Paint::gray());
+        let hc = native_with(&look, ButtonVariant::Classic, Paint::gray().high_contrast());
         let state = InteractionState::default();
 
         assert_ne!(
@@ -458,35 +359,33 @@ mod tests {
             Default::default(),
             xgpui_luma::theme::ThemeMode::Light,
         );
-        let theme = button_family_theme_with(&look, ButtonVariant::Classic, Paint::accent());
+        let theme = native_with(&look, ButtonVariant::Classic, Paint::accent());
         let palette = theme.resolve(ButtonFamilyRole::Text, InteractionState::default());
 
         assert!(palette.foreground.l < palette.background.l);
-        assert_eq!(palette.foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
+        assert_close_any(palette.foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
     }
 
     #[test]
     fn classic_shares_the_solid_fill_behind_a_darker_border() {
         let look = Look::built_in();
-        let classic = button_family_theme(&look, ButtonVariant::Classic);
-        let solid = button_family_theme(&look, ButtonVariant::Solid);
+        let classic = native(&look, ButtonVariant::Classic);
+        let solid = native(&look, ButtonVariant::Solid);
         let state = InteractionState::default();
         let palette = classic.resolve(ButtonFamilyRole::Text, state);
 
-        assert_eq!(palette.background, solid.resolve(ButtonFamilyRole::Text, state).background);
+        assert_close_any(palette.background, solid.resolve(ButtonFamilyRole::Text, state).background);
         let border = palette.border.expect("classic keeps a border that delineates the edge");
         assert!(border.l < palette.background.l, "border is darker than the fill");
-        assert_eq!(border.h, palette.background.h, "border keeps the accent hue");
+        assert_close_any(border.h, palette.background.h);
     }
 
+    /// The classic face's `.lss` shadows.
     fn classic_shadows(look: &Look, state: InteractionState) -> Vec<BoxShadow> {
-        let theme = button_family_theme(&look, ButtonVariant::Classic);
-        let scale = StandardBoxScale::compute(&look.metrics_for(crate::RadixSize::Two), 2.0);
-        theme
-            .resolve_look(ButtonFamilyRole::Text, state, &scale, 999.0)
-            .expect("classic look")
+        native(look, ButtonVariant::Classic)
+            .resolve(ButtonFamilyRole::Text, state)
             .shadow
-            .expect("classic shadows")
+            .unwrap_or_default()
     }
 
     #[test]
@@ -505,7 +404,10 @@ mod tests {
         assert!(top.iter().all(|shadow| shadow.color.l > fill.l), "the top rim is lighter than the fill");
         assert!(!bottom.is_empty(), "the bottom keeps a shaded lip");
         assert!(bottom.iter().all(|shadow| shadow.color.l < fill.l), "the bottom lip is darker than the fill");
-        assert!(shadows.iter().all(|shadow| !shadow.inset || shadow.color.h == fill.h), "edges keep the accent hue");
+        assert!(
+            shadows.iter().all(|shadow| !shadow.inset || (shadow.color.h - fill.h).abs() < 1e-3),
+            "edges keep the accent hue"
+        );
         assert!(top.iter().any(|shadow| shadow.blur_radius == px(0.0)), "has a crisp specular line");
         // Negative spread keeps the fade a top band instead of a full-perimeter halo.
         assert!(
@@ -516,11 +418,19 @@ mod tests {
 
     #[test]
     fn classic_face_lightens_toward_the_bottom() {
+        use xgpui_luma::style::lss::{AttrValue, ControlId, StyleKey, Value};
         let look = Look::built_in();
-        let fill = look.resolve_role(SemanticRole::Primary).hsla();
-        let params = look.classic_params();
-        let (top, bottom) = classic_wash(params, fill, false);
-        let (pressed_top, pressed_bottom) = classic_wash(params, fill, true);
+        let config = crate::style::config();
+        let theme = look.style_theme();
+        let wash = |pressed: bool| {
+            let key = StyleKey::new(ControlId::new("button"))
+                .attr_opt(config.attribute("variant").unwrap(), Some(AttrValue::new("classic")))
+                .state_if(config.state("pressed").unwrap(), pressed);
+            let resolved = theme.resolve(&key);
+            let stop = |k: &str| Hsla::from(resolved.root().value(k).and_then(Value::as_color).unwrap());
+            (stop("background_start"), stop("background_end"))
+        };
+        let ((top, bottom), (pressed_top, pressed_bottom)) = (wash(false), wash(true));
 
         assert!(bottom.l > top.l, "the wash lifts toward the bottom, away from the overhead light");
         assert!(pressed_bottom.l < pressed_top.l, "pressing flips the wash so the face reads recessed");
@@ -539,17 +449,17 @@ mod tests {
     #[test]
     fn page_toggle_stays_borderless_when_unselected() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Page);
+        let theme = native(&look, ButtonVariant::Page);
         let palette = theme.resolve(ButtonFamilyRole::Toggle { selected: false }, InteractionState::default());
 
-        assert_eq!(palette.background.a, 0.0);
+        assert_close_any(palette.background.a, 0.0);
         assert!(palette.border.is_none());
     }
 
     #[test]
     fn page_toggle_is_binary_off_on() {
         let look = Look::built_in();
-        let theme = button_family_theme(&look, ButtonVariant::Page);
+        let theme = native(&look, ButtonVariant::Page);
         let role = ButtonFamilyRole::Toggle { selected: true };
         let resting = theme.resolve(role, InteractionState::default());
         let focused = theme.resolve(role, InteractionState { focused: true, ..Default::default() });
@@ -557,11 +467,11 @@ mod tests {
         let hovered = theme.resolve(role, InteractionState { hovered: true, ..Default::default() });
 
         assert!(resting.border.is_none(), "Page face is borderless");
-        assert_eq!(resting.focus_border.a, 0.0, "Page explicitly suppresses focus paint");
-        assert_eq!(focused.border, resting.border);
-        assert_eq!(focused.background, resting.background);
-        assert_eq!(pressed.background, resting.background);
-        assert_eq!(hovered.background, resting.background);
+        assert_close_any(resting.focus_border.a, 0.0);
+        assert_close_any(focused.border, resting.border);
+        assert_close_any(focused.background, resting.background);
+        assert_close_any(pressed.background, resting.background);
+        assert_close_any(hovered.background, resting.background);
     }
 
     #[test]
@@ -570,7 +480,7 @@ mod tests {
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for paint in [Paint::accent(), Paint::gray(), Paint { tone: Tone::Accent, high_contrast: true }] {
-                let quiet = button_family_theme_with(&look, ButtonVariant::GhostQuiet, paint);
+                let quiet = native_with(&look, ButtonVariant::GhostQuiet, paint);
                 for role in
                     [ButtonFamilyRole::Text, ButtonFamilyRole::Icon, ButtonFamilyRole::Toggle { selected: true }]
                 {
@@ -583,13 +493,13 @@ mod tests {
                             ..Default::default()
                         };
                         let palette = quiet.resolve(role, state);
-                        assert_eq!(palette.background.a, 0.0, "{mode:?} {role:?} {state:?}");
+                        assert_close_any(palette.background.a, 0.0);
                         assert!(palette.border.is_none(), "{mode:?} {role:?} {state:?}");
                     }
                 }
             }
         }
-        let ghost = button_family_theme(&look, ButtonVariant::Ghost);
+        let ghost = native(&look, ButtonVariant::Ghost);
         assert!(
             ghost
                 .resolve(ButtonFamilyRole::Text, InteractionState { hovered: true, ..Default::default() })

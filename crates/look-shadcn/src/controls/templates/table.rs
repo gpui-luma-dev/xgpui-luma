@@ -1,45 +1,36 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::table::{TableTheme, table_template_with_theme};
+use xgpui_luma::controls::table::{StyledTable, TableTheme, table_drag_look, table_template_with_theme};
 use xgpui_luma::theme::{InteractionState};
 
-use crate::controls::table::{table_look, table_row_palette};
 use crate::look::ShadcnLook;
 
+/// The Shadcn table: frame, header and rows from `.lss` (`style/table.lss`); the drag preview is the look's
+/// `.lss` drag preview.
 struct ShadcnTableTheme {
     theme: ShadcnLook,
+    styled: StyledTable,
 }
 
 impl TableTheme for ShadcnTableTheme {
     fn resolve_drag(&self) -> xgpui_luma::controls::table::TableDragLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let palette = &tokens.palette;
-        xgpui_luma::controls::table::TableDragLook {
-            geometry: tokens
-                .stylesheet()
-                .common
-                .table
-                .with_sdk_defaults()
-                .resolve_geometry_for(size.key(), Default::default()),
-            background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
-            foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
-            valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
-            invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.control_sizes.radius(size),
-        }
+        let geometry = self
+            .theme
+            .mode_tokens()
+            .stylesheet()
+            .common
+            .table
+            .with_sdk_defaults()
+            .resolve_geometry_for(self.theme.size().key(), Default::default());
+        table_drag_look(super::drag::drag_look(&self.theme), geometry)
     }
 
     fn resolve_look(&self, enabled: bool, focused: bool) -> xgpui_luma::controls::table::TableLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        table_look(tokens.as_ref(), enabled, focused, size)
+        self.styled.look(enabled, focused)
     }
 
     fn resolve_row(&self, selected: bool, state: InteractionState) -> xgpui_luma::controls::table::TableRowPalette {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        table_row_palette(tokens.as_ref(), selected, state, size)
+        self.styled.row(selected, state)
     }
 
     fn resolve_row_look(
@@ -48,14 +39,7 @@ impl TableTheme for ShadcnTableTheme {
         state: InteractionState,
         scale: &xgpui_luma::theme::ListRowScale,
     ) -> xgpui_luma::controls::table::TableRowLook {
-        let size = self.theme.size();
-        let mut look = xgpui_luma::controls::table::TableRowLook::from_palette(
-            &self.resolve_row(selected, state),
-            scale,
-            self.theme.mode_tokens().common_for(size),
-        );
-        look.column_emphasis_weight = self.theme.mode_tokens().typography.text.title.weight;
-        look
+        self.styled.row_look(selected, state, scale)
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
@@ -64,7 +48,18 @@ impl TableTheme for ShadcnTableTheme {
 }
 
 pub fn table_theme(theme: ShadcnLook) -> Arc<dyn TableTheme> {
-    Arc::new(ShadcnTableTheme { theme: theme.clone() })
+    let size = theme.size();
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "table",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(ShadcnTableTheme { theme, styled: StyledTable::new(binding) })
 }
 
 pub fn table_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::table::TableTemplate> {

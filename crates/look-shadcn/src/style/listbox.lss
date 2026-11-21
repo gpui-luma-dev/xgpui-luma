@@ -1,0 +1,26 @@
+// Shadcn listbox. Layer: look. The background surface with the input edge (the ring while focused, muted
+// when disabled); rows in the foreground, the selected one on the accent, the accent's hover and pressed
+// layers under the pointer, and the ring around the active row while focus is visible; muted text when
+// disabled. Row text at the control font size.
+
+listbox {
+  part root {
+    background = css.background
+    border     = css.input
+    radius     = exact(8)
+    :focused  { border = css.ring }
+    :disabled { background = css.muted }
+  }
+
+  part row {
+    foreground  = css.foreground
+    font_size   = shadcn.control_font_size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    :focused           { border = css.ring }
+    :selected          { background = css.accent  foreground = css.foreground }
+    :hover             { background = css.accent_hover }
+    :pressed           { background = css.accent_pressed }
+    :disabled          { background = transparent  foreground = css.muted_foreground }
+    :selected:disabled { background = transparent  foreground = css.muted_foreground }
+  }
+}

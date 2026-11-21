@@ -140,7 +140,7 @@ impl ButtonBuilder<()> {
                 switch_track_content: None,
                 switch_thumb_content: None,
                 look: None,
-                template: super::template::default_button_template(),
+                template: super::styled::default_template(),
             },
         }
     }

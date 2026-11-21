@@ -4,6 +4,8 @@
 //! Item dividers, trigger states, content padding, and animated clipping belong
 //! to Accordion, independently of the frame's outer decoration and inset.
 
+mod styled;
+pub use styled::{StyledAccordion, StyledAccordionTheme};
 mod control;
 mod model;
 mod template;
@@ -18,10 +20,7 @@ pub use template::{
     AccordionTemplate, AccordionTemplateHandlers, AccordionTemplateModifier, ThemedAccordionTemplate,
     default_accordion_template,
 };
-pub use theme::{
-    AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme, DefaultAccordionTheme,
-    default_accordion_theme,
-};
+pub use theme::{AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme, default_accordion_theme};
 
 pub use crate::infra::state::{CompositeItemState as AccordionItemState, ControlFocusState};
 use gpui::{Entity, SharedString};

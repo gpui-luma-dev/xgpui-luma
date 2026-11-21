@@ -1,0 +1,73 @@
+// Radix text field and textarea. Layer: look, over the SDK's. The base is Radix's surface variant (an
+// inset gray rim that darkens when hovered); classic draws its edge with `--shadow-1` instead, and soft
+// is an accent tint with no edge. The textarea extends the text field and keeps size 2 text.
+
+textfield {
+  height    = 32
+  padding_x = 12
+  padding_y = 0
+  gap       = 8
+  icon_size = 14
+  radius    = radix.button_radius_base * radix.radius_factor
+  size 1 { height = 24  padding_x = 8   gap = 4   icon_size = 12 }
+  size 3 { height = 40  padding_x = 16  gap = 12  icon_size = 16 }
+
+  part root {
+    background           := radix.role.surface
+    foreground           := radix.role.foreground
+    border               := gray[7]
+    focus_border         := radix.role.focus
+    shadow               := []
+    placeholder          := radix.role.muted_foreground
+    icon                 := radix.role.muted_foreground
+    selection_background := accent[3]
+    selection_foreground := accent[11]
+    caret                := radix.role.foreground
+    font_family           = "System UI"
+    font_size             = 14
+    line_height           = 20
+    font_weight           = 400
+    :hover            { border = gray[8] }
+    :invalid          { border = look.destructive  focus_border = transparent }
+    :hover:invalid    { border = look.destructive }
+    :disabled {
+      foreground = radix.role.muted_foreground
+      border     = gray[6]
+      caret      = radix.role.muted_foreground
+    }
+    :disabled:invalid { border = gray[6] }
+  }
+  size 1 { part root { font_size = 12.5  line_height = 18 } }
+  size 3 { part root { font_size = 16    line_height = 22 } }
+
+  variant classic {
+    border_width = 0
+    part root {
+      border := transparent
+      shadow := [inset_shadow(gray[5], 0, 0, 0, 1), inset_shadow(alpha(gray[2], 0.45), 0, 1.5, 2, 0)]
+      :invalid          { border = look.destructive  shadow = [] }
+      :hover:invalid    { border = look.destructive  shadow = [] }
+      :disabled         { border = gray[6]  shadow = [] }
+      :disabled:invalid { border = gray[6]  shadow = [] }
+    }
+  }
+
+  variant soft {
+    border_width = 0
+    part root {
+      background := accent[3]
+      border     := transparent
+      :hover            { background = accent[4] }
+      :invalid          { background = accent[3]  border = look.destructive }
+      :hover:invalid    { background = accent[3]  border = look.destructive }
+      :disabled         { background = alpha(gray[3], 0.55)  border = transparent }
+      :disabled:invalid { background = alpha(gray[3], 0.55)  border = transparent }
+    }
+  }
+}
+
+textarea {
+  part root { font_size = 14  line_height = 20 }
+  size 1 { part root { font_size = 14  line_height = 20 } }
+  size 3 { part root { font_size = 14  line_height = 20 } }
+}

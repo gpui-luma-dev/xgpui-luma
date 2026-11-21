@@ -133,7 +133,7 @@ fn normalize_font_family(family: &str) -> String {
     family.to_string()
 }
 
-fn first_font_family(raw: &str) -> String {
+pub(crate) fn first_font_family(raw: &str) -> String {
     for part in raw.split(',') {
         let candidate = part.trim().trim_matches(['\'', '"']);
         if candidate.is_empty() {

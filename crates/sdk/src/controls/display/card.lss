@@ -1,0 +1,43 @@
+// SDK card. Layer: sdk. Read by `StyledCard` (card.rs): a passive content surface (`root`, whose text is the
+// body text) with an optional header of a title and a description. Looks add variants and sizes; the
+// surface fill and edge are drawn only when they have color.
+
+/// A passive content surface.
+card {
+  /// Space between the header, body and footer; between the title and description; between body items.
+  section_gap: length = exact(metrics.control.gap)
+  header_gap: length = exact(max(metrics.control.gap / 2, 2))
+  body_gap: length = exact(metrics.control.gap)
+
+  /// The surface and body text.
+  part root {
+    background   = palette.surface.panel.background
+    foreground   = palette.app.foreground
+    border       = palette.border.default
+    border_width = exact(1)
+    shadow       = []
+    radius       = exact(8)
+    padding_x    = exact(metrics.control.padding_x)
+    padding_y    = exact(metrics.control.padding_x)
+    font_family  = typography.font.sans
+    font_size    = typography.text.body.size
+    line_height  = typography.text.body.line_height
+    font_weight  = typography.text.body.weight
+  }
+
+  /// The header title.
+  part title {
+    foreground  = palette.app.foreground
+    font_size   = typography.text.label.size
+    line_height = typography.text.label.line_height
+    font_weight = typography.text.label.weight
+  }
+
+  /// The header description.
+  part description {
+    foreground  = palette.app.muted_foreground
+    font_size   = typography.text.caption.size
+    line_height = typography.text.caption.line_height
+    font_weight = typography.text.caption.weight
+  }
+}

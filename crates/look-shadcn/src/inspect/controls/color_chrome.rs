@@ -58,9 +58,10 @@ pub fn inspect_color_chrome_sections(
 ) -> Vec<ColorChromeInspectSection> {
     sync_color_control_theme(look);
     let theme_mode = look.mode();
-    let colors = crate::tables::resolve_color_chrome(look);
-    let border = colors.border;
-    let background = colors.background;
+    let colors = crate::context::color_chrome(look);
+    let source = |property: &str| ColorSource::Derived { note: format!("color_chrome.lss {property}") };
+    let border = ResolvedColor { value: colors.border, source: source("border") };
+    let background = ResolvedColor { value: colors.background, source: source("background") };
 
     let slider_enabled = default_color_slider_visual(true);
     let slider_disabled = default_color_slider_visual(false);
@@ -94,7 +95,7 @@ fn shared_theme_section(
 ) -> ColorChromeInspectSection {
     ColorChromeInspectSection {
         title: "Color control theme",
-        note: Some("Synced from ShadcnLook::chrome() via sync_color_control_theme."),
+        note: Some("From `.lss` (`style/color_chrome.lss`) via sync_color_control_theme."),
         color_rows: vec![color_row("border", border.clone()), color_row("background", background.clone())],
         property_rows: vec![
             property_row(

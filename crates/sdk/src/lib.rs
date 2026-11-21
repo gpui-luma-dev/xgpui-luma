@@ -17,6 +17,7 @@ pub mod key_handling;
 pub mod layouts;
 pub mod shell;
 pub mod theme;
+pub mod style;
 pub mod prelude;
 
 pub use motion::{

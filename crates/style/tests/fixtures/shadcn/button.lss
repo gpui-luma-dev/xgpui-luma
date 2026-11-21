@@ -1,0 +1,65 @@
+// Shadcn button (converted from #94 look-shadcn/src/controls/button.hcl). Layer: look.
+// Variants: the base is Shadcn's primary style; secondary, outline, ghost, content_only.
+
+button {
+  size sm { padding_x = 12  font_size = 12  icon_size = 14 }
+  size md { padding_x = 16  font_size = 14  icon_size = 16 }
+  size lg { padding_x = 20  font_size = 16  icon_size = 18 }
+
+  // Primary.
+  part root {
+    background   = shadcn.primary.background
+    foreground   = shadcn.primary.foreground
+    border       = background
+    focus_border = css.ring
+    shadow       = none
+    :hover    { background = shadcn.primary.hover }
+    :pressed  { background = shadcn.primary.pressed }
+    :disabled { background = css.muted  foreground = css.muted_foreground }
+  }
+
+  variant secondary {
+    part root {
+      background = shadcn.secondary.background
+      foreground = shadcn.secondary.foreground
+      :hover   { background = shadcn.secondary.hover }
+      :pressed { background = shadcn.secondary.pressed }
+    }                                    // the base :disabled still applies
+  }
+
+  // Selected applies to toggles.
+  variant outline {
+    part root {
+      background = shadcn.outline.background
+      foreground = css.foreground
+      border     = shadcn.outline.border
+      shadow     = shadcn.shadow.xs
+      :selected { background = css.accent  foreground = css.accent_foreground }
+      :hover    { background = shadcn.outline.hover  foreground = css.accent_foreground }
+      :pressed  { background = shadcn.outline.hover  foreground = css.accent_foreground }
+      :disabled { background = transparent  foreground = css.muted_foreground  border = css.border }
+    }
+  }
+
+  variant ghost {
+    part root {
+      background = transparent
+      foreground = css.foreground
+      border     = none
+      :selected { background = css.accent  foreground = css.accent_foreground }
+      :hover    { background = shadcn.ghost.hover  foreground = css.accent_foreground }
+      :pressed  { background = shadcn.ghost.hover  foreground = css.accent_foreground }
+      :disabled { background = transparent  foreground = css.muted_foreground }
+    }
+  }
+
+  // Owning assignments: one line each instead of restating hover, pressed and disabled.
+  variant content_only {
+    part root {
+      background   := transparent
+      border       := transparent
+      focus_border := transparent
+      foreground   := css.foreground
+    }
+  }
+}

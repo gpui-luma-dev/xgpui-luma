@@ -1,0 +1,14 @@
+// Shadcn tooltip. Layer: look. The inverted bubble (foreground on background) with compact text.
+
+tooltip {
+  part root {
+    background  = css.foreground
+    foreground  = css.background
+    shadow      = []
+    padding_x   = exact(8)
+    padding_y   = exact(4)
+    radius      = exact(first(max(css.radius - 2, 0), 4))
+    font_size   = 12
+    line_height = 16
+  }
+}

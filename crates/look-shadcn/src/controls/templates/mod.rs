@@ -17,6 +17,7 @@ mod textfield;
 mod textarea;
 mod autocomplete;
 mod selection_panel;
+mod drag;
 mod tree_view;
 mod listbox;
 mod accordion;

@@ -3,6 +3,7 @@
 pub mod button;
 pub mod choice;
 pub mod collection;
+pub mod display;
 pub mod layout;
 pub mod navigation;
 pub mod overlay;
@@ -21,6 +22,8 @@ pub use text::{textarea, textfield};
 pub use overlay::{tooltip, context_menu, floating_menu, overlay_window, popover_button, popup_menu, slide_panel};
 
 pub use collection::{listbox, table, tree_view};
+
+pub use display::{avatar, badge, callout, card, segmented};
 
 pub use selection::{autocomplete, combobox, search_selector, selection_panel, selector, selector_list};
 

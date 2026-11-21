@@ -20,66 +20,6 @@ pub fn resolve_button_colors_metadata(stylesheet: &StylesheetConfig) -> Vec<Tabl
         .collect()
 }
 
-pub fn resolve_checkbox_colors_metadata(stylesheet: &StylesheetConfig) -> Vec<TableRuleMetadata> {
-    stylesheet
-        .checkbox
-        .color_rules
-        .iter()
-        .map(|rule| TableRuleMetadata {
-            inputs: vec![
-                rule.layer.clone().unwrap_or_else(|| "any".into()),
-                rule.checked.map(|checked| checked.to_string()).unwrap_or_else(|| "any".into()),
-            ],
-            outputs: vec![
-                color_output_label("indicator_background", &rule.indicator_background),
-                color_output_label("checkmark_color", &rule.checkmark_color),
-                color_output_label("label_color", &rule.label_color),
-            ],
-        })
-        .collect()
-}
-
-pub fn resolve_radio_colors_metadata(stylesheet: &StylesheetConfig) -> Vec<TableRuleMetadata> {
-    stylesheet
-        .radio
-        .color_rules
-        .iter()
-        .map(|rule| TableRuleMetadata {
-            inputs: vec![
-                rule.layer.clone().unwrap_or_else(|| "any".into()),
-                rule.selected.map(|selected| selected.to_string()).unwrap_or_else(|| "any".into()),
-                rule.indicator.clone().unwrap_or_else(|| "any".into()),
-            ],
-            outputs: vec![
-                color_output_label("indicator_background", &rule.indicator_background),
-                color_output_label("selection_ring", &rule.selection_ring),
-                color_output_label("dot_color", &rule.dot_color),
-                color_output_label("label_color", &rule.label_color),
-            ],
-        })
-        .collect()
-}
-
-pub fn resolve_switch_colors_metadata(stylesheet: &StylesheetConfig) -> Vec<TableRuleMetadata> {
-    stylesheet
-        .switch
-        .color_rules
-        .iter()
-        .map(|rule| TableRuleMetadata {
-            inputs: vec![
-                rule.on.map(|on| on.to_string()).unwrap_or_else(|| "any".into()),
-                rule.disabled.map(|disabled| disabled.to_string()).unwrap_or_else(|| "any".into()),
-            ],
-            outputs: vec![
-                color_output_label("track_background", &rule.track_background),
-                color_output_label("thumb_background", &rule.thumb_background),
-                color_output_label("thumb_border", &rule.thumb_border),
-                color_output_label("label_color", &rule.label_color),
-            ],
-        })
-        .collect()
-}
-
 pub fn resolve_slider_colors_metadata(stylesheet: &StylesheetConfig) -> Vec<TableRuleMetadata> {
     stylesheet
         .slider
@@ -583,9 +523,6 @@ pub fn all_color_rule_metadata(stylesheet: &StylesheetConfig) -> Vec<ColorRuleMe
     vec![
         section(stylesheet, "button", "color", resolve_button_colors_metadata(stylesheet)),
         section(stylesheet, "badge", "color", resolve_badge_colors_metadata(stylesheet)),
-        section(stylesheet, "checkbox", "color", resolve_checkbox_colors_metadata(stylesheet)),
-        section(stylesheet, "radio", "color", resolve_radio_colors_metadata(stylesheet)),
-        section(stylesheet, "switch", "color", resolve_switch_colors_metadata(stylesheet)),
         section(stylesheet, "slider", "color", resolve_slider_colors_metadata(stylesheet)),
         section(stylesheet, "scrollbar", "color", resolve_scrollbar_colors_metadata(stylesheet)),
         section(stylesheet, "accordion", "trigger", resolve_accordion_trigger_colors_metadata(stylesheet)),

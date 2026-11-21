@@ -118,24 +118,3 @@ pub(crate) fn common_typography_overrides(
         },
     )
 }
-
-/// Apply common typography while preserving the existing ratio for an unset line height.
-pub(crate) fn apply_resolved_geometry_typography(
-    style: &mut LumaTextStyle,
-    font: &xgpui_luma::theme::provenance::ResolvedMetric,
-    line: &xgpui_luma::theme::provenance::ResolvedMetric,
-) {
-    let ratio = if style.size > 0.0 {
-        style.line_height / style.size
-    } else {
-        1.0
-    };
-    style.size = font.value_px;
-    style.line_height = if matches!(line.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. })
-        && !matches!(font.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. })
-    {
-        font.value_px * ratio
-    } else {
-        line.value_px
-    };
-}

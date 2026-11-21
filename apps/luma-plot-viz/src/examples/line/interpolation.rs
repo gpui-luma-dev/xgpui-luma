@@ -1,6 +1,5 @@
 use xgpui_luma::controls::button;
 use xgpui_luma::controls::radio_group;
-use xgpui_luma::controls::radio_button;
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::motion::{Transition, Easing};
 use xgpui_luma::controls::radio_group::RadioGroupEventExt;
@@ -67,9 +66,7 @@ impl InterpolationExample {
                     Interpolation::Monotone => "monotone",
                 })
                 .template(radio_group::radio_group_buttons_template(
-                    std::sync::Arc::new(radio_button::ThemedRadioButtonTemplate::new(std::sync::Arc::new(
-                        look.clone(),
-                    ))),
+                    look.radio_template(),
                     radio_group::RadioGroupLayout::Horizontal,
                 ))
                 .spawn(cx);
@@ -84,7 +81,7 @@ impl InterpolationExample {
                 }
             });
             let replay = button::Button::new("interpolation-replay")
-                .template(std::sync::Arc::new(button::DefaultButtonTemplate::new(std::sync::Arc::new(look.clone()))))
+                .template(look.button_template())
                 .label("Replay")
                 .spawn(cx)
                 .on_click(cx, |this, cx| {

@@ -1,0 +1,27 @@
+// Radix accordion. Layer: look. Triggers tint gray 3 hovered and gray 4 pressed, with the focus role as the
+// edge while focused and a muted chevron; no vertical padding. Sizes 1–3.
+
+accordion {
+  content_padding_y = exact(0)
+  inner_gap         = exact(8)
+  size 1 { inner_gap = exact(4) }
+  size 3 { inner_gap = exact(12) }
+
+  part root {
+    foreground         = radix.role.foreground
+    border             = radix.role.border
+    chevron            = radix.role.muted_foreground
+    content_foreground = radix.role.foreground
+    height             = exact(32)
+    padding_x          = exact(12)
+    padding_y          = exact(0)
+    radius             = exact(4)
+    :hover            { background = gray[3] }
+    :pressed          { background = gray[4] }
+    :focused          { border = radix.role.focus }
+    :disabled         { background = transparent  foreground = radix.role.muted_foreground }
+    :focused:disabled { border = radix.role.border }
+  }
+  size 1 { part root { height = exact(24)  padding_x = exact(8)   radius = exact(3) } }
+  size 3 { part root { height = exact(40)  padding_x = exact(16)  radius = exact(6) } }
+}

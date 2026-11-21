@@ -1,0 +1,15 @@
+// Shadcn resizable panels. Layer: look. A border frame, dividers and grips; the grip turns the accent, with
+// the accent's hover and pressed layers under the pointer and while dragged; muted foreground when disabled.
+
+resizable_panels {
+  divider       = css.border
+  grip          = css.border
+  grip_emphasis = css.accent
+
+  part root {
+    border = css.border
+    :hover    { grip_emphasis = css.accent_hover }
+    :pressed  { grip_emphasis = css.accent_pressed }
+    :disabled { divider = css.muted_foreground  grip = css.muted_foreground  grip_emphasis = css.muted_foreground }
+  }
+}

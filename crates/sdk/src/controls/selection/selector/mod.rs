@@ -39,6 +39,8 @@
 mod control;
 mod item_template;
 mod model;
+mod styled;
+pub use styled::{ItemsPanelSource, StyledSelectorTheme};
 mod template;
 pub(crate) mod theme;
 
@@ -52,11 +54,7 @@ pub use template::{
     SelectorTemplate, SelectorTemplateHandlers, SelectorTemplateModifier, ThemedSelectorTemplate,
     default_selector_template,
 };
-pub use theme::{
-    DefaultSelectorTheme, SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState, default_selector_theme,
-};
-#[allow(unused_imports)]
-pub(crate) use theme::compose_selector_look;
+pub use theme::{SelectorLook, SelectorPalette, SelectorTheme, SelectorVisualState, default_selector_theme};
 
 pub use crate::infra::state::ControlFocusState;
 

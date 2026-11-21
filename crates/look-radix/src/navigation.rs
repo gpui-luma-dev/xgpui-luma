@@ -1,55 +1,30 @@
-//! Shared Radix navigation geometry and stepper styling.
+//! Shared Radix navigation pieces: the drag preview and the stepper.
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::stepper::*;
-use xgpui_luma::theme::{ThemeTokens};
-use crate::{Look, ScaleFamily, SemanticRole, Tone};
+use crate::Look;
 
-// Default SDK resolvers are used only for layout; adapters replace every color.
-pub(crate) fn geometry_tokens(look: &Look) -> ThemeTokens {
-    // The look's selected size is resolved to pixels before SDK defaults see it.
-    ThemeTokens {
-        metrics: look.metrics_for(look.size()),
-        stylesheet: look.sized_stylesheet(look.size()),
-        ..Default::default()
-    }
-}
+/// The Radix drag preview, drawn from `.lss` (`style/drag_preview.lss`) at `size`.
 pub(crate) fn drag_look(look: &Look, size: crate::RadixSize) -> xgpui_luma::infra::drag_drop::DragDropLook {
-    let mut drag = xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&geometry_tokens(&look.with_size(size)));
-    drag.background = look.resolve_role(SemanticRole::Surface).hsla();
-    drag.foreground = look.resolve_role(SemanticRole::Foreground).hsla();
-    drag.valid_marker = look.resolve_role(SemanticRole::Focus).hsla();
-    drag.invalid_marker = look.resolve_role(SemanticRole::Destructive).hsla();
-    drag.font_family = crate::typography::font_family(look);
-    drag
-}
-struct StepperThemeAdapter {
-    look: Look,
-}
-impl StepperTheme for StepperThemeAdapter {
-    fn resolve(&self, enabled: bool) -> StepperLook {
-        let mut resolved = DefaultStepperTheme::new(geometry_tokens(&self.look)).resolve(enabled);
-        let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
-        let accent = |step| Tone::Accent.step(&self.look, step);
-        resolved.complete_bg = if enabled { accent(9) } else { gray(3) };
-        resolved.complete_fg = if enabled {
-            Tone::Accent.contrast(&self.look)
-        } else {
-            gray(8)
-        };
-        resolved.in_progress_bg = if enabled { accent(4) } else { gray(3) };
-        resolved.in_progress_fg = if enabled { accent(11) } else { gray(8) };
-        resolved.incomplete_bg = gray(2);
-        resolved.incomplete_border = gray(6);
-        resolved.incomplete_fg = gray(if enabled { 11 } else { 8 });
-        resolved.track_active_color = if enabled { accent(9) } else { gray(5) };
-        resolved.track_muted_color = gray(5);
-        resolved
-    }
+    let binding = xgpui_luma::style::StyleBinding::new("drag_preview", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::infra::drag_drop::styled_drag_drop_look(&binding)
 }
 /// Live Radix step status and connector colors, with SDK per-size geometry.
+/// Drawn from `.lss` (`style/stepper.lss`) at the look's size.
 pub fn stepper_theme(look: &Look) -> Arc<dyn StepperTheme> {
-    Arc::new(StepperThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("stepper", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(xgpui_luma::controls::stepper::StyledStepperTheme::new(binding))
 }
 /// SDK stepper template with Radix status styling.
 pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {

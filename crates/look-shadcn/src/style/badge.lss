@@ -1,0 +1,19 @@
+// Shadcn badge. Layer: look. The primary colors by default; secondary, outline (the mode's outline fill
+// and edge) and ghost variants. Label text at the control font size, with icons the same size.
+
+badge {
+  icon_size = shadcn.control_font_size
+
+  part root {
+    background  = css.primary
+    foreground  = css.primary_foreground
+    font_size   = shadcn.control_font_size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+  }
+
+  variant secondary { part root { background = css.secondary  foreground = css.secondary_foreground } }
+  variant outline {
+    part root { background = shadcn.outline_background  foreground = css.foreground  border = shadcn.outline_border }
+  }
+  variant ghost { part root { background = transparent  foreground = css.foreground } }
+}

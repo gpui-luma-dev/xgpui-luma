@@ -1,0 +1,36 @@
+// SDK listbox. Layer: sdk. Read by `StyledListBox` (styled.rs): the surface (`focused` while the list has
+// focus) and a row (`selected` is a selected item; `focused` is the active item while focus is visible).
+// Item content is the host's; the drag preview is the look's.
+
+/// A keyed, selectable list.
+listbox {
+  /// The surface.
+  part root {
+    background   = palette.form.input.background
+    border       = palette.form.input.border
+    border_width = exact(1)
+    radius       = exact(metrics.control.radius)
+    :focused  { border = palette.focus.ring }
+    :disabled { background = palette.state.disabled.background }
+  }
+
+  /// A row; its border is the focus ring on the active item.
+  part row {
+    background   = transparent
+    foreground   = palette.app.foreground
+    border       = transparent
+    border_width = exact(1)
+    radius       = exact(0)
+    padding_x    = exact(0)
+    font_family  = typography.font.sans
+    font_size    = typography.text.body.size
+    line_height  = font_size * typography.text.label.line_height / typography.text.label.size
+    font_weight  = typography.text.label.weight
+    :focused  { border = palette.focus.ring }
+    :selected { background = palette.state.selected.background  foreground = palette.state.selected.foreground }
+    :hover    { background = palette.state.hover.background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled          { background = transparent  foreground = palette.state.disabled.foreground }
+    :selected:disabled { background = transparent  foreground = palette.state.disabled.foreground }
+  }
+}

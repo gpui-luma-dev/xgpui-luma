@@ -1,0 +1,49 @@
+// Shadcn toggle. Layer: look, over the SDK toggle (which extends the button, so this look's button
+// variants apply too). Off, the primary and secondary toggles look like outline buttons; on, like their
+// style. Toggles have their own sizes, a raised shadow, and always paint the focus ring.
+
+toggle {
+  height    = 40
+  padding_x = 12
+  size sm { height = 36  padding_x = 10 }
+  size lg { height = 44  padding_x = 20 }
+
+  part root {
+    background := shadcn.outline_background
+    foreground := css.foreground
+    border     := shadcn.outline_border
+    shadow     := first(css.shadow_sm, [])
+    :hover             { background = shadcn.outline_active  foreground = css.accent_foreground }
+    :pressed           { background = shadcn.outline_active  foreground = css.accent_foreground }
+    :selected          { background = css.primary  foreground = css.primary_foreground  border = background }
+    :selected:hover    { background = css.primary_hover  foreground = css.primary_foreground  border = background }
+    :selected:pressed  { background = css.primary_pressed  foreground = css.primary_foreground  border = background }
+    :disabled          { background = transparent  foreground = css.muted_foreground  border = css.border  shadow = none }
+    :selected:disabled { background = css.muted  foreground = css.muted_foreground  border = background }
+  }
+
+  variant secondary {
+    part root {
+      background := shadcn.outline_background
+      foreground := css.foreground
+      border     := shadcn.outline_border
+      shadow     := first(css.shadow_sm, [])
+      :hover             { background = shadcn.outline_active  foreground = css.accent_foreground }
+      :pressed           { background = shadcn.outline_active  foreground = css.accent_foreground }
+      :selected          { background = css.secondary  foreground = css.secondary_foreground  border = background }
+      :selected:hover    { background = css.secondary_hover  foreground = css.secondary_foreground  border = background }
+      :selected:pressed  { background = css.secondary_pressed  foreground = css.secondary_foreground  border = background }
+      :disabled          { background = transparent  foreground = css.muted_foreground  border = css.border  shadow = none }
+      :selected:disabled { background = css.muted  foreground = css.muted_foreground  border = background }
+    }
+  }
+
+  // Ghost and content-only toggles stay flat, like their buttons.
+  variant ghost {
+    part root { shadow := [] }
+  }
+
+  variant content_only {
+    part root { focus_border = first(css.ring, shadcn.fallback_foreground)  shadow := [] }
+  }
+}

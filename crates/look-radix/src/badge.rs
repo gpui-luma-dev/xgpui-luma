@@ -1,6 +1,8 @@
 //! Non-interactive Radix badge element. Applications supply labels and placement.
 
-use gpui::{Div, FontWeight, Hsla, IntoElement, SharedString, div, prelude::*, px};
+#[cfg(test)]
+use gpui::Hsla;
+use gpui::{Div, IntoElement, SharedString, div, prelude::*, px};
 use crate::{Look, Tone};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -48,16 +50,6 @@ impl BadgeSize {
             Self::Three => "Size 3",
         }
     }
-    fn metrics(self) -> (f32, f32, f32, f32, f32) {
-        let geometry = crate::look::embedded_common_stylesheet()
-            .badge
-            .resolve_geometry_for(self.as_str(), Default::default());
-        let radius = match self {
-            Self::One => 3.0,
-            Self::Two | Self::Three => 4.0,
-        };
-        (geometry.font_size, geometry.line_height, geometry.padding_x, geometry.padding_y, radius)
-    }
 }
 
 /// Read-only label with look-owned colors and geometry; no entity or input handlers.
@@ -104,62 +96,57 @@ impl Badge {
         self
     }
 
+    /// The badge from `.lss` (`style/badge.lss`) for this variant, tone, contrast and size.
+    pub fn look(&self) -> xgpui_luma::controls::badge::BadgeLook {
+        let binding = xgpui_luma::style::StyleBinding::new("badge", crate::textfield::live_source(&self.look));
+        let binding = match self.variant {
+            BadgeVariant::Soft => binding,
+            BadgeVariant::Solid => binding.variant("solid"),
+            BadgeVariant::Surface => binding.variant("surface"),
+            BadgeVariant::Outline => binding.variant("outline"),
+        };
+        let binding = if self.size != BadgeSize::Two {
+            binding.attr("size", self.size.as_str())
+        } else {
+            binding
+        };
+        let binding = if self.tone == Tone::Gray {
+            binding.attr("tone", "gray")
+        } else {
+            binding
+        };
+        let binding = binding.state("high_contrast", self.high_contrast);
+        xgpui_luma::controls::badge::StyledBadge::new(binding).look()
+    }
+
+    #[cfg(test)]
     fn colors(&self) -> (Hsla, Hsla, Option<Hsla>) {
-        let step = |n| self.tone.step(&self.look, n);
-        let text = step(if self.high_contrast { 12 } else { 11 });
-        // Solid scale equivalents follow the look's existing palette treatment.
-        match self.variant {
-            BadgeVariant::Solid if self.high_contrast => (step(12), step(1), None),
-            BadgeVariant::Solid => (step(9), self.tone.contrast(&self.look), None),
-            BadgeVariant::Soft => (step(3), text, None),
-            BadgeVariant::Surface => (step(2), text, Some(step(6))),
-            BadgeVariant::Outline => (
-                gpui::hsla(0.0, 0.0, 0.0, 0.0),
-                text,
-                Some(if self.high_contrast {
-                    Tone::Gray.step(&self.look, 11)
-                } else {
-                    step(8)
-                }),
-            ),
-        }
+        let look = self.look();
+        (look.background, look.foreground, look.border)
     }
 }
 
 impl IntoElement for Badge {
     type Element = Div;
     fn into_element(self) -> Div {
-        let (background, foreground, border) = self.colors();
-        let (font_size, line_height, padding_x, padding_y, radius) = self.size.metrics();
-        let geometry = self.look.common_stylesheet().badge.resolve_geometry_for(
-            self.size.as_str(),
-            xgpui_luma::theme::stylesheet::BadgeGeometry {
-                font_size,
-                line_height,
-                padding_x,
-                padding_y,
-                ..Default::default()
-            },
-        );
-        let (font_size, line_height, padding_x, padding_y) =
-            (geometry.font_size, geometry.line_height, geometry.padding_x, geometry.padding_y);
-        let radius = if self.pill { 999.0 } else { radius };
+        let look = self.look();
+        let radius = if self.pill { 999.0 } else { look.radius };
         // An inset outline preserves identical dimensions across variants.
         div()
             .relative()
             .flex()
             .flex_none()
             .items_center()
-            .font_family(crate::typography::font_family(&self.look))
-            .font_weight(FontWeight::MEDIUM)
-            .text_size(px(font_size))
-            .line_height(px(line_height))
-            .px(px(padding_x))
-            .py(px(padding_y))
+            .font_family(look.font_family)
+            .font_weight(look.typography.weight)
+            .text_size(px(look.typography.size))
+            .line_height(px(look.typography.line_height))
+            .px(px(look.padding_x))
+            .py(px(look.padding_y))
             .rounded(px(radius))
-            .bg(background)
-            .text_color(foreground)
-            .when_some(border, |badge, border| {
+            .bg(look.background)
+            .text_color(look.foreground)
+            .when_some(look.border, |badge, border| {
                 badge.child(div().absolute().inset_0().rounded(px(radius)).border_1().border_color(border))
             })
             .child(self.label)
@@ -171,6 +158,20 @@ mod tests {
     use super::*;
     use xgpui_luma::theme::ThemeMode;
     #[test]
+    fn sizes_follow_radix_metrics() {
+        let look = Look::built_in();
+        for (size, want) in [
+            (BadgeSize::One, (12.0, 16.0, 6.0, 2.0, 3.0)),
+            (BadgeSize::Two, (12.0, 16.0, 8.0, 4.0, 4.0)),
+            (BadgeSize::Three, (14.0, 20.0, 10.0, 4.0, 4.0)),
+        ] {
+            let l = Badge::new(&look, "New").size(size).look();
+            assert_eq!((l.typography.size, l.typography.line_height, l.padding_x, l.padding_y, l.radius), want);
+            assert_eq!(l.typography.weight, gpui::FontWeight::MEDIUM);
+        }
+    }
+
+    #[test]
     fn variants_follow_both_tones_and_modes() {
         let look = Look::built_in();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
@@ -180,17 +181,28 @@ mod tests {
                     let normal = Badge::new(&look, "New").tone(tone).variant(variant).colors();
                     let high = Badge::new(&look, "New").tone(tone).variant(variant).high_contrast(true).colors();
                     if variant == BadgeVariant::Solid {
-                        assert_eq!(normal.0, tone.step(&look, 9));
-                        assert_eq!(normal.1, tone.contrast(&look));
-                        assert_eq!(high.0, tone.step(&look, 12));
-                        assert_eq!(high.1, tone.step(&look, 1));
+                        crate::control_group::assert_close(normal.0, tone.step(&look, 9));
+                        crate::control_group::assert_close(normal.1, tone.contrast(&look));
+                        crate::control_group::assert_close(high.0, tone.step(&look, 12));
+                        crate::control_group::assert_close(high.1, tone.step(&look, 1));
                     } else {
-                        assert_eq!(normal.1, tone.step(&look, 11));
-                        assert_eq!(high.1, tone.step(&look, 12));
+                        crate::control_group::assert_close(normal.1, tone.step(&look, 11));
+                        crate::control_group::assert_close(high.1, tone.step(&look, 12));
                     }
                     assert_eq!(normal.2.is_some(), matches!(variant, BadgeVariant::Surface | BadgeVariant::Outline));
-                    if variant == BadgeVariant::Outline {
-                        assert_eq!(normal.0.a, 0.0);
+                    let close = crate::control_group::assert_close;
+                    match variant {
+                        BadgeVariant::Soft => close(normal.0, tone.step(&look, 3)),
+                        BadgeVariant::Surface => {
+                            close(normal.0, tone.step(&look, 2));
+                            close(normal.2.unwrap(), tone.step(&look, 6));
+                        }
+                        BadgeVariant::Outline => {
+                            assert_eq!(normal.0.a, 0.0);
+                            close(normal.2.unwrap(), tone.step(&look, 8));
+                            close(high.2.unwrap(), Tone::Gray.step(&look, 11));
+                        }
+                        BadgeVariant::Solid => {}
                     }
                 }
             }

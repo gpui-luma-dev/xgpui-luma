@@ -1,0 +1,36 @@
+// SDK accordion. Layer: sdk. Read by `StyledAccordion` (styled.rs): the trigger row's colors and layout, and
+// the content's text color. The drag preview and handle icon are the look's.
+
+/// Rows that expand to show content.
+accordion {
+  /// Drag-handle padding, and disabled triggers' opacity.
+  drag_handle_padding: length = exact(2)
+  disabled_opacity: number = 0.56
+  /// Content padding, space between rows and inside a trigger, and the icon and chevron sizes.
+  content_padding_y: length = metrics.control.padding_y * 1.5
+  item_gap: length = exact(0)
+  inner_gap: length = metrics.control.gap
+  icon_size: length = exact(16)
+  chevron_size: length = exact(14)
+  /// The chevron, and the expanded content's text.
+  chevron: color = palette.navigation.muted_foreground
+  content_foreground: color = palette.app.foreground
+
+  /// The trigger row.
+  part root {
+    background  = transparent
+    foreground  = palette.app.foreground
+    border      = palette.navigation.border
+    height      = metrics.control.control_height
+    padding_x   = metrics.control.padding_x
+    padding_y   = metrics.control.padding_y
+    radius      = exact(metrics.control.radius)
+    font_family = typography.font.sans
+    font_size   = typography.text.body.size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    font_weight = typography.text.label.weight
+    :hover    { background = palette.navigation.hover_background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = transparent  foreground = palette.state.disabled.foreground }
+  }
+}

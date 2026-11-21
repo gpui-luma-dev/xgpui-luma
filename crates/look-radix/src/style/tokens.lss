@@ -1,0 +1,60 @@
+// Radix look tokens. Layer: look.
+// Native roots: gray[n] and accent[n] (n = 1..12) for the bound mode; tone[n], the accent scale or gray
+// for `tone gray`; look.accent_contrast, the color on solid accent faces; look.font_sans.
+
+tokens {
+  radix {
+    // SemanticRole mappings.
+    role {
+      background         = gray[1]
+      surface            = gray[2]
+      border             = gray[6]
+      foreground         = gray[12]
+      muted_foreground   = gray[11]
+      primary            = accent[9]
+      primary_foreground = look.accent_contrast
+      focus              = accent[8]
+    }
+
+    /// `--radius-1` at radius factor 1.
+    radius_1 = 3
+    /// `--radius-factor` from the `radius` attribute; medium is the base.
+    radius_factor = 1
+    radius none  { radius_factor = 0 }
+    radius small { radius_factor = 0.75 }
+    radius large { radius_factor = 1.5 }
+    radius full  { radius_factor = 1.5 }
+
+    /// Checkbox multiplier on `--radius-1` for each size.
+    checkbox_radius_scale = 1
+    size 1 { checkbox_radius_scale = 0.875 }
+    size 3 { checkbox_radius_scale = 1.25 }
+
+    /// Button `--radius-1..4` for sizes 1–4, before the radius factor.
+    button_radius_base = 4
+    size 1 { button_radius_base = 3 }
+    size 3 { button_radius_base = 6 }
+    size 4 { button_radius_base = 8 }
+
+    // The selected page pill: foreground on light, the accent contrast on dark.
+    // The menus' positive (completion) mark.
+    mode light { page_selected = radix.role.foreground   menu_positive = gray(30, 1) }
+    mode dark  { page_selected = look.accent_contrast    menu_positive = gray(75, 1) }
+
+    // The card panel fill; the classic card's edge and its drop and soft shadow strengths.
+    mode light { card_background = gray[1]  card_classic_edge = gray[3]  card_drop_alpha = 0.05  card_soft_alpha = 0.05 }
+    mode dark  { card_background = gray[2]  card_classic_edge = gray[6]  card_drop_alpha = 0.3   card_soft_alpha = 0.2 }
+
+    /// Switch `--radius-1` (size 1) or `--radius-2` (sizes 2–3), before the radius factor.
+    switch_radius_base = 4
+    size 1 { switch_radius_base = 3 }
+    /// `--radius-thumb`: a pill unless the theme radius is none or small.
+    radius_thumb = 9999
+    radius none  { radius_thumb = 0.5 }
+    radius small { radius_thumb = 0.5 }
+  }
+
+  typography {
+    font { sans = look.font_sans }
+  }
+}

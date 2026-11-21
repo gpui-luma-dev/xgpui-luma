@@ -50,6 +50,8 @@
 //! }
 //! ```
 mod model;
+mod styled;
+pub use styled::{StyledTooltipTheme, styled_tooltip_look};
 mod control;
 mod template;
 pub(crate) mod theme;

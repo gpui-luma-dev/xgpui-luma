@@ -1,0 +1,25 @@
+// Shadcn overlay window. Layer: look. The popover surface with `shadow-lg`, the large radius, control
+// padding and size-specific widths; a modal window's scrim is a little lighter.
+
+overlay_window {
+  estimated_height = exact(228)
+  size sm { estimated_height = exact(196) }
+  size lg { estimated_height = exact(264) }
+
+  part root {
+    background = first(css.popover, css.card)
+    foreground = first(css.popover_foreground, css.card_foreground)
+    border     = css.border
+    shadow     = first(css.shadow_lg, [])
+    radius     = exact(first(css.radius, 6))
+    min_width  = exact(400)
+    max_width  = exact(520)
+  }
+  size sm { part root { min_width = exact(320)  max_width = exact(420) } }
+  size lg { part root { min_width = exact(480)  max_width = exact(620) } }
+
+  variant modal {
+    backdrop = alpha(black, 0.42)
+    part root { shadow = first(css.shadow_lg, []) }
+  }
+}

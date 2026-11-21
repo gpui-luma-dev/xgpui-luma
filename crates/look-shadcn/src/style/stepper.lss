@@ -1,0 +1,32 @@
+// Shadcn stepper. Layer: look. Finished and current badges in the accent foreground with accent numbers,
+// unstarted badges on the background with the border edge and muted numbers, an accent-foreground track
+// ahead and accent behind; muted colors when disabled. Sizes sm, md, lg.
+
+stepper {
+  step_badge_size = exact(32)
+  size sm { step_badge_size = exact(24) }
+  size lg { step_badge_size = exact(40)  track_thickness = exact(3) }
+
+  part root {
+    complete_background   = css.accent_foreground
+    complete_foreground   = css.accent
+    current_background    = css.accent_foreground
+    current_foreground    = css.accent
+    incomplete_background = css.background
+    incomplete_border     = css.border
+    incomplete_foreground = css.muted_foreground
+    track_active          = css.accent_foreground
+    track_muted           = css.accent
+    :disabled {
+      complete_background   = css.muted
+      complete_foreground   = css.muted_foreground
+      current_background    = css.muted
+      current_foreground    = css.muted_foreground
+      incomplete_background = css.background
+      incomplete_border     = css.border
+      incomplete_foreground = css.muted_foreground
+      track_active          = css.muted_foreground
+      track_muted           = css.muted
+    }
+  }
+}

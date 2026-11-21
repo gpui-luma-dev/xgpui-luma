@@ -1,0 +1,52 @@
+// SDK text field. Layer: sdk. Read by the `.lss` text-input themes (controls/text/styled.rs) and drawn by
+// the text-field template. The textarea extends it.
+
+/// A single-line text input.
+textfield {
+  /// Whole-input opacity when disabled.
+  disabled_opacity: number = 0.6
+  height       = metrics.control.control_height
+  padding_x    = metrics.control.padding_x
+  padding_y    = metrics.control.padding_y
+  gap          = metrics.control.gap
+  radius       = exact(metrics.control.radius)
+  border_width = exact(metrics.border_width)
+  /// Leading and trailing icon size.
+  icon_size: length = metrics.control.icon_size
+  /// Painted caret width, and its extra height over the line.
+  caret_width: length = exact(1.5)
+  caret_height_extra: length = exact(2)
+  /// Focus ring geometry (FocusAdorner): gap to the face, stroke width, extra outward offset.
+  focus_gap: length = exact(metrics.focus.gap)
+  focus_width: length = exact(metrics.focus.width)
+  focus_offset: length = exact(metrics.focus.offset)
+  /// Placeholder text, icons, the selection highlight and its text, and the caret.
+  placeholder: color = palette.form.input.placeholder
+  icon: color = palette.form.input.placeholder
+  selection_background: color = palette.state.selected.background
+  selection_foreground: color = palette.state.selected.foreground
+  caret: color = palette.form.input.foreground
+
+  /// The field.
+  part root {
+    background   = palette.form.input.background
+    foreground   = palette.form.input.foreground
+    border       = palette.form.input.border
+    focus_border = palette.focus.ring
+    shadow       = []
+    font_family  = typography.font.sans
+    font_size    = typography.text.body.size
+    line_height  = typography.text.body.line_height
+    font_weight  = typography.text.body.weight
+    :invalid  { border = palette.form.input.invalid_border  focus_border = transparent }
+    :disabled {
+      background  = palette.state.disabled.background
+      foreground  = palette.state.disabled.foreground
+      border      = palette.form.input.border
+      placeholder = palette.state.disabled.foreground
+      icon        = palette.state.disabled.foreground
+      caret       = palette.state.disabled.foreground
+    }
+    :disabled:invalid { border = palette.form.input.border }
+  }
+}

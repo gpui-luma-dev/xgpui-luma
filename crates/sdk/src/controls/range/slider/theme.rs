@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla};
 
-use crate::theme::{ControlSizes, InteractionLayer, InteractionState, MetricTokens, ThemeTokens};
+use crate::theme::{ControlSizes, InteractionState, MetricTokens};
 
 #[derive(Clone, Debug)]
 pub struct SliderLook {
@@ -30,65 +30,10 @@ pub trait SliderTheme: Send + Sync {
     fn resolve(&self, state: InteractionState) -> SliderLook;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultSliderTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_slider_theme() -> Arc<dyn SliderTheme> {
     static THEME: OnceLock<Arc<dyn SliderTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultSliderTheme::default())).clone()
-}
-
-impl DefaultSliderTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl SliderTheme for DefaultSliderTheme {
-    fn resolve(&self, state: InteractionState) -> SliderLook {
-        let palette = self.tokens.stylesheet.recipes.palette("slider", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-        let elevation = &self.tokens.elevation;
-        let selected = palette.state.selected;
-        let fill_background = match state.layer() {
-            InteractionLayer::Disabled => palette.state.disabled.foreground,
-            InteractionLayer::Pressed => palette.state.pressed.background,
-            InteractionLayer::Hovered => selected.background,
-            InteractionLayer::Default => selected.background,
-        };
-
-        let fallback = SliderGeometry::sdk_default(metrics, &self.tokens.stylesheet);
-        let geometry = self.tokens.stylesheet.slider.resolve_geometry(&fallback);
-        SliderLook {
-            thumb_border_width: self.tokens.metrics.border_width,
-            decoration: self.tokens.stylesheet.slider.decoration(),
-            track_background: if state.disabled {
-                palette.state.disabled.background
-            } else {
-                palette.surface.subtle.background
-            },
-            fill_background,
-            thumb_background: if state.disabled {
-                palette.state.disabled.foreground
-            } else {
-                palette.surface.panel.background
-            },
-            thumb_border: if state.disabled {
-                palette.state.disabled.background
-            } else {
-                selected.background
-            },
-            thumb_shadow: elevation.thumb.to_box_shadows(),
-            width: geometry.width,
-            height: geometry.height,
-            track_height: geometry.track_height,
-            thumb_size: geometry.thumb_size,
-            radius: crate::theme::FULL_RADIUS_PX,
-        }
-    }
+    THEME.get_or_init(|| Arc::new(super::styled::StyledSliderTheme::sdk())).clone()
 }
 
 /// Default inset of the slider height below the control height. Looks that derive
@@ -123,40 +68,6 @@ fn slider_thumb_size_with_stylesheet(
         .or(crate::theme::stylesheet::CommonStylesheet::sdk_default().slider.geometry.thumb_scale)
         .unwrap_or_default();
     recipe.thumb_size.unwrap_or_else(|| slider_height(metrics, stylesheet) * factor)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn prepared_theme_retains_p3_source_and_supplies_mapped_control_colors() {
-        use crate::color::{ColorValue, GamutMapping, gpui_bridge};
-        let mut source = crate::theme::LumaThemeMode::light();
-        let p3 = ColorValue::display_p3(1.0, 0.0, 0.0, 0.37);
-        source.palette.state.selected.background = p3;
-        let tokens = ThemeTokens::from_source(source, GamutMapping::CssLocalMinde).unwrap();
-        let theme = DefaultSliderTheme::new(tokens);
-        let painted = theme.resolve(InteractionState::default());
-        assert_eq!(painted.fill_background, gpui_bridge::to_hsla(p3, GamutMapping::CssLocalMinde).unwrap());
-        assert_eq!(theme.tokens.source().palette.state.selected.background, p3);
-        let disabled = theme.resolve(InteractionState { disabled: true, ..Default::default() });
-        assert_ne!(disabled.fill_background, painted.fill_background);
-        assert_eq!(theme.tokens.source().palette.state.selected.background, p3);
-    }
-
-    #[test]
-    fn default_slider_geometry_tracks_custom_metric_tokens() {
-        let mut tokens = ThemeTokens::default();
-        tokens.metrics.control.control_height = 60.0;
-        tokens.metrics.control.gap = 14.0;
-        let theme = DefaultSliderTheme::new(tokens.clone());
-        let look = theme.resolve(InteractionState::default());
-
-        assert_eq!(look.height, 56.0);
-        assert_eq!(look.track_height, 12.0);
-        assert_eq!(look.thumb_size, 28.0);
-    }
 }
 
 /// Shared slider dimensions; palettes, shadows and radius recipes remain look-owned.

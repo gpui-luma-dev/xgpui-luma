@@ -1,0 +1,8 @@
+// SDK toggle: a button that stays selected. Layer: sdk. The "on" state is `selected`.
+
+/// A button that is on or off.
+toggle extends button {
+  part root {
+    :selected { background = palette.state.selected.background  foreground = palette.state.selected.foreground }
+  }
+}

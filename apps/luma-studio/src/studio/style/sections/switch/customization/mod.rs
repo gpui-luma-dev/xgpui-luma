@@ -6,7 +6,6 @@ use xgpui_luma::controls::button::ButtonContentContext;
 use xgpui_luma::infra::presenter::HasPresenter;
 use xgpui_luma::controls::switch::{Switch, SwitchData, SwitchOrientation};
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma_look_shadcn::paint::switch_look;
 use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook};
 use lucide_svg_static::Icon as LucideIcon;
@@ -51,7 +50,7 @@ impl SwitchCustomizationPreview {
             .primary()
             .vertical()
             .with_data(true)
-            .thumb_content(icon_thumb_content(look.clone(), ShadcnButtonStyle::Primary))
+            .thumb_content(icon_thumb_content())
             .content(|_, _| div().into_any_element())
             .spawn(cx);
         let mut preview = Self { look, primary_switch, secondary_switch, vertical_switch };
@@ -64,17 +63,17 @@ impl SwitchCustomizationPreview {
         self.primary_switch.update(cx, |switch, cx| {
             switch.set_template(look.switch_template(ShadcnButtonStyle::Primary), cx);
             switch.set_switch_track_content(labeled_track_content(look.clone(), ShadcnButtonStyle::Primary), cx);
-            switch.set_switch_thumb_content(icon_thumb_content(look.clone(), ShadcnButtonStyle::Primary), cx);
+            switch.set_switch_thumb_content(icon_thumb_content(), cx);
         });
         self.secondary_switch.update(cx, |switch, cx| {
             switch.set_template(look.switch_template(ShadcnButtonStyle::Secondary), cx);
             switch.set_switch_track_content(labeled_track_content(look.clone(), ShadcnButtonStyle::Secondary), cx);
-            switch.set_switch_thumb_content(icon_thumb_content(look.clone(), ShadcnButtonStyle::Secondary), cx);
+            switch.set_switch_thumb_content(icon_thumb_content(), cx);
         });
         self.vertical_switch.update(cx, |switch, cx| {
             switch.set_template(look.switch_template(ShadcnButtonStyle::Primary), cx);
             switch.set_switch_orientation(SwitchOrientation::Vertical, cx);
-            switch.set_switch_thumb_content(icon_thumb_content(look.clone(), ShadcnButtonStyle::Primary), cx);
+            switch.set_switch_thumb_content(icon_thumb_content(), cx);
         });
         cx.notify();
     }
@@ -90,7 +89,7 @@ fn labeled_switch(builder: shadcn::Switch, look: Arc<ShadcnLook>, style: ShadcnB
     builder
         .track_length_extra(LABEL_TRACK_EXTRA_WIDTH)
         .track_content(labeled_track_content(look.clone(), style))
-        .thumb_content(icon_thumb_content(look, style))
+        .thumb_content(icon_thumb_content())
 }
 
 fn labeled_track_content(
@@ -99,15 +98,23 @@ fn labeled_track_content(
 ) -> impl Fn(&ButtonContentContext<SwitchData>, &mut App) -> AnyElement + Send + Sync + 'static {
     move |model, _| {
         let checked = model.data.checked;
-        let tokens = look.mode_tokens();
-        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, look.size());
-        let on_palette =
-            switch_look(tokens.as_ref(), look.mode(), style, true, InteractionState::default(), look.size());
+        // The resting "on" thumb color from `.lss`; the rest comes from the switch's content look.
+        let on_thumb = crate::studio::style::shared::lss::shadcn_style(
+            &look,
+            "switch",
+            style,
+            InteractionState::default(),
+            Some(("checked", true)),
+        )
+        .part(xgpui_luma::style::lss::PartId::new("thumb"))
+        .background()
+        .map(gpui::Hsla::from)
+        .unwrap_or(model.look.foreground);
         let state_label = if checked { "ON" } else { "OFF" };
         let state_label_color = if checked && !model.state.disabled {
-            on_palette.thumb_background
+            on_thumb
         } else {
-            palette.label_color
+            model.look.foreground
         };
 
         div()
@@ -117,9 +124,9 @@ fn labeled_track_content(
             .px(px(LABEL_TRACK_PADDING_X))
             .when(checked, |label_row| label_row.justify_start())
             .when(!checked, |label_row| label_row.justify_end())
-            .text_size(px((palette.label_typography.size * 0.85).max(10.0)))
-            .line_height(px((palette.label_typography.line_height * 0.85).max(12.0)))
-            .font_family(palette.label_font_family.clone())
+            .text_size(px((model.look.typography.size * 0.85).max(10.0)))
+            .line_height(px((model.look.typography.line_height * 0.85).max(12.0)))
+            .font_family(model.look.font_family.clone())
             .font_weight(FontWeight::SEMIBOLD)
             .text_color(state_label_color)
             .child(state_label)
@@ -127,19 +134,13 @@ fn labeled_track_content(
     }
 }
 
-fn icon_thumb_content(
-    look: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-) -> impl Fn(&ButtonContentContext<SwitchData>, &mut App) -> AnyElement + Send + Sync + 'static {
+fn icon_thumb_content() -> impl Fn(&ButtonContentContext<SwitchData>, &mut App) -> AnyElement + Send + Sync + 'static {
     move |model, _| {
         let checked = model.data.checked;
-        let tokens = look.mode_tokens();
-        let palette = switch_look(tokens.as_ref(), look.mode(), style, checked, model.state, look.size());
+        // The track color, from the switch's content look.
+        let track = model.look.background;
         let icon = if checked { LucideIcon::Check } else { LucideIcon::X };
-        div()
-            .text_color(palette.track_background)
-            .child(render_lucide_icon(icon, palette.track_background, 11.0))
-            .into_any_element()
+        div().text_color(track).child(render_lucide_icon(icon, track, 11.0)).into_any_element()
     }
 }
 

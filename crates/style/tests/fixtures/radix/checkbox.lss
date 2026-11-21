@@ -1,0 +1,57 @@
+// Radix checkbox (converted from #94 look-radix/src/checkbox.hcl, 164 lines). Layer: look.
+// Variants: surface (the base), classic, soft. Sizes: 1, 2, 3. Tone: accent (default) or gray.
+
+checkbox {
+  gap = 8
+  indicator_radius = none                     // derived from the Radix radius prop in Rust
+
+  size 1 { indicator_size = 14  glyph_size = 9 }
+  size 2 { indicator_size = 16  glyph_size = 10 }
+  size 3 { indicator_size = 20  glyph_size = 12 }
+
+  part root  { focus_border = radix.role.focus }
+  part label { foreground = radix.role.foreground  :disabled { foreground = radix.role.muted_foreground } }
+
+  // Surface: an unchecked face never changes, so the look owns background against the SDK.
+  part indicator {
+    background := radix.role.surface
+    border      = gray[7]
+    shadow      = none
+    :checked                        { background = radix.role.primary  border = background }
+    :checked:hover                  { background = tone[10] }
+    :checked:high_contrast          { background = tone[12] }
+    :disabled                       { background = transparent  border = gray[6] }
+    :checked:high_contrast:disabled { background = transparent  border = gray[6] }
+  }
+  part glyph {
+    foreground = gray[11]
+    :checked                        { foreground = radix.role.primary_foreground }
+    :checked:high_contrast          { foreground = tone[1] }
+    :disabled                       { foreground = gray[8] }
+    :checked:high_contrast:disabled { foreground = gray[8] }
+  }
+
+  variant classic {
+    part indicator {
+      border = gray[3]
+      shadow = resting_shadow(gray[5], alpha(gray[2], 0.5))
+      :checked                        { shadow = checked_shadow(alpha(glyph.foreground, 0.35), alpha(black, 0.28)) }
+      :disabled                       { shadow = resting_shadow(gray[5], alpha(gray[3], 0.4)) }
+      :checked:high_contrast:disabled { shadow = resting_shadow(gray[5], alpha(gray[3], 0.4)) }
+    }
+  }
+
+  // Soft keeps one tint, checked or not.
+  variant soft {
+    part indicator {
+      background := tone[5]
+      border     := tone[5]
+      :disabled { background = transparent  border = transparent }
+    }
+    part glyph {
+      foreground := tone[11]
+      :high_contrast { foreground = tone[12] }
+      :disabled      { foreground = gray[8] }
+    }
+  }
+}

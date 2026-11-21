@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
-use xgpui_luma::controls::accordion::{AccordionTemplate, AccordionTheme, ThemedAccordionTemplate};
+use xgpui_luma::controls::accordion::{AccordionTemplate, AccordionTheme, StyledAccordion, ThemedAccordionTemplate};
 use xgpui_luma::theme::{InteractionState};
 
-use crate::controls::accordion::{accordion_content_palette, accordion_trigger_palette};
 use crate::look::ShadcnLook;
 
+/// The Shadcn accordion: trigger, content and layout from `.lss` (`style/accordion.lss`); the drag preview,
+/// handle icon and tooltip from the look.
 struct ShadcnAccordionTheme {
     theme: ShadcnLook,
+    styled: StyledAccordion,
 }
 
 impl AccordionTheme for ShadcnAccordionTheme {
@@ -24,41 +26,19 @@ impl AccordionTheme for ShadcnAccordionTheme {
     }
 
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        let palette = &tokens.palette;
-        xgpui_luma::infra::drag_drop::DragDropLook {
-            geometry: self.theme.stylesheet().common.shared_geometry(),
-            background: self.theme.token_color("popover").unwrap_or(palette.panel_background),
-            foreground: self.theme.token_color("popover-foreground").unwrap_or(palette.body_text),
-            valid_marker: self.theme.token_color("ring").unwrap_or(palette.focus_ring),
-            invalid_marker: self.theme.token_color("destructive").unwrap_or(palette.destructive_background),
-            radius: tokens.control_sizes.radius(size),
-            typography: tokens.typography.text.label,
-            font_family: tokens.typography.font.sans.family.clone().into(),
-        }
+        super::drag::drag_look(&self.theme)
     }
 
     fn resolve_trigger(&self, state: InteractionState) -> xgpui_luma::controls::accordion::AccordionPalette {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        accordion_trigger_palette(tokens.as_ref(), self.theme.mode(), state, size)
+        self.styled.trigger(state)
     }
 
-    fn resolve_content(&self, expanded: bool) -> xgpui_luma::controls::accordion::AccordionContentPalette {
-        let tokens = self.theme.mode_tokens();
-        accordion_content_palette(tokens.as_ref(), self.theme.mode(), expanded)
+    fn resolve_content(&self, _expanded: bool) -> xgpui_luma::controls::accordion::AccordionContentPalette {
+        self.styled.content()
     }
 
     fn resolve_scale(&self, scale_factor: f32) -> xgpui_luma::controls::accordion::AccordionScale {
-        let size = self.theme.size();
-        crate::tables::metrics::resolve_accordion_metrics(
-            &self.theme.mode_tokens(),
-            self.theme.mode(),
-            size,
-            scale_factor,
-        )
-        .scale()
+        self.styled.scale(scale_factor)
     }
 
     fn metrics(&self) -> xgpui_luma::theme::MetricTokens {
@@ -71,7 +51,18 @@ pub fn accordion_template(theme: ShadcnLook) -> Arc<dyn AccordionTemplate> {
 }
 
 pub fn accordion_theme(theme: ShadcnLook) -> Arc<dyn AccordionTheme> {
-    Arc::new(ShadcnAccordionTheme { theme: theme.clone() })
+    let size = theme.size();
+    let style = theme.clone();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "accordion",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || style.style_theme())),
+    );
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(ShadcnAccordionTheme { theme, styled: StyledAccordion::new(binding) })
 }
 
 #[cfg(test)]

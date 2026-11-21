@@ -1,0 +1,36 @@
+// Radix badge. Layer: look. Soft by default (a tone 3 tint with tone 11 text, tone 12 in high contrast);
+// solid (tone 9 with the tone's contrast text, or tone 12 with tone 1), surface (tone 2 with a tone 6 edge)
+// and outline (a tone 8 edge, gray 11 in high contrast) variants. Sizes 1–3; medium-weight sans text.
+
+badge {
+  part root {
+    background  = tone[3]
+    foreground  = tone[11]
+    radius      = exact(4)
+    padding_x   = exact(8)
+    padding_y   = exact(4)
+    font_family = look.font_sans
+    font_size   = 12
+    line_height = 16
+    font_weight = 500
+    :high_contrast { foreground = tone[12] }
+  }
+  size 1 { part root { radius = exact(3)  padding_x = exact(6)  padding_y = exact(2) } }
+  size 3 { part root { padding_x = exact(10)  font_size = 14  line_height = 20 } }
+
+  variant solid {
+    part root {
+      background = tone[9]
+      foreground = look.tone_contrast
+      :high_contrast { background = tone[12]  foreground = tone[1] }
+    }
+  }
+  variant surface { part root { background = tone[2]  border = tone[6] } }
+  variant outline {
+    part root {
+      background = transparent
+      border     = tone[8]
+      :high_contrast { border = gray[11] }
+    }
+  }
+}

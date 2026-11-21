@@ -17,6 +17,7 @@ test-support = ["gpui/test-support"]
 [dependencies]
 fasteval.workspace = true
 gpui.workspace = true
+xgpui-luma-style.workspace = true
 anyhow.workspace = true
 lucide-svg-static.workspace = true
 serde = { workspace = true, features = ["derive"] }

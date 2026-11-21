@@ -1,0 +1,86 @@
+// Shadcn look tokens. Layer: look.
+// Native root `css` is the bound mode's CSS catalog (`css.font_sans` is `--font-sans`); lengths are
+// already pixels, fonts are the first named family. Without `--spacing` or `--radius` the control
+// metrics fall back to ShadcnControlMetrics' defaults. `md` is the base size.
+
+tokens {
+  shadcn {
+    /// Paint for a color the catalog lacks (ResolvedColor::fallback_foreground).
+    fallback_foreground = black
+
+    /// The corner radius presets (`--radius-sm`, `--radius-md`, `--radius-lg`), whatever the size.
+    radius_small  = first(max(css.radius - 4, 0), 4)
+    radius_medium = first(max(css.radius - 2, 0), 6)
+    radius_large  = first(css.radius, 8)
+
+    /// Control label font size (the button metrics font size for each size).
+    control_font_size = 14
+    size sm { control_font_size = 12 }
+    size lg { control_font_size = 16 }
+
+    // The content-only switch thumb: the strongest contrast for the mode. Outline and ghost button faces
+    // at rest and when active (hover, pressed), and the outline edge. Text field fill, and the input
+    // field's fill when hovered. The menus' positive (completion) mark.
+    mode light {
+      content_only_thumb = white
+      outline_background = css.background
+      outline_active     = css.accent
+      outline_border     = css.border
+      ghost_active       = css.accent
+      field_background   = transparent
+      field_hover        = transparent
+      menu_positive      = gray(30, 1)
+    }
+    mode dark {
+      content_only_thumb = black
+      outline_background = alpha(css.input, 0.3)
+      outline_active     = alpha(css.input, 0.5)
+      outline_border     = css.input
+      ghost_active       = alpha(css.accent, 0.5)
+      field_background   = alpha(css.input, 0.3)
+      field_hover        = alpha(css.input, 0.5)
+      menu_positive      = gray(75, 1)
+    }
+  }
+
+  metrics {
+    control {
+      height         = 36
+      control_height = 36
+      padding_x      = first(css.spacing * 3.5, 14)
+      padding_y      = first(css.spacing * 2, 8)
+      gap            = first(css.spacing * 2, 8)
+      radius         = first(max(css.radius - 2, 0), 6)
+      icon_size      = 16
+
+      size sm {
+        height         = 28
+        control_height = 28
+        padding_x      = first(css.spacing * 2.5, 10)
+        padding_y      = first(css.spacing * 1.25, 5)
+        gap            = first(css.spacing * 1.5, 6)
+        radius         = first(max(css.radius - 4, 0), 5)
+        icon_size      = 14
+      }
+      size lg {
+        height         = 44
+        control_height = 44
+        padding_x      = first(css.spacing * 4.5, 18)
+        padding_y      = first(css.spacing * 2.5, 10)
+        gap            = first(css.spacing * 2.5, 10)
+        radius         = first(css.radius, 8)
+        icon_size      = 18
+      }
+    }
+  }
+
+  typography {
+    font { sans = first(css.font_sans, "System UI") }
+  }
+
+  geometry {
+    label_baseline = 1
+    size sm { label_baseline = 0.5 }
+    size lg { label_baseline = 1.5 }
+  }
+}

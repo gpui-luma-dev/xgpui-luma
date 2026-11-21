@@ -140,7 +140,7 @@ use xgpui_luma::theme::{LumaThemeMode, ThemeTokens};
 let mut source = LumaThemeMode::light();
 source.palette.state.selected.background = ColorValue::display_p3(1.0, 0.0, 0.0, 1.0);
 let tokens = ThemeTokens::from_source(source, GamutMapping::CssLocalMinde)?;
-// Pass tokens to DefaultSliderTheme::new, DefaultButtonFamilyTheme::new, etc.
+// Read tokens.palette, tokens.metrics, …; control styling comes from `.lss` (issue #285).
 ```
 
 `tokens.source()` retrieves an editable source copy with current metrics,

@@ -2,10 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
 
-use crate::controls::button_family::{
-    ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme, compose_button_family_look,
-};
-use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
 
 #[derive(Clone, Debug)]
 pub struct ControlGroupItemVisualContext {
@@ -86,82 +83,10 @@ pub struct ControlGroupItemPalette {
     pub font_family: SharedString,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultControlGroupTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_control_group_theme() -> Arc<dyn ControlGroupTheme> {
     static THEME: OnceLock<Arc<dyn ControlGroupTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultControlGroupTheme::default())).clone()
-}
-
-impl DefaultControlGroupTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl ControlGroupTheme for DefaultControlGroupTheme {
-    fn resolve_list(&self, enabled: bool) -> ControlGroupListLook {
-        let palette = self.tokens.stylesheet.recipes.palette("control_group", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-
-        let geometry =
-            self.tokens
-                .stylesheet
-                .control_group
-                .resolve_geometry(crate::theme::stylesheet::ControlGroupGeometry {
-                    radius: metrics.radius(),
-                    ..Default::default()
-                });
-        ControlGroupListLook {
-            background: if enabled {
-                palette.surface.subtle.background
-            } else {
-                palette.state.disabled.background
-            },
-            border: palette.border.default,
-            radius: geometry.radius,
-            padding_x: geometry.padding_x,
-            padding_y: geometry.padding_y,
-            gap: geometry.gap,
-            vertical_gap: geometry.vertical_gap,
-            border_width: geometry.border_width,
-            disabled_opacity: geometry.disabled_opacity,
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn default_item_palette(
-        &self,
-        selected: bool,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-    ) -> ControlGroupItemPalette {
-        let button_theme = DefaultButtonFamilyTheme::new(self.tokens.clone());
-        let role = ButtonFamilyRole::Toggle { selected };
-        let palette = button_theme.resolve(role, state);
-        let look = compose_button_family_look(&palette, role, scale, scale.radius);
-
-        ControlGroupItemPalette {
-            foreground: look.foreground,
-            background: look.background,
-            muted_foreground: self
-                .tokens
-                .stylesheet
-                .recipes
-                .palette("control_group", &self.tokens.palette)
-                .app
-                .muted_foreground,
-            typography: look.typography,
-            font_family: look.font_family.clone(),
-        }
-    }
+    THEME.get_or_init(|| Arc::new(super::styled::StyledControlGroupTheme::sdk())).clone()
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

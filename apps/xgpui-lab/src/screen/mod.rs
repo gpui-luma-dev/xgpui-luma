@@ -320,14 +320,25 @@ pub(crate) fn control_row() -> Div {
     div().flex().flex_wrap().items_center().gap(LabMetrics::STANDARD.control_gap)
 }
 
-/// Apply the reference switch label typography to a labeled control.
+/// Apply the reference switch label typography (the Radix `.lss` switch label) to a labeled control.
 pub(crate) fn labeled_control(look: &Look, element: Div) -> Div {
-    let label =
-        xgpui_luma_look_radix::switch_theme(look).resolve(false, xgpui_luma::theme::InteractionState::default());
+    use xgpui_luma::style::lss::{AttrValue, ControlId, PartId, StyleKey, Value};
+    let theme = look.style_theme();
+    let mut key = StyleKey::new(ControlId::new("switch"));
+    if let Some(size) = theme.stylesheet().config().attribute("size") {
+        key = key.attr(size, AttrValue::named(look.size().key()));
+    }
+    let resolved = theme.resolve(&key);
+    let label = resolved.part(PartId::new("label"));
+    let typography = xgpui_luma::theme::LumaTextStyle {
+        size: label.font_size().unwrap_or(14.0),
+        line_height: label.line_height().unwrap_or(20.0),
+        weight: gpui::FontWeight(label.value("font_weight").and_then(Value::as_number).unwrap_or(400.0)),
+    };
     element
-        .typography_style(label.label_typography)
-        .font_family(label.label_font_family)
-        .text_color(label.label_color)
+        .typography_style(typography)
+        .font_family(gpui::SharedString::from(label.font_family().unwrap_or("").to_string()))
+        .text_color(label.foreground().map(gpui::Hsla::from).unwrap_or_else(|| look.chrome().body_text))
 }
 
 /// Supporting panel surface.

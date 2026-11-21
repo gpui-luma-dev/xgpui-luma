@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="How Luma styles controls with .lss files: one place per layer for every color, size and state, layered from the SDK through each Look.">
+<title>Style language (.lss) · Luma SDK</title>
+<script src="theme-init.js"></script>
+<link rel="stylesheet" href="site.css">
+<!-- Prism 1.30.0: local core and Rust/TOML grammars; MIT license in vendor/prism/LICENSE. -->
+<script src="vendor/prism/prism-core.min.js" data-manual defer></script>
+<script src="vendor/prism/prism-rust.min.js" defer></script>
+<script src="vendor/prism/prism-toml.min.js" defer></script>
+<script src="navigation.js" defer></script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header data-site-header></header>
+<div data-site-mobile-nav></div>
+<div class="layout">
+<aside class="sidebar" data-site-sidebar aria-label="Documentation navigation"></aside>
+<main id="main">
+<div class="breadcrumb"><span>Luma</span><span aria-hidden="true">/</span><span>Looks</span><span aria-hidden="true">/</span><span>Style language</span></div>
+<h1>Style language (.lss)</h1>
+<p class="intro">Every color, size, font and state a control paints comes from a <code>.lss</code> file: one file per control in the SDK, and one per control in each Look that restyles it.</p>
+
+<section id="why"><h2>Why a style language</h2>
+<p>Before <code>.lss</code>, a control’s appearance was spread across Rust: an SDK theme built from tokens, a palette per look, rule tables, size presets, adapters and inspector code that re-derived the same values to show them. Changing one hover color meant finding the right one of several places, and the inspector could drift from what was painted.</p>
+<p>The style language puts the appearance in one place per layer:</p>
+<ul>
+<li><strong>One file to read.</strong> The SDK’s <code>button.lss</code> says what a button looks like by default; Shadcn’s <code>button.lss</code> says only how Shadcn differs. There is no other place a button color comes from.</li>
+<li><strong>The file is the schema.</strong> A control’s properties are declared in its SDK file with a kind (<code>length</code>, <code>color</code>, …) and a doc comment, so files are checked when they load and tools can list every property without per-control Rust.</li>
+<li><strong>Every value knows where it came from.</strong> Resolution records the rule that won, the rules it beat and the tokens it read. The Studio and lab inspectors show exactly that, so what you inspect is what is painted.</li>
+<li><strong>Less code.</strong> The migration replaced about 14,000 lines of look-specific Rust with about 2,400 lines of <code>.lss</code>.</li>
+</ul>
+<p>Behavior stays in Rust: controls own state, input, focus and events; templates own structure. <code>.lss</code> only answers “what does this part look like in this state, at this size, in this variant?”.</p>
+</section>
+
+<section id="layers"><h2>Layers: the SDK, then a Look</h2>
+<p>Style files are loaded in layers. The <strong>SDK layer</strong> declares each control and gives it working defaults, so SDK controls render on their own. A <strong>Look layer</strong> (Shadcn, Radix, or your own) is compiled over it and changes only what it needs. An app layer can sit on top the same way.</p>
+<div class="event-table"><table>
+<thead><tr><th>Layer</th><th>Where</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>SDK</td><td><code>crates/sdk/src/controls/**/&lt;control&gt;.lss</code>, <code>crates/sdk/src/theme/{tokens,palette,palette-dark}.lss</code></td><td>Declares controls, parts and properties; sets defaults from SDK tokens.</td></tr>
+<tr><td>Shadcn</td><td><code>crates/look-shadcn/src/style/*.lss</code></td><td>Restyles controls with the theme’s CSS variables (<code>css.*</code>).</td></tr>
+<tr><td>Radix</td><td><code>crates/look-radix/src/style/*.lss</code></td><td>Restyles controls with Radix color scales (<code>gray[n]</code>, <code>accent[n]</code>, <code>tone[n]</code>).</td></tr>
+</tbody></table></div>
+<p>A later layer wins over an earlier one property by property, so a Look that sets only <code>background</code> keeps the SDK’s sizes, fonts and focus ring.</p>
+</section>
+
+<section id="anatomy"><h2>Anatomy of a file</h2>
+<p>This is the start of the SDK button (<code>crates/sdk/src/controls/button/button.lss</code>):</p>
+<div class="codebox"><div class="codebar"><span>.lss · SDK button</span><button class="copy" aria-label="Copy SDK button">Copy</button></div><pre><code>/// A pressable face with a label or an icon.
+button {
+  /// Whole-control opacity when disabled.
+  disabled_opacity: number = metrics.disabled_opacity
+  height    = metrics.control.control_height
+  padding_x = metrics.control.padding_x
+  radius    = exact(metrics.control.radius)
+  /// Icon size for icon buttons, and for icons beside a label.
+  icon_size: length = metrics.control.icon_size
+
+  /// The face.
+  part root {
+    background   = palette.surface.subtle.background
+    foreground   = palette.app.foreground
+    border       = palette.border.default
+    focus_border = palette.focus.ring
+    font_size    = typography.text.label.size
+    transition   = motion.default
+    :hover    { background = palette.state.hover.background }
+    :pressed  { background = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
+  }
+}</code></pre></div>
+<div class="event-table"><table>
+<thead><tr><th>Construct</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>button { … }</code></td><td>A control. Its own properties belong to its <code>root</code> part.</td></tr>
+<tr><td><code>name: kind = expr</code></td><td>A <strong>declaration</strong>: a new property with a kind and, with <code>///</code>, a doc comment. Only the SDK layer declares.</td></tr>
+<tr><td><code>name = expr</code></td><td>An assignment to a core property (<code>background</code>, <code>radius</code>, <code>font_size</code>, …) or a declared one. Unknown names are errors.</td></tr>
+<tr><td><code>part p { … }</code></td><td>A paintable piece of the control: a table has <code>root</code> (the frame), <code>header</code> and <code>row</code>; a slider has <code>track</code>, <code>fill</code> and <code>thumb</code>.</td></tr>
+<tr><td><code>:hover { … }</code>, <code>:selected:pressed { … }</code></td><td>A <strong>state block</strong>: applies when all listed states hold.</td></tr>
+<tr><td><code>variant ghost { … }</code>, <code>size sm { … }</code></td><td>A <strong>scope</strong>: applies only when the instance has that attribute value. Scopes nest.</td></tr>
+<tr><td><code>toggle extends button</code></td><td>Start from another control: every layer’s <code>button</code> rules also style <code>toggle</code>, so a Look’s button restyle reaches its toggles.</td></tr>
+<tr><td><code>name := expr</code></td><td>An <strong>owning assignment</strong>: less specific rules for that property (including the base state rules) stop applying, so a variant can replace a property without restating every state.</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="looks"><h2>How a Look restyles a control</h2>
+<p>A Look file names the same control and sets only what differs. Shadcn’s button paints the face from the theme’s CSS variables and adds its variants, sizes and corner presets:</p>
+<div class="codebox"><div class="codebar"><span>.lss · Shadcn button (excerpt)</span><button class="copy" aria-label="Copy Shadcn button">Copy</button></div><pre><code>button {
+  padding_x = 16
+  size sm { padding_x = 12 }
+  size lg { padding_x = 20 }
+  radius none  { radius = exact(0)                    icon_radius = exact(0) }
+  radius small { radius = exact(shadcn.radius_small)  icon_radius = exact(shadcn.radius_small) }
+  radius full  { radius = exact(height / 2)           icon_radius = exact(height / 2) }
+
+  part root {
+    background := css.primary
+    foreground := css.primary_foreground
+    :hover    { background = css.primary_hover }
+    :pressed  { background = css.primary_pressed }
+    :disabled { background = css.muted  foreground = css.muted_foreground }
+  }
+
+  variant ghost {
+    part root {
+      background := transparent
+      foreground := css.foreground
+      border     := none
+      :hover    { background = shadcn.ghost_active  foreground = css.accent_foreground }
+      :disabled { background = transparent  foreground = css.muted_foreground }
+    }
+  }
+}</code></pre></div>
+<p>Radix does the same with its color scales and adds a tone and a contrast state; a badge, for example:</p>
+<div class="codebox"><div class="codebar"><span>.lss · Radix badge (excerpt)</span><button class="copy" aria-label="Copy Radix badge">Copy</button></div><pre><code>badge {
+  part root {
+    background = tone[3]
+    foreground = tone[11]
+    :high_contrast { foreground = tone[12] }
+  }
+  size 1 { part root { radius = exact(3)  padding_x = exact(6)  padding_y = exact(2) } }
+
+  variant solid {
+    part root {
+      background = tone[9]
+      foreground = look.tone_contrast
+      :high_contrast { background = tone[12]  foreground = tone[1] }
+    }
+  }
+}</code></pre></div>
+<p>Attributes and states are configured per Look. The SDK declares <code>variant</code> and <code>size</code> and the interaction states (<code>hover</code>, <code>pressed</code>, <code>focused</code>, <code>disabled</code>, plus control states such as <code>selected</code> and <code>checked</code>). Shadcn adds a <code>radius</code> attribute (<code>none|small|medium|large|full</code>); Radix adds <code>tone</code> and <code>radius</code> attributes and a <code>high_contrast</code> state. A Look’s base values are its default size: Shadcn writes <code>size sm</code> and <code>size lg</code> over <code>md</code>, Radix writes <code>size 1</code> and <code>size 3</code> over <code>2</code>.</p>
+</section>
+
+<section id="cascade"><h2>How a value is chosen</h2>
+<p>To paint a part, the control asks for one key: the control, its attribute values (variant, size, …) and its active states. For each property every rule whose scope and states match the key is a candidate, and the highest-ranked one wins:</p>
+<ol>
+<li><strong>More states</strong> wins (<code>:selected:hover</code> beats <code>:hover</code>).</li>
+<li><strong>An interaction state</strong> beats a non-interaction state at the same count (<code>:hover</code> beats <code>:selected</code>).</li>
+<li><strong>More attributes</strong> wins (a <code>variant ghost</code> rule beats the base rule for the same states).</li>
+<li><strong>A higher layer</strong> wins (Look over SDK).</li>
+<li><strong>The control’s own rule</strong> beats one reached through <code>extends</code>.</li>
+<li><strong>Later in the file</strong> wins.</li>
+</ol>
+<p>The interaction states are exclusive, <code>disabled &gt; pressed &gt; hover</code>: only the strongest one active stays in the key, so a disabled control never takes hover or pressed rules. An owning assignment (<code>:=</code>) removes less specific candidates before ranking.</p>
+</section>
+
+<section id="values"><h2>Tokens, functions and lengths</h2>
+<ul>
+<li><strong>Tokens</strong> are named values shared by every control: the SDK’s <code>metrics</code>, <code>palette</code>, <code>typography</code>, <code>elevation</code> and <code>motion</code> (in <code>theme/tokens.lss</code> and the light and dark palette files), and a Look’s own groups (<code>shadcn.*</code>, <code>radix.*</code>). Tokens can be scoped by size and by <code>mode light</code> / <code>mode dark</code>; control files never branch on mode.</li>
+<li><strong>Native roots</strong> come from Rust rather than files: Shadcn’s <code>css.*</code> reads the theme’s CSS variables (<code>css.primary_hover</code> derives hover and pressed layers the CSS doesn’t list); Radix’s <code>gray[n]</code>, <code>accent[n]</code> and <code>tone[n]</code> read the Look’s scales.</li>
+<li><strong>Functions</strong>: built-ins such as <code>alpha</code>, <code>mix</code>, <code>first</code> (the first value that exists, for themes missing a variable), <code>min</code>, <code>max</code>, <code>exact</code>, <code>box_shadow</code> and <code>inset_shadow</code>, plus Look functions (Shadcn <code>action_layer</code>, <code>darken</code>; Radix <code>shift_lightness</code>).</li>
+<li><strong>No units.</strong> A property’s kind says what a number means. Lengths snap to whole pixels unless written <code>exact(…)</code>; text sizes are never snapped.</li>
+</ul>
+</section>
+
+<section id="rust"><h2>How Rust reads the files</h2>
+<p>A control binds to its style with a <code>StyleBinding</code>: the control name, a theme source and any fixed attributes. A <code>Styled*</code> reader resolves the binding for the current states and turns the values into the structs the control’s template draws:</p>
+<div class="codebox"><div class="codebar"><span>Rust · Binding a Look’s tabs</span><button class="copy" aria-label="Copy binding example">Copy</button></div><pre><code class="language-rust">use std::sync::Arc;
+use xgpui_luma::controls::tabs::StyledTabs;
+use xgpui_luma::style::{StyleBinding, ThemeSource};
+
+// `look` is a ShadcnLook. A live source re-reads the Look's theme on each render,
+// so mode or theme changes repaint without rebuilding the control.
+let source = look.clone();
+let binding = StyleBinding::new("tabs", ThemeSource::Live(Arc::new(move || source.style_theme())))
+    .attr("size", "sm");
+let tabs = StyledTabs::new(binding);
+let item = tabs.item(true, Default::default()); // the active tab at rest</code></pre></div>
+<p class="small">Illustrative: Looks build these bindings for you; you write one only to style a control yourself.</p>
+<p>The SDK’s <code>default_*_theme()</code> functions return readers over the SDK files alone, so SDK controls render without a Look. Button-family controls draw with <code>StyledButtonTemplate</code>, which picks <code>button</code> or <code>toggle</code> by the render model’s role. A few things stay in Rust beside the files, where a value depends on the instance rather than the style (for example a Radix avatar’s full radius is half its diameter).</p>
+</section>
+
+<section id="inspect"><h2>Inspecting and editing</h2>
+<p>Resolution can explain itself. <code>Theme::inspect</code> returns, for every part and property, the value, the rule that won, the rules it beat and the tokens it read. Luma Studio’s control inspectors and the lab Workshop’s style column are built on this alone, so they need no per-control code and always match what is painted.</p>
+<p>Files can also be changed at runtime: <code>Stylesheet::apply</code> takes edits (replace a rule’s expression, or insert a rule) and returns the recompiled stylesheet or diagnostics, and <code>Overrides</code> set a value on one control instance. Edits export back to <code>.lss</code> text.</p>
+</section>
+
+<section id="where"><h2>Finding a control’s style</h2>
+<p>Each SDK control’s file sits beside its code: <code>crates/sdk/src/controls/button/button.lss</code>, <code>…/navigation/tabs/tabs.lss</code>, <code>…/collection/table/table.lss</code>. Each Look has one file per control it restyles under <code>src/style/</code>, named after the control, and lists them in <code>src/style/mod.rs</code>. Every file starts with a comment saying which layer it is and what reads it.</p>
+<p>The full language reference is in <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/docs/style-language-design.md">style-language-design.md</a>; the crate API in <a href="https://github.com/gpui-luma-dev/xgpui-luma/blob/main/docs/style-crate-api.md">style-crate-api.md</a>.</p>
+</section>
+<footer data-site-footer></footer></main>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><a href="#why">Why a style language</a><a href="#layers">Layers</a><a href="#anatomy">Anatomy of a file</a><a href="#looks">How a Look restyles a control</a><a href="#cascade">How a value is chosen</a><a href="#values">Tokens, functions and lengths</a><a href="#rust">How Rust reads the files</a><a href="#inspect">Inspecting and editing</a><a href="#where">Finding a control’s style</a></nav>
+</div>
+</body>
+</html>

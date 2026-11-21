@@ -1,0 +1,58 @@
+// Radix slider. Layer: look. Surface (base) and classic share a translucent gray track and the primary range
+// (accent 10 hovered, 11 pressed); soft uses a gray 4 track and an accent 6 range. A white thumb with a
+// hairline ring; classic and soft add depth. Sizes 1–3.
+
+slider {
+  track_height = exact(6)
+  thumb_size   = exact(16)
+  size 1 { track_height = exact(4)  thumb_size = exact(12) }
+  size 3 { track_height = exact(8)  thumb_size = exact(20) }
+
+  part root { width = exact(120)  height = exact(20)  radius = exact(10) }
+  size 1 { part root { height = exact(16)  radius = exact(8) } }
+  size 3 { part root { height = exact(24)  radius = exact(12) } }
+
+  part track {
+    background = alpha(gray[3], 0.55)
+    :disabled { background = alpha(gray[4], 0.55) }
+  }
+
+  part fill {
+    background = radix.role.primary
+    :hover    { background = accent[10] }
+    :pressed  { background = accent[11] }
+    :disabled { background = gray[8] }
+  }
+
+  part thumb {
+    background = white
+    border     = alpha(black, 0.16)
+    shadow     = [box_shadow(alpha(black, 0.16), 0, 0, 0, 1)]
+    :disabled { background = light_gray[3]  border = gray[6]  shadow = [] }
+  }
+
+  variant classic {
+    part thumb {
+      border := alpha(black, 0.22)
+      shadow := [box_shadow(alpha(black, 0.18), 0, 0, 0, 1), box_shadow(alpha(black, 0.08), 0, 1, 3, 0),
+                 box_shadow(alpha(black, 0.06), 0, 2, 4, -1)]
+      :disabled { background = light_gray[3]  border = gray[6]  shadow = [] }
+    }
+  }
+
+  variant soft {
+    part track {
+      background := alpha(gray[4], 0.65)
+      :disabled { background = alpha(gray[4], 0.55) }
+    }
+    part fill {
+      background := accent[6]
+      :disabled { background = gray[8] }
+    }
+    part thumb {
+      border := alpha(accent[6], 0.35)
+      shadow := [box_shadow(alpha(black, 0.14), 0, 0, 0, 1), box_shadow(alpha(black, 0.10), 0, 1, 2, 0)]
+      :disabled { background = light_gray[3]  border = gray[6]  shadow = [] }
+    }
+  }
+}

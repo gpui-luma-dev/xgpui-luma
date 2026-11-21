@@ -195,12 +195,6 @@ pub use crate::controls::layout::resizable_panels::theme::{
 pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
-pub use crate::controls::choice::checkbox::theme::{
-    CheckboxStylesheet, CheckboxGeometryStylesheet, CheckboxGeometry, ResolvedCheckboxGeometry,
-};
-pub use crate::controls::choice::radio_button::theme::{
-    RadioStylesheet, RadioGeometryStylesheet, RadioGeometry, ResolvedRadioGeometry,
-};
 pub use crate::controls::text::textfield::theme::{
     TextFieldStylesheet, TextFieldGeometryStylesheet, TextFieldGeometry, ResolvedTextFieldGeometry,
 };
@@ -403,8 +397,6 @@ mod tests {
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         ToggleStylesheet::validate_contract();
-        CheckboxStylesheet::validate_contract();
-        RadioStylesheet::validate_contract();
         TextFieldStylesheet::validate_contract();
         TextAreaStylesheet::validate_contract();
         ProgressStylesheet::validate_contract();
@@ -428,12 +420,6 @@ impl SelectSizeKey for crate::theme::stylesheet::PaletteRecipes {}
 impl SelectSizeKey for crate::theme::stylesheet::FontFeaturesStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::IconsStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::TabsStylesheet {}
-
-impl SelectSizeKey for crate::theme::stylesheet::SwitchStylesheet {
-    fn select_size_key(&self, key: &str) -> Self {
-        Self { geometry: self.authored_geometry_for(key), sizes: self.sizes.clone() }
-    }
-}
 
 impl SelectSizeKey for crate::theme::stylesheet::SliderStylesheet {
     fn select_size_key(&self, key: &str) -> Self {

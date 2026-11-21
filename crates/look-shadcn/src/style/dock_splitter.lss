@@ -1,0 +1,12 @@
+// Shadcn dock splitter. Layer: look. A border line, also under the pointer, with a primary grip; muted
+// foreground when disabled.
+
+dock_splitter {
+  line       = css.border
+  hover_line = css.border
+  thumb      = css.primary
+
+  part root {
+    :disabled { line = css.muted_foreground  hover_line = css.muted_foreground  thumb = css.muted_foreground }
+  }
+}

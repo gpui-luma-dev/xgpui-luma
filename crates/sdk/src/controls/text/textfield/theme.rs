@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use gpui::{BoxShadow, Hsla, SharedString};
 
-use crate::theme::{LumaTextStyle, MetricTokens, StandardBoxScale, ThemeTokens};
+use crate::theme::{LumaTextStyle, MetricTokens, StandardBoxScale};
 use crate::controls::textfield::TextFieldState;
 
 #[derive(Clone, Debug)]
@@ -63,95 +63,11 @@ pub trait TextFieldTheme: Send + Sync {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultTextFieldTheme {
-    tokens: ThemeTokens,
-}
-
+/// The SDK's text-field theme: `textfield.lss` alone.
 pub fn default_textfield_theme() -> Arc<dyn TextFieldTheme> {
     static THEME: OnceLock<Arc<dyn TextFieldTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultTextFieldTheme::default())).clone()
-}
-
-impl DefaultTextFieldTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl TextFieldTheme for DefaultTextFieldTheme {
-    fn resolve(&self, state: TextFieldState, enabled: bool) -> TextFieldPalette {
-        let palette = self.tokens.stylesheet.recipes.palette("textfield", &self.tokens.palette);
-        let typography = &self.tokens.typography;
-
-        let (background, foreground, border, placeholder, icon, selection_background, selection_foreground, caret) =
-            if enabled {
-                let background = palette.form.input.background;
-                let border = if state.invalid {
-                    palette.form.input.invalid_border
-                } else {
-                    palette.form.input.border
-                };
-
-                (
-                    background,
-                    palette.form.input.foreground,
-                    border,
-                    palette.form.input.placeholder,
-                    palette.form.input.placeholder,
-                    palette.state.selected.background,
-                    palette.state.selected.foreground,
-                    palette.form.input.foreground,
-                )
-            } else {
-                (
-                    palette.state.disabled.background,
-                    palette.state.disabled.foreground,
-                    palette.form.input.border,
-                    palette.state.disabled.foreground,
-                    palette.state.disabled.foreground,
-                    palette.state.selected.background,
-                    palette.state.selected.foreground,
-                    palette.state.disabled.foreground,
-                )
-            };
-
-        TextFieldPalette {
-            focus_border: if state.invalid {
-                gpui::transparent_black()
-            } else {
-                palette.focus.ring
-            },
-            background,
-            foreground,
-            border,
-            placeholder,
-            icon,
-            selection_background,
-            selection_foreground,
-            caret,
-            shadow: None,
-            typography: typography.text.body,
-            font_family: typography.font.sans.family.clone().into(),
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.tokens.metrics
-    }
-
-    fn resolve_look(&self, state: TextFieldState, enabled: bool, scale: &StandardBoxScale) -> TextFieldLook {
-        let mut palette = self.resolve(state, enabled);
-        apply_control_typography(&mut palette.typography, &self.tokens.typography);
-        let mut look = compose_textfield_look(&palette, scale, self.metrics().border_width);
-        look.helper_geometry = self.tokens.stylesheet.shared_geometry();
-        crate::theme::stylesheet::apply_common_geometry!(
-            self.tokens.stylesheet.textfield, TextFieldGeometry, look,
-            [min_height => min_height, padding_x => padding_x, padding_y => padding_y, gap => gap, icon_size => icon_size, font_size => typography.size, line_height => typography.line_height, caret_width => caret_width, caret_height_extra => caret_height_extra, disabled_opacity => disabled_opacity]
-        );
-        look
-    }
+    THEME.get_or_init(|| Arc::new(crate::controls::text::StyledTextFieldTheme::sdk())).clone()
 }
 
 /// Scales text-field typography from `LumaTypography` size roles for lookless fallbacks.
@@ -214,12 +130,15 @@ mod tests {
 
     #[test]
     fn default_theme_uses_body_typography_and_control_icon_size() {
-        let theme = DefaultTextFieldTheme::default();
-        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
-        let look = theme.resolve_look(TextFieldState::default(), true, &scale);
+        let tokens = crate::theme::ThemeTokens::default();
+        let look = default_textfield_theme().resolve_look(
+            TextFieldState::default(),
+            true,
+            &StandardBoxScale::compute(&tokens.metrics, 1.0),
+        );
 
-        assert!((look.typography.size - theme.tokens.typography.text.body.size).abs() < f32::EPSILON);
-        assert_eq!(look.icon_size, theme.metrics().control.icon_size);
+        assert!((look.typography.size - tokens.typography.text.body.size).abs() < f32::EPSILON);
+        assert_eq!(look.icon_size, tokens.metrics.control.icon_size);
     }
 }
 

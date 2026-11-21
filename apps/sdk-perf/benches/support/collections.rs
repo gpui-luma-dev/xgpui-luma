@@ -258,7 +258,7 @@ pub fn operate(host: &Entity<Host>, cx: &mut VisualTestContext, phase: &str, cou
         // Fixed fixture columns and the SDK theme define the actual divider.
         // GPUI debug selectors are absent in release; integration tests verify
         // these coordinates against measured geometry and the committed resize.
-        let look = DefaultTableTheme::default().resolve_look(true, true);
+        let look = StyledTableTheme::sdk().resolve_look(true, true);
         let start = point(
             px(look.border_width + look.padding_x + 150.0 + if step.is_multiple_of(2) { 24.0 } else { 0.0 }),
             px(look.border_width + look.padding_y + look.header_typography.line_height * 0.5),

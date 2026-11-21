@@ -2,65 +2,11 @@
 use std::sync::Arc;
 use gpui::{SharedString, px};
 use xgpui_luma::controls::{dock_splitter::*, split_view::*};
-use crate::{Look, ScaleFamily, SemanticRole};
+use crate::Look;
 
-struct DockTheme {
-    look: Look,
-}
-impl DockSplitterTheme for DockTheme {
-    fn resolve(&self, enabled: bool) -> DockSplitterLook {
-        let geometry = self.look.common_stylesheet().dock_splitter.resolve_geometry_for("md", Default::default());
-        let active = self
-            .look
-            .resolve_role(if enabled {
-                SemanticRole::Focus
-            } else {
-                SemanticRole::MutedForeground
-            })
-            .hsla();
-        DockSplitterLook {
-            line_color: self
-                .look
-                .resolve_role(if enabled {
-                    SemanticRole::Border
-                } else {
-                    SemanticRole::MutedForeground
-                })
-                .hsla(),
-            hover_color: active,
-            thumb_color: active,
-            hit_target_px: geometry.hit_target,
-            visible_line_px: geometry.visible_line,
-            geometry,
-        }
-    }
-}
-struct SplitTheme {
-    look: Look,
-}
-impl SplitViewTheme for SplitTheme {
-    fn resolve(&self, _: bool, enabled: bool) -> SplitViewLook {
-        SplitViewLook {
-            geometry: self.look.common_stylesheet().split_view.resolve_geometry(Default::default()),
-            separator: if enabled {
-                self.look.resolve_role(SemanticRole::Border).hsla()
-            } else {
-                self.look.resolve_step(ScaleFamily::Gray, 4).hsla()
-            },
-            separator_hover: self
-                .look
-                .resolve_role(if enabled {
-                    SemanticRole::Focus
-                } else {
-                    SemanticRole::MutedForeground
-                })
-                .hsla(),
-        }
-    }
-}
-/// Live Radix splitter colors and shared geometry. Notify controls after Look edits.
+/// Live Radix splitter from `.lss` (`style/dock_splitter.lss`). Notify controls after Look edits.
 pub fn dock_splitter_theme(look: &Look) -> Arc<dyn DockSplitterTheme> {
-    Arc::new(DockTheme { look: look.clone() })
+    Arc::new(StyledDockSplitterTheme::new(crate::textfield::sized_binding(look, "dock_splitter")))
 }
 /// SDK splitter template; enable the optional vertical grip with `show_thumb`.
 pub fn dock_splitter_template(show_thumb: bool) -> Arc<dyn DockSplitterTemplate> {
@@ -77,9 +23,9 @@ pub fn dock_splitter_builder(
         .theme(dock_splitter_theme(look))
         .template(dock_splitter_template(false))
 }
-/// Live Radix separator colors and geometry, including disabled chrome.
+/// Live Radix separator from `.lss` (`style/split_view.lss`), including disabled chrome.
 pub fn split_view_theme(look: &Look) -> Arc<dyn SplitViewTheme> {
-    Arc::new(SplitTheme { look: look.clone() })
+    Arc::new(StyledSplitViewTheme::new(crate::textfield::sized_binding(look, "split_view")))
 }
 /// SDK pane/separator template. The render model supplies [`split_view_theme`].
 pub fn split_view_template() -> Arc<dyn SplitViewTemplate> {
@@ -112,7 +58,7 @@ pub fn split_view_builder(look: &Look, id: impl Into<SharedString>) -> SplitView
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Accent, Gray};
+    use crate::{Accent, Gray, SemanticRole};
     use xgpui_luma::theme::ThemeMode;
     #[test]
     fn splitter_colors_follow_live_palettes_and_disabled_state() {
@@ -126,36 +72,21 @@ mod tests {
                 for enabled in [false, true] {
                     let dock = dock.resolve(enabled);
                     let split = split.resolve(true, enabled);
-                    assert_eq!(dock.hover_color, split.separator_hover);
-                    assert_eq!(
+                    crate::control_group::assert_close(dock.hover_color, split.separator_hover);
+                    crate::control_group::assert_close(
                         dock.hover_color,
                         look.resolve_role(if enabled {
                             SemanticRole::Focus
                         } else {
                             SemanticRole::MutedForeground
                         })
-                        .hsla()
+                        .hsla(),
                     );
                     assert!(dock.hit_target_px >= dock.visible_line_px);
                     assert!(split.geometry.hitbox_width >= split.geometry.cue_hovered_width);
                 }
             }
         }
-    }
-    #[test]
-    fn splitter_geometry_updates_are_isolated_to_forks() {
-        let base = Look::built_in();
-        let fork = base.fork();
-        let dock = dock_splitter_theme(&fork);
-        let split = split_view_theme(&fork);
-        let before = dock_splitter_theme(&base).resolve(true);
-        let mut sheet = fork.common_stylesheet();
-        sheet.dock_splitter.geometry.hit_target = Some(19.0);
-        sheet.split_view.geometry.hitbox_width = Some(27.0);
-        fork.set_common_stylesheet(sheet);
-        assert_eq!(dock.resolve(true).hit_target_px, 19.0);
-        assert_eq!(split.resolve(false, true).geometry.hitbox_width, 27.0);
-        assert_eq!(dock_splitter_theme(&base).resolve(true).hit_target_px, before.hit_target_px);
     }
     #[cfg(feature = "test-support")]
     #[test]
@@ -180,5 +111,91 @@ mod tests {
                 assert_eq!(view.effective_sidebar_width(), px(100.0));
             })
         });
+    }
+}
+
+#[cfg(test)]
+mod lss_tests {
+    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+    use xgpui_luma::theme::{InteractionState, ThemeMode};
+
+    use crate::control_group::assert_close;
+    use crate::{Look, RadixSize, ScaleFamily, SemanticRole};
+
+    #[test]
+    fn lss_layout_matches_the_native_layout() {
+        let base = Look::built_in();
+        for mode in [ThemeMode::Light, ThemeMode::Dark] {
+            base.set_mode(mode);
+            let gray = |n| base.resolve_step(ScaleFamily::Gray, n).hsla();
+            let role = |r| base.resolve_role(r).hsla();
+            for (size, (thickness, track, thumb, min)) in [
+                (RadixSize::One, (10.0, 3.0, 6.0, 24.0)),
+                (RadixSize::Two, (12.0, 4.0, 8.0, 28.0)),
+                (RadixSize::Three, (14.0, 5.0, 10.0, 32.0)),
+            ] {
+                let look = base.with_size(size);
+                let scrollbar = crate::scrollbar_theme(&look);
+                for (state, step) in [
+                    (InteractionState::default(), 8),
+                    (InteractionState { hovered: true, ..Default::default() }, 9),
+                    (InteractionState { pressed: true, ..Default::default() }, 10),
+                    (InteractionState { disabled: true, ..Default::default() }, 5),
+                ] {
+                    let ghost = scrollbar.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Ghost);
+                    let soft = scrollbar.resolve(state, ScrollbarOrientation::Vertical, ScrollbarStyle::Soft);
+                    assert_close(ghost.thumb_background, gray(step));
+                    assert_eq!(ghost.track_background.a, 0.0);
+                    assert_close(soft.track_background, gray(3));
+                    assert_eq!((ghost.length, soft.length), (260.0, 180.0));
+                    assert_eq!(
+                        (ghost.thickness, ghost.track_thickness, ghost.thumb_thickness, ghost.min_thumb_length),
+                        (thickness, track, thumb, min)
+                    );
+                    assert_eq!((ghost.radius, ghost.disabled_opacity), (999.0, 0.56));
+                }
+
+                let panels = crate::resizable_panels_theme(&look);
+                for disabled in [false, true] {
+                    let got = panels.resolve(InteractionState { disabled, hovered: true, ..Default::default() });
+                    assert_close(got.border, role(SemanticRole::Border));
+                    assert_close(got.divider, if disabled { gray(4) } else { role(SemanticRole::Border) });
+                    assert_close(got.grip, role(SemanticRole::MutedForeground));
+                    let emphasis = if disabled {
+                        SemanticRole::MutedForeground
+                    } else {
+                        SemanticRole::Focus
+                    };
+                    assert_close(got.grip_emphasis, role(emphasis));
+                    assert_eq!((got.border_width, got.divider_width), (1.0, 1.0));
+                    assert_eq!(got.disabled_opacity, if disabled { 0.45 } else { 1.0 });
+                }
+
+                let (dock, split) = (crate::dock_splitter_theme(&look), crate::split_view_theme(&look));
+                for enabled in [true, false] {
+                    let active = role(if enabled {
+                        SemanticRole::Focus
+                    } else {
+                        SemanticRole::MutedForeground
+                    });
+                    let got = dock.resolve(enabled);
+                    assert_close(
+                        got.line_color,
+                        role(if enabled {
+                            SemanticRole::Border
+                        } else {
+                            SemanticRole::MutedForeground
+                        }),
+                    );
+                    assert_close(got.hover_color, active);
+                    assert_close(got.thumb_color, active);
+                    assert_eq!((got.hit_target_px, got.visible_line_px, got.geometry.thumb_height), (8.0, 1.0, 36.0));
+                    let got = split.resolve(false, enabled);
+                    assert_close(got.separator, if enabled { role(SemanticRole::Border) } else { gray(4) });
+                    assert_close(got.separator_hover, active);
+                    assert_eq!((got.geometry.hitbox_width, got.geometry.cue_hovered_width), (20.0, 8.0));
+                }
+            }
+        }
     }
 }

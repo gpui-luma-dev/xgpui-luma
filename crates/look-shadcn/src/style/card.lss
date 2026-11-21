@@ -1,0 +1,28 @@
+// Shadcn card. Layer: look. The card colors with the border edge and `shadow-xs`, at the theme radius
+// (`--radius-lg`); the title an h4 (the label at sm, xl at lg), the description muted caption text.
+
+card {
+  part root {
+    background = css.card
+    foreground = css.card_foreground
+    border     = css.border
+    shadow     = first(css.shadow_xs, [])
+    radius     = exact(first(css.radius, 8))
+  }
+  part title {
+    foreground  = css.card_foreground
+    font_size   = 16
+    line_height = 24
+    font_weight = 600
+  }
+  part description { foreground = css.muted_foreground }
+
+  size sm {
+    part title {
+      font_size   = typography.text.label.size
+      line_height = typography.text.label.line_height
+      font_weight = typography.text.label.weight
+    }
+  }
+  size lg { part title { font_size = 18  line_height = 26 } }
+}

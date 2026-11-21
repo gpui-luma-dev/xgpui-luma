@@ -1,0 +1,35 @@
+// SDK scrollbar. Layer: sdk. Read by `StyledScrollbarTheme` (styled.rs): the track (`root`), the thumb color
+// and the bar's geometry. The base track is clear; `variant soft` fills it. Also drawn by scroll containers
+// and popup scroll surfaces.
+
+/// A scroll track and thumb.
+scrollbar {
+  /// The bar's hit thickness, the painted track and thumb thicknesses, and the shortest thumb.
+  thickness: length = exact(12)
+  track_thickness: length = exact(4)
+  thumb_thickness: length = exact(8)
+  min_thumb_length: length = exact(28)
+  /// A standalone bar's length, horizontal and vertical.
+  length_h: length = exact(260)
+  length_v: length = exact(180)
+  /// The whole bar's opacity when disabled.
+  disabled_opacity: number = 0.56
+  /// The thumb.
+  thumb: color = palette.border.default
+
+  /// The track.
+  part root {
+    background = transparent
+    radius     = exact(999)
+    :hover    { thumb = palette.state.hover.background }
+    :pressed  { thumb = palette.state.pressed.background }
+    :disabled { background = palette.state.disabled.background  thumb = palette.state.disabled.foreground }
+  }
+
+  variant soft {
+    part root {
+      background := palette.surface.subtle.background
+      :disabled { background = palette.state.disabled.background }
+    }
+  }
+}

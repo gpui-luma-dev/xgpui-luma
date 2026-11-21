@@ -1,0 +1,48 @@
+// SDK floating menu. Layer: sdk. The panel every menu, selector popup and selection panel draws, read by
+// `styled_floating_menu_look` (styled.rs). The item part's `hover` and `disabled` states are the row's.
+
+/// A floating panel of rows.
+floating_menu {
+  /// Popup edge margin, row icon size, submenu offset, positive marks and disabled rows' extra opacity.
+  window_margin: length = 8
+  item_icon_size: length = metrics.control.icon_size
+  submenu_offset_x: length = exact(metrics.control.gap / 2)
+  positive: color = palette.data.positive
+  disabled_opacity: number = 0.56
+
+  /// The panel.
+  part root {
+    background   = palette.surface.floating.background
+    foreground   = palette.surface.floating.foreground
+    border       = palette.surface.floating.border
+    border_width = exact(metrics.border_width)
+    shadow       = elevation.menu
+    radius       = exact(8)
+    padding      = exact(metrics.control.padding_y / 2)
+    min_width    = exact(180)
+  }
+
+  /// A row.
+  part item {
+    background  = transparent
+    foreground  = palette.surface.floating.foreground
+    height      = exact(metrics.control.control_height * 0.9)
+    padding_x   = exact(metrics.control.padding_x * 0.75)
+    gap         = metrics.control.gap
+    radius      = exact(3)
+    font_family = typography.font.sans
+    font_size   = typography.text.body.size
+    line_height = typography.text.body.line_height
+    font_weight = typography.text.body.weight
+    :hover    { background = palette.state.hover.background  foreground = palette.state.hover.foreground }
+    :disabled { foreground = palette.state.disabled.foreground }
+  }
+
+  /// A divider: its color, thickness, space above and below, and inset at each end.
+  part separator {
+    background = palette.surface.floating.border
+    height     = exact(1)
+    padding_y  = exact(metrics.control.gap / 2)
+    padding_x  = exact(0)
+  }
+}

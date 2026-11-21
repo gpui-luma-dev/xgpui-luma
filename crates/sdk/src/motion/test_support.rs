@@ -13,9 +13,6 @@ macro_rules! test_look_motion_contract {
             let look = $make_look;
             look.motion(|m| {
                 let transition = Transition::timed(Duration::from_secs(1), Easing::Linear);
-                m.checkbox.state = transition.clone();
-                m.radio.state = transition.clone();
-                m.toggle.state = transition.clone();
                 m.slider.thumb = transition.clone();
                 m.progress.value = transition.clone();
                 m.tree_view.expansion = transition.clone();
@@ -36,18 +33,30 @@ macro_rules! test_look_motion_contract {
                             values.push(sample(&entity.read(cx).motion_profile().$role));
                         }};
                     }
-                    check!($api::Checkbox::new("checkbox"), state);
-                    check!($api::Radio::new("radio"), state);
-                    check!($api::Toggle::new("toggle"), state);
                     check!($api::Slider::new("slider"), thumb);
                     check!($api::Progress::new("progress"), value);
                     check!($api::TreeView::<()>::new("tree"), expansion);
                     check!($api::PopupMenu::new("menu"), highlight);
                     let context = $api::ContextMenu::new("context").look(&look).spawn(cx);
                     values.push(sample(&context.read(cx).motion_profile().presence.enter));
+                    // The checkbox takes its transition from `.lss` (the SDK's `motion.default`, 200 ms
+                    // out-cubic, unless the look's files say otherwise), not from look motion edits.
+                    let checkbox = $api::Checkbox::new("checkbox").look(&look).spawn(cx);
+                    let lss = Transition::timed(Duration::from_millis(200), Easing::OutCubic);
+                    assert_eq!(sample(&checkbox.read(cx).current_transition()), sample(&lss));
+                    let switch = $api::Switch::new("switch").look(&look).spawn(cx);
+                    assert_eq!(sample(&switch.read(cx).current_transition()), sample(&lss));
+                    let toggle = $api::Toggle::new("toggle").look(&look).spawn(cx);
+                    assert_eq!(sample(&toggle.read(cx).current_transition()), sample(&lss));
+                    let edited_toggle = $api::Toggle::new("edited-toggle").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited_toggle.read(cx).current_transition()), 1.0);
+                    let radio = $api::Radio::new("radio").look(&look).spawn(cx);
+                    assert_eq!(sample(&radio.read(cx).current_transition()), sample(&lss));
+                    let edited_radio = $api::Radio::new("edited-radio").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited_radio.read(cx).current_transition()), 1.0);
                     let edited =
-                        $api::Checkbox::new("edited").motion(|m| m.state = Transition::instant()).look(&look).spawn(cx);
-                    assert_eq!(sample(&edited.read(cx).motion_profile().state), 1.0);
+                        $api::Checkbox::new("edited").transition(Transition::instant()).look(&look).spawn(cx);
+                    assert_eq!(sample(&edited.read(cx).current_transition()), 1.0);
                     let menu = $api::PopupMenu::new("edited-menu")
                         .look(&look)
                         .motion(|m| m.presence.exit = Transition::instant())
@@ -92,7 +101,7 @@ easing = "linear"
             let look = ($make_look)(source);
             let vanilla = xgpui_luma::theme::MotionDefaults::vanilla();
             let inherited = look.motion_defaults();
-            assert_eq!(inherited.switch.state.description(), vanilla.switch.state.description());
+            assert_eq!(inherited.stepper.selection.description(), vanilla.stepper.selection.description());
             assert_eq!(
                 inherited.slide_panel.presence.enter.description(),
                 vanilla.slide_panel.presence.enter.description()

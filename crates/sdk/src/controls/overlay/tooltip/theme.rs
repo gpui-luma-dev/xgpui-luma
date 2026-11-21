@@ -112,8 +112,9 @@ impl TooltipLook {
     }
 }
 
+/// The SDK's tooltip theme: `tooltip.lss` alone.
 pub fn default_tooltip_theme() -> Arc<dyn TooltipTheme> {
-    Arc::new(TooltipLook::from_tokens(&ThemeTokens::default(), None))
+    Arc::new(super::styled::StyledTooltipTheme::sdk())
 }
 
 /// Presentation-only input, resolved from the explicitly bound draft look on every frame.

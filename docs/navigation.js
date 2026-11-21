@@ -44,6 +44,10 @@
                 "label": "Look-radix"
             },
             {
+                "href": "style-language.html",
+                "label": "Style language (.lss)"
+            },
+            {
                 "href": "create-look.html",
                 "label": "Create your own Look"
             }

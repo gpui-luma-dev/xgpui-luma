@@ -18,6 +18,7 @@ mod resolve;
 mod shadow;
 mod radius;
 mod size;
+pub mod style;
 mod state_color;
 pub mod stylesheet;
 mod tokens;
@@ -28,7 +29,6 @@ pub use tooltip::tooltip_theme;
 #[cfg(test)]
 mod test_support;
 
-pub mod paint;
 pub mod prelude;
 pub mod tables;
 
@@ -59,7 +59,7 @@ pub use stylesheet::{
     ColorRuleMetadataSection, StylesheetConfig, all_color_rule_metadata, embedded_color_rule_metadata,
     embedded_stylesheet,
 };
-pub use elements::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look, resolve_badge_colors};
+pub use elements::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look};
 pub use controls::{
     Frame, Accordion, Autocomplete, Button, ButtonRadiusPreset, Card, Checkbox, ComboBox, ContextMenu, IconGroup,
     Table, ListBoxBuilder, MenuChoiceGroup, Pager, PopupMenu, Progress, Radio, RadioGroup, Scrollbar, SearchSelector,
@@ -75,9 +75,6 @@ pub use usage::all_shadcn_theme_usages;
 
 #[cfg(test)]
 mod button_stylesheet_tests;
-
-#[cfg(test)]
-mod choice_stylesheet_tests;
 
 #[cfg(test)]
 mod remaining_stylesheet_tests;
@@ -98,3 +95,11 @@ xgpui_luma::test_stylesheet_motion_contract!(
     },
     crate
 );
+
+/// Colors equal to rounding (`.lss` values pass through f32 color conversions).
+#[cfg(test)]
+pub(crate) fn assert_close(a: gpui::Hsla, b: gpui::Hsla) {
+    let (x, y) = (a.to_rgb(), b.to_rgb());
+    let near = [(x.r, y.r), (x.g, y.g), (x.b, y.b), (x.a, y.a)].iter().all(|(p, q)| (p - q).abs() < 2e-3);
+    assert!(near, "{a:?} vs {b:?}");
+}

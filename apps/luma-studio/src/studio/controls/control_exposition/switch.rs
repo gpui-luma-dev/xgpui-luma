@@ -15,7 +15,7 @@ use super::event_stream::ControlEventStream;
 use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
 use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::SwitchMotionReport;
+use super::inspector::StateMotionReport;
 use super::switch_theme_inspector::SwitchThemeInspector;
 use super::template::render_control_exposition_card;
 
@@ -142,14 +142,22 @@ impl SwitchControlExposition {
                 move || left_pane.clone().into_any_element()
             },
             &super::inspector::SWITCH_INSPECTOR_SPEC,
-            super::inspector::SwitchInspectorAdapter::shared(),
+            super::inspector::switch_inspector(),
         );
         theme_inspector.update(cx, |inspector, cx| {
             inspector.set_motion_report(
-                Arc::new(SwitchMotionReport::new([
-                    ("Primary", primary_switch.clone()),
-                    ("Secondary", secondary_switch.clone()),
-                ])),
+                Arc::new(StateMotionReport::new(
+                    "State",
+                    [("Primary", primary_switch.clone()), ("Secondary", secondary_switch.clone())],
+                    |switch| switch.motion_enabled(),
+                    |switch| switch.current_transition(),
+                    // The look's `.lss` `transition` toward on (the switch has no motion defaults).
+                    |look| {
+                        look.switch_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
+                            .transition(&xgpui_luma::controls::switch::SwitchData::new(true))
+                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
+                    },
+                )),
                 cx,
             );
         });

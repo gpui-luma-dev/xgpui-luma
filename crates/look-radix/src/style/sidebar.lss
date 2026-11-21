@@ -1,0 +1,32 @@
+// Radix sidebar. Layer: look. Rows in the foreground; the current page an accent 3 tint with accent 11 text;
+// every row accent 4 hovered and accent 5 pressed; the focus role when focused; muted when disabled. Muted
+// compact section labels. Sizes 1–3 set the radius and gap.
+
+sidebar {
+  part section {
+    foreground  = radix.role.muted_foreground
+    font_size   = 11
+    line_height = 16
+    font_weight = 500
+  }
+
+  part item {
+    foreground = radix.role.foreground
+    radius     = exact(4)
+    gap        = exact(8)
+    font_size   = 12.5
+    line_height = 18
+    font_weight = 500
+    :hover             { background = accent[4] }
+    :pressed           { background = accent[5] }
+    :focused           { focus_border = radix.role.focus }
+    :selected          { background = accent[3]  foreground = accent[11] }
+    :selected:hover    { background = accent[4] }
+    :selected:pressed  { background = accent[5] }
+    :invalid           { foreground = look.destructive }
+    :disabled          { background = transparent  foreground = radix.role.muted_foreground }
+    :selected:disabled { background = transparent  foreground = radix.role.muted_foreground }
+  }
+  size 1 { part item { radius = exact(3)  gap = exact(4) } }
+  size 3 { part item { radius = exact(6)  gap = exact(12) } }
+}

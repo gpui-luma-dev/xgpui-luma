@@ -1,0 +1,59 @@
+// The Luma style language (.lss). See docs/style-language-design.md §10.
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ !"///" ~ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+doc        = @{ "///" ~ (!"\n" ~ ANY)* }
+
+file = { SOI ~ top* ~ EOI }
+top  = _{ const_block | tokens_block | control }
+
+const_block = { kw_const ~ "{" ~ binding* ~ "}" }
+binding     = { doc* ~ ident ~ kind_ann? ~ "=" ~ expr }
+kind_ann    = { ":" ~ ident }
+
+tokens_block = { kw_tokens ~ "{" ~ token_item* ~ "}" }
+token_item   = _{ mode_block | const_block | token_scope | group | binding }
+mode_block   = { kw_mode ~ ident ~ "{" ~ token_item* ~ "}" }
+token_scope  = { ident ~ key ~ "{" ~ token_item* ~ "}" }
+group        = { doc* ~ ident ~ "{" ~ token_item* ~ "}" }
+
+control   = { doc* ~ ident ~ extends? ~ "{" ~ item* ~ "}" }
+item      = _{ const_block | part | states | scope | decl }
+part      = { doc* ~ kw_part ~ ident ~ extends? ~ "{" ~ part_item* ~ "}" }
+part_item = _{ states | decl }
+scope     = { ident ~ key ~ extends? ~ "{" ~ item* ~ "}" }
+key       = @{ (ASCII_ALPHANUMERIC | "_")+ }
+states    = { state+ ~ "{" ~ decl* ~ "}" }
+state     = ${ ":" ~ ident }
+extends   = { kw_extends ~ path }
+decl      = { doc* ~ ident ~ kind_ann? ~ assign ~ expr }
+assign    = { ":=" | "=" }
+
+expr    = { prefix* ~ postfix ~ (infix ~ prefix* ~ postfix)* }
+prefix  = _{ neg }
+neg     = { "-" }
+infix   = _{ add | sub | mul | div }
+add     = { "+" }
+sub     = { "-" }
+mul     = { "*" }
+div     = @{ "/" ~ !("/" | "*") }   // never the start of a comment
+postfix = { primary ~ index* }
+index   = { "[" ~ expr ~ "]" }
+primary = _{ paren | call | list | number | hex_color | string | path }
+paren   = { "(" ~ expr ~ ")" }
+call    = { path ~ "(" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ ")" }
+list    = { "[" ~ (expr ~ ("," ~ expr)* ~ ","?)? ~ "]" }
+
+number    = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+hex_color = @{ "#" ~ ASCII_HEX_DIGIT{6} ~ ASCII_HEX_DIGIT{2}? ~ !ASCII_HEX_DIGIT }
+string    = @{ "\"" ~ (!("\"" | "\n") ~ ANY)* ~ "\"" }
+path      = @{ ident ~ ("." ~ ident)* }
+ident     = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+word_end   = _{ !(ASCII_ALPHANUMERIC | "_") }
+keyword    = @{ ("const" | "tokens" | "mode" | "part" | "extends") ~ word_end }
+kw_const   = @{ "const" ~ word_end }
+kw_tokens  = @{ "tokens" ~ word_end }
+kw_mode    = @{ "mode" ~ word_end }
+kw_part    = @{ "part" ~ word_end }
+kw_extends = @{ "extends" ~ word_end }

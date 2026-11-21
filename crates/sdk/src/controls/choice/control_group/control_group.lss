@@ -1,0 +1,21 @@
+// SDK control group. Layer: sdk. The frame around a group of toggle rows, read by the `.lss` control-group
+// theme (styled.rs); the rows are the toggle (`toggle.lss`).
+
+/// A frame holding a set of choices.
+control_group {
+  /// Space between rows in a vertical group, and default rows' opacity when disabled.
+  vertical_gap: length = exact(8)
+  disabled_opacity: number = 0.56
+
+  /// The frame.
+  part root {
+    background   = palette.surface.subtle.background
+    border       = palette.border.default
+    border_width = exact(1)
+    radius       = exact(metrics.control.radius)
+    padding_x    = exact(6)
+    padding_y    = exact(4)
+    gap          = exact(6)
+    :disabled { background = palette.state.disabled.background }
+  }
+}

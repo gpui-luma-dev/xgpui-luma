@@ -1,0 +1,61 @@
+// Radix toggle. Layer: look, over the SDK toggle (which extends the button, so this look's button
+// variants apply). Selected, every variant but page shows the solid accent face; page shows the pill.
+
+toggle {
+  part root {
+    :selected:high_contrast          { background = tone[9]  foreground = look.tone_contrast  border = tone[9] }
+    :selected:high_contrast:disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+  }
+
+  variant classic { part root { :selected:high_contrast { border = shift_lightness(background, look.classic.border_delta) } } }
+  variant soft        { part root { :selected { background = tone[9]  foreground = look.tone_contrast  border = tone[9] }
+                                    :selected:hover { background = tone[10] }  :selected:pressed { background = tone[10] }
+                                    :selected:high_contrast:hover   { background = shift_lightness(tone[12], 0.04) }
+                                    :selected:high_contrast:pressed { background = shift_lightness(tone[12], -0.03) }
+                                    :selected:disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border } } }
+  variant surface     { part root { :selected { background = tone[9]  foreground = look.tone_contrast  border = tone[9] }
+                                    :selected:hover { background = tone[10]  border = tone[9] }  :selected:pressed { background = tone[10] }
+                                    :selected:high_contrast:hover   { background = shift_lightness(tone[12], 0.04) }
+                                    :selected:high_contrast:pressed { background = shift_lightness(tone[12], -0.03) }
+                                    :selected:disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border } } }
+  variant outline     { part root { :selected { background = tone[9]  foreground = look.tone_contrast  border = tone[9] }
+                                    :selected:hover { background = tone[10] }  :selected:pressed { background = tone[10] }
+                                    :selected:high_contrast { border = tone[9] }
+                                    :selected:high_contrast:hover   { background = shift_lightness(tone[12], 0.04) }
+                                    :selected:high_contrast:pressed { background = shift_lightness(tone[12], -0.03) }
+                                    :selected:disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border } } }
+  variant ghost       { part root { :selected { background = tone[9]  foreground = look.tone_contrast  border = tone[9] }
+                                    :selected:hover { background = tone[10] }  :selected:pressed { background = tone[10] }
+                                    :selected:high_contrast:hover   { background = shift_lightness(tone[12], 0.04) }
+                                    :selected:high_contrast:pressed { background = shift_lightness(tone[12], -0.03) }
+                                    :selected:disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border } } }
+  variant ghost_quiet { part root { :selected { foreground = look.tone_contrast } } }
+
+  variant page {
+    part root {
+      :selected          { background = radix.page_selected  foreground = radix.role.background }
+      :selected:disabled { background = radix.page_selected  foreground = radix.role.muted_foreground }
+    }
+  }
+
+  // A face in a joined icon group: the group draws the edges, separators and focus ring, so the face has
+  // none. Unselected it is the surface, selected an accent tint.
+  variant icon_group {
+    padding_x = exact(max((height - 16) / 2, 0))
+    padding_y = 0
+    part root {
+      background   := radix.role.surface
+      foreground   := gray[11]
+      border       := none
+      focus_border := none
+      shadow       := []
+      :hover             { background = gray[3] }
+      :pressed           { background = gray[4] }
+      :selected          { background = accent[3]  foreground = accent[11] }
+      :selected:hover    { background = accent[4] }
+      :selected:pressed  { background = accent[5] }
+      :disabled          { background = radix.role.surface  foreground = gray[8] }
+      :selected:disabled { background = radix.role.surface  foreground = gray[8] }
+    }
+  }
+}

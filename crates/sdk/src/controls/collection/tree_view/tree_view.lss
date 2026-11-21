@@ -1,0 +1,47 @@
+// SDK tree view. Layer: sdk. Read by `StyledTreeView` (styled.rs): a row's colors (`selected` is the selected
+// node), an optional inset outline, and the row layout. Icons and the drag shadow are the theme's.
+
+/// Nested, expandable rows.
+tree_view {
+  /// Drop markers, drag ghost opacity, the scrollbar lane, disabled rows' opacity, the drag preview's
+  /// padding, and the indent per level.
+  drag_marker_width: length = exact(1)
+  drag_insert_width: length = exact(2)
+  drag_opacity: number = 0.12
+  scrollbar_width: length = exact(12)
+  disabled_opacity: number = 0.4
+  preview_padding_x: length = exact(12)
+  preview_padding_y: length = exact(4)
+  indentation_width: length = exact(16)
+  /// Node icon and disclosure chevron sizes, and their color.
+  icon_size: length = metrics.control.icon_size
+  chevron_size: length = metrics.control.icon_size - 2
+  icon_color: color = palette.navigation.muted_foreground
+  /// An inset outline drawn without changing the row; transparent draws none.
+  outline: color = transparent
+
+  /// A row.
+  part root {
+    background  = transparent
+    foreground  = palette.app.foreground
+    height      = metrics.control.control_height * 0.85
+    padding_x   = metrics.control.padding_x
+    gap         = metrics.control.gap
+    radius      = exact(metrics.control.radius)
+    font_family = typography.font.sans
+    font_size   = typography.text.body.size
+    line_height = font_size * typography.text.label.line_height / typography.text.label.size
+    font_weight = typography.text.label.weight
+    :hover             { background = palette.navigation.hover_background }
+    :pressed           { background = palette.state.pressed.background }
+    :selected          { background = palette.navigation.selected_background
+                         foreground = palette.navigation.selected_foreground
+                         icon_color = palette.navigation.selected_foreground }
+    :selected:hover    { background = palette.navigation.selected_background }
+    :selected:pressed  { background = palette.navigation.selected_background }
+    :disabled          { background = transparent  foreground = palette.state.disabled.foreground
+                         icon_color = palette.navigation.muted_foreground }
+    :selected:disabled { background = transparent  foreground = palette.state.disabled.foreground
+                         icon_color = palette.navigation.muted_foreground }
+  }
+}

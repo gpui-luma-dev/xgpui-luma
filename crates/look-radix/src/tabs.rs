@@ -1,18 +1,15 @@
-//! Radix tabs theme adapter.
+//! Radix tabs, drawn from `.lss` (`style/tabs.lss`) with the look-wide `TabsStyle` tuning over them.
 
 use std::collections::HashMap;
 
 use std::sync::Arc;
 
-use gpui::{FontWeight, Hsla, SharedString};
+use gpui::{Hsla, SharedString};
 use xgpui_luma::controls::tabs::{TabsBaseline, TabsItemLook, TabsListLook, TabsTemplate, TabsTheme, ThemedTabsTemplate};
-use xgpui_luma::theme::{InteractionState, LumaTextStyle};
+use xgpui_luma::theme::InteractionState;
 
 use crate::look::Look;
-use crate::button::{ButtonVariant, Paint, button_family_theme_with};
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use crate::scale::ScaleFamily;
-use crate::semantic::SemanticRole;
 use crate::typography::font_family;
 
 /// Radix `size` prop on Tabs. Default is [`Self::Two`].
@@ -165,21 +162,18 @@ pub fn tabs_geometry(
     use xgpui_luma::theme::provenance::ResolvedMetric;
     use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
     let surface = variant == TabsVariant::Surface;
-    let defaults = xgpui_luma::controls::tabs::DefaultTabsTheme::new(crate::size::scaffold_tokens(size));
-    let list = defaults.resolve_list(true);
-    let item = defaults.resolve_item(true, InteractionState::default());
-    let mut geometry = look.common_stylesheet().tabs.inspect_geometry(
+    let styled = styled_tabs(look, variant, size);
+    let list = styled.list(true);
+    let item = styled.item(true, InteractionState::default());
+    let geometry = look.common_stylesheet().tabs.inspect_geometry(
         if surface { "surface" } else { "line" },
         ResolvedTabsGeometry {
-            list_gap: ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
-            list_padding: if surface {
-                ResolvedMetric::constant(4.0, "Radix surface list padding")
-            } else {
-                ResolvedMetric::constant(list.padding, "SDK tabs list padding")
-            },
-            indicator_height: ResolvedMetric::constant(item.indicator_height, "SDK tabs indicator height"),
+            list_gap: ResolvedMetric::constant(list.gap, "tabs.lss list gap"),
+            list_padding: ResolvedMetric::constant(list.padding, "tabs.lss list padding"),
+            indicator_height: ResolvedMetric::constant(item.indicator_height, "tabs.lss indicator height"),
         },
     );
+    let mut geometry = geometry;
     if surface {
         geometry.indicator_height = ResolvedMetric::constant(0.0, "Radix surface hides indicator");
     } else if let Some(style) = look.tabs_style_override() {
@@ -189,102 +183,40 @@ pub fn tabs_geometry(
     geometry
 }
 
+/// The Radix tabs: list and tabs from `.lss` (`style/tabs.lss`), with a look-wide [`TabsStyle`] set through
+/// `Look::set_tabs_style` applied over them; the baseline, indicator inset, content padding and drag preview
+/// from the look.
 struct TabsThemeAdapter {
     look: Look,
     variant: TabsVariant,
+    styled: xgpui_luma::controls::tabs::StyledTabs,
 }
 
 impl TabsTheme for TabsThemeAdapter {
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        let size = self.look.size();
-        let mut drag =
-            xgpui_luma::infra::drag_drop::DragDropLook::from_tokens(&xgpui_luma::theme::ThemeTokens::default());
-        drag.background = self.look.resolve_role(SemanticRole::Surface).hsla();
-        drag.foreground = self.look.resolve_role(SemanticRole::Foreground).hsla();
-        drag.valid_marker = self.look.resolve_role(SemanticRole::Focus).hsla();
-        drag.invalid_marker = self.look.resolve_role(SemanticRole::Destructive).hsla();
-        drag.radius = self.look.control_sizes().radius(size);
-        drag.font_family = font_family(&self.look);
-        drag.typography = self.resolve_item(true, Default::default()).label_typography;
-        drag
+        crate::navigation::drag_look(&self.look, self.look.size())
     }
     fn resolve_list(&self, enabled: bool) -> TabsListLook {
-        let size = self.look.size();
-        let metrics = self.look.metrics();
-        let geometry = tabs_geometry(&self.look, self.variant, size);
-        match self.variant {
-            TabsVariant::Line => TabsListLook {
-                border_width: metrics.border_width,
-                // The SDK paints the separate baseline without adding layout borders.
-                background: (!enabled).then(|| self.look.resolve_role(SemanticRole::Surface).hsla()),
-                border: None,
-                radius: 0.0,
-                padding: geometry.list_padding.value_px,
-                gap: geometry.list_gap.value_px,
-            },
-            TabsVariant::Surface => TabsListLook {
-                border_width: metrics.border_width,
-                background: Some(self.look.resolve_step(ScaleFamily::Gray, 3).hsla()),
-                border: None,
-                radius: self.look.control_sizes().radius(size),
-                padding: geometry.list_padding.value_px,
-                gap: geometry.list_gap.value_px,
-            },
+        let mut list = self.styled.list(enabled);
+        if let (TabsVariant::Line, Some(style)) = (self.variant, self.look.tabs_style_override()) {
+            list.gap = style.gap;
         }
+        list
     }
 
     fn resolve_item(&self, active: bool, state: InteractionState) -> TabsItemLook {
-        let size = self.look.size();
-        let style = self.look.tabs_style();
-        let tab = style.metrics(size);
-        let muted = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
-        let fg = self.look.resolve_role(SemanticRole::Foreground).hsla();
-        let accent = self.look.resolve_role(SemanticRole::Primary).hsla();
-        let surface = matches!(self.variant, TabsVariant::Surface);
-
-        let label_color = if state.disabled {
-            muted
-        } else if active {
-            fg
-        } else if state.hovered {
-            fg
-        } else {
-            muted
-        };
-
-        let background = if surface && active {
-            Some(self.look.resolve_role(SemanticRole::Background).hsla())
-        } else if !state.disabled && (state.hovered || state.pressed) {
-            Some(
-                button_family_theme_with(&self.look, ButtonVariant::Ghost, Paint::gray())
-                    .resolve(ButtonFamilyRole::Text, state)
-                    .background,
-            )
-        } else {
-            None
-        };
-        let (accessory_size, accessory_gap) =
-            self.look.common_stylesheet().tabs.accessory_metrics(if self.variant == TabsVariant::Surface {
-                "surface"
-            } else {
-                "line"
-            });
-        TabsItemLook {
-            accessory_size,
-            accessory_gap,
-            label_color,
-            indicator: (!surface && active).then_some(accent),
-            background,
-            label_typography: LumaTextStyle {
-                size: tab.font_size,
-                line_height: tab.line_height,
-                weight: if active { FontWeight::MEDIUM } else { FontWeight::NORMAL },
-            },
-            radius: self.look.control_sizes().radius(size),
-            padding_x: tab.padding_x,
-            height: tab.height,
-            indicator_height: tabs_geometry(&self.look, self.variant, size).indicator_height.value_px,
+        let mut item = self.styled.item(active, state);
+        if let Some(style) = self.look.tabs_style_override() {
+            let tab = style.metrics(self.look.size());
+            item.height = tab.height;
+            item.padding_x = tab.padding_x;
+            item.label_typography.size = tab.font_size;
+            item.label_typography.line_height = tab.line_height;
+            if self.variant == TabsVariant::Line {
+                item.indicator_height = style.indicator_height;
+            }
         }
+        item
     }
 
     fn baseline(&self, _enabled: bool) -> Option<TabsBaseline> {
@@ -323,7 +255,23 @@ pub fn tabs_theme(look: &Look) -> Arc<dyn TabsTheme> {
 }
 
 pub fn tabs_theme_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTheme> {
-    Arc::new(TabsThemeAdapter { look: look.clone(), variant })
+    Arc::new(TabsThemeAdapter { look: look.clone(), variant, styled: styled_tabs(look, variant, look.size()) })
+}
+
+/// The `.lss` tabs (`style/tabs.lss`) for `variant` at `size`, before any [`TabsStyle`] override.
+fn styled_tabs(look: &Look, variant: TabsVariant, size: crate::RadixSize) -> xgpui_luma::controls::tabs::StyledTabs {
+    let binding = xgpui_luma::style::StyleBinding::new("tabs", crate::textfield::live_source(look));
+    let binding = if variant == TabsVariant::Surface {
+        binding.variant("surface")
+    } else {
+        binding
+    };
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::controls::tabs::StyledTabs::new(binding)
 }
 
 pub fn tabs_template(look: &Look) -> Arc<dyn TabsTemplate> {
@@ -337,6 +285,7 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::semantic::SemanticRole;
     use crate::RadixSize;
 
     #[test]
@@ -373,26 +322,12 @@ mod tests {
     }
 
     #[test]
-    fn shared_geometry_updates_live_themes_and_keeps_tuning_and_forks() {
+    fn tabs_style_tuning_updates_live_themes() {
         use xgpui_luma::theme::provenance::MetricSource;
         let look = Look::built_in();
         let line = tabs_theme(&look);
         let surface = tabs_theme_for(&look, TabsVariant::Surface);
-        let mut config = look.common_stylesheet();
-        config.tabs.geometry.indicator_height = Some(5.0);
-        config.tabs.variants.get_mut("line").unwrap().list_gap = Some(6.0);
-        config.tabs.variants.get_mut("surface").unwrap().list_padding = Some(9.0);
-        look.set_common_stylesheet(config.clone());
-        assert_eq!(line.resolve_list(true).gap, 6.0);
-        assert_eq!(line.resolve_item(true, Default::default()).indicator_height, 5.0);
-        assert_eq!(surface.resolve_list(true).padding, 9.0);
-        assert!(matches!(
-            tabs_geometry(&look, TabsVariant::Line, RadixSize::Two).indicator_height.source,
-            MetricSource::Authored { .. }
-        ));
-        let fork = look.fork();
-        fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.common_stylesheet(), config);
+        // The look-wide TabsStyle tuning applies over the `.lss` tabs.
         let mut tuning = look.tabs_style();
         tuning.gap = 11.0;
         tuning.indicator_height = 7.0;
@@ -410,7 +345,6 @@ mod tests {
     fn line_hover_and_press_use_gray_ghost_palette() {
         let look = Look::built_in();
         let tabs = tabs_theme(&look);
-        let ghost = button_family_theme_with(&look, ButtonVariant::Ghost, Paint::gray());
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             for state in [
@@ -419,7 +353,12 @@ mod tests {
             ] {
                 for active in [false, true] {
                     let item = tabs.resolve_item(active, state);
-                    assert_eq!(item.background, Some(ghost.resolve(ButtonFamilyRole::Text, state).background));
+                    // The gray ghost fill: gray 3 hovered, gray 4 pressed.
+                    let step = if state.pressed { 4 } else { 3 };
+                    crate::control_group::assert_close(
+                        item.background.expect("a hover or press fill"),
+                        look.resolve_step(ScaleFamily::Gray, step).hsla(),
+                    );
                     let resting = tabs.resolve_item(active, InteractionState::default());
                     assert_eq!(item.indicator, resting.indicator);
                     assert_eq!(item.padding_x, resting.padding_x);
@@ -509,7 +448,10 @@ mod tests {
         assert!(list.radius > 0.0);
         assert!(active.indicator.is_none());
         assert!(inactive.indicator.is_none());
-        assert_eq!(active.background, Some(look.resolve_role(SemanticRole::Background).hsla()));
+        crate::control_group::assert_close(
+            active.background.unwrap(),
+            look.resolve_role(SemanticRole::Background).hsla(),
+        );
         assert!(inactive.background.is_none());
         assert!(active.radius > 0.0);
         assert!(theme.baseline(true).is_none());
@@ -525,10 +467,16 @@ mod drag_tests {
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             let drag = tabs_theme(&look).resolve_drag();
-            assert_eq!(drag.background, look.resolve_role(SemanticRole::Surface).hsla());
-            assert_eq!(drag.foreground, look.resolve_role(SemanticRole::Foreground).hsla());
-            assert_eq!(drag.valid_marker, look.resolve_role(SemanticRole::Focus).hsla());
-            assert_eq!(drag.invalid_marker, look.resolve_role(SemanticRole::Destructive).hsla());
+            crate::control_group::assert_close(drag.background, look.resolve_role(crate::SemanticRole::Surface).hsla());
+            crate::control_group::assert_close(
+                drag.foreground,
+                look.resolve_role(crate::SemanticRole::Foreground).hsla(),
+            );
+            crate::control_group::assert_close(drag.valid_marker, look.resolve_role(crate::SemanticRole::Focus).hsla());
+            crate::control_group::assert_close(
+                drag.invalid_marker,
+                look.resolve_role(crate::SemanticRole::Destructive).hsla(),
+            );
         }
     }
 }

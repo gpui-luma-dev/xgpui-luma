@@ -1,12 +1,12 @@
-//! Radix toggle uses button-family variants (selected = solid accent).
+//! Radix toggle drawn from `.lss` (`style/toggle.lss`) on the button-family variants (selected = solid accent).
 
 use std::sync::Arc;
 
-use xgpui_luma::controls::button::{ButtonTemplate, DefaultButtonTemplate};
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::toggle::{ToggleData, apply_toggle_progress_chrome};
+use xgpui_luma::controls::button::ButtonTemplate;
+use xgpui_luma::controls::toggle::ToggleData;
 
-use crate::button::{ButtonVariant, Paint, button_family_theme_with, button_family_theme_for_size};
+use crate::ButtonSize;
+use crate::button::{ButtonVariant, Paint, button_template, styled_button_template};
 use crate::look::Look;
 
 pub fn toggle_template(look: &Look) -> Arc<dyn ButtonTemplate<ToggleData>> {
@@ -26,10 +26,10 @@ pub(crate) fn toggle_template_for_size(
     look: &Look,
     paint: Paint,
     page: bool,
-    size: crate::ButtonSize,
+    size: ButtonSize,
 ) -> Arc<dyn ButtonTemplate<ToggleData>> {
     let variant = if page { ButtonVariant::Page } else { ButtonVariant::Soft };
-    toggle_template_with_family(button_family_theme_for_size(look, variant, paint, size))
+    Arc::new(styled_button_template::<ToggleData>(look, variant, paint, size))
 }
 
 fn toggle_template_for_variant(
@@ -37,19 +37,5 @@ fn toggle_template_for_variant(
     variant: ButtonVariant,
     paint: Paint,
 ) -> Arc<dyn ButtonTemplate<ToggleData>> {
-    toggle_template_with_family(button_family_theme_with(look, variant, paint))
-}
-
-fn toggle_template_with_family(
-    family: Arc<dyn xgpui_luma::controls::button_family::ButtonFamilyTheme>,
-) -> Arc<dyn ButtonTemplate<ToggleData>> {
-    let theme_for_mod = Arc::clone(&family);
-    Arc::new(DefaultButtonTemplate::<ToggleData>::new(family).with_modifier(move |element, model| {
-        if model.look.is_some() {
-            return element;
-        }
-        let off = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: false }, model.state);
-        let on = theme_for_mod.resolve(ButtonFamilyRole::Toggle { selected: true }, model.state);
-        apply_toggle_progress_chrome(element, &off, &on, model.data.progress)
-    }))
+    button_template::<ToggleData>(look, variant, paint)
 }

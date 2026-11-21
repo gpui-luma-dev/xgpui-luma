@@ -126,6 +126,8 @@
 //! Relative layouts need no measurement; `measure_viewport(true)` opts into bounds
 //! and its post-layout redraw. Animation frames invalidate only the body slot.
 //!
+mod styled;
+pub use styled::{StyledTabs, StyledTabsTheme};
 mod content;
 mod transition;
 mod control;
@@ -153,7 +155,7 @@ pub use template::{
     resolve_tabs_uniform_item_width,
 };
 
-pub use theme::{DefaultTabsTheme, TabsBaseline, TabsItemLook, TabsListLook, TabsTheme, default_tabs_theme};
+pub use theme::{TabsBaseline, TabsItemLook, TabsListLook, TabsTheme, default_tabs_theme};
 
 pub use crate::infra::state::{CompositeItemState as TabsItemState, ControlFocusState};
 

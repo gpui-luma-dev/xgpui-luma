@@ -1,17 +1,11 @@
-//! Radix popup-menu theme adapter (Copy / Actions menus).
+//! Radix popup menus (Copy / Actions menus), drawn from `.lss`.
 
 use std::sync::Arc;
 
-use gpui::{BoxShadow, FontWeight, black, point, px};
 use xgpui_luma::controls::floating_menu::FloatingMenuLook;
-use xgpui_luma::controls::popup_menu::{
-    PopupMenuPalette, PopupMenuTemplate, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
-    ThemedPopupMenuTemplate, compose_popup_menu_look,
-};
-use xgpui_luma::theme::{InteractionLayer, InteractionState, LumaTextStyle, MetricTokens, StandardBoxScale};
+use xgpui_luma::controls::popup_menu::{PopupMenuTemplate, PopupMenuTheme, StyledPopupMenuTheme, ThemedPopupMenuTemplate};
 
 use crate::look::Look;
-use crate::semantic::SemanticRole;
 use crate::tone::Tone;
 
 /// Radix Themes menu content variants, as carried by the SDK popup menu control.
@@ -24,113 +18,6 @@ pub enum PopupMenuVariant {
     Solid,
     /// Highlighted item takes a soft accent tint (`accent-4`), text unchanged.
     Soft,
-}
-
-/// Trigger size comes from the look handle; the menu may use a different Radix size.
-struct PopupMenuThemeAdapter {
-    look: Look,
-    variant: PopupMenuVariant,
-    tone: Tone,
-    menu_size: crate::RadixSize,
-}
-
-impl PopupMenuTheme for PopupMenuThemeAdapter {
-    fn resolve(
-        &self,
-        trigger_style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-    ) -> PopupMenuPalette {
-        let _ = metrics;
-        let layer = state.layer();
-        let tone = self.tone;
-        let step = |step| tone.step(&self.look, step);
-        let (mut background, mut foreground, mut border) = match trigger_style {
-            PopupMenuTriggerStyle::Primary => (step(9), tone.contrast(&self.look), Some(step(9))),
-            PopupMenuTriggerStyle::Secondary => (step(3), step(11), Some(step(3))),
-            PopupMenuTriggerStyle::Outline => (
-                self.look.resolve_role(SemanticRole::Background).hsla(),
-                self.look.resolve_role(SemanticRole::Foreground).hsla(),
-                Some(self.look.resolve_role(SemanticRole::Border).hsla()),
-            ),
-            PopupMenuTriggerStyle::Ghost => {
-                (gpui::hsla(0.0, 0.0, 0.0, 0.0), self.look.resolve_role(SemanticRole::Foreground).hsla(), None)
-            }
-        };
-
-        match layer {
-            InteractionLayer::Disabled => {
-                background = self.look.resolve_role(SemanticRole::Surface).hsla();
-                foreground = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
-                border = Some(self.look.resolve_role(SemanticRole::Border).hsla());
-            }
-            InteractionLayer::Hovered | InteractionLayer::Pressed => {
-                if matches!(trigger_style, PopupMenuTriggerStyle::Ghost | PopupMenuTriggerStyle::Outline) {
-                    background = step(3);
-                } else if matches!(trigger_style, PopupMenuTriggerStyle::Primary) {
-                    background = step(10);
-                } else if matches!(trigger_style, PopupMenuTriggerStyle::Secondary) {
-                    background = step(4);
-                }
-            }
-            InteractionLayer::Default => {}
-        }
-
-        let geometry = self.look.common_stylesheet().popup_menu.resolve_geometry(
-            xgpui_luma::theme::stylesheet::PopupMenuGeometry {
-                font_size: xgpui_luma::theme::ThemeTokens::default().typography.text.label.size,
-                line_height: xgpui_luma::theme::ThemeTokens::default().typography.text.label.line_height,
-                ..Default::default()
-            },
-        );
-        PopupMenuPalette {
-            trigger_focus_border: step(8),
-            trigger_background: background,
-            trigger_foreground: foreground,
-            trigger_border: border,
-            trigger_shadow: None,
-            trigger_typography: LumaTextStyle {
-                size: geometry.font_size,
-                line_height: geometry.line_height,
-                weight: FontWeight::MEDIUM,
-            },
-            floating_menu: floating_menu_look_for(&self.look, self.variant, self.tone, self.menu_size),
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-
-    fn resolve_look(
-        &self,
-        trigger_style: PopupMenuTriggerStyle,
-        metrics: PopupMenuTriggerMetrics,
-        state: InteractionState,
-        scale_factor: f32,
-        _cx: &mut gpui::App,
-    ) -> xgpui_luma::controls::popup_menu::PopupMenuLook {
-        let mut scale = StandardBoxScale::compute(&self.metrics(), scale_factor);
-        let geometry = self.look.common_stylesheet().popup_menu.resolve_geometry(
-            xgpui_luma::theme::stylesheet::PopupMenuGeometry {
-                height: scale.height,
-                padding_x: scale.padding_x,
-                padding_y: scale.padding_y,
-                gap: scale.gap,
-                ..Default::default()
-            },
-        );
-        scale.height = geometry.height;
-        scale.padding_x = geometry.padding_x;
-        scale.padding_y = geometry.padding_y;
-        scale.gap = geometry.gap;
-        let mut look = compose_popup_menu_look(&self.resolve(trigger_style, metrics, state), &scale)
-            .with_stylesheet(&self.look.sized_stylesheet(self.look.size()).popup_menu, scale_factor);
-        if let Some(radius) = metrics.trigger_radius_override {
-            look.trigger_radius = radius;
-        }
-        look
-    }
 }
 
 /// Resolve shared Radix menu panel, row, and separator styling for SDK composition.
@@ -151,101 +38,56 @@ pub fn floating_menu_look_for(
     tone: Tone,
     size: crate::RadixSize,
 ) -> FloatingMenuLook {
-    let metrics = look.metrics();
-    let key = size.key();
-    let control = look.control_sizes().for_size(size);
-    let (item_hover_background, item_hover_foreground) = match variant {
-        PopupMenuVariant::Solid => (tone.step(look, 9), tone.contrast(look)),
-        PopupMenuVariant::Soft => (tone.step(look, 4), look.resolve_role(SemanticRole::Foreground).hsla()),
+    let binding = xgpui_luma::style::StyleBinding::new("floating_menu", crate::textfield::live_source(look));
+    let binding = match variant {
+        PopupMenuVariant::Solid => binding,
+        PopupMenuVariant::Soft => binding.variant("soft"),
     };
-
-    let base_recipe = xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default()
-        .floating_menu
-        .authored_geometry_for(key);
-    let recipe = look.common_stylesheet().floating_menu.authored_geometry_for(key).with_fallback(&base_recipe);
-    let mut resolved = FloatingMenuLook {
-        window_margin: look
-            .common_stylesheet()
-            .with_sdk_defaults()
-            .popover
-            .authored_geometry_for("panel")
-            .window_margin
-            .unwrap_or_default(),
-        border_width: recipe.border_width.unwrap_or(metrics.border_width),
-        positive: xgpui_luma::color::gpui_bridge::to_hsla(
-            look.common_stylesheet().tokens.source(look.mode()).palette.data.positive,
-            xgpui_luma::color::GamutMapping::CssLocalMinde,
-        )
-        .unwrap_or_else(|_| xgpui_luma::theme::ThemeTokens::default().palette.data.positive),
-        background: look.resolve_role(SemanticRole::Surface).hsla(),
-        foreground: look.resolve_role(SemanticRole::Foreground).hsla(),
-        border: look.resolve_role(SemanticRole::Border).hsla(),
-        shadow: vec![BoxShadow {
-            offset: point(px(0.0), px(10.0)),
-            blur_radius: px(28.0),
-            spread_radius: px(-12.0),
-            color: gpui::Hsla { a: 0.28, ..black() },
-            inset: false,
-        }],
-        radius: crate::RadixRadii::DEFAULT.large,
-        padding: 6.0,
-        min_width: recipe.min_width.unwrap_or_default(),
-        item_disabled_foreground: look.resolve_role(SemanticRole::MutedForeground).hsla(),
-        item_hover_background,
-        item_hover_foreground,
-        item_typography: LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight::NORMAL },
-        item_height: control.height * recipe.item_height_scale.unwrap_or_default(),
-        item_padding_x: control.padding_x * recipe.item_padding_scale.unwrap_or_default(),
-        item_gap: 6.0,
-        item_icon_size: control.icon_size,
-        item_radius: crate::RadixRadii::DEFAULT.small,
-        disabled_opacity: recipe.disabled_opacity.unwrap_or_default(),
-        separator_color: look.resolve_role(SemanticRole::Border).hsla(),
-        separator_thickness: recipe.separator_thickness.unwrap_or_default(),
-        separator_spacing: 6.0,
-        separator_inset: 8.0,
-        submenu_offset_x: 4.0,
+    let binding = if tone == Tone::Gray {
+        binding.attr("tone", "gray")
+    } else {
+        binding
     };
-    let geometry = look.common_stylesheet().floating_menu.resolve_geometry_for(
-        key,
-        xgpui_luma::theme::stylesheet::FloatingMenuGeometry {
-            border_width: resolved.border_width,
-            padding: resolved.padding,
-            min_width: resolved.min_width,
-            item_height: resolved.item_height,
-            item_padding_x: resolved.item_padding_x,
-            item_gap: resolved.item_gap,
-            item_icon_size: resolved.item_icon_size,
-            font_size: resolved.item_typography.size,
-            line_height: resolved.item_typography.line_height,
-            submenu_offset_x: resolved.submenu_offset_x,
-            separator_thickness: resolved.separator_thickness,
-            separator_spacing: resolved.separator_spacing,
-            separator_inset: resolved.separator_inset,
-            disabled_opacity: resolved.disabled_opacity,
-            ..Default::default()
-        },
-    );
-    resolved.border_width = geometry.border_width;
-    resolved.padding = geometry.padding;
-    resolved.min_width = geometry.min_width;
-    resolved.item_height = geometry.item_height;
-    resolved.item_padding_x = geometry.item_padding_x;
-    resolved.item_gap = geometry.item_gap;
-    resolved.item_icon_size = geometry.item_icon_size;
-    resolved.item_typography.size = geometry.font_size;
-    resolved.item_typography.line_height = geometry.line_height;
-    resolved.submenu_offset_x = geometry.submenu_offset_x;
-    resolved.separator_thickness = geometry.separator_thickness;
-    resolved.separator_spacing = geometry.separator_spacing;
-    resolved.separator_inset = geometry.separator_inset;
-    resolved.disabled_opacity = geometry.disabled_opacity;
-
-    resolved
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&binding)
 }
 
 pub fn popup_menu_theme(look: &Look, variant: PopupMenuVariant, tone: Tone) -> Arc<dyn PopupMenuTheme> {
-    Arc::new(PopupMenuThemeAdapter { look: look.clone(), variant, tone, menu_size: look.size() })
+    styled_popup_menu_theme(look, variant, tone, look.size())
+}
+
+/// The Radix popup trigger drawn from `.lss` (`style/popup_menu.lss`) at the look's size, with its floating
+/// menu at `menu_size`. Follows the look's later edits.
+fn styled_popup_menu_theme(
+    look: &Look,
+    variant: PopupMenuVariant,
+    tone: Tone,
+    menu_size: crate::RadixSize,
+) -> Arc<dyn PopupMenuTheme> {
+    let size = look.size();
+    let menu_look = look.clone();
+    Arc::new(
+        StyledPopupMenuTheme::new(
+            crate::textfield::live_source(look),
+            Arc::new(move || floating_menu_look_for(&menu_look, variant, tone, menu_size)),
+        )
+        .with(|binding| {
+            let binding = if tone == Tone::Gray {
+                binding.attr("tone", "gray")
+            } else {
+                binding
+            };
+            if size != crate::RadixSize::Two {
+                binding.attr("size", size.key())
+            } else {
+                binding
+            }
+        }),
+    )
 }
 
 pub fn popup_menu_template(look: &Look, variant: PopupMenuVariant, tone: Tone) -> Arc<dyn PopupMenuTemplate> {
@@ -259,17 +101,16 @@ pub fn popup_menu_template_with_menu_size(
     tone: Tone,
     menu_size: crate::RadixSize,
 ) -> Arc<dyn PopupMenuTemplate> {
-    Arc::new(ThemedPopupMenuTemplate::new(Arc::new(PopupMenuThemeAdapter {
-        look: look.clone(),
-        variant,
-        tone,
-        menu_size,
-    })))
+    Arc::new(ThemedPopupMenuTemplate::new(styled_popup_menu_theme(look, variant, tone, menu_size)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::control_group::assert_close;
+    use crate::semantic::SemanticRole;
+    use xgpui_luma::controls::popup_menu::{PopupMenuPalette, PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
+    use xgpui_luma::theme::InteractionState;
 
     fn trigger_palette(look: &Look, tone: Tone) -> PopupMenuPalette {
         popup_menu_theme(look, PopupMenuVariant::default(), tone).resolve(
@@ -284,7 +125,7 @@ mod tests {
         let look = Look::built_in();
         let palette = trigger_palette(&look, Tone::Accent);
 
-        assert_eq!(palette.trigger_background.l, look.resolve_role(SemanticRole::Primary).hsla().l);
+        assert_close(palette.trigger_background, look.resolve_role(SemanticRole::Primary).hsla());
     }
 
     #[test]
@@ -292,7 +133,7 @@ mod tests {
         let look = Look::built_in();
         let gray = trigger_palette(&look, Tone::Gray);
 
-        assert_eq!(gray.trigger_background, Tone::Gray.step(&look, 9));
+        assert_close(gray.trigger_background, Tone::Gray.step(&look, 9));
         assert_ne!(gray.trigger_background, trigger_palette(&look, Tone::Accent).trigger_background);
     }
 
@@ -301,8 +142,11 @@ mod tests {
         let look = Look::built_in();
         let menu = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
 
-        assert_eq!(menu.item_hover_background, look.resolve_role(SemanticRole::Primary).hsla());
-        assert_eq!(menu.item_hover_foreground, look.resolve_role(SemanticRole::PrimaryForeground).hsla());
+        crate::control_group::assert_close(menu.item_hover_background, look.resolve_role(SemanticRole::Primary).hsla());
+        crate::control_group::assert_close(
+            menu.item_hover_foreground,
+            look.resolve_role(SemanticRole::PrimaryForeground).hsla(),
+        );
     }
 
     #[test]
@@ -311,7 +155,10 @@ mod tests {
         let solid = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
         let soft = floating_menu_look(&look, PopupMenuVariant::Soft, Tone::Accent);
 
-        assert_eq!(soft.item_hover_foreground, look.resolve_role(SemanticRole::Foreground).hsla());
+        crate::control_group::assert_close(
+            soft.item_hover_foreground,
+            look.resolve_role(SemanticRole::Foreground).hsla(),
+        );
         assert!(soft.item_hover_background.l > solid.item_hover_background.l);
         assert_eq!(soft.background, solid.background);
     }
@@ -322,7 +169,7 @@ mod tests {
         let accent = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Accent);
         let gray = floating_menu_look(&look, PopupMenuVariant::Solid, Tone::Gray);
 
-        assert_eq!(gray.item_hover_background, Tone::Gray.step(&look, 9));
+        crate::control_group::assert_close(gray.item_hover_background, Tone::Gray.step(&look, 9));
         assert_ne!(gray.item_hover_background, accent.item_hover_background);
         assert_eq!(gray.background, accent.background);
     }

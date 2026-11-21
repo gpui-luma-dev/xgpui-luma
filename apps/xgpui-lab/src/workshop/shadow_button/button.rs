@@ -5,8 +5,7 @@ use gpui::{App, BoxShadow, Div, Hsla, SharedString, Stateful, Window, div, point
 use xgpui_luma::controls::button_family::{ButtonFamilyLook, button_family_effective_border};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use xgpui_luma::theme::InteractionState;
-use xgpui_luma::theme::{ThemeTokens, StandardBoxScale};
-use xgpui_luma::controls::button_family::{default_button_family_theme, compose_button_family_look};
+use xgpui_luma::theme::ThemeTokens;
 
 const DEFAULT_OFFSET_X: f32 = 0.0;
 const DEFAULT_OFFSET_Y: f32 = 5.0;
@@ -178,19 +177,11 @@ impl PrototypeShadowButtonTemplate {
         if let Some(resolve) = &model.look {
             return resolve(model);
         }
-        let theme = default_button_family_theme();
-        let metrics = theme.metrics();
-        let scale = StandardBoxScale::compute(&metrics, window.scale_factor());
-        theme
-            .resolve_look(model.role, model.state, &scale, xgpui_luma::theme::FULL_RADIUS_PX)
-            .unwrap_or_else(|| {
-                compose_button_family_look(
-                    &theme.resolve(model.role, model.state),
-                    model.role,
-                    &scale,
-                    xgpui_luma::theme::FULL_RADIUS_PX,
-                )
-            })
+        xgpui_luma::controls::button::StyledButtonTemplate::<()>::sdk().look(
+            model.role,
+            model.state,
+            window.scale_factor(),
+        )
     }
 }
 

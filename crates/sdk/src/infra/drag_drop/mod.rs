@@ -2,7 +2,7 @@
 //! hit testing, and previews; hosts own acceptance policy and collection mutation.
 
 mod appearance;
-pub use appearance::DragDropLook;
+pub use appearance::{DragDropLook, styled_drag_drop_look};
 pub(crate) use appearance::{DragPreview, bind_feedback};
 mod binding;
 pub(crate) use binding::bind_edge_scroll;

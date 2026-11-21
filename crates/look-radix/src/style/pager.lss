@@ -1,0 +1,38 @@
+// Radix pager. Layer: look. Page buttons on the surface with the border role; the current page an accent 4
+// tint with accent 11 text (gray when disabled) and a hovered one accent 3. Sizes 1–3.
+
+pager {
+  button_size      = exact(32)
+  button_min_width = exact(36)
+  size 1 { button_size = exact(24)  button_min_width = exact(28) }
+  size 3 { button_size = exact(40)  button_min_width = exact(44) }
+
+  part root {
+    background          = radix.role.surface
+    foreground          = radix.role.foreground
+    border              = radix.role.border
+    height              = exact(32)
+    radius              = exact(4)
+    padding_x           = exact(10)
+    padding_y           = exact(4)
+    muted_text          = radix.role.muted_foreground
+    selected_background = accent[4]
+    selected_foreground = accent[11]
+    hover_background    = accent[3]
+    :disabled {
+      background          = radix.role.surface
+      foreground          = radix.role.muted_foreground
+      muted_text          = radix.role.muted_foreground
+      selected_background = gray[3]
+      selected_foreground = gray[8]
+    }
+  }
+  size 1 { part root { height = exact(24)  radius = exact(3)  padding_x = exact(6)   padding_y = exact(2) } }
+  size 3 { part root { height = exact(40)  radius = exact(6)  padding_x = exact(14)  padding_y = exact(6) } }
+
+  variant minimal {
+    button_min_width = exact(32)
+    size 1 { button_min_width = exact(24) }
+    size 3 { button_min_width = exact(40) }
+  }
+}

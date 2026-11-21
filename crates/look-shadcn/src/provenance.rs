@@ -227,10 +227,15 @@ impl<'a> LookResolver<'a> {
 
     /// Scrollbar thumb pressed state: darken the border token.
     pub fn resolve_darken_border_decl(&self, amount: f32) -> anyhow::Result<ResolvedColor> {
-        let base = self.resolve_source_decl("border")?;
+        self.resolve_darken_decl("border", amount)
+    }
+
+    /// The token `name` darkened by `amount` of UI lightness.
+    pub fn resolve_darken_decl(&self, name: &str, amount: f32) -> anyhow::Result<ResolvedColor> {
+        let base = self.resolve_source_decl(name)?;
         ResolvedSourceColor {
             value: base.value.adjust_ui_lightness(-amount)?,
-            source: ColorSource::Derived { note: format!("darken(border, {}%)", (amount * 100.0).round() as i32) },
+            source: ColorSource::Derived { note: format!("darken({name}, {}%)", (amount * 100.0).round() as i32) },
         }
         .srgb_preview()
     }

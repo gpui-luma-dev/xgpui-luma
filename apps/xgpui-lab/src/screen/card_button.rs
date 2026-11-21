@@ -4,10 +4,7 @@
 use std::sync::Arc;
 
 use gpui::{App, Context, Entity, InteractiveElement, IntoElement, Pixels, SharedString, Styled, prelude::FluentBuilder};
-use xgpui_luma::{
-    controls::button::{Button, DefaultButtonTemplate},
-    prelude::HasPresenter,
-};
+use xgpui_luma::{controls::button::Button, prelude::HasPresenter};
 use xgpui_luma_look_radix::{self as radix, Look};
 
 use super::card_surface;
@@ -54,23 +51,19 @@ pub(crate) fn card_button<M: 'static, E: IntoElement + 'static>(
         .spawn(cx);
     let paint_look = look.clone();
     let selector = id.to_string();
-    let template = DefaultButtonTemplate::new(radix::button_family_theme_with(
-        look,
-        radix::ButtonVariant::Ghost,
-        radix::Paint::gray(),
-    ))
-    .with_modifier(move |row, model| {
-        let colors = paint_look.interaction_colors();
-        let selector = selector.clone();
-        let row = card_surface(row, &paint_look);
-        let row = match width {
-            CardWidth::Fixed(width) => row.w(width).max_w_full().min_w_0(),
-            CardWidth::Flexible => row.w_full().justify_start(),
-        };
-        row.debug_selector(move || selector)
-            .h_auto()
-            .when_some(colors.background(selected(), model.state), |row, color| row.bg(color))
-    });
+    let template = radix::button_template_for::<()>(look, radix::ButtonVariant::Ghost, radix::Paint::gray())
+        .with_modifier(move |row, model| {
+            let colors = paint_look.interaction_colors();
+            let selector = selector.clone();
+            let row = card_surface(row, &paint_look);
+            let row = match width {
+                CardWidth::Fixed(width) => row.w(width).max_w_full().min_w_0(),
+                CardWidth::Flexible => row.w_full().justify_start(),
+            };
+            row.debug_selector(move || selector)
+                .h_auto()
+                .when_some(colors.background(selected(), model.state), |row, color| row.bg(color))
+        });
     button.update(cx, |button, cx| button.set_template(Arc::new(template), cx));
     button
 }

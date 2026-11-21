@@ -9,37 +9,38 @@ use std::sync::{
 
 use gpui::SharedString;
 use xgpui_luma::controls::{
-    button_family::{
-        ButtonFamilyLook, ButtonFamilyPalette, ButtonFamilyRole, ButtonFamilyTheme, DefaultButtonFamilyTheme,
-    },
-    radio_button::{DefaultRadioButtonTheme, RadioButtonPalette, RadioButtonTheme, RadioScale},
-    scrollbar::{DefaultScrollbarTheme, ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme},
+    button::StyledButtonTemplate,
+    radio_button::{RadioButtonData, StyledRadioButtonTemplate},
+    scrollbar::{ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTheme, StyledScrollbarTheme},
     selector::{
-        DefaultSelectorTheme, SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState,
+        SelectorLook, SelectorPalette, SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme,
     },
-    tabs::{DefaultTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
+    tabs::{StyledTabsTheme, TabsItemLook, TabsListLook, TabsTheme},
     tooltip::{TooltipLook, TooltipTheme},
 };
+use xgpui_luma::style::ThemeSource;
 use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale, ThemeMode, ThemeTokens};
 
 struct Snapshot {
     tokens: ThemeTokens,
-    button: DefaultButtonFamilyTheme,
-    radio: DefaultRadioButtonTheme,
-    scrollbar: DefaultScrollbarTheme,
-    selector: DefaultSelectorTheme,
-    tabs: DefaultTabsTheme,
+    scrollbar: StyledScrollbarTheme,
+    selector: StyledSelectorTheme,
+    tabs: StyledTabsTheme,
     tooltip: TooltipLook,
 }
 
 impl Snapshot {
-    fn new(tokens: ThemeTokens) -> Self {
+    /// `style` is the SDK's `.lss` theme for the same mode as `tokens`.
+    fn new(tokens: ThemeTokens, style: xgpui_luma::style::lss::Theme) -> Self {
+        let panel_tokens = tokens.clone();
+        let binding = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
         Self {
-            button: DefaultButtonFamilyTheme::new(tokens.clone()),
-            radio: DefaultRadioButtonTheme::new(tokens.clone()),
-            scrollbar: DefaultScrollbarTheme::new(tokens.clone()),
-            selector: DefaultSelectorTheme::new(tokens.clone()),
-            tabs: DefaultTabsTheme::new(tokens.clone()),
+            scrollbar: StyledScrollbarTheme::new(binding("scrollbar"), tokens.metrics),
+            tabs: StyledTabsTheme::new(binding("tabs")),
+            selector: StyledSelectorTheme::new(
+                ThemeSource::Fixed(style),
+                Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
+            ),
             tooltip: TooltipLook::from_tokens(&tokens, None),
             tokens,
         }
@@ -60,8 +61,8 @@ impl AppTheme {
     pub(crate) fn new() -> Self {
         Self(Arc::new(State {
             dark: AtomicBool::new(true),
-            light: Snapshot::new(ThemeTokens::light()),
-            dark_snapshot: Snapshot::new(ThemeTokens::dark()),
+            light: Snapshot::new(ThemeTokens::light(), xgpui_luma::style::default_theme()),
+            dark_snapshot: Snapshot::new(ThemeTokens::dark(), xgpui_luma::style::dark_theme()),
         }))
     }
 
@@ -92,34 +93,27 @@ impl AppTheme {
     }
 }
 
-impl ButtonFamilyTheme for AppTheme {
-    fn resolve_look(
+impl AppTheme {
+    /// The SDK's `.lss` theme for the current mode: its light or its dark palette.
+    pub(crate) fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        match self.mode() {
+            ThemeMode::Light => xgpui_luma::style::default_theme(),
+            ThemeMode::Dark => xgpui_luma::style::dark_theme(),
+        }
+    }
+
+    /// The SDK button drawn from `.lss`, following the mode.
+    pub(crate) fn button_template<D: xgpui_luma::controls::button::ButtonData>(
         &self,
-        role: ButtonFamilyRole,
-        state: InteractionState,
-        scale: &StandardBoxScale,
-        pill_radius: f32,
-    ) -> Option<ButtonFamilyLook> {
-        self.current().button.resolve_look(role, state, scale, pill_radius)
+    ) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<D>> {
+        let theme = self.clone();
+        Arc::new(StyledButtonTemplate::<D>::live(Arc::new(move || theme.style_theme())))
     }
 
-    fn resolve(&self, role: ButtonFamilyRole, state: InteractionState) -> ButtonFamilyPalette {
-        self.current().button.resolve(role, state)
-    }
-    fn metrics(&self) -> MetricTokens {
-        self.metrics()
-    }
-}
-
-impl RadioButtonTheme for AppTheme {
-    fn resolve(&self, checked: bool, state: InteractionState) -> RadioButtonPalette {
-        self.current().radio.resolve(checked, state)
-    }
-    fn metrics(&self) -> MetricTokens {
-        self.metrics()
-    }
-    fn scale(&self, scale_factor: f32) -> RadioScale {
-        self.current().radio.scale(scale_factor)
+    /// The SDK radio drawn from `.lss`, following the mode.
+    pub(crate) fn radio_template(&self) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<RadioButtonData>> {
+        let theme = self.clone();
+        Arc::new(StyledRadioButtonTemplate::live(Arc::new(move || theme.style_theme())))
     }
 }
 
@@ -194,12 +188,11 @@ impl TooltipTheme for AppTheme {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::controls::button_family::ButtonFamilyRole;
 
     #[test]
     fn retained_control_themes_follow_mode_and_preserve_sdk_snapshots() {
         let theme = AppTheme::new();
-        let buttons: Arc<dyn ButtonFamilyTheme> = Arc::new(theme.clone());
-        let radios: Arc<dyn RadioButtonTheme> = Arc::new(theme.clone());
         let tabs: Arc<dyn TabsTheme> = Arc::new(theme.clone());
         let selectors: Arc<dyn SelectorTheme> = Arc::new(theme.clone());
         let scrollbars: Arc<dyn ScrollbarTheme> = Arc::new(theme.clone());
@@ -214,24 +207,41 @@ mod tests {
                 ThemeMode::Dark => ThemeTokens::dark(),
             };
             let state = InteractionState::default();
-            let button = buttons.resolve(ButtonFamilyRole::Text, state);
-            let expected_button = DefaultButtonFamilyTheme::new(tokens.clone()).resolve(ButtonFamilyRole::Text, state);
+            let button = StyledButtonTemplate::<()>::live(Arc::new({
+                let theme = theme.clone();
+                move || theme.style_theme()
+            }))
+            .look(ButtonFamilyRole::Text, state, 1.0);
+            let style = theme.style_theme();
+            let sdk = |control| xgpui_luma::style::StyleBinding::new(control, ThemeSource::Fixed(style.clone()));
+            let expected_button =
+                StyledButtonTemplate::<()>::new(style.clone()).look(ButtonFamilyRole::Text, state, 1.0);
             assert_eq!(button.background, expected_button.background);
-            let radio = radios.resolve(true, state);
-            assert_eq!(radio.dot_color, DefaultRadioButtonTheme::new(tokens.clone()).resolve(true, state).dot_color);
+            let radio_label = theme
+                .style_theme()
+                .resolve(&xgpui_luma::style::lss::StyleKey::new(xgpui_luma::style::lss::ControlId::new("radio")))
+                .part(xgpui_luma::style::lss::PartId::new("label"))
+                .foreground()
+                .map(gpui::Hsla::from)
+                .expect("radio label");
+            let expected = tokens.palette.app.foreground.to_rgb();
+            let got = radio_label.to_rgb();
+            assert!((got.r - expected.r).abs() < 2e-3, "radio label follows the mode: {got:?} != {expected:?}");
             let tab = tabs.resolve_item(true, state);
-            assert_eq!(tab.label_color, DefaultTabsTheme::new(tokens.clone()).resolve_item(true, state).label_color);
+            assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
             let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
-            assert_eq!(
-                selector.trigger_background,
-                DefaultSelectorTheme::new(tokens.clone())
-                    .resolve(SelectorTriggerStyle::default(), state, false)
-                    .trigger_background
-            );
+            // The selector trigger is the SDK's `.lss` outline trigger for the mode.
+            let expected = match mode {
+                ThemeMode::Light => tokens.palette.app.background,
+                ThemeMode::Dark => tokens.palette.app.background,
+            }
+            .to_rgb();
+            let got = selector.trigger_background.to_rgb();
+            assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
             let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
             assert_eq!(
                 scrollbar.thumb_background,
-                DefaultScrollbarTheme::new(tokens.clone())
+                StyledScrollbarTheme::new(sdk("scrollbar"), tokens.metrics)
                     .resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft)
                     .thumb_background
             );
@@ -239,7 +249,7 @@ mod tests {
             assert_eq!(tip.background, TooltipLook::from_tokens(&tokens, None).background);
             colors.push([
                 button.foreground,
-                radio.label_color,
+                radio_label,
                 tab.label_color,
                 selector.trigger_background,
                 scrollbar.thumb_background,

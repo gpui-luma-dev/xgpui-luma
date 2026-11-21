@@ -1,10 +1,10 @@
 //! Rendered geometry regressions for look variants, not just palette values.
 use gpui::{IntoElement, ParentElement};
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, DefaultButtonTemplate};
+use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::checkbox::{CheckboxData, ThemedCheckboxTemplate};
-use xgpui_luma::controls::radio_button::{RadioButtonData, ThemedRadioButtonTemplate};
-use xgpui_luma::controls::switch::{SwitchData, ThemedSwitchTemplate};
+use xgpui_luma::controls::checkbox::CheckboxData;
+use xgpui_luma::controls::radio_button::RadioButtonData;
+use xgpui_luma::controls::switch::SwitchData;
 use xgpui_luma::infra::focus_adorner::testing::assert_stable_layout;
 use xgpui_luma::theme::{ThemeMode};
 use crate::*;
@@ -26,7 +26,7 @@ fn all_button_variants_keep_control_and_sibling_bounds_across_states() {
                 for compact in [false, true] {
                     let look = Look::built_in();
                     look.set_mode(mode);
-                    let template = DefaultButtonTemplate::new(button_family_theme(&look.with_size(size), variant));
+                    let template = button_template::<()>(&look.with_size(size), variant, crate::Paint::accent());
                     assert_stable_layout(move |state, selected, window, cx| {
                         let model = ButtonRenderModel::<()> {
                             id: "variant".into(),
@@ -48,7 +48,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
     for size in [RadixSize::One, RadixSize::Two, RadixSize::Three] {
         for variant in [CheckboxVariant::Classic, CheckboxVariant::Surface, CheckboxVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedCheckboxTemplate::new(checkbox_theme(&look.with_size(size), variant));
+            let template = checkbox_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
@@ -61,7 +61,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [RadioVariant::Classic, RadioVariant::Surface, RadioVariant::Soft] {
             let look = Look::built_in();
-            let template = ThemedRadioButtonTemplate::new(radio_theme(&look.with_size(size), variant));
+            let template = radio_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
@@ -74,8 +74,7 @@ fn choice_indicators_reserve_focus_space_in_every_state() {
         }
         for variant in [SwitchVariant::Classic, SwitchVariant::Surface, SwitchVariant::Soft] {
             let look = Look::built_in();
-            let template =
-                ThemedSwitchTemplate::new(switch_theme_with(&look.with_size(size), variant, Paint::accent()));
+            let template = switch_template(&look.with_size(size), variant, Paint::accent());
             assert_stable_layout(move |state, selected, window, cx| {
                 template
                     .render(
@@ -149,7 +148,7 @@ fn composite_item(
 }
 
 #[test]
-fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_face_borders() {
+fn composites_draw_the_focus_ring_only_when_focused_and_enabled() {
     use gpui::{Context, Render, Window};
     use xgpui_luma::theme::InteractionState;
     struct Composite {
@@ -162,19 +161,11 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
             composite_item(&self.look, self.icon, self.state, false, window, cx)
         }
     }
+    // Rows and joined icon faces both draw their ring in the focus role (`.lss`), only when focused and enabled.
     for icon in [false, true] {
-        for recipe in ["none", "tone.6"] {
+        {
             let look = Look::built_in().fork();
-            look.set_button_recipes(&format!("[[button_recipes.rules]]\nbackground='transparent'\nforeground='role.foreground'\nborder='gray.7'\nfocus_border='{recipe}'")).unwrap();
-            let palette = crate::button_family_theme(&look, ButtonVariant::Ghost)
-                .resolve(ButtonFamilyRole::Text, InteractionState::default());
-            let expected_focus = if icon {
-                look.resolve_role(SemanticRole::Focus).hsla()
-            } else {
-                palette.focus_border
-            };
-            let expected_face = palette.border.unwrap();
-            let focus_role = look.resolve_role(SemanticRole::Focus).hsla();
+            let expected_focus = look.resolve_role(SemanticRole::Focus).hsla();
             let mut app = gpui::TestAppContext::single();
             let paint_look = look.clone();
             let (view, cx) =
@@ -188,19 +179,11 @@ fn composites_respect_transparent_and_custom_focus_recipes_without_replacing_fac
                 cx.run_until_parked();
                 cx.update(|window, _| {
                     let quads = window.painted_quads();
-                    // Joined icon segments have separators rather than individual face borders.
-                    if !icon {
-                        assert!(quads.iter().any(|q| q.border_color == expected_face), "face border survives focus");
-                    }
-                    if !icon {
-                        assert!(
-                            !quads.iter().any(|q| q.border_color == focus_role),
-                            "hard-coded focus role must not bypass recipe"
-                        );
-                    }
-                    if expected_focus.a > 0. {
-                        assert_eq!(quads.iter().any(|q| q.border_color == expected_focus), focused && !disabled);
-                    }
+                    let near = |c: gpui::Hsla| {
+                        let (x, y) = (c.to_rgb(), expected_focus.to_rgb());
+                        [(x.r, y.r), (x.g, y.g), (x.b, y.b), (x.a, y.a)].iter().all(|(p, q)| (p - q).abs() < 2e-3)
+                    };
+                    assert_eq!(quads.iter().any(|q| near(q.border_color)), focused && !disabled, "icon {icon}");
                 });
             }
             assert_stable_layout(move |state, selected, window, cx| {

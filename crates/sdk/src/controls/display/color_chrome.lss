@@ -1,0 +1,10 @@
+// SDK color-control chrome. Layer: sdk. Read by `StyledColorChrome` (color_chrome.rs): the edge and
+// panel fill the color controls (fields, sliders, rings) draw with.
+
+/// The frame of the color controls.
+color_chrome {
+  part root {
+    border     = palette.border.default
+    background = palette.surface.panel.background
+  }
+}

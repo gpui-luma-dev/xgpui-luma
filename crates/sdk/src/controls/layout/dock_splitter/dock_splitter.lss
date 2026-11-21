@@ -1,0 +1,26 @@
+// SDK dock splitter. Layer: sdk. Read by `StyledDockSplitterTheme` (styled.rs): the resting line, the line
+// under the pointer, the optional grip, and their geometry.
+
+/// A draggable divider between docked panes.
+dock_splitter {
+  /// The pointer hit width and the painted line.
+  hit_target: length = exact(8)
+  visible_line: length = exact(1)
+  /// The grip's size, corner radius and resting opacity.
+  thumb_width: length = exact(4)
+  thumb_height: length = exact(36)
+  thumb_radius: length = exact(8)
+  thumb_rest_opacity: number = 0.4
+  /// The line, the line under the pointer, and the grip.
+  line: color = palette.border.default
+  hover_line: color = palette.state.selected.background
+  thumb: color = palette.state.selected.background
+
+  part root {
+    :disabled {
+      line       = palette.state.disabled.foreground
+      hover_line = palette.state.disabled.foreground
+      thumb      = palette.state.disabled.foreground
+    }
+  }
+}

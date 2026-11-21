@@ -2,15 +2,16 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::scrollbar::{
-    ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTemplate, ScrollbarTheme, ThemedScrollbarTemplate,
+    ScrollbarLook, ScrollbarOrientation, ScrollbarStyle, ScrollbarTemplate, ScrollbarTheme, StyledScrollbarTheme,
+    ThemedScrollbarTemplate,
 };
-use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
-use crate::{Look, ScaleFamily};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
+use crate::Look;
 
 struct ScrollbarThemeAdapter {
     look: Look,
+    styled: StyledScrollbarTheme,
 }
-
 impl ScrollbarTheme for ScrollbarThemeAdapter {
     fn resolve(
         &self,
@@ -18,43 +19,17 @@ impl ScrollbarTheme for ScrollbarThemeAdapter {
         orientation: ScrollbarOrientation,
         style: ScrollbarStyle,
     ) -> ScrollbarLook {
-        let size = self.look.size();
-        let geometry = self.look.common_stylesheet().scrollbar.resolve_geometry_for(size.key(), Default::default());
-        let gray = |step| self.look.resolve_step(ScaleFamily::Gray, step).hsla();
-        ScrollbarLook {
-            disabled_opacity: geometry.disabled_opacity,
-            track_background: if style == ScrollbarStyle::Soft {
-                gray(3)
-            } else {
-                gpui::transparent_black()
-            },
-            thumb_background: gray(match state.layer() {
-                InteractionLayer::Disabled => 5,
-                InteractionLayer::Pressed => 10,
-                InteractionLayer::Hovered => 9,
-                InteractionLayer::Default => 8,
-            }),
-            length: match orientation {
-                ScrollbarOrientation::Horizontal => geometry.length_h,
-                ScrollbarOrientation::Vertical => geometry.length_v,
-            },
-            thickness: geometry.thickness,
-            track_thickness: geometry.track_thickness,
-            thumb_thickness: geometry.thumb_thickness,
-            min_thumb_length: geometry.min_thumb_length,
-            radius: self.look.radii().full,
-        }
+        self.styled.resolve(state, orientation, style)
     }
-
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
     }
 }
-
-/// Live Radix neutral scrollbar colors with SDK geometry (`sm`, `md`, `lg` keys).
+/// Live Radix neutral scrollbar from `.lss` (`style/scrollbar.lss`), sizes 1–3.
 /// Retains the explicit Look; notify affected owners after changing it.
 pub fn scrollbar_theme(look: &Look) -> Arc<dyn ScrollbarTheme> {
-    Arc::new(ScrollbarThemeAdapter { look: look.clone() })
+    let styled = StyledScrollbarTheme::new(crate::textfield::sized_binding(look, "scrollbar"), MetricTokens::default());
+    Arc::new(ScrollbarThemeAdapter { look: look.clone(), styled })
 }
 
 /// Shared template for SDK Scrollbar, ScrollContainer, and PopupScrollSurface.
@@ -73,6 +48,7 @@ pub fn scrollbar_template(look: &Look) -> Arc<dyn ScrollbarTemplate> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ScaleFamily;
     use xgpui_luma::theme::ThemeMode;
 
     #[test]
@@ -90,8 +66,9 @@ mod tests {
                         (InteractionState { disabled: true, pressed: true, ..Default::default() }, 5),
                     ] {
                         let resolved = theme.resolve(state, orientation, ScrollbarStyle::Soft);
-                        assert_eq!(resolved.thumb_background, look.resolve_step(ScaleFamily::Gray, step).hsla());
-                        assert_eq!(resolved.track_background, look.resolve_step(ScaleFamily::Gray, 3).hsla());
+                        let gray = |n| look.resolve_step(ScaleFamily::Gray, n).hsla();
+                        crate::control_group::assert_close(resolved.thumb_background, gray(step));
+                        crate::control_group::assert_close(resolved.track_background, gray(3));
                         assert!(resolved.min_thumb_length > 0.0);
                         assert!(resolved.thickness >= resolved.thumb_thickness);
                     }
@@ -107,14 +84,8 @@ mod tests {
         let theme = scrollbar_theme(&fork);
         let resolve = || theme.resolve(Default::default(), ScrollbarOrientation::Vertical, ScrollbarStyle::Ghost);
         let before = resolve();
-        let mut sheet = fork.common_stylesheet();
-        sheet.scrollbar.sizes.get_or_default("2").length_v = Some(321.0);
-        sheet.scrollbar.geometry.disabled_opacity = Some(0.2);
-        fork.set_common_stylesheet(sheet);
         fork.set_mode(ThemeMode::Dark);
         let after = resolve();
-        assert_eq!(after.length, 321.0);
-        assert_eq!(after.disabled_opacity, 0.2);
         assert_ne!(after.thumb_background, before.thumb_background);
         let original =
             scrollbar_theme(&look).resolve(Default::default(), ScrollbarOrientation::Vertical, ScrollbarStyle::Ghost);

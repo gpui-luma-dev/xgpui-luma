@@ -1,40 +1,36 @@
 use std::sync::Arc;
 
 use xgpui_luma::controls::slider::{
-    SliderTemplate, SliderTheme, ThemedAngularDialTemplate, ThemedCircularRingTemplate, ThemedSliderTemplate,
+    SliderTemplate, SliderTheme, StyledSliderTheme, ThemedAngularDialTemplate, ThemedCircularRingTemplate,
+    ThemedSliderTemplate,
 };
-use xgpui_luma::theme::InteractionState;
 
 use crate::controls::button::ShadcnButtonStyle;
-use crate::controls::slider::slider_look_with_stylesheet;
 use crate::look::ShadcnLook;
 
 pub fn slider_theme(theme: ShadcnLook) -> Arc<dyn SliderTheme> {
     slider_theme_with_style(theme, ShadcnButtonStyle::Primary)
 }
 
+/// The Shadcn slider drawn from `.lss` (`style/slider.lss`) at the look's size; secondary uses the
+/// secondary foreground, every other style the primary.
 pub fn slider_theme_with_style(theme: ShadcnLook, style: ShadcnButtonStyle) -> Arc<dyn SliderTheme> {
-    Arc::new(ShadcnSliderTheme { theme: theme.clone(), style })
-}
-
-struct ShadcnSliderTheme {
-    theme: ShadcnLook,
-    style: ShadcnButtonStyle,
-}
-
-impl SliderTheme for ShadcnSliderTheme {
-    fn resolve(&self, state: InteractionState) -> xgpui_luma::controls::slider::SliderLook {
-        let size = self.theme.size();
-        let tokens = self.theme.mode_tokens();
-        slider_look_with_stylesheet(
-            tokens.as_ref(),
-            &self.theme.stylesheet(),
-            self.theme.mode(),
-            self.style,
-            size,
-            state,
-        )
-    }
+    let size = theme.size();
+    let binding = xgpui_luma::style::StyleBinding::new(
+        "slider",
+        xgpui_luma::style::ThemeSource::Live(Arc::new(move || theme.style_theme())),
+    );
+    let binding = if style == ShadcnButtonStyle::Secondary {
+        binding.variant("secondary")
+    } else {
+        binding
+    };
+    let binding = if size != crate::ShadcnSize::Md {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(StyledSliderTheme::new(binding))
 }
 
 pub fn slider_template(theme: ShadcnLook) -> Arc<dyn xgpui_luma::controls::slider::SliderTemplate> {

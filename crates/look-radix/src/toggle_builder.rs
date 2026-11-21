@@ -14,7 +14,7 @@ use crate::tone::Tone;
 
 /// Builder in the guise of a toggle: Radix axes plus SDK options, until `.spawn(cx)`.
 pub struct Toggle {
-    motion: xgpui_luma::motion::MotionOverrides<xgpui_luma::controls::toggle::ToggleMotion>,
+    transition: Option<xgpui_luma::motion::Transition>,
     callbacks: ToggleCallbacks,
     id: SharedString,
     look: Option<Look>,
@@ -88,7 +88,7 @@ impl Toggle {
             callbacks: ToggleCallbacks::default(),
             id: id.into(),
             look: None,
-            motion: Default::default(),
+            transition: None,
             page: false,
             paint: Paint::accent(),
             size: ButtonSize::default(),
@@ -104,7 +104,11 @@ impl Toggle {
         }
     }
 
-    xgpui_luma::forward_motion!(xgpui_luma::controls::toggle::ToggleMotion, edits motion);
+    /// Animate selection changes with `transition` instead of the look's `.lss` `transition`.
+    pub fn transition(mut self, transition: xgpui_luma::motion::Transition) -> Self {
+        self.transition = Some(transition);
+        self
+    }
 
     /// Bind a look. Draft / fork paths must call this; ambient Global is not enough.
     pub fn look(mut self, look: &Look) -> Self {
@@ -199,14 +203,15 @@ impl Toggle {
         let look = look.with_size(self.size.control_size());
         let template = toggle_template_for_size(&look, self.paint, self.page, self.size);
         let mut builder = xgpui_luma::controls::toggle::new(self.id)
-            .motion_defaults(look.motion_defaults().toggle)
-            .with_motion_overrides(self.motion)
             .template(template)
             .with_data(self.selected)
             .enabled(self.enabled)
             .tab_stop(self.tab_stop)
             .motion_enabled(self.motion_enabled)
             .with_callbacks(self.callbacks);
+        if let Some(transition) = self.transition {
+            builder = builder.transition(transition);
+        }
         if let Some(icon) = self.icon {
             builder = builder.icon(icon);
         }

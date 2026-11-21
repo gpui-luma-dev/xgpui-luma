@@ -1,0 +1,51 @@
+// SDK pager. Layer: sdk. Read by `StyledPagerTheme` (styled.rs): the page buttons' size and spacing, the
+// colors the template paints, and the page-size popup. `variant minimal` keeps buttons square and close.
+
+/// Page navigation: previous, numbers, next, and a page-size picker.
+pager {
+  /// Gap-jump glyph size, page-size label gap, and the page-size popup's offset, gap, padding, item padding
+  /// and item radius inset.
+  gap_icon_size: length = exact(16)
+  page_size_label_gap: length = exact(8)
+  popup_offset_y: length = exact(4)
+  popup_gap: length = exact(2)
+  popup_padding: length = exact(4)
+  popup_item_padding_y: length = exact(4)
+  popup_item_radius_inset: length = exact(2)
+  /// Page button size and minimum width, the space between button groups, and disabled opacity.
+  button_size: length = exact(metrics.control.control_height)
+  button_min_width: length = exact(metrics.control.control_height + 4)
+  group_gap: length = exact(16)
+  disabled_opacity: number = 0.56
+  /// Secondary text, the current page, and a hovered page.
+  muted_text: color = palette.app.muted_foreground
+  selected_background: color = palette.state.selected.background
+  selected_foreground: color = palette.state.selected.foreground
+  hover_background: color = palette.state.hover.background
+
+  part root {
+    background   = palette.surface.panel.background
+    foreground   = palette.app.foreground
+    border       = palette.form.input.border
+    border_width = exact(1)
+    shadow       = []
+    height       = exact(metrics.control.control_height)
+    radius       = exact(metrics.control.radius)
+    padding_x    = exact(max(metrics.control.padding_x - 2, 0))
+    padding_y    = exact(metrics.control.padding_y + metrics.control.gap / 2)
+    gap          = exact(4)
+    font_size    = typography.text.caption.size
+    line_height  = typography.text.caption.line_height
+    font_weight  = typography.text.caption.weight
+    :disabled {
+      background = palette.state.disabled.background
+      foreground = palette.state.disabled.foreground
+      muted_text = palette.state.disabled.foreground
+    }
+  }
+
+  variant minimal {
+    button_min_width = exact(metrics.control.control_height)
+    group_gap        = exact(8)
+  }
+}

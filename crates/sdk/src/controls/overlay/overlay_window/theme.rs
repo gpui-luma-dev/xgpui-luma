@@ -1,8 +1,8 @@
 use std::sync::{Arc, OnceLock};
 
-use gpui::{BoxShadow, Hsla, SharedString, black};
+use gpui::{BoxShadow, Hsla, SharedString};
 
-use crate::theme::{LumaTextStyle, ThemeTokens};
+use crate::theme::LumaTextStyle;
 
 use super::OverlayWindowMode;
 
@@ -33,69 +33,10 @@ pub trait OverlayWindowTheme: Send + Sync {
     fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct DefaultOverlayWindowTheme {
-    tokens: ThemeTokens,
-}
-
 pub fn default_overlay_window_theme() -> Arc<dyn OverlayWindowTheme> {
     static THEME: OnceLock<Arc<dyn OverlayWindowTheme>> = OnceLock::new();
 
-    THEME.get_or_init(|| Arc::new(DefaultOverlayWindowTheme::default())).clone()
-}
-
-impl DefaultOverlayWindowTheme {
-    pub fn new(tokens: ThemeTokens) -> Self {
-        Self { tokens }
-    }
-}
-
-impl OverlayWindowTheme for DefaultOverlayWindowTheme {
-    fn resolve(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
-        let palette = self.tokens.stylesheet.recipes.palette("overlay_window", &self.tokens.palette);
-        let metrics = &self.tokens.metrics;
-        let typography = &self.tokens.typography;
-        let elevation = &self.tokens.elevation;
-        let geometry =
-            self.tokens
-                .stylesheet
-                .overlay_window
-                .resolve_geometry(crate::theme::stylesheet::OverlayWindowGeometry {
-                    padding: metrics.padding_x(),
-                    radius: 12.0,
-                    font_size: typography.text.body.size,
-                    line_height: typography.text.body.line_height,
-                    ..Default::default()
-                });
-
-        OverlayWindowLook {
-            viewport_padding: geometry.viewport_padding,
-            window_margin: geometry.window_margin,
-            drag_header_height: geometry.drag_header_height,
-
-            border_width: geometry.border_width,
-            background: palette.surface.floating.background,
-            border: palette.surface.floating.border,
-            foreground: palette.surface.floating.foreground,
-            backdrop_background: if mode == OverlayWindowMode::Modal {
-                Hsla { a: geometry.backdrop_opacity, ..black() }
-            } else {
-                Hsla { a: 0.0, ..black() }
-            },
-            shadow: if mode == OverlayWindowMode::Modal {
-                elevation.dialog.to_box_shadows()
-            } else {
-                elevation.overlay_window.to_box_shadows()
-            },
-            radius: geometry.radius,
-            padding: geometry.padding,
-            min_width: geometry.min_width,
-            max_width: geometry.max_width,
-            estimated_height: geometry.estimated_height,
-            body: LumaTextStyle { size: geometry.font_size, line_height: geometry.line_height, ..typography.text.body },
-            font_family: typography.font.sans.family.clone().into(),
-        }
-    }
+    THEME.get_or_init(|| Arc::new(super::styled::StyledOverlayWindowTheme::sdk())).clone()
 }
 
 crate::theme::stylesheet::geometry::geometry_family!(

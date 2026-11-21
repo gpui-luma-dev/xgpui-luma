@@ -1,0 +1,30 @@
+// Radix overlay window. Layer: look. The surface with a soft drop shadow, the xl radius, control padding
+// and size-specific widths; a modal window's scrim is a little lighter.
+
+overlay_window {
+  estimated_height = exact(220)
+  size 1 { estimated_height = exact(180) }
+  size 3 { estimated_height = exact(260) }
+
+  part root {
+    background  = radix.role.surface
+    foreground  = radix.role.foreground
+    border      = radix.role.border
+    shadow      = [box_shadow(alpha(black, 0.22), 0, 18, 38, -16)]
+    radius      = exact(8)
+    padding     = exact(12)
+    min_width   = exact(360)
+    max_width   = exact(440)
+    font_family = "System UI"
+    font_size   = 14
+    line_height = 20
+    font_weight = 400
+  }
+  size 1 { part root { padding = exact(8)   min_width = exact(280)  max_width = exact(360) } }
+  size 3 { part root { padding = exact(16)  min_width = exact(440)  max_width = exact(520) } }
+
+  variant modal {
+    backdrop = alpha(black, 0.42)
+    part root { shadow = [box_shadow(alpha(black, 0.22), 0, 18, 38, -16)] }
+  }
+}

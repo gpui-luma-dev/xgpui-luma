@@ -2,57 +2,26 @@
 use std::sync::Arc;
 use gpui::SharedString;
 use xgpui_luma::controls::accordion::*;
-use xgpui_luma::theme::{InteractionLayer, InteractionState, MetricTokens};
-use crate::{Look, ScaleFamily, SemanticRole};
+use xgpui_luma::theme::{InteractionState, MetricTokens};
+use crate::Look;
+/// The Radix accordion: trigger, content and layout from `.lss` (`style/accordion.lss`); the drag preview,
+/// handle icon and tooltip from the look.
 struct AccordionThemeAdapter {
     look: Look,
+    styled: StyledAccordion,
 }
 impl AccordionTheme for AccordionThemeAdapter {
     fn resolve_trigger(&self, state: InteractionState) -> AccordionPalette {
-        let mut palette =
-            DefaultAccordionTheme::new(crate::navigation::geometry_tokens(&self.look)).resolve_trigger(state);
-        palette.background = match state.layer() {
-            InteractionLayer::Hovered => Some(self.look.resolve_step(ScaleFamily::Gray, 3).hsla()),
-            InteractionLayer::Pressed => Some(self.look.resolve_step(ScaleFamily::Gray, 4).hsla()),
-            _ => None,
-        };
-        palette.foreground = self
-            .look
-            .resolve_role(if state.disabled {
-                SemanticRole::MutedForeground
-            } else {
-                SemanticRole::Foreground
-            })
-            .hsla();
-        palette.icon_color = palette.foreground;
-        palette.chevron_color = self.look.resolve_role(SemanticRole::MutedForeground).hsla();
-        palette.border_color = self
-            .look
-            .resolve_role(if state.focused && !state.disabled {
-                SemanticRole::Focus
-            } else {
-                SemanticRole::Border
-            })
-            .hsla();
-        palette.font_family = crate::typography::font_family(&self.look);
-        palette
+        self.styled.trigger(state)
     }
     fn resolve_content(&self, _: bool) -> AccordionContentPalette {
-        AccordionContentPalette {
-            background: None,
-            foreground: self.look.resolve_role(SemanticRole::Foreground).hsla(),
-        }
+        self.styled.content()
     }
     fn metrics(&self) -> MetricTokens {
         self.look.metrics_for(self.look.size())
     }
     fn resolve_scale(&self, scale_factor: f32) -> AccordionScale {
-        let size = self.look.size();
-        AccordionScale::compute_with_stylesheet(
-            &self.look.metrics_for(size),
-            scale_factor,
-            &self.look.sized_stylesheet(size),
-        )
+        self.styled.scale(scale_factor)
     }
     fn drag_handle_icon(&self) -> xgpui_luma::infra::icon::IconSource {
         self.look.common_stylesheet().icons.resolve(xgpui_luma::theme::stylesheet::IconRole::DragHandle)
@@ -67,7 +36,14 @@ impl AccordionTheme for AccordionThemeAdapter {
 }
 /// Retains the supplied Look and resolves palette, geometry, and drag chrome on render.
 pub fn accordion_theme(look: &Look) -> Arc<dyn AccordionTheme> {
-    Arc::new(AccordionThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let binding = xgpui_luma::style::StyleBinding::new("accordion", crate::textfield::live_source(look));
+    let binding = if size != crate::RadixSize::Two {
+        binding.attr("size", size.key())
+    } else {
+        binding
+    };
+    Arc::new(AccordionThemeAdapter { look: look.clone(), styled: StyledAccordion::new(binding) })
 }
 /// SDK accordion template with Radix trigger/content styling.
 pub fn accordion_template(look: &Look) -> Arc<dyn AccordionTemplate> {

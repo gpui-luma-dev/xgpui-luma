@@ -3,7 +3,7 @@
 use gpui::{App, Context, Div, Entity, SharedString, Stateful};
 use xgpui_luma::controls::button::{
     ButtonCallbacks, ButtonEvent, ButtonBuilder, ButtonContentContext, ButtonRenderModel, ButtonTemplateModifier,
-    ControlIcon, ControlPresenter, DefaultButtonTemplate, HasPresenter,
+    ControlIcon, ControlPresenter, HasPresenter,
 };
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use super::button::{ButtonRadiusPreset, ShadcnButtonStyle, button_look_with_stylesheet};
@@ -262,10 +262,7 @@ impl<D: Clone + 'static> Button<D> {
         let look = look.with_size(self.size);
         let style = self.style;
         let radius = self.radius;
-        let template = std::sync::Arc::new(DefaultButtonTemplate::new(super::templates::styled_button_family_theme(
-            look.clone(),
-            style,
-        )));
+        let template = std::sync::Arc::new(super::templates::styled_button_template::<D>(look.clone(), style));
         let mut builder = xgpui_luma::controls::button::Button::new(self.id)
             .typed(self.data)
             .with_callbacks(self.callbacks)

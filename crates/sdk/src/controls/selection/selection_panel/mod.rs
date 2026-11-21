@@ -23,7 +23,7 @@ pub use template::{
     SelectionPanelMouseUpHandler, SelectionPanelRenderModel, SelectionPanelTemplate, SelectionPanelTemplateHandlers,
     default_selection_panel_template, render_selection_panel,
 };
-pub use theme::{SelectionPanelLook, default_selection_panel_look};
+pub use theme::{SelectionPanelLook, default_selection_panel_look, styled_selection_panel_look};
 
 mod callback;
 pub use callback::SelectionPanelEventExt;

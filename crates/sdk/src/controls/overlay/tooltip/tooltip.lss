@@ -1,0 +1,27 @@
+// SDK tooltip. Layer: sdk. Read by `styled_tooltip_look` (styled.rs).
+
+/// A floating hint beside a target.
+tooltip {
+  /// Distance from the target, edge margin, pointer size and its inset from the corner.
+  target_gap: length = exact(10)
+  window_margin: length = exact(8)
+  pointer_size: length = exact(6)
+  pointer_inset: length = exact(12)
+  /// A keyboard shortcut after the text: its spacing, font size and opacity.
+  shortcut_gap: length = exact(16)
+  shortcut_font_size: length = exact(12)
+  shortcut_opacity: number = 0.65
+
+  /// The bubble.
+  part root {
+    background  = palette.surface.floating.background
+    foreground  = palette.surface.floating.foreground
+    shadow      = elevation.menu
+    padding_x   = exact(12)
+    padding_y   = exact(8)
+    max_width   = exact(260)
+    radius      = exact(6)
+    font_size   = 14
+    line_height = 20
+  }
+}

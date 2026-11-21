@@ -95,8 +95,6 @@ pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::styles
     STYLESHEET.get_or_init(|| {
         let mut sheet = native_radix_stylesheet();
         apply_radix_slider_stylesheet(&mut sheet);
-        apply_radix_switch_stylesheet(&mut sheet);
-        apply_radix_checkbox_stylesheet(&mut sheet);
         sheet
     })
 }
@@ -111,10 +109,7 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         motion,
         tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
-        switch: native_radix_switch(),
-        checkbox: native_radix_checkbox(),
         button: crate::button::native_button_stylesheet(),
-        radio: crate::radio::native_radio_stylesheet(),
         textfield: crate::textfield::native_textfield_stylesheet(),
         progress: crate::progress::native_progress_stylesheet(),
         textarea: crate::textarea::native_textarea_stylesheet(),
@@ -133,18 +128,11 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         ..Default::default()
     };
     crate::size::apply_size_presets(&mut common);
-    let mut common = common.with_sdk_defaults();
-    // Radix derives the checkbox indicator radius from its `radius` prop.
-    common.checkbox.geometry.indicator_radius = None;
-    common
+    common.with_sdk_defaults()
 }
 
 pub use crate::slider::{native_radix_slider};
 pub(crate) use crate::slider::{apply_radix_slider_stylesheet};
-pub use crate::switch::{native_radix_switch};
-pub(crate) use crate::switch::{apply_radix_switch_stylesheet};
-pub use crate::checkbox::{native_radix_checkbox};
-pub(crate) use crate::checkbox::{apply_radix_checkbox_stylesheet};
 
 fn sized_stylesheets(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
@@ -170,6 +158,8 @@ struct LookState {
     sized_stylesheets: RwLock<Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]>>,
     /// Bumped by look setters; polling does not schedule GPUI redraws.
     revision: RwLock<u64>,
+    /// The `.lss` theme last bound, keyed by revision and mode (see [`Look::style_theme`]).
+    style_theme: crate::style::ThemeCache,
 }
 
 impl Look {
@@ -206,6 +196,7 @@ impl Look {
                 sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
                 common_stylesheet: RwLock::new(common),
                 revision: RwLock::new(0),
+                style_theme: Default::default(),
             }),
         }
     }
@@ -346,7 +337,11 @@ impl Look {
 
     /// Palettes currently in use, for readouts and pickers.
     pub fn palettes(&self) -> ThemePalettes {
-        self.state.palettes.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(self.mode()) as usize]
+        self.palettes_for(self.mode())
+    }
+
+    fn palettes_for(&self, mode: ThemeMode) -> ThemePalettes {
+        self.state.palettes.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(mode) as usize]
     }
 
     /// Palette name behind one family, so swatches can report `indigo 9` over `color 9`.
@@ -503,9 +498,8 @@ impl Look {
         Ok(())
     }
 
-    fn custom_contrast(&self) -> Option<Hsla> {
-        self.state.custom_contrast.read().unwrap_or_else(|poisoned| poisoned.into_inner())
-            [mode_to_u8(self.mode()) as usize]
+    fn custom_contrast_for(&self, mode: ThemeMode) -> Option<Hsla> {
+        self.state.custom_contrast.read().unwrap_or_else(|poisoned| poisoned.into_inner())[mode_to_u8(mode) as usize]
             .map(|(_, preview)| preview)
     }
 
@@ -520,6 +514,12 @@ impl Look {
         }
     }
 
+    /// The look's scales bound to the Radix `.lss` files in the current mode. Cached: rebinds only after
+    /// a setter bumped the revision or the mode changed.
+    pub fn style_theme(&self) -> xgpui_luma::style::lss::Theme {
+        self.state.style_theme.get(self)
+    }
+
     pub fn revision(&self) -> u64 {
         *self.state.revision.read().unwrap_or_else(|e| e.into_inner())
     }
@@ -529,11 +529,16 @@ impl Look {
     }
 
     pub fn scales(&self) -> ModeScales {
+        self.scales_for(self.mode())
+    }
+
+    /// Scales for `mode`, whatever the current mode is.
+    pub(crate) fn scales_for(&self, mode: ThemeMode) -> ModeScales {
         self.state
             .scales
             .read()
-            .map(|scales| scales.for_mode(self.mode()))
-            .unwrap_or_else(|poisoned| poisoned.into_inner().for_mode(self.mode()))
+            .map(|scales| scales.for_mode(mode))
+            .unwrap_or_else(|poisoned| poisoned.into_inner().for_mode(mode))
     }
 
     /// Resolve a role without reducing its source to the current backend gamut.
@@ -567,18 +572,24 @@ impl Look {
     }
 
     pub fn resolve_role(&self, role: SemanticRole) -> ResolvedColor {
+        self.resolve_role_for(role, self.mode())
+    }
+
+    /// [`Self::resolve_role`] for `mode`, whatever the current mode is.
+    pub(crate) fn resolve_role_for(&self, role: SemanticRole, mode: ThemeMode) -> ResolvedColor {
         if role == SemanticRole::PrimaryForeground {
-            if let Some(contrast) = self.custom_contrast() {
+            if let Some(contrast) = self.custom_contrast_for(mode) {
                 return ResolvedColor::authored(contrast, "custom-accent-contrast");
             }
-            if self.accent_uses_dark_solid_contrast() {
-                return self.dark_solid_contrast();
+            if self.accent_uses_dark_solid_contrast_for(mode) {
+                return self.dark_solid_contrast_for(mode);
             }
         }
-        role.resolve(self.scales(), self.mode())
+        role.resolve(self.scales_for(mode), mode)
     }
 
     /// Control thumbs retain their light palette in both theme modes.
+    #[cfg(test)]
     pub(crate) fn light_gray_step(&self, step: ScaleStep) -> Hsla {
         self.state.scales.read().unwrap_or_else(|poisoned| poisoned.into_inner()).light.gray.step(step)
     }
@@ -589,21 +600,26 @@ impl Look {
 
     /// Whether solid accent faces need dark labels (lime / mint / sky / yellow / amber).
     pub fn accent_uses_dark_solid_contrast(&self) -> bool {
-        match self.palettes().accent {
+        self.accent_uses_dark_solid_contrast_for(self.mode())
+    }
+
+    fn accent_uses_dark_solid_contrast_for(&self, mode: ThemeMode) -> bool {
+        match self.palettes_for(mode).accent {
             PaletteSlot::Named(name) => {
                 Accent::ALL.iter().any(|accent| accent.as_str() == name && accent.uses_dark_solid_contrast())
             }
             PaletteSlot::Custom => self
-                .custom_contrast()
+                .custom_contrast_for(mode)
                 .map(|color| color.l < 0.5)
-                .unwrap_or_else(|| self.resolve_step(ScaleFamily::Color, 9).hsla().l >= 0.68),
+                .unwrap_or_else(|| self.scales_for(mode).resolved(ScaleFamily::Color, 9).hsla().l >= 0.68),
         }
     }
 
     /// Dark label for bright solid faces — the darker of gray 1 / gray 12 in the active mode.
-    fn dark_solid_contrast(&self) -> ResolvedColor {
-        let gray1 = self.resolve_step(ScaleFamily::Gray, 1);
-        let gray12 = self.resolve_step(ScaleFamily::Gray, 12);
+    fn dark_solid_contrast_for(&self, mode: ThemeMode) -> ResolvedColor {
+        let scales = self.scales_for(mode);
+        let gray1 = scales.resolved(ScaleFamily::Gray, 1);
+        let gray12 = scales.resolved(ScaleFamily::Gray, 12);
         if gray1.hsla().l <= gray12.hsla().l {
             gray1
         } else {
@@ -768,7 +784,7 @@ mod tests {
         assert_eq!(look.resolve_role(SemanticRole::PrimaryForeground).hsla(), light_contrast);
         look.set_palettes(Accent::Indigo, Gray::Auto);
         look.set_mode(ThemeMode::Dark);
-        assert!(look.custom_contrast().is_none());
+        assert!(look.custom_contrast_for(ThemeMode::Dark).is_none());
         assert_eq!(look.palettes(), ThemePalettes::named(Accent::Indigo, Gray::Auto));
     }
 
@@ -786,26 +802,16 @@ mod tests {
 
     #[test]
     fn independent_control_assembly_matches_bundled_styles() {
-        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_checkbox, define_sdk_slider, define_sdk_switch};
+        use xgpui_luma::theme::stylesheet::{CommonStylesheet, define_sdk_slider};
         let original = native_radix_stylesheet();
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
-        define_sdk_switch(&mut native);
-        define_sdk_checkbox(&mut native);
         apply_radix_slider_stylesheet(&mut native);
-        apply_radix_switch_stylesheet(&mut native);
-        apply_radix_checkbox_stylesheet(&mut native);
         crate::size::apply_size_presets(&mut native);
         assert_eq!(native.slider, original.slider);
-        assert_eq!(native.switch, original.switch);
-        assert_eq!(native.checkbox, original.checkbox);
         assert_eq!(native.motion.slider, original.motion.slider);
-        assert_eq!(native.motion.switch, original.motion.switch);
-        assert_eq!(native.motion.checkbox, original.motion.checkbox);
-        for family in ["slider", "switch", "checkbox"] {
-            assert_eq!(native.recipes.0.get(family), original.recipes.0.get(family));
-        }
+        assert_eq!(native.recipes.0.get("slider"), original.recipes.0.get("slider"));
 
         let old_look = Look::built_in();
         old_look.set_common_stylesheet(original);

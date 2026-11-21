@@ -1,0 +1,144 @@
+// Radix button. Layer: look, over the SDK button. Translated from the Radix button recipes: the base is
+// the solid variant at size 2; classic, soft, surface, outline, ghost, ghost_quiet and page are
+// variants; `tone gray` and `high_contrast` repaint them. The classic face is a gradient wash with
+// bevel shadows tuned live on the look (`look.classic.*`).
+
+button {
+  height    = 32
+  padding_x = 12
+  padding_y = 0
+  gap       = 8
+  icon_size = 14
+  radius    = exact(radix.button_radius_base * radix.radius_factor)
+  // Icon buttons keep the size's corner (a circle only at radius full).
+  icon_radius = exact(radius)
+  muted_foreground = foreground
+  size 1 { height = 24  padding_x = 8   gap = 4   icon_size = 12 }
+  size 3 { height = 40  padding_x = 16  gap = 12  icon_size = 16 }
+  size 4 { height = 48  padding_x = 24  gap = 12  icon_size = 18 }
+  radius full { radius = height / 2 }
+
+  part root {
+    background   := tone[9]
+    foreground   := look.tone_contrast
+    border       := tone[9]
+    focus_border := radix.role.focus
+    shadow       := []
+    font_size     = 14
+    line_height   = 20
+    :hover                  { background = tone[10] }
+    :pressed                { background = tone[10] }
+    :high_contrast          { background = tone[12]  foreground = gray[1]  border = tone[12] }
+    :high_contrast:hover    { background = shift_lightness(tone[12], 0.04) }
+    :high_contrast:pressed  { background = shift_lightness(tone[12], -0.03) }
+    :disabled               { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+  }
+  size 1 { part root { font_size = 12  line_height = 16 } }
+  size 3 { part root { font_size = 16  line_height = 24 } }
+  size 4 { part root { font_size = 18  line_height = 26 } }
+
+  // A raised solid face: the wash runs from the fill to a lighter bottom (flipped when pressed), the
+  // edge is darker than the fill, and the bevel is a rim, a fade, a lip and a drop shadow.
+  variant classic {
+    radius      = look.classic.radius
+    icon_radius = look.classic.radius
+    part root {
+      border           = shift_lightness(background, look.classic.border_delta)
+      background_start = shift_lightness(background, look.classic.fill_top_delta)
+      background_end   = shift_lightness(background, look.classic.fill_bottom_delta)
+      shadow = [inset_shadow(alpha(shift_lightness(background, look.classic.rim_lighten), look.classic.rim_alpha),
+                             0, look.classic.rim_offset, 0, 0),
+                inset_shadow(alpha(shift_lightness(background, look.classic.rim_lighten), look.classic.fade_alpha),
+                             0, look.classic.fade_offset, look.classic.fade_blur, look.classic.fade_spread),
+                inset_shadow(alpha(shift_lightness(background, 0 - look.classic.bevel_darken), look.classic.bevel_alpha),
+                             0, 0 - look.classic.bevel_offset, 0, 0),
+                box_shadow(alpha(black, look.classic.drop_alpha), 0, look.classic.drop_offset, look.classic.drop_blur, 0)]
+      :hover   { border = shift_lightness(background, look.classic.border_delta) }
+      :pressed {
+        border           = shift_lightness(background, look.classic.border_delta)
+        background_start = shift_lightness(background, look.classic.fill_bottom_delta)
+        background_end   = shift_lightness(background, look.classic.fill_top_delta)
+        shadow = [inset_shadow(alpha(shift_lightness(background, 0 - look.classic.rim_lighten * look.classic.pressed_rim_lightness_scale),
+                                     look.classic.rim_alpha * look.classic.pressed_rim_alpha_scale),
+                               0, look.classic.rim_offset, 0, 0),
+                  inset_shadow(alpha(shift_lightness(background, 0 - look.classic.rim_lighten * look.classic.pressed_rim_lightness_scale),
+                                     look.classic.fade_alpha),
+                               0, look.classic.fade_offset, look.classic.fade_blur, look.classic.fade_spread)]
+      }
+      :high_contrast { border = shift_lightness(background, look.classic.border_delta) }
+      :disabled      { border = radix.role.border  background_start = none  background_end = none }
+    }
+  }
+
+  variant soft {
+    part root {
+      background := tone[3]
+      foreground := tone[11]
+      border     := tone[3]
+      :high_contrast { foreground = tone[12] }
+      :hover    { background = tone[3] }
+      :pressed  { background = tone[4] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant surface {
+    part root {
+      background := tone[2]
+      foreground := tone[11]
+      border     := tone[7]
+      :high_contrast { foreground = tone[12] }
+      :hover    { background = tone[3]  border = tone[8] }
+      :pressed  { background = tone[4] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant outline {
+    part root {
+      background := transparent
+      foreground := radix.role.foreground
+      border     := radix.role.border
+      :high_contrast { foreground = tone[12]  border = tone[11] }
+      :hover    { background = tone[3] }
+      :pressed  { background = tone[4] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  variant ghost {
+    part root {
+      background := transparent
+      foreground := radix.role.foreground
+      border     := none
+      :high_contrast { foreground = tone[12] }
+      :hover    { background = tone[3] }
+      :pressed  { background = tone[4] }
+      :disabled { background = radix.role.surface  foreground = radix.role.muted_foreground  border = radix.role.border }
+    }
+  }
+
+  // Bare chrome: no face, edge or focus ring in any state.
+  variant ghost_quiet {
+    part root {
+      background   := transparent
+      foreground   := radix.role.foreground
+      border       := none
+      focus_border := none
+      :high_contrast { foreground = tone[12] }
+      :disabled      { foreground = radix.role.muted_foreground }
+    }
+  }
+
+  // A screen-nav pill: binary off | on, no hover or pressed paint and no focus ring.
+  variant page {
+    radius      = exact(999)
+    icon_radius = exact(999)
+    part root {
+      background   := transparent
+      foreground   := radix.role.muted_foreground
+      border       := none
+      focus_border := none
+    }
+  }
+}

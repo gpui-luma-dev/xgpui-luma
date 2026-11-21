@@ -1,0 +1,90 @@
+// SDK baseline tokens (converted from #94 crates/sdk/assets/sdk.hcl, trimmed). Layer: sdk.
+// The SDK has one neutral default and no modes; looks own their modes.
+
+const {
+  /// Fully rounded corners.
+  full_radius = 999
+  default_timed = timed(200, out_cubic)
+}
+
+tokens {
+  metrics {
+    disabled_opacity = 0.56
+    border_width = 1
+
+    focus {
+      gap    = 1
+      width  = 1
+      offset = 0
+    }
+
+    // The single SDK control scale.
+    control {
+      height         = 36
+      control_height = height   // interactive target height; follows height
+      padding_x      = 14
+      padding_y      = 8
+      gap            = 8
+      radius         = 6
+      icon_size      = 16
+    }
+  }
+
+  typography {
+    font {
+      sans = "System UI"
+      mono = "Monaco"
+    }
+    text {
+      body    = text(14, 20, 400)
+      label   = text(12.5, 18, 500)
+      caption = text(11, 16, 500)
+    }
+  }
+
+  palette {
+    app {
+      background       = gray(98.04, 1)
+      foreground       = gray(11.18, 1)
+      muted_foreground = gray(46.86, 1)
+    }
+    surface {
+      subtle {
+        background = gray(96.08, 1)
+        foreground = gray(26.67, 1)
+      }
+      floating {
+        background = gray(100, 1)
+        foreground = gray(11.18, 1)
+        border     = gray(83.92, 1)
+      }
+    }
+    state {
+      hover    { background = gray(91.37, 1)  foreground = gray(11.18, 1) }
+      pressed  { background = gray(83.92, 1) }
+      selected { background = gray(12, 1)  foreground = gray(100, 1) }
+      disabled { background = gray(96.08, 1)  foreground = gray(65.1, 1) }
+    }
+    form {
+      input {
+        background = gray(100, 1)
+        foreground = gray(11.18, 1)
+        border     = gray(65.1, 1)
+      }
+    }
+    focus  { ring = gray(20, 1) }
+    border { default = gray(83.92, 1) }
+  }
+
+  // A list of layers per role; [] means no shadow.
+  elevation {
+    none    = []
+    control = [shadow(0.05, 0, 1, 2, 0)]
+    menu    = [shadow(0.1, 0, 1, 3, 0), shadow(0.1, 0, 1, 2, -1)]
+  }
+
+  motion {
+    default   = default_timed
+    highlight = timed(180, out_cubic)
+  }
+}

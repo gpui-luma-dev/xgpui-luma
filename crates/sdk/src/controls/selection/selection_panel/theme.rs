@@ -26,32 +26,51 @@ pub struct SelectionPanelLook {
     pub item_radius: f32,
 }
 
+/// The SDK's selection panel: the SDK's `.lss` `selection_panel` with `tokens`' metrics and geometry.
 pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook {
-    let menu = crate::controls::floating_menu::default_floating_menu_look(tokens);
-    let look = SelectionPanelLook {
-        background: menu.background,
-        foreground: menu.foreground,
-        border: menu.border,
-        border_width: tokens.metrics.border_width,
-        disabled_opacity: menu.disabled_opacity,
-        shadow: menu.shadow,
-        radius: menu.radius,
-        padding: menu.padding,
-        min_width: menu.min_width,
-        item_disabled_foreground: menu.item_disabled_foreground,
-        item_hover_background: menu.item_hover_background,
-        item_hover_foreground: menu.item_hover_foreground,
-        item_typography: tokens.typography.text.label,
-        item_height: menu.item_height,
-        item_padding_x: menu.item_padding_x,
-        item_gap: menu.item_gap,
-        item_icon_size: menu.item_icon_size,
-        item_radius: menu.item_radius,
-    };
-    look.with_stylesheet(&tokens.stylesheet.selection_panel)
+    styled_selection_panel_look(
+        &crate::style::StyleBinding::sdk("selection_panel"),
+        &tokens.metrics,
+        &tokens.stylesheet,
+    )
+}
+
+/// A selection panel from a `.lss` `selection_panel` binding (the floating menu's surface and rows unless a
+/// look restyles it), through the selector items panel, then the stylesheet's selection-panel geometry.
+pub fn styled_selection_panel_look(
+    binding: &crate::style::StyleBinding,
+    metrics: &crate::theme::MetricTokens,
+    stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+) -> SelectionPanelLook {
+    let panel = crate::controls::selector_list::styled_selector_items_panel_look(binding, metrics, stylesheet);
+    SelectionPanelLook::from_items_panel(panel).with_stylesheet(&stylesheet.selection_panel)
 }
 
 impl SelectionPanelLook {
+    /// The panel's surface and rows from a selector items panel.
+    pub fn from_items_panel(panel: crate::controls::selector_list::SelectorItemsPanelLook) -> Self {
+        Self {
+            background: panel.background,
+            foreground: panel.foreground,
+            border: panel.border,
+            border_width: panel.border_width,
+            disabled_opacity: panel.disabled_opacity,
+            shadow: panel.shadow,
+            radius: panel.radius,
+            padding: panel.padding,
+            min_width: panel.min_width,
+            item_disabled_foreground: panel.item_disabled_foreground,
+            item_hover_background: panel.item_hover_background,
+            item_hover_foreground: panel.item_hover_foreground,
+            item_typography: panel.item_typography,
+            item_height: panel.item_height,
+            item_padding_x: panel.item_padding_x,
+            item_gap: panel.item_gap,
+            item_icon_size: panel.item_icon_size,
+            item_radius: panel.item_radius,
+        }
+    }
+
     /// Independent panel overrides resolve after shared menu styling.
     pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectionPanelStylesheet) -> Self {
         crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectionPanelGeometry, self,

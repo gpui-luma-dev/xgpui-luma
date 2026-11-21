@@ -2,10 +2,7 @@
 
 use gpui::BoxShadow;
 use gpui::SharedString;
-use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::theme::shadow::shadow_projection_insets;
-use xgpui_luma::theme::{InteractionState};
-use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, paint};
 
 use super::box_model::{InspectEdgeInsets, InspectOccupationSnapshot};
 
@@ -18,52 +15,7 @@ pub struct InspectMetricPropertyData {
     pub provenance: Option<SharedString>,
 }
 
-pub fn radio_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
-    let state = InteractionState::default();
-    let tokens = look.mode_tokens();
-    let palette = paint::radio_button_look(
-        tokens.as_ref(),
-        ShadcnButtonStyle::Primary,
-        false,
-        state,
-        xgpui_luma_look_shadcn::ShadcnSize::Md,
-    );
-    choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
-}
-
-pub fn checkbox_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
-    let state = InteractionState::default();
-    let tokens = look.mode_tokens();
-    let palette = paint::checkbox_look(
-        tokens.as_ref(),
-        ShadcnButtonStyle::Primary,
-        false,
-        state,
-        xgpui_luma_look_shadcn::ShadcnSize::Md,
-    );
-    choice_indicator_occupation(palette.indicator_shadow.as_deref(), focus_oversize, state.disabled)
-}
-
-pub fn switch_occupation(look: &ShadcnLook, focus_oversize: f32) -> InspectOccupationSnapshot {
-    let state = InteractionState::default();
-    let tokens = look.mode_tokens();
-    let palette = paint::switch_look(
-        tokens.as_ref(),
-        look.mode(),
-        ShadcnButtonStyle::Primary,
-        true,
-        state,
-        xgpui_luma_look_shadcn::ShadcnSize::Md,
-    );
-    let shadows = if palette.thumb_shadow.is_empty() {
-        None
-    } else {
-        Some(palette.thumb_shadow.as_slice())
-    };
-    choice_indicator_occupation(shadows, focus_oversize, state.disabled)
-}
-
-fn choice_indicator_occupation(
+pub(crate) fn choice_indicator_occupation(
     shadows: Option<&[BoxShadow]>,
     focus_oversize: f32,
     disabled: bool,
@@ -76,34 +28,6 @@ fn choice_indicator_occupation(
     let shadow_extent = shadow_insets.max_edge();
     let layout_extent = focus_oversize.max(shadow_extent);
     let layout = InspectEdgeInsets::symmetric(layout_extent);
-    let paint = shadow_insets.union(InspectEdgeInsets::symmetric(focus_oversize));
-    InspectOccupationSnapshot { paint, layout }
-}
-
-pub fn button_family_occupation(
-    look: &ShadcnLook,
-    style: ShadcnButtonStyle,
-    role: ButtonFamilyRole,
-    size: xgpui_luma_look_shadcn::ShadcnSize,
-    state: InteractionState,
-    focus_oversize: f32,
-) -> InspectOccupationSnapshot {
-    if state.disabled {
-        return InspectOccupationSnapshot::default();
-    }
-
-    let tokens = look.mode_tokens();
-    let button_look = paint::button_look(tokens.as_ref(), look.mode(), style, role, size, state);
-    let shadows = button_look.shadow.as_deref().filter(|shadows| !shadows.is_empty());
-    button_family_occupation_from_shadows(shadows, focus_oversize)
-}
-
-fn button_family_occupation_from_shadows(
-    shadows: Option<&[BoxShadow]>,
-    focus_oversize: f32,
-) -> InspectOccupationSnapshot {
-    let shadow_insets = shadow_insets_from(shadows);
-    let layout = InspectEdgeInsets::symmetric(focus_oversize);
     let paint = shadow_insets.union(InspectEdgeInsets::symmetric(focus_oversize));
     InspectOccupationSnapshot { paint, layout }
 }

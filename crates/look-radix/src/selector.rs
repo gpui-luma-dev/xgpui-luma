@@ -3,61 +3,32 @@ use std::sync::Arc;
 
 use gpui::{Context, Entity, SharedString};
 use xgpui_luma::controls::selector::{
-    SelectorBuilder, SelectorItem, SelectorItemLike, SelectorOpeningMode, SelectorPalette, SelectorPlacement,
-    SelectorTemplate, SelectorTheme, SelectorTriggerStyle, ThemedSelectorTemplate,
+    SelectorBuilder, SelectorItem, SelectorItemLike, SelectorOpeningMode, SelectorPlacement, SelectorTemplate,
+    SelectorTheme, StyledSelectorTheme, ThemedSelectorTemplate,
 };
 use xgpui_luma::controls::selector_list::default_selector_items_template;
-use xgpui_luma::theme::{InteractionState, MetricTokens};
 
 use crate::{ButtonSize, Look, PopupMenuVariant, Tone};
 use crate::look::resolve_look;
 
-struct SelectorThemeAdapter {
-    look: Look,
-}
-
-impl SelectorTheme for SelectorThemeAdapter {
-    fn resolve(
-        &self,
-        style: SelectorTriggerStyle,
-        state: InteractionState,
-        without_elevation: bool,
-    ) -> SelectorPalette {
-        use xgpui_luma::controls::popup_menu::{PopupMenuTriggerMetrics, PopupMenuTriggerStyle};
-        let trigger_style = match style {
-            SelectorTriggerStyle::Outline => PopupMenuTriggerStyle::Outline,
-            SelectorTriggerStyle::Ghost => PopupMenuTriggerStyle::Ghost,
-        };
-        let palette = crate::popup_menu_theme(&self.look, PopupMenuVariant::Solid, Tone::Accent).resolve(
-            trigger_style,
-            PopupMenuTriggerMetrics::default(),
-            state,
-        );
-        SelectorPalette {
-            trigger_focus_border: palette.trigger_focus_border,
-            trigger_background: palette.trigger_background,
-            trigger_foreground: palette.trigger_foreground,
-            trigger_icon: palette.trigger_foreground,
-            trigger_border: palette.trigger_border,
-            trigger_shadow: if without_elevation {
-                None
-            } else {
-                palette.trigger_shadow
-            },
-            trigger_typography: palette.trigger_typography,
-            items_panel: crate::selector_items_panel_look(&self.look, PopupMenuVariant::Solid, Tone::Accent),
-        }
-    }
-
-    fn metrics(&self) -> MetricTokens {
-        self.look.metrics_for(self.look.size())
-    }
-}
-
-/// Shared Radix selector trigger and panel theme for SDK composition.
-/// Retains the supplied Look and resolves palette changes on the next render.
+/// The Radix selector trigger drawn from `.lss` (`style/selector.lss`) at the look's size; the popup panel
+/// keeps the look's solid accent menu values. Follows the look's later edits.
 pub fn selector_theme(look: &Look) -> Arc<dyn SelectorTheme> {
-    Arc::new(SelectorThemeAdapter { look: look.clone() })
+    let size = look.size();
+    let panel = look.clone();
+    Arc::new(
+        StyledSelectorTheme::new(
+            crate::textfield::live_source(look),
+            Arc::new(move || crate::selector_items_panel_look(&panel, PopupMenuVariant::Solid, Tone::Accent)),
+        )
+        .with(|binding| {
+            if size != crate::RadixSize::Two {
+                binding.attr("size", size.key())
+            } else {
+                binding
+            }
+        }),
+    )
 }
 
 /// Build a selector template using the Radix trigger and menu palette.
@@ -218,12 +189,58 @@ mod stylesheet_tests {
             "[common.selector_list.geometry]\nmin_width=0\nradius=7\nborder_width=0\ndisabled_opacity=0\npopup_offset_y=0\nwindow_margin=0\n[common.selector_list.sizes.\"2\"]\nitem_height=41",
         ]).unwrap();
         look.set_common_stylesheet(sheet);
-        let theme = SelectorThemeAdapter { look };
-        let panel = theme.resolve(SelectorTriggerStyle::Outline, Default::default(), false).items_panel;
+        let panel = selector_theme(&look)
+            .resolve(xgpui_luma::controls::selector::SelectorTriggerStyle::Outline, Default::default(), false)
+            .items_panel;
         assert_eq!((panel.min_width, panel.radius, panel.item_height), (0.0, 7.0, 41.0));
         assert_eq!(
             (panel.border_width, panel.disabled_opacity, panel.popup_offset_y, panel.window_margin),
             (0.0, 0.0, 0.0, 0.0)
         );
+    }
+}
+
+#[cfg(test)]
+mod lss_tests {
+    use super::*;
+    use crate::SemanticRole;
+    use crate::control_group::assert_close;
+    use xgpui_luma::controls::selector::{SelectorTriggerStyle, SelectorVisualState};
+    use xgpui_luma::theme::{InteractionState, StandardBoxScale};
+
+    #[test]
+    fn trigger_matches_the_popup_menu_trigger() {
+        let look = Look::built_in();
+        let theme = selector_theme(&look);
+        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
+        let at = |style, interaction| {
+            theme.resolve_visual_look(style, SelectorVisualState { interaction, ..Default::default() }, &scale, false)
+        };
+        let rest = at(SelectorTriggerStyle::Outline, InteractionState::default());
+        assert_close(rest.trigger_background, look.resolve_role(SemanticRole::Background).hsla());
+        assert_close(rest.trigger_border.unwrap(), look.resolve_role(SemanticRole::Border).hsla());
+        assert_close(rest.trigger_icon, rest.trigger_foreground);
+        assert_eq!(
+            (
+                rest.trigger_height,
+                rest.trigger_padding_x,
+                rest.trigger_gap,
+                rest.trigger_radius,
+                rest.trigger_icon_size
+            ),
+            (32.0, 12.0, 8.0, 4.0, 14.0)
+        );
+        assert_eq!((rest.trigger_typography.size, rest.trigger_typography.line_height), (14.0, 20.0));
+        assert_eq!(rest.trigger_typography.weight, gpui::FontWeight::MEDIUM);
+        assert_eq!(rest.menu_offset_y, 4.0);
+        let hover = at(SelectorTriggerStyle::Ghost, InteractionState { hovered: true, ..Default::default() });
+        assert_close(hover.trigger_background, Tone::Accent.step(&look, 3));
+        let disabled = at(SelectorTriggerStyle::Ghost, InteractionState { disabled: true, ..Default::default() });
+        assert_close(disabled.trigger_background, look.resolve_role(SemanticRole::Surface).hsla());
+        assert_close(disabled.trigger_foreground, look.resolve_role(SemanticRole::MutedForeground).hsla());
+        assert_close(disabled.trigger_icon, disabled.trigger_foreground);
+        let small = selector_theme(&look.with_size(crate::RadixSize::One));
+        let small = small.resolve_look(SelectorTriggerStyle::Outline, Default::default(), &scale, false);
+        assert_eq!((small.trigger_height, small.trigger_typography.size, small.menu_offset_y), (24.0, 14.0, 2.0));
     }
 }
