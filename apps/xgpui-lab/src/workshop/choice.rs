@@ -1,7 +1,7 @@
 //! Basic Choice controls using SDK builders, SDK defaults, and retained local state.
 use std::sync::Arc;
 use gpui::{AnyView, Context, Entity, Render, Window, div, prelude::*, px};
-use xgpui_luma::controls::{accordion, checkbox, pager, radio_button, radio_group, switch, toggle};
+use xgpui_luma::controls::{accordion, pager, radio_button, radio_group, switch, toggle};
 use xgpui_luma::controls::button::HasPresenter;
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use super::{
@@ -13,7 +13,6 @@ use super::{
 #[derive(Clone, Copy, Debug)]
 pub(super) enum ChoiceKind {
     Accordion,
-    Checkbox,
     Pager,
     RadioButton,
     RadioGroup,
@@ -24,7 +23,6 @@ impl ChoiceKind {
     fn title(self) -> &'static str {
         match self {
             Self::Accordion => "Accordion",
-            Self::Checkbox => "Checkbox",
             Self::Pager => "Pager",
             Self::RadioButton => "Radio Button",
             Self::RadioGroup => "Radio Group",
@@ -35,7 +33,6 @@ impl ChoiceKind {
     fn description(self) -> &'static str {
         match self {
             Self::Accordion => "Expand or collapse a section.",
-            Self::Checkbox => "Check or uncheck an option.",
             Self::Pager => "Move between pages and choose a page size.",
             Self::RadioButton => "Select or clear a radio button.",
             Self::RadioGroup => "Choose one option from a group.",
@@ -47,7 +44,6 @@ impl ChoiceKind {
 
 enum Control {
     Accordion(accordion::Accordion),
-    Checkbox(checkbox::Checkbox),
     Pager(pager::Pager),
     RadioButton(radio_button::RadioButton),
     RadioGroup(radio_group::RadioGroup<radio_group::RadioGroupItem>),
@@ -58,7 +54,6 @@ impl Control {
     fn view(&self) -> AnyView {
         match self {
             Self::Accordion(v) => v.clone().into(),
-            Self::Checkbox(v) => v.clone().into(),
             Self::Pager(v) => v.clone().into(),
             Self::RadioButton(v) => v.clone().into(),
             Self::RadioGroup(v) => v.clone().into(),
@@ -102,9 +97,6 @@ impl ChoiceSample {
                     .collapsible(true)
                     .spawn(cx),
             ),
-            ChoiceKind::Checkbox => Control::Checkbox(
-                checkbox::new("workshop-sdk-checkbox").content(|_, _| div().child("Accept updates")).spawn(cx),
-            ),
             ChoiceKind::Pager => Control::Pager(
                 pager::new("workshop-sdk-pager")
                     .page_count(12)
@@ -145,16 +137,6 @@ impl ChoiceSample {
                 cx.subscribe(v, |this: &mut Self, _, event: &accordion::AccordionEvent, cx| {
                     if let accordion::AccordionEvent::ExpandedChanged { item_id, expanded } = event {
                         this.state = format!("{item_id}: {}", if *expanded { "expanded" } else { "collapsed" });
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
-            Control::Checkbox(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &checkbox::CheckboxEvent, cx| {
-                    if let checkbox::CheckboxEvent::Change { checked } = event {
-                        this.state = format!("Checked: {checked}");
-                        cx.emit(InspectedState { state: "checked", on: *checked });
                     }
                     this.record(event, cx);
                 })
@@ -215,7 +197,6 @@ impl ChoiceSample {
         }
         let state = match kind {
             ChoiceKind::Accordion => "details: expanded",
-            ChoiceKind::Checkbox => "Checked: false",
             ChoiceKind::Pager => "Page 1 of 12 · 10 per page",
             ChoiceKind::RadioButton => "Selected: false",
             ChoiceKind::RadioGroup => "Selected: medium",
@@ -302,7 +283,6 @@ mod tests {
     }
     fn press_space(sample: &Entity<ChoiceSample>, cx: &mut VisualTestContext) {
         let focus = cx.update(|_, cx| match &sample.read(cx).control {
-            Control::Checkbox(v) => v.read(cx).focus_handle(cx),
             Control::RadioButton(v) => v.read(cx).focus_handle(cx),
             Control::Switch(v) => v.read(cx).focus_handle(cx),
             Control::Toggle(v) => v.read(cx).focus_handle(cx),
@@ -314,38 +294,10 @@ mod tests {
         cx.run_until_parked();
     }
     #[test]
-    fn checkbox_page_shows_the_style_inspector_and_follows_the_sample() {
-        let mut app = TestAppContext::single();
-        let (workshop, cx) = setup(&mut app);
-        let sample = select(&workshop, "checkbox", cx);
-        assert!(cx.debug_bounds("style-inspector").is_some(), "inspector rendered");
-        assert!(cx.debug_bounds("style-inspector-part-indicator").is_some(), "indicator section rendered");
-        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some(), "background row rendered");
-
-        let inspector = inspector(&workshop, "checkbox", cx);
-        let winner_states = |cx: &mut VisualTestContext| {
-            cx.update(|_, cx| {
-                let inspection = inspector.read(cx).inspection();
-                let indicator = inspection.parts.iter().find(|p| p.part.name() == "indicator").expect("part");
-                let row = indicator.rows.iter().find(|r| r.property == "background").expect("row");
-                row.explanation.winner.as_ref().map(|w| w.states.clone()).unwrap_or_default()
-            })
-        };
-        assert_eq!(winner_states(cx), "");
-
-        // Checking the sample switches the inspector to the :checked rule.
-        press_space(&sample, cx);
-        // The sample is focused now, but the inspector's key follows only `checked`.
-        assert_eq!(winner_states(cx), ":checked");
-    }
-
-    #[test]
     fn choice_style_inspectors_follow_the_sample_state() {
         let mut app = TestAppContext::single();
         let (workshop, cx) = setup(&mut app);
-        for (id, state) in
-            [("checkbox", "checked"), ("radio-button", "selected"), ("switch", "checked"), ("toggle", "selected")]
-        {
+        for (id, state) in [("radio-button", "selected"), ("switch", "checked"), ("toggle", "selected")] {
             let sample = select(&workshop, id, cx);
             let inspector = inspector(&workshop, id, cx);
             assert!(!cx.update(|_, cx| inspector.read(cx).state_on(state)), "{id}: starts off");
@@ -362,10 +314,9 @@ mod tests {
     fn choice_boolean_controls_use_keyboard_and_retain_state_across_navigation_and_app_theme() {
         let mut app = TestAppContext::single();
         let (workshop, cx) = setup(&mut app);
-        for id in ["checkbox", "radio-button", "switch", "toggle"] {
+        for id in ["radio-button", "switch", "toggle"] {
             let sample = select(&workshop, id, cx);
             let focus = cx.update(|_, cx| match &sample.read(cx).control {
-                Control::Checkbox(v) => v.read(cx).focus_handle(cx),
                 Control::RadioButton(v) => v.read(cx).focus_handle(cx),
                 Control::Switch(v) => v.read(cx).focus_handle(cx),
                 Control::Toggle(v) => v.read(cx).focus_handle(cx),
@@ -379,7 +330,6 @@ mod tests {
                 let v = sample.read(cx);
                 assert!(v.state.ends_with("true"), "{id}: {}", v.state);
                 let checked = match &v.control {
-                    Control::Checkbox(v) => *v.read(cx).data(),
                     Control::RadioButton(v) => *v.read(cx).data(),
                     Control::Switch(v) => *v.read(cx).data(),
                     Control::Toggle(v) => *v.read(cx).data(),
@@ -449,7 +399,7 @@ mod tests {
             assert_eq!(pager.read(cx).current_page(), 11);
             assert_eq!(v.state, "Page 12 of 12 · 10 per page");
         });
-        select(&workshop, "checkbox", cx);
+        select(&workshop, "accordion", cx);
         select(&workshop, "pager", cx);
         cx.update(|_, cx| assert_eq!(sample.read(cx).state, "Page 12 of 12 · 10 per page"));
     }

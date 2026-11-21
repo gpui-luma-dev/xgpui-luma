@@ -444,6 +444,10 @@ impl XgpuiLabApp {
         .spawn(cx);
         let (rail, rail_navigation) = spawn_rail(&nav_look, cx);
         panels.clone().on_event(cx, |this: &mut Self, event, cx| {
+            if let ResizablePanelsEvent::PanelHiddenChanged { panel_index: 0, hidden } = event {
+                let hidden = *hidden;
+                this.workshop.update(cx, |workshop, cx| workshop.set_sidebar_hidden(hidden, cx));
+            }
             if let ResizablePanelsEvent::SizesChanged { sizes_px } = event
                 && let Some(width) = sizes_px.first()
             {

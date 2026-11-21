@@ -12,6 +12,7 @@ use xgpui_luma::style::lss::{
 
 use xgpui_luma::prelude::HasPresenter;
 
+use super::box_model;
 use crate::lab_controls::Segmented;
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
@@ -106,25 +107,8 @@ impl StyleInspector {
             .is_some_and(|state| self.key.active_states().contains(state))
     }
 
-    /// The current inspection, for tests.
-    #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn inspection(&self) -> Inspection {
-        self.theme.inspect(&self.key, None)
-    }
-
     fn part(&self, part: &PartInspection) -> AnyElement {
         let chrome = self.look.chrome();
-        let small = self.look.typography_scale(TextSize::Xs);
-        let b = &part.box_model;
-        let size = |v: Option<f32>| v.map_or("auto".to_string(), trim);
-        let box_line = format!(
-            "box  {} × {}  ·  padding {} / {}  ·  border {}",
-            size(b.width.or(b.min_width)),
-            size(b.height.or(b.min_height)),
-            trim(b.padding.top),
-            trim(b.padding.left),
-            trim(b.border_width),
-        );
         let categories = [
             (Category::Colors, "Colors"),
             (Category::Layout, "Layout"),
@@ -136,11 +120,17 @@ impl StyleInspector {
         let sections = categories.into_iter().filter_map(|(category, title)| {
             let rows: Vec<AnyElement> =
                 part.rows.iter().filter(|r| r.category == category).map(|r| self.row(part, r)).collect();
-            (!rows.is_empty()).then(|| {
+            // Layout always opens with the box-model diagram, as in Studio's inspector.
+            let diagram = (category == Category::Layout).then(|| {
+                let id = format!("style-inspector-box-{}", part.part.name());
+                div().pb(px(6.)).child(box_model::diagram(id.into(), &part.box_model, self.look.mode()))
+            });
+            (diagram.is_some() || !rows.is_empty()).then(|| {
                 div()
                     .flex()
                     .flex_col()
                     .child(div().pt(px(6.)).pb(px(2.)).text_color(chrome.muted_text).child(title))
+                    .children(diagram)
                     .children(rows)
             })
         });
@@ -168,7 +158,6 @@ impl StyleInspector {
                     )
                     .children(part.doc.clone().map(|d| div().text_color(chrome.muted_text).child(d))),
             )
-            .child(div().typography_style(small).font_family(MONO_FAMILY).text_color(chrome.muted_text).child(box_line))
             .children(sections)
             .into_any_element()
     }
@@ -232,11 +221,6 @@ impl StyleInspector {
             )
             .into_any_element()
     }
-}
-
-fn trim(n: f32) -> String {
-    let s = format!("{n:.2}");
-    s.trim_end_matches('0').trim_end_matches('.').to_string()
 }
 
 impl Render for StyleInspector {
