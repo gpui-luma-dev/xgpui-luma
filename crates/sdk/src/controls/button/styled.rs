@@ -138,14 +138,15 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         let key = StyleKey::new(ControlId::new(control)).scale(scale);
         let key = self.states.iter().fold(key, |key, state| key.state(*state));
         let mut key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
-        for (name, on) in [
-            ("hover", model_state.hovered),
-            ("pressed", model_state.pressed),
-            ("focused", model_state.focused),
-            ("disabled", model_state.disabled),
-            ("invalid", model_state.invalid),
-            ("selected", selected),
-        ] {
+        let values = [
+            model_state.hovered,
+            model_state.pressed,
+            model_state.focused,
+            model_state.disabled,
+            model_state.invalid,
+            selected,
+        ];
+        for (name, on) in BUTTON_STYLE_STATES.into_iter().zip(values) {
             if let Some(state) = config.state(name) {
                 key = key.state_if(state, on);
             }
@@ -224,7 +225,14 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
     }
 }
 
+/// The states a styled button sets in its key, in the order [`StyledButtonTemplate::key`] reads them.
+const BUTTON_STYLE_STATES: [&str; 6] = ["hover", "pressed", "focused", "disabled", "invalid", "selected"];
+
 impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
+    fn style_states(&self) -> Vec<&'static str> {
+        BUTTON_STYLE_STATES.to_vec()
+    }
+
     /// The face's `transition` toward on or off, for data that is on or off.
     fn transition(&self, data: &D) -> Option<crate::motion::Transition> {
         let (on, _) = data.toggle_state()?;
@@ -355,5 +363,39 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
             root_element = root_element.cursor_pointer();
         }
         root_element
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod style_states_tests {
+    use super::*;
+    use crate::theme::InteractionState;
+
+    /// Each name `style_states` reports is a state the key sets, and the key sets no other.
+    #[test]
+    fn style_states_are_exactly_the_states_the_key_sets() {
+        let template = StyledButtonTemplate::<()>::sdk();
+        let theme = template.theme();
+        let config = theme.stylesheet().config().clone();
+        let role = ButtonFamilyRole::Toggle { selected: false };
+        let active = |key: &StyleKey| -> Vec<String> {
+            config
+                .state_names()
+                .filter(|n| key.active_states().contains(config.state(n).unwrap()))
+                .map(str::to_string)
+                .collect()
+        };
+        assert!(active(&template.key(&theme, role, InteractionState::default(), false, 1.0)).is_empty());
+        for name in template.style_states() {
+            let state = InteractionState {
+                hovered: name == "hover",
+                pressed: name == "pressed",
+                focused: name == "focused",
+                disabled: name == "disabled",
+                invalid: name == "invalid",
+            };
+            let key = template.key(&theme, role, state, name == "selected", 1.0);
+            assert_eq!(active(&key), [name], "{name}");
+        }
     }
 }

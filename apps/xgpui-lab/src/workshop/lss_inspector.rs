@@ -214,6 +214,19 @@ impl LssInspector {
         cx.notify();
     }
 
+    /// A note naming the key's active states that no rule uses (e.g. `:focused`, which only the
+    /// template draws), since they change no value here.
+    pub(super) fn unused_states_note(&self) -> Option<String> {
+        let config = self.theme.stylesheet().config();
+        let unused: Vec<String> = config
+            .state_names()
+            .filter_map(|n| config.state(n).map(|s| (n, s)))
+            .filter(|(_, s)| self.key.active_states().contains(*s) && !self.states.contains(s))
+            .map(|(n, _)| format!(":{n}"))
+            .collect();
+        (!unused.is_empty()).then(|| format!("no rule uses {}", unused.join(" ")))
+    }
+
     fn toggle(&mut self, row: RowId, cx: &mut Context<Self>) {
         if !self.expanded.remove(&row) {
             self.expanded.insert(row);
@@ -768,6 +781,7 @@ impl Render for LssInspector {
             .border_color(chrome.border)
             .child(self.view_tabs.clone())
             .child(div().flex_1())
+            .children(self.unused_states_note().map(|note| div().pb(px(8.)).text_color(chrome.muted_text).child(note)))
             .child(div().pb(px(8.)).font_family(MONO_FAMILY).text_color(chrome.muted_text).child(key_line(
                 &self.theme,
                 self.control,
@@ -845,15 +859,13 @@ fn selector(rule: &RuleInfo) -> String {
 }
 
 /// The style key as text, e.g. `checkbox:checked:hover`.
+/// Every active state is shown, including ones no rule uses (e.g. `:focused`, set by the template).
 pub(super) fn key_line(theme: &Theme, control: ControlId, key: &StyleKey) -> String {
     let config = theme.stylesheet().config();
-    let states: String = theme
-        .stylesheet()
-        .axes(control)
-        .states
-        .into_iter()
-        .filter(|s| key.active_states().contains(*s))
-        .map(|s| format!(":{}", config.state_name(s)))
+    let states: String = config
+        .state_names()
+        .filter(|n| config.state(n).is_some_and(|s| key.active_states().contains(s)))
+        .map(|n| format!(":{n}"))
         .collect();
     format!("{control}{states}")
 }

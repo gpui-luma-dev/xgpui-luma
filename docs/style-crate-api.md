@@ -31,6 +31,7 @@ let config = Arc::new(Config::builder()
 
 config.state("checked")      // Option<StateId>
 config.attribute("variant")  // Option<AttrId>
+config.exclusive_states()    // "disabled", "pressed", "hover": the exclusive group, strongest first
 
 // A look adds its own axes; SDK handles keep their positions.
 let radix = Arc::new(config.extend().attributes(&["tone", "radius"]).states(&["high_contrast"]).build()?);

@@ -73,6 +73,13 @@ impl Config {
         names.iter().filter_map(|n| self.state(n)).collect()
     }
 
+    /// The exclusive state group, strongest first. When several of its states are active, only the
+    /// strongest counts (e.g. `disabled` over `pressed` over `hover`), so tools can treat the group as
+    /// one choice rather than independent states.
+    pub fn exclusive_states(&self) -> impl Iterator<Item = &str> {
+        self.exclusive.iter().map(|&i| self.states[i].as_str())
+    }
+
     pub(crate) fn layer_index(&self, name: &str) -> Option<usize> {
         self.layers.iter().position(|l| l == name)
     }
@@ -209,5 +216,23 @@ impl ConfigExtension {
             return Err(Diagnostic::error(Code::Config, "config allows at most 32 states"));
         }
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exclusive_states_are_listed_strongest_first() {
+        let config = Config::builder()
+            .layers(&["base"])
+            .states(&["hover", "pressed", "focused", "disabled"])
+            .exclusive(&["disabled", "pressed", "hover"])
+            .build()
+            .unwrap();
+        assert_eq!(config.exclusive_states().collect::<Vec<_>>(), ["disabled", "pressed", "hover"]);
+        let none = Config::builder().layers(&["base"]).states(&["hover"]).build().unwrap();
+        assert_eq!(none.exclusive_states().count(), 0);
     }
 }
