@@ -4,8 +4,8 @@
 // ThemeTokens::light(). `theme::style::tests` checks this file against ThemeTokens::light() again,
 // so the two cannot drift while both exist.
 //
-// The SDK has no light/dark modes: another SDK theme is another token file. Looks map these
-// groups onto their own data in their token files.
+// These tokens are the same in every mode; `palette.lss` holds the per-mode colors and shadows
+// (light values, `mode dark` overrides). Looks map these groups onto their own data in their token files.
 
 const {
   full_radius = 999   // FULL_RADIUS_PX: fully rounded corners

@@ -99,5 +99,5 @@ fn axes_come_from_the_files() {
     assert_eq!(sizes, ["sm", "lg"]);
     let states: Vec<_> = axes.states.iter().map(|s| config.state_name(*s)).collect();
     assert_eq!(states, ["hover", "pressed", "disabled", "checked"]);
-    assert_eq!(axes.modes, ["dark", "light"]);
+    assert_eq!(axes.modes, ["light", "dark"], "declaration order");
 }

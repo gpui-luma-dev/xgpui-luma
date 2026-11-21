@@ -86,7 +86,7 @@ fn editing_a_file_recompiles_and_failures_keep_the_old_stylesheet() {
 
 #[test]
 fn swapping_themes_is_compile_and_bind() {
-    // An SDK-only app switches to another SDK theme by compiling different token files.
+    // Swapping token files (a different theme, not a mode) is compile and bind.
     let dark_sdk_tokens =
         Source::new("sdk/dark-tokens.lss", "tokens { palette { form { input { background = gray(10, 1) } } } }");
     let sheet = Stylesheet::builder(luma_config())
@@ -94,7 +94,7 @@ fn swapping_themes_is_compile_and_bind() {
         .source("app", dark_sdk_tokens)
         .compile()
         .expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let k = key(&theme, "checkbox", &[], &[]);
     assert_color(theme.resolve(&k).part(INDICATOR).background(), sdk_gray(10.0), "swapped theme");
 }
@@ -111,7 +111,7 @@ fn sources_can_be_read_from_disk() {
         .source("app", source)
         .compile()
         .expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     assert_eq!(theme.resolve(&key(&theme, "checkbox", &[], &[])).root().gap(), Some(12.0));
     let _ = std::fs::remove_dir_all(&dir);
     assert!(Source::from_path(dir.join("missing.lss")).is_err());

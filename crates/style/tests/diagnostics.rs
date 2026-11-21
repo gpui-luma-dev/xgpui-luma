@@ -102,7 +102,7 @@ fn a_misspelled_token_root_is_reported_at_bind() {
     // An unknown first segment may be a native root (css, gray, …), which only the token source knows.
     let sheet =
         compile_with("look", "checkbox { part indicator { background = pallete.app.background } }").expect("compiles");
-    let err = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").err().expect("bind fails");
+    let err = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").err().expect("bind fails");
     assert!(err.mentions("unknown name \"pallete\""), "{err}");
     assert!(err.mentions("did you mean \"palette\"?"), "{err}");
 }
@@ -146,7 +146,7 @@ fn unknown_native_roots_and_functions_fail_at_bind() {
     let sheet =
         compile_with("look", "checkbox { part indicator { background = css.primary  border = shift(black, 0.1) } }")
             .expect("compiles: native roots are checked at bind");
-    let err = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").err().expect("bind fails");
+    let err = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").err().expect("bind fails");
     assert!(err.mentions("unknown name \"css\""), "{err}");
     assert!(err.has_code(Code::UnknownFunction), "{err}");
 }
@@ -155,13 +155,31 @@ fn unknown_native_roots_and_functions_fail_at_bind() {
 fn unknown_modes_fail_at_bind() {
     let err = Theme::bind(&shadcn_sheet(), Arc::new(ShadcnCatalog::new()), "drak").err().expect("bind fails");
     assert_eq!(first(&err).code, Code::UnknownMode);
-    assert!(err.mentions("unknown mode \"drak\" (modes: dark, light) — did you mean \"dark\"?"), "{err}");
+    assert!(err.mentions("unknown mode \"drak\" (modes: light, dark) — did you mean \"dark\"?"), "{err}");
+}
+
+#[test]
+fn mode_blocks_must_name_a_declared_mode() {
+    let d = compile_with("look", "tokens { mode drak { palette { app { background = gray(10, 1) } } } }")
+        .err()
+        .expect("an undeclared mode doesn't compile");
+    assert_eq!(first(&d).code, Code::UnknownMode);
+    assert!(d.mentions("unknown mode \"drak\" (modes: light, dark) — did you mean \"dark\"?"), "{d}");
+}
+
+#[test]
+fn a_declared_mode_with_no_block_uses_the_shared_values() {
+    let sheet = compile_with("look", "tokens { probe { size = 3 } }").expect("compiles");
+    assert_eq!(sheet.modes(), ["light", "dark"]);
+    for mode in ["light", "dark"] {
+        Theme::bind(&sheet, Arc::new(NoNativeTokens), mode).unwrap_or_else(|d| panic!("{mode}: {d}"));
+    }
 }
 
 #[test]
 fn cycles_are_reported_when_resolving() {
     let sheet = compile_with("sdk", "chip {\n  a: length = b + 1\n  b: length = a * 2\n}").expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let chip = sheet.control("chip").expect("declared");
     let style = theme.resolve(&StyleKey::new(chip));
     assert_eq!(style.root().value("a"), None);
@@ -173,7 +191,7 @@ fn cycles_are_reported_when_resolving() {
 #[test]
 fn problems_can_be_polled_incrementally() {
     let sheet = compile_with("sdk", "chip {\n  a: length = b + 1\n  b: length = a * 2\n}").expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let (none, mark) = theme.diagnostics_since(0);
     assert!(none.is_empty());
     theme.resolve(&StyleKey::new(ControlId::new("chip")));
@@ -209,7 +227,7 @@ fn references_to_another_control_find_the_attribute_from_the_files() {
         .layer("sdk", [Source::new("p.lss", src)])
         .compile()
         .expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     assert_eq!(theme.resolve(&StyleKey::new(ControlId::new("chip"))).root().gap(), Some(9.0));
 
     let unknown = "popover { offset: length = 4  style panel { offset = 9 } }\nchip { gap = popover.pannel.offset }";
@@ -238,7 +256,7 @@ fn check_reports_partial_coverage_and_bad_modes() {
     let rules: String = names.iter().map(|s| format!(":{s} {{ gap = 1 }} ")).collect();
     let src = format!("chip {{ gap = 0  {rules} }}");
     let sheet = Stylesheet::builder(config).layer("sdk", [Source::new("c.lss", src)]).compile().expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let d = theme.check(ControlId::new("chip"));
     assert!(d.has_code(Code::PartialCheck), "{d}");
     assert!(

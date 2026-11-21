@@ -21,7 +21,7 @@ fn every_axis_combination_resolves_without_problems_in_both_modes() {
         let problems = theme.check(id);
         assert!(problems.is_empty(), "{control}: {problems}");
     }
-    assert_eq!(theme.stylesheet().modes(), ["dark", "light"]);
+    assert_eq!(theme.stylesheet().modes(), ["light", "dark"]);
 }
 
 #[test]

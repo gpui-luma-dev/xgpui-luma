@@ -48,7 +48,7 @@ fn inserting_a_rule_creates_the_blocks_it_needs() {
         changed[0].text.as_ref(),
         "checkbox {\n  variant brand {\n    part indicator {\n      :checked { background = black }\n    }\n  }\n}\n"
     );
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let k = key(&theme, "checkbox", &[("variant", "brand")], &["checked"]);
     assert_color(theme.resolve(&k).part(INDICATOR).background(), Color::BLACK, "inserted rule applies");
 }
@@ -72,7 +72,7 @@ fn exported_variants_round_trip() {
         .source("app", Source::new("app/brand.lss", text))
         .compile()
         .expect("exported text compiles");
-    let theme = Theme::bind(&with_variant, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&with_variant, Arc::new(NoNativeTokens), "light").expect("binds");
     let brand = |states: &[&str]| theme.resolve(&key(&theme, "checkbox", &[("variant", "brand")], states));
     assert_color(brand(&[]).part(INDICATOR).background(), sdk_gray(91.37), "resting");
     assert_color(brand(&["checked"]).part(INDICATOR).background(), Color::BLACK, "checked");
@@ -98,7 +98,7 @@ fn exported_token_values_round_trip() {
         .source("app", Source::new("app/tokens.lss", text))
         .compile()
         .expect("exported tokens compile");
-    let from_file = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let from_file = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let k = key(&from_file, "checkbox", &[], &[]);
     assert_eq!(from_file.resolve(&k), edited.resolve(&k), "same values from the file as from the live edits");
 }
@@ -118,7 +118,7 @@ fn parenthesised_values_are_edited_whole() {
         .source("sdk", Source::new("chip.lss", "chip {\n  a: length = (2 + 3) * 4\n}"))
         .compile()
         .expect("compiles");
-    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "").expect("binds");
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").expect("binds");
     let chip = key(&theme, "chip", &[], &[]);
     let winner = theme.explain(&chip, PartId::ROOT, "a").winner.expect("winner");
     assert_eq!(winner.expression, "(2 + 3) * 4");

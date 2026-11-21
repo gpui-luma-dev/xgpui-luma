@@ -277,7 +277,7 @@ pub struct Axes {
 }
 
 impl Stylesheet {
-    /// Attribute values (from scopes), states (from rules) and modes (from token files) for a control,
+    /// Attribute values (from scopes), states (from rules) and modes (declared in the config) for a control,
     /// including what it reaches through `extends`.
     pub fn axes(&self, control: ControlId) -> Axes {
         let model = &self.model;

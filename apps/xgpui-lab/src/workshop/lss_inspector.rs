@@ -86,7 +86,7 @@ pub(super) struct LssInspector {
     key: StyleKey,
     /// The control's style file, shown by the Source view.
     source: Option<Source>,
-    /// The theme's palette file (the SDK theme compiles one: `theme/palette.lss` for the default, light one).
+    /// The theme's palette file (`theme/palette.lss` for the SDK: light values and `mode dark` overrides).
     palette: Option<Source>,
     part: usize,
     view: View,
