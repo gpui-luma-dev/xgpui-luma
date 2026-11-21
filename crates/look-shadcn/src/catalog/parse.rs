@@ -1,26 +1,117 @@
 use std::collections::BTreeMap;
 
 use anyhow::{Context as _, Result, anyhow, bail};
+use xgpui_luma::theme::ThemeMode;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CssTokenCatalog {
     pub light: BTreeMap<String, String>,
     pub dark: BTreeMap<String, String>,
+    /// Further modes from class blocks (`.hi-contrast`, `.dark.hi-contrast`), in file order.
+    pub modes: Vec<CssMode>,
+}
+
+/// A mode a theme's CSS adds with a class block: `.hi-contrast { … }` is `hi_contrast` based on light
+/// (`:root`), `.dark.hi-contrast { … }` is `hi_contrast_dark` based on dark (`.dark`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CssMode {
+    /// The style mode name: the class with `-` as `_` (and `_dark` for a `.dark` compound).
+    pub name: String,
+    pub base: ThemeMode,
+    /// The block's own custom properties; [`CssTokenCatalog::mode_map`] layers them over the base.
+    pub tokens: BTreeMap<String, String>,
 }
 
 pub fn parse_css_catalog(source: &str) -> Result<CssTokenCatalog> {
     let stripped = strip_css_comments(source);
-    let light = parse_rule_block(&stripped, ":root")?;
-    let dark = parse_rule_block(&stripped, ".dark")?;
+    let mut rules = Vec::new();
+    scan_rules(&stripped, &mut rules)?;
 
-    if light.is_empty() {
+    let mut catalog = CssTokenCatalog::default();
+    for (selector_list, body) in rules {
+        let mut declarations = BTreeMap::new();
+        parse_declarations(body, &mut declarations)?;
+        if declarations.is_empty() {
+            continue;
+        }
+        for selector in selector_list.split(',').map(str::trim) {
+            match target(selector)? {
+                Some(Target::Light) => catalog.light.extend(declarations.clone()),
+                Some(Target::Dark) => catalog.dark.extend(declarations.clone()),
+                Some(Target::Mode(name, base)) => match catalog.modes.iter_mut().find(|m| m.name == name) {
+                    Some(mode) => mode.tokens.extend(declarations.clone()),
+                    None => catalog.modes.push(CssMode { name, base, tokens: declarations.clone() }),
+                },
+                None => {}
+            }
+        }
+    }
+
+    if catalog.light.is_empty() {
         bail!("CSS catalog is missing `:root` custom properties");
     }
-    if dark.is_empty() {
+    if catalog.dark.is_empty() {
         bail!("CSS catalog is missing `.dark` custom properties");
     }
+    Ok(catalog)
+}
 
-    Ok(CssTokenCatalog { light, dark })
+enum Target {
+    Light,
+    Dark,
+    Mode(String, ThemeMode),
+}
+
+/// What a selector's custom properties set: `:root` (or `.light`) light, `.dark` dark, a single class a
+/// mode based on light, and a class compounded with `.dark` a mode based on dark. Anything else (element
+/// selectors, descendants, attributes) sets nothing.
+fn target(selector: &str) -> Result<Option<Target>> {
+    match selector {
+        ":root" | ".light" => return Ok(Some(Target::Light)),
+        ".dark" => return Ok(Some(Target::Dark)),
+        _ => {}
+    }
+    let Some(classes) = selector.strip_prefix('.') else {
+        return Ok(None);
+    };
+    let classes: Vec<&str> = classes.split('.').collect();
+    let is_class = |c: &&str| !c.is_empty() && c.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_');
+    if !classes.iter().all(is_class) {
+        return Ok(None);
+    }
+    let (class, base) = match classes.as_slice() {
+        [class] => (*class, ThemeMode::Light),
+        ["dark", class] | [class, "dark"] => (*class, ThemeMode::Dark),
+        _ => return Ok(None),
+    };
+    let mut name = class.replace('-', "_");
+    if base == ThemeMode::Dark {
+        name.push_str("_dark");
+    }
+    if !name.chars().next().is_some_and(|ch| ch.is_ascii_alphabetic() || ch == '_') {
+        bail!("CSS class `.{class}` can't name a style mode (a mode name starts with a letter or _)");
+    }
+    Ok(Some(Target::Mode(name, base)))
+}
+
+/// Every style rule as (selector list, body), in file order. `@layer` blocks are searched; other at-rules
+/// (`@theme`, `@media`, `@keyframes`, …) are skipped.
+fn scan_rules<'a>(source: &'a str, rules: &mut Vec<(&'a str, &'a str)>) -> Result<()> {
+    let mut start = 0;
+    while let Some(open) = source[start..].find('{').map(|i| start + i) {
+        // The selector is the text since the last statement (`;`) or block (`}`).
+        let prelude = &source[start..open];
+        let selector = prelude.rfind(';').map_or(prelude, |i| &prelude[i + 1..]).trim();
+        let close = find_matching_brace(source, open).ok_or_else(|| anyhow!("unclosed block after `{selector}`"))?;
+        let body = &source[open + 1..close];
+        if selector.starts_with("@layer") {
+            scan_rules(body, rules)?;
+        } else if !selector.starts_with('@') {
+            rules.push((selector, body));
+        }
+        start = close + 1;
+    }
+    Ok(())
 }
 
 fn strip_css_comments(source: &str) -> String {
@@ -32,43 +123,6 @@ fn strip_css_comments(source: &str) -> String {
     }
     out.push_str(rest);
     out
-}
-
-fn parse_rule_block(source: &str, selector: &str) -> Result<BTreeMap<String, String>> {
-    let mut tokens = BTreeMap::new();
-    let mut search_from = 0;
-
-    while let Some(selector_start) = find_selector(source, selector, search_from) {
-        let Some(block_start) = source[selector_start..].find('{') else {
-            break;
-        };
-        let block_start = selector_start + block_start + 1;
-        let Some(block_end) = find_matching_brace(source, block_start - 1) else {
-            break;
-        };
-
-        let block = &source[block_start..block_end];
-        parse_declarations(block, &mut tokens)?;
-        search_from = block_end + 1;
-    }
-
-    Ok(tokens)
-}
-
-fn find_selector(source: &str, selector: &str, from: usize) -> Option<usize> {
-    let mut search_from = from;
-    while let Some(found) = source[search_from..].find(selector) {
-        let index = search_from + found;
-        let before = source[..index].chars().last();
-        let after = source[index + selector.len()..].chars().next();
-        let valid_before = before.is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '-');
-        let valid_after = after.is_none_or(|ch| !ch.is_ascii_alphanumeric() && ch != '-');
-        if valid_before && valid_after {
-            return Some(index);
-        }
-        search_from = index + selector.len();
-    }
-    None
 }
 
 fn find_matching_brace(source: &str, open_index: usize) -> Option<usize> {
@@ -239,5 +293,38 @@ mod tests {
         let catalog = parse_css_catalog(css).expect("fixture should parse");
         assert!(catalog.light.contains_key("primary"));
         assert!(catalog.dark.contains_key("background"));
+    }
+
+    #[test]
+    fn class_blocks_become_modes_based_on_light_or_dark() {
+        let css = r#"
+        @import "tailwindcss";
+        @custom-variant dark (&:is(.dark *));
+        :root { --primary: red; --background: white; }
+        .dark { --primary: pink; --background: black; }
+        .hi-contrast { --primary: blue; }
+        .dark.hi-contrast { --primary: cyan; }
+        @theme inline { --color-primary: var(--primary); }
+        @layer base { * { border-color: red; } body { color: black; } }
+        .card:hover { --primary: green; }
+        "#;
+        let catalog = parse_css_catalog(css).expect("parses");
+        assert_eq!(catalog.light["primary"], "red");
+        assert_eq!(catalog.dark["primary"], "pink", "`.dark.hi-contrast` stays out of dark");
+        let modes: Vec<(&str, ThemeMode)> = catalog.modes.iter().map(|m| (m.name.as_str(), m.base)).collect();
+        assert_eq!(modes, [("hi_contrast", ThemeMode::Light), ("hi_contrast_dark", ThemeMode::Dark)]);
+        let high = catalog.mode_map(&catalog.modes[0]);
+        assert_eq!((high.get("primary"), high.get("background")), (Some("blue"), Some("white")), "layered over :root");
+        let high_dark = catalog.mode_map(&catalog.modes[1]);
+        assert_eq!((high_dark.get("primary"), high_dark.get("background")), (Some("cyan"), Some("black")));
+    }
+
+    #[test]
+    fn blocks_inside_layer_count_and_bad_class_names_are_errors() {
+        let css = "@layer base { :root { --primary: red; } .dark { --primary: pink; } }";
+        let catalog = parse_css_catalog(css).expect("parses");
+        assert_eq!((catalog.light["primary"].as_str(), catalog.dark["primary"].as_str()), ("red", "pink"));
+        let bad = ":root { --a: 1; } .dark { --a: 2; } .2x { --a: 3; }";
+        assert!(parse_css_catalog(bad).is_err());
     }
 }

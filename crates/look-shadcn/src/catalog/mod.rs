@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context as _, Result, anyhow};
 use gpui::Hsla;
 
-pub use parse::{CssTokenCatalog, parse_css_catalog};
+pub use parse::{CssMode, CssTokenCatalog, parse_css_catalog};
 
 use xgpui_luma::color::{ColorValue, GamutMapping, gpui_bridge};
 
@@ -68,6 +68,18 @@ impl CssTokenCatalog {
 
     pub fn dark_map(&self) -> CssTokenMap {
         CssTokenMap::from_map(self.dark.clone())
+    }
+
+    /// A class-block mode's tokens: its base's (`:root` or `.dark`) with the block's layered over them,
+    /// as the CSS cascade gives an element with that class.
+    pub fn mode_map(&self, mode: &CssMode) -> CssTokenMap {
+        let base = match mode.base {
+            xgpui_luma::theme::ThemeMode::Light => &self.light,
+            xgpui_luma::theme::ThemeMode::Dark => &self.dark,
+        };
+        let mut tokens = base.clone();
+        tokens.extend(mode.tokens.clone());
+        CssTokenMap::from_map(tokens)
     }
 }
 
