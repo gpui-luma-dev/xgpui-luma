@@ -5,6 +5,7 @@
 //! (`outline_layer`, `action_layer`, `action_foreground`, `darken`) call the existing [`LookResolver`]. Sizes
 //! (`size sm`, `size lg`) and variants live only in these files; `md` is the base.
 
+use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -98,9 +99,43 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
-/// `look`'s catalog bound to the Shadcn stylesheet in the look's style mode ([`ShadcnLook::style_mode`]).
+/// A list of CSS modes as (mode, base scheme name), keying compiled stylesheets.
+type ModesKey = Vec<(String, &'static str)>;
+
+/// The Shadcn stylesheet with modes a theme's CSS adds declared, each based on light or dark (e.g.
+/// `[("hi_contrast", Light)]`). Compiled once per distinct list; the shared [`stylesheet`] when empty,
+/// or should the extended config or files not compile.
+pub fn stylesheet_with_modes(modes: &[(String, ThemeMode)]) -> Stylesheet {
+    if modes.is_empty() {
+        return stylesheet();
+    }
+    static SHEETS: OnceLock<std::sync::Mutex<HashMap<ModesKey, Stylesheet>>> = OnceLock::new();
+    let key: ModesKey =
+        modes.iter().map(|(name, base)| (name.clone(), xgpui_luma::style::scheme_name(*base))).collect();
+    let mut sheets = SHEETS.get_or_init(Default::default).lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(sheet) = sheets.get(&key) {
+        return sheet.clone();
+    }
+    let extension = key.iter().fold(config().extend(), |extension, (name, base)| extension.mode_based_on(name, base));
+    let sheet = extension
+        .build()
+        .ok()
+        .and_then(|config| {
+            Stylesheet::builder(Arc::new(config))
+                .layer("sdk", xgpui_luma::style::sources())
+                .layer("look", sources())
+                .compile()
+                .ok()
+        })
+        .unwrap_or_else(stylesheet);
+    sheets.insert(key, sheet.clone());
+    sheet
+}
+
+/// `look`'s catalog bound to its stylesheet ([`ShadcnLook::style_stylesheet`]) in its style mode
+/// ([`ShadcnLook::style_mode`]).
 pub fn theme(look: &ShadcnLook) -> Result<Theme, Diagnostics> {
-    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens::new(look)), &look.style_mode())
+    Theme::bind(&look.style_stylesheet(), Arc::new(ShadcnTokens::new(look)), &look.style_mode())
 }
 
 /// One mode's tokens bound to the Shadcn stylesheet in that mode. The SDK alone if the catalog cannot bind.
@@ -108,8 +143,8 @@ pub(crate) fn theme_for_mode(tokens: &ShadcnModeTokens) -> Theme {
     let tokens = Arc::new(tokens.clone());
     let mode = tokens.theme_mode;
     let mode = xgpui_luma::style::scheme_name(mode);
-    Theme::bind(&stylesheet(), Arc::new(ShadcnTokens { light: Arc::clone(&tokens), dark: tokens }), mode)
-        .unwrap_or_else(|_| xgpui_luma::style::default_theme())
+    let source = ShadcnTokens { light: Arc::clone(&tokens), dark: tokens, modes: HashMap::new() };
+    Theme::bind(&stylesheet(), Arc::new(source), mode).unwrap_or_else(|_| xgpui_luma::style::default_theme())
 }
 
 /// The last bound theme of a look. Keyed by the identity of the mode tokens it was bound to (the cached
@@ -120,7 +155,7 @@ pub(crate) struct ThemeCache(std::sync::Mutex<Option<(usize, String, Theme)>>);
 impl ThemeCache {
     pub(crate) fn get(&self, look: &ShadcnLook) -> Theme {
         let mode = look.style_mode();
-        let tokens = look.mode_tokens_for(look.mode());
+        let tokens = look.mode_tokens();
         let id = Arc::as_ptr(&tokens) as usize;
         let mut cached = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some((cached_id, cached_mode, theme)) = cached.as_ref()
@@ -142,15 +177,25 @@ impl ThemeCache {
 pub struct ShadcnTokens {
     light: Arc<ShadcnModeTokens>,
     dark: Arc<ShadcnModeTokens>,
+    /// The CSS's own modes (`hi_contrast`, …), used when bound in one of them.
+    modes: HashMap<String, Arc<ShadcnModeTokens>>,
 }
 
 impl ShadcnTokens {
     pub fn new(look: &ShadcnLook) -> Self {
-        Self { light: look.mode_tokens_for(ThemeMode::Light), dark: look.mode_tokens_for(ThemeMode::Dark) }
+        Self {
+            light: look.mode_tokens_for(ThemeMode::Light),
+            dark: look.mode_tokens_for(ThemeMode::Dark),
+            modes: look.css_mode_tokens().into_iter().collect(),
+        }
     }
 
     fn mode(&self, cx: &TokenCx<'_>) -> (&ShadcnModeTokens, ThemeMode) {
-        // By scheme, so a mode based on light or dark uses that mode's CSS values.
+        // A mode the CSS defines uses its own values; any other by scheme, so a mode based on light or
+        // dark uses that scheme's CSS values.
+        if let Some(tokens) = self.modes.get(cx.mode()) {
+            return (tokens, tokens.theme_mode);
+        }
         if cx.scheme() == "dark" {
             (&self.dark, ThemeMode::Dark)
         } else {
