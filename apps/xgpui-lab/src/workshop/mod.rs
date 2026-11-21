@@ -28,6 +28,7 @@ mod style_inspector;
 mod lss_inspector;
 mod checkbox_pane;
 mod box_model;
+mod pane_type;
 mod display;
 
 use std::{
@@ -399,7 +400,9 @@ impl Workshop {
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
                 )),
                 "checkbox" => {
-                    let theme = xgpui_luma::style::default_theme();
+                    // The work pane's own chrome (Radix) follows the app's light/dark; only its control and
+                    // State matrix render with the SDK theme.
+                    let (look, theme) = (self.shell_look.clone(), xgpui_luma::style::default_theme());
                     theme.stylesheet().control("checkbox").map(|control| {
                         Sample::Checkbox(
                             cx.new(|cx| checkbox_pane::CheckboxPane::new(look, theme.clone(), control, cx)),
@@ -490,7 +493,7 @@ impl Workshop {
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.shell_look.set_mode(mode);
         for (id, sample) in &self.samples {
-            let look = if matches!(*id, "button" | "toolbar") {
+            let look = if matches!(*id, "button" | "toolbar" | "checkbox") {
                 self.shell_look.clone()
             } else {
                 self.page_look.clone()

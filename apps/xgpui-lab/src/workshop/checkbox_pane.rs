@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, FontWeight, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
+use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
@@ -17,9 +17,10 @@ use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
 use super::sample_layout::ruled_background;
-use crate::screen::{LabMetrics, TextRole, text};
+use super::pane_type;
+use crate::screen::{LabMetrics, text};
 use crate::lab_controls::{Segmented, TabBar};
-use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
+use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
 /// Initial height of the lower panel (states and events) under the stage.
@@ -101,19 +102,25 @@ impl CheckboxPane {
             .py(px(14.))
             .border_b_1()
             .border_color(chrome.border)
-            .child(text(look, TextRole::Crumb, format!("Workshop · {group}")))
+            .child(text(look, pane_type::CRUMB, format!("Workshop · {group}")))
             .child(
                 div()
                     .flex()
                     .flex_wrap()
                     .items_baseline()
                     .gap(px(12.))
-                    .child(text(look, TextRole::Title, "Checkbox"))
-                    .child(text(look, TextRole::Value, self.control.to_string()))
-                    .child(text(look, TextRole::Value, source).text_color(chrome.muted_text)),
+                    .child(text(look, pane_type::TITLE, "Checkbox"))
+                    .child(text(look, pane_type::CONTROL, self.control.to_string()))
+                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
             )
-            .children(inspection.doc.map(|d| text(look, TextRole::Lede, d)))
+            .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
             .into_any_element()
+    }
+
+    /// The pane look's light/dark, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn look_mode(&self) -> xgpui_luma::theme::ThemeMode {
+        self.look.mode()
     }
 
     /// The control side, for tests.
@@ -141,7 +148,7 @@ impl Render for CheckboxPane {
             .when(self.left_rounded, |d| d.rounded_tl(px(CANVAS_INNER_RADIUS)).rounded_bl(px(CANVAS_INNER_RADIUS)))
             .bg(chrome.content_background)
             .text_color(chrome.body_text)
-            .typography_style(self.look.typography_scale(TextSize::Xs))
+            .typography_style(pane_type::body(&self.look))
             .flex()
             .flex_col()
             .child(self.title())
@@ -476,9 +483,9 @@ impl ControlSide {
         let template = StyledCheckboxTemplate::new(self.theme.clone());
         let label = |text: String, current: bool| {
             div()
-                .font_family(MONO_FAMILY)
+                .font_family(pane_type::MONO)
                 .text_color(if current { accent } else { chrome.muted_text })
-                .when(current, |d| d.font_weight(FontWeight::SEMIBOLD))
+                .when(current, |d| d.font_weight(pane_type::LABEL_WEIGHT))
                 .child(text)
         };
         let (columns, rows) = self.matrix_axes();
@@ -539,7 +546,7 @@ impl ControlSide {
             div()
                 .w(px(STRIP_LABEL_WIDTH))
                 .flex_shrink_0()
-                .font_weight(FontWeight::SEMIBOLD)
+                .font_weight(pane_type::LABEL_WEIGHT)
                 .text_color(chrome.muted_text)
                 .child(text.to_uppercase())
         };
@@ -604,7 +611,7 @@ impl ControlSide {
                             .rounded(px(6.))
                             .border_1()
                             .border_color(chrome.border)
-                            .font_family(MONO_FAMILY)
+                            .font_family(pane_type::MONO)
                             .child(lss_inspector::key_line(&self.theme, self.control, &self.key)),
                     )
                     .child(self.reset.clone()),
@@ -713,7 +720,7 @@ impl Render for ControlSide {
             .flex()
             .flex_col()
             .text_color(chrome.body_text)
-            .typography_style(self.look.typography_scale(TextSize::Xs))
+            .typography_style(pane_type::body(&self.look))
             .child(self.tab_row())
             .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
@@ -888,6 +895,52 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
+    }
+
+    #[test]
+    fn property_rows_are_one_line_columns_under_a_header() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        assert!(cx.debug_bounds("lss-inspector-list-header").is_some(), "column header");
+        // Names start at the Property column, whatever their length (the button must not centre them).
+        let header = cx.debug_bounds("lss-inspector-header-property").expect("header").left();
+        for id in [
+            "lss-inspector-name-gap",
+            "lss-inspector-name-disabled_opacity",
+            "lss-inspector-name-indicator_scale",
+        ] {
+            assert_eq!(cx.debug_bounds(id).expect(id).left(), header, "{id} starts at the Property column");
+        }
+        let column = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
+        let (value, rule) = (column("lss-inspector-header-value", cx), column("lss-inspector-header-rule", cx));
+        assert_eq!(column("lss-inspector-value-height", cx).left(), value.left(), "values line up with Value");
+        assert_eq!(column("lss-inspector-rule-height", cx).right(), rule.right(), "rules line up with Rule");
+        // A literal shows no expression; a token reference shows it; the base rule has no selector.
+        let summary = |part: &str, property: &'static str, cx: &mut VisualTestContext| {
+            cx.update(|_, cx| inspector.read(cx).row_summary(part, property)).expect("row rendered")
+        };
+        assert_eq!(summary("root", "indicator_scale", cx), ("0.5".into(), String::new(), None));
+        assert_eq!(summary("root", "height", cx), ("36px".into(), "metrics.control.control_height".into(), None));
+
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        inspector.update(cx, |inspector, cx| inspector.select_part("indicator", cx));
+        cx.run_until_parked();
+        let (_, expression, selector) = summary("indicator", "background", cx);
+        assert_eq!(expression, "palette.state.selected.background");
+        assert_eq!(selector.as_deref(), Some(":checked"), "a state rule shows its selector");
+    }
+
+    #[test]
+    fn the_pane_chrome_follows_the_app_light_and_dark() {
+        let mut app = TestAppContext::single();
+        let (workshop, pane, cx) = open(&mut app);
+        for mode in [xgpui_luma::theme::ThemeMode::Dark, xgpui_luma::theme::ThemeMode::Light] {
+            workshop.update(cx, |v, cx| v.sync_theme(mode, cx));
+            cx.run_until_parked();
+            assert_eq!(cx.update(|_, cx| pane.read(cx).look_mode()), mode);
+        }
     }
 
     #[test]
