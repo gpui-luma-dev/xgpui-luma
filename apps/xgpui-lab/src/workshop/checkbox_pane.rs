@@ -30,20 +30,9 @@ const MIN_LOWER_HEIGHT: f32 = 120.;
 /// corners match it so nothing square shows past the rounded canvas.
 const CANVAS_INNER_RADIUS: f32 = 9.;
 const STRIP_LABEL_WIDTH: f32 = 78.;
-/// State matrix rows: (label, checked, disabled).
-const MATRIX_ROWS: [(&str, bool, bool); 4] = [
-    ("base", false, false),
-    (":checked", true, false),
-    (":disabled", false, true),
-    (":checked:disabled", true, true),
-];
-/// State matrix columns: (label, hovered, pressed).
-const MATRIX_COLUMNS: [(&str, bool, bool); 4] = [
-    ("—", false, false),
-    (":hover", true, false),
-    (":pressed", false, true),
-    (":hover:pressed", true, true),
-];
+/// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
+/// make it invalid.
+const UNREACHABLE_STATES: &[&str] = &["invalid"];
 
 #[derive(Clone, Copy, PartialEq)]
 enum Stage {
@@ -160,6 +149,17 @@ impl Render for CheckboxPane {
     }
 }
 
+/// One state of the style key and its switch.
+struct KeyState {
+    state: StateId,
+    /// No rule in the file uses it; the template sets it in its key (and may draw it, e.g. the focus
+    /// ring).
+    template_only: bool,
+    /// The live control can reach it (see [`UNREACHABLE_STATES`]).
+    reachable: bool,
+    switch: Switch,
+}
+
 /// The control and its state matrix above, the style key and the control's events below, with a
 /// draggable divider between them.
 pub(super) struct ControlSide {
@@ -169,8 +169,9 @@ pub(super) struct ControlSide {
     checkbox: checkbox::Checkbox,
     stage: Stage,
     stage_tabs: TabBar,
-    /// One switch per state the checkbox's rules use.
-    states: Vec<(StateId, String, Switch)>,
+    /// The key's states, in config order: those the file's rules use, then any the template sets
+    /// that no rule uses.
+    states: Vec<KeyState>,
     /// Whether the key follows the checkbox (checked, hover, enabled); pressed has no event.
     follow: bool,
     follow_switch: Switch,
@@ -203,6 +204,7 @@ impl ControlSide {
                 CheckboxEvent::Change { checked } => this.set_state("checked", *checked, cx),
                 CheckboxEvent::HoverChanged { hovered } => this.set_state("hover", *hovered, cx),
                 CheckboxEvent::EnabledChanged { enabled } => this.set_state("disabled", !enabled, cx),
+                CheckboxEvent::FocusChanged { focused } => this.set_state("focused", *focused, cx),
                 _ => {}
             }
         })
@@ -219,13 +221,18 @@ impl ControlSide {
                 cx.notify();
             },
         );
-        let states = theme
-            .stylesheet()
-            .axes(control)
-            .states
+        // States the file's rules use, plus states the template sets with no rule (e.g. `focused`).
+        let rule_states = theme.stylesheet().axes(control).states;
+        let template_states: Vec<StateId> = checkbox::default_checkbox_template()
+            .style_states()
             .into_iter()
-            .map(|state| {
-                let name = config.state_name(state).to_string();
+            .filter_map(|n| config.state(n))
+            .collect();
+        let states = config
+            .state_names()
+            .filter_map(|name| config.state(name).map(|state| (state, name.to_string())))
+            .filter(|(state, _)| rule_states.contains(state) || template_states.contains(state))
+            .map(|(state, name)| {
                 let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-checkbox-state-{name}"))
                     .look(look.as_ref())
                     .label(format!(":{name}"))
@@ -239,7 +246,12 @@ impl ControlSide {
                         this.apply(this.key.set_state(state, on), cx);
                     })
                     .spawn(cx);
-                (state, name, switch)
+                KeyState {
+                    template_only: !rule_states.contains(&state),
+                    reachable: !UNREACHABLE_STATES.contains(&name.as_str()),
+                    state,
+                    switch,
+                }
             })
             .collect();
         let follow_switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-follow")
@@ -299,7 +311,7 @@ impl ControlSide {
     /// Set one state by name in the key; a state the checkbox does not declare is ignored.
     fn set_state(&mut self, name: &str, on: bool, cx: &mut Context<Self>) {
         if let Some(state) = self.theme.stylesheet().config().state(name)
-            && self.states.iter().any(|(s, _, _)| *s == state)
+            && self.states.iter().any(|s| s.state == state)
         {
             self.apply(self.key.set_state(state, on), cx);
         }
@@ -308,10 +320,10 @@ impl ControlSide {
     /// Use `key` for the matrix highlight, the state switches and the inspector.
     fn apply(&mut self, key: StyleKey, cx: &mut Context<Self>) {
         self.key = key;
-        for (state, _, switch) in &self.states {
-            let on = key.active_states().contains(*state);
-            if *switch.read(cx).data() != on {
-                switch.update(cx, |switch, cx| switch.set_data(on, cx));
+        for state in &self.states {
+            let on = key.active_states().contains(state.state);
+            if *state.switch.read(cx).data() != on {
+                state.switch.update(cx, |switch, cx| switch.set_data(on, cx));
             }
         }
         self.inspector.update(cx, |inspector, cx| inspector.set_key(key, cx));
@@ -329,17 +341,13 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// The key for the checkbox as it is: only `checked`, since hover and press are transient.
+    /// The key for the checkbox as it is: only `checked`, since hover, press and focus are transient.
     fn followed_key(&self, cx: &Context<Self>) -> StyleKey {
         let base = StyleKey::new(self.control);
         match self.theme.stylesheet().config().state("checked") {
             Some(checked) if self.follow => base.set_state(checked, *self.checkbox.read(cx).data()),
             _ => base,
         }
-    }
-
-    fn is_on(&self, name: &str) -> bool {
-        self.theme.stylesheet().config().state(name).is_some_and(|s| self.key.active_states().contains(s))
     }
 
     /// The stage tabs, right-aligned in a row as tall as the inspector's tab row.
@@ -368,42 +376,87 @@ impl ControlSide {
             .into_any_element()
     }
 
+    /// The matrix axes, from the key's states. Columns are the config's exclusive group as one choice
+    /// (none, then weakest to strongest), since only its strongest active state counts; rows are every
+    /// combination of the other states.
+    fn matrix_axes(&self) -> (Vec<Option<StateId>>, Vec<Vec<StateId>>) {
+        let config = self.theme.stylesheet().config();
+        let used: Vec<StateId> = self.states.iter().map(|s| s.state).collect();
+        let mut exclusive: Vec<StateId> =
+            config.exclusive_states().filter_map(|n| config.state(n)).filter(|s| used.contains(s)).collect();
+        exclusive.reverse();
+        let columns = std::iter::once(None).chain(exclusive.iter().copied().map(Some)).collect();
+        let rest: Vec<StateId> = used.into_iter().filter(|s| !exclusive.contains(s)).collect();
+        let rows = (0u32..1 << rest.len())
+            .map(|mask| rest.iter().enumerate().filter(|(i, _)| mask & (1 << i) != 0).map(|(_, s)| *s).collect())
+            .collect();
+        (columns, rows)
+    }
+
+    /// The template's interaction state and checked data for a set of states.
+    fn template_state(&self, states: &[StateId]) -> (InteractionState, bool) {
+        let config = self.theme.stylesheet().config();
+        let has = |name: &str| config.state(name).is_some_and(|s| states.contains(&s));
+        let interaction = InteractionState {
+            hovered: has("hover"),
+            pressed: has("pressed"),
+            focused: has("focused"),
+            disabled: has("disabled"),
+            invalid: has("invalid"),
+        };
+        (interaction, has("checked"))
+    }
+
+    fn states_label(&self, states: &[StateId], empty: &str) -> String {
+        let config = self.theme.stylesheet().config();
+        if states.is_empty() {
+            empty.to_string()
+        } else {
+            states.iter().map(|s| format!(":{}", config.state_name(*s))).collect()
+        }
+    }
+
     /// The SDK checkbox template rendered for each state combination, drawn bare (no cell chrome). The
     /// current key's row and column labels are highlighted.
     fn matrix(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let chrome = self.look.chrome();
+        let config = self.theme.stylesheet().config();
         let accent = self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, 11).hsla();
         let template = checkbox::default_checkbox_template();
-        let label = |text: &str, current: bool| {
+        let label = |text: String, current: bool| {
             div()
                 .font_family(MONO_FAMILY)
                 .text_color(if current { accent } else { chrome.muted_text })
                 .when(current, |d| d.font_weight(FontWeight::SEMIBOLD))
-                .child(text.to_string())
+                .child(text)
         };
-        let current_row =
-            |checked: bool, disabled: bool| self.is_on("checked") == checked && self.is_on("disabled") == disabled;
-        let current_column =
-            |hovered: bool, pressed: bool| self.is_on("hover") == hovered && self.is_on("pressed") == pressed;
+        let (columns, rows) = self.matrix_axes();
+        let active = self.key.active_states();
+        // The key's column: its strongest active member of the exclusive group.
+        let current_column = config
+            .exclusive_states()
+            .filter_map(|n| config.state(n))
+            .find(|s| active.contains(*s) && columns.contains(&Some(*s)));
+        let rest: Vec<StateId> = rows.last().cloned().unwrap_or_default();
+        let current_row = |row: &[StateId]| rest.iter().all(|s| active.contains(*s) == row.contains(s));
         let mut grid =
             div().debug_selector(|| "workshop-checkbox-matrix".into()).p(px(20.)).flex().flex_col().gap(px(10.));
-        grid =
-            grid.child(div().flex().gap(px(10.)).child(div().w(px(120.))).children(
-                MATRIX_COLUMNS.iter().map(|&(text, hovered, pressed)| {
-                    div().flex_1().child(label(text, current_column(hovered, pressed)))
-                }),
-            ));
-        for (r, (row_label, checked, disabled)) in MATRIX_ROWS.into_iter().enumerate() {
-            let mut row = div()
-                .flex()
-                .items_center()
-                .gap(px(10.))
-                .child(div().w(px(120.)).child(label(row_label, current_row(checked, disabled))));
-            for (c, (_, hovered, pressed)) in MATRIX_COLUMNS.into_iter().enumerate() {
+        grid = grid.child(div().flex().gap(px(10.)).child(div().w(px(150.))).children(columns.iter().map(|column| {
+            let text = self.states_label(&column.iter().copied().collect::<Vec<_>>(), "—");
+            div().flex_1().child(label(text, *column == current_column))
+        })));
+        for (r, row_states) in rows.iter().enumerate() {
+            let mut row =
+                div().flex().items_center().gap(px(10.)).child(
+                    div().w(px(150.)).child(label(self.states_label(row_states, "base"), current_row(row_states))),
+                );
+            for (c, column) in columns.iter().enumerate() {
+                let cell: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
+                let (state, checked) = self.template_state(&cell);
                 let model = ButtonRenderModel {
                     id: format!("workshop-checkbox-matrix-{r}-{c}").into(),
                     data: CheckboxData::new(checked),
-                    state: InteractionState { hovered, pressed, disabled, ..Default::default() },
+                    state,
                     content: Arc::new(|_, _| div().child("Label").into_any_element()),
                     ..Default::default()
                 };
@@ -461,10 +514,29 @@ impl ControlSide {
                     .items_center()
                     .gap(px(14.))
                     .child(heading("States"))
-                    .children(self.states.iter().map(|(_, _, switch)| switch.clone()))
+                    .children(self.states.iter().filter(|s| !s.template_only).map(|s| s.switch.clone()))
                     .child(div().flex_1())
                     .child(self.follow_switch.clone()),
             )
+            .when(self.states.iter().any(|s| s.template_only), |strip| {
+                strip.child(
+                    div()
+                        .debug_selector(|| "workshop-checkbox-template-states".into())
+                        .flex()
+                        .flex_wrap()
+                        .items_center()
+                        .gap(px(14.))
+                        .child(heading("Template"))
+                        .children(self.states.iter().filter(|s| s.template_only).map(|s| {
+                            div().flex().items_center().gap(px(6.)).child(s.switch.clone()).when(!s.reachable, |d| {
+                                d.child(div().text_color(chrome.muted_text).child("not settable on checkbox"))
+                            })
+                        }))
+                        .child(
+                            div().text_color(chrome.muted_text).child("no rule uses these; the template draws them"),
+                        ),
+                )
+            })
             .child(
                 div()
                     .flex()
@@ -500,17 +572,39 @@ impl ControlSide {
     /// Whether a state is on in the key, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn state_on(&self, name: &str) -> bool {
-        self.is_on(name)
+        self.theme.stylesheet().config().state(name).is_some_and(|s| self.key.active_states().contains(s))
     }
 
     /// Toggle a state switch as a person would, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn toggle_state(&mut self, name: &str, cx: &mut Context<Self>) {
-        if let Some(state) = self.states.iter().find(|(_, n, _)| n == name).map(|(s, _, _)| *s) {
+        let config = self.theme.stylesheet().config().clone();
+        if let Some(state) = self.states.iter().find(|s| config.state_name(s.state) == name).map(|s| s.state) {
             let on = !self.key.active_states().contains(state);
             self.set_follow(false, cx);
             self.apply(self.key.set_state(state, on), cx);
         }
+    }
+
+    /// The matrix's column and row labels, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn matrix_labels(&self) -> (Vec<String>, Vec<String>) {
+        let (columns, rows) = self.matrix_axes();
+        (
+            columns.iter().map(|c| self.states_label(&c.iter().copied().collect::<Vec<_>>(), "—")).collect(),
+            rows.iter().map(|r| self.states_label(r, "base")).collect(),
+        )
+    }
+
+    /// The template-only states and whether each is reachable, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn template_only_states(&self) -> Vec<(String, bool)> {
+        let config = self.theme.stylesheet().config();
+        self.states
+            .iter()
+            .filter(|s| s.template_only)
+            .map(|s| (config.state_name(s.state).to_string(), s.reachable))
+            .collect()
     }
 
     /// Show the state matrix, for tests.
@@ -694,6 +788,52 @@ mod tests {
         assert!(cx.update(|_, cx| pane.read(cx).left_rounded), "sidebar hidden: rounded");
         workshop.update(cx, |v, cx| v.set_sidebar_hidden(false, cx));
         assert!(!cx.update(|_, cx| pane.read(cx).left_rounded), "sidebar shown again: square");
+    }
+
+    #[test]
+    fn checkbox_pane_offers_template_states_and_builds_matrix_axes_from_the_states() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        // `focused` and `invalid`: set by the template, used by no rule; a checkbox can't be invalid.
+        assert_eq!(
+            cx.update(|_, cx| side.read(cx).template_only_states()),
+            [("focused".to_string(), true), ("invalid".to_string(), false)]
+        );
+        assert!(cx.debug_bounds("workshop-checkbox-template-states").is_some(), "template row rendered");
+        let (columns, rows) = cx.update(|_, cx| side.read(cx).matrix_labels());
+        // The exclusive group (hover < pressed < disabled) is one axis; the rest combine.
+        assert_eq!(columns, ["—", ":hover", ":pressed", ":disabled"]);
+        assert_eq!(
+            rows,
+            [
+                "base",
+                ":focused",
+                ":checked",
+                ":focused:checked",
+                ":invalid",
+                ":focused:invalid",
+                ":checked:invalid",
+                ":focused:checked:invalid"
+            ]
+        );
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "matrix renders every cell");
+    }
+
+    #[test]
+    fn checkbox_key_tracks_focus_and_the_inspector_notes_no_rule_uses_it() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
+        cx.update(|window, cx| checkbox.read(cx).focus_handle(cx).focus(window, cx));
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| side.read(cx).state_on("focused")), "tracks :focused");
+        let note = cx.update(|_, cx| pane.read(cx).inspector().read(cx).unused_states_note());
+        assert_eq!(note.as_deref(), Some("no rule uses :focused"));
+        assert_eq!(winner_states(&pane, "indicator", "background", cx), "", "focus changes no value");
     }
 
     #[test]

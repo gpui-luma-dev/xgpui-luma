@@ -81,6 +81,31 @@ mod tests {
         ButtonRenderModel { data: CheckboxData::new(checked), state, role, ..Default::default() }
     }
 
+    /// Each name `style_states` reports is a state the key sets, and the key sets no other.
+    #[test]
+    fn style_states_are_exactly_the_states_the_key_sets() {
+        let template = StyledCheckboxTemplate::sdk();
+        let config = crate::style::config();
+        let names = template.style_states();
+        assert_eq!(names, ["hover", "pressed", "focused", "disabled", "invalid", "checked"]);
+        let none = template.key(&model(InteractionState::default(), false, ButtonFamilyRole::Text), false, 1.0);
+        assert!(config.state_names().all(|n| !none.active_states().contains(config.state(n).unwrap())));
+        for name in names {
+            let state = InteractionState {
+                hovered: name == "hover",
+                pressed: name == "pressed",
+                focused: name == "focused",
+                disabled: name == "disabled",
+                invalid: name == "invalid",
+            };
+            let on = name == "checked";
+            let key = template.key(&model(state, on, ButtonFamilyRole::Text), on, 1.0);
+            let active: Vec<&str> =
+                config.state_names().filter(|n| key.active_states().contains(config.state(n).unwrap())).collect();
+            assert_eq!(active, [name], "{name}");
+        }
+    }
+
     #[test]
     fn styled_checkbox_layout_is_stable_across_states_and_scales() {
         for role in [ButtonFamilyRole::Text, ButtonFamilyRole::Icon] {
