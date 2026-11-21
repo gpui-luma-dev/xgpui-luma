@@ -24,9 +24,10 @@ use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
 /// Initial height of the lower panel (states and events) under the stage.
-const LOWER_HEIGHT: f32 = 300.;
+const LOWER_HEIGHT: f32 = 400.;
 const MIN_STAGE_HEIGHT: f32 = 160.;
-const MIN_LOWER_HEIGHT: f32 = 120.;
+/// The lower panel never gets shorter than this, so the states strip and the events stay on screen.
+const MIN_LOWER_HEIGHT: f32 = 400.;
 /// The workshop canvas's inner corner radius (`CANVAS_RADIUS` less its border); the pane's outer
 /// corners match it so nothing square shows past the rounded canvas.
 const CANVAS_INNER_RADIUS: f32 = 9.;
@@ -985,6 +986,15 @@ mod tests {
         cx.simulate_keystrokes("space");
         cx.run_until_parked();
         assert_eq!(cx.update(|_, cx| inspector.read(cx).picked()), [0, 1], "glyph off, the others stay");
+    }
+
+    #[test]
+    fn the_lower_panel_minimum_fits_the_whole_states_strip() {
+        let mut app = TestAppContext::single();
+        let (_, _pane, cx) = open(&mut app);
+        let key = cx.debug_bounds("workshop-checkbox-key").expect("states strip");
+        // The strip plus room for the events heading below it.
+        assert!(f32::from(key.size.height) + 40. <= MIN_LOWER_HEIGHT, "states strip is {:?}", key.size.height);
     }
 
     #[test]

@@ -210,7 +210,9 @@ impl LssInspector {
                 cx.notify();
             })
             .spawn(cx);
-        let part_tabs = xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-part", look.size())
+        // Part, Show and Group are Radix toggle groups at the small size (Radix size 1).
+        let small = look.with_size(xgpui_luma_look_radix::RadixSize::One);
+        let part_tabs = xgpui_luma_look_radix::control_group_builder(&small, "lss-inspector-part", small.size())
             .horizontal()
             .multiple()
             // Each click turns one part on or off; without this a plain click selects only that part.
@@ -230,17 +232,16 @@ impl LssInspector {
         let inspector = cx.weak_entity();
         let part_bodies =
             (0..parts.len()).map(|part| cx.new(|_| PartBody { inspector: inspector.clone(), part })).collect();
-        let filter_tabs =
-            xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-filter", look.size())
-                .horizontal()
-                .single_required()
-                .items([
-                    ControlGroupItem::new("all").label("All"),
-                    ControlGroupItem::new("has-states").label("Has states"),
-                    ControlGroupItem::new("by-state-now").label("By state now"),
-                ])
-                .selected_ids(["all"])
-                .spawn(cx);
+        let filter_tabs = xgpui_luma_look_radix::control_group_builder(&small, "lss-inspector-filter", small.size())
+            .horizontal()
+            .single_required()
+            .items([
+                ControlGroupItem::new("all").label("All"),
+                ControlGroupItem::new("has-states").label("Has states"),
+                ControlGroupItem::new("by-state-now").label("By state now"),
+            ])
+            .selected_ids(["all"])
+            .spawn(cx);
         cx.subscribe(&filter_tabs, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
             if let ControlGroupEvent::Change { selected_ids, .. } = event {
                 this.filter = match selected_ids.first().map(|id| id.as_ref()) {
@@ -253,7 +254,7 @@ impl LssInspector {
         })
         .detach();
         let grouping_tabs =
-            xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-grouping", look.size())
+            xgpui_luma_look_radix::control_group_builder(&small, "lss-inspector-grouping", small.size())
                 .horizontal()
                 .single_required()
                 .items([ControlGroupItem::new("file").label("File"), ControlGroupItem::new("kind").label("Kind")])
