@@ -14,7 +14,6 @@ use xgpui_luma_look_radix::Look;
 
 use super::palette;
 use crate::{
-    lab_controls::Segmented,
     screen::{Hero, LabScreen, PanelShell, TextRole, labeled_control, properties, text},
 };
 
@@ -83,9 +82,12 @@ pub struct ParagraphApiPage {
     sample: usize,
     direction: usize,
     width: usize,
-    sample_choice: Segmented,
-    direction_choice: Segmented,
-    width_choice: Segmented,
+    sample_choice:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
+    direction_choice:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
+    width_choice:
+        xgpui_luma::controls::control_group::ControlGroup<xgpui_luma::controls::control_group::ControlGroupItem>,
     focus: FocusHandle,
     anchor: ParagraphPosition,
     caret: ParagraphPosition,
@@ -103,35 +105,67 @@ struct Laid {
 impl ParagraphApiPage {
     pub fn new(look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let _ = cx.text_system().add_fonts(super::paragraph::FONTS.iter().map(|data| (*data).into()).collect());
-        let sample_choice = Segmented::new(
-            "paragraph-api-sample",
-            "Sample",
-            &look,
-            &SAMPLES.map(|(label, _)| label),
-            0,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.sample = index;
-                this.reset(cx);
+        let sample_choice = xgpui_luma_look_radix::control_group_builder(&look, "paragraph-api-sample", look.size())
+            .horizontal()
+            .single_required()
+            .items(SAMPLES.map(|(label, _)| label).iter().enumerate().map(|(index, label)| {
+                xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+            }))
+            .selected_ids([(0).to_string()])
+            .spawn(cx);
+        cx.subscribe(
+            &sample_choice,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.sample = index;
+                    this.reset(cx);
+                }
             },
-        );
-        let direction_choice = Segmented::new(
-            "paragraph-api-direction",
-            "Direction",
-            &look,
-            &DIRECTIONS.map(|(label, _)| label),
-            0,
-            cx,
-            |this: &mut Self, index, cx| {
-                this.direction = index;
-                this.reset(cx);
+        )
+        .detach();
+        let direction_choice =
+            xgpui_luma_look_radix::control_group_builder(&look, "paragraph-api-direction", look.size())
+                .horizontal()
+                .single_required()
+                .items(DIRECTIONS.map(|(label, _)| label).iter().enumerate().map(|(index, label)| {
+                    xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+                }))
+                .selected_ids([(0).to_string()])
+                .spawn(cx);
+        cx.subscribe(
+            &direction_choice,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.direction = index;
+                    this.reset(cx);
+                }
             },
-        );
-        let width_choice =
-            Segmented::new("paragraph-api-width", "Width", &look, &WIDTHS, 0, cx, |this: &mut Self, index, cx| {
-                this.width = index;
-                this.reset(cx);
-            });
+        )
+        .detach();
+        let width_choice = xgpui_luma_look_radix::control_group_builder(&look, "paragraph-api-width", look.size())
+            .horizontal()
+            .single_required()
+            .items(WIDTHS.iter().enumerate().map(|(index, label)| {
+                xgpui_luma::controls::control_group::ControlGroupItem::new(index.to_string()).label(*label)
+            }))
+            .selected_ids([(0).to_string()])
+            .spawn(cx);
+        cx.subscribe(
+            &width_choice,
+            |this: &mut Self, _, event: &xgpui_luma::controls::control_group::ControlGroupEvent, cx| {
+                if let xgpui_luma::controls::control_group::ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(index) = selected_ids.first().and_then(|id| id.parse::<usize>().ok())
+                {
+                    this.width = index;
+                    this.reset(cx);
+                }
+            },
+        )
+        .detach();
         let typeset_active = cx.try_global::<TypesetInstalled>().is_some();
         let tooltip_buttons = examples::tooltip_buttons(&look, cx);
         Self {
@@ -295,9 +329,9 @@ impl Render for ParagraphApiPage {
                 "Running on the native text backend. Paragraphs use the native fallback; mixed text has no full paragraph bidi reordering."
             })
             .caption(format!("{backend} backend · paragraph_support(): {support:?} · {support_note}"))
-            .control(labeled_control(&self.look, self.sample_choice.clone().into_element()))
-            .control(labeled_control(&self.look, self.direction_choice.clone().into_element()))
-            .control(labeled_control(&self.look, self.width_choice.clone().into_element()));
+            .control(labeled_control(&self.look, div().flex().items_center().gap_2().child("Sample").child(self.sample_choice.clone())))
+            .control(labeled_control(&self.look, div().flex().items_center().gap_2().child("Direction").child(self.direction_choice.clone())))
+            .control(labeled_control(&self.look, div().flex().items_center().gap_2().child("Width").child(self.width_choice.clone())));
 
         let readout = match self.lay_out(window) {
             Err(error) => {
@@ -441,8 +475,8 @@ mod tests {
         let page = window.root(&mut cx).unwrap();
         window
             .update(&mut cx, |page, _, cx| {
-                page.sample_choice.select(sample, cx);
-                page.direction_choice.select(direction, cx);
+                crate::lab_controls::choose(&page.sample_choice, sample, cx);
+                crate::lab_controls::choose(&page.direction_choice, direction, cx);
             })
             .unwrap();
         let mut visual = VisualTestContext::from_window(window.into(), &cx);
