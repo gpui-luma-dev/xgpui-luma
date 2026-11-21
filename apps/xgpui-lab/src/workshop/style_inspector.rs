@@ -80,18 +80,30 @@ impl StyleInspector {
         cx.notify();
     }
 
-    /// Follow a live sample: set a state by name (e.g. the sample checkbox's `checked`).
+    /// Follow a live sample: set a state by name (e.g. the sample checkbox's `checked`). A state this
+    /// control does not declare is ignored.
     pub(super) fn set_state(&mut self, name: &str, on: bool, cx: &mut Context<Self>) {
         let Some(state) = self.theme.stylesheet().config().state(name) else {
             return;
         };
-        self.key = self.key.set_state(state, on);
-        if let Some((_, switch)) = self.states.iter().find(|(s, _)| *s == state)
-            && *switch.read(cx).data() != on
-        {
+        let Some((_, switch)) = self.states.iter().find(|(s, _)| *s == state) else {
+            return;
+        };
+        if *switch.read(cx).data() != on {
             switch.update(cx, |switch, cx| switch.set_data(on, cx));
         }
+        self.key = self.key.set_state(state, on);
         cx.notify();
+    }
+
+    /// Whether a state is on in the inspected key, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn state_on(&self, name: &str) -> bool {
+        self.theme
+            .stylesheet()
+            .config()
+            .state(name)
+            .is_some_and(|state| self.key.active_states().contains(state))
     }
 
     /// The current inspection, for tests.

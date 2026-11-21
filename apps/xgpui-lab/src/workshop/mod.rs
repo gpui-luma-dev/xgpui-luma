@@ -135,11 +135,19 @@ pub(crate) struct Workshop {
     page_look: Arc<Look>,
 }
 
-/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Checkbox has its own
-/// inspector that follows the sample; pages without SDK styling have none.
+/// A sample's live state, by `.lss` state name (e.g. a checked checkbox's `checked`). The page's style
+/// inspectors follow it; a state an inspected control does not declare is ignored.
+pub(super) struct InspectedState {
+    pub(super) state: &'static str,
+    pub(super) on: bool,
+}
+
+/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Pages without SDK
+/// styling have none.
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         "button" => &["button"],
+        "checkbox" => &["checkbox"],
         "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
@@ -271,6 +279,21 @@ impl Workshop {
         };
         this.select("color-field", cx);
         this
+    }
+
+    /// Forward a sample's live state to the page's style inspectors.
+    fn follow<T: gpui::EventEmitter<InspectedState>>(
+        &mut self,
+        id: &'static str,
+        sample: &Entity<T>,
+        cx: &mut Context<Self>,
+    ) {
+        cx.subscribe(sample, move |this: &mut Self, _, event: &InspectedState, cx| {
+            for (_, inspector) in this.inspectors.get(id).into_iter().flatten() {
+                inspector.update(cx, |inspector, cx| inspector.set_state(event.state, event.on, cx));
+            }
+        })
+        .detach();
     }
 
     fn select(&mut self, id: &'static str, cx: &mut Context<Self>) {
@@ -410,6 +433,11 @@ impl Workshop {
                 _ => None,
             });
             if let Some(sample) = sample {
+                match &sample {
+                    Sample::Button(v) => self.follow(id, v, cx),
+                    Sample::Choice(v) => self.follow(id, v, cx),
+                    _ => {}
+                }
                 self.samples.insert(id, sample);
             }
         }
