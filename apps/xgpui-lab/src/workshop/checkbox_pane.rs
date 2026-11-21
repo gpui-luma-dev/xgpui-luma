@@ -14,9 +14,11 @@ use xgpui_luma::style::lss::{ControlId, StateId, StyleKey, Theme};
 use xgpui_luma::theme::InteractionState;
 
 use super::event_stream::ControlEventStream;
-use super::lss_inspector::{self, LssInspector};
+use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
+use super::catalog::COMPONENT_CATALOG;
 use super::sample_layout::ruled_background;
-use crate::lab_controls::Segmented;
+use crate::screen::{LabMetrics, TextRole, text};
+use crate::lab_controls::TabBar;
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
@@ -52,6 +54,8 @@ enum Stage {
 /// The work pane: the control side and the inspector, half each, with a draggable divider between them.
 pub(super) struct CheckboxPane {
     look: Arc<Look>,
+    theme: Theme,
+    control: ControlId,
     side: Entity<ControlSide>,
     inspector: Entity<LssInspector>,
     split: Entity<ResizablePanels>,
@@ -64,14 +68,14 @@ impl CheckboxPane {
     /// `control` is the checkbox's `.lss` control in `theme`.
     pub(super) fn new(look: Arc<Look>, theme: Theme, control: ControlId, cx: &mut Context<Self>) -> Self {
         let inspector = cx.new(|cx| LssInspector::new(look.clone(), theme.clone(), control, cx));
-        let side = cx.new(|cx| ControlSide::new(look.clone(), theme, control, inspector.clone(), cx));
+        let side = cx.new(|cx| ControlSide::new(look.clone(), theme.clone(), control, inspector.clone(), cx));
         let (side_view, inspector_view) = (side.clone(), inspector.clone());
         let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-checkbox-split")
             .show_border(false)
             .panel(ResizablePanelSpec::new_render(move || side_view.clone()).weight(1.).min(px(MIN_SIDE_WIDTH)))
             .panel(ResizablePanelSpec::new_render(move || inspector_view.clone()).weight(1.).min(px(MIN_SIDE_WIDTH)))
             .spawn(cx);
-        Self { look, side, inspector, split, left_rounded: false }
+        Self { look, theme, control, side, inspector, split, left_rounded: false }
     }
 
     pub(super) fn set_left_rounded(&mut self, rounded: bool, cx: &mut Context<Self>) {
@@ -84,6 +88,43 @@ impl CheckboxPane {
         self.side.update(cx, |side, cx| side.sync_look(look.clone(), cx));
         self.inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
         cx.notify();
+    }
+
+    /// The page title in the lab screens' text roles: crumb (Workshop · group), title, the `.lss` control
+    /// with its file and layer, and the control's doc comment as the lede.
+    fn title(&self) -> AnyElement {
+        let (look, chrome) = (self.look.as_ref(), self.look.chrome());
+        let inspection = self.theme.inspect(&StyleKey::new(self.control), None);
+        let source = lss_inspector::control_source(&inspection)
+            .map_or_else(String::new, |(file, layer)| format!("{file} · layer {layer}"));
+        let group = COMPONENT_CATALOG
+            .iter()
+            .find(|g| g.entries.iter().any(|e| e.id == "checkbox"))
+            .map_or("", |g| g.label);
+        let metrics = LabMetrics::STANDARD;
+        div()
+            .debug_selector(|| "workshop-checkbox-title".into())
+            .flex_none()
+            .flex()
+            .flex_col()
+            .gap(metrics.header_gap)
+            .px(px(18.))
+            .py(px(14.))
+            .border_b_1()
+            .border_color(chrome.border)
+            .child(text(look, TextRole::Crumb, format!("Workshop · {group}")))
+            .child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .items_baseline()
+                    .gap(px(12.))
+                    .child(text(look, TextRole::Title, "Checkbox"))
+                    .child(text(look, TextRole::Value, self.control.to_string()))
+                    .child(text(look, TextRole::Value, source).text_color(chrome.muted_text)),
+            )
+            .children(inspection.doc.map(|d| text(look, TextRole::Lede, d)))
+            .into_any_element()
     }
 
     /// The control side, for tests.
@@ -112,7 +153,10 @@ impl Render for CheckboxPane {
             .bg(chrome.content_background)
             .text_color(chrome.body_text)
             .typography_style(self.look.typography_scale(TextSize::Xs))
-            .child(self.split.clone())
+            .flex()
+            .flex_col()
+            .child(self.title())
+            .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
 }
 
@@ -124,7 +168,7 @@ pub(super) struct ControlSide {
     control: ControlId,
     checkbox: checkbox::Checkbox,
     stage: Stage,
-    stage_tabs: Segmented,
+    stage_tabs: TabBar,
     /// One switch per state the checkbox's rules use.
     states: Vec<(StateId, String, Switch)>,
     /// Whether the key follows the checkbox (checked, hover, enabled); pressed has no event.
@@ -164,9 +208,8 @@ impl ControlSide {
         })
         .detach();
 
-        let stage_tabs = Segmented::new(
+        let stage_tabs = TabBar::new(
             "workshop-checkbox-stage",
-            "",
             look.as_ref(),
             &["Control", "State matrix"],
             0,
@@ -299,43 +342,18 @@ impl ControlSide {
         self.theme.stylesheet().config().state(name).is_some_and(|s| self.key.active_states().contains(s))
     }
 
-    fn header(&self) -> AnyElement {
-        let chrome = self.look.chrome();
-        let inspection = self.theme.inspect(&self.key, None);
-        let source = lss_inspector::control_source(&inspection)
-            .map_or_else(String::new, |(file, layer)| format!("{file} · layer {layer}"));
+    /// The stage tabs, right-aligned in a row as tall as the inspector's tab row.
+    fn tab_row(&self) -> AnyElement {
         div()
+            .debug_selector(|| "workshop-checkbox-tab-row".into())
             .flex_none()
+            .h(px(TAB_ROW_HEIGHT))
             .flex()
             .items_end()
-            .gap(px(16.))
-            .px(px(18.))
-            .py(px(10.))
+            .justify_end()
+            .px(px(12.))
             .border_b_1()
-            .border_color(chrome.border)
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(2.))
-                    .child(
-                        div()
-                            .flex()
-                            .items_baseline()
-                            .gap(px(10.))
-                            .child(
-                                div()
-                                    .typography_style(self.look.typography_scale(TextSize::Base))
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(chrome.title_text)
-                                    .child("Checkbox"),
-                            )
-                            .child(div().font_family(MONO_FAMILY).child(self.control.to_string()))
-                            .child(div().font_family(MONO_FAMILY).text_color(chrome.muted_text).child(source)),
-                    )
-                    .children(inspection.doc.map(|d| div().text_color(chrome.muted_text).child(d))),
-            )
-            .child(div().flex_1())
+            .border_color(self.look.chrome().border)
             .child(self.stage_tabs.clone())
             .into_any_element()
     }
@@ -540,7 +558,7 @@ impl Render for ControlSide {
             .flex_col()
             .text_color(chrome.body_text)
             .typography_style(self.look.typography_scale(TextSize::Xs))
-            .child(self.header())
+            .child(self.tab_row())
             .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
 }
@@ -613,6 +631,16 @@ mod tests {
             assert!(cx.debug_bounds(id).is_some(), "{id} rendered");
         }
         assert!(cx.debug_bounds("workshop-style-column").is_none(), "no second inspector column");
+        let (pane_bounds, title) = (
+            cx.debug_bounds("workshop-checkbox-pane").unwrap(),
+            cx.debug_bounds("workshop-checkbox-title").unwrap(),
+        );
+        assert_eq!(title.size.width, pane_bounds.size.width, "title spans both sides");
+        let (left, right) = (
+            cx.debug_bounds("workshop-checkbox-tab-row").unwrap(),
+            cx.debug_bounds("lss-inspector-tab-row").unwrap(),
+        );
+        assert_eq!((left.top(), left.size.height), (right.top(), right.size.height), "tab rows line up");
 
         let inspector = cx.update(|_, cx| pane.read(cx).inspector());
         inspector.update(cx, |inspector, cx| inspector.select_part("indicator", cx));
@@ -626,6 +654,15 @@ mod tests {
         inspector.update(cx, |inspector, cx| inspector.show_source(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("lss-inspector-source").is_some(), "source view rendered");
+        inspector.update(cx, |inspector, cx| inspector.show_palette(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("lss-inspector-palette").is_some(), "palette view rendered");
+        let (file, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
+        assert!(file.ends_with("palette.lss"), "the default (light) palette: {file}");
+        assert!(
+            !used.is_empty() && used.iter().all(|l| l.contains("= gray(")),
+            "used lines are color tokens: {used:?}"
+        );
 
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.show_matrix(cx));

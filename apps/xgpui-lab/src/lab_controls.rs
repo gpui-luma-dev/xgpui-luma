@@ -161,3 +161,54 @@ impl IntoElement for Segmented {
         div().flex().items_center().gap_2().child(self.label).child(self.group)
     }
 }
+
+/// A row of SDK tabs that switches what a pane shows; the owner draws the content for the selected tab.
+#[derive(Clone)]
+pub(crate) struct TabBar {
+    pub tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
+}
+
+impl TabBar {
+    pub fn new<M: 'static>(
+        id: impl Into<SharedString>,
+        look: &Look,
+        labels: &[&str],
+        selected: usize,
+        cx: &mut Context<M>,
+        on_change: impl Fn(&mut M, usize, &mut Context<M>) + 'static,
+    ) -> Self {
+        use xgpui_luma::controls::tabs::{TabsBuilder, TabsItem};
+        let count = labels.len();
+        let tabs = TabsBuilder::new(id)
+            .items(labels.iter().enumerate().map(|(index, label)| TabsItem::new(index.to_string()).label(*label)))
+            .active(selected.to_string())
+            .template(xgpui_luma_look_radix::tabs_template(look))
+            .on_value_changed(cx, move |owner, id, _, cx| {
+                if let Ok(index) = id.parse::<usize>()
+                    && index < count
+                {
+                    on_change(owner, index, cx);
+                }
+            })
+            .spawn(cx);
+        Self { tabs }
+    }
+
+    #[cfg(all(test, feature = "test-support"))]
+    pub fn select(&self, index: usize, cx: &mut gpui::App) {
+        self.tabs.update(cx, |tabs, cx| {
+            tabs.set_active(index.to_string(), cx);
+            cx.emit(xgpui_luma::controls::tabs::TabsEvent::Change {
+                tab_id: index.to_string().into(),
+                label: SharedString::default(),
+            });
+        });
+    }
+}
+
+impl IntoElement for TabBar {
+    type Element = gpui::Div;
+    fn into_element(self) -> Self::Element {
+        div().flex_none().child(self.tabs)
+    }
+}

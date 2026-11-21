@@ -11,14 +11,17 @@ use gpui::{AnyElement, Context, Entity, FontWeight, Hsla, Render, SharedString, 
 use xgpui_luma::controls::button::Button;
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::{
-    Category, ControlId, Inspection, PartInspection, Row, RuleInfo, Source, StateId, StyleKey, Theme, Value,
+    Category, ControlId, Inspection, PartInspection, Reference, Row, RuleInfo, Source, StateId, StyleKey, Theme, Value,
     display_value,
 };
 
 use super::box_model;
-use crate::lab_controls::Segmented;
+use crate::lab_controls::{Segmented, TabBar};
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
+/// Height of a work pane's tab rows (tabs sit on the row's bottom border); the control side's stage
+/// tabs and the inspector's view tabs share it so the two rows line up.
+pub(super) const TAB_ROW_HEIGHT: f32 = 48.;
 const NAME_WIDTH: f32 = 200.;
 const ROW_INDENT: f32 = 22.;
 
@@ -26,6 +29,16 @@ const ROW_INDENT: f32 = 22.;
 enum View {
     Properties,
     Source,
+    Palette,
+}
+
+/// How one line of a style file is drawn.
+#[derive(Clone, Copy, Default)]
+struct LineMark {
+    highlight: bool,
+    strike: bool,
+    dim: bool,
+    swatch: Option<Hsla>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -73,11 +86,13 @@ pub(super) struct LssInspector {
     key: StyleKey,
     /// The control's style file, shown by the Source view.
     source: Option<Source>,
+    /// The theme's palette file (the SDK theme compiles one: `theme/palette.lss` for the default, light one).
+    palette: Option<Source>,
     part: usize,
     view: View,
     filter: Filter,
     grouping: Grouping,
-    view_tabs: Segmented,
+    view_tabs: TabBar,
     part_tabs: Segmented,
     filter_tabs: Segmented,
     grouping_tabs: Segmented,
@@ -92,18 +107,18 @@ impl LssInspector {
         let states = theme.stylesheet().axes(control).states;
         let inspection = theme.inspect(&key, None);
         let parts: Vec<SharedString> = inspection.parts.iter().map(|p| p.part.name().to_string().into()).collect();
+        let palette = theme.stylesheet().sources().find(|(_, s)| s.name.contains("palette")).map(|(_, s)| s.clone());
         let source = control_source(&inspection)
             .and_then(|(file, _)| theme.stylesheet().sources().find(|(_, s)| *s.name == *file).map(|(_, s)| s.clone()));
 
-        let view_tabs = Segmented::new(
+        let view_tabs = TabBar::new(
             "lss-inspector-view",
-            "",
             look.as_ref(),
-            &["Properties", "Source"],
+            &["Properties", "Source", "Palette"],
             0,
             cx,
             |this: &mut Self, i, cx| {
-                this.view = if i == 0 { View::Properties } else { View::Source };
+                this.view = [View::Properties, View::Source, View::Palette][i];
                 cx.notify();
             },
         );
@@ -174,6 +189,7 @@ impl LssInspector {
             states,
             key,
             source,
+            palette,
             part: 0,
             view: View::Properties,
             filter: Filter::All,
@@ -487,9 +503,8 @@ impl LssInspector {
 
     /// The control's style file, each rule line marked for the current key.
     fn source(&self, inspection: &Inspection) -> AnyElement {
-        let chrome = self.look.chrome();
         let Some(source) = &self.source else {
-            return div().p(px(12.)).text_color(chrome.muted_text).child("No style file found.").into_any_element();
+            return self.missing("No style file found.");
         };
         let mut lines: HashMap<u32, Vec<RuleStatus>> = HashMap::new();
         for part in &inspection.parts {
@@ -501,6 +516,74 @@ impl LssInspector {
                 }
             }
         }
+        let marks = lines
+            .into_iter()
+            .map(|(line, statuses)| {
+                let mark = if statuses.contains(&RuleStatus::Wins) {
+                    LineMark { highlight: true, ..LineMark::default() }
+                } else if statuses.contains(&RuleStatus::Beaten) {
+                    LineMark { strike: true, ..LineMark::default() }
+                } else {
+                    LineMark { dim: true, ..LineMark::default() }
+                };
+                (line, mark)
+            })
+            .collect();
+        let legend = vec![
+            div().px(px(4.)).bg(self.look.accent(4)).child("wins for key").into_any_element(),
+            div().line_through().child("beaten").into_any_element(),
+            div().opacity(0.45).child("state not active").into_any_element(),
+        ];
+        self.file_view("lss-inspector-source", source, legend, &marks, LineMark::default())
+    }
+
+    /// The theme's palette file: lines the control reads in any state combination, highlighted where the
+    /// current key uses them, each with its color.
+    fn palette(&self) -> AnyElement {
+        let Some(palette) = &self.palette else {
+            return self.missing("No palette file found.");
+        };
+        // Every state combination, so a token read only under some states still counts as read.
+        let base = self.states.iter().fold(self.key, |key, &state| key.set_state(state, false));
+        let mut read: HashMap<u32, Option<Hsla>> = HashMap::new();
+        for mask in 0u32..(1 << self.states.len()) {
+            let key = self
+                .states
+                .iter()
+                .enumerate()
+                .fold(base, |key, (bit, &state)| key.set_state(state, mask & (1 << bit) != 0));
+            collect_lines(&self.theme.inspect(&key, None), &palette.name, &mut read);
+        }
+        let mut used = HashMap::new();
+        collect_lines(&self.theme.inspect(&self.key, None), &palette.name, &mut used);
+        let marks = read
+            .into_iter()
+            .map(|(line, swatch)| {
+                (line, LineMark { highlight: used.contains_key(&line), swatch, ..LineMark::default() })
+            })
+            .collect();
+        let legend = vec![
+            div().px(px(4.)).bg(self.look.accent(4)).child("used by key").into_any_element(),
+            div().child(format!("read by {}", self.control)).into_any_element(),
+            div().opacity(0.45).child("not read").into_any_element(),
+        ];
+        self.file_view("lss-inspector-palette", palette, legend, &marks, LineMark { dim: true, ..LineMark::default() })
+    }
+
+    fn missing(&self, text: &'static str) -> AnyElement {
+        div().p(px(12.)).text_color(self.look.chrome().muted_text).child(text).into_any_element()
+    }
+
+    /// A style file with line numbers; `marks` says how to draw each marked line, `unmarked` the rest.
+    fn file_view(
+        &self,
+        id: &'static str,
+        file: &Source,
+        legend: Vec<AnyElement>,
+        marks: &HashMap<u32, LineMark>,
+        unmarked: LineMark,
+    ) -> AnyElement {
+        let chrome = self.look.chrome();
         let accent_soft = self.look.accent(4);
         div()
             .flex_1()
@@ -516,43 +599,32 @@ impl LssInspector {
                     .border_b_1()
                     .border_color(chrome.border)
                     .text_color(chrome.muted_text)
-                    .child(div().font_family(MONO_FAMILY).text_color(chrome.title_text).child(source.name.to_string()))
+                    .child(div().font_family(MONO_FAMILY).text_color(chrome.title_text).child(file.name.to_string()))
                     .child(div().flex_1())
-                    .child(div().px(px(4.)).bg(accent_soft).child("wins for key"))
-                    .child(div().line_through().child("beaten"))
-                    .child(div().opacity(0.45).child("state not active")),
+                    .children(legend),
             )
             .child(
                 div()
-                    .id("lss-inspector-source")
-                    .debug_selector(|| "lss-inspector-source".into())
+                    .id(id)
+                    .debug_selector(move || id.into())
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
                     .py(px(6.))
                     .font_family(MONO_FAMILY)
-                    .children(source.text.lines().enumerate().map(|(index, text)| {
+                    .children(file.text.lines().enumerate().map(|(index, text)| {
                         let number = index as u32 + 1;
-                        let statuses = lines.get(&number);
-                        let status = statuses.map(|s| {
-                            if s.contains(&RuleStatus::Wins) {
-                                RuleStatus::Wins
-                            } else if s.contains(&RuleStatus::Beaten) {
-                                RuleStatus::Beaten
-                            } else {
-                                RuleStatus::Inactive
-                            }
-                        });
-                        let trimmed = text.trim_start();
-                        let color = if trimmed.starts_with("//") {
+                        let mark = marks.get(&number).copied().unwrap_or(unmarked);
+                        let color = if text.trim_start().starts_with("//") {
                             chrome.muted_text
                         } else {
                             chrome.body_text
                         };
                         div()
                             .flex()
+                            .items_center()
                             .whitespace_nowrap()
-                            .when(status == Some(RuleStatus::Wins), |d| d.bg(accent_soft))
+                            .when(mark.highlight, |d| d.bg(accent_soft))
                             .child(
                                 div()
                                     .w(px(30.))
@@ -562,11 +634,12 @@ impl LssInspector {
                                     .text_color(chrome.muted_text)
                                     .child(number.to_string()),
                             )
+                            .child(div().w(px(16.)).flex_shrink_0().children(mark.swatch.map(|c| self.swatch(c))))
                             .child(
                                 div()
                                     .text_color(color)
-                                    .when(status == Some(RuleStatus::Beaten), |d| d.line_through())
-                                    .when(status == Some(RuleStatus::Inactive), |d| d.opacity(0.45))
+                                    .when(mark.strike, |d| d.line_through())
+                                    .when(mark.dim, |d| d.opacity(0.45))
                                     .child(if text.is_empty() {
                                         " ".to_string()
                                     } else {
@@ -640,6 +713,30 @@ impl LssInspector {
         }
     }
 
+    /// Show the Palette view, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn show_palette(&self, cx: &mut gpui::App) {
+        self.view_tabs.select(2, cx);
+    }
+
+    /// The palette file's name and the text of each line the current key reads, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn palette_lines_used(&self) -> (String, Vec<String>) {
+        let Some(palette) = &self.palette else {
+            return (String::new(), Vec::new());
+        };
+        let mut used = HashMap::new();
+        collect_lines(&self.theme.inspect(&self.key, None), &palette.name, &mut used);
+        let lines: Vec<&str> = palette.text.lines().collect();
+        let mut numbers: Vec<u32> = used.into_keys().collect();
+        numbers.sort();
+        let text = numbers
+            .into_iter()
+            .filter_map(|n| lines.get(n as usize - 1).map(|l| l.trim().to_string()))
+            .collect();
+        (palette.name.to_string(), text)
+    }
+
     /// Show the Source view, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_source(&self, cx: &mut gpui::App) {
@@ -660,17 +757,18 @@ impl Render for LssInspector {
         let chrome = self.look.chrome();
         let inspection = self.theme.inspect(&self.key, None);
         let toolbar = div()
+            .debug_selector(|| "lss-inspector-tab-row".into())
             .flex_none()
+            .h(px(TAB_ROW_HEIGHT))
             .flex()
-            .items_center()
+            .items_end()
             .gap(px(8.))
             .px(px(12.))
-            .py(px(8.))
             .border_b_1()
             .border_color(chrome.border)
             .child(self.view_tabs.clone())
             .child(div().flex_1())
-            .child(div().font_family(MONO_FAMILY).text_color(chrome.muted_text).child(key_line(
+            .child(div().pb(px(8.)).font_family(MONO_FAMILY).text_color(chrome.muted_text).child(key_line(
                 &self.theme,
                 self.control,
                 &self.key,
@@ -716,6 +814,7 @@ impl Render for LssInspector {
                         .child("click a property for its rules and reads"),
                 ),
             View::Source => div().flex_1().min_h_0().flex().flex_col().child(self.source(&inspection)),
+            View::Palette => div().flex_1().min_h_0().flex().flex_col().child(self.palette()),
         };
         div()
             .id("style-inspector")
@@ -777,5 +876,25 @@ trait AccentExt {
 impl AccentExt for Look {
     fn accent(&self, step: u8) -> Hsla {
         self.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, step).hsla()
+    }
+}
+
+/// The lines of `file` that an inspection's values read (through any chain of references), each with
+/// the color defined there, if it is one.
+fn collect_lines(inspection: &Inspection, file: &str, lines: &mut HashMap<u32, Option<Hsla>>) {
+    fn walk(references: &[Reference], file: &str, lines: &mut HashMap<u32, Option<Hsla>>) {
+        for reference in references {
+            if let Some(at) = reference.defined_at.as_ref().filter(|at| *at.source == *file) {
+                let color = match &reference.value {
+                    Some(Value::Color(c)) => Some(Hsla::from(*c)),
+                    _ => None,
+                };
+                lines.insert(at.line, color);
+            }
+            walk(&reference.children, file, lines);
+        }
+    }
+    for row in inspection.parts.iter().flat_map(|p| &p.rows) {
+        walk(&row.explanation.references, file, lines);
     }
 }
