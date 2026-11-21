@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::switch::Switch;
@@ -19,7 +20,6 @@ use super::catalog::COMPONENT_CATALOG;
 use super::sample_layout::ruled_background;
 use super::pane_type;
 use crate::screen::{LabMetrics, text};
-use crate::lab_controls::{Segmented, TabBar};
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
@@ -174,7 +174,8 @@ pub(super) struct ControlSide {
     /// The inspected theme in the mode chosen with `modes`.
     theme: Theme,
     /// The stylesheet's declared modes (e.g. light, dark), one selected.
-    modes: Option<Segmented>,
+    /// A Radix toggle group (one on).
+    modes: Option<ControlGroup<ControlGroupItem>>,
     /// `theme`'s stylesheet plus a probe control reading `palette.app.background`, for the stage.
     stage_probe: Option<Stylesheet>,
     /// The mode's app background, painted behind the control.
@@ -182,7 +183,8 @@ pub(super) struct ControlSide {
     control: ControlId,
     checkbox: checkbox::Checkbox,
     stage: Stage,
-    stage_tabs: TabBar,
+    /// Radix tabs: Control · State matrix.
+    stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     /// The key's states, in config order: those the file's rules use, then any the template sets
     /// that no rule uses.
     states: Vec<KeyState>,
@@ -224,17 +226,22 @@ impl ControlSide {
         })
         .detach();
 
-        let stage_tabs = TabBar::new(
-            "workshop-checkbox-stage",
-            look.as_ref(),
-            &["Control", "State matrix"],
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.stage = if i == 0 { Stage::Control } else { Stage::Matrix };
+        let stage_tabs = xgpui_luma_look_radix::Tabs::new("workshop-checkbox-stage")
+            .look(look.as_ref())
+            .items([
+                xgpui_luma::controls::tabs::TabsItem::new("control").label("Control"),
+                xgpui_luma::controls::tabs::TabsItem::new("matrix").label("State matrix"),
+            ])
+            .active("control")
+            .on_value_changed(cx, |this: &mut Self, id, _, cx| {
+                this.stage = if id.as_ref() == "matrix" {
+                    Stage::Matrix
+                } else {
+                    Stage::Control
+                };
                 cx.notify();
-            },
-        );
+            })
+            .spawn(cx);
         // States the file's rules use, plus states the template sets with no rule (e.g. `focused`).
         let rule_states = theme.stylesheet().axes(control).states;
         let template_states: Vec<StateId> = checkbox::default_checkbox_template()
@@ -300,22 +307,22 @@ impl ControlSide {
             .spawn(cx);
         let mode_names: Vec<String> = theme.stylesheet().modes();
         let modes = (!mode_names.is_empty()).then(|| {
-            let names: Vec<&str> = mode_names.iter().map(String::as_str).collect();
-            let selected = names.iter().position(|m| *m == theme.mode()).unwrap_or(0);
-            let choices = mode_names.clone();
-            Segmented::new(
-                "workshop-checkbox-mode",
-                "",
-                look.as_ref(),
-                &names,
-                selected,
-                cx,
-                move |this: &mut Self, i, cx| {
-                    if let Some(mode) = choices.get(i) {
-                        this.set_mode(mode, cx);
-                    }
-                },
-            )
+            let group =
+                xgpui_luma_look_radix::control_group_builder(look.as_ref(), "workshop-checkbox-mode", look.size())
+                    .horizontal()
+                    .single_required()
+                    .items(mode_names.iter().map(|m| ControlGroupItem::new(m.clone()).label(m.clone())))
+                    .selected_ids([theme.mode().to_string()])
+                    .spawn(cx);
+            cx.subscribe(&group, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+                if let ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(mode) = selected_ids.first()
+                {
+                    this.set_mode(mode, cx);
+                }
+            })
+            .detach();
+            group
         });
         let stage_probe = theme
             .stylesheet()
@@ -678,7 +685,7 @@ impl ControlSide {
     /// Show the state matrix, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_matrix(&self, cx: &mut gpui::App) {
-        self.stage_tabs.select(1, cx);
+        lss_inspector::choose_tab(&self.stage_tabs, "matrix", cx);
     }
 }
 
@@ -941,6 +948,43 @@ mod tests {
             cx.run_until_parked();
             assert_eq!(cx.update(|_, cx| pane.read(cx).look_mode()), mode);
         }
+    }
+
+    #[test]
+    fn picked_parts_each_get_an_accordion_section() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let (side, inspector) = cx.update(|_, cx| (pane.read(cx).side(), pane.read(cx).inspector()));
+        assert!(cx.debug_bounds("style-inspector-part-root").is_some(), "root is picked at first");
+        assert!(cx.debug_bounds("style-inspector-part-indicator").is_none());
+
+        // Working on the checked state: indicator and glyph together, one section each.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        inspector.update(cx, |inspector, cx| inspector.pick_parts(&["indicator", "glyph"], cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("style-inspector-part-root").is_none(), "root unpicked");
+        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some());
+        assert!(cx.debug_bounds("style-inspector-row-glyph-foreground").is_some());
+    }
+
+    #[test]
+    fn toggling_parts_turns_each_on_without_turning_others_off() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        // No modifier keys: Right moves to the next part, Space toggles it, as a plain click does.
+        let picker = cx.update(|_, cx| inspector.read(cx).part_picker_focus(cx));
+        cx.update(|window, cx| picker.focus(window, cx));
+        cx.run_until_parked();
+        cx.simulate_keystrokes("right space right space");
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).picked()), [0, 1, 2], "root, indicator and glyph");
+        assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some());
+        assert!(cx.debug_bounds("style-inspector-row-glyph-foreground").is_some());
+        // Toggling a picked part turns just that one off.
+        cx.simulate_keystrokes("space");
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).picked()), [0, 1], "glyph off, the others stay");
     }
 
     #[test]

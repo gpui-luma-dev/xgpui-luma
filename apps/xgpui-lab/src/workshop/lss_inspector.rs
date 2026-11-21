@@ -9,7 +9,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
 use gpui::{AnyElement, Context, Div, Entity, Hsla, Render, SharedString, WeakEntity, Window, canvas, div, prelude::*, px};
+use xgpui_luma::controls::accordion::{Accordion, AccordionContent, AccordionEvent, AccordionItem, AccordionTrigger};
 use xgpui_luma::controls::button::Button;
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::{
     Category, ControlId, Inspection, PartInspection, Reference, Row, RuleInfo, Source, StateId, StyleKey, Theme, Value,
@@ -17,7 +19,7 @@ use xgpui_luma::style::lss::{
 };
 
 use super::box_model;
-use crate::lab_controls::{Segmented, TabBar};
+use xgpui_luma::controls::tabs::TabsItem;
 use super::pane_type;
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
@@ -113,11 +115,38 @@ struct RowColors {
     border: Hsla,
 }
 
-/// The property list's shared row data: what each row shows and whether the kind column fits.
+/// What a picked part's accordion trigger shows.
+#[derive(Clone)]
+struct SectionHead {
+    title: SharedString,
+    count: SharedString,
+    /// "n set by state", when the key's state rules set any of the part's values.
+    by_state: Option<SharedString>,
+    colors: RowColors,
+}
+
+/// The property list's shared data: what each row and each part's accordion trigger shows, and whether
+/// the kind column fits. Written when the inspector renders; read by the rows' buttons and the triggers
+/// (retained SDK controls, so they can't take it as an argument).
 #[derive(Clone, Default)]
 struct RowHeads {
     rows: Arc<RwLock<HashMap<RowId, RowHead>>>,
+    sections: Arc<RwLock<HashMap<usize, SectionHead>>>,
     show_kind: Arc<AtomicBool>,
+}
+
+/// One picked part's accordion content: the part's properties, drawn by the inspector.
+struct PartBody {
+    inspector: WeakEntity<LssInspector>,
+    part: usize,
+}
+
+impl Render for PartBody {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let part = self.part;
+        let body = self.inspector.update(cx, |inspector, _| inspector.part_body(part)).ok();
+        div().w_full().children(body)
+    }
 }
 
 pub(super) struct LssInspector {
@@ -130,14 +159,22 @@ pub(super) struct LssInspector {
     source: Option<Source>,
     /// The theme's palette file (`theme/palette.lss` for the SDK: light values and `mode dark` overrides).
     palette: Option<Source>,
-    part: usize,
+    /// The parts picked in the Part picker, in part order; each gets an accordion item.
+    picked: Vec<usize>,
+    /// Parts whose accordion item is open (all start open).
+    open_parts: HashSet<usize>,
+    /// The picked parts' accordion, rebuilt when the picks change.
+    parts_accordion: Option<Accordion>,
+    part_bodies: Vec<Entity<PartBody>>,
     view: View,
     filter: Filter,
     grouping: Grouping,
-    view_tabs: TabBar,
-    part_tabs: Segmented,
-    filter_tabs: Segmented,
-    grouping_tabs: Segmented,
+    /// Radix tabs: Properties · Source · Palette.
+    view_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
+    /// Radix toggle groups: Part (multiple), Show and Group (one each).
+    part_tabs: ControlGroup<ControlGroupItem>,
+    filter_tabs: ControlGroup<ControlGroupItem>,
+    grouping_tabs: ControlGroup<ControlGroupItem>,
     /// Each property's row, as a button that opens its rules and references.
     row_buttons: HashMap<RowId, Entity<Button>>,
     row_heads: RowHeads,
@@ -156,54 +193,83 @@ impl LssInspector {
         let source = control_source(&inspection)
             .and_then(|(file, _)| theme.stylesheet().sources().find(|(_, s)| *s.name == *file).map(|(_, s)| s.clone()));
 
-        let view_tabs = TabBar::new(
-            "lss-inspector-view",
-            look.as_ref(),
-            &["Properties", "Source", "Palette"],
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.view = [View::Properties, View::Source, View::Palette][i];
+        let view_tabs = xgpui_luma_look_radix::Tabs::new("lss-inspector-view")
+            .look(look.as_ref())
+            .items([
+                TabsItem::new("properties").label("Properties"),
+                TabsItem::new("source").label("Source"),
+                TabsItem::new("palette").label("Palette"),
+            ])
+            .active("properties")
+            .on_value_changed(cx, |this: &mut Self, id, _, cx| {
+                this.view = match id.as_ref() {
+                    "source" => View::Source,
+                    "palette" => View::Palette,
+                    _ => View::Properties,
+                };
                 cx.notify();
-            },
-        );
-        let part_names: Vec<&str> = parts.iter().map(|p| p.as_ref()).collect();
-        let part_tabs = Segmented::new(
-            "lss-inspector-part",
-            "Part",
-            look.as_ref(),
-            &part_names,
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.part = i;
+            })
+            .spawn(cx);
+        let part_tabs = xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-part", look.size())
+            .horizontal()
+            .multiple()
+            // Each click turns one part on or off; without this a plain click selects only that part.
+            .independent_toggles(true)
+            .items(parts.iter().map(|p| ControlGroupItem::new(p.clone()).label(p.clone())))
+            .selected_ids([parts[0].clone()])
+            .spawn(cx);
+        let part_ids = parts.clone();
+        cx.subscribe(&part_tabs, move |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+            if let ControlGroupEvent::Change { selected_ids, .. } = event {
+                // In part order, whatever order they were picked in.
+                this.picked = (0..part_ids.len()).filter(|&i| selected_ids.contains(&part_ids[i])).collect();
+                this.rebuild_parts(cx);
+            }
+        })
+        .detach();
+        let inspector = cx.weak_entity();
+        let part_bodies =
+            (0..parts.len()).map(|part| cx.new(|_| PartBody { inspector: inspector.clone(), part })).collect();
+        let filter_tabs =
+            xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-filter", look.size())
+                .horizontal()
+                .single_required()
+                .items([
+                    ControlGroupItem::new("all").label("All"),
+                    ControlGroupItem::new("has-states").label("Has states"),
+                    ControlGroupItem::new("by-state-now").label("By state now"),
+                ])
+                .selected_ids(["all"])
+                .spawn(cx);
+        cx.subscribe(&filter_tabs, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+            if let ControlGroupEvent::Change { selected_ids, .. } = event {
+                this.filter = match selected_ids.first().map(|id| id.as_ref()) {
+                    Some("has-states") => Filter::HasStates,
+                    Some("by-state-now") => Filter::ByStateNow,
+                    _ => Filter::All,
+                };
                 cx.notify();
-            },
-        );
-        let filter_tabs = Segmented::new(
-            "lss-inspector-filter",
-            "Show",
-            look.as_ref(),
-            &["All", "Has states", "By state now"],
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.filter = [Filter::All, Filter::HasStates, Filter::ByStateNow][i];
+            }
+        })
+        .detach();
+        let grouping_tabs =
+            xgpui_luma_look_radix::control_group_builder(look.as_ref(), "lss-inspector-grouping", look.size())
+                .horizontal()
+                .single_required()
+                .items([ControlGroupItem::new("file").label("File"), ControlGroupItem::new("kind").label("Kind")])
+                .selected_ids(["file"])
+                .spawn(cx);
+        cx.subscribe(&grouping_tabs, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+            if let ControlGroupEvent::Change { selected_ids, .. } = event {
+                this.grouping = if selected_ids.first().is_some_and(|id| id.as_ref() == "kind") {
+                    Grouping::Kind
+                } else {
+                    Grouping::File
+                };
                 cx.notify();
-            },
-        );
-        let grouping_tabs = Segmented::new(
-            "lss-inspector-grouping",
-            "Group",
-            look.as_ref(),
-            &["File", "Kind"],
-            0,
-            cx,
-            |this: &mut Self, i, cx| {
-                this.grouping = if i == 0 { Grouping::File } else { Grouping::Kind };
-                cx.notify();
-            },
-        );
+            }
+        })
+        .detach();
 
         let row_heads = RowHeads { show_kind: Arc::new(AtomicBool::new(true)), ..RowHeads::default() };
         let mut row_buttons = HashMap::new();
@@ -227,7 +293,7 @@ impl LssInspector {
             }
         }
 
-        Self {
+        let mut this = Self {
             look,
             theme,
             control,
@@ -235,7 +301,10 @@ impl LssInspector {
             key,
             source,
             palette,
-            part: 0,
+            picked: vec![0],
+            open_parts: (0..parts.len()).collect(),
+            parts_accordion: None,
+            part_bodies,
             view: View::Properties,
             filter: Filter::All,
             grouping: Grouping::File,
@@ -247,7 +316,49 @@ impl LssInspector {
             row_heads,
             this: cx.weak_entity(),
             expanded: HashSet::new(),
-        }
+        };
+        this.rebuild_parts(cx);
+        this
+    }
+
+    /// Rebuild the picked parts' accordion: one item per picked part, in part order, each opening to the
+    /// part's properties. Items keep whether they were open.
+    fn rebuild_parts(&mut self, cx: &mut Context<Self>) {
+        let names: Vec<String> =
+            self.theme.inspect(&self.key, None).parts.iter().map(|p| p.part.name().to_string()).collect();
+        let items: Vec<AccordionItem> = self
+            .picked
+            .iter()
+            .filter_map(|&index| {
+                let (name, body) = (names.get(index)?.clone(), self.part_bodies.get(index)?.clone());
+                let sections = self.row_heads.sections.clone();
+                let trigger = AccordionTrigger::custom(move |_, _| {
+                    section_trigger(sections.read().ok().and_then(|s| s.get(&index).cloned()).as_ref())
+                        .into_any_element()
+                });
+                let content = AccordionContent::custom(move |_, _| body.clone().into_any_element());
+                Some(AccordionItem::new(name, trigger, content).expanded(self.open_parts.contains(&index)))
+            })
+            .collect();
+        let accordion = xgpui_luma_look_radix::accordion_builder(&self.look, "lss-inspector-parts")
+            .multiple()
+            .collapsible(true)
+            .items(items)
+            .spawn(cx);
+        cx.subscribe(&accordion, move |this: &mut Self, _, event: &AccordionEvent, _cx| {
+            if let AccordionEvent::ExpandedChanged { item_id, expanded } = event
+                && let Some(index) = names.iter().position(|n| n.as_str() == item_id.as_ref())
+            {
+                if *expanded {
+                    this.open_parts.insert(index);
+                } else {
+                    this.open_parts.remove(&index);
+                }
+            }
+        })
+        .detach();
+        self.parts_accordion = Some(accordion);
+        cx.notify();
     }
 
     pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -324,45 +435,33 @@ impl LssInspector {
         }
     }
 
+    /// The picked parts as an accordion, each item opening to the part's properties (see
+    /// [`LssInspector::part_body`]). Writes each picked part's trigger line.
     fn properties(&self, inspection: &Inspection) -> AnyElement {
         let chrome = self.look.chrome();
-        let Some(part) = inspection.parts.get(self.part) else {
-            return div().into_any_element();
-        };
-        let mut rows: Vec<(&Row, Vec<(RuleInfo, RuleStatus)>)> = part
-            .rows
-            .iter()
-            .map(|row| (row, self.rules(part, row)))
-            .filter(|(row, rules)| self.keep(row, rules))
-            .collect();
-        let diagram = || {
-            let id = format!("style-inspector-box-{}", part.part.name());
-            div().pl(px(ROW_INDENT)).pr(px(12.)).py(px(6.)).child(box_model::diagram(
-                id.into(),
-                &part.box_model,
-                self.look.mode(),
-            ))
-        };
-        let sections: Vec<AnyElement> = match self.grouping {
-            Grouping::File => {
-                rows.sort_by_key(|(row, _)| row.explanation.winner.as_ref().map_or(u32::MAX, |w| w.line));
-                let title = if self.part == 0 {
+        if let Ok(mut sections) = self.row_heads.sections.write() {
+            for &index in &self.picked {
+                let Some(part) = inspection.parts.get(index) else {
+                    continue;
+                };
+                let rows: Vec<_> = part.rows.iter().filter(|row| self.keep(row, &self.rules(part, row))).collect();
+                let set_by_state = rows.iter().filter(|row| by_state(row)).count();
+                let title = if index == 0 {
                     format!("{} {{ … }}", self.control)
                 } else {
                     format!("part {} {{ … }}", part.part.name())
                 };
-                vec![self.section(part, title, rows.iter().collect(), Some(diagram().into_any_element()))]
+                sections.insert(
+                    index,
+                    SectionHead {
+                        title: title.into(),
+                        count: format!("{} properties", rows.len()).into(),
+                        by_state: (set_by_state > 0).then(|| format!("{set_by_state} set by state").into()),
+                        colors: self.row_colors(),
+                    },
+                );
             }
-            Grouping::Kind => CATEGORIES
-                .into_iter()
-                .filter_map(|(category, title)| {
-                    let in_category: Vec<_> = rows.iter().filter(|(row, _)| row.category == category).collect();
-                    let box_diagram = (category == Category::Layout).then(|| diagram().into_any_element());
-                    (box_diagram.is_some() || !in_category.is_empty())
-                        .then(|| self.section(part, title.to_string(), in_category, box_diagram))
-                })
-                .collect(),
-        };
+        }
         // Hide the kind column when the list is too narrow for it; redraw when that changes.
         let (show_kind, this) = (self.row_heads.show_kind.clone(), self.this.clone());
         let measure = canvas(
@@ -383,19 +482,75 @@ impl LssInspector {
             .min_h_0()
             .overflow_y_scroll()
             .child(measure)
-            .child(
-                div()
-                    .px(px(12.))
-                    .py(px(8.))
-                    .text_color(chrome.muted_text)
-                    .child(part.doc.clone().map_or_else(String::new, |d| format!("/// {d}"))),
-            )
-            .children(sections)
+            .when_some(self.parts_accordion.clone().filter(|_| !self.picked.is_empty()), |d, accordion| {
+                d.child(accordion)
+            })
+            .when(self.picked.is_empty(), |d| {
+                d.child(div().p(px(16.)).text_color(chrome.muted_text).child("Pick one or more parts."))
+            })
             .into_any_element()
     }
 
+    /// One part's properties, as before the accordion: its doc, then (`Group: File`) its box model and its
+    /// rows in file order, or (`Group: Kind`) a section per category with the box model in Layout.
+    fn part_body(&self, index: usize) -> AnyElement {
+        let chrome = self.look.chrome();
+        let inspection = self.theme.inspect(&self.key, None);
+        let Some(part) = inspection.parts.get(index) else {
+            return div().into_any_element();
+        };
+        let mut rows: Vec<(&Row, Vec<(RuleInfo, RuleStatus)>)> = part
+            .rows
+            .iter()
+            .map(|row| (row, self.rules(part, row)))
+            .filter(|(row, rules)| self.keep(row, rules))
+            .collect();
+        rows.sort_by_key(|(row, _)| row.explanation.winner.as_ref().map_or(u32::MAX, |w| w.line));
+        let diagram = || {
+            let id = format!("style-inspector-box-{}", part.part.name());
+            div().pl(px(ROW_INDENT)).pr(px(12.)).py(px(6.)).child(box_model::diagram(
+                id.into(),
+                &part.box_model,
+                self.look.mode(),
+            ))
+        };
+        // The column header sits inside each part's section, above its rows, so it lines up with them
+        // whatever the accordion's content inset.
+        let content: Vec<AnyElement> = match self.grouping {
+            Grouping::File => [diagram().into_any_element(), self.list_header()]
+                .into_iter()
+                .chain(rows.iter().map(|(row, rules)| self.row(index, part, row, rules)))
+                .collect(),
+            Grouping::Kind => std::iter::once(self.list_header())
+                .chain(CATEGORIES.into_iter().filter_map(|(category, title)| {
+                    let in_category: Vec<_> = rows.iter().filter(|(row, _)| row.category == category).collect();
+                    let box_diagram = (category == Category::Layout).then(|| diagram().into_any_element());
+                    (box_diagram.is_some() || !in_category.is_empty())
+                        .then(|| self.section(index, part, title.to_string(), in_category, box_diagram))
+                }))
+                .collect(),
+        };
+        let name = part.part.name();
+        div()
+            .debug_selector(move || format!("style-inspector-part-{name}"))
+            .w_full()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .px(px(12.))
+                    .py(px(6.))
+                    .text_color(chrome.muted_text)
+                    .child(part.doc.clone().map_or_else(String::new, |d| format!("/// {d}"))),
+            )
+            .children(content)
+            .into_any_element()
+    }
+
+    /// A category section of one part (`Group: Kind`).
     fn section(
         &self,
+        index: usize,
         part: &PartInspection,
         title: String,
         rows: Vec<&(&Row, Vec<(RuleInfo, RuleStatus)>)>,
@@ -403,9 +558,7 @@ impl LssInspector {
     ) -> AnyElement {
         let chrome = self.look.chrome();
         let set_by_state = rows.iter().filter(|(row, _)| by_state(row)).count();
-        let name = part.part.name();
         div()
-            .debug_selector(move || format!("style-inspector-part-{name}"))
             .w_full()
             .flex()
             .flex_col()
@@ -427,14 +580,25 @@ impl LssInspector {
                     }),
             )
             .children(diagram)
-            .children(rows.into_iter().map(|(row, rules)| self.row(part, row, rules)))
+            .children(rows.into_iter().map(|(row, rules)| self.row(index, part, row, rules)))
             .into_any_element()
     }
 
-    fn row(&self, part: &PartInspection, row: &Row, rules: &[(RuleInfo, RuleStatus)]) -> AnyElement {
+    fn row_colors(&self) -> RowColors {
+        let chrome = self.look.chrome();
+        RowColors {
+            text: chrome.title_text,
+            muted: chrome.muted_text,
+            accent: self.look.accent(11),
+            accent_soft: self.look.accent(3),
+            border: chrome.border,
+        }
+    }
+
+    fn row(&self, index: usize, part: &PartInspection, row: &Row, rules: &[(RuleInfo, RuleStatus)]) -> AnyElement {
         let chrome = self.look.chrome();
         let e = &row.explanation;
-        let id: RowId = (self.part, row.property);
+        let id: RowId = (index, row.property);
         let expanded = self.expanded.contains(&id);
         let changed = by_state(row);
         let head = RowHead {
@@ -455,13 +619,7 @@ impl LssInspector {
                 .filter(|w| !w.states.is_empty() || !w.scope.is_empty())
                 .map(|w| selector(w).into()),
             line: e.winner.as_ref().map_or_else(SharedString::default, |w| format!(":{}", w.line).into()),
-            colors: RowColors {
-                text: chrome.title_text,
-                muted: chrome.muted_text,
-                accent: self.look.accent(11),
-                accent_soft: self.look.accent(3),
-                border: chrome.border,
-            },
+            colors: self.row_colors(),
         };
         let show_kind = self.row_heads.show_kind.load(Ordering::Relaxed);
         let columns: AnyElement = match self.row_buttons.get(&id) {
@@ -814,9 +972,34 @@ impl LssInspector {
     /// Show a part, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn select_part(&self, name: &str, cx: &mut gpui::App) {
-        if let Some(index) = self.part_index(name) {
-            self.part_tabs.select(index, cx);
-        }
+        self.pick_parts(&[name], cx);
+    }
+
+    /// The Part picker's focus handle, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn part_picker_focus(&self, cx: &gpui::App) -> gpui::FocusHandle {
+        use gpui::Focusable;
+        self.part_tabs.read(cx).focus_handle(cx)
+    }
+
+    /// The picked parts, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn picked(&self) -> Vec<usize> {
+        self.picked.clone()
+    }
+
+    /// Pick exactly these parts in the Part picker, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn pick_parts(&self, names: &[&str], cx: &mut gpui::App) {
+        let ids: Vec<SharedString> = names.iter().map(|name| SharedString::from(name.to_string())).collect();
+        self.part_tabs.update(cx, |group, cx| {
+            group.set_selected_ids(ids.clone(), cx);
+            cx.emit(ControlGroupEvent::Change {
+                changed_id: SharedString::default(),
+                selected: true,
+                selected_ids: ids,
+            });
+        });
     }
 
     /// A rendered row's value, expression and rule selector, for tests.
@@ -831,7 +1014,7 @@ impl LssInspector {
     /// Show the Palette view, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_palette(&self, cx: &mut gpui::App) {
-        self.view_tabs.select(2, cx);
+        choose_tab(&self.view_tabs, "palette", cx);
     }
 
     /// The bound mode, for tests.
@@ -861,7 +1044,7 @@ impl LssInspector {
     /// Show the Source view, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_source(&self, cx: &mut gpui::App) {
-        self.view_tabs.select(1, cx);
+        choose_tab(&self.view_tabs, "source", cx);
     }
 
     /// Open a property's rules, for tests.
@@ -911,17 +1094,26 @@ impl Render for LssInspector {
                         .py(px(8.))
                         .border_b_1()
                         .border_color(chrome.border)
-                        .child(self.part_tabs.clone())
+                        .child(div().flex().items_center().gap_2().child("Part").child(self.part_tabs.clone()))
                         .child(
                             div()
                                 .flex()
                                 .flex_wrap()
+                                .items_center()
                                 .gap(px(12.))
-                                .child(self.filter_tabs.clone())
-                                .child(self.grouping_tabs.clone()),
+                                .child(
+                                    div().flex().items_center().gap_2().child("Show").child(self.filter_tabs.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_2()
+                                        .child("Group")
+                                        .child(self.grouping_tabs.clone()),
+                                ),
                         ),
                 )
-                .child(self.list_header())
                 .child(self.properties(&inspection))
                 .child(
                     div()
@@ -950,6 +1142,16 @@ impl Render for LssInspector {
             .child(toolbar)
             .child(body)
     }
+}
+
+/// Choose a tab as a person would, for tests.
+#[cfg(all(test, feature = "test-support"))]
+pub(super) fn choose_tab(tabs: &Entity<xgpui_luma::controls::tabs::Tabs>, id: &str, cx: &mut gpui::App) {
+    let id = gpui::SharedString::from(id.to_string());
+    tabs.update(cx, |tabs, cx| {
+        tabs.set_active(id.clone(), cx);
+        cx.emit(xgpui_luma::controls::tabs::TabsEvent::Change { tab_id: id, label: gpui::SharedString::default() });
+    });
 }
 
 /// Whether a row's value comes from a state rule.
@@ -1002,6 +1204,19 @@ const CATEGORIES: [(Category, &str); 6] = [
     (Category::Motion, "Motion"),
     (Category::Other, "Other"),
 ];
+
+/// A picked part's accordion trigger: its block title, property count and "n set by state".
+fn section_trigger(head: Option<&SectionHead>) -> Div {
+    let row = div().flex_1().min_w_0().flex().items_baseline().gap(px(8.)).whitespace_nowrap();
+    let Some(head) = head else {
+        return row;
+    };
+    let c = head.colors;
+    row.child(div().flex_shrink_0().font_family(pane_type::MONO).text_color(c.text).child(head.title.clone()))
+        .child(div().flex_shrink_0().text_color(c.muted).child(head.count.clone()))
+        .child(div().flex_1())
+        .children(head.by_state.clone().map(|text| div().flex_shrink_0().text_color(c.accent).child(text)))
+}
 
 /// An SDK button that draws `content` across the full width in the inspector's small type, with the
 /// lab's hover paint: the property list's rows.
