@@ -25,6 +25,9 @@ mod sample_layout;
 mod sdk_sample;
 mod event_log_view;
 mod style_inspector;
+mod lss_inspector;
+mod checkbox_pane;
+mod box_model;
 mod display;
 
 use std::{
@@ -55,6 +58,7 @@ enum Sample {
     Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
+    Checkbox(Entity<checkbox_pane::CheckboxPane>),
     Button(Entity<button::ButtonControlExposition>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
     Toolbar(Entity<toolbar::ToolbarControlExposition>),
@@ -79,6 +83,7 @@ impl Sample {
             Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
+            Self::Checkbox(v) => v.clone().into(),
             Self::Button(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Toolbar(v) => v.clone().into(),
@@ -103,6 +108,7 @@ impl Sample {
             Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Checkbox(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -133,13 +139,23 @@ pub(crate) struct Workshop {
     inspectors: HashMap<&'static str, Vec<(&'static str, Entity<style_inspector::StyleInspector>)>>,
     shell_look: Arc<Look>,
     page_look: Arc<Look>,
+    /// Whether the shell's sidebar is hidden, so pages meet the canvas's rounded left edge.
+    sidebar_hidden: bool,
 }
 
-/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Checkbox has its own
-/// inspector that follows the sample; pages without SDK styling have none.
+/// A sample's live state, by `.lss` state name (e.g. a checked checkbox's `checked`). The page's style
+/// inspectors follow it; a state an inspected control does not declare is ignored.
+pub(super) struct InspectedState {
+    pub(super) state: &'static str,
+    pub(super) on: bool,
+}
+
+/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Pages without SDK
+/// styling have none.
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         "button" => &["button"],
+        // The checkbox work pane has its own inspector.
         "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
@@ -268,9 +284,25 @@ impl Workshop {
             inspectors: HashMap::new(),
             shell_look,
             page_look,
+            sidebar_hidden: false,
         };
         this.select("color-field", cx);
         this
+    }
+
+    /// Forward a sample's live state to the page's style inspectors.
+    fn follow<T: gpui::EventEmitter<InspectedState>>(
+        &mut self,
+        id: &'static str,
+        sample: &Entity<T>,
+        cx: &mut Context<Self>,
+    ) {
+        cx.subscribe(sample, move |this: &mut Self, _, event: &InspectedState, cx| {
+            for (_, inspector) in this.inspectors.get(id).into_iter().flatten() {
+                inspector.update(cx, |inspector, cx| inspector.set_state(event.state, event.on, cx));
+            }
+        })
+        .detach();
     }
 
     fn select(&mut self, id: &'static str, cx: &mut Context<Self>) {
@@ -367,7 +399,12 @@ impl Workshop {
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
                 )),
                 "checkbox" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Checkbox, look, cx))))
+                    let theme = xgpui_luma::style::default_theme();
+                    theme.stylesheet().control("checkbox").map(|control| {
+                        Sample::Checkbox(
+                            cx.new(|cx| checkbox_pane::CheckboxPane::new(look, theme.clone(), control, cx)),
+                        )
+                    })
                 }
                 "pager" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
@@ -410,6 +447,15 @@ impl Workshop {
                 _ => None,
             });
             if let Some(sample) = sample {
+                match &sample {
+                    Sample::Button(v) => self.follow(id, v, cx),
+                    Sample::Choice(v) => self.follow(id, v, cx),
+                    Sample::Checkbox(v) => {
+                        let hidden = self.sidebar_hidden;
+                        v.update(cx, |pane, cx| pane.set_left_rounded(hidden, cx));
+                    }
+                    _ => {}
+                }
                 self.samples.insert(id, sample);
             }
         }
@@ -430,6 +476,15 @@ impl Workshop {
             entry.button.update(cx, |_, cx| cx.notify());
         }
         cx.notify();
+    }
+
+    /// The shell's sidebar was hidden or shown. With it hidden, a page's left corners meet the canvas's
+    /// rounded edge; with it shown they meet the sidebar and stay square.
+    pub(crate) fn set_sidebar_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        self.sidebar_hidden = hidden;
+        if let Some(Sample::Checkbox(pane)) = self.samples.get("checkbox") {
+            pane.update(cx, |pane, cx| pane.set_left_rounded(hidden, cx));
+        }
     }
 
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
@@ -481,7 +536,8 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        let converted = matches!(self.selected, "button" | "toolbar");
+        // The checkbox pane paints its own (rounded) background, so the page shows none behind it.
+        let converted = matches!(self.selected, "button" | "toolbar" | "checkbox");
         let chrome = if converted {
             self.shell_look.chrome()
         } else {

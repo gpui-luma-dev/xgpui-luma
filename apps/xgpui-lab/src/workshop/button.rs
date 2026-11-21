@@ -4,7 +4,7 @@ use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonEventExt, HasPresenter};
 use xgpui_luma::controls::switch::{Switch, SwitchEventExt};
 use crate::theme::Look;
-use super::event_stream::ControlEventStream;
+use super::{InspectedState, event_stream::ControlEventStream};
 
 pub struct ButtonControlExposition {
     look: Arc<Look>,
@@ -13,6 +13,8 @@ pub struct ButtonControlExposition {
     buttons_enabled: bool,
     event_stream: Entity<ControlEventStream>,
 }
+/// The sample's enabled state, for the page's style inspector.
+impl gpui::EventEmitter<InspectedState> for ButtonControlExposition {}
 impl ButtonControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<Look>) -> Self {
         let button = Button::new("workshop-sdk-button").content(|_, _| div().child("Button")).spawn(cx);
@@ -37,6 +39,7 @@ impl ButtonControlExposition {
         enabled_switch.clone().on_value_changed(cx, |this: &mut Self, on, cx| {
             this.buttons_enabled = on;
             this.button.update(cx, |button, cx| button.set_enabled(on, cx));
+            cx.emit(InspectedState { state: "disabled", on: !on });
             cx.notify();
         });
         Self { look, button, enabled_switch, buttons_enabled: true, event_stream }
@@ -117,6 +120,31 @@ mod tests {
                 assert!(model.look.is_none());
             });
         }
+    }
+    #[test]
+    fn button_style_inspector_follows_the_enabled_switch() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::key_handling::bind_default_control_keys(cx));
+        let (workshop, cx) = app.add_window_view(|window, cx| {
+            window.activate_window();
+            Workshop::new(crate::theme::default_look(), cx)
+        });
+        workshop.update(cx, |v, cx| v.select("button", cx));
+        cx.run_until_parked();
+        let (sample, inspector) = cx.update(|_, cx| {
+            let workshop = workshop.read(cx);
+            let Sample::Button(sample) = &workshop.samples["button"] else {
+                unreachable!()
+            };
+            (sample.clone(), workshop.inspectors["button"][0].1.clone())
+        });
+        assert!(!cx.update(|_, cx| inspector.read(cx).state_on("disabled")));
+        let switch = cx.update(|_, cx| sample.read(cx).enabled_switch.clone());
+        cx.update(|window, cx| switch.read(cx).focus_handle(cx).focus(window, cx));
+        cx.run_until_parked();
+        cx.simulate_keystrokes("space");
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| inspector.read(cx).state_on("disabled")));
     }
     #[test]
     fn sdk_button_palette_does_not_follow_radix_theme() {
