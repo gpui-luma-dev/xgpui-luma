@@ -4,13 +4,13 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, FontWeight, Render, WeakEntity, Window, div, prelude::*, px};
-use xgpui_luma::controls::button::{Button, ButtonRenderModel};
-use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent};
+use gpui::{AnyElement, Context, Entity, FontWeight, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
+use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::switch::Switch;
 use xgpui_luma::prelude::HasPresenter;
-use xgpui_luma::style::lss::{ControlId, StateId, StyleKey, Theme};
+use xgpui_luma::style::lss::{ControlId, Source, StateId, StyleKey, Stylesheet, Theme};
 use xgpui_luma::theme::InteractionState;
 
 use super::event_stream::ControlEventStream;
@@ -18,7 +18,7 @@ use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
 use super::sample_layout::ruled_background;
 use crate::screen::{LabMetrics, TextRole, text};
-use crate::lab_controls::TabBar;
+use crate::lab_controls::{Segmented, TabBar};
 use crate::theme::{ColorVizLookExt, Look, MONO_FAMILY, TextSize, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
@@ -164,7 +164,14 @@ struct KeyState {
 /// draggable divider between them.
 pub(super) struct ControlSide {
     look: Arc<Look>,
+    /// The inspected theme in the mode chosen with `modes`.
     theme: Theme,
+    /// The stylesheet's declared modes (e.g. light, dark), one selected.
+    modes: Option<Segmented>,
+    /// `theme`'s stylesheet plus a probe control reading `palette.app.background`, for the stage.
+    stage_probe: Option<Stylesheet>,
+    /// The mode's app background, painted behind the control.
+    stage_background: Option<Hsla>,
     control: ControlId,
     checkbox: checkbox::Checkbox,
     stage: Stage,
@@ -284,9 +291,39 @@ impl ControlSide {
                     .min(px(MIN_LOWER_HEIGHT)),
             )
             .spawn(cx);
+        let mode_names: Vec<String> = theme.stylesheet().modes();
+        let modes = (!mode_names.is_empty()).then(|| {
+            let names: Vec<&str> = mode_names.iter().map(String::as_str).collect();
+            let selected = names.iter().position(|m| *m == theme.mode()).unwrap_or(0);
+            let choices = mode_names.clone();
+            Segmented::new(
+                "workshop-checkbox-mode",
+                "",
+                look.as_ref(),
+                &names,
+                selected,
+                cx,
+                move |this: &mut Self, i, cx| {
+                    if let Some(mode) = choices.get(i) {
+                        this.set_mode(mode, cx);
+                    }
+                },
+            )
+        });
+        let stage_probe = theme
+            .stylesheet()
+            .with_source(
+                "app",
+                Source::new("workshop/stage.lss", "workshop_stage { background = palette.app.background }"),
+            )
+            .ok();
+        let stage_background = stage_probe.as_ref().and_then(|probe| app_background(&theme, probe));
         Self {
             look,
             theme,
+            modes,
+            stage_probe,
+            stage_background,
             control,
             checkbox,
             stage: Stage::Control,
@@ -300,6 +337,20 @@ impl ControlSide {
             events,
             split,
         }
+    }
+
+    /// Inspect in another declared mode: the live checkbox, the matrix, the inspector and the stage
+    /// background all use the same stylesheet bound in `mode`.
+    fn set_mode(&mut self, mode: &str, cx: &mut Context<Self>) {
+        let Ok(theme) = self.theme.with_mode(mode) else {
+            return;
+        };
+        self.checkbox
+            .update(cx, |checkbox, cx| checkbox.set_template(Arc::new(StyledCheckboxTemplate::new(theme.clone())), cx));
+        self.inspector.update(cx, |inspector, cx| inspector.set_theme(theme.clone(), cx));
+        self.stage_background = self.stage_probe.as_ref().and_then(|probe| app_background(&theme, probe));
+        self.theme = theme;
+        cx.notify();
     }
 
     fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -422,7 +473,7 @@ impl ControlSide {
         let chrome = self.look.chrome();
         let config = self.theme.stylesheet().config();
         let accent = self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, 11).hsla();
-        let template = checkbox::default_checkbox_template();
+        let template = StyledCheckboxTemplate::new(self.theme.clone());
         let label = |text: String, current: bool| {
             div()
                 .font_family(MONO_FAMILY)
@@ -484,11 +535,6 @@ impl ControlSide {
                 .collect::<Vec<_>>()
                 .join("   ")
         };
-        let modes = if axes.modes.is_empty() {
-            "none".to_string()
-        } else {
-            axes.modes.join(" · ")
-        };
         let heading = |text: &'static str| {
             div()
                 .w(px(STRIP_LABEL_WIDTH))
@@ -546,7 +592,10 @@ impl ControlSide {
                     .child(heading("Attributes"))
                     .child(div().text_color(chrome.muted_text).child(attributes))
                     .child(heading("Modes"))
-                    .child(div().text_color(chrome.muted_text).child(modes))
+                    .child(match &self.modes {
+                        Some(modes) => modes.clone().into_any_element(),
+                        None => div().text_color(chrome.muted_text).child("none").into_any_element(),
+                    })
                     .child(div().flex_1())
                     .child(
                         div()
@@ -607,6 +656,18 @@ impl ControlSide {
             .collect()
     }
 
+    /// Choose a mode as the picker would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn choose_mode(&mut self, mode: &str, cx: &mut Context<Self>) {
+        self.set_mode(mode, cx);
+    }
+
+    /// The bound mode and stage background, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn mode_and_stage(&self) -> (String, Option<Hsla>) {
+        (self.theme.mode().to_string(), self.stage_background)
+    }
+
     /// Show the state matrix, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_matrix(&self, cx: &mut gpui::App) {
@@ -625,6 +686,7 @@ impl ControlSide {
             .relative()
             .size_full()
             .overflow_y_scroll()
+            .when_some(self.stage_background, |stage, background| stage.bg(background))
             .child(ruled_background())
             .child(div().relative().size_full().child(stage))
             .into_any_element()
@@ -682,6 +744,13 @@ impl Render for SideSlot {
             .ok();
         div().size_full().children(content)
     }
+}
+
+/// `palette.app.background` in `theme`'s mode, read through the stage probe control.
+fn app_background(theme: &Theme, probe: &Stylesheet) -> Option<Hsla> {
+    let theme = theme.with_stylesheet(probe).ok()?;
+    let stage = probe.control("workshop_stage")?;
+    theme.resolve(&StyleKey::new(stage)).root().background().map(Hsla::from)
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -777,6 +846,48 @@ mod tests {
             assert!((sizes[1] - LOWER_HEIGHT).abs() < 2., "lower panel starts at its height: {sizes:?}");
         });
         assert!(cx.debug_bounds("workshop-checkbox-key").is_some(), "states in the lower panel");
+    }
+
+    #[test]
+    fn choosing_a_mode_rebinds_the_control_matrix_inspector_and_stage() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let (mode, light_stage) = cx.update(|_, cx| side.read(cx).mode_and_stage());
+        assert_eq!(mode, "light");
+        assert!(light_stage.is_some(), "the stage paints the mode's app background");
+
+        side.update(cx, |side, cx| side.choose_mode("dark", cx));
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        cx.run_until_parked();
+        let (mode, dark_stage) = cx.update(|_, cx| side.read(cx).mode_and_stage());
+        assert_eq!(mode, "dark");
+        assert_ne!(dark_stage, light_stage, "the stage follows the mode");
+        assert_eq!(cx.update(|_, cx| inspector.read(cx).mode()), "dark");
+
+        // :checked indicator background is the dark palette's, as the SDK's dark theme resolves it.
+        let expected = {
+            let dark = xgpui_luma::style::dark_theme();
+            let key = dark.key_named("checkbox", &[], &["checked"]).expect("key");
+            dark.resolve(&key).part(xgpui_luma::style::lss::PartId::new("indicator")).background()
+        };
+        let inspected = cx.update(|_, cx| {
+            let inspection = inspector.read(cx).inspection();
+            let part = inspection.parts.iter().find(|p| p.part.name() == "indicator").expect("part");
+            let row = part.rows.iter().find(|r| r.property == "background").expect("row");
+            match &row.explanation.value {
+                Some(xgpui_luma::style::lss::Value::Color(c)) => Some(*c),
+                _ => None,
+            }
+        });
+        assert_eq!(inspected, expected);
+        let (_, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
+        assert!(used.iter().any(|l| l == "background = gray(90, 1)"), "the mode dark block's line is used: {used:?}");
+
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
     }
 
     #[test]
