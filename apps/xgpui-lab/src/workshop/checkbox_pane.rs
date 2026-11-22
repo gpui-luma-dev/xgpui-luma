@@ -9,6 +9,7 @@ use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
+use xgpui_luma::controls::slider::Slider;
 use xgpui_luma::controls::switch::Switch;
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::{ControlId, Source, StateId, StyleKey, Stylesheet, Theme};
@@ -17,7 +18,7 @@ use xgpui_luma::theme::InteractionState;
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
-use super::sample_layout::ruled_background;
+use super::sample_layout::centered_ruled_background;
 use super::pane_type;
 use crate::screen::{LabMetrics, text};
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
@@ -35,6 +36,12 @@ const STRIP_LABEL_WIDTH: f32 = 78.;
 /// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
 /// make it invalid.
 const UNREACHABLE_STATES: &[&str] = &["invalid"];
+/// The stage zoom's range and step: actual size up to five times.
+const ZOOM_RANGE: std::ops::Range<f32> = 1.0..5.0;
+const ZOOM_STEP: f32 = 0.25;
+const ZOOM_SLIDER_WIDTH: f32 = 140.;
+/// The stage grid's square at actual size; it scales with the zoom, like the checkbox.
+const STAGE_GRID_SPACING: f32 = 10.;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Stage {
@@ -183,6 +190,10 @@ pub(super) struct ControlSide {
     stage_background: Option<Hsla>,
     control: ControlId,
     checkbox: checkbox::Checkbox,
+    /// The live checkbox's zoom on the Control stage, a visual aid: the checkbox draws from `theme` with
+    /// every length scaled by it. The matrix and the inspector stay at actual size.
+    zoom: f32,
+    zoom_slider: Slider,
     stage: Stage,
     /// Radix tabs: Control · State matrix.
     stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
@@ -276,6 +287,14 @@ impl ControlSide {
                 }
             })
             .collect();
+        let zoom_slider = xgpui_luma_look_radix::Slider::new("workshop-checkbox-zoom")
+            .look(look.as_ref())
+            .size(xgpui_luma_look_radix::SliderSize::One)
+            .range(ZOOM_RANGE)
+            .step(ZOOM_STEP)
+            .value(ZOOM_RANGE.start)
+            .on_value_changed(cx, |this: &mut Self, _, zoom, cx| this.set_zoom(zoom, cx))
+            .spawn(cx);
         let follow_switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-follow")
             .look(look.as_ref())
             .label("Track states")
@@ -341,6 +360,8 @@ impl ControlSide {
             stage_background,
             control,
             checkbox,
+            zoom: ZOOM_RANGE.start,
+            zoom_slider,
             stage: Stage::Control,
             stage_tabs,
             states,
@@ -360,12 +381,30 @@ impl ControlSide {
         let Ok(theme) = self.theme.with_mode(mode) else {
             return;
         };
-        self.checkbox
-            .update(cx, |checkbox, cx| checkbox.set_template(Arc::new(StyledCheckboxTemplate::new(theme.clone())), cx));
         self.inspector.update(cx, |inspector, cx| inspector.set_theme(theme.clone(), cx));
         self.stage_background = self.stage_probe.as_ref().and_then(|probe| app_background(&theme, probe));
         self.theme = theme;
+        self.bind_checkbox(cx);
         cx.notify();
+    }
+
+    /// Draw the stage checkbox `zoom` times its actual size.
+    fn set_zoom(&mut self, zoom: f32, cx: &mut Context<Self>) {
+        let zoom = zoom.clamp(ZOOM_RANGE.start, ZOOM_RANGE.end);
+        if zoom == self.zoom {
+            return;
+        }
+        self.zoom = zoom;
+        self.bind_checkbox(cx);
+        cx.notify();
+    }
+
+    /// Give the live checkbox `theme` scaled by the zoom. Only the template's theme changes; the
+    /// control and its data are untouched.
+    fn bind_checkbox(&mut self, cx: &mut Context<Self>) {
+        let theme = self.theme.with_length_scale(self.zoom).unwrap_or_else(|_| self.theme.clone());
+        self.checkbox
+            .update(cx, |checkbox, cx| checkbox.set_template(Arc::new(StyledCheckboxTemplate::new(theme)), cx));
     }
 
     fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -416,8 +455,10 @@ impl ControlSide {
         }
     }
 
-    /// The stage tabs, right-aligned in a row as tall as the inspector's tab row.
+    /// The zoom slider (Control stage only) and the stage tabs, right-aligned in a row as tall as the
+    /// inspector's tab row.
     fn tab_row(&self) -> AnyElement {
+        let chrome = self.look.chrome();
         div()
             .debug_selector(|| "workshop-checkbox-tab-row".into())
             .flex_none()
@@ -427,7 +468,21 @@ impl ControlSide {
             .justify_end()
             .px(px(12.))
             .border_b_1()
-            .border_color(self.look.chrome().border)
+            .border_color(chrome.border)
+            .when(self.stage == Stage::Control, |row| {
+                row.child(
+                    div()
+                        .debug_selector(|| "workshop-checkbox-zoom".into())
+                        .flex_1()
+                        .self_center()
+                        .flex()
+                        .items_center()
+                        .gap(px(10.))
+                        .child(div().font_weight(pane_type::LABEL_WEIGHT).text_color(chrome.muted_text).child("ZOOM"))
+                        .child(div().w(px(ZOOM_SLIDER_WIDTH)).child(self.zoom_slider.clone()))
+                        .child(div().font_family(pane_type::MONO).child(format!("{}×", self.zoom))),
+                )
+            })
             .child(self.stage_tabs.clone())
             .into_any_element()
     }
@@ -627,6 +682,12 @@ impl ControlSide {
             .into_any_element()
     }
 
+    /// Zoom the stage checkbox as the slider would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn zoom_to(&mut self, zoom: f32, cx: &mut Context<Self>) {
+        self.set_zoom(zoom, cx);
+    }
+
     /// The SDK checkbox, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn checkbox(&self) -> checkbox::Checkbox {
@@ -692,9 +753,10 @@ impl ControlSide {
 
 impl ControlSide {
     fn stage_slot(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let stage = match self.stage {
-            Stage::Control => self.control_stage(),
-            Stage::Matrix => self.matrix(window, cx),
+        // The grid zooms with the checkbox; the matrix is always at actual size.
+        let (stage, zoom) = match self.stage {
+            Stage::Control => (self.control_stage(), self.zoom),
+            Stage::Matrix => (self.matrix(window, cx), 1.),
         };
         div()
             .id("workshop-checkbox-stage")
@@ -702,7 +764,7 @@ impl ControlSide {
             .size_full()
             .overflow_y_scroll()
             .when_some(self.stage_background, |stage, background| stage.bg(background))
-            .child(ruled_background())
+            .child(centered_ruled_background(STAGE_GRID_SPACING * zoom))
             .child(div().relative().size_full().child(stage))
             .into_any_element()
     }
@@ -861,6 +923,45 @@ mod tests {
             assert!((sizes[1] - LOWER_HEIGHT).abs() < 2., "lower panel starts at its height: {sizes:?}");
         });
         assert!(cx.debug_bounds("workshop-checkbox-key").is_some(), "states in the lower panel");
+    }
+
+    #[gpui::test]
+    fn zooming_scales_the_stage_checkbox_only() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let inspected_height = |cx: &mut VisualTestContext| {
+            cx.update(|_, cx| {
+                let inspection = inspector.read(cx).inspection();
+                let root = inspection.parts.iter().find(|p| p.part.name() == "root").expect("root");
+                root.rows.iter().find(|r| r.property == "height").expect("height").explanation.value.clone()
+            })
+        };
+        assert!(cx.debug_bounds("workshop-checkbox-zoom").is_some(), "the Control stage offers zoom");
+        let actual = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        let actual_height = inspected_height(cx);
+
+        side.update(cx, |side, cx| side.zoom_to(2.0, cx));
+        cx.run_until_parked();
+        let zoomed = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        assert!((zoomed.height - actual.height * 2.0).abs() <= px(1.), "{actual:?} → {zoomed:?}");
+        assert!(zoomed.width > actual.width * 1.5, "the label grows too: {actual:?} → {zoomed:?}");
+        assert_eq!(inspected_height(cx), actual_height, "the inspector shows actual-size values");
+
+        side.update(cx, |side, cx| side.choose_mode("dark", cx));
+        cx.run_until_parked();
+        let dark = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        assert_eq!(dark.height, zoomed.height, "a mode change keeps the zoom");
+
+        side.update(cx, |side, cx| side.zoom_to(9.0, cx));
+        cx.run_until_parked();
+        let most = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        assert!((most.height - actual.height * 5.0).abs() <= px(1.), "zoom stops at 5×: {most:?}");
+
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-zoom").is_none(), "the matrix is not zoomed");
     }
 
     #[test]
