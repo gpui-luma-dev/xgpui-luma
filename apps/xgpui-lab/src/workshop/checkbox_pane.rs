@@ -255,11 +255,12 @@ pub(super) struct ControlSide {
     /// Light/dark on the stage's top-right: a vertical Radix switch (size 2), on (thumb up) for dark,
     /// with a sun or moon in its track. Only when the stylesheet declares both modes.
     mode_switch: Option<Switch>,
-    /// `theme`'s stylesheet plus a probe control reading `palette.surface.subtle.background`, for the
-    /// stage.
+    /// `theme`'s stylesheet plus a probe control reading the stage's colors (see [`STAGE_PROBE`]).
     stage_probe: Option<Stylesheet>,
     /// The mode's stage background (see [`stage_color`]), painted behind the control and its grid.
     stage_background: Option<Hsla>,
+    /// The mode's text colors on the stage, for the matrix labels (see [`stage_text`]).
+    stage_text: Option<StageText>,
     control: ControlId,
     checkbox: checkbox::Checkbox,
     /// The live checkbox's zoom on the Control stage, a visual aid: the checkbox draws from `theme` with
@@ -489,20 +490,16 @@ impl ControlSide {
             switch.update(cx, |switch, cx| switch.set_switch_track_content(mode_track_content, cx));
             switch
         });
-        let stage_probe = theme
-            .stylesheet()
-            .with_source(
-                "app",
-                Source::new("workshop/stage.lss", "workshop_stage { background = palette.surface.subtle.background }"),
-            )
-            .ok();
+        let stage_probe = theme.stylesheet().with_source("app", Source::new("workshop/stage.lss", STAGE_PROBE)).ok();
         let stage_background = stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
+        let stage_text = stage_probe.as_ref().and_then(|probe| stage_text(&theme, probe));
         Self {
             look,
             theme,
             mode_switch,
             stage_probe,
             stage_background,
+            stage_text,
             control,
             checkbox,
             zoom: ZOOM_RANGE.start,
@@ -536,6 +533,7 @@ impl ControlSide {
             switch.update(cx, |switch, cx| switch.set_data(mode == DARK, cx));
         }
         self.stage_background = self.stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
+        self.stage_text = self.stage_probe.as_ref().and_then(|probe| stage_text(&theme, probe));
         self.theme = theme;
         self.bind_checkbox(cx);
         cx.notify();
@@ -771,11 +769,13 @@ impl ControlSide {
     fn matrix(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let chrome = self.look.chrome();
         let config = self.theme.stylesheet().config();
-        let accent = self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, 11).hsla();
+        // The labels sit on the stage, so they take its mode's text colors, not the app's; the key's row
+        // and column are in full-strength text and bold.
+        let text = self.stage_text.unwrap_or(StageText { strong: chrome.body_text, muted: chrome.muted_text });
         let template = StyledCheckboxTemplate::new(self.theme.clone());
         // A header: each state's icon (the default icon for none), then the states as text.
         let label = |states: &[StateId], empty: &str, current: bool| {
-            let color = if current { accent } else { chrome.muted_text };
+            let color = if current { text.strong } else { text.muted };
             let icons: Vec<AnyElement> = if states.is_empty() {
                 state_icon(None, color).into_iter().collect()
             } else {
@@ -1043,6 +1043,12 @@ impl ControlSide {
         self.set_mode(mode, cx);
     }
 
+    /// The stage's text colors, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn stage_text_colors(&self) -> Option<(Hsla, Hsla)> {
+        self.stage_text.map(|t| (t.strong, t.muted))
+    }
+
     /// The bound mode and stage background, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn mode_and_stage(&self) -> (String, Option<Hsla>) {
@@ -1154,6 +1160,33 @@ fn stage_color(theme: &Theme, probe: &Stylesheet) -> Option<Hsla> {
     let theme = theme.with_stylesheet(probe).ok()?;
     let stage = probe.control("workshop_stage")?;
     theme.resolve(&StyleKey::new(stage)).root().background().map(Hsla::from)
+}
+
+/// The stage probe: the stage's background, and the text colors that read on it in each mode.
+const STAGE_PROBE: &str = "workshop_stage {
+  background = palette.surface.subtle.background
+  foreground = palette.app.foreground
+  muted: color = palette.app.muted_foreground
+}";
+
+/// Text colors on the stage, from its mode.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct StageText {
+    /// Full-strength text: `palette.app.foreground`.
+    strong: Hsla,
+    /// Secondary text: `palette.app.muted_foreground`.
+    muted: Hsla,
+}
+
+/// The stage's text colors in `theme`'s mode, read through the stage probe control.
+fn stage_text(theme: &Theme, probe: &Stylesheet) -> Option<StageText> {
+    let theme = theme.with_stylesheet(probe).ok()?;
+    let stage = probe.control("workshop_stage")?;
+    let resolved = theme.resolve(&StyleKey::new(stage));
+    let root = resolved.root();
+    let strong = root.foreground().map(Hsla::from)?;
+    let muted = root.value("muted").and_then(|v| v.as_color()).map(Hsla::from)?;
+    Some(StageText { strong, muted })
 }
 
 #[cfg(all(test, feature = "test-support"))]
@@ -1643,5 +1676,36 @@ mod tests {
         assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None);
         assert!(!cx.update(|_, cx| side.read(cx).state_on("pressed")), "picks dropped");
         assert!(cx.update(|_, cx| side.read(cx).state_on("checked")), "follows the checkbox again");
+    }
+
+    #[gpui::test]
+    fn matrix_labels_take_the_stage_modes_text_colors() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        // Text and muted text sit well apart from the stage background: darker on the light stage,
+        // lighter on the dark one.
+        for (mode, light) in [("light", true), ("dark", false)] {
+            side.update(cx, |side, cx| side.choose_mode(mode, cx));
+            cx.run_until_parked();
+            let (_, background) = cx.update(|_, cx| side.read(cx).mode_and_stage());
+            let background = background.expect("stage background");
+            let (strong, muted) = cx.update(|_, cx| side.read(cx).stage_text_colors()).expect("stage text");
+            for (name, color) in [("text", strong), ("muted", muted)] {
+                let gap = if light {
+                    background.l - color.l
+                } else {
+                    color.l - background.l
+                };
+                assert!(gap > 0.3, "{mode} {name} reads on the stage: {color:?} on {background:?}");
+            }
+            assert!(
+                (strong.l - background.l).abs() > (muted.l - background.l).abs(),
+                "{mode}: text is stronger than muted"
+            );
+        }
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
     }
 }
