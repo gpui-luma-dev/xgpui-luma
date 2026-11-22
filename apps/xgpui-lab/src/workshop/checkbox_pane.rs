@@ -266,10 +266,13 @@ impl ControlSide {
             .filter_map(|name| config.state(name).map(|state| (state, name.to_string())))
             .filter(|(state, _)| rule_states.contains(state) || template_states.contains(state))
             .map(|(state, name)| {
+                // A state the live checkbox can never reach is shown but never settable.
+                let reachable = !UNREACHABLE_STATES.contains(&name.as_str());
                 let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-checkbox-state-{name}"))
                     .look(look.as_ref())
                     .label(format!(":{name}"))
                     .checked(false)
+                    .enabled(reachable)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
                         // Ignore the switch catching up with a followed change; a person's toggle pins the key.
                         if this.key.active_states().contains(state) == on {
@@ -279,12 +282,7 @@ impl ControlSide {
                         this.apply(this.key.set_state(state, on), cx);
                     })
                     .spawn(cx);
-                KeyState {
-                    template_only: !rule_states.contains(&state),
-                    reachable: !UNREACHABLE_STATES.contains(&name.as_str()),
-                    state,
-                    switch,
-                }
+                KeyState { template_only: !rule_states.contains(&state), reachable, state, switch }
             })
             .collect();
         let zoom_slider = xgpui_luma_look_radix::Slider::new("workshop-checkbox-zoom")
@@ -644,9 +642,15 @@ impl ControlSide {
                         .gap(px(14.))
                         .child(heading("Template"))
                         .children(self.states.iter().filter(|s| s.template_only).map(|s| {
-                            div().flex().items_center().gap(px(6.)).child(s.switch.clone()).when(!s.reachable, |d| {
-                                d.child(div().text_color(chrome.muted_text).child("not settable on checkbox"))
-                            })
+                            let selector = format!("workshop-checkbox-state-{}", config.state_name(s.state));
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(6.))
+                                .child(div().debug_selector(move || selector.clone()).child(s.switch.clone()))
+                                .when(!s.reachable, |d| {
+                                    d.child(div().text_color(chrome.muted_text).child("not settable on checkbox"))
+                                })
                         }))
                         .child(
                             div().text_color(chrome.muted_text).child("no rule uses these; the template draws them"),
@@ -1120,6 +1124,11 @@ mod tests {
             [("focused".to_string(), true), ("invalid".to_string(), false)]
         );
         assert!(cx.debug_bounds("workshop-checkbox-template-states").is_some(), "template row rendered");
+        let invalid = cx.debug_bounds("workshop-checkbox-state-invalid").expect("invalid switch");
+        let key_before = cx.update(|_, cx| side.read(cx).key);
+        cx.simulate_click(invalid.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).key), key_before, "the :invalid switch is disabled");
         let (columns, rows) = cx.update(|_, cx| side.read(cx).matrix_labels());
         // The exclusive group (hover < pressed < disabled) is one axis; the rest combine.
         assert_eq!(columns, ["—", ":hover", ":pressed", ":disabled"]);
