@@ -18,6 +18,7 @@ use xgpui_luma::theme::InteractionState;
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
+use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
 use super::pane_type;
 use crate::screen::{LabMetrics, text};
@@ -194,6 +195,9 @@ pub(super) struct ControlSide {
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
+    /// The states the live checkbox draws while the key is pinned (`follow` off), like a designer's
+    /// state picker; `None` while it follows the control and draws as it is.
+    pinned: Option<PinnedCheckbox>,
     stage: Stage,
     /// Radix tabs: Control · State matrix.
     stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
@@ -360,6 +364,7 @@ impl ControlSide {
             checkbox,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
+            pinned: None,
             stage: Stage::Control,
             stage_tabs,
             states,
@@ -397,12 +402,27 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Give the live checkbox `theme` scaled by the zoom. Only the template's theme changes; the
-    /// control and its data are untouched.
+    /// Give the live checkbox `theme` scaled by the zoom, drawing the pinned states if any. Only the
+    /// template changes; the control and its data are untouched.
     fn bind_checkbox(&mut self, cx: &mut Context<Self>) {
         let theme = self.theme.with_length_scale(self.zoom).unwrap_or_else(|_| self.theme.clone());
-        self.checkbox
-            .update(cx, |checkbox, cx| checkbox.set_template(Arc::new(StyledCheckboxTemplate::new(theme)), cx));
+        let template = PinnedCheckboxTemplate::new(Arc::new(StyledCheckboxTemplate::new(theme)), self.pinned);
+        self.checkbox.update(cx, |checkbox, cx| checkbox.set_template(Arc::new(template), cx));
+    }
+
+    /// Pin the live checkbox to the key's states while the key is pinned; let it draw as it is while
+    /// the key follows it.
+    fn sync_pinned(&mut self, cx: &mut Context<Self>) {
+        let pinned = (!self.follow).then(|| {
+            let states: Vec<StateId> =
+                self.states.iter().map(|s| s.state).filter(|s| self.key.active_states().contains(*s)).collect();
+            let (state, checked) = self.template_state(&states);
+            PinnedCheckbox { state, checked }
+        });
+        if pinned != self.pinned {
+            self.pinned = pinned;
+            self.bind_checkbox(cx);
+        }
     }
 
     fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -430,6 +450,7 @@ impl ControlSide {
             }
         }
         self.inspector.update(cx, |inspector, cx| inspector.set_key(key, cx));
+        self.sync_pinned(cx);
         cx.notify();
     }
 
@@ -441,6 +462,7 @@ impl ControlSide {
         if follow {
             self.apply(self.followed_key(cx), cx);
         }
+        self.sync_pinned(cx);
         cx.notify();
     }
 
@@ -684,6 +706,18 @@ impl ControlSide {
                     .child(self.reset.clone()),
             )
             .into_any_element()
+    }
+
+    /// The states the live checkbox is pinned to, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn pinned(&self) -> Option<PinnedCheckbox> {
+        self.pinned
+    }
+
+    /// Turn "Track states" on or off as its switch would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn track_states(&mut self, follow: bool, cx: &mut Context<Self>) {
+        self.set_follow(follow, cx);
     }
 
     /// Zoom the stage checkbox as the slider would, for tests.
@@ -1192,5 +1226,37 @@ mod tests {
         workshop.update(cx, |v, cx| v.select("checkbox", cx));
         cx.run_until_parked();
         assert!(cx.update(|_, cx| pane.read(cx).side().read(cx).state_on("disabled")), "retained");
+    }
+
+    #[gpui::test]
+    fn a_pinned_state_draws_until_tracking_resumes() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None, "tracking: drawn as it is");
+
+        // Pinning :focused draws the focus ring without keyboard focus, and keeps drawing it while
+        // focus is elsewhere.
+        side.update(cx, |side, cx| side.toggle_state("focused", cx));
+        cx.run_until_parked();
+        let focused =
+            PinnedCheckbox { state: InteractionState { focused: true, ..Default::default() }, checked: false };
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused));
+        let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
+        cx.update(|window, cx| checkbox.read(cx).focus_handle(cx).focus(window, cx));
+        cx.run_until_parked();
+        cx.update(|window, cx| window.blur(cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused), "focus moving away keeps the pin");
+
+        // More pinned states combine; zooming keeps them.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        side.update(cx, |side, cx| side.zoom_to(2.0, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(PinnedCheckbox { checked: true, ..focused }));
+
+        side.update(cx, |side, cx| side.track_states(true, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None, "tracking again: drawn as it is");
     }
 }
