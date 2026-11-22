@@ -309,18 +309,6 @@ impl<K: Clone + Eq + Hash + 'static> Element for Scope<K> {
         self.motion.finish(window);
     }
 }
-impl<K: Clone + Eq + Hash + 'static> IntoElement for Item<K> {
-    type Element = Self;
-    fn into_element(self) -> Self {
-        self
-    }
-}
-impl<K: Clone + Eq + Hash + 'static> IntoElement for Scope<K> {
-    type Element = Self;
-    fn into_element(self) -> Self {
-        self
-    }
-}
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
