@@ -28,6 +28,7 @@ mod style_inspector;
 mod lss_inspector;
 mod checkbox_pane;
 mod pinned_template;
+mod state_icons;
 mod box_model;
 mod pane_type;
 mod display;

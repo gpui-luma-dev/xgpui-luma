@@ -6,7 +6,10 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
-use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
+use xgpui_luma::controls::control_group::{
+    ControlGroup, ControlGroupEvent, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel,
+    make_control_group_item_template,
+};
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::slider::Slider;
@@ -20,6 +23,7 @@ use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
 use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
+use super::state_icons::state_icon;
 use super::pane_type;
 use crate::screen::{LabMetrics, text};
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
@@ -375,6 +379,20 @@ impl ControlSide {
             .horizontal()
             .single_required()
             .items(items)
+            // Each item: its state's icon (the default icon for none), then its label.
+            .item_template(make_control_group_item_template(
+                |item: &ControlGroupItemRenderModel<'_, ControlGroupItem>, _: &mut Window, _: &mut gpui::App| {
+                    let id = item.item.id().as_ref();
+                    let state = (id != NO_INTERACTION).then_some(id);
+                    let color = item.foreground.unwrap_or_else(gpui::transparent_black);
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(4.))
+                        .children(state_icon(state, color))
+                        .child(item.item.label().clone())
+                },
+            ))
             .selected_ids([NO_INTERACTION])
             .spawn(cx);
             cx.subscribe(&group, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
@@ -715,12 +733,23 @@ impl ControlSide {
         let config = self.theme.stylesheet().config();
         let accent = self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, 11).hsla();
         let template = StyledCheckboxTemplate::new(self.theme.clone());
-        let label = |text: String, current: bool| {
+        // A header: each state's icon (the default icon for none), then the states as text.
+        let label = |states: &[StateId], empty: &str, current: bool| {
+            let color = if current { accent } else { chrome.muted_text };
+            let icons: Vec<AnyElement> = if states.is_empty() {
+                state_icon(None, color).into_iter().collect()
+            } else {
+                states.iter().filter_map(|s| state_icon(Some(config.state_name(*s)), color)).collect()
+            };
             div()
+                .flex()
+                .items_center()
+                .gap(px(4.))
                 .font_family(pane_type::MONO)
-                .text_color(if current { accent } else { chrome.muted_text })
+                .text_color(color)
                 .when(current, |d| d.font_weight(pane_type::LABEL_WEIGHT))
-                .child(text)
+                .children(icons)
+                .child(self.states_label(states, empty))
         };
         let (columns, rows) = self.matrix_axes();
         let active = self.key.active_states();
@@ -734,14 +763,15 @@ impl ControlSide {
         let mut grid =
             div().debug_selector(|| "workshop-checkbox-matrix".into()).p(px(20.)).flex().flex_col().gap(px(10.));
         grid = grid.child(div().flex().gap(px(10.)).child(div().w(px(150.))).children(columns.iter().map(|column| {
-            let text = self.states_label(&column.iter().copied().collect::<Vec<_>>(), "—");
-            div().flex_1().child(label(text, *column == current_column))
+            let states: Vec<StateId> = column.iter().copied().collect();
+            div().flex_1().child(label(&states, "—", *column == current_column))
         })));
         for (r, row_states) in rows.iter().enumerate() {
-            let mut row =
-                div().flex().items_center().gap(px(10.)).child(
-                    div().w(px(150.)).child(label(self.states_label(row_states, "base"), current_row(row_states))),
-                );
+            let mut row = div().flex().items_center().gap(px(10.)).child(div().w(px(150.)).child(label(
+                row_states,
+                "base",
+                current_row(row_states),
+            )));
             for (c, column) in columns.iter().enumerate() {
                 let cell: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
                 let (state, checked) = self.template_state(&cell);
@@ -775,8 +805,14 @@ impl ControlSide {
                 .child(text.to_uppercase())
         };
         let switch = |s: &KeyState| {
-            let selector = format!("workshop-checkbox-state-{}", config.state_name(s.state));
-            div().debug_selector(move || selector.clone()).child(s.switch.clone())
+            let name = config.state_name(s.state);
+            let selector = format!("workshop-checkbox-state-{name}");
+            div()
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .children(state_icon(Some(name), chrome.muted_text))
+                .child(div().debug_selector(move || selector.clone()).child(s.switch.clone()))
         };
         let others: Vec<&KeyState> =
             self.states.iter().filter(|s| s.reachable && !self.exclusive.contains(&s.state)).collect();
@@ -837,14 +873,17 @@ impl ControlSide {
     fn events_panel(&self) -> AnyElement {
         let chrome = self.look.chrome();
         let config = self.theme.stylesheet().config();
-        let live: Vec<String> = self
+        let live: Vec<&str> = self
             .states
             .iter()
             .filter(|s| self.key.active_states().contains(s.state))
-            .map(|s| format!(":{}", config.state_name(s.state)))
+            .map(|s| config.state_name(s.state))
             .collect();
-        let tag = |text: String| {
+        let tag = |name: &str| {
             div()
+                .flex()
+                .items_center()
+                .gap(px(4.))
                 .px(px(8.))
                 .py(px(2.))
                 .rounded(px(6.))
@@ -852,7 +891,8 @@ impl ControlSide {
                 .border_color(chrome.border)
                 .font_family(pane_type::MONO)
                 .text_color(chrome.muted_text)
-                .child(text)
+                .children(state_icon(Some(name), chrome.muted_text))
+                .child(format!(":{name}"))
         };
         div()
             .debug_selector(|| "workshop-checkbox-live".into())
