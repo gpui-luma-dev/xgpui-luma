@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px};
+use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px, svg};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupEvent, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel,
@@ -13,7 +13,8 @@ use xgpui_luma::controls::control_group::{
 use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::slider::Slider;
-use xgpui_luma::controls::switch::Switch;
+use xgpui_luma::controls::button::ButtonContentContext;
+use xgpui_luma::controls::switch::{Switch, SwitchData};
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::{ControlId, Source, StateId, StyleKey, Stylesheet, Theme};
 use xgpui_luma::theme::InteractionState;
@@ -72,6 +73,50 @@ impl WorkMode {
     }
 }
 
+/// The stylesheet modes the light/dark switch moves between.
+const LIGHT: &str = "light";
+const DARK: &str = "dark";
+
+/// The light/dark switch's track (vertical; on, the thumb is at the top): a moon in the empty end
+/// below the thumb when dark, a sun in the empty end above it when light, in the track's text color.
+///
+/// The switch doesn't measure track content and its thumb travel ignores the track border (#311), so
+/// the icon is placed by hand: centered in the shorter empty end the thumb leaves (track length less
+/// both borders, the thumb and its padding), and small enough to stay clear of the rounded end.
+fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::App) -> AnyElement {
+    let dark = model.data.checked;
+    let icon = if dark {
+        lucide_svg_static::Icon::MoonStar
+    } else {
+        lucide_svg_static::Icon::Sun
+    };
+    // `look.height` is the track's outer length along the thumb's travel; `look.icon_size` is the thumb.
+    let thumb = model.look.icon_size;
+    let empty = (model.look.height - 2. * MODE_TRACK_BORDER - thumb - MODE_TRACK_PADDING).max(0.);
+    let size = (empty - 4.).min(thumb * 0.6).max(0.);
+    div()
+        .size_full()
+        .flex()
+        .flex_col()
+        .when(dark, |track| track.justify_end())
+        .when(!dark, |track| track.justify_start())
+        .child(
+            div()
+                .debug_selector(|| "workshop-checkbox-mode-icon".into())
+                .flex_none()
+                .h(px(empty))
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(svg().size(px(size)).path(icon.asset_path()).text_color(model.look.foreground)),
+        )
+        .into_any_element()
+}
+
+/// The Radix switch's track border and `track_padding` (see #311).
+const MODE_TRACK_BORDER: f32 = 1.;
+const MODE_TRACK_PADDING: f32 = 1.;
+
 /// The interaction picker's item for no state of the exclusive group.
 const NO_INTERACTION: &str = "none";
 
@@ -116,7 +161,7 @@ impl CheckboxPane {
 
     /// The page title in the lab screens' text roles: crumb (Workshop · group), title, the `.lss` control
     /// with its file and layer, and the control's doc comment as the lede.
-    fn title(&self, modes: Option<ControlGroup<ControlGroupItem>>) -> AnyElement {
+    fn title(&self) -> AnyElement {
         let (look, chrome) = (self.look.as_ref(), self.look.chrome());
         let inspection = self.theme.inspect(&StyleKey::new(self.control), None);
         let source = lss_inspector::control_source(&inspection)
@@ -145,11 +190,7 @@ impl CheckboxPane {
                     .gap(px(12.))
                     .child(text(look, pane_type::TITLE, "Checkbox"))
                     .child(text(look, pane_type::CONTROL, self.control.to_string()))
-                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text))
-                    .child(div().flex_1())
-                    .children(modes.map(|modes| {
-                        div().debug_selector(|| "workshop-checkbox-modes".into()).self_center().child(modes)
-                    })),
+                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
             )
             .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
             .into_any_element()
@@ -175,9 +216,8 @@ impl CheckboxPane {
 }
 
 impl Render for CheckboxPane {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
-        let modes = self.side.read(cx).modes();
         div()
             .id("workshop-checkbox-pane")
             .debug_selector(|| "workshop-checkbox-pane".into())
@@ -190,7 +230,7 @@ impl Render for CheckboxPane {
             .typography_style(pane_type::body(&self.look))
             .flex()
             .flex_col()
-            .child(self.title(modes))
+            .child(self.title())
             .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
 }
@@ -210,14 +250,15 @@ struct KeyState {
 /// draggable divider between them.
 pub(super) struct ControlSide {
     look: Arc<Look>,
-    /// The inspected theme in the mode chosen with `modes`.
+    /// The inspected theme in the mode chosen with `mode_switch`.
     theme: Theme,
-    /// The stylesheet's declared modes (e.g. light, dark), one selected.
-    /// A Radix toggle group (one on).
-    modes: Option<ControlGroup<ControlGroupItem>>,
-    /// `theme`'s stylesheet plus a probe control reading `palette.app.background`, for the stage.
+    /// Light/dark on the stage's top-right: a vertical Radix switch (size 2), on (thumb up) for dark,
+    /// with a sun or moon in its track. Only when the stylesheet declares both modes.
+    mode_switch: Option<Switch>,
+    /// `theme`'s stylesheet plus a probe control reading `palette.surface.subtle.background`, for the
+    /// stage.
     stage_probe: Option<Stylesheet>,
-    /// The mode's app background, painted behind the control.
+    /// The mode's stage background (see [`stage_color`]), painted behind the control and its grid.
     stage_background: Option<Hsla>,
     control: ControlId,
     checkbox: checkbox::Checkbox,
@@ -436,36 +477,30 @@ impl ControlSide {
             )
             .spawn(cx);
         let mode_names: Vec<String> = theme.stylesheet().modes();
-        let modes = (!mode_names.is_empty()).then(|| {
-            let group =
-                xgpui_luma_look_radix::control_group_builder(look.as_ref(), "workshop-checkbox-mode", look.size())
-                    .horizontal()
-                    .single_required()
-                    .items(mode_names.iter().map(|m| ControlGroupItem::new(m.clone()).label(m.clone())))
-                    .selected_ids([theme.mode().to_string()])
-                    .spawn(cx);
-            cx.subscribe(&group, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
-                if let ControlGroupEvent::Change { selected_ids, .. } = event
-                    && let Some(mode) = selected_ids.first()
-                {
-                    this.set_mode(mode, cx);
-                }
-            })
-            .detach();
-            group
+        let has_mode = |name: &str| mode_names.iter().any(|m| m == name);
+        let mode_switch = (has_mode(LIGHT) && has_mode(DARK)).then(|| {
+            let switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-mode")
+                .look(look.as_ref())
+                .size(xgpui_luma_look_radix::SwitchSize::Two)
+                .vertical()
+                .checked(theme.mode() == DARK)
+                .on_value_changed(cx, |this: &mut Self, dark, cx| this.set_mode(if dark { DARK } else { LIGHT }, cx))
+                .spawn(cx);
+            switch.update(cx, |switch, cx| switch.set_switch_track_content(mode_track_content, cx));
+            switch
         });
         let stage_probe = theme
             .stylesheet()
             .with_source(
                 "app",
-                Source::new("workshop/stage.lss", "workshop_stage { background = palette.app.background }"),
+                Source::new("workshop/stage.lss", "workshop_stage { background = palette.surface.subtle.background }"),
             )
             .ok();
-        let stage_background = stage_probe.as_ref().and_then(|probe| app_background(&theme, probe));
+        let stage_background = stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
         Self {
             look,
             theme,
-            modes,
+            mode_switch,
             stage_probe,
             stage_background,
             control,
@@ -495,7 +530,12 @@ impl ControlSide {
             return;
         };
         self.inspector.update(cx, |inspector, cx| inspector.set_theme(theme.clone(), cx));
-        self.stage_background = self.stage_probe.as_ref().and_then(|probe| app_background(&theme, probe));
+        if let Some(switch) = &self.mode_switch
+            && *switch.read(cx).data() != (mode == DARK)
+        {
+            switch.update(cx, |switch, cx| switch.set_data(mode == DARK, cx));
+        }
+        self.stage_background = self.stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
         self.theme = theme;
         self.bind_checkbox(cx);
         cx.notify();
@@ -1024,13 +1064,28 @@ impl ControlSide {
             Stage::Matrix => (self.matrix(window, cx), 1.),
         };
         div()
-            .id("workshop-checkbox-stage")
             .relative()
             .size_full()
-            .overflow_y_scroll()
-            .when_some(self.stage_background, |stage, background| stage.bg(background))
-            .child(centered_ruled_background(STAGE_GRID_SPACING * zoom))
-            .child(div().relative().size_full().child(stage))
+            .child(
+                div()
+                    .id("workshop-checkbox-stage")
+                    .debug_selector(|| "workshop-checkbox-stage".into())
+                    .relative()
+                    .size_full()
+                    .overflow_y_scroll()
+                    .when_some(self.stage_background, |stage, background| stage.bg(background))
+                    .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, self.stage_background))
+                    .child(div().relative().size_full().child(stage)),
+            )
+            // Light/dark stays in the top-right corner while the matrix scrolls under it.
+            .children(self.mode_switch.clone().map(|switch| {
+                div()
+                    .debug_selector(|| "workshop-checkbox-modes".into())
+                    .absolute()
+                    .top(px(10.))
+                    .right(px(12.))
+                    .child(switch)
+            }))
             .into_any_element()
     }
 
@@ -1048,11 +1103,6 @@ impl ControlSide {
                 WorkMode::Test => self.events_panel(),
             })
             .into_any_element()
-    }
-
-    /// The light/dark picker (the stylesheet's declared modes), for the pane title.
-    fn modes(&self) -> Option<ControlGroup<ControlGroupItem>> {
-        self.modes.clone()
     }
 }
 
@@ -1098,8 +1148,9 @@ impl Render for SideSlot {
     }
 }
 
-/// `palette.app.background` in `theme`'s mode, read through the stage probe control.
-fn app_background(theme: &Theme, probe: &Stylesheet) -> Option<Hsla> {
+/// The stage's background in `theme`'s mode: `palette.surface.subtle.background`, a step off the app
+/// background (lighter in dark mode), read through the stage probe control.
+fn stage_color(theme: &Theme, probe: &Stylesheet) -> Option<Hsla> {
     let theme = theme.with_stylesheet(probe).ok()?;
     let stage = probe.control("workshop_stage")?;
     theme.resolve(&StyleKey::new(stage)).root().background().map(Hsla::from)
@@ -1255,7 +1306,37 @@ mod tests {
         let inspector = cx.update(|_, cx| pane.read(cx).inspector());
         let (mode, light_stage) = cx.update(|_, cx| side.read(cx).mode_and_stage());
         assert_eq!(mode, "light");
-        assert!(light_stage.is_some(), "the stage paints the mode's app background");
+        assert!(light_stage.is_some(), "the stage paints the mode's subtle surface");
+
+        // The light/dark switch sits in the stage's top-right corner; turning it on binds dark.
+        let (stage, corner) = (
+            cx.debug_bounds("workshop-checkbox-stage").expect("stage"),
+            cx.debug_bounds("workshop-checkbox-modes").expect("light/dark switch"),
+        );
+        assert!(corner.right() <= stage.right() && corner.right() > stage.right() - px(40.), "right edge");
+        assert!(corner.top() >= stage.top() && corner.top() < stage.top() + px(20.), "top edge");
+        // Radix size 2, vertical: a 20×35 track with 2px focus-ring room around it.
+        assert_eq!((corner.size.width, corner.size.height), (px(24.), px(39.)), "size 2, vertical");
+        // Light: the thumb (18px) rests at the bottom; the sun's area is the empty top end, 14px (35 less
+        // two 1px borders, the thumb and 1px padding), clear of the thumb.
+        let inner_top = corner.top() + px(2. + 1.);
+        let sun = cx.debug_bounds("workshop-checkbox-mode-icon").expect("sun");
+        assert_eq!(sun.size.height, px(14.), "the empty end: {sun:?}");
+        assert!(sun.top() >= inner_top - px(0.5) && sun.bottom() <= inner_top + px(14.5), "sun up top: {sun:?}");
+        let switch = cx.update(|_, cx| side.read(cx).mode_switch.clone()).expect("switch");
+        assert!(!cx.update(|_, cx| *switch.read(cx).data()), "light: off");
+        cx.simulate_click(corner.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).mode_and_stage()).0, "dark", "the switch binds dark");
+        // Dark: the thumb rests at the top (1px padding, 18px), so the moon's area starts below it.
+        let moon = cx.debug_bounds("workshop-checkbox-mode-icon").expect("moon");
+        assert!(
+            moon.top() >= inner_top + px(19. - 0.5) && moon.bottom() <= inner_top + px(33.5),
+            "moon below the thumb: {moon:?}"
+        );
+        side.update(cx, |side, cx| side.choose_mode("light", cx));
+        cx.run_until_parked();
+        assert!(!cx.update(|_, cx| *switch.read(cx).data()), "the switch follows the mode");
 
         side.update(cx, |side, cx| side.choose_mode("dark", cx));
         side.update(cx, |side, cx| side.toggle_state("checked", cx));
