@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, Bounds, ElementInputHandler, GlobalElementId, IntoElement, LayoutId, PaintQuad, Pixels, ShapedLine, Style,
-    TextAlign, TextRun, Window, fill, font, point, px, relative, size,
+    App, Bounds, ElementInputHandler, GlobalElementId, LayoutId, PaintQuad, Pixels, ShapedLine, Style, TextAlign,
+    TextRun, Window, fill, font, point, px, relative, size,
 };
 
 use super::layout::{TextAreaCachedLine, TextAreaDecorationKey, TextAreaLayoutCache, TextAreaLayoutKey, TextAreaPaintLine};
@@ -28,14 +28,6 @@ pub(super) struct TextAreaPrepaintState {
     line_height: Pixels,
     vertical_scroll: Pixels,
 }
-impl IntoElement for TextAreaElement {
-    type Element = Self;
-
-    fn into_element(self) -> Self::Element {
-        self
-    }
-}
-
 impl gpui::Element for TextAreaElement {
     type RequestLayoutState = ();
     type PrepaintState = TextAreaPrepaintState;

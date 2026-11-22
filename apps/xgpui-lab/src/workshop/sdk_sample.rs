@@ -34,12 +34,6 @@ pub(super) fn isolated(child: impl IntoElement) -> SdkSample {
 pub(super) struct SdkSample {
     child: AnyElement,
 }
-impl IntoElement for SdkSample {
-    type Element = Self;
-    fn into_element(self) -> Self {
-        self
-    }
-}
 impl Element for SdkSample {
     type RequestLayoutState = ();
     type PrepaintState = ();
