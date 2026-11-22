@@ -1095,6 +1095,19 @@ impl Render for LssInspector {
                         .py(px(8.))
                         .border_b_1()
                         .border_color(chrome.border)
+                        .child(
+                            div()
+                                .debug_selector(|| "lss-inspector-attributes".into())
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child("Attributes")
+                                .child(
+                                    div()
+                                        .text_color(chrome.muted_text)
+                                        .child(attributes_line(&self.theme, self.control)),
+                                ),
+                        )
                         .child(div().flex().items_center().gap_2().child("Part").child(self.part_tabs.clone()))
                         .child(
                             div()
@@ -1184,6 +1197,23 @@ pub(super) fn key_line(theme: &Theme, control: ControlId, key: &StyleKey) -> Str
     } else {
         format!("{control}{states} · {}", theme.mode())
     }
+}
+
+/// A control's attribute scopes as text (e.g. `size sm · md`), or a note that the file has none.
+pub(super) fn attributes_line(theme: &Theme, control: ControlId) -> String {
+    let axes = theme.stylesheet().axes(control);
+    let config = theme.stylesheet().config();
+    if axes.attributes.is_empty() {
+        return "none — the file has no scopes".to_string();
+    }
+    axes.attributes
+        .iter()
+        .map(|(attr, values)| {
+            let values: Vec<&str> = values.iter().map(|v| v.name()).collect();
+            format!("{} {}", config.attribute_name(*attr), values.join(" · "))
+        })
+        .collect::<Vec<_>>()
+        .join("   ")
 }
 
 /// The file and layer a control's rules come from, read from the first rule that sets a value.

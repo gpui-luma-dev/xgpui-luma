@@ -41,6 +41,11 @@ impl ControlEventStream {
         cx.notify();
     }
 
+    /// How many events have been logged.
+    pub(super) fn count(&self) -> usize {
+        self.next_index - 1
+    }
+
     pub fn append_line(&mut self, line: &str, cx: &mut Context<Self>) {
         let line = format!("[{}] {line}", self.next_index);
         self.next_index += 1;
