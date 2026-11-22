@@ -17,7 +17,7 @@ use crate::names::{self, Ctx, Target};
 use crate::overrides::{OverrideValue, Overrides};
 use crate::syntax::{BinOp, Expr, ExprKind};
 use crate::token::{TokenCx, TokenSource};
-use crate::value::{Kind, Motion, ShadowLayer, Value};
+use crate::value::{Kind, Motion, ShadowLayer, TextStyle, Value};
 
 /// Resolved values for every part of one control instance.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -140,6 +140,8 @@ pub(crate) struct ThemeInner {
     pub(crate) scheme: String,
     pub(crate) roots: HashSet<String>,
     pub(crate) token_values: HashMap<String, Value>,
+    /// Every resolved length is multiplied by this (see [`Theme::with_length_scale`]).
+    pub(crate) length_scale: f32,
     generation: u64,
     cache: Mutex<HashMap<CacheKey, Arc<Resolved>>>,
     pub(crate) diags: Mutex<Vec<Diagnostic>>,
@@ -160,7 +162,7 @@ impl Theme {
     /// Bind a stylesheet to native tokens and a mode. The SDK alone binds with
     /// [`NoNativeTokens`](crate::NoNativeTokens) and mode `""`.
     pub fn bind(stylesheet: &Stylesheet, tokens: Arc<dyn TokenSource>, mode: &str) -> Result<Theme, Diagnostics> {
-        Self::bind_with(stylesheet.clone(), tokens, mode, HashMap::new())
+        Self::bind_with(stylesheet.clone(), tokens, mode, HashMap::new(), 1.0)
     }
 
     fn bind_with(
@@ -168,6 +170,7 @@ impl Theme {
         tokens: Arc<dyn TokenSource>,
         mode: &str,
         token_values: HashMap<String, Value>,
+        length_scale: f32,
     ) -> Result<Theme, Diagnostics> {
         let model = sheet.model.clone();
         let roots: HashSet<String> = tokens.roots().iter().map(|r| r.to_string()).collect();
@@ -233,6 +236,7 @@ impl Theme {
                 scheme,
                 roots,
                 token_values,
+                length_scale,
                 generation: next_generation(),
                 cache: Mutex::new(HashMap::new()),
                 diags: Mutex::new(Vec::new()),
@@ -243,13 +247,13 @@ impl Theme {
     /// The same stylesheet and tokens in another mode.
     pub fn with_mode(&self, mode: &str) -> Result<Theme, Diagnostics> {
         let i = &self.inner;
-        Self::bind_with(i.sheet.clone(), i.tokens.clone(), mode, i.token_values.clone())
+        Self::bind_with(i.sheet.clone(), i.tokens.clone(), mode, i.token_values.clone(), i.length_scale)
     }
 
     /// The same stylesheet with a different native token source (e.g. a newly loaded Shadcn CSS theme).
     pub fn with_tokens(&self, tokens: Arc<dyn TokenSource>) -> Result<Theme, Diagnostics> {
         let i = &self.inner;
-        Self::bind_with(i.sheet.clone(), tokens, &i.mode, i.token_values.clone())
+        Self::bind_with(i.sheet.clone(), tokens, &i.mode, i.token_values.clone(), i.length_scale)
     }
 
     /// Live token edits: values for file tokens that rank above every layer, without recompiling.
@@ -269,7 +273,30 @@ impl Theme {
         if !problems.is_empty() {
             return Err(Diagnostics(problems));
         }
-        Self::bind_with(i.sheet.clone(), i.tokens.clone(), &i.mode, merged)
+        Self::bind_with(i.sheet.clone(), i.tokens.clone(), &i.mode, merged, i.length_scale)
+    }
+
+    /// The same theme drawn larger: every length it resolves (length properties, text sizes and shadow
+    /// geometry) is multiplied by `scale`, then snapped to device pixels as usual. Unitless numbers,
+    /// colors and motion are unchanged. For previews such as a zoomed stage; `1.0` is actual size.
+    ///
+    /// The scale applies to resolved values only: tokens, rules and [`Theme::token_values`] are
+    /// unchanged, and references between properties see unscaled values. A scale that is not finite
+    /// and positive is reported as [`Code::Evaluation`].
+    pub fn with_length_scale(&self, scale: f32) -> Result<Theme, Diagnostics> {
+        if !scale.is_finite() || scale <= 0.0 {
+            return Err(Diagnostics(vec![Diagnostic::error(
+                Code::Evaluation,
+                format!("length scale must be finite and positive, found {scale}"),
+            )]));
+        }
+        let i = &self.inner;
+        Self::bind_with(i.sheet.clone(), i.tokens.clone(), &i.mode, i.token_values.clone(), scale)
+    }
+
+    /// What every resolved length is multiplied by; `1.0` unless set with [`Theme::with_length_scale`].
+    pub fn length_scale(&self) -> f32 {
+        self.inner.length_scale
     }
 
     /// The same tokens and mode with another stylesheet (after edits, an import or a theme swap).
@@ -281,6 +308,7 @@ impl Theme {
             i.tokens.clone(),
             &i.mode,
             values.map(|(p, v)| (p.clone(), v.clone())).collect(),
+            i.length_scale,
         )
     }
 
@@ -853,8 +881,9 @@ impl<'t> Evaluator<'t> {
         }
     }
 
-    /// The value as a template receives it: lengths snapped to device pixels unless the winning value
-    /// is `exact(…)`. References between properties use unsnapped values.
+    /// The value as a template receives it: lengths multiplied by the theme's length scale, then
+    /// snapped to device pixels unless the winning value is `exact(…)`. References between properties
+    /// use unscaled, unsnapped values.
     pub(crate) fn output(
         &self,
         control: usize,
@@ -862,7 +891,13 @@ impl<'t> Evaluator<'t> {
         prop: &str,
         key: &KeyData,
     ) -> Result<Option<Value>, EvalErr> {
-        let pv = self.prop_at(control, part, prop, key)?;
+        let mut pv = self.prop_at(control, part, prop, key)?;
+        let length_scale = self.theme.length_scale;
+        if length_scale != 1.0
+            && let Some(kind) = self.model().prop_kind(control, prop)
+        {
+            pv.value = pv.value.map(|value| scale_lengths(value, kind, length_scale));
+        }
         Ok(self.snap(control, prop, key, pv).value)
     }
 
@@ -1150,5 +1185,34 @@ impl<'t> Evaluator<'t> {
             };
         }
         Ok(v)
+    }
+}
+
+/// `value` of `kind` with its lengths multiplied by `scale`: a length, a text style's size and line
+/// height, and shadow offsets, blur and spread.
+fn scale_lengths(value: Value, kind: Kind, scale: f32) -> Value {
+    let shadow = |layer: &ShadowLayer| ShadowLayer {
+        x: layer.x * scale,
+        y: layer.y * scale,
+        blur: layer.blur * scale,
+        spread: layer.spread * scale,
+        ..*layer
+    };
+    match (kind, value) {
+        (Kind::Length, Value::Number(n)) => Value::Number(n * scale),
+        (Kind::Text, Value::Text(text)) => {
+            Value::Text(TextStyle { size: text.size * scale, line_height: text.line_height * scale, ..text })
+        }
+        (Kind::Shadow, Value::Shadow(layers)) => Value::Shadow(layers.iter().map(shadow).collect()),
+        (Kind::Shadow, Value::List(items)) => Value::List(
+            items
+                .iter()
+                .map(|item| match item {
+                    Value::Shadow(layers) => Value::Shadow(layers.iter().map(shadow).collect()),
+                    other => other.clone(),
+                })
+                .collect(),
+        ),
+        (_, value) => value,
     }
 }

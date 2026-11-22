@@ -4,34 +4,63 @@ use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 
 /// Paint-only grid for legacy pages and fixed SDK preview surfaces; never captures input.
 pub(super) fn ruled_background() -> impl IntoElement {
-    grid_background(0.)
+    grid_background(GridLines { spacing: DEFAULT_GRID_SPACING, inset: 0., centered: false })
+}
+
+/// Paint-only grid of `spacing`-pixel squares with lines through the center of its bounds, so a
+/// grid scaled with centered content (e.g. a zoomed stage) grows around the same point.
+pub(super) fn centered_ruled_background(spacing: f32) -> impl IntoElement {
+    grid_background(GridLines { spacing, inset: 0., centered: true })
+}
+
+const DEFAULT_GRID_SPACING: f32 = 24.;
+
+#[derive(Clone, Copy)]
+struct GridLines {
+    /// Square size in logical pixels.
+    spacing: f32,
+    /// No lines within this distance of the edges.
+    inset: f32,
+    /// Lines pass through the center instead of starting at `inset` from the top-left corner.
+    centered: bool,
 }
 
 // Inset the preview grid's first lines beyond its corner radius. GPUI's
 // overflow mask is rectangular, so lines on the outer edges leak into corners.
-fn grid_background(offset: f32) -> impl IntoElement {
+fn grid_background(lines: GridLines) -> impl IntoElement {
+    let GridLines { spacing, inset, centered } = lines;
     gpui::canvas(
         |_, _, _| (),
         move |bounds, _, window, _| {
-            let spacing = 24.;
+            if spacing <= 0. {
+                return;
+            }
             let thickness = px(1. / window.scale_factor());
             let color = gpui::rgb(0xe6e6e6);
-            for column in 0..(f32::from(bounds.size.width) / spacing).ceil() as usize {
-                let x = column as f32 * spacing + offset;
-                if x >= f32::from(bounds.size.width) - offset {
-                    continue;
+            let (width, height) = (f32::from(bounds.size.width), f32::from(bounds.size.height));
+            // The first line's position: `inset`, or the center's phase so a line passes through it.
+            let first = |extent: f32| {
+                if centered {
+                    (extent / 2.).rem_euclid(spacing)
+                } else {
+                    inset
                 }
+            };
+            let positions = move |extent: f32| {
+                let start = first(extent);
+                (0..)
+                    .map(move |i| start + i as f32 * spacing)
+                    .take_while(move |p| *p < extent - inset)
+                    .filter(move |p| *p >= inset)
+            };
+            for x in positions(width) {
                 let origin = bounds.origin + gpui::point(px(x), px(0.));
                 window.paint_quad(gpui::fill(
                     gpui::Bounds::new(origin, gpui::size(thickness, bounds.size.height)),
                     color,
                 ));
             }
-            for row in 0..(f32::from(bounds.size.height) / spacing).ceil() as usize {
-                let y = row as f32 * spacing + offset;
-                if y >= f32::from(bounds.size.height) - offset {
-                    continue;
-                }
+            for y in positions(height) {
                 let origin = bounds.origin + gpui::point(px(0.), px(y));
                 window
                     .paint_quad(gpui::fill(gpui::Bounds::new(origin, gpui::size(bounds.size.width, thickness)), color));
@@ -154,7 +183,7 @@ pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyEle
         .rounded(px(6.))
         .bg(gpui::rgb(0xfafafa))
         .text_color(gpui::rgb(0x202020))
-        .child(grid_background(12.))
+        .child(grid_background(GridLines { spacing: DEFAULT_GRID_SPACING, inset: 12., centered: false }))
         .child(div().relative().p(px(24.)).child(super::sdk_sample::isolated(content)))
         .into_any_element()
 }
