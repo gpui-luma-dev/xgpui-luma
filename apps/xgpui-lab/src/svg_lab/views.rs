@@ -1,6 +1,7 @@
 use super::*;
 use gpui::{prelude::*, AnyElement, Bounds, ContentMask, Corners, Render, Window, canvas, div, point, px};
-use xgpui_svg::{svg_image, path_effects::PathEffect};
+use xgpui_curve::measure::PathEffect;
+use xgpui_svg::svg_image;
 
 impl Render for SvgPage {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -252,7 +253,7 @@ impl SvgPage {
                     format!(
                         "{} · Measured length {:.2}px",
                         ["Open Bézier curve", "Closed heart", "Multiple contours"][index],
-                        f32::from(path.length())
+                        path.length()
                     ),
                 ))
                 .child(

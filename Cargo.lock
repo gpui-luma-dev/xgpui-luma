@@ -7733,6 +7733,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b26d3da44d7bee7576102ac984bac568a815fc764126157f3ec40612b92a35"
 dependencies = [
  "kurbo",
+ "xgpui",
 ]
 
 [[package]]
@@ -7830,6 +7831,7 @@ dependencies = [
  "xgpui-apple",
  "xgpui-canvas",
  "xgpui-color",
+ "xgpui-curve",
  "xgpui-gamut",
  "xgpui-gpu-interop",
  "xgpui-luma",
