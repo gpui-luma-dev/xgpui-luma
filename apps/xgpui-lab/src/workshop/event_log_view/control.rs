@@ -57,6 +57,12 @@ impl EventLogView {
         }
     }
 
+    /// Everything logged, one line per event, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(crate) fn text(&self) -> &str {
+        &self.text
+    }
+
     pub fn append_line(&mut self, line: &str, cx: &mut Context<Self>) {
         if line.is_empty() {
             return;

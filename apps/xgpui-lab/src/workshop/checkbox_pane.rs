@@ -395,8 +395,14 @@ impl ControlSide {
             .on_click(cx, |this: &mut Self, cx| this.apply(StyleKey::new(this.control), cx))
             .spawn(cx);
         let events = cx.new(|cx| {
-            ControlEventStream::new(cx, look.clone(), "workshop-checkbox-events", "The checkbox's SDK events.")
-                .without_card()
+            ControlEventStream::new(
+                cx,
+                look.clone(),
+                "workshop-checkbox-events",
+                "The checkbox's SDK events, with seconds since the first.",
+            )
+            .without_card()
+            .with_times()
         });
         let side = cx.weak_entity();
         let stage_slot = cx.new(|_| SideSlot { side: side.clone(), slot: Slot::Stage });
@@ -1483,6 +1489,12 @@ mod tests {
         assert!(cx.update(|_, cx| side.read(cx).state_on("checked")));
         let in_test = logged(cx);
         assert!(in_test > 0, "events logged in Test");
+        let text = cx.update(|_, cx| side.read(cx).events.read(cx).text(cx));
+        assert!(text.starts_with("[1] 0.000s "), "the first event is at 0s: {text}");
+        assert!(
+            text.lines().all(|l| l.split(' ').nth(1).is_some_and(|t| t.ends_with('s'))),
+            "every line is timed: {text}"
+        );
 
         // Design: the picker shows, the checkbox ignores input and the log pauses.
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
