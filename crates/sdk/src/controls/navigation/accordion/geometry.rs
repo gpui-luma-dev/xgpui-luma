@@ -56,9 +56,3 @@ impl Element for MeasuredItem {
         self.child.paint(window, cx);
     }
 }
-impl IntoElement for MeasuredItem {
-    type Element = Self;
-    fn into_element(self) -> Self {
-        self
-    }
-}

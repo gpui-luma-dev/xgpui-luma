@@ -16,7 +16,8 @@ use xgpui_luma::{
     prelude::HasPresenter,
 };
 use xgpui_luma_look_radix::{self as radix, Look};
-use xgpui_svg::{SvgDocument, SvgStatus, SvgScheduler, SchedulerLimits, RasterPolicy, MIB, path_effects::MeasuredPath};
+use xgpui_svg::{SvgDocument, SvgStatus, SvgScheduler, SchedulerLimits, RasterPolicy, MIB};
+use xgpui_curve::measure::MeasuredPath;
 
 struct Asset {
     document: SvgDocument,
@@ -672,9 +673,9 @@ mod tests {
             let paths = page.paths.as_ref().unwrap();
             assert_eq!(paths.len(), 3);
             for path in paths {
-                assert!(f32::from(path.length()) > 0.);
+                assert!(path.length() > 0.);
                 let effect = super::paths::effect(0.68, 3, 11.).unwrap();
-                assert!(path.stroke(&effect, px(4.)).is_ok());
+                assert!(super::paths::stroke(path, &effect, 4.).unwrap().is_some());
             }
         });
         let run =
