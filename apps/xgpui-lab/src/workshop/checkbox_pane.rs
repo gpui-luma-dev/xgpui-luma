@@ -18,21 +18,22 @@ use xgpui_luma::theme::InteractionState;
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
 use super::catalog::COMPONENT_CATALOG;
+use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
 use super::pane_type;
 use crate::screen::{LabMetrics, text};
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
-/// Initial height of the lower panel (states and events) under the stage.
-const LOWER_HEIGHT: f32 = 400.;
+/// Initial height of the lower panel (states or events) under the stage.
+const LOWER_HEIGHT: f32 = 300.;
 const MIN_STAGE_HEIGHT: f32 = 160.;
-/// The lower panel never gets shorter than this, so the states strip and the events stay on screen.
-const MIN_LOWER_HEIGHT: f32 = 400.;
+/// The lower panel never gets shorter than this, so the state picker stays on screen.
+const MIN_LOWER_HEIGHT: f32 = 240.;
 /// The workshop canvas's inner corner radius (`CANVAS_RADIUS` less its border); the pane's outer
 /// corners match it so nothing square shows past the rounded canvas.
 const CANVAS_INNER_RADIUS: f32 = 9.;
-const STRIP_LABEL_WIDTH: f32 = 78.;
+const STRIP_LABEL_WIDTH: f32 = 96.;
 /// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
 /// make it invalid.
 const UNREACHABLE_STATES: &[&str] = &["invalid"];
@@ -48,6 +49,27 @@ enum Stage {
     Control,
     Matrix,
 }
+
+/// How the person works with the live checkbox, like a designer's live and static previews.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum WorkMode {
+    /// The checkbox is live: real pointer and keyboard input, the key follows it, events are logged.
+    Test,
+    /// The checkbox ignores input and draws the states picked below the stage; events are paused.
+    Design,
+}
+
+impl WorkMode {
+    fn id(self) -> &'static str {
+        match self {
+            WorkMode::Test => "test",
+            WorkMode::Design => "design",
+        }
+    }
+}
+
+/// The interaction picker's item for no state of the exclusive group.
+const NO_INTERACTION: &str = "none";
 
 /// The work pane: the control side and the inspector, half each, with a draggable divider between them.
 pub(super) struct CheckboxPane {
@@ -90,7 +112,7 @@ impl CheckboxPane {
 
     /// The page title in the lab screens' text roles: crumb (Workshop · group), title, the `.lss` control
     /// with its file and layer, and the control's doc comment as the lede.
-    fn title(&self) -> AnyElement {
+    fn title(&self, modes: Option<ControlGroup<ControlGroupItem>>) -> AnyElement {
         let (look, chrome) = (self.look.as_ref(), self.look.chrome());
         let inspection = self.theme.inspect(&StyleKey::new(self.control), None);
         let source = lss_inspector::control_source(&inspection)
@@ -119,7 +141,11 @@ impl CheckboxPane {
                     .gap(px(12.))
                     .child(text(look, pane_type::TITLE, "Checkbox"))
                     .child(text(look, pane_type::CONTROL, self.control.to_string()))
-                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
+                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text))
+                    .child(div().flex_1())
+                    .children(modes.map(|modes| {
+                        div().debug_selector(|| "workshop-checkbox-modes".into()).self_center().child(modes)
+                    })),
             )
             .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
             .into_any_element()
@@ -145,8 +171,9 @@ impl CheckboxPane {
 }
 
 impl Render for CheckboxPane {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
+        let modes = self.side.read(cx).modes();
         div()
             .id("workshop-checkbox-pane")
             .debug_selector(|| "workshop-checkbox-pane".into())
@@ -159,7 +186,7 @@ impl Render for CheckboxPane {
             .typography_style(pane_type::body(&self.look))
             .flex()
             .flex_col()
-            .child(self.title())
+            .child(self.title(modes))
             .child(div().flex_1().min_h_0().child(self.split.clone()))
     }
 }
@@ -194,15 +221,23 @@ pub(super) struct ControlSide {
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
+    /// The states the live checkbox draws in Design mode; `None` in Test mode, where it draws as it is.
+    pinned: Option<PinnedCheckbox>,
     stage: Stage,
     /// Radix tabs: Control · State matrix.
     stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     /// The key's states, in config order: those the file's rules use, then any the template sets
     /// that no rule uses.
     states: Vec<KeyState>,
-    /// Whether the key follows the checkbox (checked, hover, enabled); pressed has no event.
-    follow: bool,
-    follow_switch: Switch,
+    /// Test (live, the key follows the checkbox) or Design (the key is picked and the checkbox draws it).
+    work_mode: WorkMode,
+    /// Radix toggle group: Test · Design.
+    work_mode_picker: ControlGroup<ControlGroupItem>,
+    /// The config's exclusive states the key uses, weakest first (e.g. hover, pressed, disabled): only
+    /// one counts, so Design mode picks one with `interaction`.
+    exclusive: Vec<StateId>,
+    /// Radix toggle group: none or one of `exclusive`.
+    interaction: Option<ControlGroup<ControlGroupItem>>,
     reset: Entity<Button>,
     key: StyleKey,
     inspector: Entity<LssInspector>,
@@ -223,15 +258,16 @@ impl ControlSide {
 
         let checkbox = checkbox::new("workshop-sdk-checkbox").content(|_, _| div().child("Label")).spawn(cx);
         cx.subscribe(&checkbox, |this: &mut Self, _, event: &CheckboxEvent, cx| {
-            let line = format!("{event:?}");
-            this.events.update(cx, |events, cx| events.append_line(&line, cx));
-            if !this.follow {
+            // Design mode pauses the log. Enabling is the pane's own doing (Design disables input), not
+            // something the person did to the checkbox.
+            if this.work_mode == WorkMode::Design || matches!(event, CheckboxEvent::EnabledChanged { .. }) {
                 return;
             }
+            let line = format!("{event:?}");
+            this.events.update(cx, |events, cx| events.append_line(&line, cx));
             match event {
                 CheckboxEvent::Change { checked } => this.set_state("checked", *checked, cx),
                 CheckboxEvent::HoverChanged { hovered } => this.set_state("hover", *hovered, cx),
-                CheckboxEvent::EnabledChanged { enabled } => this.set_state("disabled", !enabled, cx),
                 CheckboxEvent::FocusChanged { focused } => this.set_state("focused", *focused, cx),
                 _ => {}
             }
@@ -261,30 +297,27 @@ impl ControlSide {
             .into_iter()
             .filter_map(|n| config.state(n))
             .collect();
-        let states = config
+        let states: Vec<KeyState> = config
             .state_names()
             .filter_map(|name| config.state(name).map(|state| (state, name.to_string())))
             .filter(|(state, _)| rule_states.contains(state) || template_states.contains(state))
             .map(|(state, name)| {
+                // A state the live checkbox can never reach is shown but never settable.
+                let reachable = !UNREACHABLE_STATES.contains(&name.as_str());
                 let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-checkbox-state-{name}"))
                     .look(look.as_ref())
                     .label(format!(":{name}"))
                     .checked(false)
+                    .enabled(reachable)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
-                        // Ignore the switch catching up with a followed change; a person's toggle pins the key.
+                        // Ignore the switch catching up with the key; a person's toggle (Design mode) sets it.
                         if this.key.active_states().contains(state) == on {
                             return;
                         }
-                        this.set_follow(false, cx);
                         this.apply(this.key.set_state(state, on), cx);
                     })
                     .spawn(cx);
-                KeyState {
-                    template_only: !rule_states.contains(&state),
-                    reachable: !UNREACHABLE_STATES.contains(&name.as_str()),
-                    state,
-                    switch,
-                }
+                KeyState { template_only: !rule_states.contains(&state), reachable, state, switch }
             })
             .collect();
         let zoom_slider = xgpui_luma_look_radix::Slider::new("workshop-checkbox-zoom")
@@ -295,18 +328,71 @@ impl ControlSide {
             .value(ZOOM_RANGE.start)
             .on_value_changed(cx, |this: &mut Self, _, zoom, cx| this.set_zoom(zoom, cx))
             .spawn(cx);
-        let follow_switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-follow")
-            .look(look.as_ref())
-            .label("Track states")
-            .checked(true)
-            .on_value_changed(cx, |this: &mut Self, on, cx| this.set_follow(on, cx))
+        let work_mode_picker = xgpui_luma_look_radix::control_group_builder(
+            look.as_ref(),
+            "workshop-checkbox-work-mode",
+            xgpui_luma_look_radix::RadixSize::One,
+        )
+        .horizontal()
+        .single_required()
+        .items(
+            [WorkMode::Test, WorkMode::Design]
+                .map(|m| ControlGroupItem::new(m.id()).label(if m == WorkMode::Test { "Test" } else { "Design" })),
+        )
+        .selected_ids([WorkMode::Test.id()])
+        .spawn(cx);
+        cx.subscribe(&work_mode_picker, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+            if let ControlGroupEvent::Change { selected_ids, .. } = event
+                && let Some(id) = selected_ids.first()
+            {
+                let mode = if id.as_ref() == WorkMode::Design.id() {
+                    WorkMode::Design
+                } else {
+                    WorkMode::Test
+                };
+                this.set_work_mode(mode, cx);
+            }
+        })
+        .detach();
+        let key_states: Vec<StateId> = states.iter().map(|s| s.state).collect();
+        let mut exclusive: Vec<StateId> = config
+            .exclusive_states()
+            .filter_map(|n| config.state(n))
+            .filter(|s| key_states.contains(s))
+            .collect();
+        exclusive.reverse();
+        let interaction = (!exclusive.is_empty()).then(|| {
+            let items =
+                std::iter::once(ControlGroupItem::new(NO_INTERACTION).label("None")).chain(exclusive.iter().map(|s| {
+                    let name = config.state_name(*s);
+                    ControlGroupItem::new(name.to_string()).label(format!(":{name}"))
+                }));
+            let group = xgpui_luma_look_radix::control_group_builder(
+                look.as_ref(),
+                "workshop-checkbox-interaction",
+                look.size(),
+            )
+            .horizontal()
+            .single_required()
+            .items(items)
+            .selected_ids([NO_INTERACTION])
             .spawn(cx);
+            cx.subscribe(&group, |this: &mut Self, _, event: &ControlGroupEvent, cx| {
+                if let ControlGroupEvent::Change { selected_ids, .. } = event
+                    && let Some(id) = selected_ids.first()
+                {
+                    this.pick_interaction(id, cx);
+                }
+            })
+            .detach();
+            group
+        });
         let reset = xgpui_luma_look_radix::Button::new("workshop-checkbox-reset")
             .look(look.as_ref())
             .outline()
             .size(xgpui_luma_look_radix::ButtonSize::One)
             .label("Reset")
-            .on_click(cx, |this: &mut Self, cx| this.apply(this.followed_key(cx), cx))
+            .on_click(cx, |this: &mut Self, cx| this.apply(StyleKey::new(this.control), cx))
             .spawn(cx);
         let events = cx.new(|cx| {
             ControlEventStream::new(cx, look.clone(), "workshop-checkbox-events", "The checkbox's SDK events.")
@@ -362,11 +448,14 @@ impl ControlSide {
             checkbox,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
+            pinned: None,
             stage: Stage::Control,
             stage_tabs,
             states,
-            follow: true,
-            follow_switch,
+            work_mode: WorkMode::Test,
+            work_mode_picker,
+            exclusive,
+            interaction,
             reset,
             key: StyleKey::new(control),
             inspector,
@@ -399,12 +488,26 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Give the live checkbox `theme` scaled by the zoom. Only the template's theme changes; the
-    /// control and its data are untouched.
+    /// Give the live checkbox `theme` scaled by the zoom, drawing the pinned states if any. Only the
+    /// template changes; the control and its data are untouched.
     fn bind_checkbox(&mut self, cx: &mut Context<Self>) {
         let theme = self.theme.with_length_scale(self.zoom).unwrap_or_else(|_| self.theme.clone());
-        self.checkbox
-            .update(cx, |checkbox, cx| checkbox.set_template(Arc::new(StyledCheckboxTemplate::new(theme)), cx));
+        let template = PinnedCheckboxTemplate::new(Arc::new(StyledCheckboxTemplate::new(theme)), self.pinned);
+        self.checkbox.update(cx, |checkbox, cx| checkbox.set_template(Arc::new(template), cx));
+    }
+
+    /// In Design mode the live checkbox draws the key's states; in Test mode it draws as it is.
+    fn sync_pinned(&mut self, cx: &mut Context<Self>) {
+        let pinned = (self.work_mode == WorkMode::Design).then(|| {
+            let states: Vec<StateId> =
+                self.states.iter().map(|s| s.state).filter(|s| self.key.active_states().contains(*s)).collect();
+            let (state, checked) = self.template_state(&states);
+            PinnedCheckbox { state, checked }
+        });
+        if pinned != self.pinned {
+            self.pinned = pinned;
+            self.bind_checkbox(cx);
+        }
     }
 
     fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
@@ -431,17 +534,51 @@ impl ControlSide {
                 state.switch.update(cx, |switch, cx| switch.set_data(on, cx));
             }
         }
+        if let Some(group) = &self.interaction {
+            let id = self.interaction_id();
+            if group.read(cx).selected_id().map(|s| s.as_ref()) != Some(id.as_str()) {
+                group.update(cx, |group, cx| group.set_selected_ids([id], cx));
+            }
+        }
         self.inspector.update(cx, |inspector, cx| inspector.set_key(key, cx));
+        self.sync_pinned(cx);
         cx.notify();
     }
 
-    fn set_follow(&mut self, follow: bool, cx: &mut Context<Self>) {
-        self.follow = follow;
-        if *self.follow_switch.read(cx).data() != follow {
-            self.follow_switch.update(cx, |switch, cx| switch.set_data(follow, cx));
+    /// The interaction picker's item for the key: its strongest exclusive state, or none.
+    fn interaction_id(&self) -> String {
+        let config = self.theme.stylesheet().config();
+        self.exclusive
+            .iter()
+            .rev()
+            .find(|s| self.key.active_states().contains(**s))
+            .map_or_else(|| NO_INTERACTION.to_string(), |s| config.state_name(*s).to_string())
+    }
+
+    /// Pick one exclusive state (or none) for the key, as the interaction picker does.
+    fn pick_interaction(&mut self, id: &str, cx: &mut Context<Self>) {
+        if id == self.interaction_id() {
+            return;
         }
-        if follow {
-            self.apply(self.followed_key(cx), cx);
+        let config = self.theme.stylesheet().config().clone();
+        let key = self.exclusive.iter().fold(self.key, |key, s| key.set_state(*s, config.state_name(*s) == id));
+        self.apply(key, cx);
+    }
+
+    /// Design keeps the key as it is (it becomes the picked states) and stops the checkbox taking input;
+    /// Test drops the picks and goes live, with the key following the checkbox again.
+    fn set_work_mode(&mut self, mode: WorkMode, cx: &mut Context<Self>) {
+        if mode == self.work_mode {
+            return;
+        }
+        self.work_mode = mode;
+        if self.work_mode_picker.read(cx).selected_id().map(|s| s.as_ref()) != Some(mode.id()) {
+            self.work_mode_picker.update(cx, |picker, cx| picker.set_selected_ids([mode.id()], cx));
+        }
+        self.checkbox.update(cx, |checkbox, cx| checkbox.set_enabled(mode == WorkMode::Test, cx));
+        match mode {
+            WorkMode::Test => self.apply(self.followed_key(cx), cx),
+            WorkMode::Design => self.sync_pinned(cx),
         }
         cx.notify();
     }
@@ -450,13 +587,13 @@ impl ControlSide {
     fn followed_key(&self, cx: &Context<Self>) -> StyleKey {
         let base = StyleKey::new(self.control);
         match self.theme.stylesheet().config().state("checked") {
-            Some(checked) if self.follow => base.set_state(checked, *self.checkbox.read(cx).data()),
-            _ => base,
+            Some(checked) => base.set_state(checked, *self.checkbox.read(cx).data()),
+            None => base,
         }
     }
 
-    /// The zoom slider (Control stage only) and the stage tabs, right-aligned in a row as tall as the
-    /// inspector's tab row.
+    /// The stage toolbar, as tall as the inspector's tab row: Test · Design, the zoom (Control stage
+    /// only) and the stage tabs.
     fn tab_row(&self) -> AnyElement {
         let chrome = self.look.chrome();
         div()
@@ -465,34 +602,62 @@ impl ControlSide {
             .h(px(TAB_ROW_HEIGHT))
             .flex()
             .items_end()
-            .justify_end()
+            .gap(px(16.))
             .px(px(12.))
             .border_b_1()
             .border_color(chrome.border)
-            .when(self.stage == Stage::Control, |row| {
-                row.child(
+            .child(
+                div()
+                    .debug_selector(|| "workshop-checkbox-work-mode".into())
+                    .self_center()
+                    .child(self.work_mode_picker.clone()),
+            )
+            .child(div().flex_1().self_center().when(self.stage == Stage::Control, |slot| {
+                slot.child(
                     div()
                         .debug_selector(|| "workshop-checkbox-zoom".into())
-                        .flex_1()
-                        .self_center()
                         .flex()
                         .items_center()
+                        .justify_end()
                         .gap(px(10.))
                         .child(div().font_weight(pane_type::LABEL_WEIGHT).text_color(chrome.muted_text).child("ZOOM"))
                         .child(div().w(px(ZOOM_SLIDER_WIDTH)).child(self.zoom_slider.clone()))
-                        .child(div().font_family(pane_type::MONO).child(format!("{}×", self.zoom))),
+                        .child(div().w(px(36.)).font_family(pane_type::MONO).child(format!("{}×", self.zoom))),
                 )
-            })
+            }))
             .child(self.stage_tabs.clone())
             .into_any_element()
     }
 
+    /// The live checkbox centered on the stage, with a tag saying whether it is live or drawing picked
+    /// states.
     fn control_stage(&self) -> AnyElement {
+        let chrome = self.look.chrome();
+        let tag = match self.work_mode {
+            WorkMode::Test => "Live",
+            WorkMode::Design => "Picked states · not live",
+        };
         div()
+            .relative()
             .size_full()
             .flex()
             .items_center()
             .justify_center()
+            .child(
+                div()
+                    .debug_selector(|| "workshop-checkbox-stage-tag".into())
+                    .absolute()
+                    .top(px(10.))
+                    .left(px(12.))
+                    .px(px(8.))
+                    .py(px(2.))
+                    .rounded(px(6.))
+                    .border_1()
+                    .border_color(chrome.border)
+                    .bg(chrome.content_background)
+                    .text_color(chrome.muted_text)
+                    .child(tag),
+            )
             .child(div().debug_selector(|| "workshop-checkbox-control".into()).child(self.checkbox.clone()))
             .into_any_element()
     }
@@ -589,22 +754,12 @@ impl ControlSide {
         grid.into_any_element()
     }
 
-    fn key_strip(&self) -> AnyElement {
+    /// Design mode's lower panel: the states the checkbox draws, grouped like a designer's state
+    /// picker. One interaction state (the exclusive group), any of the other states, and the states the
+    /// checkbox can never reach, shown but not settable.
+    fn states_panel(&self, cx: &gpui::App) -> AnyElement {
         let chrome = self.look.chrome();
-        let axes = self.theme.stylesheet().axes(self.control);
         let config = self.theme.stylesheet().config();
-        let attributes = if axes.attributes.is_empty() {
-            "none — the file has no scopes".to_string()
-        } else {
-            axes.attributes
-                .iter()
-                .map(|(attr, values)| {
-                    let values: Vec<&str> = values.iter().map(|v| v.name()).collect();
-                    format!("{} {}", config.attribute_name(*attr), values.join(" · "))
-                })
-                .collect::<Vec<_>>()
-                .join("   ")
-        };
         let heading = |text: &'static str| {
             div()
                 .w(px(STRIP_LABEL_WIDTH))
@@ -613,73 +768,137 @@ impl ControlSide {
                 .text_color(chrome.muted_text)
                 .child(text.to_uppercase())
         };
+        let switch = |s: &KeyState| {
+            let selector = format!("workshop-checkbox-state-{}", config.state_name(s.state));
+            div().debug_selector(move || selector.clone()).child(s.switch.clone())
+        };
+        let others: Vec<&KeyState> =
+            self.states.iter().filter(|s| s.reachable && !self.exclusive.contains(&s.state)).collect();
+        let unreachable: Vec<&KeyState> = self.states.iter().filter(|s| !s.reachable).collect();
+        let row = || div().flex().flex_wrap().items_center().gap(px(14.)).min_h(px(28.));
         div()
-            .debug_selector(|| "workshop-checkbox-key".into())
+            .debug_selector(|| "workshop-checkbox-states".into())
             .flex_none()
             .flex()
             .flex_col()
             .gap(px(8.))
             .px(px(18.))
-            .py(px(10.))
-            .border_t_1()
-            .border_color(chrome.border)
+            .py(px(12.))
             .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .gap(px(14.))
-                    .child(heading("States"))
-                    .children(self.states.iter().filter(|s| !s.template_only).map(|s| s.switch.clone()))
+                row()
+                    .child(div().font_weight(pane_type::LABEL_WEIGHT).child("States"))
+                    .child(div().text_color(chrome.muted_text).child("pick what the checkbox draws"))
                     .child(div().flex_1())
-                    .child(self.follow_switch.clone()),
+                    .child(self.reset.clone()),
             )
-            .when(self.states.iter().any(|s| s.template_only), |strip| {
-                strip.child(
-                    div()
-                        .debug_selector(|| "workshop-checkbox-template-states".into())
-                        .flex()
-                        .flex_wrap()
-                        .items_center()
-                        .gap(px(14.))
-                        .child(heading("Template"))
-                        .children(self.states.iter().filter(|s| s.template_only).map(|s| {
-                            div().flex().items_center().gap(px(6.)).child(s.switch.clone()).when(!s.reachable, |d| {
-                                d.child(div().text_color(chrome.muted_text).child("not settable on checkbox"))
-                            })
-                        }))
-                        .child(
-                            div().text_color(chrome.muted_text).child("no rule uses these; the template draws them"),
-                        ),
+            .children(self.interaction.as_ref().map(|group| row().child(heading("Interaction")).child(group.clone())))
+            .when(!others.is_empty(), |panel| {
+                // States no rule uses still change the drawing when the template reads them (the focus ring).
+                let template_only: Vec<String> = others
+                    .iter()
+                    .filter(|s| s.template_only)
+                    .map(|s| format!(":{}", config.state_name(s.state)))
+                    .collect();
+                panel.child(row().child(heading("States")).children(others.iter().map(|s| switch(s))).when(
+                    !template_only.is_empty(),
+                    |row| {
+                        row.child(
+                            div()
+                                .text_color(chrome.muted_text)
+                                .child(format!("{}: no rule uses it; the template draws it", template_only.join(" "))),
+                        )
+                    },
+                ))
+            })
+            .when(!unreachable.is_empty(), |panel| {
+                panel.child(
+                    row()
+                        .child(heading("Not settable"))
+                        .children(unreachable.iter().map(|s| switch(s)))
+                        .child(div().text_color(chrome.muted_text).child("a checkbox can't reach these")),
                 )
             })
             .child(
                 div()
+                    .pt(px(4.))
+                    .text_color(chrome.muted_text)
+                    .child(format!("Events paused in Design · {} logged in Test", self.events.read(cx).count())),
+            )
+            .into_any_element()
+    }
+
+    /// Test mode's lower panel: the key's live states, then the checkbox's events.
+    fn events_panel(&self) -> AnyElement {
+        let chrome = self.look.chrome();
+        let config = self.theme.stylesheet().config();
+        let live: Vec<String> = self
+            .states
+            .iter()
+            .filter(|s| self.key.active_states().contains(s.state))
+            .map(|s| format!(":{}", config.state_name(s.state)))
+            .collect();
+        let tag = |text: String| {
+            div()
+                .px(px(8.))
+                .py(px(2.))
+                .rounded(px(6.))
+                .border_1()
+                .border_color(chrome.border)
+                .font_family(pane_type::MONO)
+                .text_color(chrome.muted_text)
+                .child(text)
+        };
+        div()
+            .debug_selector(|| "workshop-checkbox-live".into())
+            .flex_none()
+            .flex()
+            .flex_col()
+            .child(
+                div()
                     .flex()
                     .flex_wrap()
                     .items_center()
-                    .gap(px(14.))
-                    .child(heading("Attributes"))
-                    .child(div().text_color(chrome.muted_text).child(attributes))
-                    .child(heading("Modes"))
-                    .child(match &self.modes {
-                        Some(modes) => modes.clone().into_any_element(),
-                        None => div().text_color(chrome.muted_text).child("none").into_any_element(),
-                    })
-                    .child(div().flex_1())
+                    .gap(px(10.))
+                    .px(px(18.))
+                    .py(px(10.))
+                    .border_b_1()
+                    .border_color(chrome.border)
                     .child(
                         div()
-                            .px(px(8.))
-                            .py(px(2.))
-                            .rounded(px(6.))
-                            .border_1()
-                            .border_color(chrome.border)
-                            .font_family(pane_type::MONO)
-                            .child(lss_inspector::key_line(&self.theme, self.control, &self.key)),
+                            .w(px(STRIP_LABEL_WIDTH))
+                            .font_weight(pane_type::LABEL_WEIGHT)
+                            .text_color(chrome.muted_text)
+                            .child("LIVE STATES"),
                     )
-                    .child(self.reset.clone()),
+                    .when(live.is_empty(), |row| row.child(div().text_color(chrome.muted_text).child("none")))
+                    .children(live.into_iter().map(tag)),
             )
+            .child(div().px(px(18.)).py(px(10.)).child(self.events.clone()))
             .into_any_element()
+    }
+
+    /// The states the live checkbox is pinned to, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn pinned(&self) -> Option<PinnedCheckbox> {
+        self.pinned
+    }
+
+    /// Choose Test or Design as the picker would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn choose_work_mode(&mut self, mode: WorkMode, cx: &mut Context<Self>) {
+        self.set_work_mode(mode, cx);
+    }
+
+    /// Test or Design, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn work_mode(&self) -> WorkMode {
+        self.work_mode
+    }
+
+    /// Pick an interaction state (or `"none"`) as the picker would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn choose_interaction(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.pick_interaction(id, cx);
     }
 
     /// Zoom the stage checkbox as the slider would, for tests.
@@ -700,13 +919,13 @@ impl ControlSide {
         self.theme.stylesheet().config().state(name).is_some_and(|s| self.key.active_states().contains(s))
     }
 
-    /// Toggle a state switch as a person would, for tests.
+    /// Toggle a state in Design mode as a person would (switching to Design first), for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn toggle_state(&mut self, name: &str, cx: &mut Context<Self>) {
         let config = self.theme.stylesheet().config().clone();
         if let Some(state) = self.states.iter().find(|s| config.state_name(s.state) == name).map(|s| s.state) {
+            self.set_work_mode(WorkMode::Design, cx);
             let on = !self.key.active_states().contains(state);
-            self.set_follow(false, cx);
             self.apply(self.key.set_state(state, on), cx);
         }
     }
@@ -769,15 +988,25 @@ impl ControlSide {
             .into_any_element()
     }
 
-    fn lower_slot(&self) -> AnyElement {
+    /// The lower panel for the work mode: the state picker in Design, the events in Test.
+    fn lower_slot(&self, cx: &gpui::App) -> AnyElement {
         let chrome = self.look.chrome();
         div()
             .id("workshop-checkbox-lower")
             .size_full()
             .overflow_y_scroll()
-            .child(self.key_strip())
-            .child(div().px(px(18.)).py(px(10.)).border_t_1().border_color(chrome.border).child(self.events.clone()))
+            .border_t_1()
+            .border_color(chrome.border)
+            .child(match self.work_mode {
+                WorkMode::Design => self.states_panel(cx),
+                WorkMode::Test => self.events_panel(),
+            })
             .into_any_element()
+    }
+
+    /// The light/dark picker (the stylesheet's declared modes), for the pane title.
+    fn modes(&self) -> Option<ControlGroup<ControlGroupItem>> {
+        self.modes.clone()
     }
 }
 
@@ -816,7 +1045,7 @@ impl Render for SideSlot {
             .side
             .update(cx, |side, cx| match slot {
                 Slot::Stage => side.stage_slot(window, cx),
-                Slot::Lower => side.lower_slot(),
+                Slot::Lower => side.lower_slot(cx),
             })
             .ok();
         div().size_full().children(content)
@@ -867,7 +1096,15 @@ mod tests {
     fn checkbox_pane_shows_control_key_events_and_inspector() {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
-        for id in ["workshop-checkbox-pane", "workshop-checkbox-control", "workshop-checkbox-key", "style-inspector"] {
+        for id in [
+            "workshop-checkbox-pane",
+            "workshop-checkbox-modes",
+            "workshop-checkbox-work-mode",
+            "workshop-checkbox-control",
+            "workshop-checkbox-live",
+            "style-inspector",
+            "lss-inspector-attributes",
+        ] {
             assert!(cx.debug_bounds(id).is_some(), "{id} rendered");
         }
         assert!(cx.debug_bounds("workshop-style-column").is_none(), "no second inspector column");
@@ -922,7 +1159,7 @@ mod tests {
             let sizes = side.split.read(cx).panel_sizes_px();
             assert!((sizes[1] - LOWER_HEIGHT).abs() < 2., "lower panel starts at its height: {sizes:?}");
         });
-        assert!(cx.debug_bounds("workshop-checkbox-key").is_some(), "states in the lower panel");
+        assert!(cx.debug_bounds("workshop-checkbox-live").is_some(), "Test mode: events in the lower panel");
     }
 
     #[gpui::test]
@@ -1092,10 +1329,12 @@ mod tests {
     #[test]
     fn the_lower_panel_minimum_fits_the_whole_states_strip() {
         let mut app = TestAppContext::single();
-        let (_, _pane, cx) = open(&mut app);
-        let key = cx.debug_bounds("workshop-checkbox-key").expect("states strip");
-        // The strip plus room for the events heading below it.
-        assert!(f32::from(key.size.height) + 40. <= MIN_LOWER_HEIGHT, "states strip is {:?}", key.size.height);
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        cx.run_until_parked();
+        let states = cx.debug_bounds("workshop-checkbox-states").expect("state picker");
+        assert!(f32::from(states.size.height) <= MIN_LOWER_HEIGHT, "state picker is {:?}", states.size.height);
     }
 
     #[test]
@@ -1119,7 +1358,14 @@ mod tests {
             cx.update(|_, cx| side.read(cx).template_only_states()),
             [("focused".to_string(), true), ("invalid".to_string(), false)]
         );
-        assert!(cx.debug_bounds("workshop-checkbox-template-states").is_some(), "template row rendered");
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-states").is_some(), "Design mode: the state picker");
+        let invalid = cx.debug_bounds("workshop-checkbox-state-invalid").expect("invalid switch");
+        let key_before = cx.update(|_, cx| side.read(cx).key);
+        cx.simulate_click(invalid.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).key), key_before, "the :invalid switch is disabled");
         let (columns, rows) = cx.update(|_, cx| side.read(cx).matrix_labels());
         // The exclusive group (hover < pressed < disabled) is one axis; the rest combine.
         assert_eq!(columns, ["—", ":hover", ":pressed", ":disabled"]);
@@ -1183,5 +1429,86 @@ mod tests {
         workshop.update(cx, |v, cx| v.select("checkbox", cx));
         cx.run_until_parked();
         assert!(cx.update(|_, cx| pane.read(cx).side().read(cx).state_on("disabled")), "retained");
+    }
+
+    #[gpui::test]
+    fn a_pinned_state_draws_until_tracking_resumes() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None, "tracking: drawn as it is");
+
+        // Pinning :focused draws the focus ring without keyboard focus, and keeps drawing it while
+        // focus is elsewhere.
+        side.update(cx, |side, cx| side.toggle_state("focused", cx));
+        cx.run_until_parked();
+        let focused =
+            PinnedCheckbox { state: InteractionState { focused: true, ..Default::default() }, checked: false };
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused));
+        let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
+        cx.update(|window, cx| checkbox.read(cx).focus_handle(cx).focus(window, cx));
+        cx.run_until_parked();
+        cx.update(|window, cx| window.blur(cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused), "focus moving away keeps the pin");
+
+        // More pinned states combine; zooming keeps them.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        side.update(cx, |side, cx| side.zoom_to(2.0, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(PinnedCheckbox { checked: true, ..focused }));
+
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Test, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None, "tracking again: drawn as it is");
+    }
+
+    #[gpui::test]
+    fn test_is_live_and_design_draws_picked_states() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
+        let control = || "workshop-checkbox-control";
+        let logged = |cx: &mut VisualTestContext| cx.update(|_, cx| side.read(cx).events.read(cx).count());
+
+        // Test: live. Clicking checks the checkbox, the key follows and the event is logged.
+        assert_eq!(cx.update(|_, cx| side.read(cx).work_mode()), WorkMode::Test);
+        assert!(cx.debug_bounds("workshop-checkbox-live").is_some());
+        assert!(cx.debug_bounds("workshop-checkbox-states").is_none());
+        let at = cx.debug_bounds(control()).expect("control").center();
+        cx.simulate_click(at, gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| *checkbox.read(cx).data()), "clicked in Test");
+        assert!(cx.update(|_, cx| side.read(cx).state_on("checked")));
+        let in_test = logged(cx);
+        assert!(in_test > 0, "events logged in Test");
+
+        // Design: the picker shows, the checkbox ignores input and the log pauses.
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-checkbox-states").is_some());
+        assert!(cx.debug_bounds("workshop-checkbox-live").is_none());
+        let at = cx.debug_bounds(control()).expect("control").center();
+        cx.simulate_click(at, gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| *checkbox.read(cx).data()), "Design: the click is ignored");
+        assert_eq!(logged(cx), in_test, "Design: no new events");
+
+        // One interaction state at a time; picking :pressed replaces :hover.
+        side.update(cx, |side, cx| side.choose_interaction("hover", cx));
+        side.update(cx, |side, cx| side.choose_interaction("pressed", cx));
+        cx.run_until_parked();
+        assert!(cx.update(|_, cx| side.read(cx).state_on("pressed")));
+        assert!(!cx.update(|_, cx| side.read(cx).state_on("hover")));
+        let pinned = cx.update(|_, cx| side.read(cx).pinned()).expect("Design draws picked states");
+        assert!(pinned.state.pressed && !pinned.state.hovered && pinned.checked);
+
+        // Back to Test drops the picks: the key is the checkbox as it is, drawn live.
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Test, cx));
+        cx.run_until_parked();
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), None);
+        assert!(!cx.update(|_, cx| side.read(cx).state_on("pressed")), "picks dropped");
+        assert!(cx.update(|_, cx| side.read(cx).state_on("checked")), "follows the checkbox again");
     }
 }
