@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod gpui_bridge;
 mod css;
+mod lss;
 mod mapping;
 pub use mapping::{Gamut, GamutMapping};
 
