@@ -103,7 +103,6 @@ common_stylesheet! {
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     tooltip: TooltipStylesheet,
-    selector_list: SelectorListStylesheet,
     autocomplete: AutocompleteStylesheet,
     combobox: ComboBoxStylesheet,
     search_selector: SearchSelectorStylesheet,

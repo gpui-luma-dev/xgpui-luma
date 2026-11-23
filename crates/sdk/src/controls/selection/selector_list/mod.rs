@@ -17,27 +17,3 @@ pub use items_template::{
 };
 pub use model::{SelectorItem, SelectorItemLike, SelectorPath, normalize_selector_items};
 pub(crate) use items_template::items_template_with_modifier;
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    SelectorListStylesheet,
-    SelectorListGeometryStylesheet,
-    SelectorListGeometry,
-    ResolvedSelectorListGeometry,
-    "selector_list",
-    [
-        padding,
-        min_width,
-        item_height,
-        item_padding_x,
-        item_gap,
-        item_icon_size,
-        font_size,
-        line_height,
-        radius,
-        item_radius,
-        border_width,
-        popup_offset_y,
-        window_margin
-    ],
-    unit[disabled_opacity]
-);
