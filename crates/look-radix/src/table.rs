@@ -25,14 +25,7 @@ impl TableTheme for TableThemeAdapter {
         self.look.metrics_for(self.look.size())
     }
     fn resolve_drag(&self) -> TableDragLook {
-        let size = self.look.size();
-        let geometry = self
-            .look
-            .common_stylesheet()
-            .table
-            .with_sdk_defaults()
-            .resolve_geometry_for(size.key(), Default::default());
-        table_drag_look(crate::navigation::drag_look(&self.look, size), geometry)
+        table_drag_look(crate::navigation::drag_look(&self.look, self.look.size()), self.styled.drag_geometry())
     }
 }
 struct TableTemplateAdapter {

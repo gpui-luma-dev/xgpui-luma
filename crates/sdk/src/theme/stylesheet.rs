@@ -112,7 +112,6 @@ common_stylesheet! {
     sidebar: SidebarStylesheet,
     control_group: ControlGroupStylesheet,
     radio_group: RadioGroupStylesheet,
-    table: TableStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }
 
@@ -165,7 +164,6 @@ impl CommonStylesheet {
             control_group: ControlGroupStylesheet::native_default(),
             resizable_panels: ResizablePanelsStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
-            table: TableStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
             slide_panel: SlidePanelStylesheet::native_default(),
             radio_group: RadioGroupStylesheet::native_default(),

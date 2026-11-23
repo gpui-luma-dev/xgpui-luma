@@ -116,6 +116,7 @@ fn removed_families_are_rejected() {
         "icon_group",
         "toggle",
         "selection_panel",
+        "table",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

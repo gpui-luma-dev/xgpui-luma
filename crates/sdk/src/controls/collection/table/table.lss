@@ -1,6 +1,6 @@
 // SDK table. Layer: sdk. Read by `StyledTable` (styled.rs): the frame, the header row and body rows
 // (`selected` is a selected row). Row padding and height come from the row scale the table lays out with;
-// the drag preview is the shared `drag_preview`.
+// the drag preview's colors are the shared `drag_preview`, its geometry the `drag_*` properties.
 
 /// Rows of data under a header.
 table {
@@ -18,6 +18,14 @@ table {
   column_muted_opacity: number = 0.65
   column_emphasis_weight: number = typography.text.title.weight
   label_baseline_shift: length = exact(geometry.label_baseline)
+  /// The row drag preview: its offset from the pointer, width, padding and border width, and the width
+  /// of the insertion marker.
+  drag_offset: length = exact(12)
+  drag_width: length = exact(220)
+  drag_padding_x: length = exact(12)
+  drag_padding_y: length = exact(8)
+  drag_border_width: length = exact(1)
+  drag_marker_width: length = exact(2)
 
   /// The frame.
   part root {

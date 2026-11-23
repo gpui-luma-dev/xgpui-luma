@@ -196,9 +196,7 @@ pub use crate::controls::navigation::sidebar::theme::{
 pub use crate::controls::choice::control_group::theme::{
     ControlGroupStylesheet, ControlGroupGeometryStylesheet, ControlGroupGeometry, ResolvedControlGroupGeometry,
 };
-pub use crate::controls::collection::table::theme::{
-    TableStylesheet, TableGeometryStylesheet, TableGeometry, ResolvedTableGeometry,
-};
+pub use crate::controls::collection::table::theme::TableGeometry;
 pub use crate::controls::selection::selector_list::{
     SelectorListStylesheet, SelectorListGeometryStylesheet, SelectorListGeometry, ResolvedSelectorListGeometry,
 };
@@ -294,7 +292,6 @@ mod tests {
         AutocompleteStylesheet::validate_contract();
         ComboBoxStylesheet::validate_contract();
         SearchSelectorStylesheet::validate_contract();
-        TableStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
         SlidePanelStylesheet::validate_contract();
         SelectorListStylesheet::validate_contract();
