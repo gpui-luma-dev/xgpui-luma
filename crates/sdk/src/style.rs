@@ -447,7 +447,7 @@ mod tests {
                 fixture::assert_reads(&theme, "switch", states, part, prop, token)
             };
             reads(&[], "track", "background", "palette.form.input.background");
-            reads(&[], "track", "shadow", "elevation.thumb");
+            reads(&[], "track", "shadow", "elevation.control");
             reads(&["checked"], "track", "background", "palette.state.selected.background");
             reads(&["checked"], "track", "border", "palette.state.selected.background");
             reads(&["checked", "disabled"], "track", "background", "palette.state.disabled.background");

@@ -35,19 +35,20 @@ switch {
     transition   = motion.default
   }
 
-  /// The track. Its shadow is the thumb elevation, drawn around the track.
+  /// The track. Its shadow is drawn around the track.
   part track {
     background = palette.form.input.background
     border     = palette.border.default
-    shadow     = elevation.thumb
+    shadow     = elevation.control
     :checked  { background = palette.state.selected.background  border = background }
     :disabled { background = palette.state.disabled.background  border = palette.border.default }
   }
 
-  /// The thumb.
+  /// The thumb. Its shadow is drawn under the thumb; none by default (a look can lift the thumb).
   part thumb {
     background = palette.app.background
     border     = palette.border.default
+    shadow     = none
     :checked  { background = palette.state.selected.foreground  border = background }
     :disabled { background = palette.state.disabled.foreground  border = palette.state.disabled.background }
   }
