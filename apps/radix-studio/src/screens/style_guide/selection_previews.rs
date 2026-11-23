@@ -68,17 +68,6 @@ pub(super) fn tabbed(
 ) -> AnyElement {
     let [fg, muted, border] = colors;
     let active = tabs.read(cx).active_id().cloned().unwrap_or_else(|| "template-preview".into());
-    // Preview-only typography experiment; keep control geometry and other sections intact.
-    let compact_look = (kind == Kind::Autocomplete && active.as_ref() == "template-preview").then(|| {
-        let fork = look.fork();
-        let mut sheet = fork.common_stylesheet();
-        let items = sheet.selector_list.sizes.get_or_default("2");
-        items.font_size = Some(12.0);
-        items.line_height = Some(16.0);
-        fork.set_common_stylesheet(sheet);
-        Arc::new(fork)
-    });
-    let look = compact_look.as_ref().unwrap_or(look);
     let rows = variants(kind);
     let samples = samples(kind);
     let mut grid = fixed_grid(

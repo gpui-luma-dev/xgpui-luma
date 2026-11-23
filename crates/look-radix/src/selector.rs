@@ -179,28 +179,6 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
 }
 
 #[cfg(test)]
-mod stylesheet_tests {
-    use super::*;
-
-    #[test]
-    fn default_panel_applies_common_selector_list_overrides() {
-        let look = Look::built_in().fork();
-        let sheet = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[
-            "[common.selector_list.geometry]\nmin_width=0\nradius=7\nborder_width=0\ndisabled_opacity=0\npopup_offset_y=0\nwindow_margin=0\n[common.selector_list.sizes.\"2\"]\nitem_height=41",
-        ]).unwrap();
-        look.set_common_stylesheet(sheet);
-        let panel = selector_theme(&look)
-            .resolve(xgpui_luma::controls::selector::SelectorTriggerStyle::Outline, Default::default(), false)
-            .items_panel;
-        assert_eq!((panel.min_width, panel.radius, panel.item_height), (0.0, 7.0, 41.0));
-        assert_eq!(
-            (panel.border_width, panel.disabled_opacity, panel.popup_offset_y, panel.window_margin),
-            (0.0, 0.0, 0.0, 0.0)
-        );
-    }
-}
-
-#[cfg(test)]
 mod lss_tests {
     use super::*;
     use crate::SemanticRole;

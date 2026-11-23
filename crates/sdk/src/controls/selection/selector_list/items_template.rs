@@ -95,19 +95,6 @@ impl SelectorItemsPanelLook {
             item_icon_size: menu.item_icon_size,
             item_radius: menu.item_radius,
         }
-        .with_stylesheet(&stylesheet.selector_list)
-    }
-
-    /// Apply independent panel overrides after resolving the shared menu baseline.
-    /// Consumer look callbacks run afterward.
-    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectorListStylesheet) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectorListGeometry, self,
-            [padding => padding, min_width => min_width, item_height => item_height,
-             item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
-             font_size => item_typography.size, line_height => item_typography.line_height,
-             radius => radius, item_radius => item_radius, border_width => border_width,
-             disabled_opacity => disabled_opacity, popup_offset_y => popup_offset_y, window_margin => window_margin]);
-        self
     }
 }
 

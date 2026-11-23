@@ -1,28 +1,6 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
 use crate::ShadcnLook;
 
-#[test]
-fn panel_chrome_uses_selected_common_stylesheet() {
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.selector_list.geometry]
-border_width=0
-disabled_opacity=0
-popup_offset_y=0
-window_margin=0
-"#])
-    .unwrap();
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let list = look.selector_items_panel_look(crate::ShadcnSize::Md);
-    assert_eq!(
-        (list.border_width, list.disabled_opacity, list.popup_offset_y, list.window_margin),
-        (0.0, 0.0, 0.0, 0.0)
-    );
-    let selection = look.selection_panel_look(crate::ShadcnSize::Md);
-    // The selection panel follows the items panel; it has no geometry of its own.
-    assert_eq!((selection.border_width, selection.disabled_opacity), (0.0, 0.0));
-}
-
 /// The drag preview's geometry is the table's `.lss` (#287).
 #[test]
 fn table_drag_preview_geometry_comes_from_the_table_lss() {

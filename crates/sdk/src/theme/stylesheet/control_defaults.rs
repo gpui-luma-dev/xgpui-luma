@@ -74,11 +74,6 @@ offset_y=9
         (selection.border_width, selection.disabled_opacity, selection.radius),
         (look.border_width, look.disabled_opacity, look.radius)
     );
-    for value in ["-1", "1.1", "nan"] {
-        assert!(
-            CommonStylesheet::parse(&format!("[common.selector_list.geometry]\ndisabled_opacity={value}")).is_err()
-        );
-    }
 }
 
 #[test]
@@ -119,6 +114,7 @@ fn removed_families_are_rejected() {
         "table",
         "control_group",
         "radio_group",
+        "selector_list",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

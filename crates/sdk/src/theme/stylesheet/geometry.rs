@@ -1,25 +1,5 @@
 //! Typed common dimensions for remaining control families.
 
-// Adapt an existing resolved theme value without duplicating its token-derived
-// fallback construction. Only field mappings vary between control families.
-macro_rules! apply_common_geometry {
-    ($sheet:expr, key = $key:expr, $fallback:ident, $look:ident, [$($field:ident => $($target:ident).+),+ $(,)?] $(, defaults = $defaults:expr)?) => {{
-        let geometry = $sheet.resolve_geometry_for($key, $crate::theme::stylesheet::$fallback {
-            $($field: $look.$($target).+,)+
-            $(..$defaults)?
-        });
-        $($look.$($target).+ = geometry.$field;)+
-    }};
-    ($sheet:expr, $fallback:ident, $look:ident, [$($field:ident => $($target:ident).+),+ $(,)?] $(, defaults = $defaults:expr)?) => {{
-        let geometry = $sheet.resolve_geometry($crate::theme::stylesheet::$fallback {
-            $($field: $look.$($target).+,)+
-            $(..$defaults)?
-        });
-        $($look.$($target).+ = geometry.$field;)+
-    }};
-}
-pub(crate) use apply_common_geometry;
-
 /// Selects one look-defined size key so SDK controls receive plain pixel geometry.
 pub trait SelectSizeKey: Sized + Clone {
     /// Returns a copy whose general geometry includes the authored values for `key`.
@@ -194,9 +174,6 @@ pub use crate::controls::navigation::sidebar::theme::{
     SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
 };
 pub use crate::controls::collection::table::theme::TableGeometry;
-pub use crate::controls::selection::selector_list::{
-    SelectorListStylesheet, SelectorListGeometryStylesheet, SelectorListGeometry, ResolvedSelectorListGeometry,
-};
 pub use crate::controls::overlay::popover_button::panel::{
     PopoverStylesheet, PopoverGeometryStylesheet, PopoverGeometry, ResolvedPopoverGeometry,
 };
@@ -287,7 +264,6 @@ mod tests {
         SearchSelectorStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
         SlidePanelStylesheet::validate_contract();
-        SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
     }
