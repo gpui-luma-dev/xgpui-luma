@@ -1,0 +1,198 @@
+// Test fixture: a colorful stand-in for theme/palette.lss (issue #314). NOT shipped.
+//
+// Same token tree as the SDK palette, but every token has its own saturated color, and dark mode
+// gives every token a color different from light. A test that resolves a control part to a token's
+// color therefore proves the part reads that token. Shipped values never appear here, so changing
+// theme/palette.lss can't break a test. Regenerate by hand if the SDK token tree changes.
+tokens {
+  palette {
+    app {
+      background       = hsla(0.0, 0.9, 0.38, 1)
+      foreground       = hsla(137.51, 0.75, 0.52, 1)
+      muted_foreground = hsla(275.02, 0.9, 0.64, 1)
+    }
+    shell {
+      background              = hsla(52.52, 0.75, 0.38, 1)
+      foreground              = hsla(190.03, 0.9, 0.52, 1)
+      border                  = hsla(327.54, 0.75, 0.64, 1)
+      hover_background        = hsla(105.05, 0.9, 0.38, 1)
+      active_background       = hsla(242.56, 0.75, 0.52, 1)
+      close_hover_background  = hsla(20.06, 0.9, 0.64, 1)
+      close_active_background = hsla(157.57, 0.75, 0.38, 1)
+      close_foreground        = hsla(295.08, 0.9, 0.52, 1)
+    }
+    surface {
+      panel {
+        background = hsla(72.59, 0.75, 0.64, 1)
+        foreground = hsla(210.1, 0.9, 0.38, 1)
+        border     = hsla(347.6, 0.75, 0.52, 1)
+      }
+      floating {
+        background = hsla(125.11, 0.9, 0.64, 1)
+        foreground = hsla(262.62, 0.75, 0.38, 1)
+        border     = hsla(40.13, 0.9, 0.52, 1)
+      }
+      subtle {
+        background = hsla(177.64, 0.75, 0.64, 1)
+        foreground = hsla(315.14, 0.9, 0.38, 1)
+      }
+    }
+    state {
+      hover {
+        background = hsla(92.65, 0.75, 0.52, 1)
+        foreground = hsla(230.16, 0.9, 0.64, 1)
+      }
+      pressed {
+        background = hsla(7.67, 0.75, 0.38, 1)
+      }
+      selected {
+        background = hsla(145.18, 0.9, 0.52, 1)
+        foreground = hsla(282.68, 0.75, 0.64, 1)
+      }
+      disabled {
+        background = hsla(60.19, 0.9, 0.38, 1)
+        foreground = hsla(197.7, 0.75, 0.52, 1)
+      }
+    }
+    form {
+      input {
+        background     = hsla(335.21, 0.9, 0.64, 1)
+        foreground     = hsla(112.72, 0.75, 0.38, 1)
+        border         = hsla(250.22, 0.9, 0.52, 1)
+        invalid_border = hsla(27.73, 0.75, 0.64, 1)
+        placeholder    = hsla(165.24, 0.9, 0.38, 1)
+      }
+    }
+    focus {
+      ring = hsla(302.75, 0.75, 0.52, 1)
+    }
+    border {
+      default = hsla(80.26, 0.9, 0.64, 1)
+      strong  = hsla(217.76, 0.75, 0.38, 1)
+    }
+    navigation {
+      background          = hsla(355.27, 0.9, 0.52, 1)
+      foreground          = hsla(132.78, 0.75, 0.64, 1)
+      muted_foreground    = hsla(270.29, 0.9, 0.38, 1)
+      hover_background    = hsla(47.8, 0.75, 0.52, 1)
+      selected_background = hsla(185.3, 0.9, 0.64, 1)
+      selected_foreground = hsla(322.81, 0.75, 0.38, 1)
+      border              = hsla(100.32, 0.9, 0.52, 1)
+    }
+    data {
+      positive = hsla(237.83, 0.75, 0.64, 1)
+      accent_1 = hsla(15.34, 0.9, 0.38, 1)
+      accent_2 = hsla(152.84, 0.75, 0.52, 1)
+      accent_3 = hsla(290.35, 0.9, 0.64, 1)
+      accent_4 = hsla(67.86, 0.75, 0.38, 1)
+      accent_5 = hsla(205.37, 0.9, 0.52, 1)
+    }
+  }
+  elevation {
+    none = []
+    drag_preview = [shadow(0.023, 2, 3, 7, -1), shadow(0.0115, 0, 2, 5, 1)]
+    control = [shadow(0.036, 3, 4, 9, -2)]
+    thumb = [shadow(0.049, 4, 5, 11, -3)]
+    menu = [shadow(0.062, 5, 6, 13, 0), shadow(0.031, 0, 5, 11, 1)]
+    popover = [shadow(0.075, 1, 7, 15, -1), shadow(0.0375, 0, 6, 13, 2)]
+    panel = [shadow(0.088, 2, 8, 17, -2)]
+    dialog = [shadow(0.101, 3, 9, 19, -3), shadow(0.0505, 0, 8, 17, 1)]
+    overlay_window = [shadow(0.114, 4, 10, 21, 0)]
+  }
+  mode dark {
+    palette {
+      app {
+        background       = hsla(342.88, 0.75, 0.64, 1)
+        foreground       = hsla(120.38, 0.9, 0.38, 1)
+        muted_foreground = hsla(257.89, 0.75, 0.52, 1)
+      }
+      shell {
+        background              = hsla(35.4, 0.9, 0.64, 1)
+        foreground              = hsla(172.91, 0.75, 0.38, 1)
+        border                  = hsla(310.42, 0.9, 0.52, 1)
+        hover_background        = hsla(87.92, 0.75, 0.64, 1)
+        active_background       = hsla(225.43, 0.9, 0.38, 1)
+        close_hover_background  = hsla(2.94, 0.75, 0.52, 1)
+        close_active_background = hsla(140.45, 0.9, 0.64, 1)
+        close_foreground        = hsla(277.96, 0.75, 0.38, 1)
+      }
+      surface {
+        panel {
+          background = hsla(55.46, 0.9, 0.52, 1)
+          foreground = hsla(192.97, 0.75, 0.64, 1)
+          border     = hsla(330.48, 0.9, 0.38, 1)
+        }
+        floating {
+          background = hsla(107.99, 0.75, 0.52, 1)
+          foreground = hsla(245.5, 0.9, 0.64, 1)
+          border     = hsla(23.0, 0.75, 0.38, 1)
+        }
+        subtle {
+          background = hsla(160.51, 0.9, 0.52, 1)
+          foreground = hsla(298.02, 0.75, 0.64, 1)
+        }
+      }
+      state {
+        hover {
+          background = hsla(75.53, 0.9, 0.38, 1)
+          foreground = hsla(213.04, 0.75, 0.52, 1)
+        }
+        pressed {
+          background = hsla(350.54, 0.9, 0.64, 1)
+        }
+        selected {
+          background = hsla(128.05, 0.75, 0.38, 1)
+          foreground = hsla(265.56, 0.9, 0.52, 1)
+        }
+        disabled {
+          background = hsla(43.07, 0.75, 0.64, 1)
+          foreground = hsla(180.58, 0.9, 0.38, 1)
+        }
+      }
+      form {
+        input {
+          background     = hsla(318.08, 0.75, 0.52, 1)
+          foreground     = hsla(95.59, 0.9, 0.64, 1)
+          border         = hsla(233.1, 0.75, 0.38, 1)
+          invalid_border = hsla(10.61, 0.9, 0.52, 1)
+          placeholder    = hsla(148.12, 0.75, 0.64, 1)
+        }
+      }
+      focus {
+        ring = hsla(285.62, 0.9, 0.38, 1)
+      }
+      border {
+        default = hsla(63.13, 0.75, 0.52, 1)
+        strong  = hsla(200.64, 0.9, 0.64, 1)
+      }
+      navigation {
+        background          = hsla(338.15, 0.75, 0.38, 1)
+        foreground          = hsla(115.66, 0.9, 0.52, 1)
+        muted_foreground    = hsla(253.16, 0.75, 0.64, 1)
+        hover_background    = hsla(30.67, 0.9, 0.38, 1)
+        selected_background = hsla(168.18, 0.75, 0.52, 1)
+        selected_foreground = hsla(305.69, 0.9, 0.64, 1)
+        border              = hsla(83.2, 0.75, 0.38, 1)
+      }
+      data {
+        positive = hsla(220.7, 0.9, 0.52, 1)
+        accent_1 = hsla(358.21, 0.75, 0.64, 1)
+        accent_2 = hsla(135.72, 0.9, 0.38, 1)
+        accent_3 = hsla(273.23, 0.75, 0.52, 1)
+        accent_4 = hsla(50.74, 0.9, 0.64, 1)
+        accent_5 = hsla(188.24, 0.75, 0.38, 1)
+      }
+    }
+    elevation {
+      none = []
+      drag_preview = [shadow(0.283, 2, 23, 47, -1), shadow(0.1415, 0, 22, 45, 0)]
+      control = [shadow(0.296, 3, 24, 49, -2)]
+      thumb = [shadow(0.309, 4, 25, 51, -3)]
+      menu = [shadow(0.322, 5, 26, 53, 0), shadow(0.161, 0, 25, 51, 0)]
+      popover = [shadow(0.335, 1, 27, 55, -1), shadow(0.1675, 0, 26, 53, 1)]
+      panel = [shadow(0.348, 2, 28, 57, -2)]
+      dialog = [shadow(0.361, 3, 29, 59, -3), shadow(0.1805, 0, 28, 57, 0)]
+      overlay_window = [shadow(0.374, 4, 30, 61, 0)]
+    }
+  }
+}

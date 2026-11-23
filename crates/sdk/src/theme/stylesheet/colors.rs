@@ -63,23 +63,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "the focus ring is red; value and design-rule checks move to a colorful fixture (#314)"]
-    fn packaged_palette_is_monochrome_including_shell_and_data_roles() {
-        fn check(value: &toml::Value) {
-            if let Some(components) = value.get("components").and_then(toml::Value::as_array) {
-                assert_eq!(components[0], components[1]);
-                assert_eq!(components[1], components[2]);
-            } else if let Some(table) = value.as_table() {
-                for value in table.values() {
-                    check(value);
-                }
-            }
-        }
-        let palettes = &super::super::TokenStylesheet::default().palette;
-        check(&toml::Value::try_from(palettes).unwrap());
-    }
-
-    #[test]
     fn title_bar_keeps_dark_shell_in_both_modes() {
         let palettes = super::super::TokenStylesheet::default().palette;
         assert_eq!(palettes.light.shell, palettes.dark.shell);
