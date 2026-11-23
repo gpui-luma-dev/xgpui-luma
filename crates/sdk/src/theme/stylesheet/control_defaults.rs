@@ -60,10 +60,6 @@ fn selector_panel_chrome_inherits_tokens_and_placement_before_independent_overri
 window_margin=13
 [common.popover.sizes.panel]
 offset_y=9
-[common.selection_panel.geometry]
-border_width=0
-disabled_opacity=0
-radius=9
 "#])
     .unwrap();
     let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
@@ -73,11 +69,15 @@ radius=9
     // the sheet.
     assert_eq!((look.border_width, look.popup_offset_y, look.window_margin), (3.0, 9.0, 13.0));
     let selection = default_selection_panel_look(&tokens);
-    assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (0.0, 0.0, 9.0));
-    for family in ["selector_list", "selection_panel"] {
-        for value in ["-1", "1.1", "nan"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\ndisabled_opacity={value}")).is_err());
-        }
+    // The selection panel is the items panel: no geometry of its own.
+    assert_eq!(
+        (selection.border_width, selection.disabled_opacity, selection.radius),
+        (look.border_width, look.disabled_opacity, look.radius)
+    );
+    for value in ["-1", "1.1", "nan"] {
+        assert!(
+            CommonStylesheet::parse(&format!("[common.selector_list.geometry]\ndisabled_opacity={value}")).is_err()
+        );
     }
 }
 
@@ -115,6 +115,7 @@ fn removed_families_are_rejected() {
         "scrollbar",
         "icon_group",
         "toggle",
+        "selection_panel",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

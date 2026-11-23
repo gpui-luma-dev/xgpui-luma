@@ -186,9 +186,6 @@ pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
 pub use crate::controls::range::progress::theme::ProgressGeometry;
-pub use crate::controls::selection::selection_panel::theme::{
-    SelectionPanelStylesheet, SelectionPanelGeometryStylesheet, SelectionPanelGeometry, ResolvedSelectionPanelGeometry,
-};
 pub use crate::controls::overlay::tooltip::theme::{
     TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
 };
@@ -303,7 +300,6 @@ mod tests {
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
-        SelectionPanelStylesheet::validate_contract();
     }
 }
 
