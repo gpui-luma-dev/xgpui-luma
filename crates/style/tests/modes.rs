@@ -69,3 +69,21 @@ fn a_bound_theme_reports_its_mode_and_scheme() {
     let dark = theme.with_mode("dark").expect("dark");
     assert_eq!((dark.mode(), dark.scheme()), ("dark", "dark"));
 }
+
+/// `Theme::token` reads a token as a rule would: the mode's own value, its base's, then the shared one.
+#[test]
+fn token_reads_the_mode_value() {
+    let theme = |mode: &str| Theme::bind(&sheet(), Arc::new(SchemeProbe), mode).expect("binds");
+    let number = |theme: &Theme, path: &str| theme.token(path).expect("a token").as_number();
+    for (mode, own, from_light) in [("light", 1.0, 11.0), ("dark", 2.0, 22.0), ("hi_contrast", 3.0, 11.0)] {
+        let theme = theme(mode);
+        assert_eq!(number(&theme, "modal.own"), Some(own), "{mode}");
+        assert_eq!(number(&theme, "modal.shared"), Some(10.0), "{mode}");
+        assert_eq!(number(&theme, "modal.from_light"), Some(from_light), "{mode} falls back to its base");
+    }
+    let edited = theme("light").with_token_values(&[("modal.own", Value::Number(7.0))]).expect("edits");
+    assert_eq!(number(&edited, "modal.own"), Some(7.0), "live edits apply");
+    assert_eq!(sheet().token_paths(), ["modal.from_light", "modal.own", "modal.shared"]);
+    let unknown = theme("light").token("modal.missing").expect_err("unknown");
+    assert!(unknown.message.contains("modal.missing"), "{unknown}");
+}

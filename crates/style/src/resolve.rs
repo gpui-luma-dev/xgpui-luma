@@ -337,6 +337,27 @@ impl Theme {
         v
     }
 
+    /// A token's value in this theme's mode, for code that reads tokens directly (such as a typed
+    /// token table built from the theme). The mode's own values beat its base's, which beat the
+    /// shared ones, and live token edits apply, as when a rule reads the token. Size- or
+    /// attribute-scoped definitions are not selected, and lengths are not multiplied by the length
+    /// scale. An unknown or absent token, or one that fails to evaluate, is an error.
+    pub fn token(&self, path: &str) -> Result<Value, Diagnostic> {
+        let model = self.inner.model();
+        let Some(def) = model.tokens.defs.get(path).and_then(|defs| defs.first()) else {
+            let hint = suggest(path, model.tokens.defs.keys().map(String::as_str));
+            return Err(Diagnostic::error(Code::UnknownName, format!("unknown token \"{path}\"{hint}")));
+        };
+        let key = KeyData { control: 0, attrs: Vec::new(), states: 0, scale: 1.0 };
+        match Evaluator::new(&self.inner, 0, None, false).token(&def.expr, path, &key) {
+            Ok((value, _)) => Ok(value),
+            Err(EvalErr::Absent(path)) => {
+                Err(Diagnostic::error(Code::AbsentToken, format!("token \"{path}\" is absent")))
+            }
+            Err(EvalErr::Error(_, code, message)) => Err(Diagnostic::error(code, message)),
+        }
+    }
+
     /// A key from names, for tools and tests. Templates build keys from handles instead.
     pub fn key_named(&self, control: &str, attrs: &[(&str, &str)], states: &[&str]) -> Result<StyleKey, Diagnostic> {
         let config = self.inner.model().config.clone();

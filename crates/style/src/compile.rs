@@ -99,6 +99,14 @@ impl Stylesheet {
         Stylesheet::compile_sources(self.model.config.clone(), sources)
     }
 
+    /// Every token path the stylesheet defines (in any mode or layer), sorted. Read values with
+    /// [`crate::Theme::token`].
+    pub fn token_paths(&self) -> Vec<&str> {
+        let mut paths: Vec<&str> = self.model.tokens.defs.keys().map(String::as_str).collect();
+        paths.sort_unstable();
+        paths
+    }
+
     /// A control handle, if the stylesheet declares the control.
     pub fn control(&self, name: &str) -> Option<ControlId> {
         self.model.control(name).map(|i| ControlId::named(&self.model.controls[i].name))

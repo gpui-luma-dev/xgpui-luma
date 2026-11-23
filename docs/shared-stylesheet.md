@@ -34,7 +34,8 @@ templates; third-party looks use the same APIs.
 | Title-bar dimensions and platform insets | `common.shell.geometry` |
 | Typed animation roles | `common.motion` |
 
-Token constructors and public title-bar constants are authored directly in Rust.
+Token values are read from the SDK's `.lss` token files at startup (`LumaThemeMode::from_theme`);
+public title-bar constants are authored directly in Rust.
 Bundled SDK and look initialization require no TOML parsing or build generation.
 Clone the cached baseline for independent edits; `.with(|sheet| ...)` edits that
 copy. Direct field mutation does not clear inherited size-specific fields.
