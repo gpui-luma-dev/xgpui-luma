@@ -1,27 +1,7 @@
 use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::config::{ButtonColorRule, SidebarContainerColorRule};
+use crate::stylesheet::config::SidebarContainerColorRule;
 
-use super::{ResolveContext, ResolvedFields, resolve_color_ref, resolve_stylesheet_color};
-
-pub fn resolve_button_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &ButtonColorRule,
-) -> anyhow::Result<ResolvedButtonColors> {
-    let mut fields = ResolvedFields::default();
-
-    let background = resolve_color_ref(resolver, &rule.background, &fields)?;
-    fields.insert("background", background.clone());
-
-    let foreground = resolve_color_ref(resolver, &rule.foreground, &fields)?;
-    fields.insert("foreground", foreground.clone());
-
-    let border = match &rule.border {
-        Some(value) => Some(resolve_color_ref(resolver, value, &fields)?),
-        None => None,
-    };
-
-    Ok(ResolvedButtonColors { background, foreground, border })
-}
+use super::{ResolveContext, ResolvedFields, resolve_stylesheet_color};
 
 pub fn resolve_sidebar_container_color_rule(
     resolver: &LookResolver<'_>,
@@ -42,13 +22,6 @@ pub struct ResolvedSidebarContainerColors {
     pub background: ResolvedColor,
     pub foreground: ResolvedColor,
     pub border: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedButtonColors {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: Option<ResolvedColor>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

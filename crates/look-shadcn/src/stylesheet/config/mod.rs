@@ -4,7 +4,7 @@ use serde::Deserialize;
 use super::selector::interaction_layer_key;
 
 pub use crate::controls::typography::{TypographyStylesheet, TypographyRule};
-pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule, ButtonElevationRule, ButtonColorRule};
+pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule};
 pub use crate::controls::toggle::ToggleStylesheet;
 pub use crate::controls::sidebar::{SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule};
 
@@ -51,12 +51,6 @@ pub(crate) fn matches_optional_layer(selector: Option<&str>, layer: InteractionL
     selector.is_none_or(|expected| expected == interaction_layer_key(layer))
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct LayeredElevationRule {
-    pub layer: Option<String>,
-    pub shadow: String,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -85,16 +79,6 @@ padding_horizontal = 16.0
 font_size = 14.0
 icon_size = 16.0
 corner_radius = "radius"
-
-[[button.color_rules]]
-style = "primary"
-layer = "default"
-background = "primary"
-foreground = "primary-foreground"
-
-[[button.color_rules]]
-background = "transparent"
-foreground = "foreground"
 "#;
 
     #[test]
@@ -106,35 +90,21 @@ foreground = "foreground"
     }
 
     #[test]
-    fn parses_button_metrics_and_rules() {
+    fn parses_button_metrics() {
         let config = StylesheetConfig::parse(BUTTON_SNIPPET).expect("parse snippet");
         assert!(config.button.metrics.contains_key("md"));
-        assert_eq!(config.button.color_rules.len(), 2);
     }
 
+    /// Button and toggle colors and shadows come from `.lss`: rules for them are an error, not ignored.
     #[test]
-    fn parses_button_elevation_rules() {
-        let config = StylesheetConfig::parse(
-            r#"
-[[button.elevation_rules]]
-style = "outline"
-shadow = "shadow-xs"
-
-[[button.elevation_rules]]
-style = "primary"
-shadow = "none"
-"#,
-        )
-        .expect("parse elevation snippet");
-        assert_eq!(config.button.elevation_rules.len(), 2);
-        let outline = config.button.elevation_rule_for_style("outline").expect("outline rule");
-        assert_eq!(outline.shadow, "shadow-xs");
-    }
-
-    #[test]
-    fn first_matching_rule_wins() {
-        let config = StylesheetConfig::parse(BUTTON_SNIPPET).expect("parse snippet");
-        let rule = config.button.find_color_rule("primary", "default", "light", false).expect("primary default rule");
-        assert_eq!(rule.background, "primary");
+    fn color_and_elevation_rules_are_rejected() {
+        for source in [
+            "[[button.color_rules]]\nbackground = \"primary\"",
+            "[[button.elevation_rules]]\nstyle = \"outline\"\nshadow = \"shadow-xs\"",
+            "[[toggle.elevation_rules]]\nshadow = \"shadow-sm\"",
+        ] {
+            let error = StylesheetConfig::parse(source).expect_err(source);
+            assert!(error.to_string().contains("rules"), "{source}: {error}");
+        }
     }
 }

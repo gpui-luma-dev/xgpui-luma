@@ -139,25 +139,6 @@ pub fn resolve_sidebar_metrics(
     }
 }
 
-pub fn resolve_stylesheet_shadow_token(raw: &str) -> Option<String> {
-    match raw.trim() {
-        "" | "none" => None,
-        token => Some(token.to_string()),
-    }
-}
-
-pub fn resolve_layered_elevation_shadow(
-    rules: &[crate::stylesheet::config::LayeredElevationRule],
-    layer: InteractionLayer,
-) -> Option<String> {
-    let rule = if layer == InteractionLayer::Disabled {
-        rules.iter().find(|rule| rule.layer.as_deref() == Some("disabled"))
-    } else {
-        rules.iter().find(|rule| rule.layer.is_none())
-    }?;
-    resolve_stylesheet_shadow_token(&rule.shadow)
-}
-
 pub fn resolve_typography_rule(rule: &TypographyRule) -> LumaTextStyle {
     LumaTextStyle { size: rule.size, line_height: rule.line_height, weight: FontWeight(rule.weight) }
 }
