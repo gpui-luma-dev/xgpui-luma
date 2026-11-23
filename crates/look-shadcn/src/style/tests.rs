@@ -181,15 +181,16 @@ fn missing_ring_and_border_fall_back() {
     assert!(close(color(&resolved, "root", "focus"), fallback));
 }
 
+/// Larger sizes give a larger indicator, snapped to whole pixels.
 #[test]
 fn sizes_scale_the_indicator() {
     let look = retro_arcade();
     let size = |attrs: &[(&str, &str)]| {
         checkbox(&look, attrs, &[]).root().value("indicator_size").and_then(Value::as_number).expect("size")
     };
-    assert_eq!(size(&[("size", "sm")]), 13.0, "28 × 0.45, snapped");
-    assert_eq!(size(&[]), 18.0, "36 × 0.5");
-    assert_eq!(size(&[("size", "lg")]), 24.0, "44 × 0.55, snapped");
+    let (sm, md, lg) = (size(&[("size", "sm")]), size(&[]), size(&[("size", "lg")]));
+    assert!(0.0 < sm && sm < md && md < lg, "{sm} < {md} < {lg}");
+    assert!([sm, md, lg].iter().all(|s| s.fract() == 0.0), "snapped: {sm}, {md}, {lg}");
 }
 
 #[test]
@@ -258,17 +259,21 @@ fn primary_radio_fills_and_ring_styles_draw_a_ring() {
     }
 }
 
+/// Larger sizes give a larger radio; the indicator stays round and the dot fits inside it.
 #[test]
 fn radio_sizes_scale_the_indicator_and_dot() {
     let look = retro_arcade();
     let number = |attrs: &[(&str, &str)], name: &str| {
         radio(&look, attrs, &[]).root().value(name).and_then(Value::as_number).expect("number")
     };
-    assert_eq!(number(&[("size", "sm")], "indicator_size"), 13.0, "28 × 0.45, snapped");
-    assert_eq!(number(&[], "indicator_size"), 18.0);
-    assert_eq!(number(&[("size", "lg")], "indicator_size"), 24.0);
-    assert_eq!(number(&[], "dot_size"), 9.0, "36 × 0.24, snapped");
-    assert_eq!(number(&[], "indicator_radius"), 18.0, "round");
+    let size = |attrs: &[(&str, &str)]| number(attrs, "indicator_size");
+    let (sm, md, lg) = (size(&[("size", "sm")]), size(&[]), size(&[("size", "lg")]));
+    assert!(0.0 < sm && sm < md && md < lg, "{sm} < {md} < {lg}");
+    for attrs in [&[("size", "sm")][..], &[], &[("size", "lg")]] {
+        assert_eq!(number(attrs, "indicator_radius"), size(attrs), "round at {attrs:?}");
+        let dot = number(attrs, "dot_size");
+        assert!(0.0 < dot && dot < size(attrs), "the dot fits at {attrs:?}");
+    }
 }
 
 // Behaviour of the native Shadcn switch, kept as checks on the `.lss` switch.

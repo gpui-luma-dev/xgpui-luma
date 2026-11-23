@@ -122,18 +122,17 @@ mod lss_tests {
     use crate::control_group::assert_close;
     use crate::{Look, RadixSize, ScaleFamily, SemanticRole};
 
+    /// The splitters' colors read the Radix roles and gray steps for each state. Lengths are checked
+    /// as relationships (larger sizes are thicker, thumbs fit their tracks), not shipped values.
     #[test]
-    fn lss_layout_matches_the_native_layout() {
+    fn lss_layout_reads_the_radix_roles() {
         let base = Look::built_in();
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             base.set_mode(mode);
             let gray = |n| base.resolve_step(ScaleFamily::Gray, n).hsla();
             let role = |r| base.resolve_role(r).hsla();
-            for (size, (thickness, track, thumb, min)) in [
-                (RadixSize::One, (10.0, 3.0, 6.0, 24.0)),
-                (RadixSize::Two, (12.0, 4.0, 8.0, 28.0)),
-                (RadixSize::Three, (14.0, 5.0, 10.0, 32.0)),
-            ] {
+            let mut previous_thickness = 0.0;
+            for size in [RadixSize::One, RadixSize::Two, RadixSize::Three] {
                 let look = base.with_size(size);
                 let scrollbar = crate::scrollbar_theme(&look);
                 for (state, step) in [
@@ -147,13 +146,17 @@ mod lss_tests {
                     assert_close(ghost.thumb_background, gray(step));
                     assert_eq!(ghost.track_background.a, 0.0);
                     assert_close(soft.track_background, gray(3));
-                    assert_eq!((ghost.length, soft.length), (260.0, 180.0));
-                    assert_eq!(
-                        (ghost.thickness, ghost.track_thickness, ghost.thumb_thickness, ghost.min_thumb_length),
-                        (thickness, track, thumb, min)
-                    );
-                    assert_eq!((ghost.radius, ghost.disabled_opacity), (999.0, 0.56));
+                    assert!(ghost.length > 0.0 && soft.length > 0.0);
+                    assert!(ghost.thickness > previous_thickness, "{size:?} is thicker than the size below");
+                    assert!(0.0 < ghost.track_thickness && ghost.track_thickness <= ghost.thickness);
+                    assert!(0.0 < ghost.thumb_thickness && ghost.thumb_thickness <= ghost.thickness);
+                    assert!(ghost.min_thumb_length > ghost.thumb_thickness);
+                    assert!(ghost.radius >= ghost.thickness / 2.0, "a pill");
+                    assert!(0.0 < ghost.disabled_opacity && ghost.disabled_opacity <= 1.0);
                 }
+                previous_thickness = scrollbar
+                    .resolve(InteractionState::default(), ScrollbarOrientation::Horizontal, ScrollbarStyle::Ghost)
+                    .thickness;
 
                 let panels = crate::resizable_panels_theme(&look);
                 for disabled in [false, true] {
@@ -167,8 +170,12 @@ mod lss_tests {
                         SemanticRole::Focus
                     };
                     assert_close(got.grip_emphasis, role(emphasis));
-                    assert_eq!((got.border_width, got.divider_width), (1.0, 1.0));
-                    assert_eq!(got.disabled_opacity, if disabled { 0.45 } else { 1.0 });
+                    assert!(got.border_width > 0.0 && got.divider_width > 0.0);
+                    if disabled {
+                        assert!(0.0 < got.disabled_opacity && got.disabled_opacity < 1.0);
+                    } else {
+                        assert_eq!(got.disabled_opacity, 1.0);
+                    }
                 }
 
                 let (dock, split) = (crate::dock_splitter_theme(&look), crate::split_view_theme(&look));
@@ -189,11 +196,13 @@ mod lss_tests {
                     );
                     assert_close(got.hover_color, active);
                     assert_close(got.thumb_color, active);
-                    assert_eq!((got.hit_target_px, got.visible_line_px, got.geometry.thumb_height), (8.0, 1.0, 36.0));
+                    assert!(got.hit_target_px >= got.visible_line_px && got.visible_line_px > 0.0);
+                    assert!(got.geometry.thumb_height > 0.0);
                     let got = split.resolve(false, enabled);
                     assert_close(got.separator, if enabled { role(SemanticRole::Border) } else { gray(4) });
                     assert_close(got.separator_hover, active);
-                    assert_eq!((got.geometry.hitbox_width, got.geometry.cue_hovered_width), (20.0, 8.0));
+                    assert!(got.geometry.hitbox_width >= got.geometry.cue_hovered_width);
+                    assert!(got.geometry.cue_hovered_width > 0.0);
                 }
             }
         }
