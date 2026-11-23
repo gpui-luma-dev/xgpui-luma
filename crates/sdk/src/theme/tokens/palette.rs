@@ -165,6 +165,8 @@ impl LumaPalette<ColorValue> {
 
 impl<C> LumaPalette<C> {
     fn light_with(color: impl Fn([f32; 4]) -> C) -> Self {
+        // The focus ring is red in both modes, so focus is easy to see while states are worked on.
+        let focus_ring = color([1.0, 0.0, 0.0, 1.0]);
         // Bundled colors have zero saturation. Keep the original percentage
         // arithmetic so source components retain their exact f32 values.
         let color = |lightness: f32, alpha| {
@@ -215,7 +217,7 @@ impl<C> LumaPalette<C> {
                     placeholder: color(65.1, 1.0),
                 },
             },
-            focus: FocusPalette { ring: color(20.0, 1.0) },
+            focus: FocusPalette { ring: focus_ring },
             border: BorderPalette { default: color(83.92, 1.0), strong: color(46.86, 1.0) },
             navigation: NavigationPalette {
                 background: color(100.0, 1.0),
@@ -238,6 +240,7 @@ impl<C> LumaPalette<C> {
     }
 
     fn dark_with(color: impl Fn([f32; 4]) -> C) -> Self {
+        let focus_ring = color([1.0, 0.0, 0.0, 1.0]);
         let color = |lightness: f32, alpha| {
             let component = lightness / 100.0;
             color([component, component, component, alpha])
@@ -286,7 +289,7 @@ impl<C> LumaPalette<C> {
                     placeholder: color(46.86, 1.0),
                 },
             },
-            focus: FocusPalette { ring: color(85.0, 1.0) },
+            focus: FocusPalette { ring: focus_ring },
             border: BorderPalette { default: color(26.67, 1.0), strong: color(65.1, 1.0) },
             navigation: NavigationPalette {
                 background: color(10.98, 1.0),

@@ -116,3 +116,35 @@ fn sources_can_be_read_from_disk() {
     let _ = std::fs::remove_dir_all(&dir);
     assert!(Source::from_path(dir.join("missing.lss")).is_err());
 }
+
+#[test]
+fn a_length_scale_multiplies_lengths_only() {
+    let theme = sdk_theme();
+    let zoomed = theme.with_length_scale(2.0).expect("valid scale");
+    assert_eq!(theme.length_scale(), 1.0);
+    assert_eq!(zoomed.length_scale(), 2.0);
+    let k = key(&theme, "checkbox", &[], &["checked"]);
+    let (actual, double) = (theme.resolve(&k), zoomed.resolve(&k));
+    let number = |r: &xgpui_luma_style::Resolved, part: PartId, name: &str| {
+        r.part(part).value(name).and_then(Value::as_number).unwrap_or_else(|| panic!("{name}"))
+    };
+    let root = PartId::new("root");
+    // Token-derived and literal lengths alike, and text metrics, double.
+    for name in ["height", "gap", "indicator_size", "indicator_radius", "glyph_inset", "glyph_size"] {
+        assert_eq!(number(&double, root, name), number(&actual, root, name) * 2.0, "{name}");
+    }
+    let label = PartId::new("label");
+    assert_eq!(double.part(label).font_size(), actual.part(label).font_size().map(|s| s * 2.0));
+    // Unitless numbers and colors do not.
+    for name in ["indicator_scale", "disabled_opacity"] {
+        assert_eq!(number(&double, root, name), number(&actual, root, name), "{name}");
+    }
+    assert_eq!(double.part(INDICATOR).background(), actual.part(INDICATOR).background());
+    // Rebinding keeps the scale; the original theme is unchanged.
+    assert_eq!(zoomed.with_mode("dark").expect("mode").length_scale(), 2.0);
+    assert_eq!(theme.resolve(&k), actual);
+
+    for bad in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+        assert!(theme.with_length_scale(bad).err().expect("rejected").has_code(Code::Evaluation), "{bad}");
+    }
+}

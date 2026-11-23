@@ -5,10 +5,9 @@
 //! Driven only by `Inspection` and `Explanation` from the style crate. Read-only.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
 
-use gpui::{AnyElement, Context, Div, Entity, Hsla, Render, SharedString, WeakEntity, Window, canvas, div, prelude::*, px};
+use gpui::{AnyElement, Context, Div, Entity, Hsla, Render, SharedString, WeakEntity, Window, div, prelude::*, px};
 use xgpui_luma::controls::accordion::{Accordion, AccordionContent, AccordionEvent, AccordionItem, AccordionTrigger};
 use xgpui_luma::controls::button::Button;
 use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
@@ -27,15 +26,12 @@ use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 /// tabs and the inspector's view tabs share it so the two rows line up.
 pub(super) const TAB_ROW_HEIGHT: f32 = 48.;
 const ROW_INDENT: f32 = 22.;
-/// Property list columns: property, kind, value, (expression fills the rest), rule.
-const NAME_WIDTH: f32 = 172.;
-const KIND_WIDTH: f32 = 54.;
-const VALUE_WIDTH: f32 = 112.;
-const RULE_WIDTH: f32 = 104.;
+/// Property rows: the name fills the line; the value (at most this wide) and the rule line sit at the end.
+const VALUE_MAX_WIDTH: f32 = 140.;
+/// Room for a rule line such as `:142`, so lines align at the right.
+const LINE_WIDTH: f32 = 32.;
 const COLUMN_GAP: f32 = 10.;
-const ROW_HEIGHT: f32 = 26.;
-/// Below this list width the kind column is hidden, so the expression keeps room.
-const KIND_MIN_LIST_WIDTH: f32 = 520.;
+const ROW_HEIGHT: f32 = 24.;
 
 #[derive(Clone, Copy, PartialEq)]
 enum View {
@@ -95,11 +91,8 @@ type RowId = (usize, &'static str);
 /// argument).
 #[derive(Clone)]
 struct RowHead {
-    kind: &'static str,
     value: SharedString,
     swatch: Option<Hsla>,
-    /// The winning rule's expression; empty for a literal (it would repeat the value).
-    expression: SharedString,
     /// The winning rule's selector when a state or scope rule set the value; `None` for the base.
     selector: Option<SharedString>,
     line: SharedString,
@@ -132,7 +125,6 @@ struct SectionHead {
 struct RowHeads {
     rows: Arc<RwLock<HashMap<RowId, RowHead>>>,
     sections: Arc<RwLock<HashMap<usize, SectionHead>>>,
-    show_kind: Arc<AtomicBool>,
 }
 
 /// One picked part's accordion content: the part's properties, drawn by the inspector.
@@ -169,17 +161,19 @@ pub(super) struct LssInspector {
     view: View,
     filter: Filter,
     grouping: Grouping,
+    /// Whether each part shows its box-model diagram (margin › border › padding › content).
+    show_box_model: bool,
     /// Radix tabs: Properties · Source · Palette.
     view_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     /// Radix toggle groups: Part (multiple), Show and Group (one each).
     part_tabs: ControlGroup<ControlGroupItem>,
     filter_tabs: ControlGroup<ControlGroupItem>,
     grouping_tabs: ControlGroup<ControlGroupItem>,
+    /// Radix switch: Box model on or off.
+    box_model_switch: xgpui_luma::controls::switch::Switch,
     /// Each property's row, as a button that opens its rules and references.
     row_buttons: HashMap<RowId, Entity<Button>>,
     row_heads: RowHeads,
-    /// This inspector, for the list's width measurement to ask for a redraw.
-    this: WeakEntity<Self>,
     expanded: HashSet<RowId>,
 }
 
@@ -253,6 +247,16 @@ impl LssInspector {
             }
         })
         .detach();
+        let box_model_switch = xgpui_luma_look_radix::Switch::new("lss-inspector-box-model")
+            .look(&small)
+            .size(xgpui_luma_look_radix::SwitchSize::One)
+            .label("Box model")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.show_box_model = on;
+                cx.notify();
+            })
+            .spawn(cx);
         let grouping_tabs =
             xgpui_luma_look_radix::control_group_builder(&small, "lss-inspector-grouping", small.size())
                 .horizontal()
@@ -272,7 +276,7 @@ impl LssInspector {
         })
         .detach();
 
-        let row_heads = RowHeads { show_kind: Arc::new(AtomicBool::new(true)), ..RowHeads::default() };
+        let row_heads = RowHeads::default();
         let mut row_buttons = HashMap::new();
         for (index, part) in inspection.parts.iter().enumerate() {
             let name = part.part.name();
@@ -285,7 +289,7 @@ impl LssInspector {
                     &look,
                     move || {
                         let head = heads.rows.read().ok().and_then(|rows| rows.get(&id).cloned());
-                        row_columns(property, head.as_ref(), heads.show_kind.load(Ordering::Relaxed))
+                        row_columns(property, head.as_ref())
                     },
                     move |this, cx| this.toggle(id, cx),
                     cx,
@@ -309,13 +313,14 @@ impl LssInspector {
             view: View::Properties,
             filter: Filter::All,
             grouping: Grouping::File,
+            show_box_model: true,
             view_tabs,
             part_tabs,
             filter_tabs,
             grouping_tabs,
+            box_model_switch,
             row_buttons,
             row_heads,
-            this: cx.weak_entity(),
             expanded: HashSet::new(),
         };
         this.rebuild_parts(cx);
@@ -463,26 +468,12 @@ impl LssInspector {
                 );
             }
         }
-        // Hide the kind column when the list is too narrow for it; redraw when that changes.
-        let (show_kind, this) = (self.row_heads.show_kind.clone(), self.this.clone());
-        let measure = canvas(
-            move |bounds, _, cx| {
-                let wide = f32::from(bounds.size.width) >= KIND_MIN_LIST_WIDTH;
-                if show_kind.swap(wide, Ordering::Relaxed) != wide {
-                    this.update(cx, |_, cx| cx.notify()).ok();
-                }
-            },
-            |_, _, _, _| {},
-        )
-        .absolute()
-        .size_full();
         div()
             .id("lss-inspector-properties")
             .relative()
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
-            .child(measure)
             .when_some(self.parts_accordion.clone().filter(|_| !self.picked.is_empty()), |d, accordion| {
                 d.child(accordion)
             })
@@ -518,17 +509,21 @@ impl LssInspector {
         // The column header sits inside each part's section, above its rows, so it lines up with them
         // whatever the accordion's content inset.
         let content: Vec<AnyElement> = match self.grouping {
-            Grouping::File => [diagram().into_any_element(), self.list_header()]
+            Grouping::File => self
+                .show_box_model
+                .then(|| diagram().into_any_element())
                 .into_iter()
                 .chain(rows.iter().map(|(row, rules)| self.row(index, part, row, rules)))
                 .collect(),
-            Grouping::Kind => std::iter::once(self.list_header())
-                .chain(CATEGORIES.into_iter().filter_map(|(category, title)| {
+            Grouping::Kind => CATEGORIES
+                .into_iter()
+                .filter_map(|(category, title)| {
                     let in_category: Vec<_> = rows.iter().filter(|(row, _)| row.category == category).collect();
-                    let box_diagram = (category == Category::Layout).then(|| diagram().into_any_element());
+                    let box_diagram =
+                        (self.show_box_model && category == Category::Layout).then(|| diagram().into_any_element());
                     (box_diagram.is_some() || !in_category.is_empty())
                         .then(|| self.section(index, part, title.to_string(), in_category, box_diagram))
-                }))
+                })
                 .collect(),
         };
         let name = part.part.name();
@@ -603,16 +598,10 @@ impl LssInspector {
         let expanded = self.expanded.contains(&id);
         let changed = by_state(row);
         let head = RowHead {
-            kind: row.kind.name(),
             value: display_value(e.value.as_ref(), row.kind).into(),
             swatch: match &e.value {
                 Some(Value::Color(c)) => Some(Hsla::from(*c)),
                 _ => None,
-            },
-            expression: match &e.winner {
-                Some(_) if e.references.is_empty() => SharedString::default(),
-                Some(w) => w.expression.clone().into(),
-                None => e.source_line().into(),
             },
             selector: e
                 .winner
@@ -622,7 +611,6 @@ impl LssInspector {
             line: e.winner.as_ref().map_or_else(SharedString::default, |w| format!(":{}", w.line).into()),
             colors: self.row_colors(),
         };
-        let show_kind = self.row_heads.show_kind.load(Ordering::Relaxed);
         let columns: AnyElement = match self.row_buttons.get(&id) {
             Some(button) => {
                 if let Ok(mut rows) = self.row_heads.rows.write() {
@@ -630,7 +618,7 @@ impl LssInspector {
                 }
                 button.clone().into_any_element()
             }
-            None => row_columns(row.property, Some(&head), show_kind).into_any_element(),
+            None => row_columns(row.property, Some(&head)).into_any_element(),
         };
         let selector_id = format!("style-inspector-row-{}-{}", part.part.name(), row.property);
         div()
@@ -651,50 +639,12 @@ impl LssInspector {
                     .pl(px(ROW_INDENT))
                     .pr(px(12.))
                     .when(changed, |d| d.child(self.dot()))
-                    .child(columns),
+                    // Values a state rule sets for the current key stand out; the rest dim, unless open.
+                    .child(
+                        div().w_full().when(!changed && !expanded, |d| d.opacity(UNSTATED_ROW_OPACITY)).child(columns),
+                    ),
             )
             .when(expanded, |d| d.child(self.details(row, rules)))
-            .into_any_element()
-    }
-
-    /// The property list's column labels, aligned with the rows.
-    fn list_header(&self) -> AnyElement {
-        let chrome = self.look.chrome();
-        let label = |text: &'static str| div().font_weight(pane_type::LABEL_WEIGHT).child(text.to_uppercase());
-        let show_kind = self.row_heads.show_kind.load(Ordering::Relaxed);
-        div()
-            .debug_selector(|| "lss-inspector-list-header".into())
-            .flex_none()
-            .flex()
-            .items_center()
-            .gap(px(COLUMN_GAP))
-            .pl(px(ROW_INDENT))
-            .pr(px(12.))
-            .py(px(4.))
-            .border_b_1()
-            .border_color(chrome.border)
-            .text_color(chrome.muted_text)
-            .child(
-                label("Property")
-                    .debug_selector(|| "lss-inspector-header-property".into())
-                    .w(px(NAME_WIDTH))
-                    .flex_shrink_0(),
-            )
-            .when(show_kind, |d| d.child(label("Kind").w(px(KIND_WIDTH)).flex_shrink_0()))
-            .child(
-                label("Value")
-                    .debug_selector(|| "lss-inspector-header-value".into())
-                    .w(px(VALUE_WIDTH))
-                    .flex_shrink_0(),
-            )
-            .child(label("Expression").flex_1().min_w_0())
-            .child(
-                label("Rule")
-                    .debug_selector(|| "lss-inspector-header-rule".into())
-                    .w(px(RULE_WIDTH))
-                    .flex_shrink_0()
-                    .text_right(),
-            )
             .into_any_element()
     }
 
@@ -704,12 +654,12 @@ impl LssInspector {
         let heading = |text: &'static str| {
             div().font_weight(pane_type::LABEL_WEIGHT).text_color(chrome.muted_text).child(text.to_uppercase())
         };
-        let references = row.explanation.reference_lines();
-        let no_references = references.is_empty();
+        let references = &row.explanation.references;
+        // Rules, then what the value read, each full width: their lines wrap with a hanging indent
+        // rather than being cut off in side-by-side columns.
         div()
             .pl(px(ROW_INDENT))
             .pr(px(12.))
-            .pt(px(4.))
             .pb(px(10.))
             .flex()
             .flex_col()
@@ -717,44 +667,41 @@ impl LssInspector {
             .children(row.doc.clone().map(|d| div().text_color(chrome.body_text).child(format!("/// {d}"))))
             .child(
                 div()
+                    .debug_selector({
+                        let property = row.property;
+                        move || format!("lss-inspector-rules-{property}")
+                    })
                     .flex()
-                    .gap(px(16.))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .child(heading("Rules"))
-                            .children(rules.iter().map(|(rule, status)| self.rule_line(rule, *status))),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .child(heading("Reads"))
-                            .children(references.into_iter().map(|line| {
-                                div().font_family(pane_type::MONO).text_color(chrome.body_text).truncate().child(line)
-                            }))
-                            .when(no_references, |d| {
-                                d.child(
-                                    div().font_family(pane_type::MONO).text_color(chrome.muted_text).child("literal"),
-                                )
-                            })
-                            .children(
-                                row.explanation
-                                    .notes()
-                                    .map(|n| div().font_family(pane_type::MONO).text_color(chrome.muted_text).child(n)),
-                            ),
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(heading("Rules"))
+                    .children(rules.iter().map(|(rule, status)| self.rule_line(rule, *status))),
+            )
+            .child(
+                div()
+                    .debug_selector({
+                        let property = row.property;
+                        move || format!("lss-inspector-reads-{property}")
+                    })
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(heading("Reads"))
+                    .children(references.iter().flat_map(|r| self.reference_lines(r, 0)))
+                    .when(references.is_empty(), |d| {
+                        d.child(div().font_family(pane_type::MONO).text_color(chrome.muted_text).child("literal"))
+                    })
+                    .children(
+                        row.explanation
+                            .notes()
+                            .map(|n| div().font_family(pane_type::MONO).text_color(chrome.muted_text).child(n)),
                     ),
             )
             .into_any_element()
     }
 
+    /// One rule: its line, selector and status on the first line; its expression wrapped underneath,
+    /// indented, struck through when a stronger rule beats it.
     fn rule_line(&self, rule: &RuleInfo, status: RuleStatus) -> AnyElement {
         let chrome = self.look.chrome();
         let color = match status {
@@ -764,25 +711,58 @@ impl LssInspector {
         };
         div()
             .flex()
-            .gap(px(8.))
+            .flex_col()
             .px(px(4.))
+            .py(px(2.))
             .rounded(px(4.))
             .font_family(pane_type::MONO)
             .text_color(color)
             .when(status == RuleStatus::Wins, |d| d.bg(self.look.accent(3)))
             .when(status == RuleStatus::Inactive, |d| d.opacity(0.6))
-            .child(div().w(px(30.)).flex_shrink_0().child(format!(":{}", rule.line)))
-            .child(div().w(px(110.)).flex_shrink_0().child(selector(rule)))
             .child(
                 div()
-                    .flex_1()
-                    .min_w_0()
-                    .truncate()
-                    .when(status == RuleStatus::Beaten, |d| d.line_through())
-                    .child(rule.expression.clone()),
+                    .flex()
+                    .gap(px(8.))
+                    .child(div().flex_none().child(format!(":{}", rule.line)))
+                    .child(div().flex_1().min_w_0().child(selector(rule)))
+                    .child(div().flex_none().child(status.label())),
             )
-            .child(div().flex_shrink_0().child(status.label()))
+            .child(
+                div()
+                    .pl(px(HANGING_INDENT))
+                    .text_color(chrome.muted_text)
+                    .when(status == RuleStatus::Beaten, |d| d.line_through())
+                    .child(format!("= {}", rule.expression)),
+            )
             .into_any_element()
+    }
+
+    /// A reference the value read, then what it read in turn, each a step further in: `← name = value`
+    /// on its first line, where it is defined wrapped underneath with a hanging indent.
+    fn reference_lines(&self, reference: &Reference, depth: usize) -> Vec<AnyElement> {
+        let chrome = self.look.chrome();
+        let indent = depth as f32 * HANGING_INDENT;
+        let value = reference
+            .value
+            .as_ref()
+            .map(|v| display_value(Some(v), v.kind().unwrap_or(xgpui_luma::style::lss::Kind::Number)))
+            .unwrap_or_else(|| "absent".into());
+        let at = reference
+            .defined_at
+            .as_ref()
+            .map(|l| format!("{}:{}", l.source, l.line))
+            .or_else(|| reference.description.clone());
+        let line = div()
+            .pl(px(indent))
+            .flex()
+            .flex_col()
+            .font_family(pane_type::MONO)
+            .child(div().text_color(chrome.body_text).child(format!("← {} = {value}", reference.name)))
+            .children(at.map(|at| div().pl(px(HANGING_INDENT)).text_color(chrome.muted_text).child(at)))
+            .into_any_element();
+        std::iter::once(line)
+            .chain(reference.children.iter().flat_map(|c| self.reference_lines(c, depth + 1)))
+            .collect()
     }
 
     /// The control's style file, each rule line marked for the current key.
@@ -1009,7 +989,41 @@ impl LssInspector {
         let index = self.part_index(part)?;
         let rows = self.row_heads.rows.read().ok()?;
         let head = rows.get(&(index, property))?;
-        Some((head.value.to_string(), head.expression.to_string(), head.selector.as_ref().map(|s| s.to_string())))
+        // The expression the row opens to; empty for a literal (it would repeat the value).
+        let inspection = self.theme.inspect(&self.key, None);
+        let row = inspection.parts.get(index)?.rows.iter().find(|r| r.property == property)?;
+        let expression = match &row.explanation.winner {
+            Some(_) if row.explanation.references.is_empty() => String::new(),
+            Some(w) => w.expression.clone(),
+            None => row.explanation.source_line(),
+        };
+        Some((head.value.to_string(), expression, head.selector.as_ref().map(|s| s.to_string())))
+    }
+
+    /// Turn the Box model switch on or off as a click would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn show_box_models(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.box_model_switch.update(cx, |switch, cx| switch.set_data(on, cx));
+        self.show_box_model = on;
+        cx.notify();
+    }
+
+    /// Choose a Group (`file`, `kind`) as a click would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn choose_grouping(&mut self, id: &str, cx: &mut Context<Self>) {
+        let id = gpui::SharedString::from(id.to_string());
+        self.grouping_tabs.update(cx, |group, cx| {
+            group.set_selected_ids([id.clone()], cx);
+            cx.emit(ControlGroupEvent::Change { changed_id: id.clone(), selected: true, selected_ids: vec![id] });
+        });
+    }
+
+    /// Whether a property row is dimmed (its value isn't set by a state rule now), for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn row_dimmed(&self, part: &str, property: &str) -> Option<bool> {
+        let inspection = self.theme.inspect(&self.key, None);
+        let part = inspection.parts.iter().find(|p| p.part.name() == part)?;
+        part.rows.iter().find(|r| r.property == property).map(|r| !by_state(r))
     }
 
     /// Show the Palette view, for tests.
@@ -1095,6 +1109,19 @@ impl Render for LssInspector {
                         .py(px(8.))
                         .border_b_1()
                         .border_color(chrome.border)
+                        .child(
+                            div()
+                                .debug_selector(|| "lss-inspector-attributes".into())
+                                .flex()
+                                .items_center()
+                                .gap_2()
+                                .child("Attributes")
+                                .child(
+                                    div()
+                                        .text_color(chrome.muted_text)
+                                        .child(attributes_line(&self.theme, self.control)),
+                                ),
+                        )
                         .child(div().flex().items_center().gap_2().child("Part").child(self.part_tabs.clone()))
                         .child(
                             div()
@@ -1112,6 +1139,11 @@ impl Render for LssInspector {
                                         .gap_2()
                                         .child("Group")
                                         .child(self.grouping_tabs.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .debug_selector(|| "lss-inspector-box-model".into())
+                                        .child(self.box_model_switch.clone()),
                                 ),
                         ),
                 )
@@ -1126,7 +1158,7 @@ impl Render for LssInspector {
                         .border_t_1()
                         .border_color(chrome.border)
                         .text_color(chrome.muted_text)
-                        .child("● value from a state rule")
+                        .child("● value from a state rule now; the rest dimmed")
                         .child("click a property for its rules and reads"),
                 ),
             View::Source => div().flex_1().min_h_0().flex().flex_col().child(self.source(&inspection)),
@@ -1154,6 +1186,13 @@ pub(super) fn choose_tab(tabs: &Entity<xgpui_luma::controls::tabs::Tabs>, id: &s
         cx.emit(xgpui_luma::controls::tabs::TabsEvent::Change { tab_id: id, label: gpui::SharedString::default() });
     });
 }
+
+/// How far a wrapped detail line (a rule's expression, a reference's location) and each level of
+/// nested references are indented.
+const HANGING_INDENT: f32 = 14.;
+
+/// Rows whose value no state rule sets for the current key are drawn at this opacity.
+const UNSTATED_ROW_OPACITY: f32 = 0.45;
 
 /// Whether a row's value comes from a state rule.
 fn by_state(row: &Row) -> bool {
@@ -1184,6 +1223,23 @@ pub(super) fn key_line(theme: &Theme, control: ControlId, key: &StyleKey) -> Str
     } else {
         format!("{control}{states} · {}", theme.mode())
     }
+}
+
+/// A control's attribute scopes as text (e.g. `size sm · md`), or a note that the file has none.
+pub(super) fn attributes_line(theme: &Theme, control: ControlId) -> String {
+    let axes = theme.stylesheet().axes(control);
+    let config = theme.stylesheet().config();
+    if axes.attributes.is_empty() {
+        return "none — the file has no scopes".to_string();
+    }
+    axes.attributes
+        .iter()
+        .map(|(attr, values)| {
+            let values: Vec<&str> = values.iter().map(|v| v.name()).collect();
+            format!("{} {}", config.attribute_name(*attr), values.join(" · "))
+        })
+        .collect::<Vec<_>>()
+        .join("   ")
 }
 
 /// The file and layer a control's rules come from, read from the first rule that sets a value.
@@ -1263,7 +1319,10 @@ fn list_button<E: IntoElement + 'static>(
 }
 
 /// One property row's columns: property, kind (when it fits), value, expression, rule.
-fn row_columns(property: &'static str, head: Option<&RowHead>, show_kind: bool) -> Div {
+/// A property row on one line: the name, then (right-aligned) its value, the winning rule's selector
+/// when a state or scope set it, and the rule's line. The kind shows in the value (`36px`, a swatch),
+/// and the expression opens under the row.
+fn row_columns(property: &'static str, head: Option<&RowHead>) -> Div {
     let row = div()
         .w_full()
         .h(px(ROW_HEIGHT))
@@ -1272,51 +1331,39 @@ fn row_columns(property: &'static str, head: Option<&RowHead>, show_kind: bool) 
         .gap(px(COLUMN_GAP))
         .font_family(pane_type::MONO)
         .whitespace_nowrap();
+    let name = div().debug_selector(move || format!("lss-inspector-name-{property}")).flex_1().min_w_0().truncate();
     let Some(head) = head else {
-        return row.child(div().w(px(NAME_WIDTH)).truncate().child(property));
+        return row.child(name.child(property));
     };
     let c = head.colors;
-    row.child(
-        div()
-            .debug_selector(move || format!("lss-inspector-name-{property}"))
-            .w(px(NAME_WIDTH))
-            .flex_shrink_0()
-            .truncate()
-            .text_color(c.text)
-            .child(property),
-    )
-    .when(show_kind, |row| {
-        row.child(div().w(px(KIND_WIDTH)).flex_shrink_0().truncate().text_color(c.muted).child(head.kind))
-    })
-    .child(
-        div()
-            .debug_selector(move || format!("lss-inspector-value-{property}"))
-            .w(px(VALUE_WIDTH))
-            .flex_shrink_0()
-            .flex()
-            .items_center()
-            .gap(px(6.))
-            .text_color(c.text)
-            .children(head.swatch.map(|color| {
-                div().size(px(11.)).flex_shrink_0().rounded(px(2.)).border_1().border_color(c.border).bg(color)
-            }))
-            .child(div().min_w_0().truncate().child(head.value.clone())),
-    )
-    .child(div().flex_1().min_w_0().truncate().text_color(c.muted).child(head.expression.clone()))
-    .child(
-        div()
-            .debug_selector(move || format!("lss-inspector-rule-{property}"))
-            .w(px(RULE_WIDTH))
-            .flex_shrink_0()
-            .flex()
-            .items_center()
-            .justify_end()
-            .gap(px(6.))
-            .children(head.selector.clone().map(|selector| {
-                div().px(px(5.)).rounded(px(4.)).bg(c.accent_soft).text_color(c.accent).child(selector)
-            }))
-            .child(div().text_color(c.muted).child(head.line.clone())),
-    )
+    row.child(name.text_color(c.text).child(property))
+        .child(
+            div()
+                .debug_selector(move || format!("lss-inspector-value-{property}"))
+                .flex_none()
+                .max_w(px(VALUE_MAX_WIDTH))
+                .flex()
+                .items_center()
+                .gap(px(6.))
+                .text_color(c.text)
+                .children(head.swatch.map(|color| {
+                    div().size(px(11.)).flex_shrink_0().rounded(px(2.)).border_1().border_color(c.border).bg(color)
+                }))
+                .child(div().min_w_0().truncate().child(head.value.clone())),
+        )
+        .child(
+            div()
+                .debug_selector(move || format!("lss-inspector-rule-{property}"))
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_end()
+                .gap(px(6.))
+                .children(head.selector.clone().map(|selector| {
+                    div().px(px(5.)).rounded(px(4.)).bg(c.accent_soft).text_color(c.accent).child(selector)
+                }))
+                .child(div().min_w(px(LINE_WIDTH)).text_right().text_color(c.muted).child(head.line.clone())),
+        )
 }
 
 trait AccentExt {
