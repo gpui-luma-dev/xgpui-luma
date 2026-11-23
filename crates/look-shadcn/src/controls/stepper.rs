@@ -114,18 +114,6 @@ mod tests {
     }
 }
 
-/// Native common geometry owned by this control.
-pub(crate) fn native_stepper_stylesheet() -> xgpui_luma::theme::stylesheet::StepperStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    StepperStylesheet {
-        sizes: ["sm", "md", "lg"]
-            .into_iter()
-            .map(|key| (key.into(), StepperGeometryStylesheet::default()))
-            .collect(),
-        ..Default::default()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct StepperMetricTable {
     pub step_badge_size: crate::ResolvedMetric,
@@ -149,22 +137,9 @@ pub fn resolve_stepper_metrics_for_size(
 
     let look = crate::controls::stepper::stepper_look(mode, true, size);
 
-    let mut table = StepperMetricTable {
+    // What the `.lss` resolves is what's drawn; `[common.stepper]` is no longer a stylesheet section.
+    StepperMetricTable {
         step_badge_size: derived_metric("stepper badge size", look.step_badge_size),
         track_thickness: derived_metric("stepper track thickness", look.track_thickness),
-    };
-    let geometry = mode.stylesheet().common.stepper.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::StepperGeometry {
-            step_badge_size: table.step_badge_size.value_px,
-            track_thickness: table.track_thickness.value_px,
-            ..Default::default()
-        },
-    );
-    table.step_badge_size =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.step_badge_size, table.step_badge_size);
-    table.track_thickness =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.track_thickness, table.track_thickness);
-
-    table
+    }
 }

@@ -386,14 +386,6 @@ fn splitter_sample(
     cx: &mut App,
 ) -> AnyElement {
     let fork = look.fork();
-    if cell.id.starts_with("size-") {
-        let mut sheet = fork.common_stylesheet();
-        let hit = [8.0, 12.0, 20.0][cell.scenario];
-        sheet.split_view.geometry.hitbox_width = Some(hit);
-        sheet.split_view.geometry.cue_width = Some([2.0, 4.0, 6.0][cell.scenario]);
-        sheet.split_view.geometry.cue_hovered_width = Some([4.0, 6.0, 8.0][cell.scenario]);
-        fork.set_common_stylesheet(sheet);
-    }
     let surface = fork.resolve_role(SemanticRole::Surface).hsla();
     let fg = fork.resolve_role(SemanticRole::MutedForeground).hsla();
     let control_id = format!("{id}-control");

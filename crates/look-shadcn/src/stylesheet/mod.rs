@@ -40,7 +40,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
         button: crate::controls::button::native_button_stylesheet(),
         toggle: crate::controls::toggle::native_toggle_stylesheet(),
         scrollbar: crate::controls::scrollbar::native_scrollbar_stylesheet(),
-        stepper: crate::controls::stepper::native_stepper_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
         ..Default::default()

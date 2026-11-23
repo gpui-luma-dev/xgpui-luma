@@ -112,13 +112,11 @@ common_stylesheet! {
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
     scrollbar: ScrollbarStylesheet,
-    stepper: StepperStylesheet,
     sidebar: SidebarStylesheet,
     control_group: ControlGroupStylesheet,
     radio_group: RadioGroupStylesheet,
     icon_group: IconGroupStylesheet,
     table: TableStylesheet,
-    split_view: SplitViewStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }
 
@@ -167,7 +165,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            stepper: StepperStylesheet::native_default(),
             scrollbar: ScrollbarStylesheet::native_default(),
             tooltip: TooltipStylesheet::native_default(),
             control_group: ControlGroupStylesheet::native_default(),
@@ -180,7 +177,6 @@ impl CommonStylesheet {
             autocomplete: AutocompleteStylesheet::native_default(),
             combobox: ComboBoxStylesheet::native_default(),
             search_selector: SearchSelectorStylesheet::native_default(),
-            split_view: SplitViewStylesheet::native_default(),
             tabs: TabsStylesheet::native_default(),
             shell: ShellStylesheet {
                 geometry: ShellGeometryStylesheet {
