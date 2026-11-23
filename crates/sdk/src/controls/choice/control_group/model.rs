@@ -815,22 +815,10 @@ mod stylesheet_tests {
     #[test]
     fn grouped_builders_capture_defaults_and_custom_styles() {
         let defaults = ControlGroupBuilder::<ControlGroupItem>::new("defaults");
-        assert_eq!(defaults.model.stylesheet.radio_group.authored_geometry_for("vertical").gap, Some(8.0));
-        let sheet = CommonStylesheet::parse(
-            r#"
-[common.radio_group.geometry]
-item_gap=3
-[common.radio_group.sizes.horizontal]
-gap=17
-"#,
-        )
-        .unwrap();
+        assert_eq!(defaults.model.stylesheet.as_ref(), CommonStylesheet::sdk_default());
+        let mut sheet = CommonStylesheet::parse("[common.shell.geometry]\nheight=41").unwrap();
         let group = ControlGroupBuilder::<ControlGroupItem>::new("custom").stylesheet(&sheet);
-        assert_eq!(group.model.stylesheet.radio_group.authored_geometry_for("horizontal").gap, Some(17.0));
-        for value in ["-1", "1.1", "nan"] {
-            assert!(
-                CommonStylesheet::parse(&format!("[common.radio_group.geometry]\ndisabled_opacity={value}")).is_err()
-            );
-        }
+        sheet.shell.geometry.height = Some(53.0);
+        assert_eq!(group.model.stylesheet.shell.geometry.height, Some(41.0), "the builder keeps a snapshot");
     }
 }

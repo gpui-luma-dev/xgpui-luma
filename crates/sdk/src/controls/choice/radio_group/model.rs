@@ -375,13 +375,12 @@ mod stylesheet_tests {
 
     #[test]
     fn radio_builder_forwards_snapshot_without_changing_selection_mode() {
-        let mut sheet = crate::theme::stylesheet::CommonStylesheet::resolve_layers(&[
-            "[common.radio_group.sizes.horizontal]\ngap=17",
-        ])
-        .unwrap();
+        let mut sheet =
+            crate::theme::stylesheet::CommonStylesheet::resolve_layers(&["[common.shell.geometry]\nheight=41"])
+                .unwrap();
         let group = new::<ControlGroupItem>("radio").horizontal().stylesheet(&sheet);
-        sheet.radio_group.sizes.get_mut("horizontal").unwrap().gap = Some(23.0);
-        assert_eq!(group.inner.model.stylesheet.radio_group.authored_geometry_for("horizontal").gap, Some(17.0));
+        sheet.shell.geometry.height = Some(53.0);
+        assert_eq!(group.inner.model.stylesheet.shell.geometry.height, Some(41.0));
         assert_eq!(group.inner.model.layout, ControlGroupLayout::Horizontal);
         assert_eq!(group.inner.model.selection_mode, ControlSelectionMode::SingleRequired);
     }

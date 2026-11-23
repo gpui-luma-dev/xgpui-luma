@@ -110,7 +110,6 @@ common_stylesheet! {
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
     sidebar: SidebarStylesheet,
-    radio_group: RadioGroupStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }
 
@@ -164,7 +163,6 @@ impl CommonStylesheet {
             sidebar: SidebarStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
             slide_panel: SlidePanelStylesheet::native_default(),
-            radio_group: RadioGroupStylesheet::native_default(),
             autocomplete: AutocompleteStylesheet::native_default(),
             combobox: ComboBoxStylesheet::native_default(),
             search_selector: SearchSelectorStylesheet::native_default(),

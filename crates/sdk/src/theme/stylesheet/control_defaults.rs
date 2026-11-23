@@ -118,6 +118,7 @@ fn removed_families_are_rejected() {
         "selection_panel",
         "table",
         "control_group",
+        "radio_group",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");
