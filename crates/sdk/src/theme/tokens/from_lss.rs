@@ -21,14 +21,7 @@ impl LumaThemeMode {
     /// `theme`'s palette, elevation, metrics and typography tokens in its mode, as typed tables.
     /// Errors name the token or field that doesn't fit.
     pub fn from_theme(theme: &Theme) -> Result<Self> {
-        let mut root = toml::Table::new();
-        for path in theme.stylesheet().token_paths() {
-            if !path.split('.').next().is_some_and(|group| GROUPS.contains(&group)) {
-                continue;
-            }
-            let value = theme.token(path).map_err(|d| anyhow!("{d}"))?;
-            insert(&mut root, path, table_value(path, value)?);
-        }
+        let mut root = groups(theme, &GROUPS, &[])?;
         let mut group = |name: &str| root.remove(name).unwrap_or_else(|| toml::Value::Table(toml::Table::new()));
         let palette = group("palette").try_into().context("palette tokens")?;
         let elevation = group("elevation").try_into().context("elevation tokens")?;
@@ -36,6 +29,31 @@ impl LumaThemeMode {
         let typography = group("typography").try_into().context("typography tokens")?;
         Ok(Self::new(palette, metrics, typography, elevation))
     }
+}
+
+impl super::MetricTokens {
+    /// `theme`'s `metrics.*` tokens for a control with these attribute values (e.g.
+    /// `[("size", "sm")]`, so `size sm { … }` definitions apply), as a typed table.
+    pub fn from_theme(theme: &Theme, attrs: &[(&str, &str)]) -> Result<Self> {
+        let mut root = groups(theme, &["metrics"], attrs)?;
+        root.remove("metrics")
+            .unwrap_or_else(|| toml::Value::Table(toml::Table::new()))
+            .try_into()
+            .context("metrics tokens")
+    }
+}
+
+/// The tokens of `theme` in the named groups, as nested TOML tables keyed by path.
+fn groups(theme: &Theme, names: &[&str], attrs: &[(&str, &str)]) -> Result<toml::Table> {
+    let mut root = toml::Table::new();
+    for path in theme.stylesheet().token_paths() {
+        if !path.split('.').next().is_some_and(|group| names.contains(&group)) {
+            continue;
+        }
+        let value = theme.token_with(path, attrs).map_err(|d| anyhow!("{d}"))?;
+        insert(&mut root, path, table_value(path, value)?);
+    }
+    Ok(root)
 }
 
 /// The SDK's own tables for `mode`, read once from the SDK's `.lss` files. The files are built in
@@ -179,6 +197,22 @@ mod tests {
         let theme = Theme::bind(&sheet, std::sync::Arc::new(xgpui_luma_style::NoNativeTokens), "light").expect("binds");
         let error = LumaThemeMode::from_theme(&theme).expect_err("rejected");
         assert!(format!("{error:#}").contains("accent_5"), "{error:#}");
+    }
+
+    /// Size-scoped metrics apply for a control of that size; others keep the unscoped value.
+    #[test]
+    fn metrics_read_size_scoped_values() {
+        let theme = fixture::light();
+        let sheet = theme
+            .stylesheet()
+            .with_source("sdk", Source::new("sized.lss", "tokens { metrics { control { size sm { gap = 4 } } } }"))
+            .expect("compiles");
+        let theme = theme.with_stylesheet(&sheet).expect("binds");
+        let base = crate::theme::MetricTokens::from_theme(&theme, &[]).expect("metrics");
+        let small = crate::theme::MetricTokens::from_theme(&theme, &[("size", "sm")]).expect("metrics");
+        assert_eq!(small.control.gap, 4.0);
+        assert_eq!(base.control.gap, fixture::token(&theme, "metrics.control.gap", "number").as_number().unwrap());
+        assert_eq!(small.control.padding_x, base.control.padding_x, "unscoped tokens are shared");
     }
 
     /// The SDK's own tables are the SDK theme's tokens.

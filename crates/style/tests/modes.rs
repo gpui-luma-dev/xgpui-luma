@@ -87,3 +87,30 @@ fn token_reads_the_mode_value() {
     let unknown = theme("light").token("modal.missing").expect_err("unknown");
     assert!(unknown.message.contains("modal.missing"), "{unknown}");
 }
+
+/// `Theme::token_with` selects size-scoped definitions, as a rule does for a control of that size.
+#[test]
+fn token_with_selects_size_scoped_values() {
+    let tokens = "tokens {
+  metrics {
+    gap = 8
+    size sm { gap = 6 }
+    mode dark { gap = 9 }
+  }
+}";
+    let sheet = Stylesheet::builder(luma_config())
+        .layer("sdk", [Source::new("tokens.lss", tokens)])
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"));
+    let number =
+        |theme: &Theme, attrs: &[(&str, &str)]| theme.token_with("metrics.gap", attrs).expect("a token").as_number();
+    let light = Theme::bind(&sheet, Arc::new(xgpui_luma_style::NoNativeTokens), "light").expect("binds");
+    assert_eq!(number(&light, &[]), Some(8.0));
+    assert_eq!(number(&light, &[("size", "sm")]), Some(6.0));
+    assert_eq!(number(&light, &[("size", "lg")]), Some(8.0), "no lg scope: the unscoped value");
+    let dark = light.with_mode("dark").expect("dark");
+    assert_eq!(number(&dark, &[]), Some(9.0));
+    assert_eq!(number(&dark, &[("size", "sm")]), Some(6.0), "the more specific scope wins, as for rules");
+    let unknown = light.token_with("metrics.gap", &[("tone", "red")]).expect_err("unknown attribute");
+    assert!(unknown.message.contains("tone"), "{unknown}");
+}

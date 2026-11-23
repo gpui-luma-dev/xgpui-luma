@@ -3,7 +3,7 @@ use std::{sync::Arc, collections::HashMap};
 
 use xgpui_luma::theme::{InteractionLayer, LumaTypography, MetricTokens, ThemeMode};
 
-use crate::catalog::{CssTokenMap, metrics_from_catalog, typography_from_catalog};
+use crate::catalog::{CssTokenMap, metrics_from_theme, radii_from_catalog, typography_from_catalog};
 use crate::palette::ShadcnPalette;
 use crate::state_color::StateColorTable;
 use crate::tokens::ShadcnToken;
@@ -81,13 +81,20 @@ impl ShadcnModeTokens {
             .positive,
             xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
-        let (metrics, control_sizes, radii) = metrics_from_catalog(&catalog, MetricTokens::default());
+        let radii = radii_from_catalog(&catalog);
         let sized_common = Arc::new(crate::ShadcnSize::ALL.map(|size| stylesheet.common.with_size_key(size.key())));
-        Ok(Self {
+        // Metrics come from the look's `.lss`, bound to this catalog below. The theme's native
+        // tokens read only the catalog, so these placeholders don't reach it.
+        let placeholder = MetricTokens::default();
+        let mut tokens = Self {
             data_positive,
             theme_mode,
-            metrics,
-            control_sizes,
+            metrics: placeholder,
+            control_sizes: crate::ShadcnControlMetrics {
+                sm: placeholder.control,
+                md: placeholder.control,
+                lg: placeholder.control,
+            },
             radii,
             typography: typography_from_catalog(&catalog, LumaTypography::default()),
             state_colors,
@@ -97,7 +104,11 @@ impl ShadcnModeTokens {
             palette,
             catalog,
             style_theme: StyleThemeSlot::default(),
-        })
+        };
+        let (metrics, control_sizes) = metrics_from_theme(&crate::style::theme_for_mode(&tokens))?;
+        tokens.metrics = metrics;
+        tokens.control_sizes = control_sizes;
+        Ok(tokens)
     }
 
     /// This mode's catalog bound to the look's `.lss` stylesheet, for values read without the look
@@ -141,5 +152,44 @@ impl ShadcnModeTokens {
     /// Resolves a semantic token color for an interaction layer (O(1) lookup).
     pub fn resolve_color_state(&self, token: ShadcnToken, layer: InteractionLayer) -> gpui::Hsla {
         self.state_colors.get(token, layer)
+    }
+}
+
+#[cfg(test)]
+mod metric_tests {
+    use xgpui_luma::theme::{MetricTokens, ThemeMode};
+
+    use crate::{ShadcnLook, ShadcnSize};
+
+    const RETRO_ARCADE: &str = include_str!("../tests/fixtures/tweakcn/retro-arcade.css");
+
+    /// The control metrics native controls read are the look's `.lss` tokens for each size, in each
+    /// mode: one source for `.lss` and native controls.
+    #[test]
+    fn control_metrics_are_the_look_lss_tokens_for_each_size() {
+        let look = ShadcnLook::from_css_str(RETRO_ARCADE).expect("catalog");
+        for mode in [ThemeMode::Light, ThemeMode::Dark] {
+            look.set_mode(mode);
+            let (tokens, theme) = (look.mode_tokens(), look.style_theme());
+            for size in ShadcnSize::ALL {
+                let lss = MetricTokens::from_theme(&theme, &[("size", size.key())]).expect("metrics");
+                assert_eq!(tokens.control_sizes.get(size), lss.control, "{mode:?} {size:?}");
+            }
+            assert_eq!(tokens.metrics.control, tokens.control_sizes.md, "the shared scale is md");
+        }
+    }
+
+    /// The metrics follow the catalog's `--spacing`.
+    #[test]
+    fn control_metrics_follow_the_catalog_spacing() {
+        let look = ShadcnLook::from_css_str(RETRO_ARCADE).expect("catalog");
+        let wider = RETRO_ARCADE.replace("--spacing: 0.25rem", "--spacing: 0.5rem");
+        assert_ne!(wider, RETRO_ARCADE, "the fixture sets --spacing");
+        let wider = ShadcnLook::from_css_str(&wider).expect("catalog");
+        for size in ShadcnSize::ALL {
+            let (base, wide) =
+                (look.mode_tokens().control_sizes.get(size), wider.mode_tokens().control_sizes.get(size));
+            assert!(wide.gap > base.gap && wide.padding_x > base.padding_x, "{size:?}");
+        }
     }
 }
