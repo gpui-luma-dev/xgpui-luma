@@ -109,7 +109,6 @@ common_stylesheet! {
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
     sidebar: SidebarStylesheet,
-    resizable_panels: ResizablePanelsStylesheet,
 }
 
 pub(crate) fn optional_length<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<f32>, D::Error> {
@@ -158,7 +157,6 @@ impl CommonStylesheet {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
             tooltip: TooltipStylesheet::native_default(),
-            resizable_panels: ResizablePanelsStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
             slide_panel: SlidePanelStylesheet::native_default(),

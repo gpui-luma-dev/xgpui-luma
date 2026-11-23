@@ -13,14 +13,4 @@ pub(crate) fn apply_size_presets(common: &mut CommonStylesheet) {
     for (size, label_baseline) in [(ShadcnSize::Sm, 0.5), (ShadcnSize::Lg, 1.5)] {
         common.shared.sizes.get_or_default(size.key()).label_baseline = Some(label_baseline);
     }
-    // The SDK resize handle scale is Shadcn `sm`; `md` and `lg` handles are Shadcn's.
-    for (size, lane, hit, cross, main) in
-        [(ShadcnSize::Md, 12.0, 14.0, 6.0, 40.0), (ShadcnSize::Lg, 18.0, 20.0, 8.0, 44.0)]
-    {
-        let handle = common.resizable_panels.sizes.get_or_default(size.key());
-        handle.lane_width = Some(lane);
-        handle.hit_target = Some(hit);
-        handle.grip_cross_axis = Some(cross);
-        handle.grip_main_axis = Some(main);
-    }
 }

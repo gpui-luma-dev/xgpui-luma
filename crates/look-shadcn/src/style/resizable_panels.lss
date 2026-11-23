@@ -1,7 +1,15 @@
 // Shadcn resizable panels. Layer: look. A border frame, dividers and grips; the grip turns the accent, with
 // the accent's hover and pressed layers under the pointer and while dragged; muted foreground when disabled.
+// Resize handles grow with the size: sm is the SDK's scale.
 
 resizable_panels {
+  lane_width      = exact(12)
+  hit_target      = exact(14)
+  grip_cross_axis = exact(6)
+  grip_main_axis  = exact(40)
+  size sm { lane_width = exact(8)   hit_target = exact(12)  grip_cross_axis = exact(4)  grip_main_axis = exact(36) }
+  size lg { lane_width = exact(18)  hit_target = exact(20)  grip_cross_axis = exact(8)  grip_main_axis = exact(44) }
+
   divider       = css.border
   grip          = css.border
   grip_emphasis = css.accent

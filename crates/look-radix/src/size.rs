@@ -116,16 +116,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
     for (size, label_baseline) in [(RadixSize::One, 0.5), (RadixSize::Three, 1.5)] {
         fill(&mut common.shared.sizes.get_or_default(size.key()).label_baseline, label_baseline);
     }
-    // The SDK resize handle scale is Radix size 1; sizes 2 and 3 are Radix's.
-    for (size, lane, hit, cross, main) in
-        [(RadixSize::Two, 12.0, 14.0, 6.0, 40.0), (RadixSize::Three, 18.0, 20.0, 8.0, 44.0)]
-    {
-        let handle = common.resizable_panels.sizes.get_or_default(size.key());
-        fill(&mut handle.lane_width, lane);
-        fill(&mut handle.hit_target, hit);
-        fill(&mut handle.grip_cross_axis, cross);
-        fill(&mut handle.grip_main_axis, main);
-    }
 }
 
 fn fill(slot: &mut Option<f32>, value: f32) {

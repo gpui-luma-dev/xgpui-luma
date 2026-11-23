@@ -13,9 +13,9 @@ fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
 
 #[test]
 fn opacity_fields_reject_values_outside_zero_to_one() {
-    for family in ["floating_menu", "resizable_panels"] {
+    for (family, field) in [("sidebar", "disabled_opacity"), ("tooltip", "shortcut_opacity")] {
         for value in ["-1", "1.1", "nan", "inf"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\ndisabled_opacity={value}")).is_err());
+            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\n{field}={value}")).is_err());
         }
     }
 }
@@ -23,10 +23,11 @@ fn opacity_fields_reject_values_outside_zero_to_one() {
 #[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.resizable_panels.geometry]\ndisabled_opacity = 'math(1 / 4)'",
+        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.sidebar.geometry]\ndisabled_opacity = 'math(1 / 4)'",
         "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
-    ]).unwrap();
-    assert_eq!(sheet.resizable_panels.geometry.disabled_opacity, Some(0.25));
+    ])
+    .unwrap();
+    assert_eq!(sheet.sidebar.geometry.disabled_opacity, Some(0.25));
     assert_eq!(sheet.slider.geometry.width, Some(64.0));
     assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
@@ -34,7 +35,7 @@ fn math_values_resolve_through_layers_and_geometry_validation() {
     assert_eq!(direct.slider.geometry.height, Some(6.0));
     for source in [
         "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
-        "[common.resizable_panels.geometry]\ndisabled_opacity = 'math(3 / 2)'",
+        "[common.sidebar.geometry]\ndisabled_opacity = 'math(3 / 2)'",
         "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
@@ -115,6 +116,7 @@ fn removed_families_are_rejected() {
         "control_group",
         "radio_group",
         "selector_list",
+        "resizable_panels",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

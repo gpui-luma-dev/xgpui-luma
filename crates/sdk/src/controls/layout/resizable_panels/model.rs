@@ -97,25 +97,24 @@ pub struct ResizeHandleMetrics {
 }
 
 impl Default for ResizeHandleMetrics {
-    /// The SDK's single resize handle scale.
+    /// The SDK's resize handle, from its `resizable_panels.lss`.
     fn default() -> Self {
-        Self::from_stylesheet(crate::theme::stylesheet::CommonStylesheet::sdk_default())
+        Self::from_binding(&crate::style::StyleBinding::sdk("resizable_panels"))
     }
 }
 
 impl ResizeHandleMetrics {
-    /// Resolve handle pixels from a stylesheet's general resizable-panels geometry,
-    /// falling back to the SDK scale. Looks select their own handle size by passing
-    /// a sized stylesheet (see `CommonStylesheet::with_size_key`).
-    pub fn from_stylesheet(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().resizable_panels.authored_geometry();
-        let recipe = stylesheet.resizable_panels.authored_geometry().with_fallback(&baseline);
+    /// The handle `binding` (a `resizable_panels` control, with the look's size) resolves to.
+    pub fn from_binding(binding: &crate::style::StyleBinding) -> Self {
+        let resolved = binding.resolve(&[], 1.0);
+        let root = resolved.root();
+        let number = |name| root.value(name).and_then(xgpui_luma_style::Value::as_number).unwrap_or(0.0);
         Self {
-            lane_px: recipe.lane_width.unwrap_or_default(),
-            hit_target_px: recipe.hit_target.unwrap_or_default(),
-            grip_cross_axis_px: recipe.grip_cross_axis.unwrap_or_default(),
-            grip_main_axis_px: recipe.grip_main_axis.unwrap_or_default(),
-            grip_radius: recipe.grip_radius.unwrap_or_default(),
+            lane_px: number("lane_width"),
+            hit_target_px: number("hit_target"),
+            grip_cross_axis_px: number("grip_cross_axis"),
+            grip_main_axis_px: number("grip_main_axis"),
+            grip_radius: number("grip_radius"),
         }
     }
 }
@@ -570,12 +569,14 @@ mod resize_handle_tests {
     };
 
     #[test]
-    fn default_metrics_are_the_single_sdk_scale() {
+    fn default_metrics_are_the_sdk_lss_handle() {
         let metrics = ResizeHandleMetrics::default();
+        let sdk = |name| crate::style::sdk_number("resizable_panels", name);
         assert_eq!(
             (metrics.lane_px, metrics.hit_target_px, metrics.grip_cross_axis_px, metrics.grip_main_axis_px),
-            (8.0, 12.0, 4.0, 36.0)
+            (sdk("lane_width"), sdk("hit_target"), sdk("grip_cross_axis"), sdk("grip_main_axis"))
         );
+        assert_eq!(metrics.grip_radius, sdk("grip_radius"));
     }
 
     #[test]

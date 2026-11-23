@@ -144,7 +144,12 @@ impl SlidePanelState {
             .slide_panel
             .authored_geometry_for("overlay");
         self.geometry = stylesheet.slide_panel.authored_geometry_for("overlay").with_fallback(&baseline);
-        self.handle_metrics = crate::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(stylesheet);
+        self
+    }
+
+    /// The resize edge's handle size (a look's resizable panels handle); the SDK's by default.
+    pub fn handle_metrics(mut self, metrics: crate::controls::resizable_panels::ResizeHandleMetrics) -> Self {
+        self.handle_metrics = metrics;
         self
     }
 
