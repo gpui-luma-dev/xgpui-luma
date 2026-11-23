@@ -1849,4 +1849,25 @@ mod tests {
         // The rule's head and its expression are two lines.
         assert!(rules.size.height >= px(40.), "heading, rule head and expression lines: {rules:?}");
     }
+
+    #[gpui::test]
+    fn open_part_sections_resize_without_pointer_movement() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let height =
+            |cx: &mut VisualTestContext| cx.debug_bounds("accordion-item-root").expect("root section").size.height;
+        // Hiding the box models shortens the open root section in the same redraw, not on the next
+        // pointer event (the accordion applies its measured height after the frame).
+        let before = height(cx);
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(false, cx));
+        cx.run_until_parked();
+        let shorter = height(cx);
+        assert!(shorter < before - px(40.), "shrinks at once: {before:?} → {shorter:?}");
+        // Grouping by kind (a heading per category) makes it taller, also at once.
+        inspector.update(cx, |inspector, cx| inspector.choose_grouping("kind", cx));
+        cx.run_until_parked();
+        let taller = height(cx);
+        assert!(taller > shorter + px(20.), "grows at once: {shorter:?} → {taller:?}");
+    }
 }
