@@ -1,7 +1,15 @@
 // Radix resizable panels. Layer: look. A border frame and dividers with muted grips that take the focus
-// color under the pointer; disabled dividers gray 4 and grips muted.
+// color under the pointer; disabled dividers gray 4 and grips muted. Resize handles grow with the size:
+// size 1 is the SDK's scale.
 
 resizable_panels {
+  lane_width      = exact(12)
+  hit_target      = exact(14)
+  grip_cross_axis = exact(6)
+  grip_main_axis  = exact(40)
+  size 1 { lane_width = exact(8)   hit_target = exact(12)  grip_cross_axis = exact(4)  grip_main_axis = exact(36) }
+  size 3 { lane_width = exact(18)  hit_target = exact(20)  grip_cross_axis = exact(8)  grip_main_axis = exact(44) }
+
   divider       = radix.role.border
   grip          = radix.role.muted_foreground
   grip_emphasis = radix.role.focus

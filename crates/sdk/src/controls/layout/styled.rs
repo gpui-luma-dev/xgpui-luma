@@ -112,26 +112,25 @@ impl DockSplitterTheme for StyledDockSplitterTheme {
     }
 }
 
-/// Resizable panels from `resizable_panels.lss`; handle sizes stay the stylesheet's `handle_metrics`.
+/// Resizable panels from `resizable_panels.lss`, handle sizes included.
 pub struct StyledResizablePanelsTheme {
     binding: StyleBinding,
-    handle_metrics: ResizeHandleMetrics,
 }
 
 impl StyledResizablePanelsTheme {
-    pub fn new(binding: StyleBinding, handle_metrics: ResizeHandleMetrics) -> Self {
-        Self { binding, handle_metrics }
+    pub fn new(binding: StyleBinding) -> Self {
+        Self { binding }
     }
 
     /// The SDK alone.
     pub fn sdk() -> Self {
-        Self::new(StyleBinding::sdk("resizable_panels"), ResizeHandleMetrics::default())
+        Self::new(StyleBinding::sdk("resizable_panels"))
     }
 }
 
 impl ResizablePanelsTheme for StyledResizablePanelsTheme {
     fn resize_handle_metrics(&self) -> ResizeHandleMetrics {
-        self.handle_metrics
+        ResizeHandleMetrics::from_binding(&self.binding)
     }
 
     fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {

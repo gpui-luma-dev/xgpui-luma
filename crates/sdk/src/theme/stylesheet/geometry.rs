@@ -158,10 +158,6 @@ pub(crate) use {geometry_family, geometry_family_impl};
 
 pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
 pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
-pub use crate::controls::layout::resizable_panels::theme::{
-    ResizablePanelsStylesheet, ResizablePanelsGeometryStylesheet, ResizablePanelsGeometry,
-    ResolvedResizablePanelsGeometry,
-};
 pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
@@ -257,7 +253,6 @@ mod tests {
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {
         ShellStylesheet::validate_contract();
         SharedStylesheet::validate_contract();
-        ResizablePanelsStylesheet::validate_contract();
         SidebarStylesheet::validate_contract();
         AutocompleteStylesheet::validate_contract();
         ComboBoxStylesheet::validate_contract();
