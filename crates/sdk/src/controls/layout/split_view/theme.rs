@@ -20,29 +20,14 @@ pub fn default_split_view_theme() -> Arc<dyn SplitViewTheme> {
     THEME.get_or_init(|| Arc::new(super::StyledSplitViewTheme::sdk())).clone()
 }
 
-crate::theme::stylesheet::geometry::geometry_family!(
-    SplitViewStylesheet,
-    SplitViewGeometryStylesheet,
-    SplitViewGeometry,
-    ResolvedSplitViewGeometry,
-    "split_view",
-    [hitbox_width, expand_inset_y, expand_cue_left, cue_inset_y, cue_radius, cue_width, cue_hovered_width]
-);
-
-impl SplitViewStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: SplitViewGeometryStylesheet {
-                hitbox_width: Some(20.0),
-                expand_inset_y: Some(10.0),
-                expand_cue_left: Some(2.0),
-                cue_inset_y: Some(16.0),
-                cue_radius: Some(4.0),
-                cue_width: Some(4.0),
-                cue_hovered_width: Some(8.0),
-            },
-            ..Default::default()
-        }
-    }
+/// The split view's geometry as its `.lss` resolves it.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SplitViewGeometry {
+    pub hitbox_width: f32,
+    pub expand_inset_y: f32,
+    pub expand_cue_left: f32,
+    pub cue_inset_y: f32,
+    pub cue_radius: f32,
+    pub cue_width: f32,
+    pub cue_hovered_width: f32,
 }

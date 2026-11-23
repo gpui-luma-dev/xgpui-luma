@@ -176,9 +176,7 @@ macro_rules! geometry_family_impl {
 }
 pub(crate) use {geometry_family, geometry_family_impl};
 
-pub use crate::controls::layout::split_view::theme::{
-    SplitViewStylesheet, SplitViewGeometryStylesheet, SplitViewGeometry, ResolvedSplitViewGeometry,
-};
+pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
 pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
 pub use crate::controls::layout::resizable_panels::theme::{
     ResizablePanelsStylesheet, ResizablePanelsGeometryStylesheet, ResizablePanelsGeometry,
@@ -200,9 +198,7 @@ pub use crate::controls::choice::toggle::{
 pub use crate::controls::layout::scrollbar::theme::{
     ScrollbarStylesheet, ScrollbarGeometryStylesheet, ScrollbarGeometry, ResolvedScrollbarGeometry,
 };
-pub use crate::controls::navigation::stepper::theme::{
-    StepperStylesheet, StepperGeometryStylesheet, StepperGeometry, ResolvedStepperGeometry,
-};
+pub use crate::controls::navigation::stepper::theme::StepperGeometry;
 pub use crate::controls::navigation::sidebar::theme::{
     SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
 };
@@ -304,9 +300,7 @@ mod tests {
         ScrollbarStylesheet::validate_contract();
         ShellStylesheet::validate_contract();
         SharedStylesheet::validate_contract();
-        SplitViewStylesheet::validate_contract();
         ResizablePanelsStylesheet::validate_contract();
-        StepperStylesheet::validate_contract();
         SidebarStylesheet::validate_contract();
         ControlGroupStylesheet::validate_contract();
         RadioGroupStylesheet::validate_contract();

@@ -125,11 +125,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
         fill(&mut scrollbar.thumb_thickness, thumb);
         fill(&mut scrollbar.min_thumb_length, min);
     }
-    for (size, badge, track) in [(RadixSize::One, 24.0, 2.0), (RadixSize::Three, 40.0, 3.0)] {
-        let stepper = common.stepper.sizes.get_or_default(size.key());
-        fill(&mut stepper.step_badge_size, badge);
-        fill(&mut stepper.track_thickness, track);
-    }
     // The SDK resize handle scale is Radix size 1; sizes 2 and 3 are Radix's.
     for (size, lane, hit, cross, main) in
         [(RadixSize::Two, 12.0, 14.0, 6.0, 40.0), (RadixSize::Three, 18.0, 20.0, 8.0, 44.0)]
