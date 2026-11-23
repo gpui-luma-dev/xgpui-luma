@@ -61,14 +61,7 @@ impl ProgressSize {
 }
 /// The track height Radix's `progress.lss` gives `size`.
 fn height(size: RadixSize) -> f32 {
-    let theme = crate::Look::built_in().style_theme();
-    theme
-        .key_named("progress", &[("size", size.key())], &[])
-        .ok()
-        .and_then(|key| {
-            theme.resolve(&key).root().value("track_height").and_then(xgpui_luma::style::lss::Value::as_number)
-        })
-        .unwrap_or(0.0)
+    crate::style::lss_number("progress", &[("size", size.key())], "track_height")
 }
 /// Matches Radix's radius-factor and radius-thumb rules, capped at half the height.
 pub fn resolve_progress_radius(size: RadixSize, radius: Radius) -> f32 {

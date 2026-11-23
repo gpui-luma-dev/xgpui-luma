@@ -53,17 +53,16 @@ impl AvatarSize {
     pub fn label(self) -> &'static str {
         ["Size 1", "Size 2", "Size 3", "Size 4", "Size 5", "Size 6", "Size 7", "Size 8", "Size 9"][self as usize]
     }
+    /// The avatar's diameter, from `avatar.lss`.
     pub fn diameter(self) -> f32 {
-        crate::look::embedded_common_stylesheet()
-            .avatar
-            .resolve_geometry_for(self.as_str(), Default::default())
-            .diameter
+        crate::style::lss_number("avatar", &[("size", self.as_str())], "height")
     }
+    /// The avatar's corner radius, from `avatar.lss`; a full radius is a circle (half the diameter).
     pub fn corner_radius(self, radius: Radius) -> f32 {
         if radius == Radius::Full {
             self.diameter() / 2.0
         } else {
-            [4.0, 4.0, 6.0, 6.0, 8.0, 12.0, 12.0, 16.0, 16.0][self as usize] * radius.factor()
+            crate::style::lss_number("avatar", &[("size", self.as_str()), ("radius", radius.as_str())], "radius")
         }
     }
 }
@@ -343,37 +342,5 @@ mod tests {
                 }
             }
         }
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_avatar_stylesheet() -> xgpui_luma::theme::stylesheet::AvatarStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    AvatarStylesheet {
-        sizes: [
-            ("1", 24.0, 14.0, 12.0),
-            ("2", 32.0, 16.0, 14.0),
-            ("3", 40.0, 18.0, 16.0),
-            ("4", 48.0, 20.0, 18.0),
-            ("5", 64.0, 24.0, 24.0),
-            ("6", 80.0, 28.0, 28.0),
-            ("7", 96.0, 28.0, 28.0),
-            ("8", 128.0, 35.0, 35.0),
-            ("9", 160.0, 60.0, 60.0),
-        ]
-        .into_iter()
-        .map(|(key, diameter, font, two)| {
-            (
-                key.into(),
-                AvatarGeometryStylesheet {
-                    diameter: Some(diameter),
-                    font_size: Some(font),
-                    two_letter_font_size: Some(two),
-                    ..Default::default()
-                },
-            )
-        })
-        .collect(),
-        ..Default::default()
     }
 }

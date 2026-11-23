@@ -277,8 +277,6 @@ xgpui_luma::test_stylesheet_motion_contract!(
     crate
 );
 
-mod button_recipes;
-
 #[cfg(test)]
 mod navigation_tests;
 

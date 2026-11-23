@@ -47,17 +47,13 @@ impl CardSize {
             Self::Three => "Size 3",
         }
     }
+    /// The card's padding, from `card.lss`.
     pub fn padding(self) -> f32 {
-        crate::look::embedded_common_stylesheet()
-            .card
-            .resolve_geometry_for(self.as_str(), Default::default())
-            .padding
+        crate::style::lss_number("card", &[("size", self.as_str())], "padding_x")
     }
+    /// The card's corner radius, from `card.lss`.
     pub fn radius(self) -> f32 {
-        match self {
-            Self::One | Self::Two => 8.0,
-            Self::Three => 12.0,
-        }
+        crate::style::lss_number("card", &[("size", self.as_str())], "radius")
     }
 }
 
@@ -196,17 +192,5 @@ mod tests {
         assert!(!normal.resolve_style().shadows.is_empty());
         assert_eq!(style.padding, 20.0);
         assert_eq!(normal.resolve_style().padding, 12.0);
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_card_stylesheet() -> xgpui_luma::theme::stylesheet::CardStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    CardStylesheet {
-        sizes: [("1", 12.0), ("2", 16.0), ("3", 24.0)]
-            .into_iter()
-            .map(|(key, padding)| (key.into(), CardGeometryStylesheet { padding: Some(padding), ..Default::default() }))
-            .collect(),
-        ..Default::default()
     }
 }

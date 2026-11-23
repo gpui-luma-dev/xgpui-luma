@@ -102,6 +102,14 @@ fn removed_families_are_rejected() {
         "progress",
         "overlay_window",
         "popup_menu",
+        "accordion",
+        "tree_view",
+        "avatar",
+        "badge",
+        "card",
+        "callout",
+        "segmented",
+        "floating_menu",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");
