@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use xgpui_luma::theme::{InteractionLayer, ThemeMode};
 
 use crate::controls::ShadcnButtonStyle;
-use crate::elements::BadgeVariant;
 
 /// Normalized selector key/value pairs for stylesheet rule matching.
 #[derive(Clone, Debug, Default)]
@@ -51,10 +50,6 @@ pub fn button_style_key(style: ShadcnButtonStyle) -> &'static str {
         ShadcnButtonStyle::Ghost => "ghost",
         ShadcnButtonStyle::ContentOnly => "content-only",
     }
-}
-
-pub fn badge_variant_key(variant: BadgeVariant) -> &'static str {
-    variant.as_str()
 }
 
 pub fn interaction_layer_key(layer: InteractionLayer) -> &'static str {

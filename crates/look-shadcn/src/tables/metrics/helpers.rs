@@ -49,10 +49,6 @@ fn lss_control_metric(size: ShadcnSize, field: &str, value_px: f32) -> ResolvedM
     }
 }
 
-pub fn pill_radius_metric(_catalog: &CssTokenMap, value_px: f32) -> ResolvedMetric {
-    ResolvedMetric { value_px, source: MetricSource::Scaffold { path: "ShadcnRadii.full".into() } }
-}
-
 // Preserve the existing Shadcn inspector API while reporting shared authored paths.
 pub fn inspect_shared_metric(value: xgpui_luma::theme::provenance::ResolvedMetric) -> crate::ResolvedMetric {
     use xgpui_luma::theme::provenance::MetricSource;

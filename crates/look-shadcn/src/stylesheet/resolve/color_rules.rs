@@ -1,8 +1,5 @@
-use xgpui_luma::theme::InteractionLayer;
-
-use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
-use crate::stylesheet::config::{ButtonColorRule, ScrollbarColorRule, SidebarContainerColorRule};
+use crate::stylesheet::config::{ButtonColorRule, SidebarContainerColorRule};
 
 use super::{ResolveContext, ResolvedFields, resolve_color_ref, resolve_stylesheet_color};
 
@@ -26,19 +23,6 @@ pub fn resolve_button_color_rule(
     Ok(ResolvedButtonColors { background, foreground, border })
 }
 
-pub fn resolve_scrollbar_color_rule(
-    resolver: &LookResolver<'_>,
-    rule: &ScrollbarColorRule,
-    layer: InteractionLayer,
-) -> anyhow::Result<ResolvedScrollbarColors> {
-    let ctx = ResolveContext { style: ShadcnButtonStyle::Primary, layer, disabled: rule.disabled.unwrap_or(false) };
-    let mut fields = ResolvedFields::default();
-    let track_background = resolve_stylesheet_color(resolver, &rule.track_background, &fields, &ctx)?;
-    fields.insert("track_background", track_background.clone());
-    let thumb_background = resolve_stylesheet_color(resolver, &rule.thumb_background, &fields, &ctx)?;
-    Ok(ResolvedScrollbarColors { track_background, thumb_background })
-}
-
 pub fn resolve_sidebar_container_color_rule(
     resolver: &LookResolver<'_>,
     rule: &SidebarContainerColorRule,
@@ -54,47 +38,10 @@ pub fn resolve_sidebar_container_color_rule(
 }
 
 #[derive(Clone, Debug)]
-pub struct ResolvedStepperMetrics {
-    pub step_badge_size: f32,
-    pub track_thickness: f32,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedScrollbarColors {
-    pub track_background: ResolvedColor,
-    pub thumb_background: ResolvedColor,
-}
-
-#[derive(Clone, Debug)]
 pub struct ResolvedSidebarContainerColors {
     pub background: ResolvedColor,
     pub foreground: ResolvedColor,
     pub border: ResolvedColor,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ResolvedSliderMetrics {
-    pub width: f32,
-    pub height: f32,
-    pub track_height: f32,
-    pub thumb_size: f32,
-    pub radius: f32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ResolvedScrollbarMetrics {
-    pub thickness: f32,
-    pub track_thickness: f32,
-    pub thumb_thickness: f32,
-    pub min_thumb_length: f32,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct ResolvedProgressMetrics {
-    pub size: f32,
-    pub stroke_width: f32,
-    pub track_height: f32,
-    pub thumb_size: f32,
 }
 
 #[derive(Clone, Debug)]

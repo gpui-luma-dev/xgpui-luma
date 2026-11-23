@@ -17,8 +17,6 @@ pub use crate::controls::sidebar::{
 pub use crate::controls::progress::{ProgressColorTable};
 pub use crate::controls::stepper::{StepperColorTable};
 pub use crate::controls::resizable_panels::{ResizablePanelsColorTable};
-pub use crate::controls::scrollbar::{resolve_scrollbar_colors, ScrollbarColorTable};
-pub use crate::controls::slider::{SliderColorTable};
 pub use crate::controls::split_view::{SplitViewColorTable};
 pub use crate::controls::tabs::{TabsItemColorTable, TabsListColorTable};
 pub use crate::controls::textfield::{TextFieldColorTable};

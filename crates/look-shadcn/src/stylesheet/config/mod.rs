@@ -2,29 +2,11 @@ use xgpui_luma::theme::{InteractionLayer};
 use serde::Deserialize;
 
 use super::selector::interaction_layer_key;
-use crate::size::ShadcnSize;
 
 pub use crate::controls::typography::{TypographyStylesheet, TypographyRule};
 pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule, ButtonElevationRule, ButtonColorRule};
 pub use crate::controls::toggle::ToggleStylesheet;
-pub use crate::controls::progress::{ProgressStylesheet, ProgressMetricsRule, ProgressColorRule};
-pub use crate::controls::stepper::{StepperStylesheet, StepperMetricsRule};
-pub use crate::controls::card::CardStylesheet;
-pub use crate::elements::badge::{BadgeStylesheet, BadgeColorRule};
-pub use crate::controls::split_view::{SplitViewStylesheet, SplitViewColorRule};
-pub use crate::controls::control_group::{ControlGroupStylesheet, ControlGroupListColorRule};
-pub use crate::controls::slider::{SliderStylesheet, SliderMetricsRule, SliderColorRule};
-pub use crate::controls::scrollbar::{ScrollbarStylesheet, ScrollbarMetricsRule, ScrollbarColorRule};
-pub use crate::controls::accordion::AccordionStylesheet;
-pub use crate::controls::resizable_panels::ResizablePanelsStylesheet;
-pub use crate::controls::listbox::ListboxStylesheet;
-pub use crate::controls::table::TableStylesheet;
-pub use crate::controls::floating_menu::{FloatingMenuStylesheet, FloatingMenuSurfaceElevationRule};
-pub use crate::controls::tabs::TabsStylesheet;
-pub use crate::controls::tree_view::TreeViewStylesheet;
 pub use crate::controls::sidebar::{SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule};
-pub use crate::controls::textfield::{TextfieldStylesheet, TextfieldElevationRule, TextfieldColorRule};
-pub use crate::controls::autocomplete::{AutocompleteStylesheet, AutocompleteChromeColorRule};
 
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
 pub struct StylesheetConfig {
@@ -36,42 +18,8 @@ pub struct StylesheetConfig {
     pub button: ButtonStylesheet,
     #[serde(default)]
     pub toggle: ToggleStylesheet,
-    #[serde(default)]
-    pub slider: SliderStylesheet,
-    #[serde(default)]
-    pub scrollbar: ScrollbarStylesheet,
-    #[serde(default)]
-    pub accordion: AccordionStylesheet,
-    #[serde(default)]
-    pub resizable_panels: ResizablePanelsStylesheet,
-    #[serde(default)]
-    pub listbox: ListboxStylesheet,
-    #[serde(default)]
-    pub table: TableStylesheet,
-    #[serde(default)]
-    pub floating_menu: FloatingMenuStylesheet,
-    #[serde(default)]
-    pub tabs: TabsStylesheet,
-    #[serde(default)]
-    pub tree_view: TreeViewStylesheet,
     #[serde(default, alias = "navigation_sidebar")]
     pub sidebar: SidebarStylesheet,
-    #[serde(default)]
-    pub textfield: TextfieldStylesheet,
-    #[serde(default)]
-    pub autocomplete: AutocompleteStylesheet,
-    #[serde(default)]
-    pub progress: ProgressStylesheet,
-    #[serde(default)]
-    pub stepper: StepperStylesheet,
-    #[serde(default)]
-    pub card: CardStylesheet,
-    #[serde(default)]
-    pub badge: BadgeStylesheet,
-    #[serde(default)]
-    pub split_view: SplitViewStylesheet,
-    #[serde(default)]
-    pub control_group: ControlGroupStylesheet,
 }
 
 impl StylesheetConfig {
@@ -82,24 +30,7 @@ impl StylesheetConfig {
             typography: TypographyStylesheet::native_default(),
             button: ButtonStylesheet::native_default(),
             toggle: ToggleStylesheet::native_default(),
-            slider: super::native_shadcn_slider(),
-            scrollbar: ScrollbarStylesheet::native_default(),
-            accordion: AccordionStylesheet::native_default(),
-            resizable_panels: ResizablePanelsStylesheet::native_default(),
-            listbox: ListboxStylesheet::native_default(),
-            table: TableStylesheet::native_default(),
-            floating_menu: FloatingMenuStylesheet::native_default(),
-            tabs: TabsStylesheet::native_default(),
-            tree_view: TreeViewStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
-            textfield: TextfieldStylesheet::native_default(),
-            autocomplete: AutocompleteStylesheet::native_default(),
-            progress: ProgressStylesheet::native_default(),
-            stepper: StepperStylesheet::native_default(),
-            card: CardStylesheet::native_default(),
-            badge: BadgeStylesheet::native_default(),
-            split_view: SplitViewStylesheet::native_default(),
-            control_group: ControlGroupStylesheet::native_default(),
         }
     }
 
@@ -112,18 +43,6 @@ impl StylesheetConfig {
     }
 }
 
-pub fn find_enabled_color_rule<R: EnabledColorRule>(rules: &[R], enabled: bool) -> Option<&R> {
-    rules.iter().find(|rule| rule.matches_enabled(enabled))
-}
-
-pub trait EnabledColorRule {
-    fn enabled(&self) -> Option<bool>;
-
-    fn matches_enabled(&self, enabled: bool) -> bool {
-        self.enabled().is_none_or(|value| value == enabled)
-    }
-}
-
 pub(crate) fn matches_optional_bool(selector: Option<bool>, value: bool) -> bool {
     selector.is_none_or(|expected| expected == value)
 }
@@ -132,22 +51,10 @@ pub(crate) fn matches_optional_layer(selector: Option<&str>, layer: InteractionL
     selector.is_none_or(|expected| expected == interaction_layer_key(layer))
 }
 
-pub(crate) fn matches_optional_str(selector: Option<&str>, value: &str) -> bool {
-    selector.is_none_or(|expected| expected == value)
-}
-
 #[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct LayeredElevationRule {
     pub layer: Option<String>,
     pub shadow: String,
-}
-
-pub(crate) fn control_size_key(size: ShadcnSize) -> &'static str {
-    match size {
-        ShadcnSize::Sm => "sm",
-        ShadcnSize::Md => "md",
-        ShadcnSize::Lg => "lg",
-    }
 }
 
 #[cfg(test)]

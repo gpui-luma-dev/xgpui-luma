@@ -1,9 +1,5 @@
 //! Stepper — accent track + accent-foreground fill (same color elements as progress).
 
-use crate::stylesheet::config::control_size_key;
-use serde::Deserialize;
-use std::collections::HashMap;
-
 use xgpui_luma::controls::stepper::StepperLook;
 use crate::size::ShadcnSize;
 
@@ -116,29 +112,6 @@ mod tests {
 
         assert!(small.step_badge_size < large.step_badge_size);
     }
-}
-
-#[derive(Debug, Deserialize, Clone, Default, PartialEq)]
-pub struct StepperStylesheet {
-    #[serde(default)]
-    pub metrics: HashMap<String, StepperMetricsRule>,
-}
-
-impl StepperStylesheet {
-    /// Bundled stepper sizes are supplied by the common stylesheet.
-    pub fn native_default() -> Self {
-        Self::default()
-    }
-
-    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&StepperMetricsRule> {
-        self.metrics.get(control_size_key(size))
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
-pub struct StepperMetricsRule {
-    pub step_badge_size: f32,
-    pub track_thickness: f32,
 }
 
 /// Native common geometry owned by this control.
