@@ -59,11 +59,16 @@ impl ProgressSize {
         }
     }
 }
+/// The track height Radix's `progress.lss` gives `size`.
 fn height(size: RadixSize) -> f32 {
-    crate::look::embedded_common_stylesheet()
-        .progress
-        .resolve_geometry_for(size.key(), Default::default())
-        .track_height
+    let theme = crate::Look::built_in().style_theme();
+    theme
+        .key_named("progress", &[("size", size.key())], &[])
+        .ok()
+        .and_then(|key| {
+            theme.resolve(&key).root().value("track_height").and_then(xgpui_luma::style::lss::Value::as_number)
+        })
+        .unwrap_or(0.0)
 }
 /// Matches Radix's radius-factor and radius-thumb rules, capped at half the height.
 pub fn resolve_progress_radius(size: RadixSize, radius: Radius) -> f32 {
@@ -180,20 +185,6 @@ mod tests {
                 }
             }
         }
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_progress_stylesheet() -> xgpui_luma::theme::stylesheet::ProgressStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ProgressStylesheet {
-        sizes: [("1", 4.0), ("2", 6.0), ("3", 8.0)]
-            .into_iter()
-            .map(|(key, height)| {
-                (key.into(), ProgressGeometryStylesheet { track_height: Some(height), ..Default::default() })
-            })
-            .collect(),
-        ..Default::default()
     }
 }
 

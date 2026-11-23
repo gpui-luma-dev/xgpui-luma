@@ -22,24 +22,10 @@ pub(crate) fn apply_size_presets(common: &mut CommonStylesheet) {
         scrollbar.thumb_thickness = Some(thumb);
         scrollbar.min_thumb_length = Some(min);
     }
-    for (size, track, diameter, stroke, thumb) in
-        [(ShadcnSize::Sm, 4.0, 48.0, 5.0, 12.0), (ShadcnSize::Lg, 8.0, 80.0, 8.0, 20.0)]
-    {
-        let progress = common.progress.sizes.get_or_default(size.key());
-        progress.track_height = Some(track);
-        progress.size = Some(diameter);
-        progress.stroke_width = Some(stroke);
-        progress.thumb_size = Some(thumb);
-    }
     for (size, badge, track) in [(ShadcnSize::Sm, 24.0, 2.0), (ShadcnSize::Lg, 40.0, 3.0)] {
         let stepper = common.stepper.sizes.get_or_default(size.key());
         stepper.step_badge_size = Some(badge);
         stepper.track_thickness = Some(track);
-    }
-    for (size, min, height) in [(ShadcnSize::Sm, 320.0, 196.0), (ShadcnSize::Lg, 480.0, 264.0)] {
-        let overlay = common.overlay_window.sizes.get_or_default(size.key());
-        overlay.min_width = Some(min);
-        overlay.estimated_height = Some(height);
     }
     // The SDK resize handle scale is Shadcn `sm`; `md` and `lg` handles are Shadcn's.
     for (size, lane, hit, cross, main) in

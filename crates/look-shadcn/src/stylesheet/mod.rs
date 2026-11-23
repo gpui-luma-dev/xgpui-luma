@@ -43,14 +43,9 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
         button: crate::controls::button::native_button_stylesheet(),
         toggle: crate::controls::toggle::native_toggle_stylesheet(),
         scrollbar: crate::controls::scrollbar::native_scrollbar_stylesheet(),
-        progress: crate::controls::progress::native_progress_stylesheet(),
         stepper: crate::controls::stepper::native_stepper_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
-        toolbar: crate::controls::toolbar_item::native_toolbar_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
-        context_menu: crate::controls::context_menu::native_context_menu_stylesheet(),
-        overlay_window: crate::controls::overlay_window::native_overlay_window_stylesheet(),
-        pager: crate::controls::pager::native_pager_stylesheet(),
         ..Default::default()
     };
     size_presets::apply_size_presets(&mut common);

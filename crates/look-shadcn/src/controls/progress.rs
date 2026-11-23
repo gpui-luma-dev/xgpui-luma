@@ -157,18 +157,6 @@ impl EnabledColorRule for ProgressColorRule {
     }
 }
 
-/// Native common geometry owned by this control.
-pub(crate) fn native_progress_stylesheet() -> xgpui_luma::theme::stylesheet::ProgressStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ProgressStylesheet {
-        sizes: ["sm", "md", "lg"]
-            .into_iter()
-            .map(|key| (key.into(), ProgressGeometryStylesheet::default()))
-            .collect(),
-        ..Default::default()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ProgressMetricTable {
     pub size: crate::ResolvedMetric,
@@ -194,28 +182,11 @@ pub fn resolve_progress_metrics_for_size(
 
     let look = crate::controls::progress::progress_look(mode, true, size);
 
-    let mut table = ProgressMetricTable {
+    // What the `.lss` resolves is what's drawn; `[common.progress]` is no longer a stylesheet section.
+    ProgressMetricTable {
         size: derived_metric("progress ring diameter", look.size),
         stroke_width: derived_metric("progress stroke width", look.stroke_width),
         track_height: derived_metric("progress track height", look.track_height),
         thumb_size: derived_metric("progress thumb size", look.thumb_size),
-    };
-    let geometry = mode.stylesheet().common.progress.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::ProgressGeometry {
-            size: table.size.value_px,
-            stroke_width: table.stroke_width.value_px,
-            track_height: table.track_height.value_px,
-            thumb_size: table.thumb_size.value_px,
-            ..Default::default()
-        },
-    );
-    table.size = crate::tables::metrics::helpers::prefer_shared_metric(geometry.size, table.size);
-    table.stroke_width =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.stroke_width, table.stroke_width);
-    table.track_height =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.track_height, table.track_height);
-    table.thumb_size = crate::tables::metrics::helpers::prefer_shared_metric(geometry.thumb_size, table.thumb_size);
-
-    table
+    }
 }

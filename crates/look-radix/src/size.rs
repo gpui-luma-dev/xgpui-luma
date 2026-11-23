@@ -130,12 +130,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
         fill(&mut stepper.step_badge_size, badge);
         fill(&mut stepper.track_thickness, track);
     }
-    for (size, min, max, height) in [(RadixSize::One, 320.0, 440.0, 196.0), (RadixSize::Three, 480.0, 600.0, 264.0)] {
-        let overlay = common.overlay_window.sizes.get_or_default(size.key());
-        fill(&mut overlay.min_width, min);
-        fill(&mut overlay.max_width, max);
-        fill(&mut overlay.estimated_height, height);
-    }
     // The SDK resize handle scale is Radix size 1; sizes 2 and 3 are Radix's.
     for (size, lane, hit, cross, main) in
         [(RadixSize::Two, 12.0, 14.0, 6.0, 40.0), (RadixSize::Three, 18.0, 20.0, 8.0, 44.0)]

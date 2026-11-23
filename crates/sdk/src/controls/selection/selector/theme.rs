@@ -115,12 +115,8 @@ pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardB
         trigger_height: scale.height,
         trigger_icon_size: scale.icon_size,
         trigger_focus_border: palette.trigger_focus_border,
-        menu_offset_y: scale.gap
-            * crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .selector
-                .geometry
-                .menu_offset_scale
-                .unwrap_or_default(),
+        // The SDK `.lss` offset as a share of its gap, applied to this theme's gap.
+        menu_offset_y: scale.gap * crate::style::sdk_menu_offset_share("selector"),
         items_panel: palette.items_panel.clone(),
     }
 }
@@ -254,36 +250,6 @@ mod tests {
             let token = |path: &str| fixture::token(&lss, path, "color").as_color().map(Hsla::from).expect("a color");
             assert_eq!(look.trigger_border, Some(token("palette.form.input.invalid_border")), "{}", lss.mode());
             assert_eq!(look.trigger_focus_border, token("palette.focus.ring"), "{}", lss.mode());
-        }
-    }
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    SelectorStylesheet,
-    SelectorGeometryStylesheet,
-    SelectorGeometry,
-    ResolvedSelectorGeometry,
-    "selector",
-    [
-        height,
-        padding_x,
-        padding_y,
-        gap,
-        icon_size,
-        font_size,
-        line_height,
-        radius,
-        menu_offset_y,
-        menu_offset_scale
-    ]
-);
-
-impl SelectorStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: SelectorGeometryStylesheet { menu_offset_scale: Some(1.0 / 2.0), ..Default::default() },
-            ..Default::default()
         }
     }
 }

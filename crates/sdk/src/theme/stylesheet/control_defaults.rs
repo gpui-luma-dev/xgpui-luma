@@ -3,22 +3,19 @@ use crate::{color::GamutMapping, theme::ThemeMode};
 
 #[test]
 fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
-    let sheet = CommonStylesheet::parse("[common.progress.geometry]\nstroke_width=0").unwrap();
+    let sheet = CommonStylesheet::parse("[common.shell.geometry]\nleft_padding=0").unwrap();
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    assert_eq!(tokens.stylesheet.progress.geometry.size, Some(64.0));
-    assert_eq!(tokens.stylesheet.progress.geometry.stroke_width, Some(0.0));
+    let baseline = CommonStylesheet::sdk_default().shell.geometry.height;
+    assert!(baseline.is_some(), "the SDK baseline sets the shell height");
+    assert_eq!(tokens.stylesheet.shell.geometry.height, baseline, "unset fields come from the baseline");
+    assert_eq!(tokens.stylesheet.shell.geometry.left_padding, Some(0.0), "an authored zero is kept");
 }
 
 #[test]
 fn opacity_fields_reject_values_outside_zero_to_one() {
-    for family in ["floating_menu", "overlay_window", "resizable_panels"] {
-        let field = if family == "overlay_window" {
-            "backdrop_opacity"
-        } else {
-            "disabled_opacity"
-        };
+    for family in ["floating_menu", "resizable_panels"] {
         for value in ["-1", "1.1", "nan", "inf"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\n{field}={value}")).is_err());
+            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\ndisabled_opacity={value}")).is_err());
         }
     }
 }
@@ -26,10 +23,10 @@ fn opacity_fields_reject_values_outside_zero_to_one() {
 #[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
+        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.resizable_panels.geometry]\ndisabled_opacity = 'math(1 / 4)'",
         "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
     ]).unwrap();
-    assert_eq!(sheet.overlay_window.geometry.backdrop_opacity, Some(0.25));
+    assert_eq!(sheet.resizable_panels.geometry.disabled_opacity, Some(0.25));
     assert_eq!(sheet.slider.geometry.width, Some(64.0));
     assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
@@ -37,7 +34,7 @@ fn math_values_resolve_through_layers_and_geometry_validation() {
     assert_eq!(direct.slider.geometry.height, Some(6.0));
     for source in [
         "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
-        "[common.overlay_window.geometry]\nbackdrop_opacity = 'math(3 / 2)'",
+        "[common.resizable_panels.geometry]\ndisabled_opacity = 'math(3 / 2)'",
         "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
@@ -88,4 +85,25 @@ radius=9
 fn token_tables_are_not_stylesheet_fields() {
     // Token values live in the SDK's `.lss` token files, not in the common stylesheet.
     assert!(CommonStylesheet::parse("[common.tokens.metrics]\nborder_width = 3").is_err());
+}
+
+/// Families no control reads any more are not stylesheet sections: a sheet that sets them is an
+/// error naming the section, not silently ignored (#287).
+#[test]
+fn removed_families_are_rejected() {
+    for family in [
+        "pager",
+        "context_menu",
+        "dock_splitter",
+        "toolbar",
+        "textfield",
+        "textarea",
+        "selector",
+        "progress",
+        "overlay_window",
+        "popup_menu",
+    ] {
+        let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
+        assert!(error.to_string().contains(family), "{family}: {error}");
+    }
 }

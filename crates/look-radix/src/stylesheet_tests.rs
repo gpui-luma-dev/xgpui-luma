@@ -96,7 +96,6 @@ fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
     }
     // SDK helper recipes are inherited alongside Radix's own semantic sizes.
     assert_eq!(stylesheet.tooltip.sizes.keys().collect::<Vec<_>>(), vec!["compact"]);
-    assert_eq!(stylesheet.toolbar.sizes, Default::default());
 }
 
 #[test]

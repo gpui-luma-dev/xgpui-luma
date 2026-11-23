@@ -69,21 +69,9 @@ pub fn default_textarea_theme() -> Arc<dyn TextAreaTheme> {
 pub fn compose_textarea_look(palette: &TextAreaPalette, scale: &StandardBoxScale, border_width: f32) -> TextAreaLook {
     TextAreaLook {
         helper_geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
-        caret_width: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .textarea
-            .geometry
-            .caret_width
-            .unwrap_or_default(),
-        caret_height_extra: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .textarea
-            .geometry
-            .caret_height_extra
-            .unwrap_or_default(),
-        disabled_opacity: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .textarea
-            .geometry
-            .disabled_opacity
-            .unwrap_or_default(),
+        caret_width: crate::style::sdk_number("textarea", "caret_width"),
+        caret_height_extra: crate::style::sdk_number("textarea", "caret_height_extra"),
+        disabled_opacity: crate::style::sdk_number("textarea", "disabled_opacity"),
         background: palette.background,
         foreground: palette.foreground,
         border: palette.border,
@@ -100,30 +88,5 @@ pub fn compose_textarea_look(palette: &TextAreaPalette, scale: &StandardBoxScale
         padding_y: scale.padding_y,
         radius: scale.radius,
         border_width,
-    }
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    TextAreaStylesheet,
-    TextAreaGeometryStylesheet,
-    TextAreaGeometry,
-    ResolvedTextAreaGeometry,
-    "textarea",
-    [min_height, padding_x, padding_y, font_size, line_height, caret_width, caret_height_extra],
-    unit[disabled_opacity]
-);
-
-impl TextAreaStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: TextAreaGeometryStylesheet {
-                caret_width: Some(1.5),
-                caret_height_extra: Some(2.0),
-                disabled_opacity: Some(0.6),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
     }
 }

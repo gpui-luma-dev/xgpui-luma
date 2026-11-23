@@ -162,24 +162,3 @@ mod tests {
         assert_ne!(classic.border.a, surface.border.a);
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_textfield_stylesheet() -> xgpui_luma::theme::stylesheet::TextFieldStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    TextFieldStylesheet {
-        sizes: [("1", 12.5, 18.0), ("2", 14.0, 20.0), ("3", 16.0, 22.0)]
-            .into_iter()
-            .map(|(key, font, line)| {
-                (
-                    key.into(),
-                    TextFieldGeometryStylesheet {
-                        font_size: Some(font),
-                        line_height: Some(line),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-        ..Default::default()
-    }
-}
