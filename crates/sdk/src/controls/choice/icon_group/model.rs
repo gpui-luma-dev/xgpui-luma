@@ -69,10 +69,7 @@ where
 {
     let base = control_group_template_with_theme(theme.clone());
     Arc::new(move |model, handlers, window, cx| {
-        let mut look = theme.resolve_list(model.enabled);
-        if let Some(stylesheet) = model.shell_stylesheet {
-            look = look.with_stylesheet(&stylesheet.control_group);
-        }
+        let look = theme.resolve_list(model.enabled);
         base(model, handlers, window, cx)
             .rounded(px(crate::theme::FULL_RADIUS_PX))
             .gap(px(look.gap))

@@ -193,9 +193,6 @@ pub use crate::controls::navigation::stepper::theme::StepperGeometry;
 pub use crate::controls::navigation::sidebar::theme::{
     SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
 };
-pub use crate::controls::choice::control_group::theme::{
-    ControlGroupStylesheet, ControlGroupGeometryStylesheet, ControlGroupGeometry, ResolvedControlGroupGeometry,
-};
 pub use crate::controls::collection::table::theme::TableGeometry;
 pub use crate::controls::selection::selector_list::{
     SelectorListStylesheet, SelectorListGeometryStylesheet, SelectorListGeometry, ResolvedSelectorListGeometry,
@@ -287,7 +284,6 @@ mod tests {
         SharedStylesheet::validate_contract();
         ResizablePanelsStylesheet::validate_contract();
         SidebarStylesheet::validate_contract();
-        ControlGroupStylesheet::validate_contract();
         RadioGroupStylesheet::validate_contract();
         AutocompleteStylesheet::validate_contract();
         ComboBoxStylesheet::validate_contract();

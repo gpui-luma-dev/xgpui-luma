@@ -2,12 +2,9 @@
 use crate::ShadcnLook;
 
 #[test]
-fn panel_and_group_chrome_use_selected_common_stylesheet() {
+fn panel_chrome_uses_selected_common_stylesheet() {
     let mut config = crate::embedded_stylesheet().clone();
     config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.control_group.geometry]
-padding_x=0
-radius=7
 [common.selector_list.geometry]
 border_width=0
 disabled_opacity=0

@@ -31,16 +31,6 @@ pub struct ControlGroupListLook {
     pub disabled_opacity: f32,
 }
 
-impl ControlGroupListLook {
-    /// Apply explicit shared shell geometry before consumer template modifiers.
-    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::ControlGroupStylesheet) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, ControlGroupGeometry, self,
-            [padding_x => padding_x, padding_y => padding_y, gap => gap, radius => radius, vertical_gap => vertical_gap,
-             border_width => border_width, disabled_opacity => disabled_opacity]);
-        self
-    }
-}
-
 pub trait ControlGroupTheme: Send + Sync {
     fn resolve_list(&self, enabled: bool) -> ControlGroupListLook;
 
@@ -87,32 +77,4 @@ pub fn default_control_group_theme() -> Arc<dyn ControlGroupTheme> {
     static THEME: OnceLock<Arc<dyn ControlGroupTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledControlGroupTheme::sdk())).clone()
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ControlGroupStylesheet,
-    ControlGroupGeometryStylesheet,
-    ControlGroupGeometry,
-    ResolvedControlGroupGeometry,
-    "control_group",
-    [padding_x, padding_y, gap, radius, vertical_gap, border_width],
-    unit[disabled_opacity]
-);
-
-impl ControlGroupStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: ControlGroupGeometryStylesheet {
-                vertical_gap: Some(8.0),
-                border_width: Some(1.0),
-                disabled_opacity: Some(0.56),
-                padding_x: Some(6.0),
-                padding_y: Some(4.0),
-                gap: Some(6.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
 }

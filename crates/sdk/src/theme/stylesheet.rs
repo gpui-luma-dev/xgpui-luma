@@ -110,7 +110,6 @@ common_stylesheet! {
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
     sidebar: SidebarStylesheet,
-    control_group: ControlGroupStylesheet,
     radio_group: RadioGroupStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }
@@ -161,7 +160,6 @@ impl CommonStylesheet {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
             tooltip: TooltipStylesheet::native_default(),
-            control_group: ControlGroupStylesheet::native_default(),
             resizable_panels: ResizablePanelsStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),

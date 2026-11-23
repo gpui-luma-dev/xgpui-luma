@@ -331,7 +331,6 @@ fn group_sample(look: &Look, id: &SharedString, cell: &Cell, window: &mut Window
     let model = group::ControlGroupRenderModel {
         id,
         stylesheet: &sheet,
-        shell_stylesheet: None,
         items: items
             .iter()
             .enumerate()

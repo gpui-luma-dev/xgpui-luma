@@ -77,7 +77,6 @@ where
         ControlGroupRenderModel {
             id: &self.model.id,
             stylesheet: &self.model.stylesheet,
-            shell_stylesheet: self.model.stylesheet_overrides_shell.then_some(&self.model.stylesheet),
             items,
             selected_ids: effective_selected_ids,
             active_id: self.model.active_id.as_ref(),
