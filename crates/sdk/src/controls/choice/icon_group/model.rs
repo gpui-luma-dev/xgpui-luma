@@ -73,19 +73,10 @@ where
         if let Some(stylesheet) = model.shell_stylesheet {
             look = look.with_stylesheet(&stylesheet.control_group);
         }
-        let geometry = model.stylesheet.icon_group.resolve_geometry_for(
-            "toolbar",
-            crate::theme::stylesheet::IconGroupGeometry {
-                padding_x: look.padding_x,
-                padding_y: look.padding_y,
-                gap: look.gap,
-                radius: crate::theme::FULL_RADIUS_PX,
-            },
-        );
         base(model, handlers, window, cx)
-            .rounded(px(geometry.radius))
-            .gap(px(geometry.gap))
-            .px(px(geometry.padding_x))
-            .py(px(geometry.padding_y))
+            .rounded(px(crate::theme::FULL_RADIUS_PX))
+            .gap(px(look.gap))
+            .px(px(look.padding_x))
+            .py(px(look.padding_y))
     })
 }
