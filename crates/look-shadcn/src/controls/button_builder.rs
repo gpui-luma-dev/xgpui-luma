@@ -298,7 +298,7 @@ impl<D: 'static> HasPresenter<ButtonContentContext<D>> for Button<D> {
 
 /// The button's `.lss` template; a radius preset is the `radius` attribute (`radius none|small|…` in
 /// `button.lss`), as `ShadcnLook::button_face` draws it.
-fn template_for<D: xgpui_luma::controls::button::ButtonData>(
+pub(crate) fn template_for<D: xgpui_luma::controls::button::ButtonData>(
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     radius: Option<ButtonRadiusPreset>,

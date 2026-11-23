@@ -3,7 +3,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, FontWeight, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma_look_shadcn::ShadcnSize;
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::{ButtonRadiusPreset, ShadcnButtonStyle, ShadcnLook};
 use lucide_svg_static::Icon as LucideIcon;
@@ -100,7 +100,6 @@ pub(crate) const ICON_BUTTON_VARIANTS: [IconButtonVariantDef; 5] = [
 
 pub(crate) fn render_button_size_radius_matrix(
     look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
     style: ShadcnButtonStyle,
     icon_only: bool,
     window: &mut Window,
@@ -127,9 +126,7 @@ pub(crate) fn render_button_size_radius_matrix(
             description: SharedString::from(""),
             cells: ButtonRadiusPreset::ALL
                 .iter()
-                .map(|radius| {
-                    render_button_size_radius_cell(template, look, style, *size, *radius, icon_only, window, cx)
-                })
+                .map(|radius| render_button_size_radius_cell(look, style, *size, *radius, icon_only, window, cx))
                 .collect(),
         }
     }))
@@ -152,7 +149,6 @@ pub(crate) fn render_button_radius_header_cell(label: &'static str, muted_text: 
 }
 
 fn render_button_size_radius_cell(
-    template: &Arc<dyn ButtonTemplate<()>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     size: ShadcnSize,
@@ -193,9 +189,10 @@ fn render_button_size_radius_cell(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: Some(button_look_for_semantic(Arc::new(look.clone()), style, size, radius)),
         ..Default::default()
     };
+    // The `.lss` template draws the style, size and radius preset itself.
+    let template = look.with_size(size).button_family_template::<()>(style, Some(radius));
 
     div()
         .w_full()
@@ -205,30 +202,6 @@ fn render_button_size_radius_cell(
         .justify_center()
         .child(template.render(&model, window, cx))
         .into_any_element()
-}
-
-pub(crate) fn button_look_for_semantic(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-    size: ShadcnSize,
-    radius: ButtonRadiusPreset,
-) -> xgpui_luma::controls::button::ButtonLookSource<()> {
-    Arc::new(move |model| theme.button_face(style, model.role, size, Some(radius), model.state))
-}
-
-pub(crate) fn button_look_for_style(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-) -> xgpui_luma::controls::button::ButtonLookSource<()> {
-    Arc::new(move |model| match style {
-        ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(model.role, theme.size(), model.state),
-        ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(model.role, theme.size(), model.state),
-        ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(model.role, theme.size(), model.state),
-        ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(model.role, theme.size(), model.state),
-        ShadcnButtonStyle::ContentOnly => {
-            theme.as_ref().resolve_content_only_button(model.role, theme.size(), model.state)
-        }
-    })
 }
 
 pub(crate) fn radius_label_id(radius: ButtonRadiusPreset) -> &'static str {

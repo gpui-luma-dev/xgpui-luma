@@ -988,12 +988,18 @@ impl ShadcnLook {
         radius: Option<crate::ButtonRadiusPreset>,
         state: xgpui_luma::theme::InteractionState,
     ) -> xgpui_luma::controls::button_family::ButtonFamilyLook {
-        let template = templates::styled_button_template::<()>(self.with_size(size), style);
-        let template = match radius {
-            Some(preset) => template.attr("radius", preset.key()),
-            None => template,
-        };
-        template.look(role, state, 1.0)
+        crate::controls::button_builder::template_for::<()>(&self.with_size(size), style, radius).look(role, state, 1.0)
+    }
+
+    /// The `.lss` button-family template for `style` at this look's size, for any button data
+    /// (buttons, toggles), with an optional radius preset (`radius none|small|…` in `button.lss`).
+    /// Draws what [`Self::button_face`] resolves.
+    pub fn button_family_template<D: xgpui_luma::controls::button::ButtonData>(
+        &self,
+        style: ShadcnButtonStyle,
+        radius: Option<crate::ButtonRadiusPreset>,
+    ) -> Arc<dyn xgpui_luma::controls::button::ButtonTemplate<D>> {
+        Arc::new(crate::controls::button_builder::template_for::<D>(self, style, radius))
     }
 
     /// An icon-only toggle from `.lss`: the toggle's colors, shadow and corner on the icon button's square box.
