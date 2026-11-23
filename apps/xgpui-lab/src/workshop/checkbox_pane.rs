@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px, svg};
+use xgpui_luma::{GridLayout, GridTrack};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupEvent, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel,
@@ -30,6 +31,9 @@ use crate::screen::{LabMetrics, text};
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
+/// The inspector starts at a third of the pane (the control side two thirds) and never gets narrower
+/// than this, so its one-line property rows fit.
+const MIN_INSPECTOR_WIDTH: f32 = 340.;
 /// Initial height of the lower panel (states or events) under the stage.
 const LOWER_HEIGHT: f32 = 300.;
 const MIN_STAGE_HEIGHT: f32 = 160.;
@@ -117,10 +121,37 @@ fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::Ap
 const MODE_TRACK_BORDER: f32 = 1.;
 const MODE_TRACK_PADDING: f32 = 1.;
 
+/// The state matrix's spacing: rows as tall as a checkbox, tight gaps between rows and columns.
+const MATRIX_ROW_HEIGHT: f32 = 36.;
+const MATRIX_GAP_X: f32 = 12.;
+const MATRIX_GAP_Y: f32 = 2.;
+/// A cell's narrowest width: a checkbox and its "Label".
+const MATRIX_CELL_WIDTH: f32 = 96.;
+/// Room after the widest row label.
+const MATRIX_LABEL_PAD: f32 = 12.;
+/// The state icons' size (see `state_icons`).
+const MATRIX_ICON_SIZE: f32 = 14.;
+
+/// A matrix label's text width in the pane's monospaced body text, at the bold weight the key's
+/// labels use, so no label is wider than its column.
+fn text_width(window: &Window, look: &Look, text: &str) -> f32 {
+    let body = pane_type::body(look);
+    let run = gpui::TextRun {
+        len: text.len(),
+        font: gpui::Font { weight: pane_type::LABEL_WEIGHT, ..gpui::font(pane_type::MONO) },
+        color: gpui::black(),
+        background_color: None,
+        underline: None,
+        strikethrough: None,
+    };
+    f32::from(window.text_system().shape_line(text.to_string().into(), px(body.size), &[run], None).width)
+}
+
 /// The interaction picker's item for no state of the exclusive group.
 const NO_INTERACTION: &str = "none";
 
-/// The work pane: the control side and the inspector, half each, with a draggable divider between them.
+/// The work pane: the control side (two thirds) and the inspector (a third), with a draggable divider
+/// between them.
 pub(super) struct CheckboxPane {
     look: Arc<Look>,
     theme: Theme,
@@ -141,8 +172,12 @@ impl CheckboxPane {
         let (side_view, inspector_view) = (side.clone(), inspector.clone());
         let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-checkbox-split")
             .show_border(false)
-            .panel(ResizablePanelSpec::new_render(move || side_view.clone()).weight(1.).min(px(MIN_SIDE_WIDTH)))
-            .panel(ResizablePanelSpec::new_render(move || inspector_view.clone()).weight(1.).min(px(MIN_SIDE_WIDTH)))
+            .panel(ResizablePanelSpec::new_render(move || side_view.clone()).weight(2.).min(px(MIN_SIDE_WIDTH)))
+            .panel(
+                ResizablePanelSpec::new_render(move || inspector_view.clone())
+                    .weight(1.)
+                    .min(px(MIN_INSPECTOR_WIDTH)),
+            )
             .spawn(cx);
         Self { look, theme, control, side, inspector, split, left_rounded: false }
     }
@@ -781,15 +816,20 @@ impl ControlSide {
             } else {
                 states.iter().filter_map(|s| state_icon(Some(config.state_name(*s)), color)).collect()
             };
+            let text = self.states_label(states, empty);
+            let selector = format!("workshop-checkbox-matrix-label-{text}");
             div()
+                .debug_selector(move || selector.clone())
                 .flex()
+                .flex_none()
                 .items_center()
                 .gap(px(4.))
+                .whitespace_nowrap()
                 .font_family(pane_type::MONO)
                 .text_color(color)
                 .when(current, |d| d.font_weight(pane_type::LABEL_WEIGHT))
                 .children(icons)
-                .child(self.states_label(states, empty))
+                .child(text)
         };
         let (columns, rows) = self.matrix_axes();
         let active = self.key.active_states();
@@ -800,21 +840,33 @@ impl ControlSide {
             .find(|s| active.contains(*s) && columns.contains(&Some(*s)));
         let rest: Vec<StateId> = rows.last().cloned().unwrap_or_default();
         let current_row = |row: &[StateId]| rest.iter().all(|s| active.contains(*s) == row.contains(s));
-        let mut grid =
-            div().debug_selector(|| "workshop-checkbox-matrix".into()).p(px(20.)).flex().flex_col().gap(px(10.));
-        grid = grid.child(div().flex().gap(px(10.)).child(div().w(px(150.))).children(columns.iter().map(|column| {
+        // Fixed-width columns on the SDK's `GridLayout`, as Radix Studio's matrices: the label column
+        // as wide as the widest row label, each state column as wide as its header or a cell.
+        let label_width = |states: &[StateId], empty: &str| {
+            let icons = states.len().max(1) as f32 * (MATRIX_ICON_SIZE + 4.);
+            icons + text_width(window, &self.look, &self.states_label(states, empty))
+        };
+        let row_label_width = rows.iter().map(|r| label_width(r, "base")).fold(0., f32::max) + MATRIX_LABEL_PAD;
+        let column_width = columns
+            .iter()
+            .map(|c| label_width(&c.iter().copied().collect::<Vec<_>>(), "—"))
+            .fold(MATRIX_CELL_WIDTH, f32::max);
+        let tracks = std::iter::once(GridTrack::Px(row_label_width))
+            .chain(std::iter::repeat_n(GridTrack::Px(column_width), columns.len()));
+        let mut grid = GridLayout::new().columns(tracks).gap_x(MATRIX_GAP_X).gap_y(MATRIX_GAP_Y);
+        let cell = || div().h(px(MATRIX_ROW_HEIGHT)).flex().items_center();
+        grid = grid.child(cell(), 0, 0);
+        for (c, column) in columns.iter().enumerate() {
             let states: Vec<StateId> = column.iter().copied().collect();
-            div().flex_1().child(label(&states, "—", *column == current_column))
-        })));
+            grid = grid.child(cell().child(label(&states, "—", *column == current_column)), 0, c + 1);
+        }
         for (r, row_states) in rows.iter().enumerate() {
-            let mut row = div().flex().items_center().gap(px(10.)).child(div().w(px(150.)).child(label(
-                row_states,
-                "base",
-                current_row(row_states),
-            )));
+            // Row labels end at the column's right edge, beside the checkboxes they name.
+            let row_label = cell().justify_end().child(label(row_states, "base", current_row(row_states)));
+            grid = grid.child(row_label, r + 1, 0);
             for (c, column) in columns.iter().enumerate() {
-                let cell: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
-                let (state, checked) = self.template_state(&cell);
+                let states: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
+                let (state, checked) = self.template_state(&states);
                 let model = ButtonRenderModel {
                     id: format!("workshop-checkbox-matrix-{r}-{c}").into(),
                     data: CheckboxData::new(checked),
@@ -822,12 +874,16 @@ impl ControlSide {
                     content: Arc::new(|_, _| div().child("Label").into_any_element()),
                     ..Default::default()
                 };
-                row = row
-                    .child(div().flex_1().h(px(48.)).flex().items_center().child(template.render(&model, window, cx)));
+                let selector = format!("workshop-checkbox-matrix-cell-{r}-{c}");
+                let drawn = cell().debug_selector(move || selector.clone()).child(template.render(&model, window, cx));
+                grid = grid.child(drawn, r + 1, c + 1);
             }
-            grid = grid.child(row);
         }
-        grid.into_any_element()
+        div()
+            .debug_selector(|| "workshop-checkbox-matrix".into())
+            .p(px(20.))
+            .child(grid.build().w_auto())
+            .into_any_element()
     }
 
     /// Design mode's lower panel: the states the checkbox draws, grouped like a designer's state
@@ -1267,7 +1323,7 @@ mod tests {
         let (file, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
         assert!(file.ends_with("palette.lss"), "the default (light) palette: {file}");
         assert!(
-            !used.is_empty() && used.iter().all(|l| l.contains("= gray(")),
+            !used.is_empty() && used.iter().all(|l| l.contains("= gray(") || l.contains("= srgb(")),
             "used lines are color tokens: {used:?}"
         );
 
@@ -1278,13 +1334,13 @@ mod tests {
     }
 
     #[test]
-    fn checkbox_pane_splits_start_half_and_half_with_a_resizable_lower_panel() {
+    fn checkbox_pane_splits_start_two_thirds_to_a_third_with_a_resizable_lower_panel() {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
         cx.update(|_, cx| {
             let sizes = pane.read(cx).split.read(cx).panel_sizes_px();
             assert_eq!(sizes.len(), 2);
-            assert!((sizes[0] - sizes[1]).abs() < 2., "control and inspector start equal: {sizes:?}");
+            assert!((sizes[0] - 2. * sizes[1]).abs() < 3., "control two thirds, inspector a third: {sizes:?}");
             let side = pane.read(cx).side.read(cx);
             let sizes = side.split.read(cx).panel_sizes_px();
             assert!((sizes[1] - LOWER_HEIGHT).abs() < 2., "lower panel starts at its height: {sizes:?}");
@@ -1404,24 +1460,28 @@ mod tests {
     }
 
     #[test]
-    fn property_rows_are_one_line_columns_under_a_header() {
+    fn property_rows_are_one_line_with_the_expression_on_expand() {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
         let inspector = cx.update(|_, cx| pane.read(cx).inspector());
-        assert!(cx.debug_bounds("lss-inspector-list-header").is_some(), "column header");
-        // Names start at the Property column, whatever their length (the button must not centre them).
-        let header = cx.debug_bounds("lss-inspector-header-property").expect("header").left();
-        for id in [
-            "lss-inspector-name-gap",
-            "lss-inspector-name-disabled_opacity",
-            "lss-inspector-name-indicator_scale",
-        ] {
-            assert_eq!(cx.debug_bounds(id).expect(id).left(), header, "{id} starts at the Property column");
+        assert!(cx.debug_bounds("lss-inspector-list-header").is_none(), "no column header");
+        let bounds = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
+        // Names start at the same place whatever their length; rule lines end at the same place.
+        let gap = bounds("lss-inspector-name-gap", cx);
+        for id in ["lss-inspector-name-disabled_opacity", "lss-inspector-name-indicator_scale"] {
+            assert_eq!(bounds(id, cx).left(), gap.left(), "{id} starts with the other names");
         }
-        let column = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
-        let (value, rule) = (column("lss-inspector-header-value", cx), column("lss-inspector-header-rule", cx));
-        assert_eq!(column("lss-inspector-value-height", cx).left(), value.left(), "values line up with Value");
-        assert_eq!(column("lss-inspector-rule-height", cx).right(), rule.right(), "rules line up with Rule");
+        assert_eq!(bounds("lss-inspector-rule-height", cx).right(), bounds("lss-inspector-rule-gap", cx).right());
+        // One line each; the value sits between the name and the rule line.
+        let (value, rule) = (bounds("lss-inspector-value-height", cx), bounds("lss-inspector-rule-height", cx));
+        assert!(value.right() <= rule.left() && value.left() > gap.left(), "name · value · rule");
+        assert!(cx.debug_bounds("lss-inspector-rules-height").is_none(), "details hidden until opened");
+        // Opening a row shows its rules (each with its expression) right under it.
+        inspector.update(cx, |inspector, cx| inspector.expand("root", "height", cx));
+        cx.run_until_parked();
+        let (name, rules) = (bounds("lss-inspector-name-height", cx), bounds("lss-inspector-rules-height", cx));
+        // Only the property's doc comment, if any, comes between.
+        assert!(rules.top() - name.bottom() < px(40.), "right under the row: {name:?} {rules:?}");
         // A literal shows no expression; a token reference shows it; the base rule has no selector.
         let summary = |part: &str, property: &'static str, cx: &mut VisualTestContext| {
             cx.update(|_, cx| inspector.read(cx).row_summary(part, property)).expect("row rendered")
@@ -1707,5 +1767,86 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
+    }
+
+    #[gpui::test]
+    fn the_matrix_fits_its_labels_in_tight_rows_and_columns() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        let cell = |r: usize, c: usize, cx: &mut VisualTestContext| {
+            let name: &'static str = Box::leak(format!("workshop-checkbox-matrix-cell-{r}-{c}").into_boxed_str());
+            cx.debug_bounds(name).unwrap_or_else(|| panic!("cell {r},{c}"))
+        };
+        // The longest row label ends before the first state column starts.
+        let longest = cx.debug_bounds("workshop-checkbox-matrix-label-:focused:checked:invalid").expect("label");
+        let first = cell(7, 0, cx);
+        assert!(longest.right() <= first.left(), "label clear of the cells: {longest:?} vs {first:?}");
+        // Row labels are right-aligned: a short one ends where the longest does.
+        let base = cx.debug_bounds("workshop-checkbox-matrix-label-base").expect("base label");
+        assert!((base.right() - longest.right()).abs() <= px(1.), "right-aligned: {base:?} vs {longest:?}");
+        // Rows a checkbox tall with a 2px gap; columns a cell wide with a 12px gap.
+        let (a, b, c) = (cell(0, 0, cx), cell(1, 0, cx), cell(0, 1, cx));
+        assert_eq!(b.top() - a.top(), px(38.), "row stride");
+        assert!(c.left() - a.left() <= px(150.), "column stride is tight: {:?}", c.left() - a.left());
+    }
+
+    #[gpui::test]
+    fn the_box_model_switch_hides_and_shows_the_diagrams() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let diagram = "style-inspector-box-root";
+        assert!(cx.debug_bounds(diagram).is_some(), "on by default");
+        // Clicking the switch turns the diagrams off.
+        let switch = cx.debug_bounds("lss-inspector-box-model").expect("Box model switch");
+        cx.simulate_click(switch.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_none(), "off: no diagram");
+        // Off holds when grouped by kind (the diagram's place is the Layout section); on brings it back.
+        inspector.update(cx, |inspector, cx| inspector.choose_grouping("kind", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_none(), "off by kind too");
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_some(), "on again");
+    }
+
+    #[gpui::test]
+    fn rows_not_set_by_a_state_now_are_dimmed() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let dimmed = |part: &str, property: &str, cx: &mut VisualTestContext| {
+            cx.update(|_, cx| inspector.read(cx).row_dimmed(part, property)).expect("row")
+        };
+        // Base key: no state rule sets a value, so the rows are dimmed, but all still listed.
+        assert!(dimmed("indicator", "background", cx));
+        assert!(cx.debug_bounds("style-inspector-row-root-indicator_scale").is_some(), "every row listed");
+        // :checked sets the indicator background by state; a size stays dimmed.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        cx.run_until_parked();
+        assert!(!dimmed("indicator", "background", cx), ":checked sets it");
+        assert!(dimmed("root", "indicator_scale", cx), "no state rule sets it");
+    }
+
+    #[gpui::test]
+    fn an_open_row_stacks_its_rules_above_its_reads() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        inspector.update(cx, |inspector, cx| inspector.expand("root", "focus_border", cx));
+        cx.run_until_parked();
+        let bounds = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
+        let (rules, reads) =
+            (bounds("lss-inspector-rules-focus_border", cx), bounds("lss-inspector-reads-focus_border", cx));
+        assert!(reads.top() >= rules.bottom(), "Reads under Rules: {rules:?} {reads:?}");
+        assert_eq!(rules.left(), reads.left(), "both start at the same indent");
+        assert_eq!(rules.size.width, reads.size.width, "both full width");
+        // The rule's head and its expression are two lines.
+        assert!(rules.size.height >= px(40.), "heading, rule head and expression lines: {rules:?}");
     }
 }

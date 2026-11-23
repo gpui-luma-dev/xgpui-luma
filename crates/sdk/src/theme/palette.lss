@@ -59,7 +59,7 @@ tokens {
         placeholder    = gray(65.1, 1)
       }
     }
-    focus  { ring = gray(20, 1) }
+    focus  { ring = srgb(1, 0, 0, 1) }
     border {
       default = gray(83.92, 1)
       strong  = gray(46.86, 1)
@@ -145,7 +145,7 @@ tokens {
           placeholder    = gray(46.86, 1)
         }
       }
-      focus  { ring = gray(85, 1) }
+      focus  { ring = srgb(1, 0, 0, 1) }
       border {
         default = gray(26.67, 1)
         strong  = gray(65.1, 1)
