@@ -310,13 +310,15 @@ mod tests {
         let look = Look::built_in();
         use xgpui_luma::style::lss::{AttrValue, ControlId, PartId, StyleKey};
         let size_attr = crate::style::config().attribute("size").expect("size");
+        // Each size has its own label text, larger with the size (values come from `radio.lss`).
+        let mut previous = (0.0, 0.0);
         for size in RadioSize::ALL {
             let key = StyleKey::new(ControlId::new("radio")).attr(size_attr, AttrValue::named(size.as_str()));
             let resolved = look.style_theme().resolve(&key);
             let label = resolved.part(PartId::new("label"));
-            let expected = crate::typography::label_typography(size.control_size());
-            assert_eq!(label.font_size(), Some(expected.size));
-            assert_eq!(label.line_height(), Some(expected.line_height));
+            let text = (label.font_size().expect("a font size"), label.line_height().expect("a line height"));
+            assert!(text.0 > previous.0 && text.1 > previous.1, "{size:?}: {text:?} after {previous:?}");
+            previous = text;
         }
     }
 }

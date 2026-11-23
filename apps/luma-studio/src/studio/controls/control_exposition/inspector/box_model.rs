@@ -128,8 +128,6 @@ pub struct InspectBoxModelSnapshot {
     pub focus_ring_offset: f32,
 }
 
-impl InspectBoxModelSnapshot {}
-
 fn choice_indicator_only_box_model(
     indicator_size: f32,
     border_width: f32,
