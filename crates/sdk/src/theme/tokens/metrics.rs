@@ -55,8 +55,9 @@ pub struct ControlMetricTokens {
 }
 
 impl Default for MetricTokens {
+    /// The SDK's metrics, from `theme/tokens.lss`.
     fn default() -> Self {
-        Self::native_default()
+        super::from_lss::sdk(super::ThemeMode::Light).metrics
     }
 }
 
@@ -67,16 +68,6 @@ impl ControlMetricTokens {
 }
 
 impl MetricTokens {
-    /// Construct the bundled SDK metrics without parsing theme data.
-    pub fn native_default() -> Self {
-        Self {
-            disabled_opacity: 0.56,
-            border_width: 1.0,
-            focus: FocusMetricTokens { gap: 1.0, width: 1.0, offset: 0.0 },
-            control: ControlMetricTokens::new(36.0, 14.0, 8.0, 8.0, 6.0, 16.0),
-        }
-    }
-
     pub fn radius(&self) -> f32 {
         self.control.radius
     }

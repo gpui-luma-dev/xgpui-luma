@@ -1,8 +1,9 @@
 // SDK tokens: the one neutral default theme. Layer: sdk.
 //
-// Converted from #94's crates/sdk/assets/sdk.hcl, whose values were checked against the Rust
-// ThemeTokens::light(). `theme::style::tests` checks this file against ThemeTokens::light() again,
-// so the two cannot drift while both exist.
+// This file is the source of the SDK's metrics and typography: `MetricTokens::default()`,
+// `LumaTypography::default()` and `ThemeTokens` read it at startup. Adding or removing a token in
+// `metrics` or `typography` means changing the Rust type too; `LumaThemeMode::from_theme` rejects
+// tokens that don't match.
 //
 // These tokens are the same in every mode; `palette.lss` holds the per-mode colors and shadows
 // (light values, `mode dark` overrides). Looks map these groups onto their own data in their token files.

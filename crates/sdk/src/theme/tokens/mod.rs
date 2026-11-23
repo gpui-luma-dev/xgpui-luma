@@ -1,4 +1,5 @@
 pub mod elevation;
+mod from_lss;
 pub mod metrics;
 pub mod palette;
 pub mod typography;
@@ -257,7 +258,10 @@ impl Default for LumaThemeMode {
 
 #[cfg(test)]
 mod tests {
-    use super::{LumaTheme, LumaThemeMode, ThemeMode, ThemeModes, ThemeTokens};
+    use super::{
+        LumaElevation, LumaPalette, LumaTheme, LumaThemeMode, LumaTypography, MetricTokens, ThemeMode, ThemeModes,
+        ThemeTokens,
+    };
 
     #[test]
     fn default_tokens_use_light_structural_palette() {
@@ -282,8 +286,9 @@ mod tests {
         let light = theme.mode(ThemeMode::Light);
         assert_eq!(theme.name, "Structural");
         assert_eq!(theme.version, 1);
-        assert_eq!(light.metrics.radius(), 6.0);
-        assert_eq!(light.typography.text.label.weight, gpui::FontWeight::MEDIUM);
-        assert!(!light.elevation.menu.layers.is_empty());
+        assert_eq!(light.metrics, MetricTokens::default());
+        assert_eq!(light.typography, LumaTypography::default());
+        assert_eq!(light.elevation, LumaElevation::light());
+        assert_eq!(theme.mode(ThemeMode::Dark).palette, LumaPalette::dark());
     }
 }

@@ -2,7 +2,10 @@ use gpui::{BoxShadow, Hsla, point, px};
 use crate::color::{ColorValue, GamutMapping, gpui_bridge::SrgbRenderCache};
 use anyhow::{Context as _, Result};
 use serde::{Serialize, Deserialize};
-use std::{ops::Deref, sync::Arc};
+use std::{
+    ops::Deref,
+    sync::{Arc, OnceLock},
+};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -47,11 +50,13 @@ impl Default for LumaElevation {
 }
 
 impl LumaElevation<ColorValue> {
+    /// The SDK's light shadows, from `theme/palette.lss`.
     pub fn light() -> Self {
-        Self::light_with(|a| ColorValue::srgb(0.0, 0.0, 0.0, a))
+        super::from_lss::sdk(super::ThemeMode::Light).elevation.clone()
     }
+    /// The SDK's dark shadows, from `theme/palette.lss` (`mode dark`).
     pub fn dark() -> Self {
-        Self::dark_with(|a| ColorValue::srgb(0.0, 0.0, 0.0, a))
+        super::from_lss::sdk(super::ThemeMode::Dark).elevation.clone()
     }
 
     /// Prepare current GPUI previews once while retaining original shadow colors.
@@ -92,60 +97,6 @@ impl LumaElevation<ColorValue> {
             overlay_window: resolve(&self.overlay_window, "overlay_window", &mut cache)?,
         };
         Ok(SrgbElevation { source: Arc::new(self), preview: Arc::new(preview), policy })
-    }
-}
-
-impl<C> LumaElevation<C> {
-    fn light_with(color: impl Fn(f32) -> C) -> Self {
-        Self {
-            none: LumaShadow::default(),
-            drag_preview: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 3.0, 0.0, false),
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 2.0, -1.0, false),
-            ]),
-            control: LumaShadow::single(color(0.05), 0.0, 1.0, 2.0, 0.0, false),
-            thumb: LumaShadow::single(color(0.14), 0.0, 1.0, 2.0, 0.0, false),
-            menu: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 3.0, 0.0, false),
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 2.0, -1.0, false),
-            ]),
-            popover: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.12), 0.0, 4.0, 8.0, -2.0, false),
-                LumaShadowLayer::new(color(0.06), 0.0, 2.0, 4.0, -1.0, false),
-            ]),
-            panel: LumaShadow::single(color(0.06), 0.0, 1.0, 3.0, 0.0, false),
-            dialog: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.16), 0.0, 18.0, 32.0, -8.0, false),
-                LumaShadowLayer::new(color(0.08), 0.0, 6.0, 12.0, -4.0, false),
-            ]),
-            overlay_window: LumaShadow::single(color(0.2), 0.0, 18.0, 38.0, -16.0, false),
-        }
-    }
-
-    fn dark_with(color: impl Fn(f32) -> C) -> Self {
-        Self {
-            none: LumaShadow::default(),
-            drag_preview: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 3.0, 0.0, false),
-                LumaShadowLayer::new(color(0.1), 0.0, 1.0, 2.0, -1.0, false),
-            ]),
-            control: LumaShadow::single(color(0.18), 0.0, 1.0, 2.0, 0.0, false),
-            thumb: LumaShadow::single(color(0.14), 0.0, 1.0, 2.0, 0.0, false),
-            menu: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.28), 0.0, 1.0, 3.0, 0.0, false),
-                LumaShadowLayer::new(color(0.18), 0.0, 1.0, 2.0, -1.0, false),
-            ]),
-            popover: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.32), 0.0, 4.0, 8.0, -2.0, false),
-                LumaShadowLayer::new(color(0.22), 0.0, 2.0, 4.0, -1.0, false),
-            ]),
-            panel: LumaShadow::single(color(0.2), 0.0, 1.0, 3.0, 0.0, false),
-            dialog: LumaShadow::new(vec![
-                LumaShadowLayer::new(color(0.42), 0.0, 18.0, 32.0, -8.0, false),
-                LumaShadowLayer::new(color(0.24), 0.0, 6.0, 12.0, -4.0, false),
-            ]),
-            overlay_window: LumaShadow::single(color(0.2), 0.0, 18.0, 38.0, -16.0, false),
-        }
     }
 }
 
@@ -206,20 +157,22 @@ impl SrgbElevation {
         self.policy
     }
     pub fn light() -> Self {
-        Self {
-            source: Arc::new(LumaElevation::light()),
-            preview: Arc::new(LumaElevation::light_with(|a| gpui::hsla(0.0, 0.0, 0.0, a))),
-            policy: GamutMapping::CssLocalMinde,
-        }
+        static ELEVATION: OnceLock<SrgbElevation> = OnceLock::new();
+        ELEVATION.get_or_init(|| Self::sdk(LumaElevation::light())).clone()
     }
     pub fn dark() -> Self {
-        Self {
-            source: Arc::new(LumaElevation::dark()),
-            preview: Arc::new(LumaElevation::dark_with(|a| gpui::hsla(0.0, 0.0, 0.0, a))),
-            policy: GamutMapping::CssLocalMinde,
-        }
+        static ELEVATION: OnceLock<SrgbElevation> = OnceLock::new();
+        ELEVATION.get_or_init(|| Self::sdk(LumaElevation::dark())).clone()
+    }
+
+    /// The SDK shadows' preview. Their colors come from the built-in `.lss`, checked by tests.
+    fn sdk(source: LumaElevation) -> Self {
+        source
+            .snapshot_srgb(GamutMapping::CssLocalMinde)
+            .unwrap_or_else(|e| panic!("the SDK shadows map to sRGB: {e:#}"))
     }
 }
+
 impl Deref for SrgbElevation {
     type Target = LumaElevation<Hsla>;
     fn deref(&self) -> &Self::Target {
