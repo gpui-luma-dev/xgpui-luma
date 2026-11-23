@@ -573,4 +573,36 @@ mod tests {
             assert!(end.complete && (end.state.value - 1.0).abs() < 1e-6, "{easing:?}");
         }
     }
+
+    /// The SDK keeps only behaviour variants (#287): a visual variant the trigger or style enums set
+    /// draws the base in the SDK theme, in every state; the looks define the variants.
+    #[test]
+    fn sdk_draws_the_base_for_visual_variants() {
+        let cases = [
+            ("pager", "minimal"),
+            ("popup_menu", "outline"),
+            ("popup_menu", "ghost"),
+            ("scrollbar", "soft"),
+            ("selector", "outline"),
+            ("selector", "ghost"),
+            ("toolbar", "ghost"),
+        ];
+        for theme in [default_theme(), dark_theme()] {
+            for (control, variant) in cases {
+                let binding = StyleBinding::new(control, ThemeSource::Fixed(theme.clone()));
+                for states in [
+                    [("hover", false), ("disabled", false)],
+                    [("hover", true), ("disabled", false)],
+                    [("hover", false), ("disabled", true)],
+                ] {
+                    assert_eq!(
+                        binding.resolve_for(&[("variant", variant)], &states, 1.0),
+                        binding.resolve_for(&[], &states, 1.0),
+                        "{} {control} [{variant}] {states:?}",
+                        theme.mode()
+                    );
+                }
+            }
+        }
+    }
 }
