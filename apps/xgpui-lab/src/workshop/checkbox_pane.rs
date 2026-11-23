@@ -1323,7 +1323,7 @@ mod tests {
         let (file, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
         assert!(file.ends_with("palette.lss"), "the default (light) palette: {file}");
         assert!(
-            !used.is_empty() && used.iter().all(|l| l.contains("= gray(")),
+            !used.is_empty() && used.iter().all(|l| l.contains("= gray(") || l.contains("= srgb(")),
             "used lines are color tokens: {used:?}"
         );
 
@@ -1791,5 +1791,45 @@ mod tests {
         let (a, b, c) = (cell(0, 0, cx), cell(1, 0, cx), cell(0, 1, cx));
         assert_eq!(b.top() - a.top(), px(38.), "row stride");
         assert!(c.left() - a.left() <= px(150.), "column stride is tight: {:?}", c.left() - a.left());
+    }
+
+    #[gpui::test]
+    fn the_box_model_switch_hides_and_shows_the_diagrams() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let diagram = "style-inspector-box-root";
+        assert!(cx.debug_bounds(diagram).is_some(), "on by default");
+        // Clicking the switch turns the diagrams off.
+        let switch = cx.debug_bounds("lss-inspector-box-model").expect("Box model switch");
+        cx.simulate_click(switch.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_none(), "off: no diagram");
+        // Off holds when grouped by kind (the diagram's place is the Layout section); on brings it back.
+        inspector.update(cx, |inspector, cx| inspector.choose_grouping("kind", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_none(), "off by kind too");
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_some(), "on again");
+    }
+
+    #[gpui::test]
+    fn rows_not_set_by_a_state_now_are_dimmed() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        let dimmed = |part: &str, property: &str, cx: &mut VisualTestContext| {
+            cx.update(|_, cx| inspector.read(cx).row_dimmed(part, property)).expect("row")
+        };
+        // Base key: no state rule sets a value, so the rows are dimmed, but all still listed.
+        assert!(dimmed("indicator", "background", cx));
+        assert!(cx.debug_bounds("style-inspector-row-root-indicator_scale").is_some(), "every row listed");
+        // :checked sets the indicator background by state; a size stays dimmed.
+        side.update(cx, |side, cx| side.toggle_state("checked", cx));
+        cx.run_until_parked();
+        assert!(!dimmed("indicator", "background", cx), ":checked sets it");
+        assert!(dimmed("root", "indicator_scale", cx), "no state rule sets it");
     }
 }

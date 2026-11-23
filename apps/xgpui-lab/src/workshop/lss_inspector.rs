@@ -161,12 +161,16 @@ pub(super) struct LssInspector {
     view: View,
     filter: Filter,
     grouping: Grouping,
+    /// Whether each part shows its box-model diagram (margin › border › padding › content).
+    show_box_model: bool,
     /// Radix tabs: Properties · Source · Palette.
     view_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
     /// Radix toggle groups: Part (multiple), Show and Group (one each).
     part_tabs: ControlGroup<ControlGroupItem>,
     filter_tabs: ControlGroup<ControlGroupItem>,
     grouping_tabs: ControlGroup<ControlGroupItem>,
+    /// Radix switch: Box model on or off.
+    box_model_switch: xgpui_luma::controls::switch::Switch,
     /// Each property's row, as a button that opens its rules and references.
     row_buttons: HashMap<RowId, Entity<Button>>,
     row_heads: RowHeads,
@@ -243,6 +247,16 @@ impl LssInspector {
             }
         })
         .detach();
+        let box_model_switch = xgpui_luma_look_radix::Switch::new("lss-inspector-box-model")
+            .look(&small)
+            .size(xgpui_luma_look_radix::SwitchSize::One)
+            .label("Box model")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.show_box_model = on;
+                cx.notify();
+            })
+            .spawn(cx);
         let grouping_tabs =
             xgpui_luma_look_radix::control_group_builder(&small, "lss-inspector-grouping", small.size())
                 .horizontal()
@@ -299,10 +313,12 @@ impl LssInspector {
             view: View::Properties,
             filter: Filter::All,
             grouping: Grouping::File,
+            show_box_model: true,
             view_tabs,
             part_tabs,
             filter_tabs,
             grouping_tabs,
+            box_model_switch,
             row_buttons,
             row_heads,
             expanded: HashSet::new(),
@@ -493,14 +509,18 @@ impl LssInspector {
         // The column header sits inside each part's section, above its rows, so it lines up with them
         // whatever the accordion's content inset.
         let content: Vec<AnyElement> = match self.grouping {
-            Grouping::File => std::iter::once(diagram().into_any_element())
+            Grouping::File => self
+                .show_box_model
+                .then(|| diagram().into_any_element())
+                .into_iter()
                 .chain(rows.iter().map(|(row, rules)| self.row(index, part, row, rules)))
                 .collect(),
             Grouping::Kind => CATEGORIES
                 .into_iter()
                 .filter_map(|(category, title)| {
                     let in_category: Vec<_> = rows.iter().filter(|(row, _)| row.category == category).collect();
-                    let box_diagram = (category == Category::Layout).then(|| diagram().into_any_element());
+                    let box_diagram =
+                        (self.show_box_model && category == Category::Layout).then(|| diagram().into_any_element());
                     (box_diagram.is_some() || !in_category.is_empty())
                         .then(|| self.section(index, part, title.to_string(), in_category, box_diagram))
                 })
@@ -619,7 +639,10 @@ impl LssInspector {
                     .pl(px(ROW_INDENT))
                     .pr(px(12.))
                     .when(changed, |d| d.child(self.dot()))
-                    .child(columns),
+                    // Values a state rule sets for the current key stand out; the rest dim, unless open.
+                    .child(
+                        div().w_full().when(!changed && !expanded, |d| d.opacity(UNSTATED_ROW_OPACITY)).child(columns),
+                    ),
             )
             .when(expanded, |d| d.child(self.details(row, rules)))
             .into_any_element()
@@ -957,6 +980,32 @@ impl LssInspector {
         Some((head.value.to_string(), expression, head.selector.as_ref().map(|s| s.to_string())))
     }
 
+    /// Turn the Box model switch on or off as a click would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn show_box_models(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.box_model_switch.update(cx, |switch, cx| switch.set_data(on, cx));
+        self.show_box_model = on;
+        cx.notify();
+    }
+
+    /// Choose a Group (`file`, `kind`) as a click would, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn choose_grouping(&mut self, id: &str, cx: &mut Context<Self>) {
+        let id = gpui::SharedString::from(id.to_string());
+        self.grouping_tabs.update(cx, |group, cx| {
+            group.set_selected_ids([id.clone()], cx);
+            cx.emit(ControlGroupEvent::Change { changed_id: id.clone(), selected: true, selected_ids: vec![id] });
+        });
+    }
+
+    /// Whether a property row is dimmed (its value isn't set by a state rule now), for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn row_dimmed(&self, part: &str, property: &str) -> Option<bool> {
+        let inspection = self.theme.inspect(&self.key, None);
+        let part = inspection.parts.iter().find(|p| p.part.name() == part)?;
+        part.rows.iter().find(|r| r.property == property).map(|r| !by_state(r))
+    }
+
     /// Show the Palette view, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_palette(&self, cx: &mut gpui::App) {
@@ -1070,6 +1119,11 @@ impl Render for LssInspector {
                                         .gap_2()
                                         .child("Group")
                                         .child(self.grouping_tabs.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .debug_selector(|| "lss-inspector-box-model".into())
+                                        .child(self.box_model_switch.clone()),
                                 ),
                         ),
                 )
@@ -1084,7 +1138,7 @@ impl Render for LssInspector {
                         .border_t_1()
                         .border_color(chrome.border)
                         .text_color(chrome.muted_text)
-                        .child("● value from a state rule")
+                        .child("● value from a state rule now; the rest dimmed")
                         .child("click a property for its rules and reads"),
                 ),
             View::Source => div().flex_1().min_h_0().flex().flex_col().child(self.source(&inspection)),
@@ -1112,6 +1166,9 @@ pub(super) fn choose_tab(tabs: &Entity<xgpui_luma::controls::tabs::Tabs>, id: &s
         cx.emit(xgpui_luma::controls::tabs::TabsEvent::Change { tab_id: id, label: gpui::SharedString::default() });
     });
 }
+
+/// Rows whose value no state rule sets for the current key are drawn at this opacity.
+const UNSTATED_ROW_OPACITY: f32 = 0.45;
 
 /// Whether a row's value comes from a state rule.
 fn by_state(row: &Row) -> bool {
