@@ -14,10 +14,6 @@ border_width=0
 disabled_opacity=0
 popup_offset_y=0
 window_margin=0
-[common.selection_panel.geometry]
-border_width=3
-disabled_opacity=0.2
-radius=11
 "#])
     .unwrap();
     let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
@@ -27,7 +23,8 @@ radius=11
         (0.0, 0.0, 0.0, 0.0)
     );
     let selection = look.selection_panel_look(crate::ShadcnSize::Md);
-    assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (3.0, 0.2, 11.0));
+    // The selection panel follows the items panel; it has no geometry of its own.
+    assert_eq!((selection.border_width, selection.disabled_opacity), (0.0, 0.0));
 }
 
 #[test]
