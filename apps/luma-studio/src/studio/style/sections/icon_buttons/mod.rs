@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
-use xgpui_luma::controls::button::{ButtonTemplate, default_button_template};
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::ShadcnLook;
@@ -21,7 +20,6 @@ pub(crate) fn render_icon_button_template_matrix_section(
     cx: &mut App,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let template: Arc<dyn ButtonTemplate<()>> = default_button_template();
     let samples = [
         ButtonStateSample { id: "default", header: "default", state: InteractionState::default() },
         ButtonStateSample {
@@ -58,7 +56,6 @@ pub(crate) fn render_icon_button_template_matrix_section(
         chrome.panel_background,
         render_icon_button_preview_tabbed_content(
             look.as_ref(),
-            &template,
             &samples,
             preview_tabs,
             active_tab,
@@ -71,7 +68,6 @@ pub(crate) fn render_icon_button_template_matrix_section(
 
 fn render_icon_button_preview_tabbed_content(
     look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
     samples: &[ButtonStateSample],
     preview_tabs: Entity<Tabs>,
     active_tab: SharedString,
@@ -80,9 +76,9 @@ fn render_icon_button_preview_tabbed_content(
     cx: &mut App,
 ) -> AnyElement {
     let body = if active_tab.as_ref() == "sizes" {
-        render_icon_button_size_matrix(look, template, window, cx)
+        render_icon_button_size_matrix(look, window, cx)
     } else {
-        render_icon_button_matrix(look, template, samples, window, cx)
+        render_icon_button_matrix(look, samples, window, cx)
     };
 
     div()
@@ -97,7 +93,6 @@ fn render_icon_button_preview_tabbed_content(
 
 fn render_icon_button_matrix(
     look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
     samples: &[ButtonStateSample],
     window: &mut Window,
     cx: &mut App,
@@ -113,18 +108,13 @@ fn render_icon_button_matrix(
                 description: SharedString::from(row.description),
                 cells: samples
                     .iter()
-                    .map(|sample| render_button_state_sample(template, look, row.style, variant, sample, window, cx))
+                    .map(|sample| render_button_state_sample(look, row.style, variant, sample, window, cx))
                     .collect(),
             }
         }))
         .build()
 }
 
-fn render_icon_button_size_matrix(
-    look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
-    window: &mut Window,
-    cx: &mut App,
-) -> AnyElement {
-    render_button_size_radius_matrix(look, template, SIZE_PREVIEW_STYLE, true, window, cx)
+fn render_icon_button_size_matrix(look: &ShadcnLook, window: &mut Window, cx: &mut App) -> AnyElement {
+    render_button_size_radius_matrix(look, SIZE_PREVIEW_STYLE, true, window, cx)
 }
