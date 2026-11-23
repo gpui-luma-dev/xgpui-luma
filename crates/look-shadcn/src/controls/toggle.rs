@@ -18,33 +18,6 @@ impl ToggleLayout {
     }
 }
 
-// Mirrors the public semantic resolver with an additional selected stylesheet.
-
-// Mirrors the public semantic resolver with an additional selected stylesheet.
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_toggle_stylesheet() -> xgpui_luma::theme::stylesheet::ToggleStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ToggleStylesheet {
-        sizes: [("sm", 10.0, 12.0, 14.0, 36.0), ("md", 12.0, 14.0, 16.0, 40.0), ("lg", 20.0, 16.0, 18.0, 44.0)]
-            .into_iter()
-            .map(|(key, padding, font, icon, height)| {
-                (
-                    key.into(),
-                    ToggleGeometryStylesheet {
-                        padding_x: Some(padding),
-                        font_size: Some(font),
-                        icon_size: Some(icon),
-                        height: Some(height),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-        ..Default::default()
-    }
-}
-
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ToggleStylesheet {

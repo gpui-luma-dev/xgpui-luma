@@ -192,9 +192,6 @@ pub use crate::controls::selection::selection_panel::theme::{
 pub use crate::controls::overlay::tooltip::theme::{
     TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
 };
-pub use crate::controls::choice::toggle::{
-    ToggleStylesheet, ToggleGeometryStylesheet, ToggleGeometry, ResolvedToggleGeometry,
-};
 pub use crate::controls::navigation::stepper::theme::StepperGeometry;
 pub use crate::controls::navigation::sidebar::theme::{
     SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
@@ -305,7 +302,6 @@ mod tests {
         SlidePanelStylesheet::validate_contract();
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
-        ToggleStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
         SelectionPanelStylesheet::validate_contract();
     }
