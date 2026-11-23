@@ -116,15 +116,6 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
     for (size, label_baseline) in [(RadixSize::One, 0.5), (RadixSize::Three, 1.5)] {
         fill(&mut common.shared.sizes.get_or_default(size.key()).label_baseline, label_baseline);
     }
-    for (size, thickness, track, thumb, min) in
-        [(RadixSize::One, 10.0, 3.0, 6.0, 24.0), (RadixSize::Three, 14.0, 5.0, 10.0, 32.0)]
-    {
-        let scrollbar = common.scrollbar.sizes.get_or_default(size.key());
-        fill(&mut scrollbar.thickness, thickness);
-        fill(&mut scrollbar.track_thickness, track);
-        fill(&mut scrollbar.thumb_thickness, thumb);
-        fill(&mut scrollbar.min_thumb_length, min);
-    }
     // The SDK resize handle scale is Radix size 1; sizes 2 and 3 are Radix's.
     for (size, lane, hit, cross, main) in
         [(RadixSize::Two, 12.0, 14.0, 6.0, 40.0), (RadixSize::Three, 18.0, 20.0, 8.0, 44.0)]

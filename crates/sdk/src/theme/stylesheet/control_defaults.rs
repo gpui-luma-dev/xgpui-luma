@@ -112,6 +112,7 @@ fn removed_families_are_rejected() {
         "floating_menu",
         "split_view",
         "stepper",
+        "scrollbar",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

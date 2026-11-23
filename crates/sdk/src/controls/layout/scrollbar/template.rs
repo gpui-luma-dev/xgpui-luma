@@ -138,11 +138,7 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
         let thickness = if look.thickness.is_finite() && look.thickness >= 0.0 {
             look.thickness
         } else {
-            crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .scrollbar
-                .authored_geometry()
-                .thickness
-                .unwrap_or_default()
+            crate::style::sdk_number("scrollbar", "thickness")
         };
         let track_thickness = clamped_thickness(look.track_thickness, 0.0, thickness);
         let thumb_thickness = clamped_thickness(look.thumb_thickness, 0.0, thickness);

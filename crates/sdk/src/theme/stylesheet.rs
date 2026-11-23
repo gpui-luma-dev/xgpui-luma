@@ -111,7 +111,6 @@ common_stylesheet! {
     search_selector: SearchSelectorStylesheet,
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
-    scrollbar: ScrollbarStylesheet,
     sidebar: SidebarStylesheet,
     control_group: ControlGroupStylesheet,
     radio_group: RadioGroupStylesheet,
@@ -165,7 +164,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            scrollbar: ScrollbarStylesheet::native_default(),
             tooltip: TooltipStylesheet::native_default(),
             control_group: ControlGroupStylesheet::native_default(),
             resizable_panels: ResizablePanelsStylesheet::native_default(),

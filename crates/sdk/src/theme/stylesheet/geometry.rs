@@ -195,9 +195,6 @@ pub use crate::controls::overlay::tooltip::theme::{
 pub use crate::controls::choice::toggle::{
     ToggleStylesheet, ToggleGeometryStylesheet, ToggleGeometry, ResolvedToggleGeometry,
 };
-pub use crate::controls::layout::scrollbar::theme::{
-    ScrollbarStylesheet, ScrollbarGeometryStylesheet, ScrollbarGeometry, ResolvedScrollbarGeometry,
-};
 pub use crate::controls::navigation::stepper::theme::StepperGeometry;
 pub use crate::controls::navigation::sidebar::theme::{
     SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
@@ -297,7 +294,6 @@ mod tests {
     use super::*;
     #[test]
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {
-        ScrollbarStylesheet::validate_contract();
         ShellStylesheet::validate_contract();
         SharedStylesheet::validate_contract();
         ResizablePanelsStylesheet::validate_contract();
