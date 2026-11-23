@@ -71,12 +71,6 @@ pub enum ColorSource {
     Derived { note: String },
 }
 
-#[derive(Clone, Debug)]
-pub struct TableRuleMetadata {
-    pub inputs: Vec<String>,
-    pub outputs: Vec<String>,
-}
-
 pub struct LookResolver<'a> {
     catalog: &'a CssTokenMap,
     theme_mode: ThemeMode,

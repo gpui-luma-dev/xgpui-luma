@@ -1,11 +1,5 @@
 //! Progress — accent track + accent-foreground fill.
 
-use crate::stylesheet::config::EnabledColorRule;
-use crate::stylesheet::config::control_size_key;
-use crate::stylesheet::config::find_enabled_color_rule;
-use serde::Deserialize;
-use std::collections::HashMap;
-
 use xgpui_luma::controls::progress::ProgressLook;
 use crate::size::ShadcnSize;
 
@@ -90,70 +84,6 @@ mod tests {
         assert!(medium.size < large.size);
         assert!(small.stroke_width < medium.stroke_width);
         assert!(medium.stroke_width < large.stroke_width);
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Default, PartialEq)]
-pub struct ProgressStylesheet {
-    #[serde(default)]
-    pub metrics: HashMap<String, ProgressMetricsRule>,
-    #[serde(default)]
-    pub color_rules: Vec<ProgressColorRule>,
-}
-
-impl ProgressStylesheet {
-    /// Native bundled progress colors.
-    pub fn native_default() -> Self {
-        Self {
-            color_rules: [(true, "accent", "accent-foreground"), (false, "muted-foreground", "muted-foreground")]
-                .into_iter()
-                .map(|(enabled, track, progress)| ProgressColorRule {
-                    enabled: Some(enabled),
-                    track_color: track.into(),
-                    progress_color: progress.into(),
-                })
-                .collect(),
-            ..Default::default()
-        }
-    }
-
-    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ProgressMetricsRule> {
-        self.metrics.get(control_size_key(size))
-    }
-
-    pub fn find_color_rule(&self, enabled: bool) -> Option<&ProgressColorRule> {
-        find_enabled_color_rule(&self.color_rules, enabled)
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
-pub struct ProgressMetricsRule {
-    pub size: f32,
-    pub stroke_width: f32,
-    #[serde(default = "default_progress_track_height")]
-    pub track_height: f32,
-    #[serde(default = "default_progress_thumb_size")]
-    pub thumb_size: f32,
-}
-
-fn default_progress_track_height() -> f32 {
-    6.0
-}
-
-fn default_progress_thumb_size() -> f32 {
-    16.0
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct ProgressColorRule {
-    pub enabled: Option<bool>,
-    pub track_color: String,
-    pub progress_color: String,
-}
-
-impl EnabledColorRule for ProgressColorRule {
-    fn enabled(&self) -> Option<bool> {
-        self.enabled
     }
 }
 

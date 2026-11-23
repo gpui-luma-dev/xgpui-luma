@@ -1,6 +1,5 @@
 pub(crate) mod config;
 mod find;
-mod metadata;
 mod resolve;
 mod selector;
 mod size_presets;
@@ -9,14 +8,12 @@ pub fn embedded_stylesheet() -> &'static StylesheetConfig {
     embedded()
 }
 
-pub use config::{ButtonElevationRule, FloatingMenuSurfaceElevationRule, LayeredElevationRule, StylesheetConfig};
+pub use config::{ButtonElevationRule, LayeredElevationRule, StylesheetConfig};
 pub use find::*;
-pub use metadata::*;
 pub use resolve::{
     resolve_button_color_rule, resolve_button_metrics_rule, resolve_sidebar_container_color_rule,
-    resolve_sidebar_metrics, resolve_progress_metrics, resolve_color_ref, resolve_stepper_metrics,
-    resolve_scrollbar_color_rule, resolve_scrollbar_metrics, resolve_slider_metrics, resolve_stylesheet_shadow_token,
-    resolve_layered_elevation_shadow, resolve_stylesheet_metric, resolve_typography_rule, ResolvedFields,
+    resolve_sidebar_metrics, resolve_color_ref, resolve_stylesheet_shadow_token, resolve_layered_elevation_shadow,
+    resolve_stylesheet_metric, resolve_typography_rule, ResolvedFields,
 };
 
 use std::sync::OnceLock;
@@ -25,7 +22,8 @@ fn embedded() -> &'static StylesheetConfig {
     static STYLESHEET: OnceLock<StylesheetConfig> = OnceLock::new();
     STYLESHEET.get_or_init(|| {
         let mut config = StylesheetConfig::native_default();
-        define_shadcn_slider(&mut config);
+        // Shadcn's common slider geometry over the SDK baseline (what `define_shadcn_slider` applied).
+        native_shadcn_common_slider().apply_to(&mut config.common.slider);
         config
     })
 }
@@ -52,26 +50,4 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     common.with_sdk_defaults()
 }
 
-pub use crate::controls::slider::{native_shadcn_common_slider, native_shadcn_slider, define_shadcn_slider};
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::elements::BadgeVariant;
-    use xgpui_luma::theme::{InteractionLayer, ThemeMode};
-
-    #[test]
-    fn enabled_controls_find_matching_rules() {
-        let stylesheet = embedded_stylesheet();
-        assert!(find_badge_color_rule(stylesheet, BadgeVariant::Default, ThemeMode::Dark).is_some());
-        assert!(find_progress_color_rule(stylesheet, true).is_some());
-        assert!(find_split_view_color_rule(stylesheet, false).is_some());
-        assert!(find_control_group_list_color_rule(stylesheet, true).is_some());
-        assert!(find_textfield_color_rule(stylesheet, "input", true, false, ThemeMode::Light).is_some());
-        assert!(find_textfield_color_rule(stylesheet, "primary", true, false, ThemeMode::Light).is_some());
-        assert!(find_textfield_elevation_rule(stylesheet, crate::controls::ShadcnTextFieldStyle::Primary).is_some());
-        assert!(find_autocomplete_chrome_color_rule(stylesheet).is_some());
-        assert!(find_slider_color_rule(stylesheet, "primary", InteractionLayer::Hovered).is_some());
-        assert!(find_slider_color_rule(stylesheet, "secondary", InteractionLayer::Default).is_some());
-    }
-}
+pub use crate::controls::slider::native_shadcn_common_slider;

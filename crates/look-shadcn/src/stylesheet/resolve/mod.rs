@@ -8,10 +8,7 @@ use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::size::ShadcnSize;
 
-use super::config::{
-    ButtonMetricsRule, ProgressMetricsRule, ScrollbarMetricsRule, SidebarMetricsRule, SliderMetricsRule,
-    StepperMetricsRule, TypographyRule,
-};
+use super::config::{ButtonMetricsRule, SidebarMetricsRule, TypographyRule};
 
 /// Context for resolving derived stylesheet tokens (`@outline_layer`, `@action_layer`, etc.).
 #[derive(Clone, Copy, Debug)]
@@ -106,41 +103,6 @@ fn parse_first_layer_fn(raw: &str) -> Option<Vec<&str>> {
 mod color_rules;
 pub use color_rules::*;
 
-pub fn resolve_slider_metrics(
-    rule: &SliderMetricsRule,
-    controls: &crate::ShadcnControlMetrics,
-    size: ShadcnSize,
-) -> ResolvedSliderMetrics {
-    ResolvedSliderMetrics {
-        width: rule.width,
-        height: rule.height,
-        track_height: rule.track_height,
-        thumb_size: rule.thumb_size,
-        radius: resolve_stylesheet_metric(&rule.radius, controls, size).unwrap_or(xgpui_luma::theme::FULL_RADIUS_PX),
-    }
-}
-
-pub fn resolve_scrollbar_metrics(rule: &ScrollbarMetricsRule) -> ResolvedScrollbarMetrics {
-    ResolvedScrollbarMetrics {
-        thickness: rule.thickness,
-        track_thickness: rule.track_thickness,
-        thumb_thickness: rule.thumb_thickness,
-        min_thumb_length: rule.min_thumb_length,
-    }
-}
-
-pub fn resolve_progress_metrics(rule: &ProgressMetricsRule) -> ResolvedProgressMetrics {
-    ResolvedProgressMetrics {
-        size: rule.size,
-        stroke_width: rule.stroke_width,
-        track_height: rule.track_height,
-        thumb_size: rule.thumb_size,
-    }
-}
-
-pub fn resolve_stepper_metrics(rule: &StepperMetricsRule) -> ResolvedStepperMetrics {
-    ResolvedStepperMetrics { step_badge_size: rule.step_badge_size, track_thickness: rule.track_thickness }
-}
 pub fn resolve_button_metrics_rule(
     rule: &ButtonMetricsRule,
     controls: &crate::ShadcnControlMetrics,

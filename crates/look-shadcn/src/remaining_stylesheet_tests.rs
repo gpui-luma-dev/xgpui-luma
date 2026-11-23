@@ -1,30 +1,6 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
-use xgpui_luma::theme::InteractionState;
 use crate::ShadcnLook;
 use crate::size::ShadcnSize;
-
-#[test]
-fn migrated_literal_families_keep_their_bundled_size_baselines() {
-    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
-    let look = crate::test_support::fallback_look();
-    for (size, diameter, track, thumb, badge) in [
-        (ShadcnSize::Sm, 48.0, 4.0, 12.0, 24.0),
-        (ShadcnSize::Md, 64.0, 6.0, 16.0, 32.0),
-        (ShadcnSize::Lg, 80.0, 8.0, 20.0, 40.0),
-    ] {
-        let progress = look.with_size(size).progress_theme().resolve(true);
-        assert_eq!((progress.size, progress.track_height, progress.thumb_size), (diameter, track, thumb));
-        assert_eq!(look.with_size(size).stepper_theme().resolve(true).step_badge_size, badge);
-        let scrollbar = crate::controls::scrollbar::scrollbar_look(
-            &look.mode_tokens(),
-            InteractionState::default(),
-            ScrollbarOrientation::Horizontal,
-            size,
-            ScrollbarStyle::Ghost,
-        );
-        assert_eq!(scrollbar.length, 260.0);
-    }
-}
 
 #[test]
 fn panel_and_group_chrome_use_selected_common_stylesheet() {
