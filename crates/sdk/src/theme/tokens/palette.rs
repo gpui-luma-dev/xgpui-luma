@@ -148,11 +148,13 @@ impl Default for LumaPalette<ColorValue> {
 }
 
 impl LumaPalette<ColorValue> {
+    /// The SDK's light palette, from `theme/palette.lss`.
     pub fn light() -> Self {
-        Self::light_with(|c| ColorValue::srgb(c[0], c[1], c[2], c[3]))
+        super::from_lss::sdk(super::ThemeMode::Light).palette.clone()
     }
+    /// The SDK's dark palette, from `theme/palette.lss` (`mode dark`).
     pub fn dark() -> Self {
-        Self::dark_with(|c| ColorValue::srgb(c[0], c[1], c[2], c[3]))
+        super::from_lss::sdk(super::ThemeMode::Dark).palette.clone()
     }
 
     /// Validate and retain the source palette, with an immutable sRGB preview.
@@ -160,155 +162,6 @@ impl LumaPalette<ColorValue> {
         let mut cache = SrgbRenderCache::default();
         let preview = self.clone().map_colors(&mut |source| cache.resolve_hsla(source, policy))?;
         Ok(SrgbPalette { source: Arc::new(self), preview: Arc::new(preview), policy })
-    }
-}
-
-impl<C> LumaPalette<C> {
-    fn light_with(color: impl Fn([f32; 4]) -> C) -> Self {
-        // The focus ring is red in both modes, so focus is easy to see while states are worked on.
-        let focus_ring = color([1.0, 0.0, 0.0, 1.0]);
-        // Bundled colors have zero saturation. Keep the original percentage
-        // arithmetic so source components retain their exact f32 values.
-        let color = |lightness: f32, alpha| {
-            let component = lightness / 100.0;
-            color([component, component, component, alpha])
-        };
-        Self {
-            app: AppPalette {
-                background: color(98.04, 1.0),
-                foreground: color(11.18, 1.0),
-                muted_foreground: color(46.86, 1.0),
-            },
-            shell: ShellPalette {
-                background: color(11.0, 1.0),
-                foreground: color(100.0, 1.0),
-                border: color(100.0, 0.1),
-                hover_background: color(100.0, 0.12),
-                active_background: color(100.0, 0.2),
-                close_hover_background: color(30.0, 1.0),
-                close_active_background: color(40.0, 1.0),
-                close_foreground: color(100.0, 1.0),
-            },
-            surface: SurfacePalette {
-                panel: SurfaceWithBorderPalette {
-                    background: color(100.0, 1.0),
-                    foreground: color(11.18, 1.0),
-                    border: color(83.92, 1.0),
-                },
-                floating: SurfaceWithBorderPalette {
-                    background: color(100.0, 1.0),
-                    foreground: color(11.18, 1.0),
-                    border: color(83.92, 1.0),
-                },
-                subtle: SurfaceTonePalette { background: color(96.08, 1.0), foreground: color(26.67, 1.0) },
-            },
-            state: StatePalette {
-                hover: StateTonePalette { background: color(91.37, 1.0), foreground: color(11.18, 1.0) },
-                pressed: StateBackgroundPalette { background: color(83.92, 1.0) },
-                selected: StateTonePalette { background: color(12.0, 1.0), foreground: color(100.0, 1.0) },
-                disabled: StateTonePalette { background: color(96.08, 1.0), foreground: color(65.1, 1.0) },
-            },
-            form: FormPalette {
-                input: FormInputPalette {
-                    background: color(100.0, 1.0),
-                    foreground: color(11.18, 1.0),
-                    border: color(65.1, 1.0),
-                    invalid_border: color(20.0, 1.0),
-                    placeholder: color(65.1, 1.0),
-                },
-            },
-            focus: FocusPalette { ring: focus_ring },
-            border: BorderPalette { default: color(83.92, 1.0), strong: color(46.86, 1.0) },
-            navigation: NavigationPalette {
-                background: color(100.0, 1.0),
-                foreground: color(11.18, 1.0),
-                muted_foreground: color(46.86, 1.0),
-                hover_background: color(96.08, 1.0),
-                selected_background: color(12.0, 1.0),
-                selected_foreground: color(100.0, 1.0),
-                border: color(83.92, 1.0),
-            },
-            data: DataPalette {
-                positive: color(30.0, 1.0),
-                accent_1: color(20.0, 1.0),
-                accent_2: color(35.0, 1.0),
-                accent_3: color(45.0, 1.0),
-                accent_4: color(55.0, 1.0),
-                accent_5: color(65.0, 1.0),
-            },
-        }
-    }
-
-    fn dark_with(color: impl Fn([f32; 4]) -> C) -> Self {
-        let focus_ring = color([1.0, 0.0, 0.0, 1.0]);
-        let color = |lightness: f32, alpha| {
-            let component = lightness / 100.0;
-            color([component, component, component, alpha])
-        };
-        Self {
-            app: AppPalette {
-                background: color(8.43, 1.0),
-                foreground: color(98.04, 1.0),
-                muted_foreground: color(65.1, 1.0),
-            },
-            shell: ShellPalette {
-                background: color(11.0, 1.0),
-                foreground: color(100.0, 1.0),
-                border: color(100.0, 0.1),
-                hover_background: color(100.0, 0.12),
-                active_background: color(100.0, 0.2),
-                close_hover_background: color(30.0, 1.0),
-                close_active_background: color(40.0, 1.0),
-                close_foreground: color(100.0, 1.0),
-            },
-            surface: SurfacePalette {
-                panel: SurfaceWithBorderPalette {
-                    background: color(10.98, 1.0),
-                    foreground: color(98.04, 1.0),
-                    border: color(26.67, 1.0),
-                },
-                floating: SurfaceWithBorderPalette {
-                    background: color(10.98, 1.0),
-                    foreground: color(98.04, 1.0),
-                    border: color(26.67, 1.0),
-                },
-                subtle: SurfaceTonePalette { background: color(17.45, 1.0), foreground: color(83.92, 1.0) },
-            },
-            state: StatePalette {
-                hover: StateTonePalette { background: color(26.67, 1.0), foreground: color(98.04, 1.0) },
-                pressed: StateBackgroundPalette { background: color(34.51, 1.0) },
-                selected: StateTonePalette { background: color(90.0, 1.0), foreground: color(10.0, 1.0) },
-                disabled: StateTonePalette { background: color(17.45, 1.0), foreground: color(46.86, 1.0) },
-            },
-            form: FormPalette {
-                input: FormInputPalette {
-                    background: color(11.18, 1.0),
-                    foreground: color(98.04, 1.0),
-                    border: color(34.51, 1.0),
-                    invalid_border: color(85.0, 1.0),
-                    placeholder: color(46.86, 1.0),
-                },
-            },
-            focus: FocusPalette { ring: focus_ring },
-            border: BorderPalette { default: color(26.67, 1.0), strong: color(65.1, 1.0) },
-            navigation: NavigationPalette {
-                background: color(10.98, 1.0),
-                foreground: color(98.04, 1.0),
-                muted_foreground: color(65.1, 1.0),
-                hover_background: color(17.45, 1.0),
-                selected_background: color(90.0, 1.0),
-                selected_foreground: color(10.0, 1.0),
-                border: color(26.67, 1.0),
-            },
-            data: DataPalette {
-                positive: color(75.0, 1.0),
-                accent_1: color(90.0, 1.0),
-                accent_2: color(75.0, 1.0),
-                accent_3: color(65.0, 1.0),
-                accent_4: color(55.0, 1.0),
-                accent_5: color(45.0, 1.0),
-            },
-        }
     }
 }
 
@@ -437,25 +290,18 @@ impl SrgbPalette {
 
     pub(crate) fn light() -> Self {
         static PALETTE: OnceLock<SrgbPalette> = OnceLock::new();
-        PALETTE
-            .get_or_init(|| Self {
-                source: Arc::new(LumaPalette::light()),
-                preview: Arc::new(LumaPalette::light_with(|c| {
-                    gpui::Rgba { r: c[0], g: c[1], b: c[2], a: c[3] }.into()
-                })),
-                policy: GamutMapping::CssLocalMinde,
-            })
-            .clone()
+        PALETTE.get_or_init(|| Self::sdk(LumaPalette::light())).clone()
     }
     pub(crate) fn dark() -> Self {
         static PALETTE: OnceLock<SrgbPalette> = OnceLock::new();
-        PALETTE
-            .get_or_init(|| Self {
-                source: Arc::new(LumaPalette::dark()),
-                preview: Arc::new(LumaPalette::dark_with(|c| gpui::Rgba { r: c[0], g: c[1], b: c[2], a: c[3] }.into())),
-                policy: GamutMapping::CssLocalMinde,
-            })
-            .clone()
+        PALETTE.get_or_init(|| Self::sdk(LumaPalette::dark())).clone()
+    }
+
+    /// The SDK palette's preview. Its colors come from the built-in `.lss`, checked by tests.
+    fn sdk(source: LumaPalette) -> Self {
+        source
+            .snapshot_srgb(GamutMapping::CssLocalMinde)
+            .unwrap_or_else(|e| panic!("the SDK palette maps to sRGB: {e:#}"))
     }
 }
 

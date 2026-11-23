@@ -4,7 +4,7 @@
 //! selected size to pixel metrics and geometry before creating SDK controls; the
 //! SDK itself has no size axis.
 
-use xgpui_luma::theme::{ControlMetricTokens, MetricTokens};
+use xgpui_luma::theme::ControlMetricTokens;
 
 /// Shadcn size axis (`sm` / `default` / `lg`). Default is [`Self::Md`].
 ///
@@ -55,16 +55,6 @@ pub struct ShadcnControlMetrics {
     pub sm: ControlMetricTokens,
     pub md: ControlMetricTokens,
     pub lg: ControlMetricTokens,
-}
-
-impl Default for ShadcnControlMetrics {
-    fn default() -> Self {
-        Self {
-            sm: ControlMetricTokens::new(28.0, 10.0, 5.0, 6.0, 5.0, 14.0),
-            md: MetricTokens::default().control,
-            lg: ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
-        }
-    }
 }
 
 impl ShadcnControlMetrics {
@@ -122,10 +112,5 @@ mod tests {
     fn default_is_md() {
         assert_eq!(ShadcnSize::default(), ShadcnSize::Md);
         assert_eq!(ShadcnSize::DEFAULT.key(), "md");
-    }
-
-    #[test]
-    fn md_control_metrics_match_the_sdk_scale() {
-        assert_eq!(ShadcnControlMetrics::default().md, MetricTokens::default().control);
     }
 }

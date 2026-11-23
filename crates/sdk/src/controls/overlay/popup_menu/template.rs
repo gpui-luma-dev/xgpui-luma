@@ -548,6 +548,7 @@ mod tests {
         look.floating_menu.item_height = 30.0;
         look.floating_menu.separator_thickness = 2.0;
         look.floating_menu.separator_spacing = 3.0;
+        look.floating_menu.window_margin = 8.0;
         look.menu_offset_y = 4.0;
         let items = [MenuItem::new("first"), MenuItem::separator("divider"), MenuItem::new("last")];
         let trigger = Bounds::new(point(px(12.0), px(200.0)), size(px(160.0), px(32.0)));

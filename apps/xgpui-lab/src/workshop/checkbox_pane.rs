@@ -1323,8 +1323,8 @@ mod tests {
         let (file, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
         assert!(file.ends_with("palette.lss"), "the default (light) palette: {file}");
         assert!(
-            !used.is_empty() && used.iter().all(|l| l.contains("= gray(") || l.contains("= srgb(")),
-            "used lines are color tokens: {used:?}"
+            !used.is_empty() && used.iter().all(|l| l.contains(" = ")),
+            "used lines are token assignments: {used:?}"
         );
 
         let side = cx.update(|_, cx| pane.read(cx).side());
@@ -1452,7 +1452,14 @@ mod tests {
         });
         assert_eq!(inspected, expected);
         let (_, used) = cx.update(|_, cx| inspector.read(cx).palette_lines_used());
-        assert!(used.iter().any(|l| l == "background = gray(90, 1)"), "the mode dark block's line is used: {used:?}");
+        let palette =
+            xgpui_luma::style::sources().into_iter().find(|s| s.name.ends_with("palette.lss")).expect("palette");
+        let (shared, dark_block) = palette.text.split_once("mode dark {").expect("a mode dark block");
+        let in_block = |text: &str, line: &String| text.lines().any(|l| l.trim() == line);
+        assert!(
+            used.iter().any(|l| in_block(dark_block, l) && !in_block(shared, l)),
+            "a line only the mode dark block has is used: {used:?}"
+        );
 
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
@@ -1486,8 +1493,21 @@ mod tests {
         let summary = |part: &str, property: &'static str, cx: &mut VisualTestContext| {
             cx.update(|_, cx| inspector.read(cx).row_summary(part, property)).expect("row rendered")
         };
-        assert_eq!(summary("root", "indicator_scale", cx), ("0.5".into(), String::new(), None));
-        assert_eq!(summary("root", "height", cx), ("36px".into(), "metrics.control.control_height".into(), None));
+        // Expected text from the SDK theme, so changing a shipped value doesn't break this.
+        let shown = |property: &str, kind: xgpui_luma::style::lss::Kind| {
+            let theme = xgpui_luma::style::default_theme();
+            let resolved = theme.resolve(&theme.key_named("checkbox", &[], &[]).expect("key"));
+            xgpui_luma::style::lss::display_value(resolved.root().value(property), kind)
+        };
+        use xgpui_luma::style::lss::Kind;
+        assert_eq!(
+            summary("root", "indicator_scale", cx),
+            (shown("indicator_scale", Kind::Number), String::new(), None)
+        );
+        assert_eq!(
+            summary("root", "height", cx),
+            (shown("height", Kind::Length), "metrics.control.control_height".into(), None)
+        );
 
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.toggle_state("checked", cx));

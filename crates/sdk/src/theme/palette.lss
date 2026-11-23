@@ -1,6 +1,10 @@
 // SDK palette and elevation, per mode. Layer: sdk.
-// The shared values are the light mode (ThemeTokens::light()); `mode dark` overrides what differs
-// (ThemeTokens::dark()). A mode with no block (or a token a mode leaves out) uses the shared value.
+// The shared values are the light mode; `mode dark` overrides what differs. A mode with no block (or a
+// token a mode leaves out) uses the shared value.
+//
+// This file is the source of the SDK's palette and shadows: `ThemeTokens::light()` / `::dark()` (and
+// `LumaPalette`, `LumaElevation`) read it at startup. Adding or removing a token here means changing
+// the Rust type too; `LumaThemeMode::from_theme` rejects tokens that don't match.
 
 tokens {
   palette {

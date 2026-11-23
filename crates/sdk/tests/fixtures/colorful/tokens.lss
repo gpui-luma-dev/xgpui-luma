@@ -1,0 +1,66 @@
+// Test fixture: a stand-in for theme/tokens.lss (issue #314). NOT shipped.
+//
+// Same token tree as the SDK tokens, but every length, number, text style, font and motion is
+// distinct from every other (and from the shipped values), so a property that resolves to a
+// token's value proves it reads that token. Changing theme/tokens.lss can't break a test.
+
+const {
+  full_radius = 997
+
+  default_timed = timed(317, in_out_quad)
+}
+
+tokens {
+  metrics {
+    disabled_opacity = 0.37
+    border_width     = 2
+
+    focus {
+      gap    = 3
+      width  = 5
+      offset = 7
+    }
+
+    control {
+      height         = 41
+      control_height = 43   // distinct from height, so the two can be told apart
+      padding_x      = 17
+      padding_y      = 11
+      gap            = 13
+      radius         = 9
+      icon_size      = 19
+    }
+  }
+
+  typography {
+    font {
+      sans  = "Fixture Sans"
+      mono  = "Fixture Mono"
+      serif = "Fixture Serif"
+    }
+
+    text {
+      body    = text(15, 23, 410)
+      label   = text(12, 17, 520)
+      caption = text(10, 14, 530)
+      title   = text(21, 29, 610)
+      code    = text(13.5, 19, 420)
+
+      role {
+        h1 = text(45, 53, 710)
+        h2 = text(29, 37, 620)
+        h3 = text(22, 31, 630)
+        h4 = text(17, 25, 540)
+        p  = text(16, 26, 430)
+      }
+    }
+  }
+
+  geometry {
+    label_baseline = 2.5
+  }
+
+  motion {
+    default = default_timed
+  }
+}

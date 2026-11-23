@@ -128,7 +128,6 @@ pub(crate) fn compose_selector_look(palette: &SelectorPalette, scale: &StandardB
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::ThemeTokens;
 
     #[test]
     fn disabled_state_takes_precedence_over_hover_and_pressed() {
@@ -235,24 +234,27 @@ mod tests {
 
     #[test]
     fn invalid_state_uses_destructive_border_and_keeps_it_when_focused() {
-        let theme = default_selector_theme();
-        let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
-        let look = theme.resolve_visual_look(
-            SelectorTriggerStyle::Outline,
-            SelectorVisualState {
-                invalid: true,
-                interaction: InteractionState { focused: true, ..Default::default() },
-                ..Default::default()
-            },
-            &scale,
-            false,
-        );
-
-        let tokens = ThemeTokens::default();
-        let close =
-            |a: Hsla, b: Hsla| (a.to_rgb().r - b.to_rgb().r).abs() < 2e-3 && (a.to_rgb().g - b.to_rgb().g).abs() < 2e-3;
-        assert!(close(look.trigger_border.unwrap(), tokens.palette.form.input.invalid_border));
-        assert!(close(look.trigger_focus_border, tokens.palette.focus.ring));
+        use crate::style::{ThemeSource, fixture};
+        for lss in fixture::themes() {
+            let theme = super::super::styled::StyledSelectorTheme::new(
+                ThemeSource::Fixed(lss.clone()),
+                Arc::new(|| crate::controls::selector_list::default_selector_items_panel_look(&Default::default())),
+            );
+            let scale = StandardBoxScale::compute(&theme.metrics(), 1.0);
+            let look = theme.resolve_visual_look(
+                SelectorTriggerStyle::Outline,
+                SelectorVisualState {
+                    invalid: true,
+                    interaction: InteractionState { focused: true, ..Default::default() },
+                    ..Default::default()
+                },
+                &scale,
+                false,
+            );
+            let token = |path: &str| fixture::token(&lss, path, "color").as_color().map(Hsla::from).expect("a color");
+            assert_eq!(look.trigger_border, Some(token("palette.form.input.invalid_border")), "{}", lss.mode());
+            assert_eq!(look.trigger_focus_border, token("palette.focus.ring"), "{}", lss.mode());
+        }
     }
 }
 

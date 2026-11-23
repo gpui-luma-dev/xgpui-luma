@@ -48,7 +48,8 @@ mod tests {
 
     #[test]
     fn embedded_tabs_preserve_geometry_across_modes_sizes_and_states() {
-        let look = crate::ShadcnLook::built_in();
+        // Its own look: `built_in()` is shared, and other tests change its mode while this one runs.
+        let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("bundled CSS");
         for mode in [ThemeMode::Light, ThemeMode::Dark] {
             look.set_mode(mode);
             let tokens = look.mode_tokens();

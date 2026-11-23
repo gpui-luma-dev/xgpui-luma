@@ -64,40 +64,12 @@ pub struct LumaTextStyle {
 }
 
 impl Default for LumaTypography {
-    fn default() -> Self {
-        Self::native_default()
-    }
-}
-
-impl LumaTypography {
-    /// Construct the bundled SDK font families and text styles.
+    /// The SDK's font families and text styles, from `theme/tokens.lss`.
     ///
-    /// The SDK has no text size scale; looks own their size vocabularies and
-    /// resolve them to [`LumaTextStyle`] pixels.
-    pub fn native_default() -> Self {
-        let body = LumaTextStyle { size: 14.0, line_height: 20.0, weight: FontWeight(400.0) };
-        let title = LumaTextStyle { size: 20.0, line_height: 28.0, weight: FontWeight(600.0) };
-        Self {
-            font: FontTokens {
-                sans: FontFamilyToken { family: "System UI".into() },
-                mono: FontFamilyToken { family: "Monaco".into() },
-                serif: FontFamilyToken { family: "New York".into() },
-            },
-            text: TextTokens {
-                body,
-                label: LumaTextStyle { size: 12.5, line_height: 18.0, weight: FontWeight(500.0) },
-                caption: LumaTextStyle { size: 11.0, line_height: 16.0, weight: FontWeight(500.0) },
-                title,
-                code: LumaTextStyle { size: 13.0, line_height: 18.0, weight: FontWeight(400.0) },
-                role: TextRoleTokens {
-                    h1: LumaTextStyle { size: 44.0, line_height: 52.0, weight: FontWeight(700.0) },
-                    h2: LumaTextStyle { size: 28.0, line_height: 36.0, weight: FontWeight(600.0) },
-                    h3: title,
-                    h4: LumaTextStyle { size: 16.0, line_height: 22.0, weight: FontWeight(500.0) },
-                    p: body,
-                },
-            },
-        }
+    /// The SDK has no text size scale; looks own their size vocabularies and resolve them to
+    /// [`LumaTextStyle`] pixels.
+    fn default() -> Self {
+        super::from_lss::sdk(super::ThemeMode::Light).typography.clone()
     }
 }
 

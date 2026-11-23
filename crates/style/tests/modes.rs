@@ -69,3 +69,48 @@ fn a_bound_theme_reports_its_mode_and_scheme() {
     let dark = theme.with_mode("dark").expect("dark");
     assert_eq!((dark.mode(), dark.scheme()), ("dark", "dark"));
 }
+
+/// `Theme::token` reads a token as a rule would: the mode's own value, its base's, then the shared one.
+#[test]
+fn token_reads_the_mode_value() {
+    let theme = |mode: &str| Theme::bind(&sheet(), Arc::new(SchemeProbe), mode).expect("binds");
+    let number = |theme: &Theme, path: &str| theme.token(path).expect("a token").as_number();
+    for (mode, own, from_light) in [("light", 1.0, 11.0), ("dark", 2.0, 22.0), ("hi_contrast", 3.0, 11.0)] {
+        let theme = theme(mode);
+        assert_eq!(number(&theme, "modal.own"), Some(own), "{mode}");
+        assert_eq!(number(&theme, "modal.shared"), Some(10.0), "{mode}");
+        assert_eq!(number(&theme, "modal.from_light"), Some(from_light), "{mode} falls back to its base");
+    }
+    let edited = theme("light").with_token_values(&[("modal.own", Value::Number(7.0))]).expect("edits");
+    assert_eq!(number(&edited, "modal.own"), Some(7.0), "live edits apply");
+    assert_eq!(sheet().token_paths(), ["modal.from_light", "modal.own", "modal.shared"]);
+    let unknown = theme("light").token("modal.missing").expect_err("unknown");
+    assert!(unknown.message.contains("modal.missing"), "{unknown}");
+}
+
+/// `Theme::token_with` selects size-scoped definitions, as a rule does for a control of that size.
+#[test]
+fn token_with_selects_size_scoped_values() {
+    let tokens = "tokens {
+  metrics {
+    gap = 8
+    size sm { gap = 6 }
+    mode dark { gap = 9 }
+  }
+}";
+    let sheet = Stylesheet::builder(luma_config())
+        .layer("sdk", [Source::new("tokens.lss", tokens)])
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"));
+    let number =
+        |theme: &Theme, attrs: &[(&str, &str)]| theme.token_with("metrics.gap", attrs).expect("a token").as_number();
+    let light = Theme::bind(&sheet, Arc::new(xgpui_luma_style::NoNativeTokens), "light").expect("binds");
+    assert_eq!(number(&light, &[]), Some(8.0));
+    assert_eq!(number(&light, &[("size", "sm")]), Some(6.0));
+    assert_eq!(number(&light, &[("size", "lg")]), Some(8.0), "no lg scope: the unscoped value");
+    let dark = light.with_mode("dark").expect("dark");
+    assert_eq!(number(&dark, &[]), Some(9.0));
+    assert_eq!(number(&dark, &[("size", "sm")]), Some(6.0), "the more specific scope wins, as for rules");
+    let unknown = light.token_with("metrics.gap", &[("tone", "red")]).expect_err("unknown attribute");
+    assert!(unknown.message.contains("tone"), "{unknown}");
+}

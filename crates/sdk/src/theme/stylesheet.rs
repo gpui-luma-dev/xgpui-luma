@@ -22,10 +22,8 @@ pub use crate::controls::range::slider::theme::{
 };
 mod motion;
 pub use motion::*;
-mod colors;
 mod math;
-mod tokens;
-pub use tokens::*;
+mod overlay;
 
 #[cfg(test)]
 mod control_defaults;
@@ -46,7 +44,6 @@ macro_rules! common_stylesheet {
     ($($field:ident: $kind:ty),+ $(,)?) => {
         #[derive(Clone, Debug, Default, PartialEq, Serialize)]
         pub struct CommonStylesheet {
-            pub tokens: TokenStylesheet,
             /// Typed role overrides, shared by SDK-only apps and all looks.
             pub motion: MotionStylesheet,
             $(pub $field: $kind,)+
@@ -56,14 +53,13 @@ macro_rules! common_stylesheet {
                 #[derive(Default, Deserialize)]
                 #[serde(default, deny_unknown_fields)]
                 struct Fields {
-                    tokens: TokenStylesheet,
                     motion: MotionStylesheet,
                     $($field: $kind,)+
                 }
                 let mut value = toml::Value::deserialize(deserializer)?;
                 math::normalize(&mut value).map_err(serde::de::Error::custom)?;
                 let fields: Fields = value.try_into().map_err(serde::de::Error::custom)?;
-                Ok(Self { tokens: fields.tokens, motion: fields.motion, $($field: fields.$field,)+ })
+                Ok(Self { motion: fields.motion, $($field: fields.$field,)+ })
             }
         }
         impl CommonStylesheet {
@@ -72,7 +68,7 @@ macro_rules! common_stylesheet {
             pub fn with_sdk_defaults(&self) -> Self {
                 let baseline = Self::sdk_default();
                 Self {
-                    tokens: self.tokens.clone(), motion: self.motion.clone(),
+                    motion: self.motion.clone(),
                     $($field: self.$field.clone().with_baseline(&baseline.$field),)+
                 }
             }
@@ -83,7 +79,7 @@ macro_rules! common_stylesheet {
             pub fn with_size_key(&self, key: &str) -> Self {
                 use $crate::theme::stylesheet::geometry::SelectSizeKey;
                 Self {
-                    tokens: self.tokens.clone(), motion: self.motion.clone(),
+                    motion: self.motion.clone(),
                     $($field: self.$field.select_size_key(key),)+
                 }
             }
@@ -533,7 +529,7 @@ impl CommonStylesheet {
         for source in layers {
             Self::parse(source)?;
             let authored: toml::Value = toml::from_str(source)?;
-            tokens::overlay(&mut document, authored);
+            overlay::overlay(&mut document, authored);
         }
         Self::parse(&toml::to_string(&document)?)
     }
@@ -558,7 +554,12 @@ impl CommonStylesheet {
         mapping: crate::color::GamutMapping,
     ) -> anyhow::Result<crate::theme::ThemeTokens> {
         let sheet = self.with_sdk_defaults();
-        let mut tokens = crate::theme::ThemeTokens::from_source(sheet.tokens.source(mode), mapping)?;
+        // Token values come from the SDK's token tables; the sheet holds geometry, motion and recipes.
+        let source = match mode {
+            crate::theme::ThemeMode::Light => crate::theme::LumaThemeMode::light(),
+            crate::theme::ThemeMode::Dark => crate::theme::LumaThemeMode::dark(),
+        };
+        let mut tokens = crate::theme::ThemeTokens::from_source(source, mapping)?;
         tokens.stylesheet = std::sync::Arc::new(sheet);
         Ok(tokens)
     }
@@ -605,7 +606,6 @@ mod tests {
         let native = CommonStylesheet::sdk_default().clone().with(|sheet| {
             sheet.slider.geometry.width = Some(0.0);
             sheet.font_features.0.insert("sidebar_section".into(), Vec::new());
-            sheet.tokens.elevation.light.menu.layers.clear();
         });
         let source = toml::to_string(&native).unwrap();
         let restored: CommonStylesheet = toml::from_str(&source).unwrap();
