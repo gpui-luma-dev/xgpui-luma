@@ -83,7 +83,7 @@ impl CssTokenCatalog {
     }
 }
 
-pub use metrics::{SpacingField, spacing_multiplier};
-pub(crate) use metrics::{metrics_from_catalog, typography_from_catalog};
+pub use metrics::SpacingField;
+pub(crate) use metrics::{metrics_from_theme, radii_from_catalog, typography_from_catalog};
 
 pub(crate) use metrics::{first_font_family, parse_length_px};

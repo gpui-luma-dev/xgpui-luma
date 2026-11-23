@@ -340,15 +340,31 @@ impl Theme {
     /// A token's value in this theme's mode, for code that reads tokens directly (such as a typed
     /// token table built from the theme). The mode's own values beat its base's, which beat the
     /// shared ones, and live token edits apply, as when a rule reads the token. Size- or
-    /// attribute-scoped definitions are not selected, and lengths are not multiplied by the length
-    /// scale. An unknown or absent token, or one that fails to evaluate, is an error.
+    /// attribute-scoped definitions are not selected (see [`Theme::token_with`]), and lengths are not
+    /// multiplied by the length scale. An unknown or absent token, or one that fails to evaluate, is
+    /// an error.
     pub fn token(&self, path: &str) -> Result<Value, Diagnostic> {
+        self.token_with(path, &[])
+    }
+
+    /// Like [`Theme::token`], for a control with these attribute values (e.g. `[("size", "sm")]`):
+    /// definitions scoped to them (`size sm { … }`) beat unscoped ones, as when a rule reads the
+    /// token for such a control.
+    pub fn token_with(&self, path: &str, attrs: &[(&str, &str)]) -> Result<Value, Diagnostic> {
         let model = self.inner.model();
         let Some(def) = model.tokens.defs.get(path).and_then(|defs| defs.first()) else {
             let hint = suggest(path, model.tokens.defs.keys().map(String::as_str));
             return Err(Diagnostic::error(Code::UnknownName, format!("unknown token \"{path}\"{hint}")));
         };
-        let key = KeyData { control: 0, attrs: Vec::new(), states: 0, scale: 1.0 };
+        let mut scoped = Vec::with_capacity(attrs.len());
+        for (attr, value) in attrs {
+            let Some(index) = model.config.attributes.iter().position(|a| a == attr) else {
+                let hint = suggest(attr, model.config.attributes.iter().map(String::as_str));
+                return Err(Diagnostic::error(Code::UnknownAttribute, format!("unknown attribute \"{attr}\"{hint}")));
+            };
+            scoped.push((intern(&model.config.attributes[index]), intern(value)));
+        }
+        let key = KeyData { control: 0, attrs: scoped, states: 0, scale: 1.0 };
         match Evaluator::new(&self.inner, 0, None, false).token(&def.expr, path, &key) {
             Ok((value, _)) => Ok(value),
             Err(EvalErr::Absent(path)) => {

@@ -41,7 +41,7 @@ mod tests {
         assert!(close(outline.trigger_icon, css(&look, "muted-foreground")));
         assert!(outline.trigger_shadow.as_ref().is_some_and(|layers| !layers.is_empty()));
         assert!(trigger(&look, SelectorTriggerStyle::Outline, Default::default(), true).trigger_shadow.is_none());
-        assert_eq!(outline.trigger_padding_x, 14.0);
+        assert_eq!(outline.trigger_padding_x, look.mode_tokens().control_sizes.md.padding_x, "the md control padding");
     }
 
     #[test]

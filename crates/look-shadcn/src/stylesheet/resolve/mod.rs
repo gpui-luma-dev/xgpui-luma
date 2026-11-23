@@ -264,7 +264,7 @@ mod tests {
         use crate::stylesheet::config::SidebarMetricsRule;
 
         let rule = SidebarMetricsRule::default();
-        let scale = resolve_sidebar_metrics(&rule, &crate::ShadcnControlMetrics::default());
+        let scale = resolve_sidebar_metrics(&rule, &crate::ShadcnLook::built_in().mode_tokens().control_sizes);
         assert_eq!(scale.width_expanded, px(256.0));
         assert_eq!(scale.width_icon_rail, px(48.0));
         assert_eq!(scale.width_mobile, px(288.0));
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn metric_token_resolves_control_height_and_radius() {
-        let controls = crate::ShadcnControlMetrics::default();
+        let controls = crate::ShadcnLook::built_in().mode_tokens().control_sizes;
         assert_eq!(
             resolve_stylesheet_metric("metrics.control.md", &controls, ShadcnSize::Md),
             Some(controls.control_height(ShadcnSize::Md))

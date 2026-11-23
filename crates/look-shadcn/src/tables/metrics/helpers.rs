@@ -13,70 +13,39 @@ pub fn control_size_key(size: ShadcnSize) -> &'static str {
     }
 }
 
-pub fn scaffold_control_metric(size_key: &str, field: &str, value_px: f32) -> ResolvedMetric {
-    ResolvedMetric {
-        value_px,
-        source: MetricSource::Scaffold { path: format!("MetricTokens.control.{size_key}.{field}") },
-    }
-}
-
 pub fn derived_metric(note: impl Into<String>, value_px: f32) -> ResolvedMetric {
     ResolvedMetric { value_px, source: MetricSource::Derived { note: note.into() } }
 }
 
+/// A control's padding or gap, with where it comes from: the look's `.lss` (`metrics.control`, scoped
+/// by size), which derives it from `--spacing` when the catalog has one.
 pub fn spacing_control_metric(
-    catalog: &CssTokenMap,
+    _catalog: &CssTokenMap,
     size: ShadcnSize,
     field: SpacingField,
     value_px: f32,
 ) -> ResolvedMetric {
-    if catalog.get("spacing").and_then(crate::catalog::parse_length_px).is_some() {
-        let size_key = control_size_key(size);
-        let field_label = match field {
-            SpacingField::PaddingX => "padding_x",
-            SpacingField::PaddingY => "padding_y",
-            SpacingField::Gap => "gap",
-        };
-        let multiplier = crate::catalog::spacing_multiplier(size, field);
-        let multiplier_label = if (multiplier - multiplier.round()).abs() < f32::EPSILON {
-            format!("{}", multiplier.round() as i32)
-        } else {
-            format!("{multiplier}")
-        };
-        ResolvedMetric {
-            value_px,
-            source: MetricSource::Derived {
-                note: format!("{size_key} {field_label} = --spacing × {multiplier_label}"),
-            },
-        }
-    } else {
-        let field_label = match field {
-            SpacingField::PaddingX => "padding_x",
-            SpacingField::PaddingY => "padding_y",
-            SpacingField::Gap => "gap",
-        };
-        scaffold_control_metric(control_size_key(size), field_label, value_px)
-    }
+    let field_label = match field {
+        SpacingField::PaddingX => "padding_x",
+        SpacingField::PaddingY => "padding_y",
+        SpacingField::Gap => "gap",
+    };
+    lss_control_metric(size, field_label, value_px)
 }
 
-pub fn radius_metric(catalog: &CssTokenMap, size: ShadcnSize, value_px: f32) -> ResolvedMetric {
-    if catalog.get("radius").and_then(crate::catalog::parse_length_px).is_some() {
-        let (size_label, offset) = match size {
-            ShadcnSize::Sm => ("sm", 4.0_f32),
-            ShadcnSize::Md => ("md", 2.0_f32),
-            ShadcnSize::Lg => ("lg", 0.0_f32),
-        };
-        let offset_label = if (offset - offset.round()).abs() < f32::EPSILON {
-            format!("{}px", offset.round() as i32)
-        } else {
-            format!("{offset}px")
-        };
-        ResolvedMetric {
-            value_px,
-            source: MetricSource::Derived { note: format!("{size_label} = max(--radius − {offset_label}, 0px)") },
-        }
-    } else {
-        scaffold_control_metric(control_size_key(size), "radius", value_px)
+/// A control's corner radius, with where it comes from: the look's `.lss` (`metrics.control.radius`,
+/// scoped by size), which derives it from `--radius` when the catalog has one.
+pub fn radius_metric(_catalog: &CssTokenMap, size: ShadcnSize, value_px: f32) -> ResolvedMetric {
+    lss_control_metric(size, "radius", value_px)
+}
+
+fn lss_control_metric(size: ShadcnSize, field: &str, value_px: f32) -> ResolvedMetric {
+    let size_key = control_size_key(size);
+    ResolvedMetric {
+        value_px,
+        source: MetricSource::Derived {
+            note: format!("shadcn tokens.lss · metrics.control.{field} (size {size_key})"),
+        },
     }
 }
 
