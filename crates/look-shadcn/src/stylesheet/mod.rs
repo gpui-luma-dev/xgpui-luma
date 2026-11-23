@@ -8,11 +8,10 @@ pub fn embedded_stylesheet() -> &'static StylesheetConfig {
     embedded()
 }
 
-pub use config::{ButtonElevationRule, LayeredElevationRule, StylesheetConfig};
+pub use config::StylesheetConfig;
 pub use find::*;
 pub use resolve::{
-    resolve_button_color_rule, resolve_button_metrics_rule, resolve_sidebar_container_color_rule,
-    resolve_sidebar_metrics, resolve_color_ref, resolve_stylesheet_shadow_token, resolve_layered_elevation_shadow,
+    resolve_button_metrics_rule, resolve_sidebar_container_color_rule, resolve_sidebar_metrics, resolve_color_ref,
     resolve_stylesheet_metric, resolve_typography_rule, ResolvedFields,
 };
 

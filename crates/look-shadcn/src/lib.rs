@@ -9,7 +9,6 @@ mod context;
 mod controls;
 mod elements;
 mod ext;
-mod focus;
 mod look;
 mod mode;
 mod palette;
@@ -69,9 +68,6 @@ pub use provenance::{
     TypographySource,
 };
 pub use usage::all_shadcn_theme_usages;
-
-#[cfg(test)]
-mod button_stylesheet_tests;
 
 #[cfg(test)]
 mod remaining_stylesheet_tests;

@@ -1,34 +1,6 @@
-use xgpui_luma::theme::{InteractionLayer, ThemeMode};
-
-use crate::controls::ShadcnButtonStyle;
 use crate::tokens::{ShadcnTextRole, ShadcnTextSize};
 
-use super::config::{ButtonColorRule, SidebarContainerColorRule, StylesheetConfig, TypographyRule};
-use super::selector::{AsSelectorState, ButtonSelectorState};
-
-pub fn find_button_color_rule(
-    stylesheet: &StylesheetConfig,
-    style: ShadcnButtonStyle,
-    layer: InteractionLayer,
-    theme_mode: ThemeMode,
-    selected: bool,
-) -> Option<&ButtonColorRule> {
-    let state = ButtonSelectorState { style, layer, mode: theme_mode, selected };
-    let map = state.to_selector_map();
-    stylesheet.button.find_color_rule(
-        map.get("style").expect("style key"),
-        map.get("layer").expect("layer key"),
-        map.get("mode").expect("mode key"),
-        selected,
-    )
-}
-
-pub fn find_button_elevation_rule(
-    stylesheet: &StylesheetConfig,
-    style: ShadcnButtonStyle,
-) -> Option<&crate::stylesheet::config::ButtonElevationRule> {
-    stylesheet.button.elevation_rule_for_style(crate::stylesheet::selector::button_style_key(style))
-}
+use super::config::{SidebarContainerColorRule, StylesheetConfig, TypographyRule};
 
 pub fn find_sidebar_metrics(stylesheet: &StylesheetConfig) -> &crate::stylesheet::config::SidebarMetricsRule {
     &stylesheet.sidebar.metrics
