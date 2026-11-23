@@ -1,5 +1,5 @@
 // SDK toolbar. Layer: sdk. The shell around hosted controls, read by `styled_toolbar_look` (styled.rs). The
-// base is the outlined, filled shell; `variant ghost` has no fill or edge.
+// shell is outlined and filled; visual variants (`ghost`) belong to the looks (#287).
 
 /// A row of controls.
 toolbar {
@@ -22,10 +22,4 @@ toolbar {
   /// A separator between groups of controls.
   part separator { background = palette.border.default }
 
-  variant ghost {
-    part root {
-      background := transparent
-      border     := transparent
-    }
-  }
 }

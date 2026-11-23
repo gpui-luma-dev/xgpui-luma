@@ -16,4 +16,12 @@ toolbar {
     :disabled { background = gray[2] }
   }
   part separator { background = gray[6] }
+
+  // The SDK keeps only behaviour variants (#287); the ghost shell is the look's.
+  variant ghost {
+    part root {
+      background = transparent
+      border     = transparent
+    }
+  }
 }

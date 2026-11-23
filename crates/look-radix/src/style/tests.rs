@@ -347,3 +347,28 @@ fn switch(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Ar
 fn track_shadow(resolved: &xgpui_luma::style::lss::Resolved) -> Vec<BoxShadow> {
     resolved.part(PartId::new("track")).shadow().map(|s| box_shadows(&s)).unwrap_or_default()
 }
+
+/// The SDK keeps only behaviour variants (#287), so the look draws the visual ones: each differs
+/// from the base trigger or shell, in both modes.
+#[test]
+fn look_defines_the_visual_variants() {
+    let look = Look::built_in().fork();
+    for mode in [ThemeMode::Light, ThemeMode::Dark] {
+        look.set_mode(mode);
+        let theme = look.style_theme();
+        let variant = theme.stylesheet().config().attribute("variant").expect("variant attribute");
+        for (control, name) in [
+            ("pager", "minimal"),
+            ("popup_menu", "outline"),
+            ("popup_menu", "ghost"),
+            ("scrollbar", "soft"),
+            ("selector", "outline"),
+            ("selector", "ghost"),
+            ("toolbar", "ghost"),
+        ] {
+            let base = StyleKey::new(ControlId::new(control));
+            let styled = base.attr(variant, AttrValue::named(name));
+            assert_ne!(theme.resolve(&styled), theme.resolve(&base), "{mode:?} {control} [{name}]");
+        }
+    }
+}

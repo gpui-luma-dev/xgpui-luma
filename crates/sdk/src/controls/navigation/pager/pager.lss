@@ -1,5 +1,5 @@
 // SDK pager. Layer: sdk. Read by `StyledPagerTheme` (styled.rs): the page buttons' size and spacing, the
-// colors the template paints, and the page-size popup. `variant minimal` keeps buttons square and close.
+// colors the template paints, and the page-size popup. Visual variants (`minimal`) belong to the looks (#287).
 
 /// Page navigation: previous, numbers, next, and a page-size picker.
 pager {
@@ -44,8 +44,4 @@ pager {
     }
   }
 
-  variant minimal {
-    button_min_width = exact(metrics.control.control_height)
-    group_gap        = exact(8)
-  }
 }
