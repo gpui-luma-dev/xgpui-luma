@@ -206,11 +206,7 @@ impl ScrollbarBuilder {
                 step: 1.0,
                 page_step: 10.0,
                 value: 0.0,
-                thumb_fraction: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                    .scrollbar
-                    .geometry
-                    .thumb_fraction
-                    .unwrap_or_default(),
+                thumb_fraction: DEFAULT_THUMB_FRACTION,
                 length: None,
                 style: ScrollbarStyle::Ghost,
                 enabled: true,
@@ -331,15 +327,14 @@ impl ScrollbarBuilder {
     }
 }
 
+/// The thumb's share of the track before a scroll container sets it from its content.
+pub(crate) const DEFAULT_THUMB_FRACTION: f32 = 0.25;
+
 pub(crate) fn normalized_thumb_fraction(value: f32) -> f32 {
     if value.is_finite() {
         value.clamp(0.05, 1.0)
     } else {
-        crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .scrollbar
-            .geometry
-            .thumb_fraction
-            .unwrap_or_default()
+        DEFAULT_THUMB_FRACTION
     }
 }
 
