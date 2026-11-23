@@ -349,8 +349,12 @@ impl AccordionControl {
                 .map(|idx| {
                     let entity = cx.entity().clone();
                     Box::new(move |height: f32, _: &mut Window, cx: &mut App| {
-                        entity.update(cx, |this, cx| {
-                            this.set_content_height(idx, height, cx);
+                        // Heights are measured while the frame is drawn, and a notify then does not
+                        // schedule a redraw; apply the height after the frame so the content's new
+                        // height (e.g. after rows were filtered out) shows without waiting for input.
+                        let entity = entity.clone();
+                        cx.defer(move |cx| {
+                            entity.update(cx, |this, cx| this.set_content_height(idx, height, cx));
                         });
                     }) as _
                 })
