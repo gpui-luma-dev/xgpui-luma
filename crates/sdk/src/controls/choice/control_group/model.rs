@@ -832,9 +832,6 @@ disabled_opacity=0
 item_gap=3
 [common.radio_group.sizes.horizontal]
 gap=17
-[common.icon_group.geometry]
-padding_x=0
-radius=5
 "#,
         )
         .unwrap();
@@ -843,8 +840,6 @@ radius=5
         assert!(group.model.stylesheet_overrides_shell);
         assert_eq!(group.model.stylesheet.control_group.geometry.border_width, Some(0.0));
         assert_eq!(group.model.stylesheet.radio_group.authored_geometry_for("vertical").gap, Some(8.0));
-        assert_eq!(group.model.stylesheet.icon_group.geometry.padding_x, Some(0.0));
-        assert_eq!(group.model.stylesheet.icon_group.geometry.radius, Some(5.0));
         for family in ["control_group", "radio_group"] {
             for value in ["-1", "1.1", "nan"] {
                 assert!(

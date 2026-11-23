@@ -114,7 +114,6 @@ common_stylesheet! {
     sidebar: SidebarStylesheet,
     control_group: ControlGroupStylesheet,
     radio_group: RadioGroupStylesheet,
-    icon_group: IconGroupStylesheet,
     table: TableStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }

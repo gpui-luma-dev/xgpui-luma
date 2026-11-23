@@ -217,9 +217,6 @@ pub use crate::controls::overlay::slide_panel::{
 pub use crate::controls::choice::radio_group::{
     RadioGroupStylesheet, RadioGroupGeometryStylesheet, RadioGroupGeometry, ResolvedRadioGroupGeometry,
 };
-pub use crate::controls::choice::icon_group::{
-    IconGroupStylesheet, IconGroupGeometryStylesheet, IconGroupGeometry, ResolvedIconGroupGeometry,
-};
 pub use crate::controls::selection::autocomplete::theme::{
     AutocompleteStylesheet, AutocompleteGeometryStylesheet, AutocompleteGeometry, ResolvedAutocompleteGeometry,
 };
@@ -303,7 +300,6 @@ mod tests {
         AutocompleteStylesheet::validate_contract();
         ComboBoxStylesheet::validate_contract();
         SearchSelectorStylesheet::validate_contract();
-        IconGroupStylesheet::validate_contract();
         TableStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
         SlidePanelStylesheet::validate_contract();
