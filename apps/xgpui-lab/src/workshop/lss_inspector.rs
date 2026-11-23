@@ -654,10 +654,9 @@ impl LssInspector {
         let heading = |text: &'static str| {
             div().font_weight(pane_type::LABEL_WEIGHT).text_color(chrome.muted_text).child(text.to_uppercase())
         };
-        let references = row.explanation.reference_lines();
-        let no_references = references.is_empty();
-        // The winning rule's expression, right under the row (the row shows only the value).
-        let expression = row.explanation.winner.as_ref().map(|w| format!("= {}", w.expression));
+        let references = &row.explanation.references;
+        // Rules, then what the value read, each full width: their lines wrap with a hanging indent
+        // rather than being cut off in side-by-side columns.
         div()
             .pl(px(ROW_INDENT))
             .pr(px(12.))
@@ -665,56 +664,44 @@ impl LssInspector {
             .flex()
             .flex_col()
             .gap(px(8.))
-            .children(expression.map(|e| {
-                let property = row.property;
-                div()
-                    .debug_selector(move || format!("lss-inspector-expression-{property}"))
-                    .font_family(pane_type::MONO)
-                    .text_color(chrome.muted_text)
-                    .truncate()
-                    .child(e)
-            }))
             .children(row.doc.clone().map(|d| div().text_color(chrome.body_text).child(format!("/// {d}"))))
             .child(
                 div()
+                    .debug_selector({
+                        let property = row.property;
+                        move || format!("lss-inspector-rules-{property}")
+                    })
                     .flex()
-                    .gap(px(16.))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .child(heading("Rules"))
-                            .children(rules.iter().map(|(rule, status)| self.rule_line(rule, *status))),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .flex()
-                            .flex_col()
-                            .gap(px(2.))
-                            .child(heading("Reads"))
-                            .children(references.into_iter().map(|line| {
-                                div().font_family(pane_type::MONO).text_color(chrome.body_text).truncate().child(line)
-                            }))
-                            .when(no_references, |d| {
-                                d.child(
-                                    div().font_family(pane_type::MONO).text_color(chrome.muted_text).child("literal"),
-                                )
-                            })
-                            .children(
-                                row.explanation
-                                    .notes()
-                                    .map(|n| div().font_family(pane_type::MONO).text_color(chrome.muted_text).child(n)),
-                            ),
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(heading("Rules"))
+                    .children(rules.iter().map(|(rule, status)| self.rule_line(rule, *status))),
+            )
+            .child(
+                div()
+                    .debug_selector({
+                        let property = row.property;
+                        move || format!("lss-inspector-reads-{property}")
+                    })
+                    .flex()
+                    .flex_col()
+                    .gap(px(2.))
+                    .child(heading("Reads"))
+                    .children(references.iter().flat_map(|r| self.reference_lines(r, 0)))
+                    .when(references.is_empty(), |d| {
+                        d.child(div().font_family(pane_type::MONO).text_color(chrome.muted_text).child("literal"))
+                    })
+                    .children(
+                        row.explanation
+                            .notes()
+                            .map(|n| div().font_family(pane_type::MONO).text_color(chrome.muted_text).child(n)),
                     ),
             )
             .into_any_element()
     }
 
+    /// One rule: its line, selector and status on the first line; its expression wrapped underneath,
+    /// indented, struck through when a stronger rule beats it.
     fn rule_line(&self, rule: &RuleInfo, status: RuleStatus) -> AnyElement {
         let chrome = self.look.chrome();
         let color = match status {
@@ -724,25 +711,58 @@ impl LssInspector {
         };
         div()
             .flex()
-            .gap(px(8.))
+            .flex_col()
             .px(px(4.))
+            .py(px(2.))
             .rounded(px(4.))
             .font_family(pane_type::MONO)
             .text_color(color)
             .when(status == RuleStatus::Wins, |d| d.bg(self.look.accent(3)))
             .when(status == RuleStatus::Inactive, |d| d.opacity(0.6))
-            .child(div().w(px(30.)).flex_shrink_0().child(format!(":{}", rule.line)))
-            .child(div().w(px(110.)).flex_shrink_0().child(selector(rule)))
             .child(
                 div()
-                    .flex_1()
-                    .min_w_0()
-                    .truncate()
-                    .when(status == RuleStatus::Beaten, |d| d.line_through())
-                    .child(rule.expression.clone()),
+                    .flex()
+                    .gap(px(8.))
+                    .child(div().flex_none().child(format!(":{}", rule.line)))
+                    .child(div().flex_1().min_w_0().child(selector(rule)))
+                    .child(div().flex_none().child(status.label())),
             )
-            .child(div().flex_shrink_0().child(status.label()))
+            .child(
+                div()
+                    .pl(px(HANGING_INDENT))
+                    .text_color(chrome.muted_text)
+                    .when(status == RuleStatus::Beaten, |d| d.line_through())
+                    .child(format!("= {}", rule.expression)),
+            )
             .into_any_element()
+    }
+
+    /// A reference the value read, then what it read in turn, each a step further in: `← name = value`
+    /// on its first line, where it is defined wrapped underneath with a hanging indent.
+    fn reference_lines(&self, reference: &Reference, depth: usize) -> Vec<AnyElement> {
+        let chrome = self.look.chrome();
+        let indent = depth as f32 * HANGING_INDENT;
+        let value = reference
+            .value
+            .as_ref()
+            .map(|v| display_value(Some(v), v.kind().unwrap_or(xgpui_luma::style::lss::Kind::Number)))
+            .unwrap_or_else(|| "absent".into());
+        let at = reference
+            .defined_at
+            .as_ref()
+            .map(|l| format!("{}:{}", l.source, l.line))
+            .or_else(|| reference.description.clone());
+        let line = div()
+            .pl(px(indent))
+            .flex()
+            .flex_col()
+            .font_family(pane_type::MONO)
+            .child(div().text_color(chrome.body_text).child(format!("← {} = {value}", reference.name)))
+            .children(at.map(|at| div().pl(px(HANGING_INDENT)).text_color(chrome.muted_text).child(at)))
+            .into_any_element();
+        std::iter::once(line)
+            .chain(reference.children.iter().flat_map(|c| self.reference_lines(c, depth + 1)))
+            .collect()
     }
 
     /// The control's style file, each rule line marked for the current key.
@@ -1166,6 +1186,10 @@ pub(super) fn choose_tab(tabs: &Entity<xgpui_luma::controls::tabs::Tabs>, id: &s
         cx.emit(xgpui_luma::controls::tabs::TabsEvent::Change { tab_id: id, label: gpui::SharedString::default() });
     });
 }
+
+/// How far a wrapped detail line (a rule's expression, a reference's location) and each level of
+/// nested references are indented.
+const HANGING_INDENT: f32 = 14.;
 
 /// Rows whose value no state rule sets for the current key are drawn at this opacity.
 const UNSTATED_ROW_OPACITY: f32 = 0.45;

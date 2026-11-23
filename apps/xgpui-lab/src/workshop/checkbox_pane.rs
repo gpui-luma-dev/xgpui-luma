@@ -1475,13 +1475,13 @@ mod tests {
         // One line each; the value sits between the name and the rule line.
         let (value, rule) = (bounds("lss-inspector-value-height", cx), bounds("lss-inspector-rule-height", cx));
         assert!(value.right() <= rule.left() && value.left() > gap.left(), "name · value · rule");
-        assert!(cx.debug_bounds("lss-inspector-expression-height").is_none(), "expression hidden until opened");
-        // Opening a row shows its expression right under it.
+        assert!(cx.debug_bounds("lss-inspector-rules-height").is_none(), "details hidden until opened");
+        // Opening a row shows its rules (each with its expression) right under it.
         inspector.update(cx, |inspector, cx| inspector.expand("root", "height", cx));
         cx.run_until_parked();
-        let (name, expression) =
-            (bounds("lss-inspector-name-height", cx), bounds("lss-inspector-expression-height", cx));
-        assert!(expression.top() - name.bottom() < px(12.), "directly under the row: {name:?} {expression:?}");
+        let (name, rules) = (bounds("lss-inspector-name-height", cx), bounds("lss-inspector-rules-height", cx));
+        // Only the property's doc comment, if any, comes between.
+        assert!(rules.top() - name.bottom() < px(40.), "right under the row: {name:?} {rules:?}");
         // A literal shows no expression; a token reference shows it; the base rule has no selector.
         let summary = |part: &str, property: &'static str, cx: &mut VisualTestContext| {
             cx.update(|_, cx| inspector.read(cx).row_summary(part, property)).expect("row rendered")
@@ -1831,5 +1831,22 @@ mod tests {
         cx.run_until_parked();
         assert!(!dimmed("indicator", "background", cx), ":checked sets it");
         assert!(dimmed("root", "indicator_scale", cx), "no state rule sets it");
+    }
+
+    #[gpui::test]
+    fn an_open_row_stacks_its_rules_above_its_reads() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let inspector = cx.update(|_, cx| pane.read(cx).inspector());
+        inspector.update(cx, |inspector, cx| inspector.expand("root", "focus_border", cx));
+        cx.run_until_parked();
+        let bounds = |id: &'static str, cx: &mut VisualTestContext| cx.debug_bounds(id).expect(id);
+        let (rules, reads) =
+            (bounds("lss-inspector-rules-focus_border", cx), bounds("lss-inspector-reads-focus_border", cx));
+        assert!(reads.top() >= rules.bottom(), "Reads under Rules: {rules:?} {reads:?}");
+        assert_eq!(rules.left(), reads.left(), "both start at the same indent");
+        assert_eq!(rules.size.width, reads.size.width, "both full width");
+        // The rule's head and its expression are two lines.
+        assert!(rules.size.height >= px(40.), "heading, rule head and expression lines: {rules:?}");
     }
 }
