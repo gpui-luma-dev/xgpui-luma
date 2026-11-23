@@ -115,17 +115,3 @@ mod tests {
         assert_eq!(ghost.border.a, 0.0);
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_toolbar_stylesheet() -> xgpui_luma::theme::stylesheet::ToolbarStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ToolbarStylesheet {
-        geometry: ToolbarGeometryStylesheet {
-            padding_x: Some(4.0),
-            padding_y: Some(3.0),
-            gap: Some(6.0),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
-}

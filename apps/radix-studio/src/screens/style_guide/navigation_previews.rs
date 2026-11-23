@@ -389,7 +389,6 @@ fn splitter_sample(
     if cell.id.starts_with("size-") {
         let mut sheet = fork.common_stylesheet();
         let hit = [8.0, 12.0, 20.0][cell.scenario];
-        sheet.dock_splitter.geometry.hit_target = Some(hit);
         sheet.split_view.geometry.hitbox_width = Some(hit);
         sheet.split_view.geometry.cue_width = Some([2.0, 4.0, 6.0][cell.scenario]);
         sheet.split_view.geometry.cue_hovered_width = Some([4.0, 6.0, 8.0][cell.scenario]);

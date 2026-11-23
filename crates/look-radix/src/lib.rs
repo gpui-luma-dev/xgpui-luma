@@ -255,6 +255,9 @@ pub use sidebar::{sidebar_builder, sidebar_template, sidebar_theme};
 #[cfg(test)]
 mod stylesheet_tests;
 
+#[cfg(test)]
+mod live_edit_tests;
+
 #[cfg(all(test, feature = "test-support"))]
 mod interaction_tests;
 

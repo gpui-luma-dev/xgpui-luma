@@ -59,12 +59,3 @@ pub fn textarea_theme_with(look: &Look, variant: TextFieldVariant) -> Arc<dyn Te
 pub fn textarea_template(look: &Look, variant: TextFieldVariant) -> Arc<dyn TextAreaTemplate> {
     Arc::new(ThemedTextAreaTemplate::new(textarea_theme_with(look, variant)))
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_textarea_stylesheet() -> xgpui_luma::theme::stylesheet::TextAreaStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    TextAreaStylesheet {
-        geometry: TextAreaGeometryStylesheet { font_size: Some(14.0), line_height: Some(20.0), ..Default::default() },
-        ..Default::default()
-    }
-}

@@ -108,6 +108,29 @@ pub fn stylesheet() -> Stylesheet {
         .clone()
 }
 
+/// A number from a control's own properties in the SDK's `.lss` (light mode, no attributes or states),
+/// for default trait paths of themes that supply only colors. Zero when the control or property is
+/// missing.
+pub(crate) fn sdk_number(control: &str, property: &str) -> f32 {
+    let theme = default_theme();
+    theme
+        .key_named(control, &[], &[])
+        .ok()
+        .and_then(|key| theme.resolve(&key).root().value(property).and_then(xgpui_luma_style::Value::as_number))
+        .unwrap_or(0.0)
+}
+
+/// A menu's offset from its trigger as a share of the control gap, from the SDK's `.lss`
+/// (`menu_offset_y` over `gap`).
+pub(crate) fn sdk_menu_offset_share(control: &str) -> f32 {
+    let gap = sdk_number(control, "gap");
+    if gap > 0.0 {
+        sdk_number(control, "menu_offset_y") / gap
+    } else {
+        0.0
+    }
+}
+
 /// The SDK alone in dark mode.
 pub fn dark_theme() -> Theme {
     static THEME: OnceLock<Theme> = OnceLock::new();
@@ -368,6 +391,29 @@ mod tests {
                 seen.push((format!("{} {path}", theme.mode()), color));
             }
         }
+    }
+
+    /// The default trait paths of themes that supply only colors read these SDK `.lss` properties; a
+    /// renamed or missing property would read as zero.
+    #[test]
+    fn sdk_numbers_read_by_default_theme_paths_exist() {
+        let theme = default_theme();
+        for (control, property) in [
+            ("textfield", "caret_width"),
+            ("textfield", "caret_height_extra"),
+            ("textfield", "disabled_opacity"),
+            ("textarea", "caret_width"),
+            ("textarea", "caret_height_extra"),
+            ("textarea", "disabled_opacity"),
+            ("popup_menu", "menu_offset_y"),
+            ("popup_menu", "gap"),
+            ("selector", "menu_offset_y"),
+            ("selector", "gap"),
+        ] {
+            let resolved = theme.resolve(&theme.key_named(control, &[], &[]).expect("key"));
+            assert!(resolved.root().value(property).is_some(), "{control}.{property}");
+        }
+        assert!(sdk_menu_offset_share("popup_menu") > 0.0 && sdk_menu_offset_share("selector") > 0.0);
     }
 
     /// `assert_reads` fails when a part reads a different token, so passing checks mean something.

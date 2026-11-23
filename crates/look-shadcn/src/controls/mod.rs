@@ -19,7 +19,6 @@ pub(crate) mod listbox_builder;
 pub(crate) mod menu_choice_group_builder;
 pub(crate) mod sidebar;
 pub(crate) mod sidebar_builder;
-pub(crate) mod pager;
 pub(crate) mod pager_builder;
 pub(crate) mod popup_menu_builder;
 pub(crate) mod progress;
@@ -55,7 +54,6 @@ pub(crate) mod toolbar_item;
 pub(crate) mod tree_view;
 pub(crate) mod tree_view_builder;
 pub(crate) mod typography;
-pub(crate) mod overlay_window;
 
 pub use accordion_builder::Accordion;
 pub use autocomplete_builder::Autocomplete;

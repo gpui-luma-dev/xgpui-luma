@@ -11,7 +11,22 @@ fn catalogs() -> Vec<(&'static str, String)> {
         .lines()
         .filter(|line| {
             let line = line.trim_start();
-            !["--radius:", "--spacing:", "--font-sans:", "--shadow-xs:"].iter().any(|p| line.starts_with(p))
+            // Tokens a sparse theme may leave out; the catalog fills the optional colors (#287).
+            ![
+                "--radius:",
+                "--spacing:",
+                "--font-sans:",
+                "--shadow-xs:",
+                "--card:",
+                "--card-foreground:",
+                "--popover:",
+                "--popover-foreground:",
+                "--accent:",
+                "--accent-foreground:",
+                "--destructive:",
+            ]
+            .iter()
+            .any(|p| line.starts_with(p))
         })
         .collect::<Vec<_>>()
         .join("\n");

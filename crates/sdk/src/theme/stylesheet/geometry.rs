@@ -185,9 +185,7 @@ pub use crate::controls::navigation::accordion::theme::{
 pub use crate::controls::layout::split_view::theme::{
     SplitViewStylesheet, SplitViewGeometryStylesheet, SplitViewGeometry, ResolvedSplitViewGeometry,
 };
-pub use crate::controls::layout::dock_splitter::theme::{
-    DockSplitterStylesheet, DockSplitterGeometryStylesheet, DockSplitterGeometry, ResolvedDockSplitterGeometry,
-};
+pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
 pub use crate::controls::layout::resizable_panels::theme::{
     ResizablePanelsStylesheet, ResizablePanelsGeometryStylesheet, ResizablePanelsGeometry,
     ResolvedResizablePanelsGeometry,
@@ -195,15 +193,7 @@ pub use crate::controls::layout::resizable_panels::theme::{
 pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
-pub use crate::controls::text::textfield::theme::{
-    TextFieldStylesheet, TextFieldGeometryStylesheet, TextFieldGeometry, ResolvedTextFieldGeometry,
-};
-pub use crate::controls::text::textarea::theme::{
-    TextAreaStylesheet, TextAreaGeometryStylesheet, TextAreaGeometry, ResolvedTextAreaGeometry,
-};
-pub use crate::controls::range::progress::theme::{
-    ProgressStylesheet, ProgressGeometryStylesheet, ProgressGeometry, ResolvedProgressGeometry,
-};
+pub use crate::controls::range::progress::theme::ProgressGeometry;
 pub use crate::controls::overlay::floating_menu::theme::{
     FloatingMenuStylesheet, FloatingMenuGeometryStylesheet, FloatingMenuGeometry, ResolvedFloatingMenuGeometry,
 };
@@ -213,20 +203,8 @@ pub use crate::controls::selection::selection_panel::theme::{
 pub use crate::controls::overlay::tooltip::theme::{
     TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
 };
-pub use crate::controls::choice::toolbar::theme::{
-    ToolbarStylesheet, ToolbarGeometryStylesheet, ToolbarGeometry, ResolvedToolbarGeometry,
-};
 pub use crate::controls::button::family::theme::{
     SegmentedStylesheet, SegmentedGeometryStylesheet, SegmentedGeometry, ResolvedSegmentedGeometry,
-};
-pub use crate::controls::overlay::overlay_window::theme::{
-    OverlayWindowStylesheet, OverlayWindowGeometryStylesheet, OverlayWindowGeometry, ResolvedOverlayWindowGeometry,
-};
-pub use crate::controls::overlay::popup_menu::theme::{
-    PopupMenuStylesheet, PopupMenuGeometryStylesheet, PopupMenuGeometry, ResolvedPopupMenuGeometry,
-};
-pub use crate::controls::overlay::context_menu::theme::{
-    ContextMenuStylesheet, ContextMenuGeometryStylesheet, ContextMenuGeometry, ResolvedContextMenuGeometry,
 };
 pub use crate::controls::choice::toggle::{
     ToggleStylesheet, ToggleGeometryStylesheet, ToggleGeometry, ResolvedToggleGeometry,
@@ -245,12 +223,6 @@ pub use crate::controls::choice::control_group::theme::{
 };
 pub use crate::controls::collection::table::theme::{
     TableStylesheet, TableGeometryStylesheet, TableGeometry, ResolvedTableGeometry,
-};
-pub use crate::controls::navigation::pager::theme::{
-    PagerStylesheet, PagerGeometryStylesheet, PagerGeometry, ResolvedPagerGeometry,
-};
-pub use crate::controls::selection::selector::theme::{
-    SelectorStylesheet, SelectorGeometryStylesheet, SelectorGeometry, ResolvedSelectorGeometry,
 };
 pub use crate::controls::selection::selector_list::{
     SelectorListStylesheet, SelectorListGeometryStylesheet, SelectorListGeometry, ResolvedSelectorListGeometry,
@@ -378,7 +350,6 @@ mod tests {
         SharedStylesheet::validate_contract();
         TreeViewStylesheet::validate_contract();
         AccordionStylesheet::validate_contract();
-        DockSplitterStylesheet::validate_contract();
         SplitViewStylesheet::validate_contract();
         ResizablePanelsStylesheet::validate_contract();
         StepperStylesheet::validate_contract();
@@ -390,28 +361,19 @@ mod tests {
         SearchSelectorStylesheet::validate_contract();
         IconGroupStylesheet::validate_contract();
         TableStylesheet::validate_contract();
-        PagerStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
         SlidePanelStylesheet::validate_contract();
-        SelectorStylesheet::validate_contract();
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         ToggleStylesheet::validate_contract();
-        TextFieldStylesheet::validate_contract();
-        TextAreaStylesheet::validate_contract();
-        ProgressStylesheet::validate_contract();
         FloatingMenuStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
         SelectionPanelStylesheet::validate_contract();
-        ToolbarStylesheet::validate_contract();
         SegmentedStylesheet::validate_contract();
         AvatarStylesheet::validate_contract();
         BadgeStylesheet::validate_contract();
         CardStylesheet::validate_contract();
         CalloutStylesheet::validate_contract();
-        OverlayWindowStylesheet::validate_contract();
-        PopupMenuStylesheet::validate_contract();
-        ContextMenuStylesheet::validate_contract();
     }
 }
 

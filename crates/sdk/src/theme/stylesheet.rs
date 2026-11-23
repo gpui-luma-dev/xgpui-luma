@@ -105,25 +105,18 @@ common_stylesheet! {
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     toggle: ToggleStylesheet,
-    textfield: TextFieldStylesheet,
-    textarea: TextAreaStylesheet,
-    progress: ProgressStylesheet,
     floating_menu: FloatingMenuStylesheet,
     selection_panel: SelectionPanelStylesheet,
     tooltip: TooltipStylesheet,
-    toolbar: ToolbarStylesheet,
     segmented: SegmentedStylesheet,
     avatar: AvatarStylesheet,
     badge: BadgeStylesheet,
     card: CardStylesheet,
     callout: CalloutStylesheet,
-    overlay_window: OverlayWindowStylesheet,
-    selector: SelectorStylesheet,
     selector_list: SelectorListStylesheet,
     autocomplete: AutocompleteStylesheet,
     combobox: ComboBoxStylesheet,
     search_selector: SearchSelectorStylesheet,
-    popup_menu: PopupMenuStylesheet,
     popover: PopoverStylesheet,
     slide_panel: SlidePanelStylesheet,
     scrollbar: ScrollbarStylesheet,
@@ -133,9 +126,6 @@ common_stylesheet! {
     radio_group: RadioGroupStylesheet,
     icon_group: IconGroupStylesheet,
     table: TableStylesheet,
-    pager: PagerStylesheet,
-    context_menu: ContextMenuStylesheet,
-    dock_splitter: DockSplitterStylesheet,
     split_view: SplitViewStylesheet,
     resizable_panels: ResizablePanelsStylesheet,
 }
@@ -185,31 +175,22 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            progress: ProgressStylesheet::native_default(),
             stepper: StepperStylesheet::native_default(),
             scrollbar: ScrollbarStylesheet::native_default(),
             tooltip: TooltipStylesheet::native_default(),
             floating_menu: FloatingMenuStylesheet::native_default(),
-            context_menu: ContextMenuStylesheet::native_default(),
             control_group: ControlGroupStylesheet::native_default(),
-            dock_splitter: DockSplitterStylesheet::native_default(),
             resizable_panels: ResizablePanelsStylesheet::native_default(),
-            overlay_window: OverlayWindowStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
             tree_view: TreeViewStylesheet::native_default(),
             accordion: AccordionStylesheet::native_default(),
             table: TableStylesheet::native_default(),
-            selector: SelectorStylesheet::native_default(),
-            pager: PagerStylesheet::native_default(),
-            popup_menu: PopupMenuStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
             slide_panel: SlidePanelStylesheet::native_default(),
             radio_group: RadioGroupStylesheet::native_default(),
             autocomplete: AutocompleteStylesheet::native_default(),
             combobox: ComboBoxStylesheet::native_default(),
             search_selector: SearchSelectorStylesheet::native_default(),
-            textfield: TextFieldStylesheet::native_default(),
-            textarea: TextAreaStylesheet::native_default(),
             split_view: SplitViewStylesheet::native_default(),
             tabs: TabsStylesheet::native_default(),
             shell: ShellStylesheet {
@@ -542,10 +523,10 @@ impl CommonStylesheet {
     ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    ///     sheet.progress.geometry.track_height = Some(9.0);
+    ///     sheet.slider.geometry.track_height = Some(9.0);
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-    /// assert_eq!(tokens.stylesheet.progress.geometry.track_height, Some(9.0));
+    /// assert_eq!(tokens.stylesheet.slider.geometry.track_height, Some(9.0));
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(

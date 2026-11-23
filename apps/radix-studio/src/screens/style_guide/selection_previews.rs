@@ -72,9 +72,6 @@ pub(super) fn tabbed(
     let compact_look = (kind == Kind::Autocomplete && active.as_ref() == "template-preview").then(|| {
         let fork = look.fork();
         let mut sheet = fork.common_stylesheet();
-        let field = sheet.textfield.sizes.get_or_default("2");
-        field.font_size = Some(12.0);
-        field.line_height = Some(16.0);
         let items = sheet.selector_list.sizes.get_or_default("2");
         items.font_size = Some(12.0);
         items.line_height = Some(16.0);

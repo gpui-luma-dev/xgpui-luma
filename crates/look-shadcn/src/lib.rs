@@ -80,6 +80,8 @@ mod button_stylesheet_tests;
 mod remaining_stylesheet_tests;
 #[cfg(test)]
 mod radius_catalog_tests;
+#[cfg(test)]
+mod live_edit_tests;
 
 #[cfg(all(test, feature = "test-support"))]
 mod event_callback_tests;
