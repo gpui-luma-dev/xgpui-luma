@@ -19,9 +19,9 @@ pub(crate) fn register_fonts(cx: &mut gpui::App) -> anyhow::Result<()> {
 pub(crate) fn default_look() -> Arc<Look> {
     let look = Look::built_in();
     // The theme's mono token is the lab's one monospace family; text roles read it from here.
-    let mut stylesheet = look.common_stylesheet();
-    stylesheet.tokens.typography.font.mono.family = MONO_FAMILY.into();
-    look.set_common_stylesheet(stylesheet);
+    let mut fonts = look.typography().font;
+    fonts.mono.family = MONO_FAMILY.into();
+    look.set_fonts(fonts);
     look.set_palettes(Accent::Gray, Gray::Sand);
     let seed = xgpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
     for mode in [ThemeMode::Light, ThemeMode::Dark] {

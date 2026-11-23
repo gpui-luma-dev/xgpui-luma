@@ -17,7 +17,7 @@ pub(crate) fn label_typography(size: crate::RadixSize) -> xgpui_luma::theme::Lum
 }
 
 pub(crate) fn font_family(look: &Look) -> SharedString {
-    look.stylesheet_snapshot().tokens.typography.font.sans.family.clone().into()
+    look.typography().font.sans.family.into()
 }
 
 #[cfg(test)]
@@ -25,11 +25,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn label_font_follows_the_look_stylesheet() {
+    fn label_font_follows_the_look_fonts() {
         let look = Look::built_in();
-        let mut stylesheet = look.common_stylesheet();
-        stylesheet.tokens.typography.font.sans.family = "Embedded Sans".into();
-        look.set_common_stylesheet(stylesheet);
+        let mut fonts = look.typography().font;
+        fonts.sans.family = "Embedded Sans".into();
+        look.set_fonts(fonts);
         assert_eq!(font_family(&look).as_ref(), "Embedded Sans");
     }
 }

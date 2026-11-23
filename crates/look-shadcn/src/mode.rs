@@ -72,7 +72,13 @@ impl ShadcnModeTokens {
             }
         }
         let data_positive = xgpui_luma::color::gpui_bridge::to_hsla(
-            stylesheet.common.tokens.source(theme_mode).palette.data.positive,
+            match theme_mode {
+                ThemeMode::Light => xgpui_luma::theme::LumaThemeMode::light(),
+                ThemeMode::Dark => xgpui_luma::theme::LumaThemeMode::dark(),
+            }
+            .palette
+            .data
+            .positive,
             xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
         let (metrics, control_sizes, radii) = metrics_from_catalog(&catalog, MetricTokens::default());

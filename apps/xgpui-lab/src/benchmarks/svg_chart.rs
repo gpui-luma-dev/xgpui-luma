@@ -55,7 +55,7 @@ fn text_style(look: &Look, role: TextRole, family: SharedString) -> TextPresenta
 }
 
 fn sans(look: &Look) -> SharedString {
-    look.common_stylesheet().tokens.typography.font.sans.family.clone().into()
+    look.typography().font.sans.family.into()
 }
 
 /// Chrome for every chart on the page: look roles for axes, grid and text; legends are drawn by the page.

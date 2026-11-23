@@ -260,7 +260,7 @@ impl TokenSource for RadixTokens {
     fn describe(&self, path: &str, cx: &TokenCx<'_>) -> Option<String> {
         match path {
             "look.accent_contrast" => Some(format!("Radix accent contrast ({})", cx.mode())),
-            "look.font_sans" => Some("Radix common stylesheet font.sans".into()),
+            "look.font_sans" => Some("Radix look font.sans (Look::set_fonts)".into()),
             "look.tone_contrast" => Some(format!("Radix tone contrast ({})", cx.mode())),
             "look.destructive" => Some(format!("Radix destructive role ({})", cx.mode())),
             p if p.starts_with("look.classic.") => Some("Radix classic button tuning (Look::classic_params)".into()),

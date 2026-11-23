@@ -4,9 +4,8 @@ The SDK authors control-specific stylesheet types, geometry defaults and resolut
 beside each control, usually in its existing `theme.rs`. Shared tokens and motion
 profiles remain under `theme`; `theme::stylesheet` assembles the complete baseline
 and re-exports the control types at their existing public paths. SDK-only applications need no look crate.
-Shadcn and Radix inherit this data and author their own differences. The bundled
-SDK palette is monochrome in both light and dark modes, including focus, status,
-data accents and shell controls. A look or application can still author colors.
+Shadcn and Radix inherit this data and author their own differences. A look or
+application can still author colors.
 Plot Viz keeps chart series colors in independent named HSLA palettes; its axes,
 labels and grids follow SDK tokens.
 
@@ -15,16 +14,16 @@ labels and grids follow SDK tokens.
 `CommonStylesheet::sdk_default()` exposes the cached native baseline.
 `CommonStylesheet::resolve_layers(&[look, application])` overlays sparse documents.
 `sheet.theme_tokens(mode, mapping)` creates the existing public `ThemeTokens`
-with retained source colors, projected paint colors and a captured stylesheet.
+from the SDK token values, with retained source colors, projected paint colors and
+a captured stylesheet. Token values (metrics, typography, palette, elevation) are
+not stylesheet fields: they live in the SDK's `.lss` token files (`theme/tokens.lss`,
+`theme/palette.lss`), and a `[common.tokens]` section is rejected. Looks set font
+families with their own API (Radix: `Look::set_fonts`).
 Pass those tokens to SDK `Default*Theme::new` factories and existing themed
 templates; third-party looks use the same APIs.
 
 | Data | Typed owner |
 | --- | --- |
-| Metrics, focus gaps, disabled opacity | `common.tokens.metrics` |
-| Font families, weights, text styles | `common.tokens.typography` |
-| Semantic light/dark colors, including shell chrome | `common.tokens.palette.light/dark` |
-| Shadow layers, including drag previews | `common.tokens.elevation.light/dark` |
 | Per-control geometry, proportions and decoration | `common.<family>.geometry/sizes` |
 | Tab presentation geometry | `common.tabs.geometry/variants` |
 | Semantic state recipe mappings | `common.recipes.<family>` |

@@ -338,13 +338,34 @@ mod tests {
         Shadow(Vec<(Hsla, [f32; 4], bool)>),
     }
 
-    /// Every field of the Rust token tables (`TokenStylesheet::default()`: palette, elevation, metrics,
-    /// typography) equals the `.lss` token of the same path, in light and dark. The fields come from
+    /// Every field of the Rust token tables (`LumaThemeMode::light()` and `::dark()`: palette, elevation,
+    /// metrics, typography) equals the `.lss` token of the same path, in light and dark. The fields come from
     /// serializing the Rust tables, so a field added there is checked without editing this test.
     /// Temporary: it goes when `ThemeTokens` is built from the `.lss` (#314).
     #[test]
     fn theme_tokens_match_the_lss_tokens_field_by_field() {
-        let tables = toml::Value::try_from(crate::theme::stylesheet::TokenStylesheet::default()).expect("serializes");
+        let (light, dark) = (crate::theme::LumaThemeMode::light(), crate::theme::LumaThemeMode::dark());
+        fn value<T: serde::Serialize>(v: &T) -> toml::Value {
+            toml::Value::try_from(v).expect("serializes")
+        }
+        let tables = toml::Value::Table(toml::map::Map::from_iter([
+            ("metrics".to_string(), value(&light.metrics)),
+            ("typography".to_string(), value(&light.typography)),
+            (
+                "palette".to_string(),
+                toml::Value::Table(toml::map::Map::from_iter([
+                    ("light".to_string(), value(&light.palette)),
+                    ("dark".to_string(), value(&dark.palette)),
+                ])),
+            ),
+            (
+                "elevation".to_string(),
+                toml::Value::Table(toml::map::Map::from_iter([
+                    ("light".to_string(), value(&light.elevation)),
+                    ("dark".to_string(), value(&dark.elevation)),
+                ])),
+            ),
+        ]));
         let color = |value: &toml::Value| -> Hsla {
             let source: crate::color::ColorValue = value.clone().try_into().expect("a color value");
             crate::color::gpui_bridge::to_hsla(source, crate::color::GamutMapping::Clip).expect("converts")

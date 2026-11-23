@@ -7,7 +7,7 @@ use std::sync::{
 };
 
 use gpui::{Background, Global, Hsla, linear_color_stop, linear_gradient};
-use xgpui_luma::theme::{MetricTokens, ThemeMode};
+use xgpui_luma::theme::{FontTokens, LumaTypography, MetricTokens, ThemeMode};
 use xgpui_luma::theme::provenance::{ResolvedColor, ResolvedSourceColor};
 use xgpui_luma::color::{ColorValue};
 
@@ -147,6 +147,8 @@ struct LookState {
     custom_contrast: RwLock<[Option<(ColorValue, Hsla)>; 2]>,
     custom_inputs: RwLock<[Option<CustomColors>; 2]>,
     metrics: MetricTokens,
+    /// Font families and text styles; [`Look::set_fonts`] changes the families.
+    typography: RwLock<LumaTypography>,
     /// Radix control metrics for sizes 1–3; `metrics.control` is size 2.
     control_sizes: crate::RadixControlMetrics,
     mode: AtomicU8,
@@ -190,6 +192,7 @@ impl Look {
                 custom_contrast: RwLock::new([None; 2]),
                 custom_inputs: RwLock::new([None; 2]),
                 metrics,
+                typography: RwLock::new(LumaTypography::default()),
                 control_sizes: crate::RadixControlMetrics::from_button_boxes(metrics.control),
                 mode: AtomicU8::new(mode_to_u8(mode)),
                 style_mode: RwLock::new(None),
@@ -228,6 +231,7 @@ impl Look {
         *forked.state.custom_inputs.write().unwrap_or_else(|p| p.into_inner()) =
             *self.state.custom_inputs.read().unwrap_or_else(|p| p.into_inner());
         forked.store_stylesheet(self.stylesheet_snapshot());
+        *forked.state.typography.write().unwrap_or_else(|p| p.into_inner()) = self.typography();
         *forked.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = self.button_recipes();
         forked
     }
@@ -258,6 +262,18 @@ impl Look {
         xgpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
             .stylesheet(&self.common_stylesheet())
             .motion_defaults(self.motion_defaults().slide_panel)
+    }
+
+    /// Font families and text styles for this look's controls.
+    pub fn typography(&self) -> LumaTypography {
+        self.state.typography.read().unwrap_or_else(|poisoned| poisoned.into_inner()).clone()
+    }
+
+    /// Replace the font families (`sans`, `mono`, `serif`), e.g. with an embedded font's family name.
+    /// Clones share the change; forks copy independently. Notify affected views afterwards.
+    pub fn set_fonts(&self, fonts: FontTokens) {
+        self.state.typography.write().unwrap_or_else(|poisoned| poisoned.into_inner()).font = fonts;
+        self.bump_revision();
     }
 
     /// Common SDK configuration. Clones share edits; forks copy independently.
@@ -702,22 +718,39 @@ mod tests {
         let clone = look.clone();
         let fork = look.fork();
         let old = look.stylesheet_snapshot();
-        let original = old.tokens.typography.font.sans.family.clone();
+        let original = old.slider.geometry.width;
         let revision = look.revision();
         let mut edited = look.common_stylesheet();
-        edited.tokens.typography.font.sans.family = "Replacement Sans".into();
+        edited.slider.geometry.width = Some(123.0);
         // Editing the public owned copy must not mutate live readers.
-        assert_eq!(look.stylesheet_snapshot().tokens.typography.font.sans.family, original);
+        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, original);
         look.set_common_stylesheet(edited);
         assert!(look.revision() > revision);
-        assert_eq!(clone.stylesheet_snapshot().tokens.typography.font.sans.family, "Replacement Sans");
-        assert_eq!(old.tokens.typography.font.sans.family, original);
-        assert_eq!(fork.stylesheet_snapshot().tokens.typography.font.sans.family, original);
+        assert_eq!(clone.stylesheet_snapshot().slider.geometry.width, Some(123.0));
+        assert_eq!(old.slider.geometry.width, original);
+        assert_eq!(fork.stylesheet_snapshot().slider.geometry.width, original);
         let current = look.stylesheet_snapshot();
         look.set_mode(ThemeMode::Dark);
         assert!(Arc::ptr_eq(&current, &look.stylesheet_snapshot()));
         fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.stylesheet_snapshot().tokens.typography.font.sans.family, "Replacement Sans");
+        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, Some(123.0));
+    }
+
+    #[test]
+    fn fonts_are_shared_by_clones_and_copied_by_forks() {
+        let look = Look::built_in();
+        let clone = look.clone();
+        let fork = look.fork();
+        let original = look.typography().font.sans.family;
+        let revision = look.revision();
+        let mut fonts = look.typography().font;
+        fonts.sans.family = "Replacement Sans".into();
+        look.set_fonts(fonts);
+        assert!(look.revision() > revision, "the style theme rebinds");
+        assert_eq!(clone.typography().font.sans.family, "Replacement Sans");
+        assert_eq!(fork.typography().font.sans.family, original);
+        let forked = look.fork();
+        assert_eq!(forked.typography().font.sans.family, "Replacement Sans", "a fork copies the fonts");
     }
 
     #[test]

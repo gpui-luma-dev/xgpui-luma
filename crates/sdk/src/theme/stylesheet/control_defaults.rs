@@ -24,25 +24,11 @@ fn opacity_fields_reject_values_outside_zero_to_one() {
 }
 
 #[test]
-fn explicit_false_replaces_an_inset_shadow_and_reaches_rendering() {
-    let layer = "color = 'hsla(0, 0%, 0%, 0.2)', offset_x=0, offset_y=1, blur=2, spread=0";
-    let first = format!("[common.tokens.elevation.light.menu]\nlayers=[{{ {layer}, inset=true }}]");
-    let last = format!("[common.tokens.elevation.light.menu]\nlayers=[{{ {layer}, inset=false }}]");
-    let initial = CommonStylesheet::resolve_layers(&[&first]).unwrap();
-    assert!(initial.tokens.elevation.light.menu.layers[0].inset);
-    let resolved = CommonStylesheet::resolve_layers(&[&first, &last]).unwrap();
-    assert!(!resolved.tokens.elevation.light.menu.layers[0].inset);
-    let tokens = resolved.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    assert!(!tokens.elevation.menu.to_box_shadows()[0].inset);
-}
-
-#[test]
-fn math_values_resolve_through_tokens_layers_and_geometry_validation() {
+fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.tokens.metrics.control]\ncontrol_height = 'math(28 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
+        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
         "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
     ]).unwrap();
-    assert_eq!(sheet.tokens.metrics.control.control_height, 56.0);
     assert_eq!(sheet.overlay_window.geometry.backdrop_opacity, Some(0.25));
     assert_eq!(sheet.slider.geometry.width, Some(64.0));
     assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
@@ -52,7 +38,6 @@ fn math_values_resolve_through_tokens_layers_and_geometry_validation() {
     for source in [
         "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
         "[common.overlay_window.geometry]\nbackdrop_opacity = 'math(3 / 2)'",
-        "[common.tokens.metrics.control]\ncontrol_height = 'math(-28 * 2)'",
         "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
@@ -74,8 +59,6 @@ fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
 fn selector_panel_chrome_inherits_tokens_and_placement_before_independent_overrides() {
     use crate::controls::{selector_list::default_selector_items_panel_look, selection_panel::default_selection_panel_look};
     let sheet = CommonStylesheet::resolve_layers(&[r#"
-[common.tokens.metrics]
-border_width=3
 [common.popover.geometry]
 window_margin=13
 [common.popover.sizes.panel]
@@ -86,9 +69,11 @@ disabled_opacity=0
 radius=9
 "#])
     .unwrap();
-    let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
+    let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
+    tokens.metrics.border_width = 3.0;
     let look = default_selector_items_panel_look(&tokens);
-    // The menu's colors and rows come from `.lss`; the border width and placement from the sheet.
+    // The menu's colors and rows come from `.lss`; the border width from the tokens and placement from
+    // the sheet.
     assert_eq!((look.border_width, look.popup_offset_y, look.window_margin), (3.0, 9.0, 13.0));
     let selection = default_selection_panel_look(&tokens);
     assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (0.0, 0.0, 9.0));
@@ -97,4 +82,10 @@ radius=9
             assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\ndisabled_opacity={value}")).is_err());
         }
     }
+}
+
+#[test]
+fn token_tables_are_not_stylesheet_fields() {
+    // Token values live in the SDK's `.lss` token files, not in the common stylesheet.
+    assert!(CommonStylesheet::parse("[common.tokens.metrics]\nborder_width = 3").is_err());
 }

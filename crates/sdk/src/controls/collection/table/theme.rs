@@ -134,7 +134,7 @@ impl TableRowLook {
         let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().table.authored_geometry();
         let recipe = stylesheet.table.authored_geometry().with_fallback(&baseline);
         Self {
-            column_emphasis_weight: stylesheet.tokens.typography.text.title.weight,
+            column_emphasis_weight: crate::theme::LumaTypography::default().text.title.weight,
             column_padding_x: recipe.column_padding_x.unwrap_or_default(),
             column_muted_opacity: recipe.column_muted_opacity.unwrap_or_default(),
             row_divider_width: recipe.row_divider_width.unwrap_or_default(),
