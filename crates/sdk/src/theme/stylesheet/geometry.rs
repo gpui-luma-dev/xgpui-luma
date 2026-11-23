@@ -176,12 +176,6 @@ macro_rules! geometry_family_impl {
 }
 pub(crate) use {geometry_family, geometry_family_impl};
 
-pub use crate::controls::collection::tree_view::theme::{
-    TreeViewStylesheet, TreeViewGeometryStylesheet, TreeViewGeometry, ResolvedTreeViewGeometry,
-};
-pub use crate::controls::navigation::accordion::theme::{
-    AccordionStylesheet, AccordionGeometryStylesheet, AccordionGeometry, ResolvedAccordionGeometry,
-};
 pub use crate::controls::layout::split_view::theme::{
     SplitViewStylesheet, SplitViewGeometryStylesheet, SplitViewGeometry, ResolvedSplitViewGeometry,
 };
@@ -194,17 +188,11 @@ pub use crate::controls::button::family::theme::{
     ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
 };
 pub use crate::controls::range::progress::theme::ProgressGeometry;
-pub use crate::controls::overlay::floating_menu::theme::{
-    FloatingMenuStylesheet, FloatingMenuGeometryStylesheet, FloatingMenuGeometry, ResolvedFloatingMenuGeometry,
-};
 pub use crate::controls::selection::selection_panel::theme::{
     SelectionPanelStylesheet, SelectionPanelGeometryStylesheet, SelectionPanelGeometry, ResolvedSelectionPanelGeometry,
 };
 pub use crate::controls::overlay::tooltip::theme::{
     TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
-};
-pub use crate::controls::button::family::theme::{
-    SegmentedStylesheet, SegmentedGeometryStylesheet, SegmentedGeometry, ResolvedSegmentedGeometry,
 };
 pub use crate::controls::choice::toggle::{
     ToggleStylesheet, ToggleGeometryStylesheet, ToggleGeometry, ResolvedToggleGeometry,
@@ -307,38 +295,6 @@ geometry_family!(
     ],
     unit[textarea_resize_opacity]
 );
-geometry_family!(
-    AvatarStylesheet,
-    AvatarGeometryStylesheet,
-    AvatarGeometry,
-    ResolvedAvatarGeometry,
-    "avatar",
-    [diameter, icon_size, font_size, two_letter_font_size]
-);
-geometry_family!(
-    BadgeStylesheet,
-    BadgeGeometryStylesheet,
-    BadgeGeometry,
-    ResolvedBadgeGeometry,
-    "badge",
-    [padding_x, padding_y, font_size, line_height, min_height, gap, icon_size]
-);
-geometry_family!(
-    CardStylesheet,
-    CardGeometryStylesheet,
-    CardGeometry,
-    ResolvedCardGeometry,
-    "card",
-    [padding, section_gap, header_gap, body_gap]
-);
-geometry_family!(
-    CalloutStylesheet,
-    CalloutGeometryStylesheet,
-    CalloutGeometry,
-    ResolvedCalloutGeometry,
-    "callout",
-    [padding, gap, icon_size, font_size]
-);
 
 #[cfg(test)]
 mod tests {
@@ -348,8 +304,6 @@ mod tests {
         ScrollbarStylesheet::validate_contract();
         ShellStylesheet::validate_contract();
         SharedStylesheet::validate_contract();
-        TreeViewStylesheet::validate_contract();
-        AccordionStylesheet::validate_contract();
         SplitViewStylesheet::validate_contract();
         ResizablePanelsStylesheet::validate_contract();
         StepperStylesheet::validate_contract();
@@ -366,14 +320,8 @@ mod tests {
         SelectorListStylesheet::validate_contract();
         ButtonStylesheet::validate_contract();
         ToggleStylesheet::validate_contract();
-        FloatingMenuStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
         SelectionPanelStylesheet::validate_contract();
-        SegmentedStylesheet::validate_contract();
-        AvatarStylesheet::validate_contract();
-        BadgeStylesheet::validate_contract();
-        CardStylesheet::validate_contract();
-        CalloutStylesheet::validate_contract();
     }
 }
 

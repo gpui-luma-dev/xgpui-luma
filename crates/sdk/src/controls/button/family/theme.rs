@@ -113,12 +113,3 @@ crate::theme::stylesheet::geometry::geometry_family!(
     "button",
     [height, padding_x, padding_y, gap, icon_size, font_size, line_height]
 );
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    SegmentedStylesheet,
-    SegmentedGeometryStylesheet,
-    SegmentedGeometry,
-    ResolvedSegmentedGeometry,
-    "segmented",
-    [height, padding_x, font_size, line_height]
-);

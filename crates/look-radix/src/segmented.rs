@@ -64,20 +64,3 @@ pub fn segmented_radio_template<T: ControlGroupItemLike + 'static>(look: &Look) 
 pub fn styled_segmented(look: &Look) -> StyledSegmented {
     StyledSegmented::new(xgpui_luma::style::StyleBinding::new("segmented", crate::textfield::live_source(look)))
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_segmented_stylesheet() -> xgpui_luma::theme::stylesheet::SegmentedStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    SegmentedStylesheet {
-        sizes: xgpui_luma::theme::ControlSizes::from([(
-            "2".into(),
-            SegmentedGeometryStylesheet {
-                height: Some(32.0),
-                padding_x: Some(12.0),
-                font_size: Some(14.0),
-                line_height: Some(20.0),
-            },
-        )]),
-        ..Default::default()
-    }
-}

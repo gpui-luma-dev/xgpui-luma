@@ -42,7 +42,8 @@ copy. Direct field mutation does not clear inherited size-specific fields.
 The parsed common schema rejects unknown typed fields. Families whose controls are now styled
 only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
 `pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
-`progress`, `overlay_window` and `popup_menu`. Root sections belonging
+`progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
+`card`, `callout`, `segmented` and `floating_menu`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values

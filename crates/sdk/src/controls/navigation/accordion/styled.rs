@@ -111,3 +111,21 @@ impl AccordionTheme for StyledAccordionTheme {
         self.0.scale(scale_factor)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A theme that supplies only metrics, given the SDK's own metrics, lays out exactly as the
+    /// SDK's `.lss` accordion: the default path takes its fixed sizes and proportions from the `.lss`.
+    #[test]
+    fn the_default_scale_matches_the_sdk_lss() {
+        for scale_factor in [1.0, 1.5, 2.0] {
+            let default = crate::controls::accordion::AccordionScale::compute(
+                &crate::theme::MetricTokens::default(),
+                scale_factor,
+            );
+            assert_eq!(default, StyledAccordion::sdk().scale(scale_factor), "@{scale_factor}");
+        }
+    }
+}

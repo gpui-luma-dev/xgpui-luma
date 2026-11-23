@@ -110,13 +110,7 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
         button: crate::button::native_button_stylesheet(),
-        floating_menu: crate::context_menu::native_floating_menu_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
-        segmented: crate::segmented::native_segmented_stylesheet(),
-        avatar: crate::avatar::native_avatar_stylesheet(),
-        badge: crate::badge::native_badge_stylesheet(),
-        card: crate::card::native_card_stylesheet(),
-        callout: crate::callout::native_callout_stylesheet(),
         radio_group: crate::radio_group::native_radio_group_stylesheet(),
         ..Default::default()
     };
@@ -148,7 +142,6 @@ struct LookState {
     /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by [`Look::set_style_mode`].
     style_mode: RwLock<Option<String>>,
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
-    button_recipes: RwLock<Arc<crate::button_recipes::Recipes>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
     common_stylesheet: RwLock<Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>>,
     /// `common_stylesheet` with each [`crate::RadixSize`] merged into general geometry.
@@ -190,7 +183,6 @@ impl Look {
                 mode: AtomicU8::new(mode_to_u8(mode)),
                 style_mode: RwLock::new(None),
                 classic_shadow: RwLock::new(None),
-                button_recipes: RwLock::new(Arc::new(crate::button_recipes::embedded().clone())),
                 tabs_style: RwLock::new(None),
                 sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
                 common_stylesheet: RwLock::new(common),
@@ -225,7 +217,6 @@ impl Look {
             *self.state.custom_inputs.read().unwrap_or_else(|p| p.into_inner());
         forked.store_stylesheet(self.stylesheet_snapshot());
         *forked.state.typography.write().unwrap_or_else(|p| p.into_inner()) = self.typography();
-        *forked.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = self.button_recipes();
         forked
     }
 
@@ -379,51 +370,13 @@ impl Look {
         self.bump_revision();
     }
 
-    pub(crate) fn button_recipes(&self) -> Arc<crate::button_recipes::Recipes> {
-        self.state.button_recipes.read().unwrap_or_else(|p| p.into_inner()).clone()
-    }
-
-    /// Load sparse look-owned button recipes over the native look defaults.
-    /// Rules replace the complete ordered list. Programmatic Classic tuning stays
-    /// authoritative over stylesheet tuning.
-    pub fn set_button_recipes(&self, source: &str) -> anyhow::Result<()> {
-        let mut baseline = toml::Value::Table(toml::map::Map::from_iter([(
-            "button_recipes".into(),
-            toml::Value::try_from(crate::button_recipes::embedded())?,
-        )]));
-        let authored: toml::Value = toml::from_str(source)?;
-        anyhow::ensure!(
-            authored.as_table().is_some_and(|table| table.keys().all(|key| key == "button_recipes")),
-            "expected only a button_recipes table"
-        );
-        fn merge(base: &mut toml::Value, layer: toml::Value) {
-            match (base, layer) {
-                (toml::Value::Table(base), toml::Value::Table(layer)) => {
-                    for (key, value) in layer {
-                        if let Some(base) = base.get_mut(&key) {
-                            merge(base, value);
-                        } else {
-                            base.insert(key, value);
-                        }
-                    }
-                }
-                (base, layer) => *base = layer,
-            }
-        }
-        merge(&mut baseline, authored);
-        let parsed = crate::button_recipes::parse(&toml::to_string(&baseline)?)?;
-        *self.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = Arc::new(parsed);
-        self.bump_revision();
-        Ok(())
-    }
-
     /// Current [`ButtonVariant::Classic`](crate::ButtonVariant::Classic) shadow geometry.
     pub fn classic_params(&self) -> ClassicButtonParams {
         self.state
             .classic_shadow
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .unwrap_or_else(|| self.button_recipes().classic)
+            .unwrap_or_default()
     }
 
     /// Retunes the Classic bubble for every button resolved from this look.

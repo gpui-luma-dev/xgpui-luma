@@ -64,17 +64,3 @@ mod tests {
         assert_close(disabled.target_foreground, look.resolve_role(SemanticRole::MutedForeground).hsla());
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_floating_menu_stylesheet() -> xgpui_luma::theme::stylesheet::FloatingMenuStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    FloatingMenuStylesheet {
-        geometry: FloatingMenuGeometryStylesheet {
-            separator_inset: Some(8.0),
-            font_size: Some(14.0),
-            line_height: Some(20.0),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
-}

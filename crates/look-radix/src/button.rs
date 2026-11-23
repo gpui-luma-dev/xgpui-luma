@@ -162,8 +162,31 @@ impl ClassicButtonParams {
 }
 
 impl Default for ClassicButtonParams {
+    /// The bundled Classic bubble, read by `button.lss` as `look.classic.*`.
     fn default() -> Self {
-        super::button_recipes::embedded().classic
+        let mut classic = Self::zero();
+        classic.pressed_rim_lightness_scale = 0.5;
+        classic.pressed_rim_alpha_scale = 0.6;
+        classic.lightness_min = 0.02;
+        classic.lightness_max = 0.98;
+        classic.radius = 4.0;
+        classic.fill_top_delta = 0.0;
+        classic.fill_bottom_delta = 0.067;
+        classic.border_delta = -0.022;
+        classic.bevel_darken = 0.045;
+        classic.bevel_offset = 1.0;
+        classic.bevel_alpha = 1.0;
+        classic.rim_lighten = 0.3;
+        classic.rim_offset = 1.0;
+        classic.rim_alpha = 0.95;
+        classic.fade_offset = 4.0;
+        classic.fade_blur = 4.0;
+        classic.fade_spread = -2.0;
+        classic.fade_alpha = 0.35;
+        classic.drop_offset = 1.0;
+        classic.drop_blur = 2.0;
+        classic.drop_alpha = 0.08;
+        classic
     }
 }
 

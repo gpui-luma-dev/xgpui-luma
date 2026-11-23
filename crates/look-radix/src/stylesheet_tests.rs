@@ -84,11 +84,7 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
 #[test]
 fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
     let stylesheet = Look::built_in().common_stylesheet();
-    for (sizes, count) in [
-        (stylesheet.button.sizes.keys().collect::<Vec<_>>(), 4),
-        (stylesheet.avatar.sizes.keys().collect(), 9),
-        (stylesheet.badge.sizes.keys().collect(), 3),
-    ] {
+    for (sizes, count) in [(stylesheet.button.sizes.keys().collect::<Vec<_>>(), 4)] {
         assert_eq!(sizes.iter().filter(|key| key.parse::<usize>().is_ok()).count(), count);
         for index in 1..=count {
             assert!(sizes.iter().any(|key| **key == index.to_string()));
