@@ -35,10 +35,7 @@ impl ThemedControlGroupTemplate {
         T: ControlGroupItemLike + 'static,
     {
         let chrome = ControlGroupChromeModel::from(model);
-        let mut list = self.inner.theme.resolve_list(model.enabled);
-        if let Some(stylesheet) = model.shell_stylesheet {
-            list = list.with_stylesheet(&stylesheet.control_group);
-        }
+        let list = self.inner.theme.resolve_list(model.enabled);
 
         let mut root = div()
             .id(model.id.clone())
