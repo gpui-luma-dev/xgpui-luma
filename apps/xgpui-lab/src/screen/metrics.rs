@@ -114,12 +114,12 @@ pub(crate) enum TextRole {
 
 /// The look's text tokens: `role.h1`–`h4` and `p`, plus `body`, `label`, `caption`, `title` and `code`.
 fn tokens(look: &Look) -> TextTokens {
-    look.common_stylesheet().tokens.typography.text
+    look.typography().text
 }
 
 /// The look's monospace family (`font.mono`), used for every value.
 pub(crate) fn mono_family(look: &Look) -> SharedString {
-    look.common_stylesheet().tokens.typography.font.mono.family.clone().into()
+    look.typography().font.mono.family.into()
 }
 
 impl TextRole {

@@ -400,9 +400,9 @@ pub fn start(example_id: &str) -> Result<(), JsValue> {
                 ])?;
                 let look = radix::Look::built_in();
                 // Use the embedded font's declared family instead of a desktop alias.
-                let mut stylesheet = look.common_stylesheet();
-                stylesheet.tokens.typography.font.sans.family = "Inter 24pt".into();
-                look.set_common_stylesheet(stylesheet);
+                let mut fonts = look.typography().font;
+                fonts.sans.family = "Inter 24pt".into();
+                look.set_fonts(fonts);
                 look.set_mode(if DARK.get() { ThemeMode::Dark } else { ThemeMode::Light });
                 cx.set_global(look.clone());
                 let picker_look = xgpui_luma_look_shadcn::ShadcnLook::built_in();
