@@ -47,8 +47,26 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
             line_height_source = TypographySource::Derived { note: "font_size × label line-height ratio".into() };
         }
     }
-    let family = if toggle { "toggle" } else { "button" };
-    let (font, line, font_path, line_path) = common_typography_overrides(stylesheet, size, toggle);
+    if toggle {
+        // The toggle's own label size, as it draws: its `.lss` (#287).
+        let theme = mode.style_theme();
+        let key = super::metrics::helpers::control_size_key(size);
+        if let Ok(key) = theme.key_named("toggle", &[("size", key)], &[]) {
+            let resolved = theme.resolve(&key);
+            let number = |name| resolved.root().value(name).and_then(xgpui_luma::style::lss::Value::as_number);
+            if let (Some(font), Some(line)) = (number("font_size"), number("line_height")) {
+                style.size = font;
+                style.line_height = line;
+                font_size_source = TypographySource::Constant { label: "toggle.lss · font_size".into() };
+                line_height_source = TypographySource::Constant { label: "toggle.lss · line_height".into() };
+            }
+        }
+    }
+    let (font, line, font_path, line_path) = if toggle {
+        (None, None, String::new(), String::new())
+    } else {
+        common_typography_overrides(stylesheet, size)
+    };
     if let Some(font) = font {
         let ratio = if style.size > 0.0 {
             style.line_height / style.size
@@ -58,13 +76,13 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
         style.size = font;
         style.line_height = font * ratio;
         font_size_source =
-            TypographySource::Constant { label: format!("stylesheet · common.{family}.{font_path}.font_size") };
+            TypographySource::Constant { label: format!("stylesheet · common.button.{font_path}.font_size") };
         line_height_source = TypographySource::Derived { note: "font_size × label line-height ratio".into() };
     }
     if let Some(line) = line {
         style.line_height = line;
         line_height_source =
-            TypographySource::Constant { label: format!("stylesheet · common.{family}.{line_path}.line_height") };
+            TypographySource::Constant { label: format!("stylesheet · common.button.{line_path}.line_height") };
     }
     ControlTypographyTable {
         style,
@@ -83,26 +101,15 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
 pub(crate) fn common_typography_overrides(
     stylesheet: &StylesheetConfig,
     size: ShadcnSize,
-    toggle: bool,
 ) -> (Option<f32>, Option<f32>, String, String) {
     let key = super::metrics::helpers::control_size_key(size);
-    let (specific_font, specific_line, general_font, general_line) = if toggle {
-        let specific = stylesheet.common.toggle.sizes.get(key);
-        (
-            specific.and_then(|value| value.font_size),
-            specific.and_then(|value| value.line_height),
-            stylesheet.common.toggle.geometry.font_size,
-            stylesheet.common.toggle.geometry.line_height,
-        )
-    } else {
-        let specific = stylesheet.common.button.sizes.get(key);
-        (
-            specific.and_then(|value| value.font_size),
-            specific.and_then(|value| value.line_height),
-            stylesheet.common.button.geometry.font_size,
-            stylesheet.common.button.geometry.line_height,
-        )
-    };
+    let specific = stylesheet.common.button.sizes.get(key);
+    let (specific_font, specific_line, general_font, general_line) = (
+        specific.and_then(|value| value.font_size),
+        specific.and_then(|value| value.line_height),
+        stylesheet.common.button.geometry.font_size,
+        stylesheet.common.button.geometry.line_height,
+    );
     (
         specific_font.or(general_font),
         specific_line.or(general_line),
@@ -117,4 +124,29 @@ pub(crate) fn common_typography_overrides(
             "geometry".into()
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use xgpui_luma::style::lss::Value;
+
+    use super::*;
+
+    /// The toggle's label typography is what the toggle draws: its `.lss` font size and line height
+    /// at each size (#287).
+    #[test]
+    fn toggle_typography_reads_the_toggle_lss() {
+        let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("catalog");
+        let mode = look.mode_tokens();
+        let theme = mode.style_theme();
+        for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
+            let key = theme
+                .key_named("toggle", &[("size", super::super::metrics::helpers::control_size_key(size))], &[])
+                .expect("key");
+            let resolved = theme.resolve(&key);
+            let number = |name| resolved.root().value(name).and_then(Value::as_number).expect(name);
+            let table = resolve_control_typography(&mode, size, true);
+            assert_eq!((table.style.size, table.style.line_height), (number("font_size"), number("line_height")));
+        }
+    }
 }

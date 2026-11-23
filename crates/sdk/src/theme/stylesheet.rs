@@ -102,7 +102,6 @@ common_stylesheet! {
     tabs: TabsStylesheet,
     slider: SliderStylesheet,
     button: ButtonStylesheet,
-    toggle: ToggleStylesheet,
     selection_panel: SelectionPanelStylesheet,
     tooltip: TooltipStylesheet,
     selector_list: SelectorListStylesheet,
