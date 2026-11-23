@@ -4,7 +4,7 @@ use std::sync::Arc;
 use gpui::{Context, SharedString, prelude::*};
 use xgpui_luma::controls::control_group::{ControlGroupItem, ControlGroupItemLike};
 use xgpui_luma::controls::radio_group::{
-    RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_buttons_template,
+    RadioGroupBuilder, RadioGroupLayout, RadioGroupTemplate, radio_group_buttons_template_with,
 };
 use crate::{Look, Paint, RadioSize, RadioVariant};
 use crate::look::resolve_look;
@@ -21,7 +21,11 @@ pub fn radio_group_template<T: ControlGroupItemLike + 'static>(
         let selector = model.id.to_string();
         element.debug_selector(move || selector.clone())
     });
-    radio_group_buttons_template(Arc::new(radio), layout)
+    radio_group_buttons_template_with(
+        xgpui_luma::style::StyleBinding::new("radio_group", crate::textfield::live_source(look)),
+        Arc::new(radio),
+        layout,
+    )
 }
 
 /// Look-owned single-selection group. Events and state are owned by the SDK.
@@ -163,19 +167,6 @@ impl<T: ControlGroupItemLike + 'static> RadioGroup<T> {
         };
         callbacks.bind(&control, cx);
         control
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_radio_group_stylesheet() -> xgpui_luma::theme::stylesheet::RadioGroupStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    RadioGroupStylesheet {
-        // The radio template already applies disabled opacity to the whole row.
-        geometry: RadioGroupGeometryStylesheet { disabled_opacity: Some(1.0), ..Default::default() },
-        sizes: xgpui_luma::theme::ControlSizes::from([(
-            "horizontal".into(),
-            RadioGroupGeometryStylesheet { gap: Some(8.0), ..Default::default() },
-        )]),
     }
 }
 

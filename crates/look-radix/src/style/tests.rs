@@ -372,3 +372,18 @@ fn look_defines_the_visual_variants() {
         }
     }
 }
+
+/// Radix's radio group: side-by-side rows 8 apart and disabled rows at full opacity (the radio template
+/// dims the whole row); the stacked and item gaps are the SDK's (#287).
+#[test]
+fn radio_group_layout_comes_from_the_look_lss() {
+    use xgpui_luma::controls::radio_group::RadioGroupGeometry;
+    let look = Look::built_in().fork();
+    let geometry = RadioGroupGeometry::from_binding(&xgpui_luma::style::StyleBinding::new(
+        "radio_group",
+        crate::textfield::live_source(&look),
+    ));
+    let sdk = RadioGroupGeometry::sdk();
+    assert_eq!((geometry.horizontal_gap, geometry.disabled_opacity), (8.0, 1.0));
+    assert_eq!((geometry.vertical_gap, geometry.item_gap), (sdk.vertical_gap, sdk.item_gap));
+}

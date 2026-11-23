@@ -111,7 +111,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         slider: native_radix_slider(),
         button: crate::button::native_button_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
-        radio_group: crate::radio_group::native_radio_group_stylesheet(),
         ..Default::default()
     };
     crate::size::apply_size_presets(&mut common);

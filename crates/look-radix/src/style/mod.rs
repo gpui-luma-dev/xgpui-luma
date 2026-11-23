@@ -66,6 +66,7 @@ radix_sources![
     "slider.lss",
     "progress.lss",
     "control_group.lss",
+    "radio_group.lss",
     "toolbar.lss",
     "stepper.lss",
     "accordion.lss",

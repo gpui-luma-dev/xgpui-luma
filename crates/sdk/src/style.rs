@@ -61,6 +61,7 @@ sdk_sources! {
         "controls/button/button.lss",
         "controls/choice/toggle/toggle.lss",
         "controls/choice/control_group/control_group.lss",
+        "controls/choice/radio_group/radio_group.lss",
         "controls/choice/toolbar/toolbar.lss",
         "controls/text/textfield/textfield.lss",
         "controls/text/textarea/textarea.lss",
