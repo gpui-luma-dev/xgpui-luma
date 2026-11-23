@@ -21,7 +21,7 @@ switch {
     focus_border = first(css.ring, shadcn.fallback_foreground)
   }
 
-  // The track's shadow is the thumb elevation, drawn around the track.
+  // The track's shadow, drawn around the track. The thumb has its own `shadow` (none here).
   part track {
     background := css.input
     border     := first(css.border, shadcn.fallback_foreground)

@@ -4,7 +4,7 @@
 //! size, the extra track length, the orientation and the radius.
 
 use gpui::{App, Div, ElementId, SharedString, Stateful, Window, div, prelude::*, px};
-use xgpui_luma_style::{PartId, Value, box_shadows};
+use xgpui_luma_style::{PartId, PartView, Value, box_shadows};
 
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, button_content_context};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
@@ -104,6 +104,10 @@ impl ChoiceData for SwitchData {
             .border(px(border_width))
             .border_color(hsl(animated_thumb.border()).unwrap_or_else(transparent))
             .rounded(px(thumb_radius));
+        if let Some(shadow) = painted_shadow(settled.part(PartId::new("thumb")), model.elevation, model.state.disabled)
+        {
+            thumb = thumb.shadow(shadow);
+        }
 
         let content_look = ButtonFamilyLook {
             focus_border: transparent(),
@@ -149,11 +153,10 @@ impl ChoiceData for SwitchData {
             );
         }
         track_visual = track_visual.child(thumb);
-        // The thumb elevation is drawn around the track (`track.shadow`).
-        if let Some(layers) = settled.part(PartId::new("track")).shadow()
-            && should_paint_shadow(model.elevation, model.state.disabled, !layers.is_empty())
+        // Each part draws its own shadow: `track.shadow` around the track, `thumb.shadow` under the thumb.
+        if let Some(shadow) = painted_shadow(settled.part(PartId::new("track")), model.elevation, model.state.disabled)
         {
-            track_visual = track_visual.shadow(box_shadows(layers));
+            track_visual = track_visual.shadow(shadow);
         }
 
         let track = div().relative().child(track_visual);
@@ -201,6 +204,13 @@ impl ChoiceData for SwitchData {
     }
 }
 
+/// A part's `shadow` as it is painted: none when the instance has elevation off, is disabled, or the
+/// part has no shadow layers.
+fn painted_shadow(part: PartView<'_>, elevation: bool, disabled: bool) -> Option<Vec<gpui::BoxShadow>> {
+    let layers = part.shadow()?;
+    should_paint_shadow(elevation, disabled, !layers.is_empty()).then(|| box_shadows(layers))
+}
+
 /// The SDK's default switch template: the SDK's `.lss` files alone.
 pub fn default_template() -> std::sync::Arc<dyn ButtonTemplate<SwitchData>> {
     static TEMPLATE: std::sync::OnceLock<std::sync::Arc<dyn ButtonTemplate<SwitchData>>> = std::sync::OnceLock::new();
@@ -230,5 +240,53 @@ mod tests {
                 });
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod shadow_tests {
+    use xgpui_luma_style::{Source, Theme};
+
+    use super::*;
+    use crate::style::fixture;
+
+    fn switch(theme: &Theme, states: &[&str]) -> std::sync::Arc<xgpui_luma_style::Resolved> {
+        theme.resolve(&theme.key_named("switch", &[], states).expect("key"))
+    }
+
+    /// The SDK track reads the control elevation; the thumb has no shadow unless a look sets one.
+    #[test]
+    fn sdk_switch_shadows_the_track_not_the_thumb() {
+        for theme in fixture::themes() {
+            fixture::assert_reads(&theme, "switch", &[], "track", "shadow", "elevation.control");
+            let resolved = switch(&theme, &[]);
+            assert!(painted_shadow(resolved.part(PartId::new("thumb")), true, false).is_none(), "no thumb shadow");
+            assert!(painted_shadow(resolved.part(PartId::new("track")), true, false).is_some(), "a track shadow");
+        }
+    }
+
+    /// A look that sets `thumb.shadow` gets it painted on the thumb, unless elevation is off or the
+    /// switch is disabled; the track keeps its own shadow.
+    #[test]
+    fn a_thumb_shadow_is_painted_on_the_thumb() {
+        let theme = fixture::light();
+        let sheet = theme
+            .stylesheet()
+            .with_source("app", Source::new("lifted.lss", "switch { part thumb { shadow = elevation.menu } }"))
+            .expect("compiles");
+        let theme = theme.with_stylesheet(&sheet).expect("binds");
+        let resolved = switch(&theme, &[]);
+        let thumb = resolved.part(PartId::new("thumb"));
+        let menu_layers = match fixture::token(&theme, "elevation.menu", "shadow") {
+            Value::Shadow(layers) => layers.len(),
+            other => panic!("a shadow: {other:?}"),
+        };
+        assert_eq!(painted_shadow(thumb, true, false).map(|s| s.len()), Some(menu_layers));
+        assert!(painted_shadow(thumb, false, false).is_none(), "elevation off");
+        assert!(painted_shadow(thumb, true, true).is_none(), "disabled");
+        assert!(
+            painted_shadow(resolved.part(PartId::new("track")), true, false).is_some(),
+            "the track keeps its shadow"
+        );
     }
 }

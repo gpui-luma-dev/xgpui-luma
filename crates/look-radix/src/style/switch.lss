@@ -17,7 +17,7 @@ switch {
 
   part root { focus_border = radix.role.focus }
 
-  // The track's shadow is the thumb elevation, drawn around the track.
+  // The track's shadow, drawn around the track. The thumb has its own `shadow` (none here).
   part track {
     background := alpha(gray[3], 0.55)
     border     := alpha(gray[5], 0.7)

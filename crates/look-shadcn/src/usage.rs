@@ -83,7 +83,7 @@ const RADIX_THEME_USAGES: &[&ThemeUsage] = &[
     &ThemeUsage {
         label: "Switch",
         parts: &[
-            part("thumb elevation", "shadow-sm", &["default", "on"], &["switch.track.shadow"]),
+            part("track elevation", "shadow-sm", &["default", "on"], &["switch.track.shadow"]),
             part("off track", "input", &["off"], &["switch.track.background"]),
             part("track border", "border", &["off", "disabled"], &["switch.track.border"]),
             part("on track", "primary", &["on"], &["switch.track.background", "switch.track.border"]),
