@@ -292,7 +292,6 @@ mod tests {
     use xgpui_luma_style::{ControlId, Value};
 
     use super::*;
-    use crate::theme::ThemeTokens;
 
     fn close(a: Hsla, b: Hsla) -> bool {
         let (a, b) = (a.to_rgb(), b.to_rgb());
@@ -329,87 +328,131 @@ mod tests {
         }
     }
 
-    #[test]
-    fn palettes_match_theme_tokens_light_and_dark() {
-        tokens_match(ThemeTokens::light(), default_theme());
-        tokens_match(ThemeTokens::dark(), dark_theme());
+    /// What a Rust token field holds, to compare with the `.lss` token of the same path.
+    #[derive(Debug)]
+    enum Native {
+        Number(f32),
+        Font(String),
+        Text([f32; 3]),
+        Color(Hsla),
+        Shadow(Vec<(Hsla, [f32; 4], bool)>),
     }
 
-    fn tokens_match(native: ThemeTokens, theme: Theme) {
-        let values: std::collections::HashMap<String, Value> = {
-            // Read each token by resolving it through a throwaway file: a property per token.
-            let p = &native.palette;
-            let colors: Vec<(&str, Hsla)> = vec![
-                ("palette.app.background", p.app.background),
-                ("palette.app.foreground", p.app.foreground),
-                ("palette.app.muted_foreground", p.app.muted_foreground),
-                ("palette.surface.panel.background", p.surface.panel.background),
-                ("palette.surface.panel.foreground", p.surface.panel.foreground),
-                ("palette.surface.panel.border", p.surface.panel.border),
-                ("palette.surface.floating.background", p.surface.floating.background),
-                ("palette.surface.floating.border", p.surface.floating.border),
-                ("palette.surface.subtle.background", p.surface.subtle.background),
-                ("palette.surface.subtle.foreground", p.surface.subtle.foreground),
-                ("palette.state.hover.background", p.state.hover.background),
-                ("palette.state.hover.foreground", p.state.hover.foreground),
-                ("palette.state.pressed.background", p.state.pressed.background),
-                ("palette.state.selected.background", p.state.selected.background),
-                ("palette.state.selected.foreground", p.state.selected.foreground),
-                ("palette.state.disabled.background", p.state.disabled.background),
-                ("palette.state.disabled.foreground", p.state.disabled.foreground),
-                ("palette.form.input.background", p.form.input.background),
-                ("palette.form.input.foreground", p.form.input.foreground),
-                ("palette.form.input.border", p.form.input.border),
-                ("palette.form.input.placeholder", p.form.input.placeholder),
-                ("palette.focus.ring", p.focus.ring),
-                ("palette.border.default", p.border.default),
-                ("palette.border.strong", p.border.strong),
-            ];
-            let e = &native.elevation;
-            let shadows = [
-                ("elevation.control", &e.control),
-                ("elevation.thumb", &e.thumb),
-                ("elevation.menu", &e.menu),
-                ("elevation.popover", &e.popover),
-                ("elevation.panel", &e.panel),
-                ("elevation.dialog", &e.dialog),
-                ("elevation.overlay_window", &e.overlay_window),
-                ("elevation.drag_preview", &e.drag_preview),
-            ];
-            let decls: String = colors
-                .iter()
-                .enumerate()
-                .map(|(i, (path, _))| format!("  c{i}: color = {path}\n"))
-                .chain(shadows.iter().enumerate().map(|(i, (path, _))| format!("  s{i}: shadow = {path}\n")))
-                .collect();
+    /// Every field of the Rust token tables (`TokenStylesheet::default()`: palette, elevation, metrics,
+    /// typography) equals the `.lss` token of the same path, in light and dark. The fields come from
+    /// serializing the Rust tables, so a field added there is checked without editing this test.
+    /// Temporary: it goes when `ThemeTokens` is built from the `.lss` (#314).
+    #[test]
+    fn theme_tokens_match_the_lss_tokens_field_by_field() {
+        let tables = toml::Value::try_from(crate::theme::stylesheet::TokenStylesheet::default()).expect("serializes");
+        let color = |value: &toml::Value| -> Hsla {
+            let source: crate::color::ColorValue = value.clone().try_into().expect("a color value");
+            crate::color::gpui_bridge::to_hsla(source, crate::color::GamutMapping::Clip).expect("converts")
+        };
+        let number =
+            |value: &toml::Value| value.as_float().or(value.as_integer().map(|i| i as f64)).expect("a number") as f32;
+        for (mode, theme) in [("light", default_theme()), ("dark", dark_theme())] {
+            let mut fields: Vec<(String, &str, Native)> = Vec::new();
+            // Metrics: every number.
+            fn numbers(value: &toml::Value, path: &str, out: &mut Vec<(String, f32)>) {
+                match value {
+                    toml::Value::Table(table) => {
+                        for (key, value) in table {
+                            numbers(value, &format!("{path}.{key}"), out);
+                        }
+                    }
+                    toml::Value::Float(f) => out.push((path.to_string(), *f as f32)),
+                    toml::Value::Integer(i) => out.push((path.to_string(), *i as f32)),
+                    other => panic!("{path}: unexpected {other:?}"),
+                }
+            }
+            let mut metrics = Vec::new();
+            numbers(&tables["metrics"], "metrics", &mut metrics);
+            fields.extend(metrics.into_iter().map(|(path, n)| (path, "number", Native::Number(n))));
+            // Fonts and text styles.
+            for (name, font) in tables["typography"]["font"].as_table().expect("fonts") {
+                let family = font["family"].as_str().expect("a family").to_string();
+                fields.push((format!("typography.font.{name}"), "font", Native::Font(family)));
+            }
+            fn texts(value: &toml::Value, path: &str, out: &mut Vec<(String, [f32; 3])>) {
+                let table = value.as_table().expect("a table");
+                if table.contains_key("size") {
+                    let n = |k: &str| table[k].as_float().expect("a number") as f32;
+                    out.push((path.to_string(), [n("size"), n("line_height"), n("weight")]));
+                } else {
+                    for (key, value) in table {
+                        texts(value, &format!("{path}.{key}"), out);
+                    }
+                }
+            }
+            let mut text = Vec::new();
+            texts(&tables["typography"]["text"], "typography.text", &mut text);
+            fields.extend(text.into_iter().map(|(path, t)| (path, "text", Native::Text(t))));
+            // Palette colors.
+            fn colors(value: &toml::Value, path: &str, out: &mut Vec<(String, toml::Value)>) {
+                let table = value.as_table().expect("a table");
+                if table.contains_key("components") {
+                    out.push((path.to_string(), value.clone()));
+                } else {
+                    for (key, value) in table {
+                        colors(value, &format!("{path}.{key}"), out);
+                    }
+                }
+            }
+            let mut palette = Vec::new();
+            colors(&tables["palette"][mode], "palette", &mut palette);
+            fields.extend(palette.iter().map(|(path, value)| (path.clone(), "color", Native::Color(color(value)))));
+            // Elevation shadows.
+            for (role, shadow) in tables["elevation"][mode].as_table().expect("elevation") {
+                let layers = shadow["layers"]
+                    .as_array()
+                    .expect("layers")
+                    .iter()
+                    .map(|layer| {
+                        let n = |k: &str| number(&layer[k]);
+                        let inset = layer["inset"].as_bool().expect("inset");
+                        (color(&layer["color"]), [n("offset_x"), n("offset_y"), n("blur"), n("spread")], inset)
+                    })
+                    .collect();
+                fields.push((format!("elevation.{role}"), "shadow", Native::Shadow(layers)));
+            }
+            assert!(fields.len() > 80, "{mode}: the walk found the tables ({} fields)", fields.len());
+
+            // Resolve every path through one probe control: a property per field.
+            let decls: String =
+                fields.iter().enumerate().map(|(i, (path, kind, _))| format!("  p{i}: {kind} = {path}\n")).collect();
             let sheet = theme
                 .stylesheet()
                 .with_source("sdk", Source::new("probe.lss", format!("probe {{\n{decls}}}")))
-                .expect("probe compiles");
+                .unwrap_or_else(|d| panic!("{mode}: every Rust field has an .lss token:\n{d}"));
             let probe = theme.with_stylesheet(&sheet).expect("binds in the theme's mode");
             let resolved = probe.resolve(&xgpui_luma_style::StyleKey::new(ControlId::new("probe")));
-            for (i, (path, expected)) in colors.iter().enumerate() {
-                let got = resolved.root().value(&format!("c{i}")).and_then(Value::as_color).map(Hsla::from);
-                assert!(got.is_some_and(|g| close(g, *expected)), "{path}: {got:?} != {expected:?}");
-            }
-            for (i, (path, expected)) in shadows.iter().enumerate() {
-                let got = resolved.root().value(&format!("s{i}")).cloned();
-                let Some(Value::Shadow(layers)) = got else {
-                    panic!("{path}: {got:?}")
+            let near = |a: f32, b: f32| (a - b).abs() < 1e-4;
+            for (i, (path, _, native)) in fields.iter().enumerate() {
+                let got = resolved.root().value(&format!("p{i}")).cloned();
+                let same = match (native, &got) {
+                    (Native::Number(want), Some(Value::Number(n))) => near(*want, *n),
+                    (Native::Font(want), Some(Value::Str(s))) => **s == **want,
+                    (Native::Text([size, line, weight]), Some(Value::Text(t))) => {
+                        near(*size, t.size) && near(*line, t.line_height) && near(*weight, t.weight)
+                    }
+                    (Native::Color(want), Some(Value::Color(c))) => close(Hsla::from(*c), *want),
+                    (Native::Shadow(want), Some(Value::Shadow(layers))) => {
+                        layers.len() == want.len()
+                            && layers.iter().zip(want).all(|(g, (color, [x, y, blur, spread], inset))| {
+                                close(Hsla::from(g.color), *color)
+                                    && near(g.x, *x)
+                                    && near(g.y, *y)
+                                    && near(g.blur, *blur)
+                                    && near(g.spread, *spread)
+                                    && g.inset == *inset
+                            })
+                    }
+                    _ => false,
                 };
-                assert_eq!(layers.len(), expected.layers.len(), "{path}");
-                for (g, w) in layers.iter().zip(&expected.layers) {
-                    assert!(close(Hsla::from(g.color), w.color), "{path}: {g:?} != {w:?}");
-                    assert_eq!(
-                        (g.x, g.y, g.blur, g.spread, g.inset),
-                        (w.offset_x, w.offset_y, w.blur, w.spread, w.inset),
-                        "{path}"
-                    );
-                }
+                assert!(same, "{mode} {path}: .lss {got:?} != Rust {native:?}");
             }
-            std::collections::HashMap::new()
-        };
-        assert!(values.is_empty());
+        }
     }
 
     /// The fixture stands in for the shipped token files: every control binds and checks clean
