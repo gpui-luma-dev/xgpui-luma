@@ -56,17 +56,30 @@ fn sources_list_every_lss_file() {
 
 #[test]
 fn every_axis_combination_resolves_without_problems() {
-    for (name, css) in catalogs() {
-        let look = ShadcnLook::from_css_str(&css).expect("catalog");
-        for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            look.set_mode(mode);
-            let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
-            for control in theme.stylesheet().controls() {
-                let problems = theme.check(control);
-                assert!(problems.is_empty(), "{name} {mode:?} {control}: {problems}");
-            }
-        }
-    }
+    // `Theme::check` covers every declared mode (light, dark, the CSS's own) for each control, so one
+    // bound theme per catalog is enough. Catalogs are independent, so they run in parallel.
+    std::thread::scope(|scope| {
+        let runs: Vec<_> = catalogs()
+            .into_iter()
+            .map(|(name, css)| {
+                scope.spawn(move || {
+                    let look = ShadcnLook::from_css_str(&css).expect("catalog");
+                    let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
+                    let problems: Vec<String> = theme
+                        .stylesheet()
+                        .controls()
+                        .filter_map(|control| {
+                            let problems = theme.check(control);
+                            (!problems.is_empty()).then(|| format!("{name} {control}: {problems}"))
+                        })
+                        .collect();
+                    problems
+                })
+            })
+            .collect();
+        let problems: Vec<String> = runs.into_iter().flat_map(|run| run.join().expect("no panic")).collect();
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    });
 }
 
 /// A resolved Shadcn checkbox: `attrs` as (attribute, value), `states` by name.

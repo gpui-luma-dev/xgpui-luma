@@ -97,8 +97,6 @@ pub struct InspectPropertyRow {
     pub detail: Option<String>,
 }
 
-impl InspectPropertyRow {}
-
 #[derive(Clone, Debug)]
 pub struct InspectLayoutSection {
     pub box_model_diagram_id: SharedString,
