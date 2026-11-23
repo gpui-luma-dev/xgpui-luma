@@ -517,7 +517,7 @@ impl ControlSide {
         let mode_switch = (has_mode(LIGHT) && has_mode(DARK)).then(|| {
             let switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-mode")
                 .look(look.as_ref())
-                .size(xgpui_luma_look_radix::SwitchSize::Two)
+                .size(xgpui_luma_look_radix::SwitchSize::One)
                 .vertical()
                 .checked(theme.mode() == DARK)
                 .on_value_changed(cx, |this: &mut Self, dark, cx| this.set_mode(if dark { DARK } else { LIGHT }, cx))
@@ -1248,7 +1248,7 @@ fn stage_text(theme: &Theme, probe: &Stylesheet) -> Option<StageText> {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
-    use gpui::{Focusable, TestAppContext, VisualTestContext};
+    use gpui::{Bounds, Focusable, Pixels, TestAppContext, VisualTestContext};
     use crate::workshop::{Sample, Workshop};
 
     fn open(app: &mut TestAppContext) -> (Entity<Workshop>, Entity<CheckboxPane>, &mut VisualTestContext) {
@@ -1404,25 +1404,32 @@ mod tests {
         );
         assert!(corner.right() <= stage.right() && corner.right() > stage.right() - px(40.), "right edge");
         assert!(corner.top() >= stage.top() && corner.top() < stage.top() + px(20.), "top edge");
-        // Radix size 2, vertical: a 20×35 track with 2px focus-ring room around it.
-        assert_eq!((corner.size.width, corner.size.height), (px(24.), px(39.)), "size 2, vertical");
-        // Light: the thumb (18px) rests at the bottom; the sun's area is the empty top end, 14px (35 less
-        // two 1px borders, the thumb and 1px padding), clear of the thumb.
-        let inner_top = corner.top() + px(2. + 1.);
+        // Vertical. Sizes come from the Radix look, so they're checked as relationships, not pixels.
+        assert!(corner.size.height > corner.size.width, "vertical: {corner:?}");
+        let inside = |icon: Bounds<Pixels>| {
+            icon.left() >= corner.left()
+                && icon.right() <= corner.right()
+                && icon.top() >= corner.top()
+                && icon.bottom() <= corner.bottom()
+        };
+        let room_above = |icon: Bounds<Pixels>| icon.top() - corner.top();
+        let room_below = |icon: Bounds<Pixels>| corner.bottom() - icon.bottom();
+        // Light: the thumb rests at the bottom, so the sun's area is the empty top end.
         let sun = cx.debug_bounds("workshop-checkbox-mode-icon").expect("sun");
-        assert_eq!(sun.size.height, px(14.), "the empty end: {sun:?}");
-        assert!(sun.top() >= inner_top - px(0.5) && sun.bottom() <= inner_top + px(14.5), "sun up top: {sun:?}");
+        assert!(inside(sun) && sun.size.height > px(0.), "the sun is in the track: {sun:?} {corner:?}");
+        assert!(room_above(sun) < room_below(sun), "sun up top: {sun:?} {corner:?}");
         let switch = cx.update(|_, cx| side.read(cx).mode_switch.clone()).expect("switch");
         assert!(!cx.update(|_, cx| *switch.read(cx).data()), "light: off");
         cx.simulate_click(corner.center(), gpui::Modifiers::none());
         cx.run_until_parked();
         assert_eq!(cx.update(|_, cx| side.read(cx).mode_and_stage()).0, "dark", "the switch binds dark");
-        // Dark: the thumb rests at the top (1px padding, 18px), so the moon's area starts below it.
+        // Dark: the thumb rests at the top, so the moon's area is the empty bottom end.
         let moon = cx.debug_bounds("workshop-checkbox-mode-icon").expect("moon");
-        assert!(
-            moon.top() >= inner_top + px(19. - 0.5) && moon.bottom() <= inner_top + px(33.5),
-            "moon below the thumb: {moon:?}"
-        );
+        assert!(inside(moon), "the moon is in the track: {moon:?} {corner:?}");
+        assert!(room_below(moon) < room_above(moon), "moon at the bottom: {moon:?} {corner:?}");
+        // Both are the empty end the thumb leaves: the same length, short of the whole track.
+        assert_eq!(moon.size.height, sun.size.height, "the same empty end");
+        assert!(sun.size.height < corner.size.height, "the thumb takes the rest: {sun:?} {corner:?}");
         side.update(cx, |side, cx| side.choose_mode("light", cx));
         cx.run_until_parked();
         assert!(!cx.update(|_, cx| *switch.read(cx).data()), "the switch follows the mode");
