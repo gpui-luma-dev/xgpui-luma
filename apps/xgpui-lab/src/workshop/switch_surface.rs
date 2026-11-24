@@ -13,8 +13,8 @@ use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEv
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
-/// The switch's text, on the stage and in each State matrix cell.
-const LABEL: &str = "Label";
+/// The switch's text, on the stage and in each State matrix cell, with ascenders and descenders.
+const LABEL: &str = "Display";
 
 pub(super) struct SwitchSurface {
     switch: switch::Switch,

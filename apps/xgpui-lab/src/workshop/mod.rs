@@ -3,7 +3,10 @@
 pub(crate) mod catalog;
 mod choice;
 mod collection;
-mod input;
+mod textfield_surface;
+mod textarea_surface;
+mod slider_surface;
+mod scrollbar_surface;
 mod menu;
 mod layout;
 mod navigation;
@@ -63,7 +66,6 @@ enum Sample {
     Navigation(Entity<navigation::NavigationSample>),
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
-    Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
     /// A design surface page (see `surface_control`).
@@ -87,7 +89,6 @@ impl Sample {
             Self::Navigation(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
-            Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
@@ -110,7 +111,6 @@ impl Sample {
             Self::Navigation(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -142,6 +142,10 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "button" => Some(("button", button_surface::ButtonSurface::make)),
         "toolbar" => Some(("toolbar", toolbar_surface::ToolbarSurface::make)),
         "toggle" => Some(("toggle", toggle_surface::ToggleSurface::make)),
+        "textfield" => Some(("textfield", textfield_surface::TextFieldSurface::make)),
+        "textarea" => Some(("textarea", textarea_surface::TextAreaSurface::make)),
+        "slider" => Some(("slider", slider_surface::SliderSurface::make)),
+        "scrollbar" => Some(("scrollbar", scrollbar_surface::ScrollbarSurface::make)),
         _ => None,
     }
 }
@@ -177,10 +181,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
         "tree-view" => &["tree_view"],
-        "scrollbar" => &["scrollbar"],
-        "slider" => &["slider"],
-        "textarea" => &["textarea"],
-        "textfield" => &["textfield"],
         "context-menu" => &["context_menu", "floating_menu"],
         "popup-menu" => &["popup_menu", "floating_menu"],
         "split-button" => &["button", "popup_menu"],
@@ -380,18 +380,6 @@ impl Workshop {
                     Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
                 }
                 "popup-menu" => Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Popup, look, cx)))),
-                "textfield" => {
-                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::TextField, look, cx))))
-                }
-                "textarea" => {
-                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::TextArea, look, cx))))
-                }
-                "slider" => {
-                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::Slider, look, cx))))
-                }
-                "scrollbar" => {
-                    Some(Sample::Input(cx.new(|cx| input::InputSample::new(input::InputKind::Scrollbar, look, cx))))
-                }
                 "paging-table" => {
                     Some(Sample::Collection(cx.new(|cx| {
                         collection::CollectionSample::new(collection::CollectionKind::PagingTable, look, cx)
@@ -813,5 +801,36 @@ mod tests {
         cx.simulate_keystrokes("enter");
         cx.run_until_parked();
         cx.update(|_, cx| assert_eq!(view.read(cx).selected, "color-slider"));
+    }
+}
+
+/// Opening a design surface page in tests.
+#[cfg(all(test, feature = "test-support"))]
+pub(super) mod tests_support {
+    use gpui::{Entity, TestAppContext, VisualTestContext};
+
+    use super::{Sample, Workshop};
+    use crate::workshop::surface_page::SurfacePage;
+
+    /// A Workshop window showing page `id`, a design surface page.
+    pub(in crate::workshop) fn open_surface<'a>(
+        app: &'a mut TestAppContext,
+        id: &'static str,
+    ) -> (Entity<SurfacePage>, &'a mut VisualTestContext) {
+        app.update(|cx| {
+            xgpui_luma::init(cx).unwrap();
+            xgpui_luma::key_handling::bind_default_control_keys(cx);
+        });
+        let (workshop, cx) = app.add_window_view(|window, cx| {
+            window.activate_window();
+            Workshop::new(crate::theme::default_look(), cx)
+        });
+        workshop.update(cx, |v, cx| v.select(id, cx));
+        cx.run_until_parked();
+        let page = cx.update(|_, cx| match &workshop.read(cx).samples[id] {
+            Sample::Surface(v) => v.clone(),
+            _ => panic!("{id} is a design surface page"),
+        });
+        (page, cx)
     }
 }

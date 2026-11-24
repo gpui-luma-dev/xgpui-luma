@@ -160,7 +160,7 @@ impl SurfaceControl for ToolbarSurface {
             element: div().px_1().child(text).into_any_element(),
         };
         let separator = || ToolbarRenderedItem { kind: ToolbarItemKind::Separator, element: div().into_any_element() };
-        let items = vec![item("Bold"), item("Italic"), separator(), item("Link")];
+        let items = vec![item("Heading"), item("Quote"), separator(), item("Typography")];
         template.render(&model, items, window, cx).into_any_element()
     }
 
