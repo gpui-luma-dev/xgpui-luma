@@ -251,7 +251,7 @@ impl LssInspector {
             .look(&small)
             .size(xgpui_luma_look_radix::SwitchSize::One)
             .label("Box model")
-            .checked(true)
+            .checked(false)
             .on_value_changed(cx, |this: &mut Self, on, cx| {
                 this.show_box_model = on;
                 cx.notify();
@@ -313,7 +313,7 @@ impl LssInspector {
             view: View::Properties,
             filter: Filter::All,
             grouping: Grouping::File,
-            show_box_model: true,
+            show_box_model: false,
             view_tabs,
             part_tabs,
             filter_tabs,
@@ -338,8 +338,11 @@ impl LssInspector {
             .filter_map(|&index| {
                 let (name, body) = (names.get(index)?.clone(), self.part_bodies.get(index)?.clone());
                 let sections = self.row_heads.sections.clone();
+                // The pane's body text, not the accordion trigger's (the SDK's body size).
+                let body_text = pane_type::body(&self.look);
                 let trigger = AccordionTrigger::custom(move |_, _| {
                     section_trigger(sections.read().ok().and_then(|s| s.get(&index).cloned()).as_ref())
+                        .typography_style(body_text.clone())
                         .into_any_element()
                 });
                 let content = AccordionContent::custom(move |_, _| body.clone().into_any_element());
@@ -1087,12 +1090,7 @@ impl Render for LssInspector {
             .border_color(chrome.border)
             .child(self.view_tabs.clone())
             .child(div().flex_1())
-            .children(self.unused_states_note().map(|note| div().pb(px(8.)).text_color(chrome.muted_text).child(note)))
-            .child(div().pb(px(8.)).font_family(pane_type::MONO).text_color(chrome.muted_text).child(key_line(
-                &self.theme,
-                self.control,
-                &self.key,
-            )));
+            .children(self.unused_states_note().map(|note| div().pb(px(8.)).text_color(chrome.muted_text).child(note)));
         let body = match self.view {
             View::Properties => div()
                 .flex_1()
@@ -1206,22 +1204,6 @@ fn selector(rule: &RuleInfo) -> String {
         "base".to_string()
     } else {
         parts.join(" ")
-    }
-}
-
-/// The style key as text, e.g. `checkbox:checked:hover`.
-/// Every active state is shown, including ones no rule uses (e.g. `:focused`, set by the template).
-pub(super) fn key_line(theme: &Theme, control: ControlId, key: &StyleKey) -> String {
-    let config = theme.stylesheet().config();
-    let states: String = config
-        .state_names()
-        .filter(|n| config.state(n).is_some_and(|s| key.active_states().contains(s)))
-        .map(|n| format!(":{n}"))
-        .collect();
-    if theme.mode().is_empty() {
-        format!("{control}{states}")
-    } else {
-        format!("{control}{states} · {}", theme.mode())
     }
 }
 

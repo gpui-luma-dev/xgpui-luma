@@ -4,7 +4,13 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, Context, Entity, Hsla, Render, WeakEntity, Window, div, prelude::*, px, svg};
+use std::cell::Cell;
+use std::rc::Rc;
+
+use gpui::{
+    AnyElement, Bounds, Context, Entity, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PinchEvent,
+    Pixels, Point, Render, ScrollEvent, WeakEntity, Window, div, point, prelude::*, px, size, svg,
+};
 use xgpui_luma::{GridLayout, GridTrack};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::control_group::{
@@ -22,12 +28,11 @@ use xgpui_luma::theme::InteractionState;
 
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
-use super::catalog::COMPONENT_CATALOG;
 use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
 use super::state_icons::state_icon;
 use super::pane_type;
-use crate::screen::{LabMetrics, text};
+use crate::screen::text;
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
@@ -46,12 +51,96 @@ const STRIP_LABEL_WIDTH: f32 = 96.;
 /// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
 /// make it invalid.
 const UNREACHABLE_STATES: &[&str] = &["invalid"];
-/// The stage zoom's range and step: actual size up to five times.
-const ZOOM_RANGE: std::ops::Range<f32> = 1.0..5.0;
+/// The stage zoom's range and step: actual size up to ten times.
+const ZOOM_RANGE: std::ops::Range<f32> = 1.0..10.0;
 const ZOOM_STEP: f32 = 0.25;
 const ZOOM_SLIDER_WIDTH: f32 = 140.;
 /// The stage grid's square at actual size; it scales with the zoom, like the checkbox.
 const STAGE_GRID_SPACING: f32 = 10.;
+/// Wheel and two-finger scroll zoom on the Control stage: each pixel of scroll multiplies the zoom by
+/// e^rate (as the canvas lab does).
+const WHEEL_ZOOM_RATE: f32 = 0.005;
+/// A drag on the Control stage pans only once the pointer has moved this far, so a click on the
+/// checkbox stays a click.
+const PAN_THRESHOLD: f32 = 3.;
+/// The control's bounding box on the Control stage: dashed lines along its four edges across the whole
+/// stage, with a solid angle at each corner whose arms point outward along the lines.
+const BOX_LINE: f32 = 1.;
+const BOX_DASH: f32 = 4.;
+const BOX_GAP: f32 = 3.;
+const BOX_CORNER_ARM: f32 = 32.;
+const BOX_CORNER_THICKNESS: f32 = 4.;
+/// The bounding box's color: this step of the look's accent scale.
+const BOX_ACCENT_STEP: u8 = 9;
+
+/// The rectangles that draw `control`'s bounding box on `stage`: the dashes of two vertical lines
+/// (just outside its left and right edges) and two horizontal lines (just outside its top and bottom),
+/// each running the stage's full length, then a solid angle at each of the four intersections with its
+/// arms pointing away from the control.
+fn bounding_box_rects(stage: Bounds<Pixels>, control: Bounds<Pixels>) -> Vec<Bounds<Pixels>> {
+    let rect = |x0: f32, y0: f32, x1: f32, y1: f32| Bounds::new(point(px(x0), px(y0)), size(px(x1 - x0), px(y1 - y0)));
+    let (left, right) = (f32::from(control.left()) - BOX_LINE, f32::from(control.right()));
+    let (top, bottom) = (f32::from(control.top()) - BOX_LINE, f32::from(control.bottom()));
+    let (stage_left, stage_right) = (f32::from(stage.left()), f32::from(stage.right()));
+    let (stage_top, stage_bottom) = (f32::from(stage.top()), f32::from(stage.bottom()));
+    let dashes = |from: f32, to: f32| {
+        (0..)
+            .map(move |i| from + i as f32 * (BOX_DASH + BOX_GAP))
+            .take_while(move |start| *start < to)
+            .map(move |start| (start, (start + BOX_DASH).min(to)))
+    };
+    let mut rects: Vec<Bounds<Pixels>> = Vec::new();
+    for x in [left, right] {
+        rects.extend(dashes(stage_top, stage_bottom).map(|(y0, y1)| rect(x, y0, x + BOX_LINE, y1)));
+    }
+    for y in [top, bottom] {
+        rects.extend(dashes(stage_left, stage_right).map(|(x0, x1)| rect(x0, y, x1, y + BOX_LINE)));
+    }
+    // Each corner's thick band covers its line and grows outward; the arms run outward from the corner.
+    let (arm, extra) = (BOX_CORNER_ARM, BOX_CORNER_THICKNESS - BOX_LINE);
+    for (x, outward_x) in [(left, -1.), (right, 1.)] {
+        for (y, outward_y) in [(top, -1.), (bottom, 1.)] {
+            let band_x = if outward_x < 0. {
+                (x - extra, x + BOX_LINE)
+            } else {
+                (x, x + BOX_LINE + extra)
+            };
+            let band_y = if outward_y < 0. {
+                (y - extra, y + BOX_LINE)
+            } else {
+                (y, y + BOX_LINE + extra)
+            };
+            let arm_x = if outward_x < 0. {
+                (x + BOX_LINE - arm, x + BOX_LINE)
+            } else {
+                (x, x + arm)
+            };
+            let arm_y = if outward_y < 0. {
+                (y + BOX_LINE - arm, y + BOX_LINE)
+            } else {
+                (y, y + arm)
+            };
+            rects.push(rect(arm_x.0, band_y.0, arm_x.1, band_y.1));
+            rects.push(rect(band_x.0, arm_y.0, band_x.1, arm_y.1));
+        }
+    }
+    rects
+}
+
+/// A drag on the Control stage: where the pointer went down, the pan then, and whether it has moved far
+/// enough to pan.
+#[derive(Clone, Copy)]
+struct PanDrag {
+    start: Point<Pixels>,
+    pan: Point<Pixels>,
+    panning: bool,
+}
+
+/// The zoom as the stage toolbar shows it: at most two decimals, no trailing zeros (`1×`, `2.5×`).
+fn zoom_label(zoom: f32) -> String {
+    let text = format!("{zoom:.2}");
+    format!("{}×", text.trim_end_matches('0').trim_end_matches('.'))
+}
 
 #[derive(Clone, Copy, PartialEq)]
 enum Stage {
@@ -194,40 +283,26 @@ impl CheckboxPane {
         cx.notify();
     }
 
-    /// The page title in the lab screens' text roles: crumb (Workshop · group), title, the `.lss` control
-    /// with its file and layer, and the control's doc comment as the lede.
+    /// The page title in the lab screens' text roles: the title and the `.lss` file and layer the
+    /// control's rules come from.
     fn title(&self) -> AnyElement {
         let (look, chrome) = (self.look.as_ref(), self.look.chrome());
         let inspection = self.theme.inspect(&StyleKey::new(self.control), None);
         let source = lss_inspector::control_source(&inspection)
             .map_or_else(String::new, |(file, layer)| format!("{file} · layer {layer}"));
-        let group = COMPONENT_CATALOG
-            .iter()
-            .find(|g| g.entries.iter().any(|e| e.id == "checkbox"))
-            .map_or("", |g| g.label);
-        let metrics = LabMetrics::STANDARD;
         div()
             .debug_selector(|| "workshop-checkbox-title".into())
             .flex_none()
             .flex()
-            .flex_col()
-            .gap(metrics.header_gap)
+            .flex_wrap()
+            .items_baseline()
+            .gap(px(12.))
             .px(px(18.))
             .py(px(14.))
             .border_b_1()
             .border_color(chrome.border)
-            .child(text(look, pane_type::CRUMB, format!("Workshop · {group}")))
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_baseline()
-                    .gap(px(12.))
-                    .child(text(look, pane_type::TITLE, "Checkbox"))
-                    .child(text(look, pane_type::CONTROL, self.control.to_string()))
-                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
-            )
-            .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
+            .child(text(look, pane_type::TITLE, "Checkbox"))
+            .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text))
             .into_any_element()
     }
 
@@ -302,6 +377,14 @@ pub(super) struct ControlSide {
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
+    /// How far the checkbox (and the grid with it) is moved from the Control stage's center.
+    pan: Point<Pixels>,
+    /// The drag on the Control stage in progress, if any.
+    pan_drag: Option<PanDrag>,
+    /// Back to actual size, centered.
+    actual_size: Entity<Button>,
+    /// The checkbox's bounds on the Control stage at the last paint, for its bounding box.
+    control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// The states the live checkbox draws in Design mode; `None` in Test mode, where it draws as it is.
     pinned: Option<PinnedCheckbox>,
     stage: Stage,
@@ -489,6 +572,13 @@ impl ControlSide {
             .label("Reset")
             .on_click(cx, |this: &mut Self, cx| this.apply(StyleKey::new(this.control), cx))
             .spawn(cx);
+        let actual_size = xgpui_luma_look_radix::Button::new("workshop-checkbox-actual-size")
+            .look(look.as_ref())
+            .ghost()
+            .size(xgpui_luma_look_radix::ButtonSize::One)
+            .label("Actual size")
+            .on_click(cx, |this: &mut Self, cx| this.reset_view(cx))
+            .spawn(cx);
         let events = cx.new(|cx| {
             ControlEventStream::new(
                 cx,
@@ -539,6 +629,10 @@ impl ControlSide {
             checkbox,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
+            pan: Point::default(),
+            pan_drag: None,
+            actual_size,
+            control_bounds: Rc::default(),
             pinned: None,
             stage: Stage::Control,
             stage_tabs,
@@ -574,7 +668,8 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Draw the stage checkbox `zoom` times its actual size.
+    /// Draw the stage checkbox `zoom` times its actual size. Zoom never moves it: it grows and shrinks
+    /// about its own center, wherever it has been panned to.
     fn set_zoom(&mut self, zoom: f32, cx: &mut Context<Self>) {
         let zoom = zoom.clamp(ZOOM_RANGE.start, ZOOM_RANGE.end);
         if zoom == self.zoom {
@@ -582,6 +677,41 @@ impl ControlSide {
         }
         self.zoom = zoom;
         self.bind_checkbox(cx);
+        cx.notify();
+    }
+
+    /// Zoom by `factor` (wheel, two-finger scroll and pinch), and move the slider to match.
+    fn zoom_by(&mut self, factor: f32, cx: &mut Context<Self>) {
+        self.set_zoom(self.zoom * factor, cx);
+        let zoom = self.zoom;
+        self.zoom_slider.update(cx, |slider, cx| slider.set_value(zoom, cx));
+    }
+
+    /// Back to actual size with the checkbox centered.
+    fn reset_view(&mut self, cx: &mut Context<Self>) {
+        self.pan = Point::default();
+        self.pan_drag = None;
+        self.set_zoom(ZOOM_RANGE.start, cx);
+        self.zoom_slider.update(cx, |slider, cx| slider.set_value(ZOOM_RANGE.start, cx));
+        cx.notify();
+    }
+
+    /// A press on the Control stage starts a drag that pans once it moves past [`PAN_THRESHOLD`].
+    fn start_pan(&mut self, position: Point<Pixels>) {
+        self.pan_drag = Some(PanDrag { start: position, pan: self.pan, panning: false });
+    }
+
+    /// Follow the drag: the checkbox and the grid move with the pointer.
+    fn drag_pan(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+        let Some(drag) = self.pan_drag.as_mut() else {
+            return;
+        };
+        let moved = position - drag.start;
+        if !drag.panning && f32::from(moved.x).abs().max(f32::from(moved.y).abs()) < PAN_THRESHOLD {
+            return;
+        }
+        drag.panning = true;
+        self.pan = drag.pan + moved;
         cx.notify();
     }
 
@@ -719,7 +849,18 @@ impl ControlSide {
                         .gap(px(10.))
                         .child(div().font_weight(pane_type::LABEL_WEIGHT).text_color(chrome.muted_text).child("ZOOM"))
                         .child(div().w(px(ZOOM_SLIDER_WIDTH)).child(self.zoom_slider.clone()))
-                        .child(div().w(px(36.)).font_family(pane_type::MONO).child(format!("{}×", self.zoom))),
+                        .child(
+                            div()
+                                .debug_selector(|| "workshop-checkbox-zoom-label".into())
+                                .w(px(44.))
+                                .font_family(pane_type::MONO)
+                                .child(zoom_label(self.zoom)),
+                        )
+                        .child(
+                            div()
+                                .debug_selector(|| "workshop-checkbox-actual-size".into())
+                                .child(self.actual_size.clone()),
+                        ),
                 )
             }))
             .child(self.stage_tabs.clone())
@@ -755,7 +896,21 @@ impl ControlSide {
                     .text_color(chrome.muted_text)
                     .child(tag),
             )
-            .child(div().debug_selector(|| "workshop-checkbox-control".into()).child(self.checkbox.clone()))
+            .child(
+                div()
+                    .debug_selector(|| "workshop-checkbox-control".into())
+                    .relative()
+                    .left(self.pan.x)
+                    .top(self.pan.y)
+                    .child(self.checkbox.clone())
+                    // Measures the checkbox for its bounding box, which the stage draws under it.
+                    .child({
+                        let measured = self.control_bounds.clone();
+                        gpui::canvas(move |bounds, _, _| measured.set(Some(bounds)), |_, _, _, _| {})
+                            .absolute()
+                            .inset_0()
+                    }),
+            )
             .into_any_element()
     }
 
@@ -1120,10 +1275,11 @@ impl ControlSide {
 
 impl ControlSide {
     fn stage_slot(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        // The grid zooms with the checkbox; the matrix is always at actual size.
-        let (stage, zoom) = match self.stage {
-            Stage::Control => (self.control_stage(), self.zoom),
-            Stage::Matrix => (self.matrix(window, cx), 1.),
+        // The grid zooms and pans with the checkbox; the matrix is always at actual size and centered.
+        let control = self.stage == Stage::Control;
+        let (stage, zoom, offset) = match self.stage {
+            Stage::Control => (self.control_stage(), self.zoom, (f32::from(self.pan.x), f32::from(self.pan.y))),
+            Stage::Matrix => (self.matrix(window, cx), 1., (0., 0.)),
         };
         div()
             .relative()
@@ -1134,10 +1290,76 @@ impl ControlSide {
                     .debug_selector(|| "workshop-checkbox-stage".into())
                     .relative()
                     .size_full()
-                    .overflow_y_scroll()
+                    // The matrix scrolls; the Control stage clips the panned and zoomed checkbox.
+                    .map(|stage| {
+                        if control {
+                            stage.overflow_hidden()
+                        } else {
+                            stage.overflow_y_scroll()
+                        }
+                    })
                     .when_some(self.stage_background, |stage, background| stage.bg(background))
-                    .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, self.stage_background))
-                    .child(div().relative().size_full().child(stage)),
+                    .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    // The checkbox's bounding box, over the grid and under the checkbox and the stage tag.
+                    .when(control, |stage| {
+                        let (measured, color) = (
+                            self.control_bounds.clone(),
+                            self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, BOX_ACCENT_STEP).hsla(),
+                        );
+                        stage.child(
+                            gpui::canvas(
+                                |_, _, _| (),
+                                move |bounds, _, window, _| {
+                                    let Some(control) = measured.get() else {
+                                        return;
+                                    };
+                                    for rect in bounding_box_rects(bounds, control) {
+                                        window.paint_quad(gpui::fill(rect, color));
+                                    }
+                                },
+                            )
+                            .absolute()
+                            .inset_0(),
+                        )
+                    })
+                    .child(div().relative().size_full().child(stage))
+                    .when(control, |stage| {
+                        // Wheel, two-finger scroll and pinch zoom the checkbox about its own center; a drag
+                        // (mouse, or a trackpad's three-finger drag) pans.
+                        stage
+                            .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
+                                let delta = f32::from(event.delta.pixel_delta(px(24.)).y);
+                                this.zoom_by((delta * WHEEL_ZOOM_RATE).clamp(-1., 1.).exp(), cx);
+                                cx.stop_propagation();
+                            }))
+                            .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
+                                this.zoom_by((1. + event.delta).max(0.01), cx);
+                                cx.stop_propagation();
+                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, event: &MouseDownEvent, _, _| this.start_pan(event.position)),
+                            )
+                            .on_mouse_down(
+                                MouseButton::Middle,
+                                cx.listener(|this, event: &MouseDownEvent, _, _| this.start_pan(event.position)),
+                            )
+                            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                                if event.pressed_button.is_none() {
+                                    this.pan_drag = None;
+                                } else {
+                                    this.drag_pan(event.position, cx);
+                                }
+                            }))
+                            .on_mouse_up(
+                                MouseButton::Left,
+                                cx.listener(|this, _: &MouseUpEvent, _, _| this.pan_drag = None),
+                            )
+                            .on_mouse_up(
+                                MouseButton::Middle,
+                                cx.listener(|this, _: &MouseUpEvent, _, _| this.pan_drag = None),
+                            )
+                    }),
             )
             // Light/dark stays in the top-right corner while the matrix scrolls under it.
             .children(self.mode_switch.clone().map(|switch| {
@@ -1248,7 +1470,7 @@ fn stage_text(theme: &Theme, probe: &Stylesheet) -> Option<StageText> {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
-    use gpui::{Bounds, Focusable, Pixels, TestAppContext, VisualTestContext};
+    use gpui::{Bounds, Focusable, Pixels, TestAppContext, VisualTestContext, point};
     use crate::workshop::{Sample, Workshop};
 
     fn open(app: &mut TestAppContext) -> (Entity<Workshop>, Entity<CheckboxPane>, &mut VisualTestContext) {
@@ -1310,6 +1532,9 @@ mod tests {
         cx.run_until_parked();
         assert!(cx.debug_bounds("style-inspector-part-indicator").is_some(), "indicator section rendered");
         assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some(), "background row rendered");
+        assert!(cx.debug_bounds("style-inspector-box-indicator").is_none(), "box diagrams start off");
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
         assert!(cx.debug_bounds("style-inspector-box-indicator").is_some(), "indicator box diagram rendered");
 
         inspector.update(cx, |inspector, cx| inspector.expand("indicator", "background", cx));
@@ -1377,10 +1602,10 @@ mod tests {
         let dark = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
         assert_eq!(dark.height, zoomed.height, "a mode change keeps the zoom");
 
-        side.update(cx, |side, cx| side.zoom_to(9.0, cx));
+        side.update(cx, |side, cx| side.zoom_to(14.0, cx));
         cx.run_until_parked();
         let most = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
-        assert!((most.height - actual.height * 5.0).abs() <= px(1.), "zoom stops at 5×: {most:?}");
+        assert!((most.height - actual.height * 10.0).abs() <= px(1.), "zoom stops at 10×: {most:?}");
 
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
@@ -1826,9 +2051,12 @@ mod tests {
         let (_, pane, cx) = open(&mut app);
         let inspector = cx.update(|_, cx| pane.read(cx).inspector());
         let diagram = "style-inspector-box-root";
-        assert!(cx.debug_bounds(diagram).is_some(), "on by default");
-        // Clicking the switch turns the diagrams off.
+        assert!(cx.debug_bounds(diagram).is_none(), "off by default");
+        // Clicking the switch turns the diagrams on, and again turns them off.
         let switch = cx.debug_bounds("lss-inspector-box-model").expect("Box model switch");
+        cx.simulate_click(switch.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_some(), "on: a diagram");
         cx.simulate_click(switch.center(), gpui::Modifiers::none());
         cx.run_until_parked();
         assert!(cx.debug_bounds(diagram).is_none(), "off: no diagram");
@@ -1886,6 +2114,8 @@ mod tests {
             |cx: &mut VisualTestContext| cx.debug_bounds("accordion-item-root").expect("root section").size.height;
         // Hiding the box models shortens the open root section in the same redraw, not on the next
         // pointer event (the accordion applies its measured height after the frame).
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
         let before = height(cx);
         inspector.update(cx, |inspector, cx| inspector.show_box_models(false, cx));
         cx.run_until_parked();
@@ -1896,5 +2126,144 @@ mod tests {
         cx.run_until_parked();
         let taller = height(cx);
         assert!(taller > shorter + px(20.), "grows at once: {shorter:?} → {taller:?}");
+    }
+
+    #[test]
+    fn zoom_labels_drop_trailing_zeros() {
+        assert_eq!(zoom_label(1.), "1×");
+        assert_eq!(zoom_label(2.5), "2.5×");
+        assert_eq!(zoom_label(1.648_72), "1.65×");
+        assert_eq!(zoom_label(10.), "10×");
+    }
+
+    #[test]
+    fn the_control_stage_zooms_with_wheel_and_pinch_and_pans_with_a_drag() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let view = |cx: &mut VisualTestContext| {
+            cx.update(|_, cx| {
+                let side = side.read(cx);
+                (side.zoom, side.pan, side.zoom_slider.read(cx).value())
+            })
+        };
+        let stage = cx.debug_bounds("workshop-checkbox-stage").expect("stage");
+        let center = stage.center();
+        let close = |a: Pixels, b: f32| (f32::from(a) - b).abs() < 0.5;
+        let control_center =
+            |cx: &mut VisualTestContext| cx.debug_bounds("workshop-checkbox-control").unwrap().center();
+        let same = |a: Point<Pixels>, b: Point<Pixels>| close(a.x, f32::from(b.x)) && close(a.y, f32::from(b.y));
+
+        // The wheel (or a two-finger scroll) zooms in about the checkbox's own center, wherever the
+        // pointer is: the checkbox stays put. The slider follows.
+        let before = control_center(cx);
+        cx.simulate_event(ScrollEvent {
+            position: center + point(px(120.), px(40.)),
+            delta: gpui::ScrollDelta::Pixels(point(px(0.), px(100.))),
+            ..Default::default()
+        });
+        cx.run_until_parked();
+        let (zoom, pan, slider) = view(cx);
+        assert!((zoom - 0.5f32.exp()).abs() < 0.01, "wheel zooms in: {zoom}");
+        assert_eq!(pan, Point::default(), "zoom never pans");
+        assert!(same(control_center(cx), before), "the checkbox stays put: {before:?}");
+        assert!(slider > 1.4, "the slider follows: {slider}");
+
+        // A drag on the stage pans the checkbox with the pointer.
+        let start = stage.origin + point(px(30.), stage.size.height - px(30.));
+        cx.simulate_mouse_down(start, MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_move(start + point(px(40.), px(-20.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_up(start + point(px(40.), px(-20.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.run_until_parked();
+        let (_, panned, _) = view(cx);
+        assert!(close(panned.x, 40.) && close(panned.y, -20.), "drag pans: {panned:?}");
+
+        // A pinch off to the side zooms the panned checkbox where it is.
+        let before = control_center(cx);
+        cx.simulate_event(PinchEvent { position: center - point(px(100.), px(0.)), delta: 0.5, ..Default::default() });
+        cx.run_until_parked();
+        let (pinched, pan, _) = view(cx);
+        assert!((pinched - zoom * 1.5).abs() < 0.01, "pinch zooms: {pinched}");
+        assert_eq!(pan, panned, "pinch never pans");
+        assert!(same(control_center(cx), before), "the panned checkbox stays put: {before:?}");
+
+        // Actual size zooms back to 1× and recenters.
+        let actual = cx.debug_bounds("workshop-checkbox-actual-size").expect("Actual size button");
+        cx.simulate_click(actual.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        let (zoom, pan, slider) = view(cx);
+        assert_eq!((zoom, pan, slider), (1., Point::default(), 1.), "back to actual size");
+
+        // The wheel never zooms the State matrix.
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        cx.simulate_event(ScrollEvent {
+            position: center,
+            delta: gpui::ScrollDelta::Pixels(point(px(0.), px(100.))),
+            ..Default::default()
+        });
+        cx.run_until_parked();
+        assert_eq!(view(cx).0, 1., "the matrix is not zoomed");
+    }
+
+    #[test]
+    fn the_bounding_box_runs_dashed_lines_across_the_stage_with_outward_corners() {
+        let stage = Bounds::new(point(px(0.), px(0.)), gpui::size(px(200.), px(100.)));
+        let control = Bounds::new(point(px(80.), px(40.)), gpui::size(px(40.), px(20.)));
+        let rects = bounding_box_rects(stage, control);
+        let inside = |r: &Bounds<Pixels>| {
+            r.left() >= stage.left() - px(BOX_CORNER_ARM)
+                && r.right() <= stage.right() + px(BOX_CORNER_ARM)
+                && r.top() >= stage.top() - px(BOX_CORNER_ARM)
+                && r.bottom() <= stage.bottom() + px(BOX_CORNER_ARM)
+        };
+        assert!(rects.iter().all(inside), "everything is on the stage");
+        // Dashes: vertical lines just outside the left and right edges, the stage's full height.
+        let at_x = |x: f32| -> Vec<&Bounds<Pixels>> {
+            rects.iter().filter(|r| r.left() == px(x) && r.size.width == px(BOX_LINE)).collect()
+        };
+        for x in [79., 120.] {
+            let dashes = at_x(x);
+            assert_eq!(dashes.first().map(|d| d.top()), Some(px(0.)), "from the stage's top at {x}");
+            assert_eq!(dashes.last().map(|d| d.bottom()), Some(px(100.)), "to its bottom at {x}");
+            assert!(dashes.iter().all(|d| d.size.height <= px(BOX_DASH)), "dashed at {x}");
+        }
+        // Horizontal lines just outside the top and bottom edges, the stage's full width.
+        for y in [39., 60.] {
+            let dashes: Vec<_> = rects.iter().filter(|r| r.top() == px(y) && r.size.height == px(BOX_LINE)).collect();
+            assert_eq!(dashes.first().map(|d| d.left()), Some(px(0.)), "from the stage's left at {y}");
+            assert_eq!(dashes.last().map(|d| d.right()), Some(px(200.)), "to its right at {y}");
+        }
+        // Corners: solid angles, thicker than the lines, with arms pointing away from the control. The
+        // top-left one's horizontal arm ends at the left line and runs left; its vertical arm runs up.
+        let corners: Vec<_> = rects.iter().filter(|r| r.size.width.max(r.size.height) == px(BOX_CORNER_ARM)).collect();
+        assert_eq!(corners.len(), 8, "two arms at each of four corners");
+        assert!(
+            corners
+                .iter()
+                .any(|r| r.right() == px(80.) && r.left() == px(48.) && r.size.height == px(BOX_CORNER_THICKNESS))
+        );
+        assert!(
+            corners
+                .iter()
+                .any(|r| r.bottom() == px(40.) && r.top() == px(8.) && r.size.width == px(BOX_CORNER_THICKNESS))
+        );
+        // The bottom-right one's arms run right and down from the right and bottom lines.
+        assert!(corners.iter().any(|r| r.left() == px(120.) && r.right() == px(152.)));
+        assert!(corners.iter().any(|r| r.top() == px(60.) && r.bottom() == px(92.)));
+    }
+
+    #[test]
+    fn the_control_stage_measures_the_checkbox_for_its_bounding_box() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let control = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        let measured = cx.update(|_, cx| side.read(cx).control_bounds.get());
+        assert_eq!(measured, Some(control), "the box follows the checkbox");
+        side.update(cx, |side, cx| side.zoom_to(3., cx));
+        cx.run_until_parked();
+        let zoomed = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        assert_eq!(cx.update(|_, cx| side.read(cx).control_bounds.get()), Some(zoomed), "and its zoom");
     }
 }
