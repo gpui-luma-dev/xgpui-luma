@@ -30,6 +30,7 @@ mod surface_page;
 mod checkbox_surface;
 mod switch_surface;
 mod radio_button_surface;
+mod toggle_surface;
 mod surface_control;
 mod pinned_template;
 mod state_icons;
@@ -144,6 +145,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "checkbox" => Some(("checkbox", checkbox_surface::CheckboxSurface::make)),
         "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
         "radio-button" => Some(("radio", radio_button_surface::RadioButtonSurface::make)),
+        "toggle" => Some(("toggle", toggle_surface::ToggleSurface::make)),
         _ => None,
     }
 }
@@ -185,7 +187,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "accordion" => &["accordion"],
         "pager" => &["pager"],
         "radio-group" => &["radio"],
-        "toggle" => &["toggle"],
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
         "tree-view" => &["tree_view"],
@@ -439,9 +440,6 @@ impl Workshop {
                 "radio-group" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
                 )),
-                "toggle" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Toggle, look, cx))))
-                }
                 "button" => {
                     Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
                 }
@@ -470,7 +468,6 @@ impl Workshop {
             if let Some(sample) = sample {
                 match &sample {
                     Sample::Button(v) => self.follow(id, v, cx),
-                    Sample::Choice(v) => self.follow(id, v, cx),
                     Sample::Surface(v) => {
                         let hidden = self.sidebar_hidden;
                         v.update(cx, |page, cx| page.set_left_rounded(hidden, cx));
