@@ -21,11 +21,9 @@ pub(super) fn body(look: &Look) -> LumaTextStyle {
 pub(super) const LABEL_WEIGHT: FontWeight = FontWeight::SEMIBOLD;
 
 /// The title row's text roles (the lab screens' roles; the look gives their size and weight).
-pub(super) const CRUMB: TextRole = TextRole::Crumb;
 pub(super) const TITLE: TextRole = TextRole::Title;
-/// The `.lss` control name and its file · layer line.
+/// The `.lss` file · layer line.
 pub(super) const CONTROL: TextRole = TextRole::Value;
-pub(super) const LEDE: TextRole = TextRole::Lede;
 
 /// The box model diagram's labels: layer names, edge values and the content size.
 pub(super) const BOX_LAYER_LABEL: Pixels = px(10.0);

@@ -1,5 +1,6 @@
 //! Interaction-state icons (issue #301), from the Lucide crate: the same states Radix Studio's style
-//! guide marks (default, hover, focused, pressed, disabled), plus checked and invalid.
+//! guide marks (default, hover, focused, pressed, disabled), plus invalid and each control's own word for
+//! being on: checked (checkbox), on (switch), selected (radio, toggle).
 
 use gpui::{AnyElement, Hsla, IntoElement, Styled, px, svg};
 use lucide_svg_static::Icon;
@@ -7,7 +8,8 @@ use lucide_svg_static::Icon;
 /// Drawn at the pane's body text size.
 const STATE_ICON_SIZE: f32 = 14.;
 
-/// The icon for an `.lss` state name, or for `None`: no state (Radix Studio's "Default").
+/// The icon for a state as the page shows it (its `.lss` name, or the control's word for it, see
+/// `SurfaceControl::state_label`), or for `None`: no state (Radix Studio's "Default").
 pub(super) fn state_icon_for(state: Option<&str>) -> Option<Icon> {
     Some(match state {
         None => Icon::House,
@@ -16,6 +18,8 @@ pub(super) fn state_icon_for(state: Option<&str>) -> Option<Icon> {
         Some("pressed") => Icon::ArrowDown,
         Some("disabled") => Icon::Ban,
         Some("checked") => Icon::Check,
+        Some("on") => Icon::ToggleRight,
+        Some("selected") => Icon::CircleDot,
         Some("invalid") => Icon::TriangleAlert,
         Some(_) => return None,
     })
@@ -46,6 +50,8 @@ mod tests {
             Some("pressed"),
             Some("disabled"),
             Some("checked"),
+            Some("on"),
+            Some("selected"),
             Some("invalid"),
         ];
         for state in states {
