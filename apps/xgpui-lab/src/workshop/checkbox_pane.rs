@@ -69,7 +69,7 @@ const BOX_LINE: f32 = 1.;
 const BOX_DASH: f32 = 4.;
 const BOX_GAP: f32 = 3.;
 const BOX_CORNER_ARM: f32 = 32.;
-const BOX_CORNER_THICKNESS: f32 = 2.;
+const BOX_CORNER_THICKNESS: f32 = 8.;
 /// The bounding box's color: this step of the look's accent scale.
 const BOX_ACCENT_STEP: u8 = 9;
 
@@ -2238,8 +2238,16 @@ mod tests {
         // top-left one's horizontal arm ends at the left line and runs left; its vertical arm runs up.
         let corners: Vec<_> = rects.iter().filter(|r| r.size.width.max(r.size.height) == px(BOX_CORNER_ARM)).collect();
         assert_eq!(corners.len(), 8, "two arms at each of four corners");
-        assert!(corners.iter().any(|r| r.right() == px(80.) && r.left() == px(48.) && r.size.height == px(2.)));
-        assert!(corners.iter().any(|r| r.bottom() == px(40.) && r.top() == px(8.) && r.size.width == px(2.)));
+        assert!(
+            corners
+                .iter()
+                .any(|r| r.right() == px(80.) && r.left() == px(48.) && r.size.height == px(BOX_CORNER_THICKNESS))
+        );
+        assert!(
+            corners
+                .iter()
+                .any(|r| r.bottom() == px(40.) && r.top() == px(8.) && r.size.width == px(BOX_CORNER_THICKNESS))
+        );
         // The bottom-right one's arms run right and down from the right and bottom lines.
         assert!(corners.iter().any(|r| r.left() == px(120.) && r.right() == px(152.)));
         assert!(corners.iter().any(|r| r.top() == px(60.) && r.bottom() == px(92.)));
