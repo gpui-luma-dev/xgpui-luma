@@ -1,7 +1,5 @@
 //! Radix tabs, drawn from `.lss` (`style/tabs.lss`) with the look-wide `TabsStyle` tuning over them.
 
-use std::collections::HashMap;
-
 use std::sync::Arc;
 
 use gpui::{Hsla, SharedString};
@@ -108,35 +106,23 @@ pub struct TabsStyle {
 }
 
 impl Default for TabsStyle {
+    /// The built-in look's line tabs.
     fn default() -> Self {
-        Self::from_stylesheet(crate::look::embedded_common_stylesheet())
+        Self::from_look(&Look::built_in())
     }
 }
 
 impl TabsStyle {
-    pub(crate) fn from_stylesheet(stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet) -> Self {
-        let defaults = xgpui_luma::controls::tabs::default_tabs_theme();
-        let list = defaults.resolve_list(true);
-        let item = defaults.resolve_item(true, InteractionState::default());
-        let geometry = stylesheet.tabs.inspect_geometry(
-            "line",
-            xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
-                list_gap: xgpui_luma::theme::provenance::ResolvedMetric::constant(list.gap, "SDK tabs list gap"),
-                list_padding: xgpui_luma::theme::provenance::ResolvedMetric::constant(
-                    list.padding,
-                    "SDK tabs list padding",
-                ),
-                indicator_height: xgpui_luma::theme::provenance::ResolvedMetric::constant(
-                    item.indicator_height,
-                    "SDK tabs indicator height",
-                ),
-            },
-        );
+    /// `look`'s line tabs from its `.lss`: the list gap and indicator height at size 2.
+    pub(crate) fn from_look(look: &Look) -> Self {
+        let styled = styled_tabs(look, TabsVariant::Line, crate::RadixSize::Two);
+        let list = styled.list(true);
+        let item = styled.item(true, InteractionState::default());
         Self {
             baseline: Some(TabsBaselineStyle::default()),
-            indicator_height: geometry.indicator_height.value_px,
+            indicator_height: item.indicator_height,
             indicator_inset: 0.0,
-            gap: geometry.list_gap.value_px,
+            gap: list.gap,
             small: TabsMetrics { height: 32.0, padding_x: 8.0, font_size: 12.0, line_height: 16.0 },
             medium: TabsMetrics { height: 40.0, padding_x: 16.0, font_size: 14.0, line_height: 20.0 },
         }
@@ -165,15 +151,11 @@ pub fn tabs_geometry(
     let styled = styled_tabs(look, variant, size);
     let list = styled.list(true);
     let item = styled.item(true, InteractionState::default());
-    let geometry = look.common_stylesheet().tabs.inspect_geometry(
-        if surface { "surface" } else { "line" },
-        ResolvedTabsGeometry {
-            list_gap: ResolvedMetric::constant(list.gap, "tabs.lss list gap"),
-            list_padding: ResolvedMetric::constant(list.padding, "tabs.lss list padding"),
-            indicator_height: ResolvedMetric::constant(item.indicator_height, "tabs.lss indicator height"),
-        },
-    );
-    let mut geometry = geometry;
+    let mut geometry = ResolvedTabsGeometry {
+        list_gap: ResolvedMetric::constant(list.gap, "tabs.lss list gap"),
+        list_padding: ResolvedMetric::constant(list.padding, "tabs.lss list padding"),
+        indicator_height: ResolvedMetric::constant(item.indicator_height, "tabs.lss indicator height"),
+    };
     if surface {
         geometry.indicator_height = ResolvedMetric::constant(0.0, "Radix surface hides indicator");
     } else if let Some(style) = look.tabs_style_override() {
@@ -478,24 +460,5 @@ mod drag_tests {
                 look.resolve_role(crate::SemanticRole::Destructive).hsla(),
             );
         }
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_tabs_stylesheet() -> xgpui_luma::theme::stylesheet::TabsStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    use HashMap;
-    TabsStylesheet {
-        variants: HashMap::from([
-            (
-                "line".into(),
-                TabsGeometryStylesheet { list_gap: Some(0.0), list_padding: Some(0.0), ..Default::default() },
-            ),
-            (
-                "surface".into(),
-                TabsGeometryStylesheet { list_gap: Some(2.0), list_padding: Some(4.0), ..Default::default() },
-            ),
-        ]),
-        ..Default::default()
     }
 }

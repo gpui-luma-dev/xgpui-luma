@@ -13,9 +13,7 @@ mod icons;
 pub use icons::*;
 pub(crate) mod geometry;
 pub use geometry::*;
-pub use crate::controls::navigation::tabs::theme::{
-    TabsStylesheet, TabsGeometryStylesheet, TabsGeometry, ResolvedTabsGeometry,
-};
+pub use crate::controls::navigation::tabs::theme::ResolvedTabsGeometry;
 pub use crate::controls::range::slider::theme::{
     SliderStylesheet, SliderGeometryStylesheet, SliderGeometry, SliderGeometrySources, SliderDecoration,
     native_sdk_slider_recipes, define_sdk_slider,
@@ -99,7 +97,6 @@ common_stylesheet! {
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
-    tabs: TabsStylesheet,
     slider: SliderStylesheet,
     button: ButtonStylesheet,
     tooltip: TooltipStylesheet,
@@ -163,7 +160,6 @@ impl CommonStylesheet {
             autocomplete: AutocompleteStylesheet::native_default(),
             combobox: ComboBoxStylesheet::native_default(),
             search_selector: SearchSelectorStylesheet::native_default(),
-            tabs: TabsStylesheet::native_default(),
             shell: ShellStylesheet {
                 geometry: ShellGeometryStylesheet {
                     fullscreen_left_padding: Some(12.0),
@@ -550,7 +546,6 @@ impl CommonStylesheet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::theme::provenance::ResolvedMetric;
 
     #[test]
     fn external_adapter_preserves_the_complete_native_baseline() {
@@ -608,38 +603,6 @@ mod tests {
             if key == "common.slider.sizes.2.thumb_size"));
         let (value, _) = stylesheet.slider.inspect_geometry(&fallback);
         assert_eq!((value.width, value.thumb_size), (100.0, 17.0));
-    }
-
-    #[test]
-    fn geometry_rejects_invalid_lengths_and_unknown_fields() {
-        for section in ["geometry", "variants.line"] {
-            for field in ["list_gap", "list_padding", "indicator_height"] {
-                for value in ["-1.0", "nan", "inf", "1e100", "\"4px\""] {
-                    assert!(CommonStylesheet::parse(&format!("[common.tabs.{section}]\n{field} = {value}")).is_err());
-                }
-            }
-        }
-        assert!(CommonStylesheet::parse("[common.tabs.geometry]\nindictor_height = 3").is_err());
-    }
-
-    #[test]
-    fn geometry_preserves_fallback_and_variant_precedence() {
-        let config = CommonStylesheet::parse("[common.tabs.geometry]\nlist_gap = 7.0\nindicator_height = 3.0\n[common.tabs.variants.line]\nlist_gap = 0.0").unwrap();
-        let fallback = ResolvedTabsGeometry {
-            list_gap: ResolvedMetric::constant(4.0, "fallback gap"),
-            list_padding: ResolvedMetric::constant(2.0, "fallback padding"),
-            indicator_height: ResolvedMetric::constant(2.0, "fallback indicator"),
-        };
-        let line = config.tabs.inspect_geometry("line", fallback.clone());
-        assert_eq!(line.list_gap.value_px, 0.0);
-        assert!(
-            matches!(line.list_gap.source, crate::theme::provenance::MetricSource::Authored { key } if key == "common.tabs.variants.line.list_gap")
-        );
-        assert_eq!(line.list_padding.value_px, 2.0);
-        assert!(matches!(line.list_padding.source, crate::theme::provenance::MetricSource::Constant { .. }));
-        let other = config.tabs.inspect_geometry("other", fallback);
-        assert_eq!(other.list_gap.value_px, 7.0);
-        assert_eq!(other.indicator_height.value_px, 3.0);
     }
 
     #[test]

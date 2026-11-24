@@ -75,23 +75,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn custom_stylesheets_validate_tab_geometry() {
-        for value in ["-1", "nan", "inf"] {
-            assert!(
-                crate::stylesheet::StylesheetConfig::parse(&format!("[common.tabs.geometry]\nlist_padding = {value}"))
-                    .is_err()
-            );
-        }
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_tabs_stylesheet() -> xgpui_luma::theme::stylesheet::TabsStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    TabsStylesheet {
-        geometry: TabsGeometryStylesheet { indicator_height: Some(3.0), ..Default::default() },
-        ..Default::default()
-    }
 }

@@ -36,7 +36,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     let mut common = CommonStylesheet {
         motion,
         slider: native_shadcn_common_slider(),
-        tabs: crate::controls::tabs::native_tabs_stylesheet(),
         button: crate::controls::button::native_button_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),

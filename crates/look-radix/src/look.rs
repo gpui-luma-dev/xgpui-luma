@@ -107,7 +107,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
     let mut common = CommonStylesheet {
         motion,
-        tabs: crate::tabs::native_tabs_stylesheet(),
         slider: native_radix_slider(),
         button: crate::button::native_button_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
@@ -321,8 +320,7 @@ impl Look {
 
     /// Shared tab geometry, baseline, and indicator settings for this look.
     pub fn tabs_style(&self) -> crate::tabs::TabsStyle {
-        self.tabs_style_override()
-            .unwrap_or_else(|| crate::tabs::TabsStyle::from_stylesheet(&self.common_stylesheet()))
+        self.tabs_style_override().unwrap_or_else(|| crate::tabs::TabsStyle::from_look(self))
     }
 
     pub(crate) fn tabs_style_override(&self) -> Option<crate::tabs::TabsStyle> {
