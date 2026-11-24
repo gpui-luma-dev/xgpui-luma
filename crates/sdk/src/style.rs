@@ -70,6 +70,7 @@ sdk_sources! {
         "controls/selection/combobox/combobox.lss",
         "controls/selection/search_selector/search_selector.lss",
         "controls/overlay/popover_button/popover.lss",
+        "shell/title_bar.lss",
         "controls/overlay/floating_menu/floating_menu.lss",
         "controls/overlay/popup_menu/popup_menu.lss",
         "controls/overlay/context_menu/context_menu.lss",

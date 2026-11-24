@@ -53,7 +53,6 @@ pub(crate) mod toolbar_builder;
 pub(crate) mod toolbar_item;
 pub(crate) mod tree_view;
 pub(crate) mod tree_view_builder;
-pub(crate) mod typography;
 
 pub use accordion_builder::Accordion;
 pub use autocomplete_builder::Autocomplete;

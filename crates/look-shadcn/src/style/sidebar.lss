@@ -3,6 +3,9 @@
 // focused; muted when disabled. Muted extra-small section labels.
 
 sidebar {
+  container_background = first(css.sidebar, css.card, css.background)
+  container_border     = first(css.sidebar_border, css.border)
+
   part section {
     foreground  = css.muted_foreground
     font_size   = 12

@@ -20,8 +20,24 @@ pub struct ToolbarStyle {
     pub separator_height_ratio: f32,
 }
 impl Default for ToolbarStyle {
+    /// The built-in look's toolbar shell, from its `.lss` (`style/toolbar.lss`) at size 2.
     fn default() -> Self {
-        Self { padding_x: 4.0, padding_y: 3.0, gap: 6.0, radius: None, separator_height_ratio: 0.65 }
+        let look = Look::built_in();
+        let resolved = toolbar_binding(&look).resolve(&[], 1.0);
+        let root = resolved.root();
+        let number = |name| root.value(name).and_then(xgpui_luma::style::lss::Value::as_number).unwrap_or(0.0);
+        let control_height = look.control_sizes().for_size(look.size()).height;
+        Self {
+            padding_x: number("padding_x"),
+            padding_y: number("padding_y"),
+            gap: number("gap"),
+            radius: None,
+            separator_height_ratio: if control_height > 0.0 {
+                number("separator_height") / control_height
+            } else {
+                0.0
+            },
+        }
     }
 }
 

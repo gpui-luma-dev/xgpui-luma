@@ -816,9 +816,12 @@ mod stylesheet_tests {
     fn grouped_builders_capture_defaults_and_custom_styles() {
         let defaults = ControlGroupBuilder::<ControlGroupItem>::new("defaults");
         assert_eq!(defaults.model.stylesheet.as_ref(), CommonStylesheet::sdk_default());
-        let mut sheet = CommonStylesheet::parse("[common.shell.geometry]\nheight=41").unwrap();
+        let mut sheet = CommonStylesheet::parse("[common.row_limits.pager]\nmax=41").unwrap();
         let group = ControlGroupBuilder::<ControlGroupItem>::new("custom").stylesheet(&sheet);
-        sheet.shell.geometry.height = Some(53.0);
-        assert_eq!(group.model.stylesheet.shell.geometry.height, Some(41.0), "the builder keeps a snapshot");
+        sheet
+            .row_limits
+            .0
+            .insert("pager".into(), crate::theme::stylesheet::RowLimits { min: None, max: Some(53) });
+        assert_eq!(group.model.stylesheet.row_limits.resolve("pager").1, 41, "the builder keeps a snapshot");
     }
 }

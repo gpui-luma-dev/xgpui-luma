@@ -4,6 +4,12 @@
 
 tabs {
   indicator_height = exact(2)
+  // The line tabs' full-width baseline (`TabsStyle` can retune or hide it) and inset label padding.
+  baseline_color    = gray[5]
+  baseline_height   = exact(1)
+  content_padding_x = exact(8)
+  content_padding_y = exact(4)
+  size 1 { content_padding_x = exact(4)  content_padding_y = exact(2) }
 
   part root {
     :selected                  { indicator = radix.role.primary }

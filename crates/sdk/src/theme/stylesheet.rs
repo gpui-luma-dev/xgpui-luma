@@ -90,19 +90,10 @@ macro_rules! common_stylesheet {
     };
 }
 common_stylesheet! {
-    shell: ShellStylesheet,
     row_limits: RowLimitsStylesheet,
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
-}
-
-pub(crate) fn optional_length<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<f32>, D::Error> {
-    let value = Option::<f32>::deserialize(deserializer)?;
-    if value.is_some_and(|value| !value.is_finite() || value < 0.0) {
-        return Err(serde::de::Error::custom("geometry must be finite and nonnegative"));
-    }
-    Ok(value)
 }
 
 pub(crate) fn required_unit<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<f32, D::Error> {
@@ -134,18 +125,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            shell: ShellStylesheet {
-                geometry: ShellGeometryStylesheet {
-                    fullscreen_left_padding: Some(12.0),
-                    height: Some(34.0),
-                    macos_left_padding: Some(80.0),
-                    left_padding: Some(12.0),
-                    traffic_light_inset: Some(9.0),
-                    icon_size: Some(16.0),
-                    border_width: Some(1.0),
-                },
-                ..Default::default()
-            },
             row_limits: RowLimitsStylesheet(HashMap::from([
                 ("autocomplete".into(), RowLimits { min: Some(7), max: Some(14) }),
                 ("combobox".into(), RowLimits { min: Some(1), max: Some(7) }),
@@ -423,13 +402,13 @@ impl CommonStylesheet {
     /// ```
     /// use xgpui_luma::{
     ///     color::GamutMapping,
-    ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
+    ///     theme::{ThemeMode, stylesheet::{CommonStylesheet, RowLimits}},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    ///     sheet.shell.geometry.height = Some(41.0);
+    ///     sheet.row_limits.0.insert("pager".into(), RowLimits { min: Some(3), max: Some(9) });
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-    /// assert_eq!(tokens.stylesheet.shell.geometry.height, Some(41.0));
+    /// assert_eq!(tokens.stylesheet.row_limits.resolve("pager"), (3, 9));
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(
@@ -477,7 +456,7 @@ mod tests {
     fn external_adapter_preserves_the_complete_native_baseline() {
         assert_eq!(&CommonStylesheet::resolve_layers(&[]).unwrap(), CommonStylesheet::sdk_default());
         let native = CommonStylesheet::sdk_default().clone().with(|sheet| {
-            sheet.shell.geometry.left_padding = Some(0.0);
+            sheet.row_limits.0.insert("pager".into(), super::RowLimits { min: Some(0), max: Some(3) });
             sheet.font_features.0.insert("sidebar_section".into(), Vec::new());
         });
         let source = toml::to_string(&native).unwrap();

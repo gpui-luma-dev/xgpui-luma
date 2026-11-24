@@ -653,22 +653,25 @@ mod tests {
         let clone = look.clone();
         let fork = look.fork();
         let old = look.stylesheet_snapshot();
-        let original = old.shell.geometry.height;
+        let original = old.row_limits.resolve("pager").1;
         let revision = look.revision();
         let mut edited = look.common_stylesheet();
-        edited.shell.geometry.height = Some(123.0);
+        edited
+            .row_limits
+            .0
+            .insert("pager".into(), xgpui_luma::theme::stylesheet::RowLimits { min: None, max: Some(123) });
         // Editing the public owned copy must not mutate live readers.
-        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, original);
+        assert_eq!(look.stylesheet_snapshot().row_limits.resolve("pager").1, original);
         look.set_common_stylesheet(edited);
         assert!(look.revision() > revision);
-        assert_eq!(clone.stylesheet_snapshot().shell.geometry.height, Some(123.0));
-        assert_eq!(old.shell.geometry.height, original);
-        assert_eq!(fork.stylesheet_snapshot().shell.geometry.height, original);
+        assert_eq!(clone.stylesheet_snapshot().row_limits.resolve("pager").1, 123);
+        assert_eq!(old.row_limits.resolve("pager").1, original);
+        assert_eq!(fork.stylesheet_snapshot().row_limits.resolve("pager").1, original);
         let current = look.stylesheet_snapshot();
         look.set_mode(ThemeMode::Dark);
         assert!(Arc::ptr_eq(&current, &look.stylesheet_snapshot()));
         fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, Some(123.0));
+        assert_eq!(look.stylesheet_snapshot().row_limits.resolve("pager").1, 123);
     }
 
     #[test]

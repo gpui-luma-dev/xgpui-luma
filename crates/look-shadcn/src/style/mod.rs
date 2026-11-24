@@ -205,7 +205,7 @@ impl ShadcnTokens {
 
     fn resolver<'a>(&'a self, cx: &TokenCx<'_>) -> LookResolver<'a> {
         let (tokens, mode) = self.mode(cx);
-        LookResolver::new(&tokens.catalog, mode, "style").with_stylesheet(tokens.stylesheet())
+        LookResolver::new(&tokens.catalog, mode, "style")
     }
 }
 

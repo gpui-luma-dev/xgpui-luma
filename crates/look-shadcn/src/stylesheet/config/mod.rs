@@ -1,37 +1,18 @@
-use xgpui_luma::theme::{InteractionLayer};
 use serde::Deserialize;
 
-use super::selector::interaction_layer_key;
-
-pub use crate::controls::typography::{TypographyStylesheet, TypographyRule};
-pub use crate::controls::button::{ButtonStylesheet, ButtonMetricsRule};
-pub use crate::controls::toggle::ToggleStylesheet;
-pub use crate::controls::sidebar::{SidebarStylesheet, SidebarMetricsRule, SidebarContainerColorRule};
-
+/// The shadcn look's stylesheet: the common settings (`[common]`). Typography, sizes and colors are the
+/// look's `.lss`, so a sheet that still sets `typography`, `button`, `toggle` or `sidebar` is an error (#355).
 #[derive(Debug, Deserialize, Clone, Default, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct StylesheetConfig {
     #[serde(default)]
     pub common: xgpui_luma::theme::stylesheet::CommonStylesheet,
-    #[serde(default)]
-    pub typography: TypographyStylesheet,
-    #[serde(default)]
-    pub button: ButtonStylesheet,
-    #[serde(default)]
-    pub toggle: ToggleStylesheet,
-    #[serde(default, alias = "navigation_sidebar")]
-    pub sidebar: SidebarStylesheet,
 }
 
 impl StylesheetConfig {
     /// Construct bundled control definitions directly in Rust.
     pub fn native_default() -> Self {
-        Self {
-            common: super::native_shadcn_common_stylesheet(),
-            typography: TypographyStylesheet::native_default(),
-            button: ButtonStylesheet::native_default(),
-            toggle: ToggleStylesheet::native_default(),
-            sidebar: SidebarStylesheet::native_default(),
-        }
+        Self { common: super::native_shadcn_common_stylesheet() }
     }
 
     /// Parses stylesheet TOML without imposing an input-size limit.
@@ -43,68 +24,23 @@ impl StylesheetConfig {
     }
 }
 
-pub(crate) fn matches_optional_bool(selector: Option<bool>, value: bool) -> bool {
-    selector.is_none_or(|expected| expected == value)
-}
-
-pub(crate) fn matches_optional_layer(selector: Option<&str>, layer: InteractionLayer) -> bool {
-    selector.is_none_or(|expected| expected == interaction_layer_key(layer))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const TYPOGRAPHY_SNIPPET: &str = r#"
-[typography.semantic.h1]
-size = 44.0
-line_height = 52.0
-weight = 700.0
-
-[typography.scale.xs]
-size = 11.0
-line_height = 16.0
-weight = 500.0
-
-[typography.scale."2xl"]
-size = 20.0
-line_height = 28.0
-weight = 600.0
-"#;
-
-    const BUTTON_SNIPPET: &str = r#"
-[button.metrics.md]
-height = "metrics.control.md"
-padding_horizontal = 16.0
-font_size = 14.0
-icon_size = 16.0
-corner_radius = "radius"
-"#;
-
+    /// Typography, button, toggle and sidebar settings are the look's `.lss` now (#355): a sheet that sets
+    /// them is an error naming the section, not silently ignored.
     #[test]
-    fn parses_typography_rules() {
-        let config = StylesheetConfig::parse(TYPOGRAPHY_SNIPPET).expect("parse typography snippet");
-        assert_eq!(config.typography.semantic_rule("h1").expect("h1").size, 44.0);
-        assert_eq!(config.typography.scale_rule("xs").expect("xs").line_height, 16.0);
-        assert_eq!(config.typography.scale_rule("2xl").expect("2xl").weight, 600.0);
-    }
-
-    #[test]
-    fn parses_button_metrics() {
-        let config = StylesheetConfig::parse(BUTTON_SNIPPET).expect("parse snippet");
-        assert!(config.button.metrics.contains_key("md"));
-    }
-
-    /// Button and toggle colors and shadows come from `.lss`: rules for them are an error, not ignored.
-    #[test]
-    fn color_and_elevation_rules_are_rejected() {
-        for source in [
-            "[[button.color_rules]]\nbackground = \"primary\"",
-            "[[button.elevation_rules]]\nstyle = \"outline\"\nshadow = \"shadow-xs\"",
-            "[[toggle.elevation_rules]]\nshadow = \"shadow-sm\"",
-        ] {
-            let error = StylesheetConfig::parse(source).expect_err(source);
-            assert!(error.to_string().contains("rules"), "{source}: {error}");
+    fn removed_sections_are_rejected() {
+        for section in ["typography", "button", "toggle", "sidebar", "navigation_sidebar"] {
+            let error = StylesheetConfig::parse(&format!("[{section}.metrics.md]\nfont_size = 14")).expect_err(section);
+            assert!(error.to_string().contains(section), "{section}: {error}");
         }
+    }
+
+    #[test]
+    fn common_settings_still_parse() {
+        let config = StylesheetConfig::parse("[common.row_limits.pager]\nmax = 9").expect("parses");
+        assert_eq!(config.common.row_limits.resolve("pager").1, 9);
     }
 }

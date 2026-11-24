@@ -78,6 +78,26 @@ tokens {
     font { sans = first(css.font_sans, "System UI") }
   }
 
+  // Shadcn's text scale (Tailwind sizes) and heading roles, read by `ShadcnLook::typography_scale` and
+  // `typography_role`. A look-only group: the SDK's typography roles are separate.
+  text {
+    scale {
+      xs     = text(12, 16, 500)
+      sm     = text(13, 18, 400)
+      base   = text(14, 20, 400)
+      lg     = text(16, 24, 500)
+      xl     = text(18, 26, 600)
+      two_xl = text(20, 28, 600)
+    }
+    role {
+      h1 = text(32, 40, 700)
+      h2 = text(24, 32, 600)
+      h3 = text(18, 26, 600)
+      h4 = text(16, 24, 600)
+      p  = text(14, 20, 400)
+    }
+  }
+
   geometry {
     label_baseline = 1
     size sm { label_baseline = 0.5 }
