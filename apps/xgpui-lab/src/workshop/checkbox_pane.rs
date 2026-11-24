@@ -22,12 +22,11 @@ use xgpui_luma::theme::InteractionState;
 
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
-use super::catalog::COMPONENT_CATALOG;
 use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
 use super::state_icons::state_icon;
 use super::pane_type;
-use crate::screen::{LabMetrics, text};
+use crate::screen::text;
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
 const MIN_SIDE_WIDTH: f32 = 360.;
@@ -46,8 +45,8 @@ const STRIP_LABEL_WIDTH: f32 = 96.;
 /// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
 /// make it invalid.
 const UNREACHABLE_STATES: &[&str] = &["invalid"];
-/// The stage zoom's range and step: actual size up to five times.
-const ZOOM_RANGE: std::ops::Range<f32> = 1.0..5.0;
+/// The stage zoom's range and step: actual size up to ten times.
+const ZOOM_RANGE: std::ops::Range<f32> = 1.0..10.0;
 const ZOOM_STEP: f32 = 0.25;
 const ZOOM_SLIDER_WIDTH: f32 = 140.;
 /// The stage grid's square at actual size; it scales with the zoom, like the checkbox.
@@ -194,40 +193,26 @@ impl CheckboxPane {
         cx.notify();
     }
 
-    /// The page title in the lab screens' text roles: crumb (Workshop · group), title, the `.lss` control
-    /// with its file and layer, and the control's doc comment as the lede.
+    /// The page title in the lab screens' text roles: the title and the `.lss` file and layer the
+    /// control's rules come from.
     fn title(&self) -> AnyElement {
         let (look, chrome) = (self.look.as_ref(), self.look.chrome());
         let inspection = self.theme.inspect(&StyleKey::new(self.control), None);
         let source = lss_inspector::control_source(&inspection)
             .map_or_else(String::new, |(file, layer)| format!("{file} · layer {layer}"));
-        let group = COMPONENT_CATALOG
-            .iter()
-            .find(|g| g.entries.iter().any(|e| e.id == "checkbox"))
-            .map_or("", |g| g.label);
-        let metrics = LabMetrics::STANDARD;
         div()
             .debug_selector(|| "workshop-checkbox-title".into())
             .flex_none()
             .flex()
-            .flex_col()
-            .gap(metrics.header_gap)
+            .flex_wrap()
+            .items_baseline()
+            .gap(px(12.))
             .px(px(18.))
             .py(px(14.))
             .border_b_1()
             .border_color(chrome.border)
-            .child(text(look, pane_type::CRUMB, format!("Workshop · {group}")))
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_baseline()
-                    .gap(px(12.))
-                    .child(text(look, pane_type::TITLE, "Checkbox"))
-                    .child(text(look, pane_type::CONTROL, self.control.to_string()))
-                    .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text)),
-            )
-            .children(inspection.doc.map(|d| text(look, pane_type::LEDE, d)))
+            .child(text(look, pane_type::TITLE, "Checkbox"))
+            .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text))
             .into_any_element()
     }
 
@@ -1310,6 +1295,9 @@ mod tests {
         cx.run_until_parked();
         assert!(cx.debug_bounds("style-inspector-part-indicator").is_some(), "indicator section rendered");
         assert!(cx.debug_bounds("style-inspector-row-indicator-background").is_some(), "background row rendered");
+        assert!(cx.debug_bounds("style-inspector-box-indicator").is_none(), "box diagrams start off");
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
         assert!(cx.debug_bounds("style-inspector-box-indicator").is_some(), "indicator box diagram rendered");
 
         inspector.update(cx, |inspector, cx| inspector.expand("indicator", "background", cx));
@@ -1377,10 +1365,10 @@ mod tests {
         let dark = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
         assert_eq!(dark.height, zoomed.height, "a mode change keeps the zoom");
 
-        side.update(cx, |side, cx| side.zoom_to(9.0, cx));
+        side.update(cx, |side, cx| side.zoom_to(14.0, cx));
         cx.run_until_parked();
         let most = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
-        assert!((most.height - actual.height * 5.0).abs() <= px(1.), "zoom stops at 5×: {most:?}");
+        assert!((most.height - actual.height * 10.0).abs() <= px(1.), "zoom stops at 10×: {most:?}");
 
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
@@ -1826,9 +1814,12 @@ mod tests {
         let (_, pane, cx) = open(&mut app);
         let inspector = cx.update(|_, cx| pane.read(cx).inspector());
         let diagram = "style-inspector-box-root";
-        assert!(cx.debug_bounds(diagram).is_some(), "on by default");
-        // Clicking the switch turns the diagrams off.
+        assert!(cx.debug_bounds(diagram).is_none(), "off by default");
+        // Clicking the switch turns the diagrams on, and again turns them off.
         let switch = cx.debug_bounds("lss-inspector-box-model").expect("Box model switch");
+        cx.simulate_click(switch.center(), gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds(diagram).is_some(), "on: a diagram");
         cx.simulate_click(switch.center(), gpui::Modifiers::none());
         cx.run_until_parked();
         assert!(cx.debug_bounds(diagram).is_none(), "off: no diagram");
@@ -1886,6 +1877,8 @@ mod tests {
             |cx: &mut VisualTestContext| cx.debug_bounds("accordion-item-root").expect("root section").size.height;
         // Hiding the box models shortens the open root section in the same redraw, not on the next
         // pointer event (the accordion applies its measured height after the frame).
+        inspector.update(cx, |inspector, cx| inspector.show_box_models(true, cx));
+        cx.run_until_parked();
         let before = height(cx);
         inspector.update(cx, |inspector, cx| inspector.show_box_models(false, cx));
         cx.run_until_parked();
