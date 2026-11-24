@@ -14,19 +14,13 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::input_theme_inspectors::TextAreaThemeInspector;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
-use super::inspector::{TextAreaInspectorAdapter, TEXTAREA_INSPECTOR_SPEC};
 
 pub struct TextAreaControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<TextAreaExpositionLeftPane>,
-    theme_inspector: Entity<TextAreaThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -229,18 +223,6 @@ impl TextAreaControlExposition {
             strict_validation: false,
         });
 
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-textarea-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &TEXTAREA_INSPECTOR_SPEC,
-            TextAreaInspectorAdapter::shared(),
-        );
-
         let subscriptions = {
             text_area.clone().on_event(cx, {
                 let event_stream = event_stream.downgrade();
@@ -291,7 +273,7 @@ let Some(text_area) = text_area.upgrade() else { return; };
             });
         }
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split, _subscriptions: subscriptions }
+        Self { look, entry, left_pane, _subscriptions: subscriptions }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -302,18 +284,9 @@ let Some(text_area) = text_area.upgrade() else { return; };
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -333,7 +306,7 @@ impl Render for TextAreaControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

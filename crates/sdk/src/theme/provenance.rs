@@ -1,7 +1,7 @@
 //! Look-agnostic resolved values and provenance.
 //!
 //! Paint paths should use [`ResolvedColor::hsla`]. Inspect / Studio paths keep the
-//! [`ColorSource`] (and metric/typography sources) so callers can explain origin
+//! [`ColorSource`] so callers can explain origin
 //! without knowing whether the look is CSS-, scale-, or constant-backed.
 //!
 //! # Authoring a look
@@ -65,36 +65,6 @@ pub enum ColorSource {
     },
 }
 
-/// A resolved length (CSS px / logical px) plus provenance.
-#[derive(Clone, Debug)]
-pub struct ResolvedMetric {
-    pub value_px: f32,
-    pub source: MetricSource,
-}
-
-#[derive(Clone, Debug)]
-pub enum MetricSource {
-    Authored { key: String },
-    ScaleStep { family: String, step: u8 },
-    Derived { note: String },
-    Scaffold { path: String },
-    Constant { label: String },
-}
-
-/// A resolved typography token (usually a font family or size label) plus provenance.
-#[derive(Clone, Debug)]
-pub struct ResolvedTypography {
-    pub value: String,
-    pub source: TypographySource,
-}
-
-#[derive(Clone, Debug)]
-pub enum TypographySource {
-    Authored { key: String },
-    Scaffold { path: String },
-    Constant { label: String },
-}
-
 impl ResolvedColor {
     pub fn new(value: Hsla, source: ColorSource) -> Self {
         Self { value, source }
@@ -118,34 +88,6 @@ impl ResolvedColor {
 
     pub fn hsla(&self) -> Hsla {
         self.value
-    }
-}
-
-impl ResolvedMetric {
-    pub fn new(value_px: f32, source: MetricSource) -> Self {
-        Self { value_px, source }
-    }
-
-    pub fn constant(value_px: f32, label: impl Into<String>) -> Self {
-        Self { value_px, source: MetricSource::Constant { label: label.into() } }
-    }
-
-    pub fn authored(value_px: f32, key: impl Into<String>) -> Self {
-        Self { value_px, source: MetricSource::Authored { key: key.into() } }
-    }
-}
-
-impl ResolvedTypography {
-    pub fn new(value: impl Into<String>, source: TypographySource) -> Self {
-        Self { value: value.into(), source }
-    }
-
-    pub fn constant(value: impl Into<String>, label: impl Into<String>) -> Self {
-        Self { value: value.into(), source: TypographySource::Constant { label: label.into() } }
-    }
-
-    pub fn authored(value: impl Into<String>, key: impl Into<String>) -> Self {
-        Self { value: value.into(), source: TypographySource::Authored { key: key.into() } }
     }
 }
 

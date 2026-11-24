@@ -12,11 +12,7 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::StateMotionReport;
-use super::switch_theme_inspector::SwitchThemeInspector;
 use super::template::render_control_exposition_card;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,8 +37,6 @@ pub struct SwitchControlExposition {
     primary_switch: Switch,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<SwitchExpositionLeftPane>,
-    theme_inspector: Entity<SwitchThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct SwitchExpositionLeftPane {
@@ -133,34 +127,6 @@ impl SwitchControlExposition {
             primary_switch: primary_switch.clone(),
             event_stream: event_stream.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-switch-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::SWITCH_INSPECTOR_SPEC,
-            super::inspector::switch_inspector(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(StateMotionReport::new(
-                    "State",
-                    [("Primary", primary_switch.clone()), ("Secondary", secondary_switch.clone())],
-                    |switch| switch.motion_enabled(),
-                    |switch| switch.current_transition(),
-                    // The look's `.lss` `transition` toward on (the switch has no motion defaults).
-                    |look| {
-                        look.switch_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
-                            .transition(&xgpui_luma::controls::switch::SwitchData::new(true))
-                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
-                    },
-                )),
-                cx,
-            );
-        });
         bind_switch_events(
             &secondary_switch,
             SwitchVariant::Secondary,
@@ -176,16 +142,7 @@ impl SwitchControlExposition {
             cx,
         );
 
-        Self {
-            look,
-            entry,
-            secondary_switch,
-            primary_switch,
-            event_stream,
-            left_pane,
-            theme_inspector,
-            inspector_split,
-        }
+        Self { look, entry, secondary_switch, primary_switch, event_stream, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -196,14 +153,6 @@ impl SwitchControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for switch in [&self.secondary_switch, &self.primary_switch] {
@@ -211,21 +160,20 @@ impl SwitchControlExposition {
         }
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
 
 impl Render for SwitchControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-switch-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

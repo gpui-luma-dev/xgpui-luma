@@ -11,19 +11,13 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector::{FloatingMenuInspectorAdapter, FLOATING_MENU_INSPECTOR_SPEC};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::standalone_theme_inspectors::FloatingMenuThemeInspector;
 use super::template::render_control_exposition_card;
 
 pub struct FloatingMenuControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<FloatingMenuExpositionLeftPane>,
-    theme_inspector: Entity<FloatingMenuThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct FloatingMenuExpositionLeftPane {
@@ -75,19 +69,8 @@ impl FloatingMenuControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
         let entry = *catalog_entry("floating-menu").expect("floating-menu catalog entry");
         let left_pane = cx.new(|_| FloatingMenuExpositionLeftPane { look: look.clone(), entry });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-floating-menu-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &FLOATING_MENU_INSPECTOR_SPEC,
-            FloatingMenuInspectorAdapter::shared(),
-        );
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -98,18 +81,9 @@ impl FloatingMenuControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -122,7 +96,7 @@ impl Render for FloatingMenuControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

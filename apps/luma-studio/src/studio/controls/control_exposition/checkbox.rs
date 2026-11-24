@@ -11,11 +11,7 @@ use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::checkbox_theme_inspector::CheckboxThemeInspector;
-use super::inspector::StateMotionReport;
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
 
@@ -45,8 +41,6 @@ pub struct CheckboxControlExposition {
     indicator_only_unchecked: Checkbox,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<CheckboxExpositionLeftPane>,
-    theme_inspector: Entity<CheckboxThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct CheckboxExpositionLeftPane {
@@ -183,39 +177,6 @@ impl CheckboxControlExposition {
             indicator_only_unchecked: indicator_only_unchecked.clone(),
             event_stream: event_stream.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-checkbox-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::CHECKBOX_INSPECTOR_SPEC,
-            super::inspector::checkbox_inspector(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(StateMotionReport::new(
-                    "State",
-                    [
-                        ("Secondary", secondary_checkbox.clone()),
-                        ("Primary", primary_checkbox.clone()),
-                        ("Indicator only, checked", indicator_only_checked.clone()),
-                        ("Indicator only", indicator_only_unchecked.clone()),
-                    ],
-                    |checkbox| checkbox.motion_enabled(),
-                    |checkbox| checkbox.current_transition(),
-                    // The look's `.lss` `transition` toward checked (the checkbox has no motion defaults).
-                    |look| {
-                        look.checkbox_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
-                            .transition(&xgpui_luma::controls::checkbox::CheckboxData::new(true))
-                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
-                    },
-                )),
-                cx,
-            );
-        });
         bind_checkbox_events(
             &secondary_checkbox,
             CheckboxVariant::Secondary,
@@ -254,8 +215,6 @@ impl CheckboxControlExposition {
             indicator_only_unchecked,
             event_stream,
             left_pane,
-            theme_inspector,
-            inspector_split,
         }
     }
 
@@ -265,14 +224,6 @@ impl CheckboxControlExposition {
 
     pub fn fills_viewport(&self) -> bool {
         true
-    }
-
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
     }
 
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
@@ -287,21 +238,20 @@ impl CheckboxControlExposition {
         }
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
 
 impl Render for CheckboxControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-checkbox-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

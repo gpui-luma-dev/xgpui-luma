@@ -1,4 +1,3 @@
-use crate::theme::provenance::MetricSource;
 use crate::theme::stylesheet::{CommonStylesheet, PaletteRole, SliderMotionStylesheet, TransitionSpec};
 use std::collections::HashMap;
 
@@ -33,24 +32,6 @@ pub fn default_slider_theme() -> Arc<dyn SliderTheme> {
     static THEME: OnceLock<Arc<dyn SliderTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledSliderTheme::sdk())).clone()
-}
-
-/// Concrete layout values shared by rendering and inspection.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct SliderGeometry {
-    pub width: f32,
-    pub height: f32,
-    pub track_height: f32,
-    pub thumb_size: f32,
-}
-
-/// Inspector descriptions are separate from the geometry used for painting.
-#[derive(Clone, Debug)]
-pub struct SliderGeometrySources {
-    pub width: MetricSource,
-    pub height: MetricSource,
-    pub track_height: MetricSource,
-    pub thumb_size: MetricSource,
 }
 
 /// Nonlinear slider presentation metrics, in logical pixels and unit opacity.

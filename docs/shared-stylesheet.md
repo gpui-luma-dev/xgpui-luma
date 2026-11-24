@@ -52,9 +52,8 @@ look restyles it in its own files and writes its sizes there (`size sm { … }`,
 common stylesheet holds only settings: row limits, palette recipes, font features, icons and motion.
 
 Controls resolve sparse overrides into concrete geometry containing plain pixel
-values. Inspector projections are obtained separately through `inspect_geometry`;
-rendering does not need to read `ResolvedMetric.value_px`. Sparse fields remain
-optional so missing values inherit, while explicit zero remains an override.
+values. Sparse fields remain optional so missing values inherit, while explicit zero
+remains an override.
 
 ## Source organization
 

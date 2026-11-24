@@ -6,5 +6,4 @@ mod event_log_view;
 mod panel;
 pub mod workbench_layout;
 
-pub(crate) use control_exposition::inspector_split::LumaStudioAppHandle;
 pub use panel::ControlsPanel;

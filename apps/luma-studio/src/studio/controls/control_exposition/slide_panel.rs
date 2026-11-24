@@ -10,8 +10,8 @@ use gpui::{
 use xgpui_luma::controls::button::ButtonEventExt;
 use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::slide_panel::{
-    SlidePanelEdge, SlidePanelMotion, SlidePanelOverlayHandlers, SlidePanelResizeDrag, SlidePanelResizeHandlers,
-    SlidePanelSizeConfig, SlidePanelState, SlidePanelTopAnchor, render_slide_panel_overlay,
+    SlidePanelEdge, SlidePanelOverlayHandlers, SlidePanelResizeDrag, SlidePanelResizeHandlers, SlidePanelSizeConfig,
+    SlidePanelState, SlidePanelTopAnchor, render_slide_panel_overlay,
 };
 use xgpui_luma::controls::toggle::{Toggle, ToggleEvent};
 use xgpui_luma::{flow, hstack, vstack};
@@ -22,11 +22,7 @@ use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{ViewportInspectorPane, spawn_viewport_inspector, sync_viewport_inspector};
-use super::inspector::{MotionOnlyInspector, SLIDE_PANEL_INSPECTOR_SPEC, slide_panel_motion_report};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::theme_inspector::ThemeInspector;
 use super::template::render_control_exposition_card;
 
 const SIDE_PANEL_DEFAULT_WIDTH: f32 = 360.0;
@@ -77,8 +73,6 @@ pub struct SlidePanelControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<SlidePanelExpositionLeftPane>,
-    theme_inspector: Entity<ThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct SlidePanelExpositionLeftPane {
@@ -108,32 +102,8 @@ impl SlidePanelControlExposition {
             demo: demo.clone(),
             event_stream: event_stream.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-slide-panel-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SLIDE_PANEL_INSPECTOR_SPEC,
-            MotionOnlyInspector::shared(),
-        );
-        let demo_for_motion = demo.clone();
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                slide_panel_motion_report([(
-                    "Drawer",
-                    Arc::new(move |cx: &App| {
-                        let demo = demo_for_motion.read(cx);
-                        (demo.state.is_motion_enabled(), demo.state.motion_profile())
-                    }) as Arc<dyn Fn(&App) -> (bool, SlidePanelMotion) + Send + Sync>,
-                )]),
-                cx,
-            );
-        });
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -144,18 +114,9 @@ impl SlidePanelControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -171,14 +132,14 @@ impl SlidePanelExpositionLeftPane {
 
 impl Render for SlidePanelControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-slide-panel-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

@@ -14,12 +14,8 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::color_exposition_common::{format_slider_event, render_demo_section, render_field_card, slider_grid_stack};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{ViewportInspectorPane, spawn_viewport_inspector, sync_viewport_inspector};
-use super::inspector::{MotionOnlyInspector, slider_motion_report};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
-use super::theme_inspector::ThemeInspector;
 
 const CARD_WIDTH: f32 = 360.0;
 
@@ -27,52 +23,13 @@ pub struct ColorSliderRevealedControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ColorSliderRevealedPane>,
-    theme_inspector: Entity<ThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 impl ColorSliderRevealedControlExposition {
     pub fn new(cx: &mut Context<Self>, look: Arc<ShadcnLook>) -> Self {
         let entry = *catalog_entry("color-slider-revealed").expect("color-slider-revealed catalog entry");
         let left_pane = cx.new(|cx| ColorSliderRevealedPane::new(cx, look.clone()));
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-color-slider-revealed-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::SLIDE_PANEL_INSPECTOR_SPEC,
-            MotionOnlyInspector::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            let pane = left_pane.read(cx);
-            let samples = [
-                ("XSmall", pane.size_xsmall.clone()),
-                ("Small", pane.size_small.clone()),
-                ("Medium", pane.size_medium.clone()),
-                ("Large", pane.size_large.clone()),
-                ("Rounded", pane.rounded_full.clone()),
-                ("Rounded 8", pane.rounded_8.clone()),
-                ("Square", pane.rounded_square.clone()),
-                ("Thumb default", pane.thumb_default.clone()),
-                ("Thumb square", pane.thumb_square.clone()),
-                ("Thumb bar", pane.thumb_bar.clone()),
-                ("Edge default", pane.edge_default.clone()),
-                ("Edge square", pane.edge_square.clone()),
-                ("Edge large", pane.edge_large.clone()),
-                ("RGB", pane.interp_rgb.clone()),
-                ("HSL", pane.interp_hsl.clone()),
-                ("Lab", pane.interp_lab.clone()),
-                ("Hue", pane.delegate_hue.clone()),
-                ("Alpha", pane.delegate_alpha.clone()),
-                ("Red", pane.delegate_red.clone()),
-                ("Saturation", pane.delegate_saturation.clone()),
-            ];
-            inspector.set_motion_report(slider_motion_report(samples), cx);
-        });
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -83,32 +40,23 @@ impl ColorSliderRevealedControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
 
 impl Render for ColorSliderRevealedControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-color-slider-revealed-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

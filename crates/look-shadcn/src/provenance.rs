@@ -1,4 +1,4 @@
-//! Provenance types for inspect-path color resolution. Paint-path code uses [`ResolvedColor::hsla`] only.
+//! Color resolution with source provenance. Paint-path code uses [`ResolvedColor::hsla`] only.
 
 use gpui::{Hsla, hsla};
 
@@ -31,34 +31,6 @@ impl ResolvedSourceColor {
             },
         )
     }
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedMetric {
-    pub value_px: f32,
-    pub source: MetricSource,
-}
-
-#[derive(Clone, Debug)]
-pub enum MetricSource {
-    CssVar { token: String },
-    Derived { note: String },
-    Scaffold { path: String },
-    Constant { label: String },
-}
-
-#[derive(Clone, Debug)]
-pub enum TypographySource {
-    Constant { label: String },
-    Derived { note: String },
-    CssVar { token: String },
-    Scaffold { path: String },
-}
-
-#[derive(Clone, Debug)]
-pub struct ResolvedTypography {
-    pub value: String,
-    pub source: TypographySource,
 }
 
 #[derive(Clone, Debug)]
@@ -253,15 +225,7 @@ impl ResolvedColor {
         Self { value: hsla(0.0, 0.0, 0.0, 0.0), source: ColorSource::Transparent }
     }
 
-    pub fn fallback_foreground() -> Self {
-        Self { value: hsla(0.0, 0.0, 0.0, 1.0), source: ColorSource::CssVar { token: "foreground".to_string() } }
-    }
-
     pub fn hsla(&self) -> Hsla {
-        self.value
-    }
-
-    pub fn into_hsla(self) -> Hsla {
         self.value
     }
 }

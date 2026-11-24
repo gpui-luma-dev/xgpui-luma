@@ -17,15 +17,8 @@ use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn::{LumaTypographyExt, ShadcnLook, ShadcnTextRole, ShadcnTextSize};
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::color_chrome_exposition::{
-    color_chrome_set_viewport_size, spawn_color_chrome_viewport, sync_color_chrome_viewport, ColorChromeViewportPane,
-};
-use super::color_chrome_inspector::ColorChromeInspector;
 use super::color_exposition_common::slider_labeled_row;
 use super::event_stream::ControlEventStream;
-use super::inspector::color_chrome::COLOR_SLIDER_CHROME_PROFILES;
-use super::inspector::slider_motion_report;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
 
@@ -36,8 +29,6 @@ pub struct ColorSliderControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ColorSliderExpositionLeftPane>,
-    chrome_inspector: Entity<ColorChromeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ColorSliderExpositionLeftPane {
@@ -309,34 +300,7 @@ impl ColorSliderControlExposition {
             }
         });
 
-        let ColorChromeViewportPane { chrome_inspector, inspector_split } = spawn_color_chrome_viewport(
-            cx,
-            look.clone(),
-            "controls-doc-color-slider-pane",
-            "controls-doc-color-slider-chrome",
-            COLOR_SLIDER_CHROME_PROFILES,
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-        );
-        chrome_inspector.update(cx, |inspector, cx| {
-            let pane = left_pane.read(cx);
-            let samples = [
-                ("Hue", pane.hue_slider.clone()),
-                ("Saturation", pane.saturation_slider.clone()),
-                ("Alpha", pane.alpha_slider.clone()),
-                ("RGB", pane.gradient_rgb.clone()),
-                ("HSL", pane.gradient_hsl.clone()),
-                ("Lab", pane.gradient_lab.clone()),
-                ("Red", pane.red_slider.clone()),
-                ("Green", pane.green_slider.clone()),
-                ("Blue", pane.blue_slider.clone()),
-            ];
-            inspector.set_motion_report(slider_motion_report(samples), cx);
-        });
-
-        Self { look, entry, left_pane, chrome_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -347,18 +311,9 @@ impl ColorSliderControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        color_chrome_set_viewport_size(&self.inspector_split, size, cx);
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_color_chrome_viewport(look, &self.chrome_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -371,7 +326,7 @@ impl Render for ColorSliderControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

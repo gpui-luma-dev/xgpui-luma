@@ -13,8 +13,6 @@
 use gpui::{Div, ElementId, Stateful};
 use xgpui_luma::controls::listbox::ListBoxItemState;
 
-use crate::provenance::ResolvedColor;
-
 impl crate::ShadcnLook {
     /// Styled, content-free row surface. Attach SDK `ListBoxBinding` for input;
     /// the host supplies arbitrary content and all layout dimensions.
@@ -29,34 +27,5 @@ impl crate::ShadcnLook {
 
     pub fn listbox_row(&self, id: impl Into<ElementId>, state: ListBoxItemState, focus_visible: bool) -> Stateful<Div> {
         self.styled_listbox().paint_row(id, state, focus_visible)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ListBoxListColorTable {
-    pub background: ResolvedColor,
-    pub border: ResolvedColor,
-    pub divider: ResolvedColor,
-}
-
-impl ListBoxListColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            background: ResolvedColor::transparent(),
-            border: ResolvedColor::fallback_foreground(),
-            divider: ResolvedColor::fallback_foreground(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct ListBoxRowColorTable {
-    pub label_color: ResolvedColor,
-    pub background: ResolvedColor,
-}
-
-impl ListBoxRowColorTable {
-    pub fn fallback() -> Self {
-        Self { label_color: ResolvedColor::fallback_foreground(), background: ResolvedColor::transparent() }
     }
 }

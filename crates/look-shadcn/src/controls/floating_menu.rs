@@ -14,42 +14,6 @@ use crate::size::ShadcnSize;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::ResolvedColor;
-
-#[derive(Clone, Debug)]
-pub struct FloatingMenuColorTable {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: ResolvedColor,
-    pub item_hover_background: ResolvedColor,
-    pub item_hover_foreground: ResolvedColor,
-    pub item_disabled_foreground: ResolvedColor,
-}
-
-impl FloatingMenuColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            background: ResolvedColor::transparent(),
-            foreground: ResolvedColor::fallback_foreground(),
-            border: ResolvedColor::fallback_foreground(),
-            item_hover_background: ResolvedColor::transparent(),
-            item_hover_foreground: ResolvedColor::fallback_foreground(),
-            item_disabled_foreground: ResolvedColor::fallback_foreground(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct GhostTriggerColorTable {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-}
-
-impl GhostTriggerColorTable {
-    pub fn fallback() -> Self {
-        Self { background: ResolvedColor::transparent(), foreground: ResolvedColor::fallback_foreground() }
-    }
-}
 
 /// The Shadcn floating menu at `size`, drawn from `.lss` (`style/floating_menu.lss`) for `mode`'s catalog.
 pub fn floating_menu_look(mode: &ShadcnModeTokens, theme_mode: ThemeMode, size: ShadcnSize) -> FloatingMenuLook {

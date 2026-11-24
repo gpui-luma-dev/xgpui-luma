@@ -4,40 +4,6 @@ use xgpui_luma::controls::stepper::StepperLook;
 use crate::size::ShadcnSize;
 
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::ColorSource;
-use crate::provenance::ResolvedColor;
-
-#[derive(Clone, Debug)]
-pub struct StepperColorTable {
-    pub complete_bg: ResolvedColor,
-    pub complete_fg: ResolvedColor,
-    pub in_progress_bg: ResolvedColor,
-    pub in_progress_fg: ResolvedColor,
-    pub incomplete_bg: ResolvedColor,
-    pub incomplete_border: ResolvedColor,
-    pub incomplete_fg: ResolvedColor,
-    pub track_active: ResolvedColor,
-    pub track_muted: ResolvedColor,
-}
-
-impl StepperColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            complete_bg: ResolvedColor::fallback_foreground(),
-            complete_fg: ResolvedColor::transparent(),
-            in_progress_bg: ResolvedColor::fallback_foreground(),
-            in_progress_fg: ResolvedColor::transparent(),
-            incomplete_bg: ResolvedColor::transparent(),
-            incomplete_border: ResolvedColor {
-                value: gpui::hsla(0.0, 0.0, 0.0, 0.0),
-                source: ColorSource::Transparent,
-            },
-            incomplete_fg: ResolvedColor::fallback_foreground(),
-            track_active: ResolvedColor::fallback_foreground(),
-            track_muted: ResolvedColor { value: gpui::hsla(0.0, 0.0, 0.0, 0.0), source: ColorSource::Transparent },
-        }
-    }
-}
 
 /// The Shadcn stepper at `size`, drawn from `.lss` (`style/stepper.lss`) for `mode`'s catalog.
 pub fn stepper_look(mode: &ShadcnModeTokens, enabled: bool, size: ShadcnSize) -> StepperLook {
@@ -111,35 +77,5 @@ mod tests {
         let large = stepper_look(&mode, true, crate::ShadcnSize::Lg);
 
         assert!(small.step_badge_size < large.step_badge_size);
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct StepperMetricTable {
-    pub step_badge_size: crate::ResolvedMetric,
-    pub track_thickness: crate::ResolvedMetric,
-}
-
-pub fn resolve_stepper_metrics(
-    mode: &crate::ShadcnModeTokens,
-    theme_mode: xgpui_luma::theme::ThemeMode,
-) -> StepperMetricTable {
-    resolve_stepper_metrics_for_size(mode, theme_mode, crate::ShadcnSize::Md)
-}
-
-/// Resolve the selected look's Stepper dimensions and their sources for a size.
-pub fn resolve_stepper_metrics_for_size(
-    mode: &crate::ShadcnModeTokens,
-    _theme_mode: xgpui_luma::theme::ThemeMode,
-    size: crate::ShadcnSize,
-) -> StepperMetricTable {
-    use crate::tables::metrics::helpers::derived_metric;
-
-    let look = crate::controls::stepper::stepper_look(mode, true, size);
-
-    // What the `.lss` resolves is what's drawn; `[common.stepper]` is no longer a stylesheet section.
-    StepperMetricTable {
-        step_badge_size: derived_metric("stepper badge size", look.step_badge_size),
-        track_thickness: derived_metric("stepper track thickness", look.track_thickness),
     }
 }

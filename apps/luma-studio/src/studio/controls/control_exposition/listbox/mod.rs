@@ -12,9 +12,8 @@ pub(super) mod vertical;
 
 use std::sync::Arc;
 
-use gpui::{App, Context, Entity, Render, Window, div, prelude::*, px};
+use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
 use xgpui_luma::vstack;
-use xgpui_luma::controls::listbox::ListBoxMotion;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use horizontal::HorizontalListExample;
@@ -25,11 +24,7 @@ use variable_height::VariableHeightExample;
 use transfer::TransferExample;
 use vertical::VerticalListExample;
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::collection_theme_inspectors::ListBoxThemeInspector;
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector::{ListBoxInspectorAdapter, LISTBOX_INSPECTOR_SPEC, listbox_motion_report};
-use super::inspector_split::InspectorSplitShell;
 use super::model::ControlExpositionLayout;
 use super::template::render_control_exposition_card;
 
@@ -52,8 +47,6 @@ pub struct ListBoxControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ListBoxExpositionLeftPane>,
-    theme_inspector: Entity<ListBoxThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ListBoxExpositionLeftPane {
@@ -130,36 +123,7 @@ impl ListBoxControlExposition {
             });
             ListBoxExpositionLeftPane { look: look.clone(), entry, selection_controls, vertical, horizontal, transfer, spectrum, variable_height, filtering, event_stream }
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-listbox-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &LISTBOX_INSPECTOR_SPEC,
-            ListBoxInspectorAdapter::shared(),
-        );
-        let vertical = left_pane.read(cx).vertical.clone();
-        let horizontal = left_pane.read(cx).horizontal.clone();
-        let spectrum = left_pane.read(cx).spectrum.clone();
-        let filtering = left_pane.read(cx).filtering.clone();
-        let variable_height = left_pane.read(cx).variable_height.clone();
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                listbox_motion_report([
-                    ("Vertical", list_motion(vertical, VerticalListExample::captured_motion)),
-                    ("Horizontal", list_motion(horizontal, HorizontalListExample::captured_motion)),
-                    ("Spectrum", list_motion(spectrum, SpectrumListExample::captured_motion)),
-                    ("Filtering and sorting", list_motion(filtering, FilteringExample::captured_motion)),
-                    ("Content · eager", list_motion_index(variable_height.clone(), 0)),
-                    ("Content · virtualized", list_motion_index(variable_height, 1)),
-                ]),
-                cx,
-            );
-        });
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -167,12 +131,6 @@ impl ListBoxControlExposition {
     }
     pub fn fills_viewport(&self) -> bool {
         true
-    }
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
     }
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
@@ -188,23 +146,8 @@ impl ListBoxControlExposition {
             pane.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
             cx.notify();
         });
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
-}
-
-fn list_motion<T: 'static>(
-    entity: Entity<T>,
-    read: fn(&T) -> (bool, ListBoxMotion),
-) -> Arc<dyn Fn(&App) -> (bool, ListBoxMotion) + Send + Sync> {
-    Arc::new(move |cx| read(entity.read(cx)))
-}
-
-fn list_motion_index(
-    example: Entity<VariableHeightExample>,
-    index: usize,
-) -> Arc<dyn Fn(&App) -> (bool, ListBoxMotion) + Send + Sync> {
-    Arc::new(move |cx| example.read(cx).captured_motions(cx)[index].clone())
 }
 
 impl Render for ListBoxControlExposition {
@@ -214,6 +157,6 @@ impl Render for ListBoxControlExposition {
             .size_full()
             .min_h(px(0.0))
             .min_w(px(0.0))
-            .child(self.inspector_split.clone())
+            .child(self.left_pane.clone())
     }
 }
