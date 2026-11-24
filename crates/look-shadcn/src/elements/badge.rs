@@ -9,9 +9,6 @@ use xgpui_luma::infra::icon::lucide_icon;
 
 use crate::look::ShadcnLook;
 use crate::size::ShadcnSize;
-use crate::provenance::ColorSource;
-use crate::provenance::ResolvedColor;
-use crate::tokens::ShadcnToken;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum BadgeVariant {
@@ -50,64 +47,7 @@ pub struct Badge {
     icon_placement: BadgeIconPlacement,
 }
 
-#[derive(Clone, Debug)]
-pub struct BadgeColorTable {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: Option<ResolvedColor>,
-}
-
 pub use xgpui_luma::controls::badge::BadgeLook;
-
-impl BadgeColorTable {
-    pub fn fallback(look: &ShadcnLook, variant: BadgeVariant) -> Self {
-        let (background, foreground, border) = match variant {
-            BadgeVariant::Default => (
-                ResolvedColor {
-                    value: look.color(ShadcnToken::Primary),
-                    source: ColorSource::Derived { note: "badge fallback primary".into() },
-                },
-                ResolvedColor {
-                    value: look.color(ShadcnToken::PrimaryForeground),
-                    source: ColorSource::Derived { note: "badge fallback primary-foreground".into() },
-                },
-                None,
-            ),
-            BadgeVariant::Secondary => (
-                ResolvedColor {
-                    value: look.color(ShadcnToken::Secondary),
-                    source: ColorSource::Derived { note: "badge fallback secondary".into() },
-                },
-                ResolvedColor {
-                    value: look.color(ShadcnToken::SecondaryForeground),
-                    source: ColorSource::Derived { note: "badge fallback secondary-foreground".into() },
-                },
-                None,
-            ),
-            BadgeVariant::Outline => (
-                ResolvedColor::transparent(),
-                ResolvedColor {
-                    value: look.color(ShadcnToken::Foreground),
-                    source: ColorSource::Derived { note: "badge fallback foreground".into() },
-                },
-                Some(ResolvedColor {
-                    value: look.color(ShadcnToken::Border),
-                    source: ColorSource::Derived { note: "badge fallback border".into() },
-                }),
-            ),
-            BadgeVariant::Ghost => (
-                ResolvedColor::transparent(),
-                ResolvedColor {
-                    value: look.color(ShadcnToken::Foreground),
-                    source: ColorSource::Derived { note: "badge fallback foreground".into() },
-                },
-                None,
-            ),
-        };
-
-        Self { background, foreground, border }
-    }
-}
 
 impl Badge {
     pub fn new(look: ShadcnLook, label: impl Into<SharedString>) -> Self {
@@ -229,6 +169,7 @@ impl ShadcnLook {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tokens::ShadcnToken;
 
     fn sample_look() -> ShadcnLook {
         crate::test_support::fallback_look()

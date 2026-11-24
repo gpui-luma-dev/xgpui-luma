@@ -11,8 +11,6 @@ keywords = ["xgpui", "gpui", "shadcn", "themes", "widgets"]
 categories = ["gui"]
 
 [features]
-# Optional inspection data and formatting for developer tools.
-inspect = []
 # Headless ListBox composition and DnD dispatch tests.
 test-support = ["xgpui-luma/test-support"]
 

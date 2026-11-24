@@ -4,26 +4,6 @@ use xgpui_luma::controls::autocomplete::AutocompleteLook;
 use xgpui_luma::theme::ThemeMode;
 
 use crate::mode::ShadcnModeTokens;
-use crate::provenance::ResolvedColor;
-
-#[derive(Clone, Debug)]
-pub struct AutocompleteChromeColorTable {
-    pub status_color: ResolvedColor,
-    pub muted_text_color: ResolvedColor,
-    pub clear_icon_color: ResolvedColor,
-    pub clear_icon_hover_color: ResolvedColor,
-}
-
-impl AutocompleteChromeColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            status_color: ResolvedColor::fallback_foreground(),
-            muted_text_color: ResolvedColor::fallback_foreground(),
-            clear_icon_color: ResolvedColor::fallback_foreground(),
-            clear_icon_hover_color: ResolvedColor::fallback_foreground(),
-        }
-    }
-}
 
 /// The Shadcn autocomplete at `size`, drawn from `.lss` (`style/autocomplete.lss`) for `mode`'s catalog.
 pub fn autocomplete_textbox_look(
