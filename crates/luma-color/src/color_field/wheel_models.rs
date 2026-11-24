@@ -175,7 +175,9 @@ mod tests {
     use super::*;
 
     fn approx_eq(a: f32, b: f32) {
-        assert!((a - b).abs() < 1e-5, "expected {a} ~= {b}, delta={}", (a - b).abs());
+        // Relative: at ~210 degrees one f32 step is ~1.5e-5, above a fixed 1e-5 bound.
+        let tolerance = 1e-5 * a.abs().max(b.abs()).max(1.0);
+        assert!((a - b).abs() <= tolerance, "expected {a} ~= {b}, delta={}", (a - b).abs());
     }
 
     #[test]

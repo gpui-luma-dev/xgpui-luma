@@ -117,8 +117,9 @@ mod tests {
                 assert_ne!(color, look.tokens().palette.data.accent_1);
                 assert_ne!(color, look.tokens().palette.data.accent_2);
             }
-            assert_eq!(style.axes[0].presentation.stroke.color.s, 0.0);
-            assert_eq!(style.grid.horizontal.unwrap().color.s, 0.0);
+            // Neutral: color conversion leaves float noise (~1e-7) in saturation.
+            assert!(style.axes[0].presentation.stroke.color.s < 1e-4);
+            assert!(style.grid.horizontal.unwrap().color.s < 1e-4);
             assert_ne!(
                 style.series[&"a".into()].line.unwrap().stroke.color,
                 style.series[&"b".into()].line.unwrap().stroke.color
