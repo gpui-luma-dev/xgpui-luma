@@ -39,7 +39,7 @@ pub fn resizable_panels_builder(look: &Look, id: impl Into<SharedString>) -> Res
 /// Supply content/focus/resize handlers through the SDK state APIs and render functions.
 pub fn slide_panel_state(look: &Look, anchor: SlidePanelTopAnchor, size: SlidePanelSizeConfig) -> SlidePanelState {
     SlidePanelState::new(anchor, size)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .with_geometry(SlidePanelGeometry::from_binding(&crate::textfield::sized_binding(look, "slide_panel")))
         .handle_metrics(resizable_panels_theme(look).resize_handle_metrics())
         .motion_defaults(look.motion_defaults().slide_panel)
 }
@@ -139,23 +139,15 @@ mod tests {
     }
     #[test]
     fn panel_forks_and_captured_drawer_defaults_are_isolated() {
-        let base = Look::built_in();
-        let fork = base.fork();
+        let fork = Look::built_in().fork();
         // Radix size 1 is the SDK handle scale.
         let theme = resizable_panels_theme(&fork.with_size(crate::RadixSize::One));
         assert_eq!(theme.resize_handle_metrics(), ResizeHandleMetrics::default());
-        let mut sheet = fork.common_stylesheet();
-        sheet.slide_panel.geometry.side_width = Some(280.0);
-        fork.set_common_stylesheet(sheet);
         let state =
             slide_panel_state(&fork, SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 100.0, 500.0));
-        assert_eq!(state.geometry().side_width, Some(280.0));
+        // The drawer's size is the look's `slide_panel.lss`, which keeps the SDK's.
+        assert_eq!(state.geometry(), SlidePanelGeometry::sdk());
         assert_eq!(state.resize_handle_metrics(), resizable_panels_theme(&fork).resize_handle_metrics());
-        assert_ne!(base.common_stylesheet().slide_panel.geometry.side_width, Some(280.0));
-        let mut sheet = fork.common_stylesheet();
-        sheet.slide_panel.geometry.side_width = Some(320.0);
-        fork.set_common_stylesheet(sheet);
-        assert_eq!(state.geometry().side_width, Some(280.0));
     }
     #[cfg(feature = "test-support")]
     #[test]

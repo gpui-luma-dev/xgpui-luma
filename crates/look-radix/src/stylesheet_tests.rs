@@ -126,12 +126,8 @@ fn toggle_size_four_is_not_collapsed_into_sdk_lg() {
 fn slide_panel_uses_captured_common_visual_defaults() {
     use xgpui_luma::controls::slide_panel::{SlidePanelSizeConfig, SlidePanelTopAnchor};
     let look = Look::built_in().fork();
-    let mut sheet = look.common_stylesheet();
-    sheet.slide_panel.geometry.side_width = Some(501.0);
-    look.set_common_stylesheet(sheet);
     let panel = look.slide_panel_state(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 0.0, 900.0));
-    look.set_common_stylesheet(xgpui_luma::theme::stylesheet::CommonStylesheet::default());
-    assert_eq!(panel.geometry().side_width, Some(501.0));
+    assert_eq!(panel.geometry(), xgpui_luma::controls::slide_panel::SlidePanelGeometry::sdk());
     // The unsized drawer keeps the SDK handle.
     assert_eq!(
         panel.resize_handle_metrics(),

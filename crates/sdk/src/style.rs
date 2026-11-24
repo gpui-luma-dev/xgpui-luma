@@ -72,6 +72,7 @@ sdk_sources! {
         "controls/overlay/context_menu/context_menu.lss",
         "controls/overlay/tooltip/tooltip.lss",
         "controls/overlay/overlay_window/overlay_window.lss",
+        "controls/overlay/slide_panel/slide_panel.lss",
         "controls/range/slider/slider.lss",
         "controls/range/progress/progress.lss",
         "controls/navigation/stepper/stepper.lss",

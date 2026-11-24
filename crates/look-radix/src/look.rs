@@ -229,7 +229,9 @@ impl Look {
         size: xgpui_luma::controls::slide_panel::SlidePanelSizeConfig,
     ) -> xgpui_luma::controls::slide_panel::SlidePanelState {
         xgpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
-            .stylesheet(&self.common_stylesheet())
+            .with_geometry(xgpui_luma::controls::slide_panel::SlidePanelGeometry::from_binding(
+                &xgpui_luma::style::StyleBinding::new("slide_panel", crate::textfield::live_source(self)),
+            ))
             .motion_defaults(self.motion_defaults().slide_panel)
     }
 

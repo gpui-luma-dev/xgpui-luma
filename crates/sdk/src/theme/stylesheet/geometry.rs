@@ -167,9 +167,7 @@ pub use crate::controls::collection::table::theme::TableGeometry;
 pub use crate::controls::overlay::popover_button::panel::{
     PopoverStylesheet, PopoverGeometryStylesheet, PopoverGeometry, ResolvedPopoverGeometry,
 };
-pub use crate::controls::overlay::slide_panel::{
-    SlidePanelStylesheet, SlidePanelGeometryStylesheet, SlidePanelGeometry, ResolvedSlidePanelGeometry,
-};
+pub use crate::controls::overlay::slide_panel::SlidePanelGeometry;
 pub use crate::controls::choice::radio_group::RadioGroupGeometry;
 pub use crate::controls::selection::autocomplete::theme::{
     AutocompleteStylesheet, AutocompleteGeometryStylesheet, AutocompleteGeometry, ResolvedAutocompleteGeometry,
@@ -299,7 +297,6 @@ mod tests {
         ComboBoxStylesheet::validate_contract();
         SearchSelectorStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
-        SlidePanelStylesheet::validate_contract();
     }
 }
 

@@ -99,7 +99,6 @@ common_stylesheet! {
     combobox: ComboBoxStylesheet,
     search_selector: SearchSelectorStylesheet,
     popover: PopoverStylesheet,
-    slide_panel: SlidePanelStylesheet,
     sidebar: SidebarStylesheet,
 }
 
@@ -150,7 +149,6 @@ impl CommonStylesheet {
             motion: MotionStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
-            slide_panel: SlidePanelStylesheet::native_default(),
             autocomplete: AutocompleteStylesheet::native_default(),
             combobox: ComboBoxStylesheet::native_default(),
             search_selector: SearchSelectorStylesheet::native_default(),

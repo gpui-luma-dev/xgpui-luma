@@ -1,0 +1,10 @@
+// SDK slide panel. Layer: sdk. The drawer's size, read by `SlidePanelGeometry` (mod.rs); its resize edge
+// is drawn with the resizable panels look.
+
+/// An edge-anchored drawer.
+slide_panel {
+  /// A side drawer's width, and a top or bottom drawer's height and its cap as a share of the viewport.
+  side_width: length = exact(360)
+  edge_height: length = exact(420)
+  edge_max_viewport_ratio: number = 0.72
+}
