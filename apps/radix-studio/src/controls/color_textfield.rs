@@ -250,7 +250,7 @@ impl ColorTextField {
         // Avoid resetting the caret when the text is already synchronized.
         for field in [&self.field, &self.picker_hex] {
             field.update(cx, |field, cx| {
-                if field.value().as_ref() != hex {
+                if field.value() != hex {
                     field.set_value(hex.clone(), cx);
                 }
             });

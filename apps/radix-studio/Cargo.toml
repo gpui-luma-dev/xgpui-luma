@@ -21,6 +21,9 @@ xgpui-luma-color.workspace = true
 xgpui-luma-look-radix.workspace = true
 lucide-svg-static.workspace = true
 
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
+
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18" }
 
