@@ -32,7 +32,7 @@ fn bounds(cx: &mut VisualTestContext, selector: &'static str) -> Bounds<Pixels> 
 }
 
 #[test]
-fn exposition_geometry_matches_inspector_metrics() {
+fn exposition_geometry_matches_markup() {
     let mut app = TestAppContext::single();
     let (_, cx) = app.add_window_view(|_, cx| {
         let look = Arc::new(ShadcnLook::built_in());

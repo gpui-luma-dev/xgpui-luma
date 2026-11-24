@@ -15,10 +15,7 @@ use xgpui_luma_look_shadcn::{ShadcnLook};
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::ControlExpositionLayout;
-use super::inspector::{split_button_inspector_resolver, popup_menu_motion_report, SPLIT_BUTTON_INSPECTOR_SPEC};
 use super::template::render_control_exposition_card;
 use crate::studio::controls::catalog::{catalog_entry, ControlDocEntry};
 use super::template::controls_mono_font;
@@ -34,8 +31,6 @@ pub struct SplitButtonControlExposition {
     pairs: Vec<SplitButtonPair>,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<SplitButtonLeftPane>,
-    inspector_split: Entity<InspectorSplitShell>,
-    theme_inspector: Entity<super::theme_inspector::ThemeInspector>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -107,7 +102,6 @@ impl SplitButtonControlExposition {
             })
             .items(split_button_items())
             .spawn(cx);
-        let content_for_motion = content_example.clone();
         let left_pane = cx.new(|_| SplitButtonLeftPane {
             look: look.clone(),
             entry,
@@ -118,32 +112,7 @@ impl SplitButtonControlExposition {
             content_example,
             event_stream: event_stream.clone(),
         });
-        let left_pane_for_inspector = left_pane.clone();
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-split-button-pane",
-            move || left_pane_for_inspector.clone().into_any_element(),
-            &SPLIT_BUTTON_INSPECTOR_SPEC,
-            split_button_inspector_resolver(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            let mut samples: Vec<(&str, _)> =
-                pairs.iter().map(|pair| (pair.label, pair.control.read(cx).inner_popup())).collect();
-            samples.push(("Icon + Text", content_for_motion.read(cx).inner_popup()));
-            inspector.set_motion_report(popup_menu_motion_report(samples), cx);
-        });
-
-        Self {
-            look,
-            entry,
-            pairs,
-            event_stream,
-            left_pane,
-            inspector_split,
-            theme_inspector,
-            _subscriptions: subscriptions,
-        }
+        Self { look, entry, pairs, event_stream, left_pane, _subscriptions: subscriptions }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -156,20 +125,11 @@ impl SplitButtonControlExposition {
         }
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 
     pub fn fills_viewport(&self) -> bool {
         true
-    }
-
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
     }
 }
 
@@ -181,7 +141,7 @@ impl Render for SplitButtonControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

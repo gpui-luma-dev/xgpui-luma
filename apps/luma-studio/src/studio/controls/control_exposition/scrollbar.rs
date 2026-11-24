@@ -9,19 +9,13 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::{ScrollbarInspectorAdapter, SCROLLBAR_INSPECTOR_SPEC};
-use super::standalone_theme_inspectors::ScrollbarThemeInspector;
 use super::template::render_control_exposition_card;
 
 pub struct ScrollbarControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ScrollbarExpositionLeftPane>,
-    theme_inspector: Entity<ScrollbarThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ScrollbarExpositionLeftPane {
@@ -128,17 +122,6 @@ impl ScrollbarControlExposition {
             horizontal_value: 40.0,
             vertical_value: 80.0,
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-scrollbar-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SCROLLBAR_INSPECTOR_SPEC,
-            ScrollbarInspectorAdapter::shared(),
-        );
 
         for (scrollbar, axis) in
             [(horizontal_scrollbar.clone(), "horizontal"), (vertical_scrollbar.clone(), "vertical")]
@@ -153,7 +136,7 @@ impl ScrollbarControlExposition {
             });
         }
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -164,18 +147,9 @@ impl ScrollbarControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -188,7 +162,7 @@ impl Render for ScrollbarControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

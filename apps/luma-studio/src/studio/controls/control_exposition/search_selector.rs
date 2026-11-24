@@ -13,11 +13,7 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::input_theme_inspectors::SearchSelectorThemeInspector;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::{search_selector_inspector_adapter, SEARCH_SELECTOR_INSPECTOR_SPEC, search_selector_motion_report};
 use super::template::render_control_exposition_card;
 
 pub struct SearchSelectorControlExposition {
@@ -28,8 +24,6 @@ pub struct SearchSelectorControlExposition {
     left_pane: Entity<SearchSelectorExpositionLeftPane>,
     selection_required: bool,
     has_selection: bool,
-    theme_inspector: Entity<SearchSelectorThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -123,20 +117,6 @@ impl SearchSelectorControlExposition {
             event_stream: event_stream.clone(),
             selection_required_toggle: selection_required_toggle.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-search-selector-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SEARCH_SELECTOR_INSPECTOR_SPEC,
-            search_selector_inspector_adapter(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(search_selector_motion_report([("States", preview.clone())]), cx);
-        });
 
         preview.clone().on_event(cx, {
             let event_stream = event_stream.downgrade();
@@ -171,8 +151,6 @@ impl SearchSelectorControlExposition {
             left_pane,
             selection_required: false,
             has_selection: false,
-            theme_inspector,
-            inspector_split,
             _subscriptions: { Vec::new() },
         }
     }
@@ -190,20 +168,11 @@ impl SearchSelectorControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.preview.update(cx, |_, cx| cx.notify());
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -216,7 +185,7 @@ impl Render for SearchSelectorControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

@@ -28,10 +28,6 @@ pub(super) struct StateUpdates {
 }
 
 impl StateUpdates {
-    pub(super) fn tree(&self) -> TreeView<SharedString> {
-        self.tree.clone()
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
         let tree = shadcn::TreeView::new("tree-state-updates")
             .look(&look)

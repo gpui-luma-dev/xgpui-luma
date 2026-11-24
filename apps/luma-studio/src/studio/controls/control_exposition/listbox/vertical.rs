@@ -26,10 +26,6 @@ pub(super) struct VerticalListExample {
 }
 
 impl VerticalListExample {
-    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
-        (self.list.is_motion_enabled(), self.list.motion_profile())
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, event_stream: Entity<ControlEventStream>, cx: &mut Context<Self>) -> Self {
         let items = (1..=1_000).map(|id| RowItem { id, label: format!("Item {id}").into() });
         let snapshot = ListBoxSnapshot::try_with_enabled(items, |item| item.id, |item| item.id != 7)

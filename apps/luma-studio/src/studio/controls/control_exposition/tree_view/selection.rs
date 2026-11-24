@@ -31,10 +31,6 @@ pub(super) struct Selection {
     _subscriptions: Vec<Subscription>,
 }
 impl Selection {
-    pub(super) fn tree(&self) -> TreeView<()> {
-        self.tree.clone()
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
         let leaf = |id, label| TreeNode::new(id, label, ());
         let tree = shadcn::TreeView::new("tree-selection")

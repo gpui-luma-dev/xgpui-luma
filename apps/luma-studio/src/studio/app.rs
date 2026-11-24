@@ -21,8 +21,7 @@ use lucide_svg_static::Icon as LucideIcon;
 use crate::theme::{LumaStudioLaunchOptions, LumaStudioThemeChoice};
 
 use super::content_tabs::{BoardSnapshot, ContentPaneHost};
-use super::controls::LumaStudioAppHandle;
-use super::controls::workbench_layout::{CONTENT_PANEL_INDEX, LEFT_SIDEBAR_PANEL_INDEX, WorkbenchLayout, WorkbenchSidebar};
+use super::controls::workbench_layout::{LEFT_SIDEBAR_PANEL_INDEX, WorkbenchLayout, WorkbenchSidebar};
 use super::demo_controls::DemoControls;
 use super::hs_mixer::{
     ThemePaletteHsOverride, clamp_palette_temperature_amount, clamp_palette_vividness_amount,
@@ -44,7 +43,6 @@ pub struct LumaStudioApp {
     active_theme_id: String,
     theme_sidebar: Entity<ThemeSidebar>,
     content_pane: Entity<ContentPaneHost>,
-    inspector_open: bool,
     workbench: WorkbenchLayout,
     sidebar_toggle: IconButton,
     reset_theme_button: IconButton,
@@ -67,7 +65,6 @@ impl LumaStudioApp {
         let demos = DemoControls::spawn(cx, look.clone(), shadcn::ShadcnSize::Md);
 
         let overrides = StudioOverrides::default();
-        cx.set_global(LumaStudioAppHandle { entity: app.clone() });
         let theme_sidebar =
             cx.new(|cx| ThemeSidebar::new(app.clone(), look.clone(), active_theme_id.clone(), &overrides, cx));
 
@@ -142,7 +139,6 @@ impl LumaStudioApp {
             active_theme_id,
             theme_sidebar,
             content_pane,
-            inspector_open: true,
             workbench,
             sidebar_toggle,
             reset_theme_button,
@@ -151,18 +147,6 @@ impl LumaStudioApp {
             syncing_sidebar_tokens: false,
             _subscriptions: subscriptions,
         }
-    }
-
-    pub(crate) fn set_inspector_open(&mut self, open: bool, cx: &mut Context<Self>) {
-        if self.inspector_open == open {
-            return;
-        }
-        self.inspector_open = open;
-        cx.notify();
-    }
-
-    pub(crate) fn inspector_open(&self) -> bool {
-        self.inspector_open
     }
 
     fn sync_sidebar(&mut self, sync_tokens: bool, cx: &mut Context<Self>) {
@@ -514,15 +498,6 @@ impl LumaStudioApp {
         cx.notify();
     }
 
-    fn refresh_controls_layout(&self, cx: &mut Context<Self>) {
-        let content_width = self.workbench.panels().read(cx).panel_sizes_px().get(CONTENT_PANEL_INDEX).copied().map(px);
-        if let Some(content_width) = content_width {
-            self.content_pane.update(cx, |pane, cx| pane.sync_controls_host_content_width(content_width, cx));
-        } else {
-            self.content_pane.update(cx, |pane, cx| pane.request_controls_layout_refresh(cx));
-        }
-    }
-
     fn handle_workbench_event(&mut self, event: &ResizablePanelsEvent, cx: &mut Context<Self>) {
         let mut dirty = false;
 
@@ -534,10 +509,8 @@ impl LumaStudioApp {
             dirty = true;
         }
 
-        // Refresh only on settled events. SizesChanged also fires during live drag;
-        // re-entering set_host_content_width there breaks the splitter grab.
+        // Re-render only on settled events; SizesChanged also fires during live drag.
         if matches!(event, ResizablePanelsEvent::PanelHiddenChanged { .. } | ResizablePanelsEvent::ResizeEnd { .. }) {
-            self.refresh_controls_layout(cx);
             dirty = true;
         }
 

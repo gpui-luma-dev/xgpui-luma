@@ -62,10 +62,6 @@ pub(super) struct Scale {
     _subscriptions: Vec<Subscription>,
 }
 impl Scale {
-    pub(super) fn tree(&self) -> TreeView<()> {
-        self.tree.clone()
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
         let counts = Arc::new(Mutex::new(Counts::default()));
         let tree = shadcn::TreeView::new("tree-scale")

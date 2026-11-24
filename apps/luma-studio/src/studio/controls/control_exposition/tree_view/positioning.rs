@@ -22,10 +22,6 @@ pub(super) struct Positioning {
     _subscriptions: Vec<Subscription>,
 }
 impl Positioning {
-    pub(super) fn tree(&self) -> TreeView<()> {
-        self.tree.clone()
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
         let mut items: Vec<_> =
             (0..100).map(|i| TreeNode::new(format!("row-{i}"), format!("Document {i:02}"), ())).collect();

@@ -63,10 +63,6 @@ pub(super) struct Workspaces {
 }
 
 impl Workspaces {
-    pub(super) fn trees(&self) -> [TreeView<Entry>; 2] {
-        self.trees.clone()
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, cx: &mut Context<Self>) -> Self {
         let actions: HashMap<SharedString, Entity<Button>> = ["readme", "guide", "draft"]
             .into_iter()

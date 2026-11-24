@@ -106,10 +106,6 @@ pub(super) struct SpectrumListExample {
 }
 
 impl SpectrumListExample {
-    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
-        (self.list.is_motion_enabled(), self.list.motion_profile())
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, events: Entity<ControlEventStream>, cx: &mut Context<Self>) -> Self {
         let mut state =
             ListBoxState::try_new((1..=ITEM_COUNT).map(SpectrumItem::new), |item| item.id, SelectionMode::Extended)

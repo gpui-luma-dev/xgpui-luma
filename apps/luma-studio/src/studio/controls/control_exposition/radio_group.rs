@@ -14,12 +14,8 @@ use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook};
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector::{ControlGroupMotionReport, control_group_motion_source};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
-use super::theme_inspector::ThemeInspector;
 
 const DENSITY_OPTION_COUNT: usize = 3;
 const PANE_EXAMPLE_GAP: f32 = 24.0;
@@ -54,8 +50,6 @@ pub struct RadioGroupControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<RadioGroupExpositionLeftPane>,
-    theme_inspector: Entity<ThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct RadioGroupExpositionLeftPane {
@@ -150,30 +144,7 @@ impl RadioGroupControlExposition {
         wire_group(cx, left_pane.clone(), &indented_group, "indented", GroupTarget::Indented, event_stream.clone());
         wire_group(cx, left_pane.clone(), &delivery_group, "delivery", GroupTarget::Delivery, event_stream);
 
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-radio-group-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::RADIO_GROUP_INSPECTOR_SPEC,
-            super::inspector::MotionOnlyInspector::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(ControlGroupMotionReport::new([
-                    ("Vertical default", control_group_motion_source(vertical_group.read(cx).inner_group())),
-                    ("Horizontal default", control_group_motion_source(horizontal_group.read(cx).inner_group())),
-                    ("Horizontal custom indent", control_group_motion_source(indented_group.read(cx).inner_group())),
-                    ("Delivery window", control_group_motion_source(delivery_group.read(cx).inner_group())),
-                ])),
-                cx,
-            );
-        });
-
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -184,18 +155,9 @@ impl RadioGroupControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -251,14 +213,14 @@ fn wire_group<T: RadioGroupItemLike + 'static>(
 
 impl Render for RadioGroupControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-radio-group-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

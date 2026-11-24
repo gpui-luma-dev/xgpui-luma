@@ -17,21 +17,13 @@ use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::shell_theme_inspectors::ToolbarThemeInspector;
 use super::template::render_control_exposition_card;
-use super::inspector::{
-    ControlGroupMotionReport, ToolbarInspectorAdapter, TOOLBAR_INSPECTOR_SPEC, control_group_motion_source,
-};
 
 pub struct ToolbarControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ToolbarExpositionLeftPane>,
-    theme_inspector: Entity<ToolbarThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ToolbarExpositionLeftPane {
@@ -208,26 +200,6 @@ impl ToolbarControlExposition {
             event_stream: event_stream.clone(),
             focus_mode: "roving",
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-toolbar-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &TOOLBAR_INSPECTOR_SPEC,
-            ToolbarInspectorAdapter::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(ControlGroupMotionReport::new([(
-                    "Toolbar",
-                    control_group_motion_source(toolbar.read(cx).inner_group()),
-                )])),
-                cx,
-            );
-        });
 
         toolbar.clone().on_event(cx, {
             let event_stream = event_stream.downgrade();
@@ -273,7 +245,7 @@ impl ToolbarControlExposition {
             }
         });
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -284,18 +256,9 @@ impl ToolbarControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -308,7 +271,7 @@ impl Render for ToolbarControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

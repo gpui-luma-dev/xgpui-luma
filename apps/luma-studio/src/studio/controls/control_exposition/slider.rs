@@ -12,19 +12,13 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::{SliderInspectorAdapter, SLIDER_INSPECTOR_SPEC, slider_motion_report};
-use super::standalone_theme_inspectors::SliderThemeInspector;
 use super::template::render_control_exposition_card;
 
 pub struct SliderControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<SliderExpositionLeftPane>,
-    theme_inspector: Entity<SliderThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct SliderExpositionLeftPane {
@@ -321,30 +315,6 @@ impl SliderControlExposition {
                 left_pane.update(cx, |pane, cx| pane.toggle_animated_value(cx));
             }
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-slider-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SLIDER_INSPECTOR_SPEC,
-            SliderInspectorAdapter::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                slider_motion_report([
-                    ("Fill track", fill_slider.clone()),
-                    ("Reversed fill track", reversed_slider.clone()),
-                    ("Blocked intervals", blocked_slider.clone()),
-                    ("Multi-stop", stops_slider.clone()),
-                    ("Angular dial", angular_slider.clone()),
-                    ("Wrapping dial", wrapping_slider.clone()),
-                ]),
-                cx,
-            );
-        });
 
         wire_value_slider(cx, &fill_slider, "fill", event_stream.clone(), left_pane.clone(), SliderValueTarget::Fill);
         wire_value_slider(
@@ -396,7 +366,7 @@ impl SliderControlExposition {
             }
         });
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -407,18 +377,9 @@ impl SliderControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -473,7 +434,7 @@ impl Render for SliderControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

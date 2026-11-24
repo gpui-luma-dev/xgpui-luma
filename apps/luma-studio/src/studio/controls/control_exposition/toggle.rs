@@ -14,19 +14,13 @@ use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
-use super::inspector::StateMotionReport;
-use super::toggle_theme_inspector::ToggleThemeInspector;
 
 pub struct ToggleControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ToggleExpositionLeftPane>,
-    theme_inspector: Entity<ToggleThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ToggleExpositionLeftPane {
@@ -176,12 +170,6 @@ impl ToggleControlExposition {
             )
         });
 
-        let motion_toggles = [
-            ("Primary", primary_toggle.clone()),
-            ("Secondary", secondary_toggle.clone()),
-            ("Primary icon", primary_round_icon_toggle.clone()),
-            ("Secondary icon", secondary_round_icon_toggle.clone()),
-        ];
         let left_pane = cx.new(|cx| {
             wire_toggle(cx, &secondary_toggle, "secondary", ToggleTarget::Secondary, event_stream.clone());
             wire_toggle(cx, &primary_toggle, "primary", ToggleTarget::Primary, event_stream.clone());
@@ -214,36 +202,8 @@ impl ToggleControlExposition {
                 primary_round_icon_selected: true,
             }
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-toggle-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::TOGGLE_INSPECTOR_SPEC,
-            super::inspector::ToggleInspectorAdapter::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(StateMotionReport::new(
-                    "State",
-                    motion_toggles,
-                    |toggle| toggle.motion_enabled(),
-                    |toggle| toggle.current_transition(),
-                    // The look's `.lss` `transition` toward selected (the toggle has no motion defaults).
-                    |look| {
-                        look.toggle_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
-                            .transition(&xgpui_luma::controls::toggle::ToggleData::new(true))
-                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
-                    },
-                )),
-                cx,
-            );
-        });
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -254,18 +214,9 @@ impl ToggleControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -327,14 +278,14 @@ fn wire_toggle(
 
 impl Render for ToggleControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-toggle-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

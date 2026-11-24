@@ -13,9 +13,7 @@ use xgpui_luma_look_shadcn as shadcn;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::button_theme_inspector::ButtonThemeInspector;
 use super::event_stream::ControlEventStream;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
 
@@ -113,8 +111,6 @@ pub struct ButtonControlExposition {
     buttons_enabled: bool,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<ButtonExpositionLeftPane>,
-    theme_inspector: Entity<ButtonThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 impl ButtonControlExposition {
@@ -164,19 +160,6 @@ impl ButtonControlExposition {
             enabled_switch: enabled_switch.clone(),
             event_stream: event_stream.clone(),
         });
-        let theme_inspector = cx.new(|cx| ButtonThemeInspector::for_embedded_pane(look.clone(), cx));
-        let inspector_split = cx.new(|cx| {
-            let left_pane = left_pane.clone();
-            let theme_inspector = theme_inspector.clone();
-            InspectorSplitShell::new(
-                cx,
-                look.clone(),
-                "controls-doc-button-pane",
-                move || left_pane.clone().into_any_element(),
-                move || theme_inspector.clone().into_any_element(),
-            )
-        });
-
         bind_button_events(&primary, ButtonVariant::Primary, "controls-doc-button-primary", event_stream.clone(), cx);
         bind_button_events(
             &secondary,
@@ -202,8 +185,6 @@ impl ButtonControlExposition {
             buttons_enabled: true,
             event_stream,
             left_pane,
-            theme_inspector,
-            inspector_split,
         }
     }
 
@@ -215,14 +196,6 @@ impl ButtonControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for button in [&self.primary, &self.secondary, &self.outline, &self.ghost] {
@@ -231,8 +204,6 @@ impl ButtonControlExposition {
         self.enabled_switch.update(cx, |_, cx| cx.notify());
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        self.theme_inspector.update(cx, |inspector, cx| inspector.sync_look(look.clone(), cx));
-        self.inspector_split.update(cx, |split, cx| split.sync_look(look, cx));
         cx.notify();
     }
 
@@ -251,14 +222,14 @@ impl ButtonControlExposition {
 
 impl Render for ButtonControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-button-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }
