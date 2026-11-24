@@ -471,9 +471,10 @@ impl ControlSide {
             .map(|(state, name)| {
                 // A state the live control can never reach is shown but never settable.
                 let reachable = !unreachable.contains(&name.as_str());
+                let label = surface.state_label(&name).unwrap_or(&name);
                 let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-surface-state-{name}"))
                     .look(look.as_ref())
-                    .label(format!(":{name}"))
+                    .label(format!(":{label}"))
                     .checked(false)
                     .enabled(reachable)
                     .on_value_changed(cx, move |this: &mut Self, on, cx| {
@@ -532,7 +533,8 @@ impl ControlSide {
             let items =
                 std::iter::once(ControlGroupItem::new(NO_INTERACTION).label("None")).chain(exclusive.iter().map(|s| {
                     let name = config.state_name(*s);
-                    ControlGroupItem::new(name.to_string()).label(format!(":{name}"))
+                    let label = surface.state_label(name).unwrap_or(name);
+                    ControlGroupItem::new(name.to_string()).label(format!(":{label}"))
                 }));
             let group = xgpui_luma_look_radix::control_group_builder(
                 look.as_ref(),
@@ -542,11 +544,12 @@ impl ControlSide {
             .horizontal()
             .single_required()
             .items(items)
-            // Each item: its state's icon (the default icon for none), then its label.
+            // Each item: its state's icon (the default icon for none), then its label (`:` and the state as
+            // the control names it).
             .item_template(make_control_group_item_template(
                 |item: &ControlGroupItemRenderModel<'_, ControlGroupItem>, _: &mut Window, _: &mut gpui::App| {
-                    let id = item.item.id().as_ref();
-                    let state = (id != NO_INTERACTION).then_some(id);
+                    let state = (item.item.id().as_ref() != NO_INTERACTION)
+                        .then(|| item.item.label().as_ref().trim_start_matches(':'));
                     let color = item.foreground.unwrap_or_else(gpui::transparent_black);
                     div()
                         .flex()
@@ -942,12 +945,18 @@ impl ControlSide {
         StateSet::new(states.iter().map(|s| config.state_name(*s)))
     }
 
+    /// A state as the design controls show it: the control's word for it (a switch is `on`), else its
+    /// `.lss` name (see [`SurfaceControl::state_label`]).
+    fn label_of(&self, state: StateId) -> &str {
+        let name = self.theme.stylesheet().config().state_name(state);
+        self.surface.state_label(name).unwrap_or(name)
+    }
+
     fn states_label(&self, states: &[StateId], empty: &str) -> String {
-        let config = self.theme.stylesheet().config();
         if states.is_empty() {
             empty.to_string()
         } else {
-            states.iter().map(|s| format!(":{}", config.state_name(*s))).collect()
+            states.iter().map(|s| format!(":{}", self.label_of(*s))).collect()
         }
     }
 
@@ -965,7 +974,7 @@ impl ControlSide {
             let icons: Vec<AnyElement> = if states.is_empty() {
                 state_icon(None, color).into_iter().collect()
             } else {
-                states.iter().filter_map(|s| state_icon(Some(config.state_name(*s)), color)).collect()
+                states.iter().filter_map(|s| state_icon(Some(self.label_of(*s)), color)).collect()
             };
             let text = self.states_label(states, empty);
             let selector = format!("workshop-surface-matrix-label-{text}");
@@ -1052,7 +1061,7 @@ impl ControlSide {
                 .flex()
                 .items_center()
                 .gap(px(6.))
-                .children(state_icon(Some(name), chrome.muted_text))
+                .children(state_icon(Some(self.label_of(s.state)), chrome.muted_text))
                 .child(div().debug_selector(move || selector.clone()).child(s.switch.clone()))
         };
         let others: Vec<&KeyState> =
@@ -1077,11 +1086,8 @@ impl ControlSide {
             .children(self.interaction.as_ref().map(|group| row().child(heading("Interaction")).child(group.clone())))
             .when(!others.is_empty(), |panel| {
                 // States no rule uses still change the drawing when the template reads them (the focus ring).
-                let template_only: Vec<String> = others
-                    .iter()
-                    .filter(|s| s.template_only)
-                    .map(|s| format!(":{}", config.state_name(s.state)))
-                    .collect();
+                let template_only: Vec<String> =
+                    others.iter().filter(|s| s.template_only).map(|s| format!(":{}", self.label_of(s.state))).collect();
                 panel.child(row().child(heading("States")).children(others.iter().map(|s| switch(s))).when(
                     !template_only.is_empty(),
                     |row| {
@@ -1113,12 +1119,11 @@ impl ControlSide {
     /// Test mode's lower panel: the key's live states, then the control's events.
     fn events_panel(&self) -> AnyElement {
         let chrome = self.look.chrome();
-        let config = self.theme.stylesheet().config();
         let live: Vec<&str> = self
             .states
             .iter()
             .filter(|s| self.key.active_states().contains(s.state))
-            .map(|s| config.state_name(s.state))
+            .map(|s| self.label_of(s.state))
             .collect();
         let tag = |name: &str| {
             div()
@@ -1194,14 +1199,16 @@ impl ControlSide {
         self.set_zoom(zoom, cx);
     }
 
+    /// The page's control as its concrete type, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn control_as<T: 'static>(&self) -> Option<&T> {
+        self.surface.as_any().downcast_ref::<T>()
+    }
+
     /// The SDK checkbox, for tests (the page shows the checkbox).
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn checkbox(&self) -> xgpui_luma::controls::checkbox::Checkbox {
-        self.surface
-            .as_any()
-            .downcast_ref::<super::checkbox_surface::CheckboxSurface>()
-            .expect("the checkbox page")
-            .checkbox()
+        self.control_as::<super::checkbox_surface::CheckboxSurface>().expect("the checkbox page").checkbox()
     }
 
     /// Whether a state is on in the key, for tests.
@@ -1258,6 +1265,12 @@ impl ControlSide {
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn mode_and_stage(&self) -> (String, Option<Hsla>) {
         (self.theme.mode().to_string(), self.stage_background)
+    }
+
+    /// The events panel's log as text, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn events_text(&self, cx: &gpui::App) -> String {
+        self.events.read(cx).text(cx)
     }
 
     /// Show the state matrix, for tests.

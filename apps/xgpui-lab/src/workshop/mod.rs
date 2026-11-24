@@ -1,7 +1,6 @@
 //! Control Workshop. Catalog and complete sample compositions are copied from Luma Studio;
 //! inspector and documentation hosts intentionally stay out of this application.
 pub(crate) mod catalog;
-mod button;
 mod choice;
 mod collection;
 mod input;
@@ -28,6 +27,10 @@ mod style_inspector;
 mod lss_inspector;
 mod surface_page;
 mod checkbox_surface;
+mod switch_surface;
+mod radio_button_surface;
+mod toggle_surface;
+mod button_surface;
 mod surface_control;
 mod pinned_template;
 mod state_icons;
@@ -65,7 +68,6 @@ enum Sample {
     Choice(Entity<choice::ChoiceSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
-    Button(Entity<button::ButtonControlExposition>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
     Toolbar(Entity<toolbar::ToolbarControlExposition>),
     Arc(Entity<color_arc::ColorArcExpositionLeftPane>),
@@ -90,7 +92,6 @@ impl Sample {
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
-            Self::Button(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Toolbar(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
@@ -115,7 +116,6 @@ impl Sample {
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -131,7 +131,7 @@ impl Sample {
     /// Converted pages: their chrome is the app's Radix look and follows its light/dark, and they paint
     /// their own background (design surface pages round it to meet the canvas).
     fn uses_shell_look(&self) -> bool {
-        matches!(self, Self::Button(_) | Self::Toolbar(_) | Self::Surface(_))
+        matches!(self, Self::Toolbar(_) | Self::Surface(_))
     }
 }
 
@@ -140,6 +140,10 @@ impl Sample {
 fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfaceControl)> {
     match id {
         "checkbox" => Some(("checkbox", checkbox_surface::CheckboxSurface::make)),
+        "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
+        "radio-button" => Some(("radio", radio_button_surface::RadioButtonSurface::make)),
+        "button" => Some(("button", button_surface::ButtonSurface::make)),
+        "toggle" => Some(("toggle", toggle_surface::ToggleSurface::make)),
         _ => None,
     }
 }
@@ -164,25 +168,15 @@ pub(crate) struct Workshop {
     sidebar_hidden: bool,
 }
 
-/// A sample's live state, by `.lss` state name (e.g. a checked checkbox's `checked`). The page's style
-/// inspectors follow it; a state an inspected control does not declare is ignored.
-pub(super) struct InspectedState {
-    pub(super) state: &'static str,
-    pub(super) on: bool,
-}
-
 /// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Pages without SDK
 /// styling have none.
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
-        "button" => &["button"],
         // Design surface pages (see `surface_control`) have their own inspector.
         "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
-        "radio-button" | "radio-group" => &["radio"],
-        "switch" => &["switch"],
-        "toggle" => &["toggle"],
+        "radio-group" => &["radio"],
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
         "tree-view" => &["tree_view"],
@@ -311,21 +305,6 @@ impl Workshop {
         this
     }
 
-    /// Forward a sample's live state to the page's style inspectors.
-    fn follow<T: gpui::EventEmitter<InspectedState>>(
-        &mut self,
-        id: &'static str,
-        sample: &Entity<T>,
-        cx: &mut Context<Self>,
-    ) {
-        cx.subscribe(sample, move |this: &mut Self, _, event: &InspectedState, cx| {
-            for (_, inspector) in this.inspectors.get(id).into_iter().flatten() {
-                inspector.update(cx, |inspector, cx| inspector.set_state(event.state, event.on, cx));
-            }
-        })
-        .detach();
-    }
-
     fn select(&mut self, id: &'static str, cx: &mut Context<Self>) {
         if !COMPONENT_CATALOG.iter().any(|g| g.entries.iter().any(|e| e.id == id)) {
             return;
@@ -433,21 +412,9 @@ impl Workshop {
                 "pager" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
                 }
-                "radio-button" => Some(Sample::Choice(
-                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioButton, look, cx)),
-                )),
                 "radio-group" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
                 )),
-                "switch" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Switch, look, cx))))
-                }
-                "toggle" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Toggle, look, cx))))
-                }
-                "button" => {
-                    Some(Sample::Button(cx.new(|cx| button::ButtonControlExposition::new(cx, self.shell_look.clone()))))
-                }
                 "custom-button" => Some(Sample::CustomButton(
                     cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
                 )),
@@ -472,8 +439,6 @@ impl Workshop {
             });
             if let Some(sample) = sample {
                 match &sample {
-                    Sample::Button(v) => self.follow(id, v, cx),
-                    Sample::Choice(v) => self.follow(id, v, cx),
                     Sample::Surface(v) => {
                         let hidden = self.sidebar_hidden;
                         v.update(cx, |page, cx| page.set_left_rounded(hidden, cx));

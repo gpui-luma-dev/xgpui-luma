@@ -1,12 +1,10 @@
 //! Basic Choice controls using SDK builders, SDK defaults, and retained local state.
 use std::sync::Arc;
 use gpui::{AnyView, Context, Entity, Render, Window, div, prelude::*, px};
-use xgpui_luma::controls::{accordion, pager, radio_button, radio_group, switch, toggle};
-use xgpui_luma::controls::button::HasPresenter;
+use xgpui_luma::controls::{accordion, pager, radio_button, radio_group};
 use crate::theme::{ColorVizLookExt, Look, TextSize, TypographyExt};
 use super::{
     event_stream::ControlEventStream,
-    InspectedState,
     sample_layout::{card, page},
 };
 
@@ -14,30 +12,21 @@ use super::{
 pub(super) enum ChoiceKind {
     Accordion,
     Pager,
-    RadioButton,
     RadioGroup,
-    Switch,
-    Toggle,
 }
 impl ChoiceKind {
     fn title(self) -> &'static str {
         match self {
             Self::Accordion => "Accordion",
             Self::Pager => "Pager",
-            Self::RadioButton => "Radio Button",
             Self::RadioGroup => "Radio Group",
-            Self::Switch => "Switch",
-            Self::Toggle => "Toggle",
         }
     }
     fn description(self) -> &'static str {
         match self {
             Self::Accordion => "Expand or collapse a section.",
             Self::Pager => "Move between pages and choose a page size.",
-            Self::RadioButton => "Select or clear a radio button.",
             Self::RadioGroup => "Choose one option from a group.",
-            Self::Switch => "Turn an option on or off.",
-            Self::Toggle => "Press or release a toggle.",
         }
     }
 }
@@ -45,20 +34,14 @@ impl ChoiceKind {
 enum Control {
     Accordion(accordion::Accordion),
     Pager(pager::Pager),
-    RadioButton(radio_button::RadioButton),
     RadioGroup(radio_group::RadioGroup<radio_group::RadioGroupItem>),
-    Switch(switch::Switch),
-    Toggle(toggle::Toggle),
 }
 impl Control {
     fn view(&self) -> AnyView {
         match self {
             Self::Accordion(v) => v.clone().into(),
             Self::Pager(v) => v.clone().into(),
-            Self::RadioButton(v) => v.clone().into(),
             Self::RadioGroup(v) => v.clone().into(),
-            Self::Switch(v) => v.clone().into(),
-            Self::Toggle(v) => v.clone().into(),
         }
     }
 }
@@ -71,7 +54,6 @@ pub(super) struct ChoiceSample {
     events: Entity<ControlEventStream>,
 }
 /// The sample's on/off state, for the page's style inspector.
-impl gpui::EventEmitter<InspectedState> for ChoiceSample {}
 impl ChoiceSample {
     pub(super) fn new(kind: ChoiceKind, look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let control = match kind {
@@ -105,11 +87,6 @@ impl ChoiceSample {
                     .with_template_modifier(|root, _| root.debug_selector(|| "workshop-sdk-pager".into()))
                     .spawn(cx),
             ),
-            ChoiceKind::RadioButton => Control::RadioButton(
-                radio_button::new("workshop-sdk-radio-button")
-                    .content(|_, _| div().child("Select option"))
-                    .spawn(cx),
-            ),
             ChoiceKind::RadioGroup => Control::RadioGroup(
                 radio_group::new("workshop-sdk-radio-group")
                     .template(radio_group::radio_group_buttons_template(
@@ -124,12 +101,6 @@ impl ChoiceSample {
                     .selected("medium")
                     .spawn(cx),
             ),
-            ChoiceKind::Switch => Control::Switch(
-                switch::new("workshop-sdk-switch").content(|_, _| div().child("Notifications")).spawn(cx),
-            ),
-            ChoiceKind::Toggle => {
-                Control::Toggle(toggle::new("workshop-sdk-toggle").content(|_, _| div().child("Bold")).spawn(cx))
-            }
         };
         // Observe the real SDK event streams; native controls own their state transitions.
         match &control {
@@ -155,16 +126,6 @@ impl ChoiceSample {
                 })
                 .detach();
             }
-            Control::RadioButton(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &radio_button::RadioButtonEvent, cx| {
-                    if let radio_button::RadioButtonEvent::Change { selected } = event {
-                        this.state = format!("Selected: {selected}");
-                        cx.emit(InspectedState { state: "selected", on: *selected });
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
             Control::RadioGroup(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &radio_group::RadioGroupEvent, cx| {
                     if let radio_group::RadioGroupEvent::Change { value } = event {
@@ -174,34 +135,11 @@ impl ChoiceSample {
                 })
                 .detach();
             }
-            Control::Switch(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &switch::SwitchEvent, cx| {
-                    if let switch::SwitchEvent::Change { on } = event {
-                        this.state = format!("On: {on}");
-                        cx.emit(InspectedState { state: "checked", on: *on });
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
-            Control::Toggle(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &toggle::ToggleEvent, cx| {
-                    if let toggle::ToggleEvent::Change { selected } = event {
-                        this.state = format!("Pressed: {selected}");
-                        cx.emit(InspectedState { state: "selected", on: *selected });
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
         }
         let state = match kind {
             ChoiceKind::Accordion => "details: expanded",
             ChoiceKind::Pager => "Page 1 of 12 · 10 per page",
-            ChoiceKind::RadioButton => "Selected: false",
             ChoiceKind::RadioGroup => "Selected: medium",
-            ChoiceKind::Switch => "On: false",
-            ChoiceKind::Toggle => "Pressed: false",
         }
         .to_owned();
         let events = cx.new(|cx| {
@@ -258,7 +196,7 @@ impl Render for ChoiceSample {
 mod tests {
     use super::*;
     use gpui::{Focusable, TestAppContext, VisualTestContext};
-    use crate::workshop::{Workshop, Sample, style_inspector::StyleInspector};
+    use crate::workshop::{Workshop, Sample};
 
     fn setup(app: &mut TestAppContext) -> (Entity<Workshop>, &mut VisualTestContext) {
         app.update(|cx| {
@@ -277,74 +215,6 @@ mod tests {
             Sample::Choice(v) => v.clone(),
             _ => panic!("missing Choice sample"),
         })
-    }
-    fn inspector(workshop: &Entity<Workshop>, id: &'static str, cx: &mut VisualTestContext) -> Entity<StyleInspector> {
-        cx.update(|_, cx| workshop.read(cx).inspectors[id][0].1.clone())
-    }
-    fn press_space(sample: &Entity<ChoiceSample>, cx: &mut VisualTestContext) {
-        let focus = cx.update(|_, cx| match &sample.read(cx).control {
-            Control::RadioButton(v) => v.read(cx).focus_handle(cx),
-            Control::Switch(v) => v.read(cx).focus_handle(cx),
-            Control::Toggle(v) => v.read(cx).focus_handle(cx),
-            _ => unreachable!(),
-        });
-        cx.update(|window, cx| focus.focus(window, cx));
-        cx.run_until_parked();
-        cx.simulate_keystrokes("space");
-        cx.run_until_parked();
-    }
-    #[test]
-    fn choice_style_inspectors_follow_the_sample_state() {
-        let mut app = TestAppContext::single();
-        let (workshop, cx) = setup(&mut app);
-        for (id, state) in [("radio-button", "selected"), ("switch", "checked"), ("toggle", "selected")] {
-            let sample = select(&workshop, id, cx);
-            let inspector = inspector(&workshop, id, cx);
-            assert!(!cx.update(|_, cx| inspector.read(cx).state_on(state)), "{id}: starts off");
-            press_space(&sample, cx);
-            assert!(cx.update(|_, cx| inspector.read(cx).state_on(state)), "{id}: follows :{state}");
-            // Retained across navigation.
-            select(&workshop, "pager", cx);
-            select(&workshop, id, cx);
-            assert!(cx.update(|_, cx| inspector.read(cx).state_on(state)), "{id}: retained");
-        }
-    }
-
-    #[test]
-    fn choice_boolean_controls_use_keyboard_and_retain_state_across_navigation_and_app_theme() {
-        let mut app = TestAppContext::single();
-        let (workshop, cx) = setup(&mut app);
-        for id in ["radio-button", "switch", "toggle"] {
-            let sample = select(&workshop, id, cx);
-            let focus = cx.update(|_, cx| match &sample.read(cx).control {
-                Control::RadioButton(v) => v.read(cx).focus_handle(cx),
-                Control::Switch(v) => v.read(cx).focus_handle(cx),
-                Control::Toggle(v) => v.read(cx).focus_handle(cx),
-                _ => unreachable!(),
-            });
-            cx.update(|window, cx| focus.focus(window, cx));
-            cx.run_until_parked();
-            cx.simulate_keystrokes("space");
-            cx.run_until_parked();
-            cx.update(|_, cx| {
-                let v = sample.read(cx);
-                assert!(v.state.ends_with("true"), "{id}: {}", v.state);
-                let checked = match &v.control {
-                    Control::RadioButton(v) => *v.read(cx).data(),
-                    Control::Switch(v) => *v.read(cx).data(),
-                    Control::Toggle(v) => *v.read(cx).data(),
-                    _ => unreachable!(),
-                };
-                assert!(checked);
-            });
-            workshop.update(cx, |v, cx| {
-                v.select("color-field", cx);
-                v.sync_theme(xgpui_luma::theme::ThemeMode::Light, cx);
-            });
-            let retained = select(&workshop, id, cx);
-            assert_eq!(sample, retained);
-            cx.update(|_, cx| assert!(sample.read(cx).state.ends_with("true")));
-        }
     }
     #[test]
     fn choice_accordion_expansion_and_radio_group_selection_follow_sdk_keyboard_behavior() {
