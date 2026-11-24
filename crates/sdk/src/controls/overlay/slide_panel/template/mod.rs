@@ -74,12 +74,9 @@ pub fn render_slide_panel_surface(
     let viewport_width = viewport.width.as_f32();
     let viewport_height = available_height.as_f32();
 
-    let capped_edge_panel_height = state
-        .geometry()
-        .edge_height
-        .unwrap_or_default()
-        .min(viewport_height * state.geometry().edge_max_viewport_ratio.unwrap_or_default());
-    let side_panel_width = state.main_axis_size(state.geometry().side_width.unwrap_or_default());
+    let geometry = state.geometry();
+    let capped_edge_panel_height = geometry.edge_height.min(viewport_height * geometry.edge_max_viewport_ratio);
+    let side_panel_width = state.main_axis_size(geometry.side_width);
     let edge_panel_height = state.main_axis_size(capped_edge_panel_height);
     let (panel_width, panel_height) = match edge {
         SlidePanelEdge::Left | SlidePanelEdge::Right => (px(side_panel_width), available_height),
@@ -170,7 +167,7 @@ pub fn render_slide_panel_inset(
 
     debug_assert_eq!(edge, SlidePanelEdge::Right, "inset panel supports right edge only");
 
-    let side_panel_width = state.main_axis_size(state.geometry().side_width.unwrap_or_default());
+    let side_panel_width = state.main_axis_size(state.geometry().side_width);
     let panel_width = px(side_panel_width);
     let horizontal_offset = px(-((1.0 - state.open_progress()) * side_panel_width));
 
