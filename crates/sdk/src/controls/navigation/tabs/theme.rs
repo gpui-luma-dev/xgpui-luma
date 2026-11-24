@@ -1,5 +1,3 @@
-use crate::theme::provenance::ResolvedMetric;
-
 use std::sync::{Arc, OnceLock};
 
 use gpui::{Hsla, SharedString};
@@ -81,12 +79,4 @@ pub fn default_tabs_theme() -> Arc<dyn TabsTheme> {
     static THEME: OnceLock<Arc<dyn TabsTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledTabsTheme::sdk())).clone()
-}
-
-/// Tab list and indicator dimensions with where each value came from, for inspectors.
-#[derive(Clone, Debug)]
-pub struct ResolvedTabsGeometry {
-    pub list_gap: ResolvedMetric,
-    pub list_padding: ResolvedMetric,
-    pub indicator_height: ResolvedMetric,
 }
