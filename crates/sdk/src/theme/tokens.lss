@@ -67,9 +67,41 @@ tokens {
     }
   }
 
-  // Shared geometry (CommonStylesheet::shared_geometry()).
+  // Dimensions several controls share (`SharedGeometry`, read from Rust; `label_baseline` also by `.lss`).
   geometry {
-    label_baseline = 1
+    popup_viewport_height       = 220
+    popup_row_height            = 28
+    menu_row_height             = 27
+    menu_row_gap                = 4
+    compact_textfield_height    = 22
+    compact_textfield_padding_y = 2
+    textarea_resize_icon_size   = 10
+    textarea_resize_inset       = 3
+    textarea_resize_hit_size    = 12
+    textarea_scrollbar_width    = 12
+    textarea_scrollbar_inset    = 2
+    scrollbar_width             = 12
+    composition_underline_width = 1
+    label_baseline              = 1
+    drag_offset                 = 12
+    drag_preview_width          = 220
+    drag_padding_x              = 12
+    drag_padding_y              = 8
+    drag_border_width           = 1
+    drag_marker_width           = 2
+    split_sidebar_width         = 280
+    split_sidebar_min_width     = 220
+    split_sidebar_max_width     = 420
+    selection_scrollbar_width   = 16
+    wide_middle_gap             = 24
+    wide_side_min_width         = 240
+    wide_side_preferred_width   = 280
+    wide_middle_min_width       = 435
+    wide_middle_max_width       = 435
+    form_field_gap              = 4
+    page_size_trigger_width     = 64
+    popup_icon_size             = 16
+    textarea_resize_opacity     = 0.75
   }
 
   motion {

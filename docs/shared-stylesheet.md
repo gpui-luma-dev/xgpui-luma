@@ -29,7 +29,7 @@ templates; third-party looks use the same APIs.
 | Named OpenType features (four-character tags, integer values) | `common.font_features` |
 | Default glyph identities | `common.icons` |
 | Picker viewport row budgets | `common.row_limits.<family>` |
-| Shared helper/compact-input/drag/layout chrome | `common.shared.geometry`, `CommonStylesheet::shared_geometry()` |
+| Shared helper/compact-input/drag/layout chrome | `.lss` `tokens { geometry { … } }` (`theme/tokens.lss`), read as `SharedGeometry` |
 | Title-bar dimensions and platform insets | `common.shell.geometry` |
 | Typed animation roles | `common.motion` |
 
@@ -42,7 +42,7 @@ The parsed common schema rejects unknown typed fields. Families whose controls a
 only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
 `pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
 `progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
-`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs` and `button`. Root sections belonging
+`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button` and `shared`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values

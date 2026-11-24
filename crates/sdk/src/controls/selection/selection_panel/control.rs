@@ -732,9 +732,7 @@ where
 
         let content_width = panel_min_width
             + if allow_scrolling {
-                crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                    .shared_geometry()
-                    .selection_scrollbar_width
+                crate::theme::stylesheet::SharedGeometry::sdk().selection_scrollbar_width
             } else {
                 0.0
             };

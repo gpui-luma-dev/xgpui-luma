@@ -105,13 +105,12 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let mut common = CommonStylesheet {
+    let common = CommonStylesheet {
         motion,
         slider: native_radix_slider(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         ..Default::default()
     };
-    crate::size::apply_size_presets(&mut common);
     common.with_sdk_defaults()
 }
 
@@ -834,7 +833,6 @@ mod tests {
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
         apply_radix_slider_stylesheet(&mut native);
-        crate::size::apply_size_presets(&mut native);
         assert_eq!(native.slider, original.slider);
         assert_eq!(native.motion.slider, original.motion.slider);
         assert_eq!(native.recipes.0.get("slider"), original.recipes.0.get("slider"));

@@ -86,7 +86,7 @@ pub fn compose_textfield_look(
     border_width: f32,
 ) -> TextFieldLook {
     TextFieldLook {
-        helper_geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+        helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
         caret_width: crate::style::sdk_number("textfield", "caret_width"),
         caret_height_extra: crate::style::sdk_number("textfield", "caret_height_extra"),
         disabled_opacity: crate::style::sdk_number("textfield", "disabled_opacity"),

@@ -17,7 +17,7 @@ impl DragDropLook {
     pub fn from_tokens(tokens: &ThemeTokens) -> Self {
         let palette = tokens.stylesheet.recipes.palette("drag_drop", &tokens.palette);
         Self {
-            geometry: tokens.stylesheet.shared_geometry(),
+            geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
             background: palette.surface.floating.background,
             foreground: palette.surface.floating.foreground,
             valid_marker: palette.focus.ring,
@@ -38,7 +38,7 @@ pub fn styled_drag_drop_look(binding: &crate::style::StyleBinding) -> DragDropLo
         |name: &str| root.value(name).and_then(Value::as_color).map(Hsla::from).unwrap_or_else(gpui::transparent_black);
     let number = |name: &str| root.value(name).and_then(Value::as_number).unwrap_or(0.0);
     DragDropLook {
-        geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+        geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
         background: color("background"),
         foreground: color("foreground"),
         valid_marker: color("valid_marker"),

@@ -119,6 +119,7 @@ fn removed_families_are_rejected() {
         "resizable_panels",
         "tabs",
         "button",
+        "shared",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

@@ -321,7 +321,7 @@ where
             + 'static,
     {
         {
-            let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry();
+            let geometry = crate::theme::stylesheet::SharedGeometry::sdk();
             self.with_menu_row_item_content_sized(theme, geometry.menu_row_height, geometry.menu_row_gap, content)
         }
     }

@@ -68,7 +68,7 @@ pub fn default_textarea_theme() -> Arc<dyn TextAreaTheme> {
 
 pub fn compose_textarea_look(palette: &TextAreaPalette, scale: &StandardBoxScale, border_width: f32) -> TextAreaLook {
     TextAreaLook {
-        helper_geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+        helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
         caret_width: crate::style::sdk_number("textarea", "caret_width"),
         caret_height_extra: crate::style::sdk_number("textarea", "caret_height_extra"),
         disabled_opacity: crate::style::sdk_number("textarea", "disabled_opacity"),

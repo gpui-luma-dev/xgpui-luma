@@ -200,56 +200,103 @@ geometry_family!(
         fullscreen_left_padding
     ]
 );
-geometry_family!(
-    SharedStylesheet,
-    SharedGeometryStylesheet,
-    SharedGeometry,
-    ResolvedSharedGeometry,
-    "shared",
-    [
-        popup_viewport_height,
-        popup_row_height,
-        menu_row_height,
-        menu_row_gap,
-        compact_textfield_height,
-        compact_textfield_padding_y,
-        textarea_resize_icon_size,
-        textarea_resize_inset,
-        textarea_resize_hit_size,
-        textarea_scrollbar_width,
-        textarea_scrollbar_inset,
-        scrollbar_width,
-        composition_underline_width,
-        label_baseline,
-        drag_offset,
-        drag_preview_width,
-        drag_padding_x,
-        drag_padding_y,
-        drag_border_width,
-        drag_marker_width,
-        split_sidebar_width,
-        split_sidebar_min_width,
-        split_sidebar_max_width,
-        selection_scrollbar_width,
-        wide_middle_gap,
-        wide_side_min_width,
-        wide_side_preferred_width,
-        wide_middle_min_width,
-        wide_middle_max_width,
-        form_field_gap,
-        page_size_trigger_width,
-        popup_icon_size
-    ],
-    unit[textarea_resize_opacity]
+macro_rules! shared_geometry {
+    ($($field:ident),+ $(,)?) => {
+        /// Dimensions several controls share, from the theme's `geometry.*` tokens (`theme/tokens.lss`).
+        #[derive(Clone, Copy, Debug, Default, PartialEq)]
+        pub struct SharedGeometry {
+            $(pub $field: f32,)+
+        }
+
+        impl SharedGeometry {
+            /// The field names, each a `geometry.<name>` token.
+            pub const FIELDS: &'static [&'static str] = &[$(stringify!($field)),+];
+
+            /// `theme`'s `geometry.*` tokens. A missing token reads as zero.
+            pub fn from_theme(theme: &xgpui_luma_style::Theme) -> Self {
+                let number = |name: &str| {
+                    theme
+                        .token_with(&format!("geometry.{name}"), &[])
+                        .ok()
+                        .and_then(|value| value.as_number())
+                        .unwrap_or(0.0)
+                };
+                Self { $($field: number(stringify!($field)),)+ }
+            }
+        }
+    };
+}
+shared_geometry!(
+    popup_viewport_height,
+    popup_row_height,
+    menu_row_height,
+    menu_row_gap,
+    compact_textfield_height,
+    compact_textfield_padding_y,
+    textarea_resize_icon_size,
+    textarea_resize_inset,
+    textarea_resize_hit_size,
+    textarea_scrollbar_width,
+    textarea_scrollbar_inset,
+    scrollbar_width,
+    composition_underline_width,
+    label_baseline,
+    drag_offset,
+    drag_preview_width,
+    drag_padding_x,
+    drag_padding_y,
+    drag_border_width,
+    drag_marker_width,
+    split_sidebar_width,
+    split_sidebar_min_width,
+    split_sidebar_max_width,
+    selection_scrollbar_width,
+    wide_middle_gap,
+    wide_side_min_width,
+    wide_side_preferred_width,
+    wide_middle_min_width,
+    wide_middle_max_width,
+    form_field_gap,
+    page_size_trigger_width,
+    popup_icon_size,
+    textarea_resize_opacity
 );
+
+impl SharedGeometry {
+    /// The SDK's own shared dimensions, read once from its `.lss` tokens.
+    pub fn sdk() -> Self {
+        static SDK: std::sync::OnceLock<SharedGeometry> = std::sync::OnceLock::new();
+        *SDK.get_or_init(|| Self::from_theme(&crate::style::default_theme()))
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every shared dimension is a `geometry.*` token in the SDK's `.lss` (#287), and a look's tokens
+    /// override it.
+    #[test]
+    fn shared_geometry_reads_the_geometry_tokens() {
+        let theme = crate::style::default_theme();
+        for field in SharedGeometry::FIELDS {
+            let value = theme.token_with(&format!("geometry.{field}"), &[]).expect(field);
+            assert!(value.as_number().is_some(), "geometry.{field} is a number");
+        }
+        let sheet = theme
+            .stylesheet()
+            .with_source(
+                "look",
+                xgpui_luma_style::Source::new("look.lss", "tokens { geometry { popup_row_height = 31 } }"),
+            )
+            .expect("compiles");
+        let look = SharedGeometry::from_theme(&theme.with_stylesheet(&sheet).expect("binds"));
+        assert_eq!(look.popup_row_height, 31.0);
+        assert_eq!(look.menu_row_height, SharedGeometry::sdk().menu_row_height, "the rest are the SDK's");
+    }
     #[test]
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {
         ShellStylesheet::validate_contract();
-        SharedStylesheet::validate_contract();
         SidebarStylesheet::validate_contract();
         AutocompleteStylesheet::validate_contract();
         ComboBoxStylesheet::validate_contract();

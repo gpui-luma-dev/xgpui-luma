@@ -134,11 +134,12 @@ pub fn default_table_theme() -> Arc<dyn TableTheme> {
 }
 
 impl TableRowLook {
-    /// Combines row colors with the SDK's `table.lss` row layout and the stylesheet's label baseline.
+    /// Combines row colors with the SDK's `table.lss` row layout and label baseline. `_stylesheet` is no
+    /// longer read: the layout is `.lss` (#287).
     pub fn from_palette(
         palette: &TableRowPalette,
         scale: &ListRowScale,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
         let sdk = super::styled::StyledTable::sdk().row_look(false, InteractionState::default(), scale);
         Self {
@@ -147,7 +148,7 @@ impl TableRowLook {
             label_color: palette.label_color,
             divider: palette.divider,
             label_typography: palette.label_typography,
-            label_baseline_shift: crate::theme::scales::label_baseline_shift(stylesheet),
+            label_baseline_shift: crate::theme::scales::label_baseline_shift(),
             ..sdk
         }
     }
