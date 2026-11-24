@@ -214,16 +214,14 @@ impl Look {
         xgpui_luma::controls::tabs::TabsOverlayState::new().motion_defaults(self.motion_defaults().tabs_overlay)
     }
 
+    /// Drawer state with this look's geometry, sized resize handle and motion; same as
+    /// [`crate::slide_panel_state`].
     pub fn slide_panel_state(
         &self,
         anchor: xgpui_luma::controls::slide_panel::SlidePanelTopAnchor,
         size: xgpui_luma::controls::slide_panel::SlidePanelSizeConfig,
     ) -> xgpui_luma::controls::slide_panel::SlidePanelState {
-        xgpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
-            .with_geometry(xgpui_luma::controls::slide_panel::SlidePanelGeometry::from_binding(
-                &xgpui_luma::style::StyleBinding::new("slide_panel", crate::textfield::live_source(self)),
-            ))
-            .motion_defaults(self.motion_defaults().slide_panel)
+        crate::panels::slide_panel_state(self, anchor, size)
     }
 
     /// Font families and text styles for this look's controls.
