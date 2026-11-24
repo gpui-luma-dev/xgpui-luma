@@ -12,29 +12,6 @@
 
 use crate::controls::button::ButtonRadiusPreset;
 
-/// Constructs the native Shadcn common slider sizes in pure Rust without preloading TOML.
-pub fn native_shadcn_common_slider() -> xgpui_luma::theme::stylesheet::SliderStylesheet {
-    use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
-    SliderStylesheet {
-        geometry: SliderGeometryStylesheet::default(),
-        sizes: [("sm", 24.0, 4.0, 12.0), ("md", 32.0, 6.0, 16.0), ("lg", 40.0, 8.0, 20.0)]
-            .into_iter()
-            .map(|(key, height, track_height, thumb_size)| {
-                (
-                    key.to_string(),
-                    SliderGeometryStylesheet {
-                        width: Some(260.0),
-                        height: Some(height),
-                        track_height: Some(track_height),
-                        thumb_size: Some(thumb_size),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-    }
-}
-
 /// The track and thumb end radii for a corner preset at `size`, from `.lss` (`style/slider.lss`'s
 /// `radius` attribute).
 pub(crate) fn slider_preset_corners(

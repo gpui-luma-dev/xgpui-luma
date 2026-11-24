@@ -23,20 +23,20 @@ fn opacity_fields_reject_values_outside_zero_to_one() {
 #[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.sidebar.geometry]\ndisabled_opacity = 'math(1 / 4)'",
-        "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
+        "[common.shell.geometry]\nheight = 'math(32 * 2)'\n[common.sidebar.geometry]\ndisabled_opacity = 'math(1 / 4)'",
+        "[common.shell.geometry]\nleft_padding = 'math(0 / 28)'",
     ])
     .unwrap();
     assert_eq!(sheet.sidebar.geometry.disabled_opacity, Some(0.25));
-    assert_eq!(sheet.slider.geometry.width, Some(64.0));
-    assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
+    assert_eq!(sheet.shell.geometry.height, Some(64.0));
+    assert_eq!(sheet.shell.geometry.left_padding, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
-    let direct: CommonStylesheet = toml::from_str("[slider.geometry]\nheight = 'math(2 * 3)'").unwrap();
-    assert_eq!(direct.slider.geometry.height, Some(6.0));
+    let direct: CommonStylesheet = toml::from_str("[shell.geometry]\nheight = 'math(2 * 3)'").unwrap();
+    assert_eq!(direct.shell.geometry.height, Some(6.0));
     for source in [
-        "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
+        "[common.shell.geometry]\nheight = 'math(-1 / 2)'",
         "[common.sidebar.geometry]\ndisabled_opacity = 'math(3 / 2)'",
-        "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
+        "[common.shell.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
     }
@@ -120,6 +120,7 @@ fn removed_families_are_rejected() {
         "tabs",
         "button",
         "shared",
+        "slider",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

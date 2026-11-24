@@ -92,11 +92,7 @@ pub(crate) fn resolve_look(explicit: Option<&Look>, ambient: Option<&Look>) -> L
 pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::stylesheet::CommonStylesheet {
     static STYLESHEET: std::sync::OnceLock<xgpui_luma::theme::stylesheet::CommonStylesheet> =
         std::sync::OnceLock::new();
-    STYLESHEET.get_or_init(|| {
-        let mut sheet = native_radix_stylesheet();
-        apply_radix_slider_stylesheet(&mut sheet);
-        sheet
-    })
+    STYLESHEET.get_or_init(native_radix_stylesheet)
 }
 
 /// Construct the remaining Radix common overrides without bundled TOML parsing.
@@ -105,17 +101,10 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let common = CommonStylesheet {
-        motion,
-        slider: native_radix_slider(),
-        tooltip: crate::tooltip::native_tooltip_stylesheet(),
-        ..Default::default()
-    };
+    let common =
+        CommonStylesheet { motion, tooltip: crate::tooltip::native_tooltip_stylesheet(), ..Default::default() };
     common.with_sdk_defaults()
 }
-
-pub use crate::slider::{native_radix_slider};
-pub(crate) use crate::slider::{apply_radix_slider_stylesheet};
 
 fn sized_stylesheets(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
@@ -663,22 +652,22 @@ mod tests {
         let clone = look.clone();
         let fork = look.fork();
         let old = look.stylesheet_snapshot();
-        let original = old.slider.geometry.width;
+        let original = old.shell.geometry.height;
         let revision = look.revision();
         let mut edited = look.common_stylesheet();
-        edited.slider.geometry.width = Some(123.0);
+        edited.shell.geometry.height = Some(123.0);
         // Editing the public owned copy must not mutate live readers.
-        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, original);
+        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, original);
         look.set_common_stylesheet(edited);
         assert!(look.revision() > revision);
-        assert_eq!(clone.stylesheet_snapshot().slider.geometry.width, Some(123.0));
-        assert_eq!(old.slider.geometry.width, original);
-        assert_eq!(fork.stylesheet_snapshot().slider.geometry.width, original);
+        assert_eq!(clone.stylesheet_snapshot().shell.geometry.height, Some(123.0));
+        assert_eq!(old.shell.geometry.height, original);
+        assert_eq!(fork.stylesheet_snapshot().shell.geometry.height, original);
         let current = look.stylesheet_snapshot();
         look.set_mode(ThemeMode::Dark);
         assert!(Arc::ptr_eq(&current, &look.stylesheet_snapshot()));
         fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, Some(123.0));
+        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, Some(123.0));
     }
 
     #[test]
@@ -832,8 +821,6 @@ mod tests {
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
-        apply_radix_slider_stylesheet(&mut native);
-        assert_eq!(native.slider, original.slider);
         assert_eq!(native.motion.slider, original.motion.slider);
         assert_eq!(native.recipes.0.get("slider"), original.recipes.0.get("slider"));
 

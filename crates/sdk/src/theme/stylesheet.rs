@@ -15,8 +15,7 @@ pub(crate) mod geometry;
 pub use geometry::*;
 pub use crate::controls::navigation::tabs::theme::ResolvedTabsGeometry;
 pub use crate::controls::range::slider::theme::{
-    SliderStylesheet, SliderGeometryStylesheet, SliderGeometry, SliderGeometrySources, SliderDecoration,
-    native_sdk_slider_recipes, define_sdk_slider,
+    SliderGeometry, SliderGeometrySources, SliderDecoration, native_sdk_slider_recipes, define_sdk_slider,
 };
 mod motion;
 pub use motion::*;
@@ -96,7 +95,6 @@ common_stylesheet! {
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
-    slider: SliderStylesheet,
     tooltip: TooltipStylesheet,
     autocomplete: AutocompleteStylesheet,
     combobox: ComboBoxStylesheet,
@@ -450,10 +448,10 @@ impl CommonStylesheet {
     ///     theme::{ThemeMode, stylesheet::CommonStylesheet},
     /// };
     /// let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    ///     sheet.slider.geometry.track_height = Some(9.0);
+    ///     sheet.shell.geometry.height = Some(41.0);
     /// });
     /// let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-    /// assert_eq!(tokens.stylesheet.slider.geometry.track_height, Some(9.0));
+    /// assert_eq!(tokens.stylesheet.shell.geometry.height, Some(41.0));
     /// # Ok::<(), anyhow::Error>(())
     /// ```
     pub fn theme_tokens(
@@ -501,7 +499,7 @@ mod tests {
     fn external_adapter_preserves_the_complete_native_baseline() {
         assert_eq!(&CommonStylesheet::resolve_layers(&[]).unwrap(), CommonStylesheet::sdk_default());
         let native = CommonStylesheet::sdk_default().clone().with(|sheet| {
-            sheet.slider.geometry.width = Some(0.0);
+            sheet.shell.geometry.left_padding = Some(0.0);
             sheet.font_features.0.insert("sidebar_section".into(), Vec::new());
         });
         let source = toml::to_string(&native).unwrap();
@@ -514,93 +512,5 @@ mod tests {
         for source in ["[common.tabs.content]\nfade_in_ms = 300", "[common.drag_drop]\ndrop_motion_ms = 200"] {
             assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
         }
-    }
-
-    #[test]
-    fn slider_size_keys_are_look_defined() {
-        for key in ["1", "4", "compact"] {
-            let parsed = CommonStylesheet::parse(&format!("[common.slider.sizes.{key}]\nheight = 16")).unwrap();
-            assert_eq!(parsed.slider.sizes.get(key).unwrap().height, Some(16.0));
-            let (geometry, sources) = parsed.slider.inspect_geometry_for(key, &SliderGeometry::default());
-            assert_eq!(geometry.height, 16.0);
-            assert!(matches!(sources.height, crate::theme::provenance::MetricSource::Authored { key: source }
-                if source == format!("common.slider.sizes.{key}.height")));
-            assert_eq!(parsed.slider.inspect_geometry(&SliderGeometry::default()).0.height, 0.0);
-        }
-    }
-
-    #[test]
-    fn slider_geometry_validates_values_and_preserves_zero() {
-        for size in ["geometry", "sizes.1", "sizes.custom"] {
-            for field in ["width", "height", "track_height", "thumb_size"] {
-                for value in ["-1", "nan", "inf", "1e100", "\"4px\""] {
-                    assert!(CommonStylesheet::parse(&format!("[common.slider.{size}]\n{field} = {value}")).is_err());
-                }
-            }
-        }
-        assert!(CommonStylesheet::parse("[common.slider.xl]\nwidth = 12").is_err());
-        let stylesheet = CommonStylesheet::parse(
-            "[common.slider.geometry]\nwidth = 100\nthumb_size = 17\n[common.slider.sizes.2]\nwidth = 0\nthumb_size = 23",
-        )
-        .unwrap();
-        let fallback = SliderGeometry::sdk_default(&Default::default(), CommonStylesheet::sdk_default());
-        let (value, sources) = stylesheet.slider.inspect_geometry_for("2", &fallback);
-        assert_eq!(value, stylesheet.slider.resolve_geometry_for("2", &fallback));
-        assert_eq!(value.width, 0.0);
-        assert_eq!(value.height, fallback.height);
-        assert_eq!(value.thumb_size, 23.0);
-        assert!(matches!(sources.thumb_size, crate::theme::provenance::MetricSource::Authored { key }
-            if key == "common.slider.sizes.2.thumb_size"));
-        let (value, _) = stylesheet.slider.inspect_geometry(&fallback);
-        assert_eq!((value.width, value.thumb_size), (100.0, 17.0));
-    }
-
-    #[test]
-    fn slider_overlay_general_geometry_overrides_inherited_sizes() {
-        for width in [120.0, 0.0] {
-            let mut target = SliderStylesheet::native_default();
-            target.size("1", |size| {
-                size.width(260.0).dimensions(24.0, 4.0, 12.0);
-            });
-            target.size("2", |size| {
-                size.width(260.0).dimensions(32.0, 6.0, 16.0);
-            });
-            let mut layer = SliderStylesheet::default();
-            layer.width(width).size("2", |size| {
-                size.width(180.0);
-            });
-
-            layer.apply_to(&mut target);
-
-            assert_eq!(target.authored_geometry_for("1").width, Some(width));
-            assert_eq!(target.authored_geometry_for("2").width, Some(180.0));
-            assert_eq!(target.authored_geometry_for("1").height, Some(24.0));
-            assert_eq!(target.authored_geometry_for("2").thumb_size, Some(16.0));
-            assert_eq!(target.geometry.dial_size, Some(200.0));
-        }
-    }
-
-    #[test]
-    fn slider_builder_methods_configure_geometry_and_sizes_fluently() {
-        let mut sheet = CommonStylesheet::default();
-        sheet
-            .slider
-            .width(120.0)
-            .height_floor_scale(0.5)
-            .thumb_scale(0.5)
-            .size("1", |m| {
-                m.dimensions(16.0, 4.0, 12.0);
-            })
-            .size("2", |m| {
-                m.dimensions(20.0, 6.0, 16.0);
-            });
-
-        assert_eq!(sheet.slider.geometry.width, Some(120.0));
-        assert_eq!(sheet.slider.geometry.height_floor_scale, Some(0.5));
-        let size1 = sheet.slider.sizes.get("1").unwrap();
-        assert_eq!(size1.height, Some(16.0));
-        assert_eq!(size1.track_height, Some(4.0));
-        assert_eq!(size1.thumb_size, Some(12.0));
-        assert_eq!(sheet.slider.sizes.get("2").unwrap().height, Some(20.0));
     }
 }
