@@ -1,4 +1,4 @@
-//! TextField exposition — live preview, event stream, and theme inspector.
+//! TextField exposition — live preview and event stream.
 
 use xgpui_luma::controls::textfield::TextFieldEventExt;
 use std::sync::Arc;
@@ -14,12 +14,8 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::input_theme_inspectors::TextFieldThemeInspector;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
-use super::inspector::{TextFieldInspectorAdapter, TEXTFIELD_INSPECTOR_SPEC};
 
 pub struct TextFieldControlExposition {
     look: Arc<ShadcnLook>,
@@ -27,8 +23,6 @@ pub struct TextFieldControlExposition {
     preview: TextField,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<TextFieldExpositionLeftPane>,
-    theme_inspector: Entity<TextFieldThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -146,17 +140,6 @@ impl TextFieldControlExposition {
             event_stream: event_stream.clone(),
             set_sample_button: set_sample_button.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-textfield-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &TEXTFIELD_INSPECTOR_SPEC,
-            TextFieldInspectorAdapter::shared(),
-        );
 
         let subscriptions = {
             preview.clone().on_event(cx, {
@@ -190,16 +173,7 @@ This line is intentionally long enough to overflow a compact single-line field s
             }
         });
 
-        Self {
-            look,
-            entry,
-            preview,
-            event_stream,
-            left_pane,
-            theme_inspector,
-            inspector_split,
-            _subscriptions: subscriptions,
-        }
+        Self { look, entry, preview, event_stream, left_pane, _subscriptions: subscriptions }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -210,20 +184,11 @@ This line is intentionally long enough to overflow a compact single-line field s
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.preview.update(cx, |_, cx| cx.notify());
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -236,7 +201,7 @@ impl Render for TextFieldControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

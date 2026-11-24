@@ -12,11 +12,7 @@ use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::StateMotionReport;
-use super::radio_button_theme_inspector::RadioButtonThemeInspector;
 use super::template::render_control_exposition_card;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -44,8 +40,6 @@ pub struct RadioButtonControlExposition {
     content_only_radio: RadioButton,
     event_stream: Entity<ControlEventStream>,
     left_pane: Entity<RadioButtonExpositionLeftPane>,
-    theme_inspector: Entity<RadioButtonThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -145,38 +139,6 @@ impl RadioButtonControlExposition {
             content_only_radio: content_only_radio.clone(),
             event_stream: event_stream.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-radio-button-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &super::inspector::RADIO_BUTTON_INSPECTOR_SPEC,
-            super::inspector::radio_button_inspector(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(
-                Arc::new(StateMotionReport::new(
-                    "State",
-                    [
-                        ("Primary", primary_radio.clone()),
-                        ("Secondary", secondary_radio.clone()),
-                        ("Content only", content_only_radio.clone()),
-                    ],
-                    |radio| radio.motion_enabled(),
-                    |radio| radio.current_transition(),
-                    // The look's `.lss` `transition` toward selected (the radio has no motion defaults).
-                    |look| {
-                        look.radio_button_template(xgpui_luma_look_shadcn::ShadcnButtonStyle::Primary)
-                            .transition(&xgpui_luma::controls::radio_button::RadioButtonData::new(true))
-                            .unwrap_or_else(xgpui_luma::motion::Transition::instant)
-                    },
-                )),
-                cx,
-            );
-        });
 
         let mut subscriptions = Vec::new();
         subscriptions.extend(subscribe_radio(
@@ -227,8 +189,6 @@ impl RadioButtonControlExposition {
             content_only_radio,
             event_stream,
             left_pane,
-            theme_inspector,
-            inspector_split,
             _subscriptions: subscriptions,
         }
     }
@@ -241,14 +201,6 @@ impl RadioButtonControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         for radio in [&self.secondary_radio, &self.primary_radio, &self.content_only_radio] {
@@ -256,21 +208,20 @@ impl RadioButtonControlExposition {
         }
         self.event_stream.update(cx, |stream, cx| stream.sync_look(look.clone(), cx));
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
 
 impl Render for RadioButtonControlExposition {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl gpui::IntoElement {
-        let inspector_split = self.inspector_split.clone();
+        let left_pane = self.left_pane.clone();
         with_look(&self.look, || {
             div()
                 .id("controls-doc-radio-button-exposition")
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(inspector_split)
+                .child(left_pane)
         })
     }
 }

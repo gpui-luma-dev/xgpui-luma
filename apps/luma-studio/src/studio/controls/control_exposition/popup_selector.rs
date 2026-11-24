@@ -14,11 +14,7 @@ use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::input_theme_inspectors::SelectorThemeInspector;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
-use super::inspector::{SelectorInspectorAdapter, SELECTOR_INSPECTOR_SPEC, selector_motion_report};
 use super::template::render_control_exposition_card;
 
 pub struct PopupSelectorControlExposition {
@@ -27,8 +23,6 @@ pub struct PopupSelectorControlExposition {
     left_pane: Entity<SelectorExpositionLeftPane>,
     selection_required: bool,
     has_selection: bool,
-    theme_inspector: Entity<SelectorThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct SelectorExpositionLeftPane {
@@ -172,20 +166,6 @@ impl PopupSelectorControlExposition {
             event_stream: event_stream.clone(),
             selection_required_toggle: selection_required_toggle.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-selector-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SELECTOR_INSPECTOR_SPEC,
-            SelectorInspectorAdapter::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(selector_motion_report(previews.clone()), cx);
-        });
 
         for (_, preview) in &previews {
             let event_stream = event_stream.clone();
@@ -206,15 +186,7 @@ impl PopupSelectorControlExposition {
             this.sync_required_validation(cx);
         });
 
-        Self {
-            look,
-            entry,
-            left_pane,
-            selection_required: false,
-            has_selection: false,
-            theme_inspector,
-            inspector_split,
-        }
+        Self { look, entry, left_pane, selection_required: false, has_selection: false }
     }
 
     fn sync_required_validation(&mut self, cx: &mut Context<Self>) {
@@ -238,18 +210,9 @@ impl PopupSelectorControlExposition {
         self.left_pane.update(cx, |pane, cx| pane.dismiss_overlays(cx));
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -262,7 +225,7 @@ impl Render for PopupSelectorControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

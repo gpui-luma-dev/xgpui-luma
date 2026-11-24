@@ -15,18 +15,11 @@ use xgpui_luma_look_shadcn::prelude::*;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::color_chrome_exposition::{
-    color_chrome_set_viewport_size, spawn_color_chrome_viewport, sync_color_chrome_viewport, ColorChromeViewportPane,
-};
-use super::color_chrome_inspector::ColorChromeInspector;
 use super::color_exposition_common::{
     centered_field, detail_row, format_compact_hsla, format_hex_color, format_slider_event, render_demo_section,
     render_field_card,
 };
 use super::event_stream::ControlEventStream;
-use super::inspector::color_chrome::COLOR_ARC_CHROME_PROFILES;
-use super::inspector::slider_motion_report;
-use super::inspector_split::InspectorSplitShell;
 use super::model::{ControlExpositionLayout};
 use super::template::render_control_exposition_card;
 
@@ -91,8 +84,6 @@ pub struct ColorArcControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<ColorArcExpositionLeftPane>,
-    chrome_inspector: Entity<ColorChromeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
 }
 
 struct ColorArcExpositionLeftPane {
@@ -409,32 +400,7 @@ impl ColorArcControlExposition {
             }
         });
 
-        let ColorChromeViewportPane { chrome_inspector, inspector_split } = spawn_color_chrome_viewport(
-            cx,
-            look.clone(),
-            "controls-doc-color-arc-pane",
-            "controls-doc-color-arc-chrome",
-            COLOR_ARC_CHROME_PROFILES,
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-        );
-        chrome_inspector.update(cx, |inspector, cx| {
-            let pane = left_pane.read(cx);
-            let samples = [
-                ("Hue Arc", pane.hue_arc.slider.clone()),
-                ("Saturation Arc", pane.saturation_arc.slider.clone()),
-                ("Lightness Arc", pane.lightness_arc.slider.clone()),
-                ("Vector", pane.vector_arc.slider.clone()),
-                ("Raster", pane.raster_arc.slider.clone()),
-                ("Thickness small", pane.thickness_small_arc.slider.clone()),
-                ("Thickness large", pane.thickness_large_arc.slider.clone()),
-            ];
-            inspector.set_motion_report(slider_motion_report(samples), cx);
-        });
-
-        Self { look, entry, left_pane, chrome_inspector, inspector_split }
+        Self { look, entry, left_pane }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -445,18 +411,9 @@ impl ColorArcControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        color_chrome_set_viewport_size(&self.inspector_split, size, cx);
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_color_chrome_viewport(look, &self.chrome_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -469,7 +426,7 @@ impl Render for ColorArcControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

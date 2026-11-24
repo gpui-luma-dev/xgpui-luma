@@ -7,7 +7,6 @@ use xgpui_luma::focus::LumaFocusScopeExt;
 use xgpui_luma_look_shadcn::ShadcnLook;
 
 pub const LEFT_SIDEBAR_PANEL_INDEX: usize = 0;
-pub const CONTENT_PANEL_INDEX: usize = 1;
 
 #[derive(Clone)]
 pub struct WorkbenchSidebar {

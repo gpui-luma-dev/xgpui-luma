@@ -22,12 +22,8 @@ use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnTextSize};
 use lucide_svg_static::Icon as LucideIcon;
 
 use crate::studio::controls::catalog::{ControlDocEntry, catalog_entry};
-use super::collection_theme_inspectors::SidebarThemeInspector;
 use super::event_stream::ControlEventStream;
-use super::exposition_inspector::{spawn_viewport_inspector, sync_viewport_inspector, ViewportInspectorPane};
-use super::inspector_split::InspectorSplitShell;
 use super::model::ControlExpositionLayout;
-use super::inspector::{SidebarInspectorAdapter, SIDEBAR_INSPECTOR_SPEC, sidebar_motion_report};
 use super::template::render_control_exposition_card;
 
 #[derive(Clone, Copy)]
@@ -94,8 +90,6 @@ pub struct SidebarControlExposition {
     look: Arc<ShadcnLook>,
     entry: ControlDocEntry,
     left_pane: Entity<SidebarExpositionLeftPane>,
-    theme_inspector: Entity<SidebarThemeInspector>,
-    inspector_split: Entity<InspectorSplitShell>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -230,20 +224,6 @@ impl SidebarControlExposition {
             width_transition: VisualTransition::default(),
             event_stream: event_stream.clone(),
         });
-        let ViewportInspectorPane { theme_inspector, inspector_split } = spawn_viewport_inspector(
-            cx,
-            look.clone(),
-            "controls-doc-sidebar-pane",
-            {
-                let left_pane = left_pane.clone();
-                move || left_pane.clone().into_any_element()
-            },
-            &SIDEBAR_INSPECTOR_SPEC,
-            SidebarInspectorAdapter::shared(),
-        );
-        theme_inspector.update(cx, |inspector, cx| {
-            inspector.set_motion_report(sidebar_motion_report([("Properties", sidebar_control.clone())]), cx);
-        });
 
         let control_open_cell = control_open.clone();
         let observe_subscription = cx.observe(&sidebar_control, {
@@ -299,7 +279,7 @@ impl SidebarControlExposition {
             }
         });
 
-        Self { look, entry, left_pane, theme_inspector, inspector_split, _subscriptions: vec![observe_subscription] }
+        Self { look, entry, left_pane, _subscriptions: vec![observe_subscription] }
     }
 
     pub fn entry(&self) -> ControlDocEntry {
@@ -310,18 +290,9 @@ impl SidebarControlExposition {
         true
     }
 
-    pub fn request_layout_refresh(&mut self, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.request_layout_refresh(cx));
-    }
-
-    pub fn set_viewport_size(&mut self, size: gpui::Size<gpui::Pixels>, cx: &mut Context<Self>) {
-        self.inspector_split.update(cx, |split, cx| split.set_viewport_size(size, cx));
-    }
-
     pub fn sync_look(&mut self, look: Arc<ShadcnLook>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.left_pane.update(cx, |pane, cx| pane.sync_look(look.clone(), cx));
-        sync_viewport_inspector(look, &self.theme_inspector, &self.inspector_split, cx);
         cx.notify();
     }
 }
@@ -334,7 +305,7 @@ impl Render for SidebarControlExposition {
                 .size_full()
                 .min_h(px(0.0))
                 .min_w(px(0.0))
-                .child(self.inspector_split.clone())
+                .child(self.left_pane.clone())
         })
     }
 }

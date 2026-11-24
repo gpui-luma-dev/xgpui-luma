@@ -78,10 +78,6 @@ pub(super) struct FilteringExample {
 }
 
 impl FilteringExample {
-    pub(super) fn captured_motion(&self) -> (bool, xgpui_luma::controls::listbox::ListBoxMotion) {
-        (self.list.is_motion_enabled(), self.list.motion_profile())
-    }
-
     pub(super) fn new(look: Arc<ShadcnLook>, events: Entity<ControlEventStream>, cx: &mut Context<Self>) -> Self {
         let search = shadcn::TextField::new("listbox-filter-query")
             .look(&look)

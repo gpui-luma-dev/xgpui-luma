@@ -139,7 +139,6 @@ impl ContentPaneHost {
             let look = self.board.look.clone();
             self.controls_panel.update(cx, |panel, cx| {
                 panel.sync_snapshot(look, cx);
-                panel.request_layout_refresh(cx);
             });
         }
 
@@ -189,20 +188,6 @@ impl ContentPaneHost {
 
     pub fn notify_tabs(&self, cx: &mut Context<Self>) {
         self.tabs.update(cx, |_, cx| cx.notify());
-    }
-
-    pub fn request_controls_layout_refresh(&self, cx: &mut Context<Self>) {
-        if self.active_tab != ContentTab::Controls {
-            return;
-        }
-        self.controls_panel.update(cx, |panel, cx| panel.request_layout_refresh(cx));
-    }
-
-    pub fn sync_controls_host_content_width(&self, width: gpui::Pixels, cx: &mut Context<Self>) {
-        if self.active_tab != ContentTab::Controls {
-            return;
-        }
-        self.controls_panel.update(cx, |panel, cx| panel.set_host_content_width(width, cx));
     }
 
     pub fn sync_board_snapshot(&mut self, board: BoardSnapshot, cx: &mut Context<Self>) {
