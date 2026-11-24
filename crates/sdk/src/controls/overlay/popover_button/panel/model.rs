@@ -70,7 +70,7 @@ impl PopoverPanelBuilder {
     crate::motion_methods!(PopoverMotion, model.motion);
 
     pub fn new(id: impl Into<SharedString>) -> Self {
-        let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
+        let geometry = crate::theme::stylesheet::PopoverGeometry::sdk();
         Self {
             explicit_offset_y: false,
             explicit_window_margin: false,
@@ -84,25 +84,12 @@ impl PopoverPanelBuilder {
                 placement: PopoverPanelPlacement::BelowStart,
                 dismiss_policy: PopoverPanelDismissPolicy::KeepOpen,
                 dismissible: true,
-                offset_y: gpui::px(geometry.offset_y.unwrap_or_default()),
-                window_margin: gpui::px(geometry.window_margin.unwrap_or_default()),
+                offset_y: gpui::px(geometry.panel_offset_y),
+                window_margin: gpui::px(geometry.window_margin),
                 focus_on_open: true,
                 initial_content_size: None,
             },
         }
-    }
-
-    /// Capture placement defaults without replacing explicit builder values.
-    pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
-        let geometry = stylesheet.popover.authored_geometry_for("panel").with_fallback(&baseline);
-        if !self.explicit_offset_y {
-            self.model.offset_y = gpui::px(geometry.offset_y.unwrap_or_default());
-        }
-        if !self.explicit_window_margin {
-            self.model.window_margin = gpui::px(geometry.window_margin.unwrap_or_default());
-        }
-        self
     }
 
     pub fn content<F>(mut self, content: F) -> Self
@@ -173,24 +160,18 @@ impl PopoverPanelBuilder {
 #[cfg(test)]
 mod stylesheet_tests {
     use super::*;
-    use crate::theme::stylesheet::CommonStylesheet;
     use gpui::px;
 
+    /// Placement defaults are `popover.lss`'s (#287), and an explicit zero is kept.
     #[test]
-    fn panel_placement_inherits_and_preserves_explicit_zero() {
+    fn panel_placement_reads_popover_lss_and_preserves_explicit_zero() {
+        let sdk = |name| crate::style::sdk_number("popover", name);
         let baseline = PopoverPanelBuilder::new("baseline");
-        assert_eq!((baseline.model.offset_y, baseline.model.window_margin), (px(4.0), px(8.0)));
-        let sheet = CommonStylesheet::resolve_layers(&[
-            "[common.popover.geometry]\nwindow_margin=17\n[common.popover.sizes.panel]\noffset_y=9",
-        ])
-        .unwrap();
-        let panel = PopoverPanelBuilder::new("panel").stylesheet(&sheet);
-        assert_eq!((panel.model.offset_y, panel.model.window_margin), (px(9.0), px(17.0)));
-        for panel in [
-            PopoverPanelBuilder::new("before").offset_y(px(0.0)).window_margin(px(0.0)).stylesheet(&sheet),
-            PopoverPanelBuilder::new("after").stylesheet(&sheet).offset_y(px(0.0)).window_margin(px(0.0)),
-        ] {
-            assert_eq!((panel.model.offset_y, panel.model.window_margin), (px(0.0), px(0.0)));
-        }
+        assert_eq!(
+            (baseline.model.offset_y, baseline.model.window_margin),
+            (px(sdk("panel_offset_y")), px(sdk("window_margin")))
+        );
+        let panel = PopoverPanelBuilder::new("explicit").offset_y(px(0.0)).window_margin(px(0.0));
+        assert_eq!((panel.model.offset_y, panel.model.window_margin), (px(0.0), px(0.0)));
     }
 }

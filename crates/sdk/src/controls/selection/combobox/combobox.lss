@@ -1,0 +1,12 @@
+// SDK combobox. Layer: sdk. The open affordance beside the field, read by `ComboBoxGeometry` (mod.rs); the
+// field is the text field and the popup the floating menu.
+
+/// A text field with a list of choices.
+combobox {
+  /// The affordance's inset from the trailing edge, width, icon size and gap, and the extra trigger gap.
+  affordance_inset: length = exact(10)
+  affordance_width: length = exact(18)
+  affordance_icon_size: length = exact(12)
+  affordance_gap: length = exact(2)
+  trigger_extra_gap: length = exact(8)
+}

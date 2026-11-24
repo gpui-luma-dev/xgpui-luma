@@ -256,7 +256,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             .render(
                 autocomplete::AutocompleteRenderModel {
                     icons: sheet.icons.clone(),
-                    geometry: sheet.autocomplete.resolve_geometry_for(size.key(), Default::default()),
+                    geometry: xgpui_luma::theme::stylesheet::AutocompleteGeometry::sdk(),
                     id: id.clone(),
                     textfield: super::textfields::selection_field(
                         look,
@@ -287,7 +287,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
         Kind::ComboBox => combobox::default_combobox_template().render(
             combobox::ComboBoxRenderModel {
                 icons: sheet.icons.clone(),
-                geometry: sheet.combobox.resolve_geometry_for(size.key(), Default::default()),
+                geometry: xgpui_luma::theme::stylesheet::ComboBoxGeometry::sdk(),
                 textfield: super::textfields::selection_field(
                     look,
                     &id,
@@ -337,7 +337,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                 .render(
                     search_selector::SearchSelectorRenderModel {
                         icons: sheet.icons.clone(),
-                        geometry: sheet.search_selector.resolve_geometry_for(size.key(), Default::default()),
+                        geometry: xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk(),
                         id: id.clone(),
                         trigger_label: "Option one".into(),
                         trigger_label_is_placeholder: false,
@@ -432,9 +432,8 @@ fn expanded_panel(
     if compact_selection(kind) {
         panel_look.min_width = preview_width(kind);
     }
-    let sheet = look.common_stylesheet();
     if kind == Kind::SearchSelector {
-        let geometry = sheet.search_selector.resolve_geometry_for(size.key(), Default::default());
+        let geometry = xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk();
         let list = search_selector::default_search_selector_items_template().render(
             &search_selector::SearchSelectorItemsRenderModel {
                 trailing_icon_size: geometry.trailing_icon_size,

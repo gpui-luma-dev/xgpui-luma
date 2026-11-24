@@ -12,22 +12,13 @@ fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
 }
 
 #[test]
-fn opacity_fields_reject_values_outside_zero_to_one() {
-    for (family, field) in [("sidebar", "disabled_opacity"), ("sidebar", "subtitle_opacity")] {
-        for value in ["-1", "1.1", "nan", "inf"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\n{field}={value}")).is_err());
-        }
-    }
-}
-
-#[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.shell.geometry]\nheight = 'math(32 * 2)'\n[common.sidebar.geometry]\ndisabled_opacity = 'math(1 / 4)'",
+        "[common.shell.geometry]\nheight = 'math(32 * 2)'\nicon_size = 'math(1 / 4)'",
         "[common.shell.geometry]\nleft_padding = 'math(0 / 28)'",
     ])
     .unwrap();
-    assert_eq!(sheet.sidebar.geometry.disabled_opacity, Some(0.25));
+    assert_eq!(sheet.shell.geometry.icon_size, Some(0.25));
     assert_eq!(sheet.shell.geometry.height, Some(64.0));
     assert_eq!(sheet.shell.geometry.left_padding, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
@@ -35,7 +26,7 @@ fn math_values_resolve_through_layers_and_geometry_validation() {
     assert_eq!(direct.shell.geometry.height, Some(6.0));
     for source in [
         "[common.shell.geometry]\nheight = 'math(-1 / 2)'",
-        "[common.sidebar.geometry]\ndisabled_opacity = 'math(3 / 2)'",
+        "[common.shell.geometry]\nicon_size = 'math(-3 / 2)'",
         "[common.shell.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
@@ -54,21 +45,19 @@ fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
 }
 
 #[test]
-fn selector_panel_chrome_inherits_tokens_and_placement_before_independent_overrides() {
+fn selector_panel_chrome_inherits_tokens_and_popover_placement() {
     use crate::controls::{selector_list::default_selector_items_panel_look, selection_panel::default_selection_panel_look};
-    let sheet = CommonStylesheet::resolve_layers(&[r#"
-[common.popover.geometry]
-window_margin=13
-[common.popover.sizes.panel]
-offset_y=9
-"#])
-    .unwrap();
-    let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
+    let mut tokens =
+        CommonStylesheet::sdk_default().theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
     tokens.metrics.border_width = 3.0;
     let look = default_selector_items_panel_look(&tokens);
-    // The menu's colors and rows come from `.lss`; the border width from the tokens and placement from
-    // the sheet.
-    assert_eq!((look.border_width, look.popup_offset_y, look.window_margin), (3.0, 9.0, 13.0));
+    // The menu's colors and rows come from `.lss`, the border width from the tokens, and the placement from
+    // the SDK's `popover.lss` panel offset and margin.
+    let sdk = |name| crate::style::sdk_number("popover", name);
+    assert_eq!(
+        (look.border_width, look.popup_offset_y, look.window_margin),
+        (3.0, sdk("panel_offset_y"), sdk("window_margin"))
+    );
     let selection = default_selection_panel_look(&tokens);
     // The selection panel is the items panel: no geometry of its own.
     assert_eq!(
@@ -123,6 +112,11 @@ fn removed_families_are_rejected() {
         "slider",
         "tooltip",
         "slide_panel",
+        "popover",
+        "sidebar",
+        "autocomplete",
+        "combobox",
+        "search_selector",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

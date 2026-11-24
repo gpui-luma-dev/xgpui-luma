@@ -402,11 +402,11 @@ impl Render for AutocompleteControl {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         let autocomplete_look = self.model.autocomplete_theme.resolve();
-        let geometry = self.model.stylesheet.resolve_geometry(crate::theme::stylesheet::AutocompleteGeometry {
+        let geometry = crate::theme::stylesheet::AutocompleteGeometry {
             status_font_size: autocomplete_look.status_typography.size,
             status_line_height: autocomplete_look.status_typography.line_height,
-            ..Default::default()
-        });
+            ..self.model.geometry
+        };
         let mut status_typography = autocomplete_look.status_typography;
         status_typography.size = geometry.status_font_size;
         status_typography.line_height = geometry.status_line_height;

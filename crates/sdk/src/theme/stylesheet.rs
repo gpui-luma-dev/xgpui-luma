@@ -95,25 +95,12 @@ common_stylesheet! {
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
-    autocomplete: AutocompleteStylesheet,
-    combobox: ComboBoxStylesheet,
-    search_selector: SearchSelectorStylesheet,
-    popover: PopoverStylesheet,
-    sidebar: SidebarStylesheet,
 }
 
 pub(crate) fn optional_length<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<f32>, D::Error> {
     let value = Option::<f32>::deserialize(deserializer)?;
     if value.is_some_and(|value| !value.is_finite() || value < 0.0) {
         return Err(serde::de::Error::custom("geometry must be finite and nonnegative"));
-    }
-    Ok(value)
-}
-
-pub(crate) fn optional_unit<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<f32>, D::Error> {
-    let value = Option::<f32>::deserialize(deserializer)?;
-    if value.is_some_and(|value| !value.is_finite() || !(0.0..=1.0).contains(&value)) {
-        return Err(serde::de::Error::custom("opacity must be finite and in 0..=1"));
     }
     Ok(value)
 }
@@ -147,11 +134,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            sidebar: SidebarStylesheet::native_default(),
-            popover: PopoverStylesheet::native_default(),
-            autocomplete: AutocompleteStylesheet::native_default(),
-            combobox: ComboBoxStylesheet::native_default(),
-            search_selector: SearchSelectorStylesheet::native_default(),
             shell: ShellStylesheet {
                 geometry: ShellGeometryStylesheet {
                     fullscreen_left_padding: Some(12.0),

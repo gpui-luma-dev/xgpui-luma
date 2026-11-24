@@ -64,14 +64,14 @@ pub fn styled_selector_items_panel_look(
 }
 
 impl SelectorItemsPanelLook {
-    /// Share menu chrome, metric border width and popover placement before panel overrides.
+    /// Share menu chrome, metric border width and the SDK's popover panel placement (`popover.lss`).
+    /// `_stylesheet` is no longer read (#287).
     pub fn from_menu(
         menu: crate::controls::floating_menu::FloatingMenuLook,
         metrics: &crate::theme::MetricTokens,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
-        let placement = stylesheet.popover.authored_geometry_for("panel").with_fallback(&baseline);
+        let placement = crate::theme::stylesheet::PopoverGeometry::sdk();
         Self {
             positive: menu.positive,
             background: menu.background,
@@ -79,8 +79,8 @@ impl SelectorItemsPanelLook {
             border: menu.border,
             border_width: metrics.border_width,
             disabled_opacity: menu.disabled_opacity,
-            popup_offset_y: placement.offset_y.unwrap_or_default(),
-            window_margin: placement.window_margin.unwrap_or_default(),
+            popup_offset_y: placement.panel_offset_y,
+            window_margin: placement.window_margin,
             shadow: menu.shadow,
             radius: menu.radius,
             padding: menu.padding,

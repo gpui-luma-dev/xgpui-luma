@@ -48,30 +48,3 @@ fn lss_control_metric(size: ShadcnSize, field: &str, value_px: f32) -> ResolvedM
         },
     }
 }
-
-// Preserve the existing Shadcn inspector API while reporting shared authored paths.
-pub fn inspect_shared_metric(value: xgpui_luma::theme::provenance::ResolvedMetric) -> crate::ResolvedMetric {
-    use xgpui_luma::theme::provenance::MetricSource;
-    let source = match value.source {
-        MetricSource::Authored { key } => crate::MetricSource::Derived { note: format!("stylesheet · {key}") },
-        MetricSource::Derived { note } => crate::MetricSource::Derived { note },
-        MetricSource::Scaffold { path } => crate::MetricSource::Scaffold { path },
-        MetricSource::Constant { label } => crate::MetricSource::Constant { label },
-        MetricSource::ScaleStep { family, step } => {
-            crate::MetricSource::Derived { note: format!("{family} step {step}") }
-        }
-    };
-    crate::ResolvedMetric { value_px: value.value_px, source }
-}
-
-/// Preserve token/recipe provenance when a common field is unset.
-pub(crate) fn prefer_shared_metric(
-    metric: xgpui_luma::theme::provenance::ResolvedMetric,
-    fallback: ResolvedMetric,
-) -> ResolvedMetric {
-    if matches!(metric.source, xgpui_luma::theme::provenance::MetricSource::Constant { .. }) {
-        fallback
-    } else {
-        inspect_shared_metric(metric)
-    }
-}

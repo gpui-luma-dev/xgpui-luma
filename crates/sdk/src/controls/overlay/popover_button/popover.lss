@@ -1,0 +1,10 @@
+// SDK popover. Layer: sdk. Where a popover opens, read by `PopoverGeometry` (panel/mod.rs) for the popover
+// button and the anchored popover panel.
+
+/// A floating panel anchored to a trigger.
+popover {
+  /// The gap below a popover button's trigger and below a panel's anchor, and the edge margin kept free.
+  button_offset_y: length = exact(0)
+  panel_offset_y: length = exact(4)
+  window_margin: length = exact(8)
+}

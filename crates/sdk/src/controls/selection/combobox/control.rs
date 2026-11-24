@@ -609,7 +609,7 @@ impl Render for ComboBoxControl {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
         let autocomplete_look = self.model.autocomplete_theme.resolve();
-        let geometry = self.model.stylesheet.resolve_geometry(Default::default());
+        let geometry = self.model.geometry;
         let look = (self.model.popup_look_provider)();
         let selected_label = self
             .behavior
@@ -854,22 +854,23 @@ fn reserved_affordance_width(geometry: &crate::theme::stylesheet::ComboBoxGeomet
 #[cfg(test)]
 mod geometry_tests {
     use super::*;
-    use crate::theme::stylesheet::CommonStylesheet;
 
     #[test]
     fn affordance_reservation_retains_defaults_and_grows_with_configured_spacing() {
-        let baseline = CommonStylesheet::sdk_default().combobox.resolve_geometry(Default::default());
+        let baseline = crate::theme::stylesheet::ComboBoxGeometry::sdk();
         assert_eq!(reserved_affordance_width(&baseline, false, false), 8.0);
         assert_eq!(reserved_affordance_width(&baseline, true, false), 36.0);
         assert_eq!(reserved_affordance_width(&baseline, false, true), 36.0);
         assert_eq!(reserved_affordance_width(&baseline, true, true), 64.0);
-        let sheet = CommonStylesheet::resolve_layers(&["[common.combobox.geometry]\naffordance_gap=20"]).unwrap();
-        let geometry = sheet.combobox.resolve_geometry(Default::default());
-        assert_eq!(reserved_affordance_width(&geometry, true, true), 74.0);
-        let zero = CommonStylesheet::resolve_layers(&[
-            "[common.combobox.geometry]\naffordance_inset=0\naffordance_width=0\naffordance_gap=0\ntrigger_extra_gap=0",
-        ])
-        .unwrap();
-        assert_eq!(reserved_affordance_width(&zero.combobox.resolve_geometry(Default::default()), true, true), 0.0);
+        let wider = crate::theme::stylesheet::ComboBoxGeometry { affordance_gap: 20.0, ..baseline };
+        assert_eq!(reserved_affordance_width(&wider, true, true), 74.0);
+        let zero = crate::theme::stylesheet::ComboBoxGeometry {
+            affordance_inset: 0.0,
+            affordance_width: 0.0,
+            affordance_gap: 0.0,
+            trigger_extra_gap: 0.0,
+            ..baseline
+        };
+        assert_eq!(reserved_affordance_width(&zero, true, true), 0.0);
     }
 }

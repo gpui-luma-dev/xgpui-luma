@@ -42,7 +42,7 @@ The parsed common schema rejects unknown typed fields. Families whose controls a
 only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
 `pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
 `progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
-`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider`, `tooltip` and `slide_panel`. Root sections belonging
+`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider`, `tooltip`, `slide_panel`, `popover`, `sidebar`, `autocomplete`, `combobox` and `search_selector`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values
