@@ -159,33 +159,6 @@ impl TabsStyle {
     }
 }
 
-/// Shared metric values and provenance used by the Radix tabs adapter.
-/// `TabsStyle` tuning wins for line gap/indicator height; surface keeps its recipe.
-pub fn tabs_geometry(
-    look: &Look,
-    variant: TabsVariant,
-    size: crate::RadixSize,
-) -> xgpui_luma::theme::stylesheet::ResolvedTabsGeometry {
-    use xgpui_luma::theme::provenance::ResolvedMetric;
-    use xgpui_luma::theme::stylesheet::ResolvedTabsGeometry;
-    let surface = variant == TabsVariant::Surface;
-    let styled = styled_tabs(look, variant, size);
-    let list = styled.list(true);
-    let item = styled.item(true, InteractionState::default());
-    let mut geometry = ResolvedTabsGeometry {
-        list_gap: ResolvedMetric::constant(list.gap, "tabs.lss list gap"),
-        list_padding: ResolvedMetric::constant(list.padding, "tabs.lss list padding"),
-        indicator_height: ResolvedMetric::constant(item.indicator_height, "tabs.lss indicator height"),
-    };
-    if surface {
-        geometry.indicator_height = ResolvedMetric::constant(0.0, "Radix surface hides indicator");
-    } else if let Some(style) = look.tabs_style_override() {
-        geometry.list_gap = ResolvedMetric::constant(style.gap, "Radix TabsStyle override");
-        geometry.indicator_height = ResolvedMetric::constant(style.indicator_height, "Radix TabsStyle override");
-    }
-    geometry
-}
-
 /// The Radix tabs: list and tabs from `.lss` (`style/tabs.lss`), with a look-wide [`TabsStyle`] set through
 /// `Look::set_tabs_style` applied over them; the baseline, indicator inset, content padding and drag preview
 /// from the look.
@@ -348,7 +321,6 @@ mod tests {
 
     #[test]
     fn tabs_style_tuning_updates_live_themes() {
-        use xgpui_luma::theme::provenance::MetricSource;
         let look = Look::built_in();
         let line = tabs_theme(&look);
         let surface = tabs_theme_for(&look, TabsVariant::Surface);
@@ -359,9 +331,6 @@ mod tests {
         look.set_tabs_style(tuning);
         assert_eq!(line.resolve_list(true).gap, 11.0);
         assert_eq!(line.resolve_item(true, Default::default()).indicator_height, 7.0);
-        assert!(
-            matches!(tabs_geometry(&look, TabsVariant::Line, RadixSize::Two).indicator_height.source, MetricSource::Constant { label } if label == "Radix TabsStyle override")
-        );
         assert_eq!(surface.resolve_list(true).gap, 2.0);
         assert_eq!(surface.resolve_item(true, Default::default()).indicator_height, 0.0);
     }
