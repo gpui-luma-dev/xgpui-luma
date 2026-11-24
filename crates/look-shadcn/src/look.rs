@@ -16,9 +16,7 @@ use crate::catalog::{CssTokenCatalog, CssTokenMap, parse_css_catalog};
 use crate::controls::ShadcnButtonStyle;
 use crate::controls::{selection_panel::selection_panel_look, selector_items_panel_look, templates};
 use crate::mode::ShadcnModeTokens;
-use crate::stylesheet::{
-    StylesheetConfig, find_typography_scale_rule, find_typography_semantic_rule, resolve_typography_rule,
-};
+use crate::stylesheet::{StylesheetConfig};
 
 use crate::shadow::parse_shadow_token;
 use crate::size::ShadcnSize;
@@ -498,17 +496,27 @@ impl ShadcnLook {
         parse_shadow_token(&tokens.catalog, token_key)
     }
 
+    /// The text style for `size`, from the look's `.lss` `text.scale` tokens.
     pub fn typography_scale(&self, size: ShadcnTextSize) -> LumaTextStyle {
-        find_typography_scale_rule(self.stylesheet().as_ref(), size)
-            .map(resolve_typography_rule)
-            .unwrap_or_else(|| size.native_style())
+        self.text_token(&format!("text.scale.{}", size.token_key()))
+            .unwrap_or_else(|| self.mode_tokens().typography.text.label)
     }
 
+    /// The text style for a heading or paragraph `role`, from the look's `.lss` `text.role` tokens.
     pub fn typography_role(&self, role: ShadcnTextRole) -> LumaTextStyle {
-        let tokens = self.mode_tokens();
-        find_typography_semantic_rule(self.stylesheet().as_ref(), role)
-            .map(resolve_typography_rule)
-            .unwrap_or_else(|| tokens.typography.text.role(role.into()))
+        self.text_token(&format!("text.role.{}", role.as_str()))
+            .unwrap_or_else(|| self.mode_tokens().typography.text.role(role.into()))
+    }
+
+    fn text_token(&self, path: &str) -> Option<LumaTextStyle> {
+        match self.style_theme().token_with(path, &[]).ok()? {
+            xgpui_luma::style::lss::Value::Text(text) => Some(LumaTextStyle {
+                size: text.size,
+                line_height: text.line_height,
+                weight: gpui::FontWeight(text.weight),
+            }),
+            _ => None,
+        }
     }
 
     pub fn light_tokens(&self) -> Arc<ShadcnModeTokens> {
@@ -875,10 +883,8 @@ impl ShadcnLook {
     }
 
     pub fn sidebar_metric_scale(&self) -> xgpui_luma::controls::sidebar::SidebarMetricScale {
-        let stylesheet = self.stylesheet();
-        crate::stylesheet::resolve_sidebar_metrics(
-            crate::stylesheet::find_sidebar_metrics(stylesheet.as_ref()),
-            &self.mode_tokens().control_sizes,
+        xgpui_luma::controls::sidebar::SidebarMetricScale::from_geometry(
+            &xgpui_luma::theme::stylesheet::SidebarGeometry::from_binding(&self.style_binding("sidebar")),
         )
     }
 

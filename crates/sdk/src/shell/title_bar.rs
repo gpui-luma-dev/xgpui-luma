@@ -6,7 +6,7 @@ use gpui::{
     StyleRefinement, Styled, TitlebarOptions, Window, WindowControlArea, div, point, prelude::*, px,
 };
 use crate::infra::icon::{IconSource, render_icon_source};
-use crate::theme::stylesheet::{CommonStylesheet, IconRole};
+use crate::theme::stylesheet::{CommonStylesheet, IconRole, ShellGeometry};
 
 pub const TITLE_BAR_HEIGHT: Pixels = px(34.0);
 #[cfg(target_os = "macos")]
@@ -83,7 +83,7 @@ impl TitleBar {
             title: None,
             appears_transparent: true,
             traffic_light_position: Some({
-                let inset = CommonStylesheet::sdk_default().shell.geometry.traffic_light_inset.unwrap_or_default();
+                let inset = ShellGeometry::sdk().traffic_light_inset;
                 point(px(inset), px(inset))
             }),
         }
@@ -220,7 +220,7 @@ fn render_control_icon(icon: ControlIcon, text_color: Hsla, stylesheet: &CommonS
     div()
         .id(icon.id())
         .flex()
-        .w(px(stylesheet.shell.geometry.height.unwrap_or_default()))
+        .w(px(ShellGeometry::sdk().height))
         .h_full()
         .flex_shrink_0()
         .justify_center()
@@ -249,11 +249,7 @@ fn render_control_icon(icon: ControlIcon, text_color: Hsla, stylesheet: &CommonS
                 }
             })
         })
-        .child(render_icon_source(
-            &icon.icon(stylesheet),
-            text_color,
-            stylesheet.shell.geometry.icon_size.unwrap_or_default(),
-        ))
+        .child(render_icon_source(&icon.icon(stylesheet), text_color, ShellGeometry::sdk().icon_size))
         .into_any_element()
 }
 
@@ -325,6 +321,7 @@ impl RenderOnce for TitleBar {
         let border_color = self.border_color.unwrap_or(palette.border);
         let background_color = self.background_color.unwrap_or(palette.background);
         let text_color = self.text_color.unwrap_or(palette.foreground);
+        let geometry = ShellGeometry::sdk();
 
         let state = window.use_state(cx, |_, _| TitleBarState { drag_start_position: None });
 
@@ -335,14 +332,13 @@ impl RenderOnce for TitleBar {
                 .flex_row()
                 .items_center()
                 .justify_between()
-                .h(self.height.unwrap_or_else(|| px(self.stylesheet.shell.geometry.height.unwrap_or_default())))
+                .h(self.height.unwrap_or_else(|| px(geometry.height)))
                 .pl(px(if is_macos {
-                    self.stylesheet.shell.geometry.macos_left_padding
+                    geometry.macos_left_padding
                 } else {
-                    self.stylesheet.shell.geometry.left_padding
-                }
-                .unwrap_or_default()))
-                .border_b(px(self.stylesheet.shell.geometry.border_width.unwrap_or_default()))
+                    geometry.left_padding
+                }))
+                .border_b(px(geometry.border_width))
                 .border_color(border_color)
                 .bg(background_color)
                 .text_color(text_color)
@@ -406,9 +402,7 @@ impl RenderOnce for TitleBar {
                     div()
                         .id("bar")
                         .window_control_area(WindowControlArea::Drag)
-                        .when(window.is_fullscreen(), |this| {
-                            this.pl(px(self.stylesheet.shell.geometry.fullscreen_left_padding.unwrap_or_default()))
-                        })
+                        .when(window.is_fullscreen(), |this| this.pl(px(geometry.fullscreen_left_padding)))
                         .h_full()
                         .flex()
                         .flex_row()

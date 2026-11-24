@@ -1,0 +1,15 @@
+// SDK title bar. Layer: sdk. The window title bar's geometry, read by `ShellGeometry` (title_bar.rs); its
+// colors are the shell palette.
+
+/// The window's title bar.
+title_bar {
+  /// The bar's height, the leading padding on macOS (beside the traffic lights), elsewhere and in full
+  /// screen, the traffic lights' inset, the window control icon size, and the bottom border.
+  height = exact(34)
+  macos_left_padding: length = exact(80)
+  left_padding: length = exact(12)
+  fullscreen_left_padding: length = exact(12)
+  traffic_light_inset: length = exact(9)
+  icon_size: length = exact(16)
+  border_width = exact(1)
+}

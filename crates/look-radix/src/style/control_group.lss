@@ -7,4 +7,15 @@ control_group {
     radius     = exact(4)
     :disabled { background = radix.role.surface }
   }
+
+  // The joined icon group (`icon_group_template`): the surface shell with a gray 6 edge, no shadow.
+  variant icon_group {
+    part root {
+      background   := radix.role.surface
+      border       := gray[6]
+      border_width := exact(1)
+      radius       := exact(4)
+      :disabled { background = radix.role.surface }
+    }
+  }
 }

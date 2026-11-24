@@ -24,17 +24,17 @@ templates; third-party looks use the same APIs.
 
 | Data | Typed owner |
 | --- | --- |
-| Per-control geometry, proportions and decoration | `common.<family>.geometry/sizes` |
+| Per-control geometry, proportions and decoration | each control's `.lss` (read through `lss_geometry!` structs or the control's styled theme) |
 | Semantic state recipe mappings | `common.recipes.<family>` |
 | Named OpenType features (four-character tags, integer values) | `common.font_features` |
 | Default glyph identities | `common.icons` |
 | Picker viewport row budgets | `common.row_limits.<family>` |
 | Shared helper/compact-input/drag/layout chrome | `.lss` `tokens { geometry { … } }` (`theme/tokens.lss`), read as `SharedGeometry` |
-| Title-bar dimensions and platform insets | `common.shell.geometry` |
+| Title-bar dimensions and platform insets | `shell/title_bar.lss`, read as `ShellGeometry` |
 | Typed animation roles | `common.motion` |
 
 Token values are read from the SDK's `.lss` token files at startup (`LumaThemeMode::from_theme`);
-public title-bar constants are authored directly in Rust.
+the public `TITLE_BAR_HEIGHT` / `TITLE_BAR_LEFT_PADDING` constants are still authored in Rust.
 Bundled SDK and look initialization require no TOML parsing or build generation.
 Clone the cached baseline for independent edits; `.with(|sheet| ...)` edits that
 copy. Direct field mutation does not clear inherited size-specific fields.
@@ -42,17 +42,14 @@ The parsed common schema rejects unknown typed fields. Families whose controls a
 only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
 `pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
 `progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
-`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider`, `tooltip`, `slide_panel`, `popover`, `sidebar`, `autocomplete`, `combobox` and `search_selector`. Root sections belonging
+`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider`, `tooltip`, `slide_panel`, `popover`, `sidebar`, `autocomplete`, `combobox`, `search_selector` and `shell`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values
 
-The SDK ships one control scale and has no size vocabulary. Each family's
-`geometry` holds its sparse overrides; for example,
-`sheet.sidebar.geometry.disabled_opacity = Some(0.5)`. `ControlSizes<T>` is a keyed
-map that looks use for their own sizes (Shadcn `sm`/`md`/`lg`, Radix `1`/`2`/`3`,
-named compact presets). A look resolves its size to pixels with
-`CommonStylesheet::with_size_key(key)` before handing the sheet to the SDK.
+The SDK ships one control scale and has no size vocabulary. Control geometry lives in `.lss`: a
+look restyles it in its own files and writes its sizes there (`size sm { … }`, `size 2 { … }`). The
+common stylesheet holds only settings: row limits, palette recipes, font features, icons and motion.
 
 Controls resolve sparse overrides into concrete geometry containing plain pixel
 values. Inspector projections are obtained separately through `inspect_geometry`;
@@ -194,13 +191,13 @@ logical geometry is snapped only where the existing control recipe requires it.
 ```rust
 use xgpui_luma::{
     color::GamutMapping,
-    theme::{ThemeMode, stylesheet::CommonStylesheet},
+    theme::{ThemeMode, stylesheet::{CommonStylesheet, RowLimits}},
 };
 let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    sheet.shell.geometry.height = Some(41.0);
+    sheet.row_limits.0.insert("pager".into(), RowLimits { min: Some(3), max: Some(9) });
 });
 let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-assert_eq!(tokens.stylesheet.shell.geometry.height, Some(41.0));
+assert_eq!(tokens.stylesheet.row_limits.resolve("pager"), (3, 9));
 ```
 
 Use the same resolved common sheet in a custom look, create its theme factories,

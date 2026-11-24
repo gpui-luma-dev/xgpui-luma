@@ -1,6 +1,6 @@
 //! Radix group shells and toggle items over the SDK selection/focus engine.
 use std::sync::Arc;
-use gpui::{AnyElement, App, BoxShadow, SharedString, Window, div, point, prelude::*, px};
+use gpui::{AnyElement, App, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate};
 use xgpui_luma::controls::toggle::ToggleData;
 use xgpui_luma::controls::control_group::*;
@@ -47,24 +47,39 @@ pub fn control_group_theme(look: &Look) -> Arc<dyn ControlGroupTheme> {
 pub fn control_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
     control_group_template_with_theme(control_group_theme(look))
 }
-/// Joined Radix toggle-group shell, composed through the SDK item-layout API.
+/// The joined icon group's shell: the look's `control_group.lss` `icon_group` variant.
+fn icon_group_shell(look: &Look) -> StyledControlGroupTheme {
+    StyledControlGroupTheme::new(
+        xgpui_luma::style::StyleBinding::new("control_group", crate::textfield::live_source(look))
+            .variant("icon_group"),
+        crate::button::styled_button_template::<()>(
+            look,
+            ButtonVariant::Ghost,
+            crate::Paint::accent(),
+            crate::ButtonSize::Two,
+        ),
+        {
+            let look = look.clone();
+            Arc::new(move || look.metrics_for(look.size()))
+        },
+    )
+}
+
+/// Joined Radix toggle-group shell, composed through the SDK item-layout API. Its fill, edge and corners
+/// are the look's `control_group.lss` (`variant icon_group`).
 pub fn icon_group_template<T: ControlGroupItemLike + 'static>(look: &Look) -> ControlGroupTemplate<T> {
-    let look = look.clone();
+    let shell = icon_group_shell(look);
     let template = control_group_item_layout_template(move |items, model, _, _| {
+        let frame = shell.resolve_list(model.enabled);
         div()
             .relative()
             .flex()
             .items_center()
             .when(model.layout == ControlGroupLayout::Vertical, |shell| shell.flex_col())
-            .rounded(px(look.radii().medium))
-            .bg(look.resolve_role(SemanticRole::Surface).hsla())
-            .shadow(vec![BoxShadow {
-                color: gpui::hsla(0.0, 0.0, 0.0, 0.2),
-                offset: point(px(0.0), px(2.0)),
-                blur_radius: px(10.0),
-                spread_radius: px(0.0),
-                inset: false,
-            }])
+            .rounded(px(frame.radius))
+            .bg(frame.background)
+            .border(px(frame.border_width))
+            .border_color(frame.border)
             .children(items.into_elements().map(|item| div().flex_none().child(item)))
     });
     Arc::new(move |model, handlers, window, cx| template(model, handlers, window, cx).flex().items_start())
@@ -280,7 +295,21 @@ pub(crate) fn assert_close(a: gpui::Hsla, b: gpui::Hsla) {
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
     use super::*;
-    use gpui::{Render, TestAppContext, Window};
+    use gpui::{Render, TestAppContext, Window, point};
+
+    /// The icon group shell is a bordered surface from `control_group.lss` (`variant icon_group`): a 1px
+    /// gray 6 edge and the medium corner, with no drop shadow.
+    #[test]
+    fn icon_group_shell_is_a_bordered_surface() {
+        let look = Look::built_in();
+        for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
+            look.set_mode(mode);
+            let frame = icon_group_shell(&look).resolve_list(true);
+            assert_eq!((frame.border_width, frame.radius), (1.0, 4.0), "{mode:?}");
+            assert_close(frame.border, look.resolve_step(ScaleFamily::Gray, 6).hsla());
+            assert_close(frame.background, look.resolve_role(SemanticRole::Surface).hsla());
+        }
+    }
 
     struct Harness {
         group: ControlGroup<ControlGroupItem>,

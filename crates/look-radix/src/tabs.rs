@@ -7,7 +7,6 @@ use xgpui_luma::controls::tabs::{TabsBaseline, TabsItemLook, TabsListLook, TabsT
 use xgpui_luma::theme::InteractionState;
 
 use crate::look::Look;
-use crate::scale::ScaleFamily;
 use crate::typography::font_family;
 
 /// Radix `size` prop on Tabs. Default is [`Self::Two`].
@@ -63,22 +62,34 @@ pub struct TabsMetrics {
     pub line_height: f32,
 }
 
-/// Full-control baseline, independent of the active-tab indicator.
+/// Full-control baseline, independent of the active-tab indicator. The defaults are the look's `tabs.lss`
+/// (`baseline_*`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TabsBaselineStyle {
     pub height: f32,
     pub inset_x: f32,
     pub bottom: f32,
-    /// Neutral scale step. The current catalog uses solid colors, so step 5
-    /// approximates Radix's gray-a5 rule on the default page background.
-    pub gray_step: u8,
-    /// Optional exact color; otherwise resolve `gray_step` in the current mode.
+    /// An exact color; otherwise the `.lss` `baseline_color` in the current mode (gray 5).
     pub color: Option<Hsla>,
 }
 
 impl Default for TabsBaselineStyle {
+    /// The built-in look's baseline.
     fn default() -> Self {
-        Self { height: 1.0, inset_x: 0.0, bottom: 0.0, gray_step: 5, color: None }
+        Self::from_look(&Look::built_in())
+    }
+}
+
+impl TabsBaselineStyle {
+    /// `look`'s line tabs baseline from its `.lss`, with the color left to the current mode.
+    pub(crate) fn from_look(look: &Look) -> Self {
+        let root = styled_tabs_root(look, TabsVariant::Line, crate::RadixSize::Two);
+        Self {
+            height: root.number("baseline_height"),
+            inset_x: root.number("baseline_inset_x"),
+            bottom: root.number("baseline_bottom"),
+            color: None,
+        }
     }
 }
 
@@ -113,18 +124,28 @@ impl Default for TabsStyle {
 }
 
 impl TabsStyle {
-    /// `look`'s line tabs from its `.lss`: the list gap and indicator height at size 2.
+    /// `look`'s line tabs from its `.lss`: the list gap, indicator height and baseline at size 2, and the
+    /// size 1 and size 2 tab metrics.
     pub(crate) fn from_look(look: &Look) -> Self {
         let styled = styled_tabs(look, TabsVariant::Line, crate::RadixSize::Two);
         let list = styled.list(true);
         let item = styled.item(true, InteractionState::default());
+        let metrics = |size| {
+            let item = styled_tabs(look, TabsVariant::Line, size).item(true, InteractionState::default());
+            TabsMetrics {
+                height: item.height,
+                padding_x: item.padding_x,
+                font_size: item.label_typography.size,
+                line_height: item.label_typography.line_height,
+            }
+        };
         Self {
-            baseline: Some(TabsBaselineStyle::default()),
+            baseline: Some(TabsBaselineStyle::from_look(look)),
             indicator_height: item.indicator_height,
             indicator_inset: 0.0,
             gap: list.gap,
-            small: TabsMetrics { height: 32.0, padding_x: 8.0, font_size: 12.0, line_height: 16.0 },
-            medium: TabsMetrics { height: 40.0, padding_x: 16.0, font_size: 14.0, line_height: 20.0 },
+            small: metrics(crate::RadixSize::One),
+            medium: metrics(crate::RadixSize::Two),
         }
     }
 }
@@ -205,10 +226,9 @@ impl TabsTheme for TabsThemeAdapter {
         if self.variant != TabsVariant::Line {
             return None;
         }
+        let lss = styled_tabs_root(&self.look, self.variant, self.look.size());
         self.look.tabs_style().baseline.map(|baseline| TabsBaseline {
-            color: baseline
-                .color
-                .unwrap_or_else(|| self.look.resolve_step(ScaleFamily::Gray, baseline.gray_step).hsla()),
+            color: baseline.color.unwrap_or_else(|| lss.color("baseline_color")),
             height: baseline.height,
             inset_x: baseline.inset_x,
             bottom: baseline.bottom,
@@ -220,11 +240,8 @@ impl TabsTheme for TabsThemeAdapter {
     }
 
     fn content_padding(&self) -> Option<(f32, f32)> {
-        let size = self.look.size();
-        (self.variant == TabsVariant::Line).then_some(match size {
-            crate::RadixSize::One => (4.0, 2.0),
-            crate::RadixSize::Two | crate::RadixSize::Three => (8.0, 4.0),
-        })
+        let lss = styled_tabs_root(&self.look, self.variant, self.look.size());
+        (self.variant == TabsVariant::Line).then(|| (lss.number("content_padding_x"), lss.number("content_padding_y")))
     }
 
     fn font_family(&self) -> SharedString {
@@ -240,20 +257,45 @@ pub fn tabs_theme_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTheme> {
     Arc::new(TabsThemeAdapter { look: look.clone(), variant, styled: styled_tabs(look, variant, look.size()) })
 }
 
+/// The tabs control's own `.lss` values (`baseline_*`, `content_padding_*`) for `variant` at `size`.
+struct TabsRoot(std::sync::Arc<xgpui_luma::style::lss::Resolved>);
+
+impl TabsRoot {
+    fn number(&self, name: &str) -> f32 {
+        self.0.root().value(name).and_then(xgpui_luma::style::lss::Value::as_number).unwrap_or(0.0)
+    }
+
+    fn color(&self, name: &str) -> Hsla {
+        self.0
+            .root()
+            .value(name)
+            .and_then(xgpui_luma::style::lss::Value::as_color)
+            .map(Hsla::from)
+            .unwrap_or_else(gpui::transparent_black)
+    }
+}
+
+fn styled_tabs_root(look: &Look, variant: TabsVariant, size: crate::RadixSize) -> TabsRoot {
+    TabsRoot(tabs_binding(look, variant, size).resolve(&[], 1.0))
+}
+
 /// The `.lss` tabs (`style/tabs.lss`) for `variant` at `size`, before any [`TabsStyle`] override.
 fn styled_tabs(look: &Look, variant: TabsVariant, size: crate::RadixSize) -> xgpui_luma::controls::tabs::StyledTabs {
+    xgpui_luma::controls::tabs::StyledTabs::new(tabs_binding(look, variant, size))
+}
+
+fn tabs_binding(look: &Look, variant: TabsVariant, size: crate::RadixSize) -> xgpui_luma::style::StyleBinding {
     let binding = xgpui_luma::style::StyleBinding::new("tabs", crate::textfield::live_source(look));
     let binding = if variant == TabsVariant::Surface {
         binding.variant("surface")
     } else {
         binding
     };
-    let binding = if size != crate::RadixSize::Two {
+    if size != crate::RadixSize::Two {
         binding.attr("size", size.key())
     } else {
         binding
-    };
-    xgpui_luma::controls::tabs::StyledTabs::new(binding)
+    }
 }
 
 pub fn tabs_template(look: &Look) -> Arc<dyn TabsTemplate> {
@@ -267,6 +309,7 @@ pub fn tabs_template_for(look: &Look, variant: TabsVariant) -> Arc<dyn TabsTempl
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scale::ScaleFamily;
     use crate::semantic::SemanticRole;
     use crate::RadixSize;
 
@@ -362,13 +405,15 @@ mod tests {
         let theme = tabs_theme(&look);
         let original = theme.resolve_item(true, InteractionState::default());
         let mut style = look.tabs_style();
-        style.baseline = Some(TabsBaselineStyle { height: 3.0, inset_x: 12.0, bottom: 4.0, gray_step: 8, color: None });
+        // An explicit color is exact in every mode; without one the `.lss` baseline color follows the mode.
+        let color = look.resolve_step(ScaleFamily::Gray, 8).hsla();
+        style.baseline = Some(TabsBaselineStyle { height: 3.0, inset_x: 12.0, bottom: 4.0, color: Some(color) });
         look.set_tabs_style(style);
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
             look.set_mode(mode);
             let baseline = theme.baseline(true).unwrap();
             assert_eq!((baseline.height, baseline.inset_x, baseline.bottom), (3.0, 12.0, 4.0));
-            assert_eq!(baseline.color, look.resolve_step(ScaleFamily::Gray, 8).hsla());
+            assert_eq!(baseline.color, color);
             let active = theme.resolve_item(true, InteractionState::default());
             assert_eq!(active.height, original.height);
             assert_eq!(active.padding_x, original.padding_x);

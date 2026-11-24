@@ -1,8 +1,3 @@
-use serde::Deserialize;
-use std::collections::HashMap;
-
-use crate::size::ShadcnSize;
-
 use crate::provenance::ResolvedColor;
 
 /// Button-local corner radius presets (shadcn/Shadcn `radius` prop).
@@ -162,61 +157,4 @@ mod tests {
             }
         }
     }
-}
-
-/// Button metrics. Colors and shadows come from `button.lss`, so a sheet that sets rules for them is
-/// an error rather than silently ignored.
-#[derive(Debug, Deserialize, Clone, Default, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ButtonStylesheet {
-    #[serde(default)]
-    pub metrics: HashMap<String, ButtonMetricsRule>,
-    /// Look-owned metric-token references; literals live in the common contract.
-    #[serde(default)]
-    pub tokens: HashMap<String, ButtonMetricTokensRule>,
-}
-
-impl ButtonStylesheet {
-    /// Native bundled rules in their original priority order.
-    /// Native bundled metric-token references.
-    pub fn native_default() -> Self {
-        Self {
-            tokens: [("sm", "metrics.control.sm"), ("md", "metrics.control.md"), ("lg", "metrics.control.lg")]
-                .into_iter()
-                .map(|(key, height)| {
-                    (
-                        key.into(),
-                        ButtonMetricTokensRule { height: Some(height.into()), corner_radius: Some("radius".into()) },
-                    )
-                })
-                .collect(),
-            ..Default::default()
-        }
-    }
-
-    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ButtonMetricsRule> {
-        let key = match size {
-            ShadcnSize::Sm => "sm",
-            ShadcnSize::Md => "md",
-            ShadcnSize::Lg => "lg",
-        };
-        self.metrics.get(key)
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct ButtonMetricsRule {
-    pub height: String,
-    pub padding_horizontal: f32,
-    pub font_size: f32,
-    pub icon_size: f32,
-    pub corner_radius: String,
-}
-
-/// Shadcn token references retained independently of common pixel dimensions.
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct ButtonMetricTokensRule {
-    pub height: Option<String>,
-    pub corner_radius: Option<String>,
 }

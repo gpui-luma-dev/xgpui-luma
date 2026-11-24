@@ -5,6 +5,9 @@
 sidebar {
   /// Row icon size.
   item_icon_size: length = exact(16)
+  /// A standalone sidebar frame's fill and edge (a look's sidebar container).
+  container_background: color = palette.navigation.background
+  container_border: color = palette.navigation.border
   /// Shell layout (`SidebarGeometry`): widths expanded, as an icon rail and on mobile; the host row height;
   /// the rail's hit width and popover offset; container and region gaps; header, footer, title and section
   /// spacing; the disclosure icon; the rail submenu's offset, edge margin, branch indicator and overhang;

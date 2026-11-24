@@ -10,10 +10,6 @@ pub use crate::controls::control_group::{ControlGroupListColorTable};
 pub use crate::controls::floating_menu::{FloatingMenuColorTable, GhostTriggerColorTable};
 pub use crate::controls::table::{TableRowColorTable, TableSurfaceColorTable};
 pub use crate::controls::listbox::{ListBoxListColorTable, ListBoxRowColorTable};
-pub use crate::controls::sidebar::{
-    resolve_sidebar_container_colors, SidebarBranchColorTable, SidebarContainerColorTable, SidebarItemColorTable,
-    SidebarSectionColorTable,
-};
 pub use crate::controls::progress::{ProgressColorTable};
 pub use crate::controls::stepper::{StepperColorTable};
 pub use crate::controls::resizable_panels::{ResizablePanelsColorTable};

@@ -1,14 +1,10 @@
 use std::collections::HashMap;
 
-use gpui::{FontWeight, px};
-use xgpui_luma::controls::sidebar::SidebarMetricScale;
-use xgpui_luma::theme::{InteractionLayer, LumaTextStyle};
+use xgpui_luma::theme::InteractionLayer;
 
 use crate::controls::ShadcnButtonStyle;
 use crate::provenance::{LookResolver, ResolvedColor};
 use crate::size::ShadcnSize;
-
-use super::config::{ButtonMetricsRule, SidebarMetricsRule, TypographyRule};
 
 /// Context for resolving derived stylesheet tokens (`@outline_layer`, `@action_layer`, etc.).
 #[derive(Clone, Copy, Debug)]
@@ -100,49 +96,6 @@ fn parse_first_layer_fn(raw: &str) -> Option<Vec<&str>> {
     Some(inner.split(',').map(str::trim).collect())
 }
 
-mod color_rules;
-pub use color_rules::*;
-
-pub fn resolve_button_metrics_rule(
-    rule: &ButtonMetricsRule,
-    controls: &crate::ShadcnControlMetrics,
-    size: ShadcnSize,
-) -> ResolvedButtonMetrics {
-    ResolvedButtonMetrics {
-        height: resolve_stylesheet_metric(&rule.height, controls, size)
-            .unwrap_or_else(|| controls.control_height(size)),
-        padding_horizontal: rule.padding_horizontal,
-        font_size: rule.font_size,
-        icon_size: rule.icon_size,
-        corner_radius: resolve_stylesheet_metric(&rule.corner_radius, controls, size)
-            .unwrap_or_else(|| controls.radius(size)),
-    }
-}
-
-pub fn resolve_sidebar_metrics(
-    rule: &SidebarMetricsRule,
-    controls: &crate::ShadcnControlMetrics,
-) -> SidebarMetricScale {
-    let defaults = SidebarMetricScale::default();
-    let size = ShadcnSize::Md;
-    let resolve =
-        |raw: &str, fallback: gpui::Pixels| resolve_stylesheet_metric(raw, controls, size).map(px).unwrap_or(fallback);
-
-    SidebarMetricScale {
-        width_expanded: resolve(&rule.width_expanded, defaults.width_expanded),
-        width_icon_rail: resolve(&rule.width_icon_rail, defaults.width_icon_rail),
-        width_mobile: resolve(&rule.width_mobile, defaults.width_mobile),
-        item_height: resolve(&rule.item_height, defaults.item_height),
-        icon_size: resolve(&rule.icon_size, defaults.icon_size),
-        rail_hit_width: resolve(&rule.rail_hit_width, defaults.rail_hit_width),
-        popover_offset: resolve(&rule.popover_offset, defaults.popover_offset),
-    }
-}
-
-pub fn resolve_typography_rule(rule: &TypographyRule) -> LumaTextStyle {
-    LumaTextStyle { size: rule.size, line_height: rule.line_height, weight: FontWeight(rule.weight) }
-}
-
 pub fn resolve_stylesheet_metric(raw: &str, controls: &crate::ShadcnControlMetrics, size: ShadcnSize) -> Option<f32> {
     match raw.trim() {
         "metrics.control.sm" => Some(controls.control_height(ShadcnSize::Sm)),
@@ -169,7 +122,6 @@ fn resolve_f32_literal(raw: &str) -> anyhow::Result<f32> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use gpui::px;
     use xgpui_luma::theme::ThemeMode;
 
     use crate::catalog::CssTokenMap;
@@ -203,19 +155,6 @@ mod tests {
     }
 
     #[test]
-    fn resolve_sidebar_metrics_from_rem_literals() {
-        use crate::stylesheet::config::SidebarMetricsRule;
-
-        let rule = SidebarMetricsRule::default();
-        let scale = resolve_sidebar_metrics(&rule, &crate::ShadcnLook::built_in().mode_tokens().control_sizes);
-        assert_eq!(scale.width_expanded, px(256.0));
-        assert_eq!(scale.width_icon_rail, px(48.0));
-        assert_eq!(scale.width_mobile, px(288.0));
-        assert_eq!(scale.item_height, px(32.0));
-        assert_eq!(scale.icon_size, px(16.0));
-    }
-
-    #[test]
     fn metric_token_resolves_control_height_and_radius() {
         let controls = crate::ShadcnLook::built_in().mode_tokens().control_sizes;
         assert_eq!(
@@ -226,13 +165,5 @@ mod tests {
             resolve_stylesheet_metric("radius", &controls, ShadcnSize::Sm),
             Some(controls.radius(ShadcnSize::Sm))
         );
-    }
-
-    #[test]
-    fn typography_rule_resolves_to_text_style() {
-        let style = resolve_typography_rule(&TypographyRule { size: 16.0, line_height: 22.0, weight: 600.0 });
-        assert_eq!(style.size, 16.0);
-        assert_eq!(style.line_height, 22.0);
-        assert_eq!(style.weight, FontWeight(600.0));
     }
 }
