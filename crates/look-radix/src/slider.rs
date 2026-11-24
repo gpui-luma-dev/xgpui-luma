@@ -85,19 +85,29 @@ impl SliderSize {
     }
 }
 
-/// Shared metric values and provenance consumed by the Radix slider adapter.
+/// The slider's dimensions at `size` and where they come from: the look's `slider.lss` (#287).
 pub fn slider_geometry(
     look: &Look,
     size: SliderSize,
 ) -> (xgpui_luma::theme::stylesheet::SliderGeometry, xgpui_luma::theme::stylesheet::SliderGeometrySources) {
-    use xgpui_luma::theme::stylesheet::SliderGeometry;
-    let control = size.control_size();
-    let fallback = SliderGeometry::sdk_default(
-        &look.metrics_for(control),
-        xgpui_luma::theme::stylesheet::CommonStylesheet::sdk_default(),
-    );
-    let (geometry, sources) = look.stylesheet_snapshot().slider.inspect_geometry_for(control.key(), &fallback);
-    (geometry, sources)
+    use xgpui_luma::theme::provenance::MetricSource;
+    use xgpui_luma::theme::stylesheet::{SliderGeometry, SliderGeometrySources};
+    let painted = slider_theme_for(look, SliderVariant::default(), size).resolve(Default::default());
+    let source = |field: &str| MetricSource::Constant { label: format!("slider.lss {field}") };
+    (
+        SliderGeometry {
+            width: painted.width,
+            height: painted.height,
+            track_height: painted.track_height,
+            thumb_size: painted.thumb_size,
+        },
+        SliderGeometrySources {
+            width: source("width"),
+            height: source("height"),
+            track_height: source("track_height"),
+            thumb_size: source("thumb_size"),
+        },
+    )
 }
 
 pub fn slider_theme(look: &Look) -> Arc<dyn SliderTheme> {
@@ -141,20 +151,6 @@ mod tests {
     use xgpui_luma::theme::InteractionState;
 
     #[test]
-    fn numeric_overrides_reach_radix_sizes() {
-        let look = Look::built_in();
-        let mut stylesheet = look.common_stylesheet();
-        let numeric = xgpui_luma::theme::stylesheet::CommonStylesheet::parse(
-            "[common.slider.sizes.\"1\"]\nheight = 0\n[common.slider.sizes.\"3\"]\nthumb_size = 31",
-        )
-        .unwrap();
-        numeric.slider.apply_to(&mut stylesheet.slider);
-        look.set_common_stylesheet(stylesheet);
-        assert_eq!(slider_geometry(&look, SliderSize::One).0.height, 0.0);
-        assert_eq!(slider_geometry(&look, SliderSize::Three).0.thumb_size, 31.0);
-    }
-
-    #[test]
     fn shared_slider_geometry_preserves_modes_states_and_sizes() {
         let look = Look::built_in();
         for mode in [xgpui_luma::theme::ThemeMode::Light, xgpui_luma::theme::ThemeMode::Dark] {
@@ -191,17 +187,12 @@ mod tests {
     #[test]
     fn explicit_radix_size_retains_numeric_semantics_at_sdk_boundary() {
         let look = Look::built_in();
-        let stylesheet = look.common_stylesheet();
-        let sizes = &stylesheet.slider.sizes;
-        assert_eq!(sizes.get("1").and_then(|size| size.height), Some(16.0));
-        assert_eq!(sizes.get("2").and_then(|size| size.height), Some(20.0));
-        assert_eq!(sizes.get("3").and_then(|size| size.height), Some(24.0));
         let theme = slider_theme_for(&look, SliderVariant::Surface, SliderSize::One);
         assert_eq!(theme.resolve(Default::default()).height, 16.0);
         let (_, sources) = slider_geometry(&look, SliderSize::Two);
         assert!(matches!(sources.height,
-            xgpui_luma::theme::provenance::MetricSource::Authored { key }
-            if key == "common.slider.sizes.2.height"));
+            xgpui_luma::theme::provenance::MetricSource::Constant { label }
+            if label == "slider.lss height"));
     }
 
     #[test]
@@ -253,31 +244,4 @@ mod tests {
         let surface = slider_theme_with(&look, SliderVariant::Surface).resolve(InteractionState::default());
         assert!(classic.thumb_shadow.len() > surface.thumb_shadow.len());
     }
-}
-
-/// Constructs the native Radix slider definition in pure Rust without preloading TOML.
-pub fn native_radix_slider() -> xgpui_luma::theme::stylesheet::SliderStylesheet {
-    use xgpui_luma::theme::stylesheet::{SliderGeometryStylesheet, SliderStylesheet};
-    SliderStylesheet {
-        geometry: SliderGeometryStylesheet { width: Some(120.0), ..Default::default() },
-        sizes: [("1", 16.0, 4.0, 12.0), ("2", 20.0, 6.0, 16.0), ("3", 24.0, 8.0, 20.0)]
-            .into_iter()
-            .map(|(key, height, track_height, thumb_size)| {
-                (
-                    key.to_string(),
-                    SliderGeometryStylesheet {
-                        height: Some(height),
-                        track_height: Some(track_height),
-                        thumb_size: Some(thumb_size),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-    }
-}
-
-/// Applies Radix slider geometry in Rust.
-pub(crate) fn apply_radix_slider_stylesheet(sheet: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
-    native_radix_slider().apply_to(&mut sheet.slider);
 }

@@ -18,12 +18,7 @@ use std::sync::OnceLock;
 
 fn embedded() -> &'static StylesheetConfig {
     static STYLESHEET: OnceLock<StylesheetConfig> = OnceLock::new();
-    STYLESHEET.get_or_init(|| {
-        let mut config = StylesheetConfig::native_default();
-        // Shadcn's common slider geometry over the SDK baseline (what `define_shadcn_slider` applied).
-        native_shadcn_common_slider().apply_to(&mut config.common.slider);
-        config
-    })
+    STYLESHEET.get_or_init(StylesheetConfig::native_default)
 }
 
 /// Construct the complete Shadcn common overrides using native definitions.
@@ -34,12 +29,9 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
     let common = CommonStylesheet {
         motion,
-        slider: native_shadcn_common_slider(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
         ..Default::default()
     };
     common.with_sdk_defaults()
 }
-
-pub use crate::controls::slider::native_shadcn_common_slider;
