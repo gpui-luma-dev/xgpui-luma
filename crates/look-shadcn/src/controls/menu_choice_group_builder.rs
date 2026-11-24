@@ -234,7 +234,7 @@ where
     fn into_sdk_builder(self, look: ShadcnLook) -> ControlGroupBuilder<T> {
         let self_builder = self
             .builder
-            .stylesheet(look.mode_tokens().common_for(look.size()))
+            .stylesheet(look.mode_tokens().common())
             .motion_defaults(look.motion_defaults().control_group);
         let mut builder = self_builder;
         if let Some(row) = self.menu_row {

@@ -119,11 +119,7 @@ pub trait TableTheme: Send + Sync {
     fn metrics(&self) -> MetricTokens;
 
     fn resolve_row_look(&self, selected: bool, state: InteractionState, scale: &ListRowScale) -> TableRowLook {
-        TableRowLook::from_palette(
-            &self.resolve_row(selected, state),
-            scale,
-            crate::theme::stylesheet::CommonStylesheet::sdk_default(),
-        )
+        TableRowLook::from_palette(&self.resolve_row(selected, state), scale)
     }
 }
 
@@ -134,13 +130,8 @@ pub fn default_table_theme() -> Arc<dyn TableTheme> {
 }
 
 impl TableRowLook {
-    /// Combines row colors with the SDK's `table.lss` row layout and label baseline. `_stylesheet` is no
-    /// longer read: the layout is `.lss` (#287).
-    pub fn from_palette(
-        palette: &TableRowPalette,
-        scale: &ListRowScale,
-        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
-    ) -> Self {
+    /// Combines row colors with the SDK's `table.lss` row layout and label baseline.
+    pub fn from_palette(palette: &TableRowPalette, scale: &ListRowScale) -> Self {
         let sdk = super::styled::StyledTable::sdk().row_look(false, InteractionState::default(), scale);
         Self {
             column_emphasis_weight: crate::theme::LumaTypography::default().text.title.weight,

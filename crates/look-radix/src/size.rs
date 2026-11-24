@@ -27,14 +27,6 @@ impl RadixSize {
             Self::Three => "3",
         }
     }
-
-    pub(crate) fn index(self) -> usize {
-        match self {
-            Self::One => 0,
-            Self::Two => 1,
-            Self::Three => 2,
-        }
-    }
 }
 
 /// Radix control metrics for each [`RadixSize`], in pixels.

@@ -185,7 +185,7 @@ where
     fn into_sdk_builder(self, look: ShadcnLook) -> RadioGroupBuilder<T> {
         let self_builder = self
             .builder
-            .stylesheet(look.mode_tokens().common_for(look.size()))
+            .stylesheet(look.mode_tokens().common())
             .motion_defaults(look.motion_defaults().control_group);
         let radio_template = look.radio_button_template(self.style);
         let mut builder =

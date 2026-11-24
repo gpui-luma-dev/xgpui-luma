@@ -58,7 +58,7 @@ pub fn stepper_template(look: &Look) -> Arc<dyn StepperTemplate> {
 /// Radix stepper builder; direction, labels, content, state overrides, and motion remain SDK options.
 pub fn stepper_builder(look: &Look, id: impl Into<SharedString>, step_count: usize) -> StepperBuilder {
     StepperBuilder::new(id, step_count)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().stepper)
         .template(stepper_template(look))
 }

@@ -25,9 +25,6 @@ pub struct ShadcnModeTokens {
     state_colors: StateColorTable,
     shadow_previews: HashMap<String, Vec<gpui::BoxShadow>>,
     stylesheet: Arc<crate::stylesheet::StylesheetConfig>,
-    /// Common stylesheet with each Shadcn size merged into general geometry, in
-    /// [`crate::ShadcnSize::ALL`] order. SDK controls only read these pixel values.
-    sized_common: Arc<[xgpui_luma::theme::stylesheet::CommonStylesheet; 3]>,
     /// This mode's catalog bound to the `.lss` stylesheet, made on first use.
     style_theme: StyleThemeSlot,
 }
@@ -82,7 +79,6 @@ impl ShadcnModeTokens {
             xgpui_luma::color::GamutMapping::CssLocalMinde,
         )?;
         let radii = radii_from_catalog(&catalog);
-        let sized_common = Arc::new(crate::ShadcnSize::ALL.map(|size| stylesheet.common.with_size_key(size.key())));
         // Metrics come from the look's `.lss`, bound to this catalog below. The theme's native
         // tokens read only the catalog, so these placeholders don't reach it.
         let placeholder = MetricTokens::default();
@@ -100,7 +96,6 @@ impl ShadcnModeTokens {
             state_colors,
             shadow_previews,
             stylesheet,
-            sized_common,
             palette,
             catalog,
             style_theme: StyleThemeSlot::default(),
@@ -124,10 +119,10 @@ impl ShadcnModeTokens {
         metrics
     }
 
-    /// Common stylesheet with `size` merged into general geometry, for SDK controls.
-    pub fn common_for(&self, size: crate::ShadcnSize) -> &xgpui_luma::theme::stylesheet::CommonStylesheet {
-        let index = crate::ShadcnSize::ALL.iter().position(|candidate| *candidate == size).unwrap_or(1);
-        &self.sized_common[index]
+    /// The common stylesheet SDK controls read (motion, icons and the other `[common]` families).
+    /// It has no size-keyed values, so every Shadcn size shares it.
+    pub fn common(&self) -> &xgpui_luma::theme::stylesheet::CommonStylesheet {
+        &self.stylesheet.common
     }
 
     /// Standard shadow previews are prepared with this immutable theme snapshot.

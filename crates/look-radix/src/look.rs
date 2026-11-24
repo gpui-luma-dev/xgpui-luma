@@ -105,12 +105,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     common.with_sdk_defaults()
 }
 
-fn sized_stylesheets(
-    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
-) -> Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]> {
-    Arc::new(crate::RadixSize::ALL.map(|size| Arc::new(stylesheet.with_size_key(size.key()))))
-}
-
 struct LookState {
     motion: RwLock<xgpui_luma::motion::MotionOverrides<xgpui_luma::theme::MotionDefaults>>,
     scales: RwLock<ScalePair>,
@@ -129,8 +123,6 @@ struct LookState {
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
     common_stylesheet: RwLock<Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>>,
-    /// `common_stylesheet` with each [`crate::RadixSize`] merged into general geometry.
-    sized_stylesheets: RwLock<Arc<[Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>; 3]>>,
     /// Bumped by look setters; polling does not schedule GPUI redraws.
     revision: RwLock<u64>,
     /// The `.lss` theme last bound, keyed by revision and mode (see [`Look::style_theme`]).
@@ -169,7 +161,6 @@ impl Look {
                 style_mode: RwLock::new(None),
                 classic_shadow: RwLock::new(None),
                 tabs_style: RwLock::new(None),
-                sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
                 common_stylesheet: RwLock::new(common),
                 revision: RwLock::new(0),
                 style_theme: Default::default(),
@@ -266,17 +257,7 @@ impl Look {
     }
 
     fn store_stylesheet(&self, stylesheet: Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>) {
-        *self.state.sized_stylesheets.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
-            sized_stylesheets(&stylesheet);
         *self.state.common_stylesheet.write().unwrap_or_else(|poisoned| poisoned.into_inner()) = stylesheet;
-    }
-
-    /// Common stylesheet with `size` merged into general geometry, for SDK controls.
-    pub(crate) fn sized_stylesheet(
-        &self,
-        size: crate::RadixSize,
-    ) -> Arc<xgpui_luma::theme::stylesheet::CommonStylesheet> {
-        self.state.sized_stylesheets.read().unwrap_or_else(|poisoned| poisoned.into_inner())[size.index()].clone()
     }
 
     /// A handle to the same look whose themes and templates use `size`.

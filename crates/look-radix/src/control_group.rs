@@ -265,7 +265,7 @@ pub fn control_group_builder<T: ControlGroupItemLike + 'static>(
     size: crate::RadixSize,
 ) -> ControlGroupBuilder<T> {
     ControlGroupBuilder::new(id)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().control_group)
         .template(control_group_template(look))
         .item_element_template(control_group_item_template(look, size))
@@ -280,7 +280,7 @@ pub fn icon_group_builder<T: ControlGroupItemLike + 'static>(
     xgpui_luma::controls::icon_group::new(id)
         .horizontal()
         .template(icon_group_template(look))
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().control_group)
 }
 
