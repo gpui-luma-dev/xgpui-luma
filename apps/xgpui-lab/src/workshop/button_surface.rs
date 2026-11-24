@@ -11,6 +11,7 @@ use xgpui_luma::style::lss::Theme;
 use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
+use crate::theme::Look;
 
 /// The button's text, on the stage and in each State matrix cell.
 const LABEL: &str = "Button";
@@ -23,7 +24,7 @@ pub(super) struct ButtonSurface {
 }
 
 impl ButtonSurface {
-    pub(super) fn make(cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+    pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let button = Button::new("workshop-sdk-button").content(|_, _| div().child(LABEL)).spawn(cx);
         Box::new(Self { button })
     }

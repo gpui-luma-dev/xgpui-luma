@@ -11,6 +11,7 @@ use xgpui_luma::style::lss::Theme;
 use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
+use crate::theme::Look;
 
 /// The switch's text, on the stage and in each State matrix cell.
 const LABEL: &str = "Label";
@@ -20,7 +21,7 @@ pub(super) struct SwitchSurface {
 }
 
 impl SwitchSurface {
-    pub(super) fn make(cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+    pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let switch = switch::new("workshop-sdk-switch").content(|_, _| div().child(LABEL)).spawn(cx);
         Box::new(Self { switch })
     }

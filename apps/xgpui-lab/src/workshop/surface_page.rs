@@ -429,7 +429,7 @@ impl ControlSide {
     ) -> Self {
         let config = theme.stylesheet().config().clone();
 
-        let surface = make_control(cx);
+        let surface = make_control(&look, cx);
         // Design mode pauses the log.
         surface
             .subscribe(cx, |this, event, cx| {
@@ -1380,7 +1380,8 @@ impl ControlSide {
             .into_any_element()
     }
 
-    /// The lower panel for the work mode: the state picker in Design, the events in Test.
+    /// The lower panel for the work mode: the control's options if it has any (both modes), then the
+    /// state picker in Design or the events in Test.
     fn lower_slot(&self, cx: &gpui::App) -> AnyElement {
         let chrome = self.look.chrome();
         div()
@@ -1389,6 +1390,26 @@ impl ControlSide {
             .overflow_y_scroll()
             .border_t_1()
             .border_color(chrome.border)
+            .children(self.surface.options().map(|options| {
+                div()
+                    .debug_selector(|| "workshop-surface-options".into())
+                    .flex()
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(10.))
+                    .px(px(18.))
+                    .py(px(10.))
+                    .border_b_1()
+                    .border_color(chrome.border)
+                    .child(
+                        div()
+                            .w(px(STRIP_LABEL_WIDTH))
+                            .font_weight(pane_type::LABEL_WEIGHT)
+                            .text_color(chrome.muted_text)
+                            .child("OPTIONS"),
+                    )
+                    .child(options)
+            }))
             .child(match self.work_mode {
                 WorkMode::Design => self.states_panel(cx),
                 WorkMode::Test => self.events_panel(),

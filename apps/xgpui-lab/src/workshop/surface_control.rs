@@ -4,12 +4,14 @@
 
 #[cfg(all(test, feature = "test-support"))]
 use std::any::Any;
+use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::theme::InteractionState;
 
 use super::surface_page::ControlSide;
+use crate::theme::Look;
 
 /// A set of `.lss` states by name, e.g. `{checked, hover}`: what the page picks in Design mode and
 /// draws in each State matrix cell. Names are the stylesheet config's.
@@ -97,13 +99,20 @@ pub(super) trait SurfaceControl {
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, window: &mut Window, cx: &mut App)
     -> AnyElement;
 
+    /// Settings of the live control that aren't `.lss` states (e.g. a toolbar's focus strategy), in the
+    /// page's look, shown on the page's lower panel. Most controls have none.
+    fn options(&self) -> Option<AnyElement> {
+        None
+    }
+
     /// The control as `Any`, so tests can reach its concrete type.
     #[cfg(all(test, feature = "test-support"))]
     fn as_any(&self) -> &dyn Any;
 }
 
-/// Makes a page's control, with the context of the control side that owns it.
-pub(super) type MakeSurfaceControl = fn(&mut Context<ControlSide>) -> Box<dyn SurfaceControl>;
+/// Makes a page's control, with the page's look (for any [`SurfaceControl::options`]) and the context of
+/// the control side that owns it.
+pub(super) type MakeSurfaceControl = fn(&Arc<Look>, &mut Context<ControlSide>) -> Box<dyn SurfaceControl>;
 
 #[cfg(test)]
 mod tests {
