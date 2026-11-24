@@ -37,6 +37,13 @@ pub trait ScrollbarTemplate: Send + Sync {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div>;
+
+    /// The shortest thumb this template draws, used by the control before the thumb has been measured.
+    /// Defaults to the SDK's `scrollbar.lss` value; themed templates return their look's.
+    fn min_thumb_length(&self, orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {
+        let _ = (orientation, style);
+        crate::style::sdk_number("scrollbar", "min_thumb_length")
+    }
 }
 
 pub struct ThemedScrollbarTemplate {
@@ -112,9 +119,17 @@ impl ScrollbarTemplate for ModifiedScrollbarTemplate {
         let root = self.base.render(model, handlers, window, cx);
         self.apply_modifiers(root, model)
     }
+
+    fn min_thumb_length(&self, orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {
+        self.base.min_thumb_length(orientation, style)
+    }
 }
 
 impl ScrollbarTemplate for ThemedScrollbarTemplate {
+    fn min_thumb_length(&self, orientation: ScrollbarOrientation, style: super::ScrollbarStyle) -> f32 {
+        self.theme.resolve(Default::default(), orientation, style).min_thumb_length
+    }
+
     fn render(
         &self,
         model: &ScrollbarRenderModel<'_>,

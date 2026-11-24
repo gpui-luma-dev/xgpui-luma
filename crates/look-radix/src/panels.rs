@@ -148,6 +148,11 @@ mod tests {
         // The drawer's size is the look's `slide_panel.lss`, which keeps the SDK's.
         assert_eq!(state.geometry(), SlidePanelGeometry::sdk());
         assert_eq!(state.resize_handle_metrics(), resizable_panels_theme(&fork).resize_handle_metrics());
+        // The Look method is the same drawer state.
+        let method =
+            fork.slide_panel_state(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 100.0, 500.0));
+        assert_eq!(method.resize_handle_metrics(), state.resize_handle_metrics());
+        assert_eq!(method.geometry(), state.geometry());
     }
     #[cfg(feature = "test-support")]
     #[test]

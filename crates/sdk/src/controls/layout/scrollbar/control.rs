@@ -359,7 +359,7 @@ impl Scrollbar {
                 thumb_length_for(
                     track_length,
                     self.model.thumb_fraction,
-                    crate::style::sdk_number("scrollbar", "min_thumb_length"),
+                    self.model.template.min_thumb_length(self.model.orientation, self.model.style),
                 )
             })
             .min(track_length)
