@@ -13,10 +13,7 @@ mod icons;
 pub use icons::*;
 pub(crate) mod geometry;
 pub use geometry::*;
-pub use crate::controls::navigation::tabs::theme::ResolvedTabsGeometry;
-pub use crate::controls::range::slider::theme::{
-    SliderGeometry, SliderGeometrySources, SliderDecoration, native_sdk_slider_recipes, define_sdk_slider,
-};
+pub use crate::controls::range::slider::theme::{SliderDecoration, native_sdk_slider_recipes, define_sdk_slider};
 mod motion;
 pub use motion::*;
 mod math;
