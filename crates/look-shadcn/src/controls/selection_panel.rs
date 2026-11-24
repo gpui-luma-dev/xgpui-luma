@@ -11,6 +11,5 @@ pub fn selection_panel_look(mode: &ShadcnModeTokens, _theme_mode: ThemeMode, siz
     xgpui_luma::controls::selection_panel::styled_selection_panel_look(
         &super::selector_items_panel::mode_binding(mode, "selection_panel", size),
         &mode.metrics_for(size),
-        mode.common_for(size),
     )
 }

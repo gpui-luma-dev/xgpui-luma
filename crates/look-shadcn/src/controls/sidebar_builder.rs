@@ -352,7 +352,7 @@ impl Sidebar {
             let theme = crate::tooltip_theme(&look);
             let entity = self
                 .builder
-                .stylesheet(look.mode_tokens().common_for(look.size()))
+                .stylesheet(look.mode_tokens().common())
                 .motion_defaults(look.motion_defaults().sidebar)
                 .panel_template(look.sidebar_panel_template())
                 .scrollbar_template(look.scrollbar_template())

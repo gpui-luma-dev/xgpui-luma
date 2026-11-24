@@ -8,9 +8,14 @@ use gpui::{
 use crate::infra::icon::{IconSource, render_icon_source};
 use crate::theme::stylesheet::{CommonStylesheet, IconRole, ShellGeometry};
 
+// These constants mirror `title_bar.lss` (`ShellGeometry::sdk()`) for apps that need them at compile
+// time; a test keeps them equal.
+/// The SDK title bar's height (`title_bar.lss` `height`).
 pub const TITLE_BAR_HEIGHT: Pixels = px(34.0);
+/// The SDK title bar's leading padding beside the traffic lights (`title_bar.lss` `macos_left_padding`).
 #[cfg(target_os = "macos")]
 pub const TITLE_BAR_LEFT_PADDING: Pixels = px(80.0);
+/// The SDK title bar's leading padding (`title_bar.lss` `left_padding`).
 #[cfg(not(target_os = "macos"))]
 pub const TITLE_BAR_LEFT_PADDING: Pixels = px(12.0);
 const TITLE_BAR_DRAG_THRESHOLD_PX: f64 = 4.0;
@@ -427,5 +432,22 @@ impl RenderOnce for TitleBar {
                 )
                 .child(render_window_controls(window, self.on_close_window, text_color, &self.stylesheet)),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn title_bar_constants_match_the_lss_geometry() {
+        let geometry = ShellGeometry::sdk();
+        assert_eq!(TITLE_BAR_HEIGHT, px(geometry.height));
+        let padding = if cfg!(target_os = "macos") {
+            geometry.macos_left_padding
+        } else {
+            geometry.left_padding
+        };
+        assert_eq!(TITLE_BAR_LEFT_PADDING, px(padding));
     }
 }

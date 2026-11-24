@@ -296,6 +296,7 @@ impl ShadcnLook {
             .with_geometry(xgpui_luma::controls::slide_panel::SlidePanelGeometry::from_binding(
                 &self.style_binding("slide_panel"),
             ))
+            .handle_metrics(self.resizable_panels_theme().resize_handle_metrics())
             .motion_defaults(self.motion_defaults().slide_panel)
     }
 
@@ -1262,5 +1263,20 @@ mod tests {
         }));
         assert_eq!(look.color(ShadcnToken::Primary), expected);
         assert!(look.has_css_catalog());
+    }
+
+    #[test]
+    fn drawer_handle_and_scrollbar_minimum_follow_the_look_size() {
+        use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
+        use xgpui_luma::controls::slide_panel::{SlidePanelSizeConfig, SlidePanelTopAnchor};
+        let look = crate::test_support::fallback_look();
+        for size in crate::ShadcnSize::ALL {
+            let sized = look.with_size(size);
+            let drawer =
+                sized.slide_panel_state(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 100.0, 500.0));
+            assert_eq!(drawer.resize_handle_metrics(), sized.resizable_panels_theme().resize_handle_metrics());
+        }
+        let sm = look.with_size(crate::ShadcnSize::Sm).scrollbar_template();
+        assert_eq!(sm.min_thumb_length(ScrollbarOrientation::Vertical, ScrollbarStyle::Ghost), 24.0);
     }
 }

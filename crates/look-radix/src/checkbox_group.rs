@@ -209,7 +209,7 @@ impl<T: ControlGroupItemLike + 'static> CheckboxGroup<T> {
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>());
             self.builder
-                .stylesheet(&look.sized_stylesheet(look.size()))
+                .stylesheet(&look.stylesheet_snapshot())
                 .motion_defaults(look.motion_defaults().control_group)
                 .template(checkbox_group_template(&look, self.variant, self.paint, self.size, self.radius))
                 .spawn(cx)

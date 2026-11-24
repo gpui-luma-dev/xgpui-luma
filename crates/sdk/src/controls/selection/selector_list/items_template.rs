@@ -42,34 +42,23 @@ pub struct SelectorItemsPanelLook {
 
 /// The SDK's selector items panel: the SDK's `.lss` floating menu with `tokens`' metrics and geometry.
 pub fn default_selector_items_panel_look(tokens: &ThemeTokens) -> SelectorItemsPanelLook {
-    styled_selector_items_panel_look(
-        &crate::style::StyleBinding::sdk("floating_menu"),
-        &tokens.metrics,
-        &tokens.stylesheet,
-    )
+    styled_selector_items_panel_look(&crate::style::StyleBinding::sdk("floating_menu"), &tokens.metrics)
 }
 
 /// A selector items panel from a `.lss` floating-menu binding (the `floating_menu` control, or one that
-/// extends it), with the panel placement and selector-list geometry from `stylesheet`.
+/// extends it), with the SDK's popover panel placement.
 pub fn styled_selector_items_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
-    stylesheet: &crate::theme::stylesheet::CommonStylesheet,
 ) -> SelectorItemsPanelLook {
-    SelectorItemsPanelLook::from_menu(
-        crate::controls::floating_menu::styled_floating_menu_look(binding),
-        metrics,
-        stylesheet,
-    )
+    SelectorItemsPanelLook::from_menu(crate::controls::floating_menu::styled_floating_menu_look(binding), metrics)
 }
 
 impl SelectorItemsPanelLook {
     /// Share menu chrome, metric border width and the SDK's popover panel placement (`popover.lss`).
-    /// `_stylesheet` is no longer read (#287).
     pub fn from_menu(
         menu: crate::controls::floating_menu::FloatingMenuLook,
         metrics: &crate::theme::MetricTokens,
-        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
         let placement = crate::theme::stylesheet::PopoverGeometry::sdk();
         Self {

@@ -39,7 +39,7 @@ pub fn split_button_builder(
     tone: Tone,
 ) -> SplitButtonBuilder {
     let popup = PopupMenuBuilder::new(id)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().popup_menu)
         .trigger_style(match variant {
             PopupMenuVariant::Solid => PopupMenuTriggerStyle::Primary,

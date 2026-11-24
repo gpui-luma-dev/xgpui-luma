@@ -451,7 +451,7 @@ impl<T: Clone + Send + Sync + 'static> TreeView<T> {
         let control = {
             let look = crate::look::resolve_look(self.look.as_ref(), cx.try_global::<Look>());
             self.builder
-                .stylesheet(&look.sized_stylesheet(look.size()))
+                .stylesheet(&look.stylesheet_snapshot())
                 .motion_defaults(look.motion_defaults().tree_view)
                 .template(tree_view_template(&look))
                 .spawn(cx)

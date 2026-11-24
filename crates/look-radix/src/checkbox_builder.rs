@@ -221,7 +221,7 @@ impl Checkbox {
         let look = look.with_size(self.size.control_size());
         let template = checkbox_template_for(&look, self.variant, self.paint, self.size, self.radius);
         let mut builder = xgpui_luma::controls::checkbox::new(self.id)
-            .stylesheet(&look.sized_stylesheet(look.size()))
+            .stylesheet(&look.stylesheet_snapshot())
             .template(template)
             .with_data(self.checked)
             .enabled(self.enabled)

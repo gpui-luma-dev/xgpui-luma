@@ -46,7 +46,7 @@ pub fn autocomplete_builder(
 ) -> autocomplete::AutocompleteBuilder {
     let panel_look = look.clone();
     autocomplete::new(id, items)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().autocomplete)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
@@ -65,7 +65,7 @@ pub fn combobox_builder(
 ) -> combobox::ComboBoxBuilder {
     let panel_look = look.clone();
     combobox::new(id, items)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().combobox)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .autocomplete_theme(autocomplete_theme(look))
@@ -84,7 +84,7 @@ pub fn search_selector_builder(
 ) -> search_selector::SearchSelectorBuilder {
     let panel_look = look.clone();
     search_selector::new(id, items)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().search_selector)
         .textfield_template(crate::textfield_template(look, TextFieldVariant::Surface))
         .selector_theme(crate::selector_theme(look))
@@ -106,11 +106,7 @@ pub fn selection_panel_look(look: &Look, size: crate::RadixSize) -> SelectionPan
     } else {
         binding
     };
-    xgpui_luma::controls::selection_panel::styled_selection_panel_look(
-        &binding,
-        &look.metrics_for(size),
-        &look.sized_stylesheet(size),
-    )
+    xgpui_luma::controls::selection_panel::styled_selection_panel_look(&binding, &look.metrics_for(size))
 }
 
 /// Radix SelectionPanel with SDK typed items and embedded/popup interaction policies.
@@ -123,7 +119,7 @@ pub fn selection_panel_builder<T: SelectionPanelItemLike + 'static>(
     let panel_look = look.clone();
     selection_panel::SelectionPanelBuilder::new(id)
         .items(items)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .scrollbar_template(crate::scrollbar_template(look))
         .look_provider(Arc::new(move || selection_panel_look(&panel_look, panel_look.size())))
 }

@@ -131,9 +131,6 @@ fn slide_panel_uses_captured_common_visual_defaults() {
     let look = Look::built_in().fork();
     let panel = look.slide_panel_state(SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 0.0, 900.0));
     assert_eq!(panel.geometry(), xgpui_luma::controls::slide_panel::SlidePanelGeometry::sdk());
-    // The unsized drawer keeps the SDK handle.
-    assert_eq!(
-        panel.resize_handle_metrics(),
-        xgpui_luma::controls::resizable_panels::ResizeHandleMetrics::default()
-    );
+    // The drawer's resize handle is the look's, at its size, as in Resizable Panels (#360).
+    assert_eq!(panel.resize_handle_metrics(), crate::resizable_panels_theme(&look).resize_handle_metrics());
 }

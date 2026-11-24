@@ -29,16 +29,6 @@ macro_rules! lss_geometry {
 }
 pub(crate) use lss_geometry;
 
-/// Selects one look-defined size key so SDK controls receive plain pixel geometry.
-pub trait SelectSizeKey: Sized + Clone {
-    /// Returns a copy whose general geometry includes the authored values for `key`.
-    /// Families without size-keyed values return an unchanged copy.
-    fn select_size_key(&self, key: &str) -> Self {
-        let _ = key;
-        self.clone()
-    }
-}
-
 pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
 pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
 pub use crate::controls::range::progress::theme::ProgressGeometry;
@@ -163,8 +153,3 @@ mod tests {
     #[test]
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {}
 }
-
-impl SelectSizeKey for crate::theme::stylesheet::RowLimitsStylesheet {}
-impl SelectSizeKey for crate::theme::stylesheet::PaletteRecipes {}
-impl SelectSizeKey for crate::theme::stylesheet::FontFeaturesStylesheet {}
-impl SelectSizeKey for crate::theme::stylesheet::IconsStylesheet {}

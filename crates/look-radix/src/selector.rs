@@ -168,10 +168,7 @@ impl<T: SelectorItemLike + 'static> Selector<T> {
         let callbacks = std::mem::take(&mut self.callbacks);
         let control = {
             let look = resolve_look(self.look.as_ref(), cx.try_global::<Look>()).with_size(self.size.control_size());
-            self.builder
-                .stylesheet(&look.sized_stylesheet(look.size()))
-                .template(selector_template(&look))
-                .spawn(cx)
+            self.builder.stylesheet(&look.stylesheet_snapshot()).template(selector_template(&look)).spawn(cx)
         };
         callbacks.bind(&control, cx);
         control

@@ -212,7 +212,7 @@ impl Autocomplete {
         let look = look.with_size(self.size);
         let self_builder = self
             .builder
-            .stylesheet(look.mode_tokens().common_for(look.size()))
+            .stylesheet(look.mode_tokens().common())
             .motion_defaults(look.motion_defaults().autocomplete);
         let theme = look.clone();
         self_builder
