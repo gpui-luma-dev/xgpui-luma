@@ -28,11 +28,7 @@ pub struct SelectionPanelLook {
 
 /// The SDK's selection panel: the SDK's `.lss` `selection_panel` with `tokens`' metrics and geometry.
 pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook {
-    styled_selection_panel_look(
-        &crate::style::StyleBinding::sdk("selection_panel"),
-        &tokens.metrics,
-        &tokens.stylesheet,
-    )
+    styled_selection_panel_look(&crate::style::StyleBinding::sdk("selection_panel"), &tokens.metrics)
 }
 
 /// A selection panel from a `.lss` `selection_panel` binding (the floating menu's surface and rows unless a
@@ -40,9 +36,8 @@ pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook 
 pub fn styled_selection_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
-    stylesheet: &crate::theme::stylesheet::CommonStylesheet,
 ) -> SelectionPanelLook {
-    let panel = crate::controls::selector_list::styled_selector_items_panel_look(binding, metrics, stylesheet);
+    let panel = crate::controls::selector_list::styled_selector_items_panel_look(binding, metrics);
     SelectionPanelLook::from_items_panel(panel)
 }
 

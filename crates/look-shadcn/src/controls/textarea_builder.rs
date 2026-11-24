@@ -264,7 +264,7 @@ impl TextArea {
             }
         };
         let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
-            .stylesheet(look.mode_tokens().common_for(look.size()))
+            .stylesheet(look.mode_tokens().common())
             .template(template)
             .theme(theme)
             .placeholder(self.placeholder)

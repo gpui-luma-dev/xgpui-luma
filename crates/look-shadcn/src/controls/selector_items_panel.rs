@@ -30,7 +30,6 @@ pub fn selector_items_panel_look(
     xgpui_luma::controls::selector_list::styled_selector_items_panel_look(
         &mode_binding(mode, "floating_menu", size),
         &mode.metrics_for(size),
-        mode.common_for(size),
     )
 }
 

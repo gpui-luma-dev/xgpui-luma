@@ -67,17 +67,6 @@ macro_rules! common_stylesheet {
                 }
             }
 
-            /// Merge one look-defined size key into each family's general geometry.
-            /// Looks call this with their own size names; SDK controls only read the
-            /// resulting pixel values.
-            pub fn with_size_key(&self, key: &str) -> Self {
-                use $crate::theme::stylesheet::geometry::SelectSizeKey;
-                Self {
-                    motion: self.motion.clone(),
-                    $($field: self.$field.select_size_key(key),)+
-                }
-            }
-
             /// Apply an in-place mutation or decorator closure.
             pub fn with(mut self, decorator: impl FnOnce(&mut Self)) -> Self {
                 decorator(&mut self);

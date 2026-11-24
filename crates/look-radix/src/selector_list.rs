@@ -30,11 +30,7 @@ pub fn selector_items_panel_look_for(
     tone: Tone,
     size: crate::RadixSize,
 ) -> SelectorItemsPanelLook {
-    SelectorItemsPanelLook::from_menu(
-        floating_menu_look_for(look, variant, tone, size),
-        &look.metrics_for(size),
-        &look.sized_stylesheet(size),
-    )
+    SelectorItemsPanelLook::from_menu(floating_menu_look_for(look, variant, tone, size), &look.metrics_for(size))
 }
 
 #[cfg(test)]

@@ -438,7 +438,7 @@ impl Tabs {
         let look = look.with_size(self.size.control_size());
         let template = tabs_template_for(&look, self.variant);
         let mut builder = xgpui_luma::controls::tabs::Tabs::new(self.id)
-            .stylesheet(&look.sized_stylesheet(look.size()))
+            .stylesheet(&look.stylesheet_snapshot())
             .template(template)
             .width_mode(self.width_mode)
             .content_layout(self.content_layout)

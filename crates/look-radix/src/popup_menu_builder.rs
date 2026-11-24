@@ -335,7 +335,7 @@ impl PopupMenu {
             self.menu_size.control_size(),
         );
         let mut builder = xgpui_luma::controls::popup_menu::PopupMenu::new(self.id)
-            .stylesheet(&look.sized_stylesheet(look.size()))
+            .stylesheet(&look.stylesheet_snapshot())
             .motion_defaults(look.motion_defaults().popup_menu)
             .with_motion_overrides(self.motion)
             .motion_enabled(self.motion_enabled)

@@ -52,7 +52,7 @@ pub fn accordion_template(look: &Look) -> Arc<dyn AccordionTemplate> {
 /// Themed SDK builder retaining expansion, focus, reordering, and callback APIs.
 pub fn accordion_builder(look: &Look, id: impl Into<SharedString>) -> AccordionBuilder {
     AccordionBuilder::new(id)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().accordion)
         .template(accordion_template(look))
 }

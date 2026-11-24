@@ -221,7 +221,7 @@ impl TextArea {
         let look = look.with_size(self.size.control_size());
         let template = textarea_template(&look, self.variant);
         let mut builder = xgpui_luma::controls::textarea::TextArea::new(self.id)
-            .stylesheet(&look.sized_stylesheet(look.size()))
+            .stylesheet(&look.stylesheet_snapshot())
             .template(template)
             .placeholder(self.placeholder)
             .value(self.value)

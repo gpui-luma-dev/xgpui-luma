@@ -74,7 +74,7 @@ pub fn sidebar_template(look: &Look) -> Arc<dyn SidebarPanelTemplate> {
 /// Themed SDK sidebar builder. Configure structure, selection, presentation, and callbacks afterward.
 pub fn sidebar_builder(look: &Look, id: impl Into<SharedString>) -> SidebarControlBuilder {
     SidebarControlBuilder::new(id)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .stylesheet(&look.stylesheet_snapshot())
         .motion_defaults(look.motion_defaults().sidebar)
         .panel_template(sidebar_template(look))
         .scrollbar_template(crate::scrollbar_template(look))
