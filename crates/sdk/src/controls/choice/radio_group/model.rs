@@ -376,11 +376,13 @@ mod stylesheet_tests {
     #[test]
     fn radio_builder_forwards_snapshot_without_changing_selection_mode() {
         let mut sheet =
-            crate::theme::stylesheet::CommonStylesheet::resolve_layers(&["[common.shell.geometry]\nheight=41"])
-                .unwrap();
+            crate::theme::stylesheet::CommonStylesheet::resolve_layers(&["[common.row_limits.pager]\nmax=41"]).unwrap();
         let group = new::<ControlGroupItem>("radio").horizontal().stylesheet(&sheet);
-        sheet.shell.geometry.height = Some(53.0);
-        assert_eq!(group.inner.model.stylesheet.shell.geometry.height, Some(41.0));
+        sheet
+            .row_limits
+            .0
+            .insert("pager".into(), crate::theme::stylesheet::RowLimits { min: None, max: Some(53) });
+        assert_eq!(group.inner.model.stylesheet.row_limits.resolve("pager").1, 41);
         assert_eq!(group.inner.model.layout, ControlGroupLayout::Horizontal);
         assert_eq!(group.inner.model.selection_mode, ControlSelectionMode::SingleRequired);
     }

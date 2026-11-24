@@ -2,7 +2,6 @@
 use gpui::SharedString;
 use xgpui_luma::theme::{LumaTextStyle};
 use crate::{ShadcnModeTokens, TypographySource};
-use crate::stylesheet::{StylesheetConfig, resolve_button_metrics_rule};
 use crate::size::ShadcnSize;
 
 #[derive(Clone, Debug)]
@@ -17,36 +16,9 @@ pub struct ControlTypographyTable {
 
 /// Label typography for button-sized controls, including Accordion.
 pub fn resolve_control_typography(mode: &ShadcnModeTokens, size: ShadcnSize, toggle: bool) -> ControlTypographyTable {
-    resolve_control_typography_with_stylesheet(mode, mode.stylesheet(), size, toggle)
-}
-
-pub(crate) fn resolve_control_typography_with_stylesheet(
-    mode: &ShadcnModeTokens,
-    stylesheet: &StylesheetConfig,
-    size: ShadcnSize,
-    toggle: bool,
-) -> ControlTypographyTable {
     let mut style = mode.typography.text.label;
     let mut font_size_source = TypographySource::Scaffold { path: "LumaTypography.text.label.size".into() };
     let mut line_height_source = TypographySource::Scaffold { path: "LumaTypography.text.label.line_height".into() };
-    let rule = if toggle {
-        stylesheet.toggle.metrics_for_size(size)
-    } else {
-        stylesheet.button.metrics_for_size(size)
-    };
-    if let Some(rule) = rule {
-        let metrics = resolve_button_metrics_rule(rule, &mode.control_sizes, size);
-        let base_size = style.size;
-        style.size = metrics.font_size;
-        let family = if toggle { "toggle" } else { "button" };
-        let size_key = super::metrics::helpers::control_size_key(size);
-        font_size_source =
-            TypographySource::Constant { label: format!("stylesheet [{family}.metrics.{size_key}].font_size") };
-        if base_size > 0.0 {
-            style.line_height = style.size * (style.line_height / base_size);
-            line_height_source = TypographySource::Derived { note: "font_size × label line-height ratio".into() };
-        }
-    }
     {
         // The control's own label size, as it draws: its `.lss` (#287).
         let control = if toggle { "toggle" } else { "button" };

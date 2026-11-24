@@ -220,18 +220,17 @@ impl ShadcnTextSize {
 }
 
 impl ShadcnTextSize {
-    /// Shadcn's built-in pixels for this size, used when the stylesheet has no
-    /// `typography.scale` rule for it. The SDK has no text size scale.
+    /// The built-in look's style for this size, from its `.lss` `text.scale` tokens, for text drawn
+    /// without a look. The SDK has no text size scale.
     pub fn native_style(self) -> LumaTextStyle {
-        use gpui::FontWeight;
-        let (size, line_height, weight) = match self {
-            Self::Xs => (11.0, 16.0, 500.0),
-            Self::Sm => (12.5, 18.0, 400.0),
-            Self::Base => (14.0, 20.0, 400.0),
-            Self::Lg => (16.0, 22.0, 500.0),
-            Self::Xl => (18.0, 24.0, 600.0),
-            Self::TwoXl => (20.0, 28.0, 600.0),
-        };
-        LumaTextStyle { size, line_height, weight: FontWeight(weight) }
+        crate::ShadcnLook::built_in().typography_scale(self)
+    }
+
+    /// This size's key in the `.lss` `text.scale` token group.
+    pub(crate) fn token_key(self) -> &'static str {
+        match self {
+            Self::TwoXl => "two_xl",
+            other => other.as_str(),
+        }
     }
 }

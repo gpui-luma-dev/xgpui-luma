@@ -29,9 +29,7 @@ use xgpui_luma::controls::selector_list::{
 };
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::controls::textfield::{TextFieldRenderModel, TextFieldState, TextFieldTemplate, TextFieldTheme};
-use xgpui_luma::controls::textfield::TextFieldLook;
-use xgpui_luma::theme::{InteractionState, LumaTextStyle, StandardBoxScale};
-use xgpui_luma_look_shadcn::stylesheet::{embedded_stylesheet, resolve_button_metrics_rule};
+use xgpui_luma::theme::{InteractionState, StandardBoxScale};
 use xgpui_luma_look_shadcn::{ShadcnLook, ShadcnSize};
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -77,14 +75,12 @@ const SELECTOR_TRIGGER_WIDTH: f32 = 168.0;
 const SELECTOR_CELL_WIDTH: f32 = 180.0;
 
 struct SelectorPreviewTextfieldRequest<'a> {
-    look: &'a Arc<ShadcnLook>,
     template: &'a Arc<dyn TextFieldTemplate>,
     theme: &'a Arc<dyn TextFieldTheme>,
     id: &'a SharedString,
     placeholder: &'a SharedString,
     value: &'a SharedString,
     state: &'a SelectorTemplateStateSample,
-    size: ShadcnSize,
 }
 
 struct SelectorPopupHandlers {
@@ -151,33 +147,6 @@ pub(crate) fn render_selector_templates_section(
         chrome.panel_background,
         render_selector_preview_tabbed_content(look, preview_tabs, active_tab, chrome.border, scroll_wheel, window, cx),
     )
-}
-
-fn selector_preview_typography_for_size(
-    look: &Arc<ShadcnLook>,
-    base: LumaTextStyle,
-    size: ShadcnSize,
-) -> LumaTextStyle {
-    let mut typography = base;
-    if let Some(rule) = embedded_stylesheet().button.metrics_for_size(size) {
-        let tokens = look.mode_tokens();
-        let metrics = resolve_button_metrics_rule(rule, &tokens.control_sizes, size);
-        let base_size = typography.size;
-        typography.size = metrics.font_size;
-        if base_size > 0.0 {
-            typography.line_height = metrics.font_size * (typography.line_height / base_size);
-        }
-    }
-    typography
-}
-
-fn apply_selector_preview_textfield_size(
-    look: &Arc<ShadcnLook>,
-    mut textfield_look: TextFieldLook,
-    size: ShadcnSize,
-) -> TextFieldLook {
-    textfield_look.typography = selector_preview_typography_for_size(look, textfield_look.typography, size);
-    textfield_look
 }
 
 fn render_selector_preview_tabbed_content(
@@ -448,14 +417,12 @@ fn render_selector_autocomplete_trigger(
         id: id.clone(),
         textfield: render_selector_preview_textfield(
             SelectorPreviewTextfieldRequest {
-                look,
                 template: &textfield_template,
                 theme: &textfield_theme,
                 id,
                 placeholder: &placeholder,
                 value: &value,
                 state,
-                size,
             },
             window,
             cx,
@@ -515,14 +482,12 @@ fn render_selector_combobox_trigger(
         geometry: xgpui_luma::theme::stylesheet::ComboBoxGeometry::sdk(),
         textfield: render_selector_preview_textfield(
             SelectorPreviewTextfieldRequest {
-                look,
                 template: &textfield_template,
                 theme: &textfield_theme,
                 id,
                 placeholder: &placeholder,
                 value: &value,
                 state,
-                size,
             },
             window,
             cx,
@@ -600,11 +565,7 @@ fn render_selector_search_selector_trigger(
         trigger_label_is_placeholder: !state.selector_selected,
         trigger_state: state.textfield_state,
         trigger_look,
-        trigger_typography_override: Some(selector_preview_typography_for_size(
-            look,
-            look.mode_tokens().typography.text.body,
-            size,
-        )),
+        trigger_typography_override: Some(look.mode_tokens().typography.text.body),
         enabled: state.textfield_enabled,
         full_width: true,
         minimum_trigger_width: px(SELECTOR_TRIGGER_WIDTH),
@@ -688,19 +649,16 @@ fn render_selector_preview_textfield(
     window: &mut Window,
     cx: &mut App,
 ) -> AnyElement {
-    let SelectorPreviewTextfieldRequest { look, template, theme, id, placeholder, value, state, size } = request;
+    let SelectorPreviewTextfieldRequest { template, theme, id, placeholder, value, state } = request;
     let character_offsets = selector_textfield_character_offsets(
-        look,
         value.as_ref(),
         theme.clone(),
         state.textfield_state,
         state.textfield_enabled,
-        size,
         window,
     );
 
-    let look =
-        selector_preview_textfield_look(look, theme, state.textfield_state, state.textfield_enabled, size, window);
+    let look = selector_preview_textfield_look(theme, state.textfield_state, state.textfield_enabled, window);
     let text_model = TextFieldRenderModel {
         id,
         placeholder,
@@ -800,17 +758,15 @@ fn render_selector_popup_preview(
             let search_placeholder = SharedString::from("Selection search");
             let search_value = SharedString::from("");
             let search_offsets = selector_textfield_character_offsets(
-                look,
                 search_value.as_ref(),
                 look.input_textfield_theme(),
                 TextFieldState { focused: true, focus_visible: true, ..TextFieldState::default() },
                 true,
-                size,
                 window,
             );
             let search_state = TextFieldState { focused: true, focus_visible: true, ..TextFieldState::default() };
             let search_look =
-                selector_preview_textfield_look(look, &look.input_textfield_theme(), search_state, true, size, window);
+                selector_preview_textfield_look(&look.input_textfield_theme(), search_state, true, window);
             let search_model = TextFieldRenderModel {
                 id: &search_id,
                 placeholder: &search_placeholder,
@@ -991,15 +947,13 @@ fn selector_popup_items_for_control(control: SelectorTemplateControl) -> Vec<Sel
 }
 
 fn selector_textfield_character_offsets(
-    look: &Arc<ShadcnLook>,
     value: &str,
     theme: Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ShadcnSize,
     window: &mut Window,
 ) -> Vec<f32> {
-    let look = selector_preview_textfield_look(look, &theme, state, enabled, size, window);
+    let look = selector_preview_textfield_look(&theme, state, enabled, window);
     let value_shared = SharedString::from(value.to_string());
     let run = TextRun {
         len: value_shared.len(),
@@ -1034,15 +988,13 @@ fn selector_char_to_byte_offset(text: &str, char_offset: usize) -> usize {
 }
 
 fn selector_preview_textfield_look(
-    look: &Arc<ShadcnLook>,
     theme: &Arc<dyn TextFieldTheme>,
     state: TextFieldState,
     enabled: bool,
-    size: ShadcnSize,
     window: &Window,
 ) -> xgpui_luma::controls::textfield::TextFieldLook {
     let scale = StandardBoxScale::compute(&theme.metrics(), window.scale_factor());
-    apply_selector_preview_textfield_size(look, theme.resolve_look(state, enabled, &scale), size)
+    theme.resolve_look(state, enabled, &scale)
 }
 
 fn render_selector_combobox_popup_preview_from_templates(

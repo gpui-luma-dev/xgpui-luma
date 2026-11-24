@@ -3,31 +3,31 @@ use crate::{color::GamutMapping, theme::ThemeMode};
 
 #[test]
 fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
-    let sheet = CommonStylesheet::parse("[common.shell.geometry]\nleft_padding=0").unwrap();
+    let sheet = CommonStylesheet::parse("[common.row_limits.pager]\nmin=0").unwrap();
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    let baseline = CommonStylesheet::sdk_default().shell.geometry.height;
-    assert!(baseline.is_some(), "the SDK baseline sets the shell height");
-    assert_eq!(tokens.stylesheet.shell.geometry.height, baseline, "unset fields come from the baseline");
-    assert_eq!(tokens.stylesheet.shell.geometry.left_padding, Some(0.0), "an authored zero is kept");
+    let baseline = CommonStylesheet::sdk_default().row_limits.0["pager"].max;
+    assert!(baseline.is_some(), "the SDK baseline sets the pager's row maximum");
+    let pager = tokens.stylesheet.row_limits.0["pager"];
+    assert_eq!(pager.max, baseline, "unset fields come from the baseline");
+    assert_eq!(pager.min, Some(0), "an authored zero is kept");
 }
 
 #[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.shell.geometry]\nheight = 'math(32 * 2)'\nicon_size = 'math(1 / 4)'",
-        "[common.shell.geometry]\nleft_padding = 'math(0 / 28)'",
+        "[common.row_limits.pager]\nmax = 'math(32 * 2)'",
+        "[common.row_limits.combobox]\nmin = 'math(0 / 28)'",
     ])
     .unwrap();
-    assert_eq!(sheet.shell.geometry.icon_size, Some(0.25));
-    assert_eq!(sheet.shell.geometry.height, Some(64.0));
-    assert_eq!(sheet.shell.geometry.left_padding, Some(0.0));
+    assert_eq!(sheet.row_limits.0["pager"].max, Some(64));
+    assert_eq!(sheet.row_limits.0["combobox"].min, Some(0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
-    let direct: CommonStylesheet = toml::from_str("[shell.geometry]\nheight = 'math(2 * 3)'").unwrap();
-    assert_eq!(direct.shell.geometry.height, Some(6.0));
+    let direct: CommonStylesheet = toml::from_str("[row_limits.pager]\nmax = 'math(2 * 3)'").unwrap();
+    assert_eq!(direct.row_limits.0["pager"].max, Some(6));
     for source in [
-        "[common.shell.geometry]\nheight = 'math(-1 / 2)'",
-        "[common.shell.geometry]\nicon_size = 'math(-3 / 2)'",
-        "[common.shell.geometry]\nunknown = 'math(1 + 2)'",
+        "[common.row_limits.pager]\nmax = 'math(-1 / 2)'",
+        "[common.row_limits.pager]\nmax = 'math(3 / 2)'",
+        "[common.row_limits.pager]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
     }
@@ -117,6 +117,7 @@ fn removed_families_are_rejected() {
         "autocomplete",
         "combobox",
         "search_selector",
+        "shell",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");

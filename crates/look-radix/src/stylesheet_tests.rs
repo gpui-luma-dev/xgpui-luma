@@ -91,7 +91,10 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.shell.geometry.height = Some(57.0);
+    config
+        .row_limits
+        .0
+        .insert("pager".into(), xgpui_luma::theme::stylesheet::RowLimits { min: None, max: Some(57) });
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
     let _scale = StandardBoxScale::compute(&fork.metrics(), 1.0);

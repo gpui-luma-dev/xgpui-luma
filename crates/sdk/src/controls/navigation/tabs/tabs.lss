@@ -9,6 +9,15 @@ tabs {
   indicator_height: length = exact(2)
   /// The active tab's indicator; transparent paints none.
   indicator: color = transparent
+  /// A look's full-width baseline under the list (the SDK draws none): color, thickness, horizontal inset
+  /// and offset from the bottom.
+  baseline_color: color = transparent
+  baseline_height: length = exact(0)
+  baseline_inset_x: length = exact(0)
+  baseline_bottom: length = exact(0)
+  /// A look's inset label background padding (the SDK uses none).
+  content_padding_x: length = exact(0)
+  content_padding_y: length = exact(0)
 
   part root {
     :selected                  { indicator = palette.state.selected.background }
