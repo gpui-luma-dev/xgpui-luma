@@ -71,6 +71,13 @@ pub(super) trait SurfaceControl {
     /// (e.g. `focused`, for the focus ring).
     fn template_states(&self) -> Vec<&'static str>;
 
+    /// The control's own word for an `.lss` state, where it differs from the state's name: a switch is
+    /// `on`, not `checked`. The page's design controls (state switches, State matrix, live states) show
+    /// it; the `.lss` inspector keeps the file's names.
+    fn state_label(&self, _state: &str) -> Option<&'static str> {
+        None
+    }
+
     /// States the template reads that the live control can never reach: shown, never settable.
     fn unreachable_states(&self) -> &'static [&'static str] {
         &[]

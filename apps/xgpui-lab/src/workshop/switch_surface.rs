@@ -62,6 +62,11 @@ impl SurfaceControl for SwitchSurface {
         switch::default_switch_template().style_states()
     }
 
+    /// A switch is on or off; its `.lss` calls on `checked`.
+    fn state_label(&self, state: &str) -> Option<&'static str> {
+        (state == "checked").then_some("on")
+    }
+
     /// `SwitchBuilder` has no way to make a switch invalid.
     fn unreachable_states(&self) -> &'static [&'static str] {
         &["invalid"]
@@ -174,9 +179,12 @@ mod tests {
         let (columns, rows) = cx.update(|_, cx| side.read(cx).matrix_labels());
         assert_eq!(columns, ["—", ":hover", ":pressed", ":disabled"]);
         assert_eq!(rows.len(), 8, "{rows:?}");
-        assert!(rows.iter().any(|r| r == ":checked"), "{rows:?}");
+        // A switch is on, not checked: the design controls use its word; the key keeps the `.lss` name.
+        assert!(rows.iter().any(|r| r == ":on"), "{rows:?}");
+        assert!(rows.iter().all(|r| !r.contains("checked")), "{rows:?}");
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw switches");
+        assert!(cx.debug_bounds("workshop-surface-matrix-label-:on").is_some(), "the :on row label");
     }
 }
