@@ -1267,6 +1267,12 @@ impl ControlSide {
         (self.theme.mode().to_string(), self.stage_background)
     }
 
+    /// The events panel's log as text, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn events_text(&self, cx: &gpui::App) -> String {
+        self.events.read(cx).text(cx)
+    }
+
     /// Show the state matrix, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn show_matrix(&self, cx: &mut gpui::App) {
