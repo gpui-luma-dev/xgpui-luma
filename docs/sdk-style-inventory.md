@@ -67,6 +67,13 @@ Line numbers for historical rows are snapshot locations; line zero is a
 family-level summary. A `superseded` row records an expression absent from the
 current source and does not assert that a live literal is migrated.
 
+After the `.lss` migration (#285, #287, #355) the CSV is a historical record:
+rows that were `migrated` to a `common.*` family other than `recipes`, `icons`,
+`row_limits`, `font_features` or `motion` are `superseded`, since those values now
+come from `.lss`; their rationale still names the old field. Rows whose source file
+was deleted in #285 point at the `.lss` file that replaced it and keep the old
+file's line number.
+
 | Classification | Rationale |
 | --- | --- |
 | Migrated | Typed common field/token is authoritative. |
