@@ -95,7 +95,6 @@ common_stylesheet! {
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
-    tooltip: TooltipStylesheet,
     autocomplete: AutocompleteStylesheet,
     combobox: ComboBoxStylesheet,
     search_selector: SearchSelectorStylesheet,
@@ -149,7 +148,6 @@ impl CommonStylesheet {
     pub fn native_default() -> Self {
         let mut sheet = Self {
             motion: MotionStylesheet::native_default(),
-            tooltip: TooltipStylesheet::native_default(),
             sidebar: SidebarStylesheet::native_default(),
             popover: PopoverStylesheet::native_default(),
             slide_panel: SlidePanelStylesheet::native_default(),

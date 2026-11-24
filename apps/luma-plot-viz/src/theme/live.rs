@@ -41,7 +41,7 @@ impl Snapshot {
                 ThemeSource::Fixed(style),
                 Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
             ),
-            tooltip: TooltipLook::from_tokens(&tokens, None),
+            tooltip: TooltipLook::from_tokens(&tokens),
             tokens,
         }
     }
@@ -243,7 +243,7 @@ mod tests {
                     .thumb_background
             );
             let tip = tooltip.resolve();
-            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens, None).background);
+            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens).background);
             colors.push([
                 button.foreground,
                 radio_label,

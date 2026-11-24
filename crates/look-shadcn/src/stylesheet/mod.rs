@@ -29,7 +29,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
     let common = CommonStylesheet {
         motion,
-        tooltip: crate::tooltip::native_tooltip_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
         ..Default::default()
     };

@@ -101,8 +101,7 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let common =
-        CommonStylesheet { motion, tooltip: crate::tooltip::native_tooltip_stylesheet(), ..Default::default() };
+    let common = CommonStylesheet { motion, ..Default::default() };
     common.with_sdk_defaults()
 }
 

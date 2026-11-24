@@ -13,7 +13,7 @@ fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
 
 #[test]
 fn opacity_fields_reject_values_outside_zero_to_one() {
-    for (family, field) in [("sidebar", "disabled_opacity"), ("tooltip", "shortcut_opacity")] {
+    for (family, field) in [("sidebar", "disabled_opacity"), ("sidebar", "subtitle_opacity")] {
         for value in ["-1", "1.1", "nan", "inf"] {
             assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\n{field}={value}")).is_err());
         }
@@ -121,6 +121,7 @@ fn removed_families_are_rejected() {
         "button",
         "shared",
         "slider",
+        "tooltip",
     ] {
         let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
         assert!(error.to_string().contains(family), "{family}: {error}");
