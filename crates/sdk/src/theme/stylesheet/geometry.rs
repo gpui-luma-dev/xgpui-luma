@@ -268,7 +268,6 @@ impl SelectSizeKey for crate::theme::stylesheet::RowLimitsStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::PaletteRecipes {}
 impl SelectSizeKey for crate::theme::stylesheet::FontFeaturesStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::IconsStylesheet {}
-impl SelectSizeKey for crate::theme::stylesheet::TabsStylesheet {}
 
 impl SelectSizeKey for crate::theme::stylesheet::SliderStylesheet {
     fn select_size_key(&self, key: &str) -> Self {

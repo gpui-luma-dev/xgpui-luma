@@ -42,11 +42,7 @@ impl TabsIndicatorMotionInner {
             list_bounds: None,
             pending_item_bounds: None,
             padding_x: 0.0,
-            height: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .tabs
-                .geometry
-                .indicator_height
-                .unwrap_or_default(),
+            height: crate::style::sdk_number("tabs", "indicator_height"),
             color: None,
             motion_enabled,
             has_geometry: false,
