@@ -136,7 +136,6 @@ impl HoverCardBuilder {
                 let weak = cx.entity().downgrade();
                 let trigger = self.trigger.clone();
                 let popup = PopoverButton::new(self.id)
-                    .stylesheet(&look.sized_stylesheet(look.size()))
                     .motion_defaults(look.motion_defaults().popover)
                     .with_motion_overrides(self.motion)
                     .motion_enabled(self.motion_enabled)

@@ -39,7 +39,7 @@ impl SidebarTheme for ShadcnSidebarTheme {
     }
 
     fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
-        self.theme.mode_tokens().stylesheet().common.sidebar.resolve_geometry(Default::default())
+        xgpui_luma::theme::stylesheet::SidebarGeometry::from_binding(&self.theme.style_binding("sidebar"))
     }
     fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
         super::drag::drag_look(&self.theme)

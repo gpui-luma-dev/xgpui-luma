@@ -27,10 +27,6 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let common = CommonStylesheet {
-        motion,
-        sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
-        ..Default::default()
-    };
+    let common = CommonStylesheet { motion, ..Default::default() };
     common.with_sdk_defaults()
 }

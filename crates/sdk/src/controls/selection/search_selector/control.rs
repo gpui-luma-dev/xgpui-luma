@@ -83,7 +83,7 @@ impl SearchSelectorControl {
         let motion_enabled = builder.model.motion.enabled();
         let model = builder.model;
         let enabled = model.enabled;
-        let geometry = model.stylesheet.resolve_geometry(Default::default());
+        let geometry = model.geometry;
         let padding_reduction = geometry.search_padding_reduction;
         let height_floor = geometry.search_input_height_floor;
 
@@ -707,7 +707,7 @@ impl Render for SearchSelectorControl {
 
         let trigger_focused = self.interaction.focus_handle().is_focused(window);
         let autocomplete_look = self.model.autocomplete_theme.resolve();
-        let geometry = self.model.stylesheet.resolve_geometry(Default::default());
+        let geometry = self.model.geometry;
         let look = (self.model.popup_look_provider)();
         let selected_label = self
             .committed_selection

@@ -439,14 +439,11 @@ fn render_selector_autocomplete_trigger(
 
     let model = AutocompleteRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.autocomplete.resolve_geometry_for(
-            size.key(),
-            xgpui_luma::theme::stylesheet::AutocompleteGeometry {
-                status_font_size: status_theme.status_typography.size,
-                status_line_height: status_theme.status_typography.line_height,
-                ..Default::default()
-            },
-        ),
+        geometry: xgpui_luma::theme::stylesheet::AutocompleteGeometry {
+            status_font_size: status_theme.status_typography.size,
+            status_line_height: status_theme.status_typography.line_height,
+            ..xgpui_luma::theme::stylesheet::AutocompleteGeometry::sdk()
+        },
         status_typography: status_theme.status_typography,
         id: id.clone(),
         textfield: render_selector_preview_textfield(
@@ -515,7 +512,7 @@ fn render_selector_combobox_trigger(
 
     let model = ComboBoxRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.combobox.resolve_geometry_for(size.key(), Default::default()),
+        geometry: xgpui_luma::theme::stylesheet::ComboBoxGeometry::sdk(),
         textfield: render_selector_preview_textfield(
             SelectorPreviewTextfieldRequest {
                 look,
@@ -593,7 +590,7 @@ fn render_selector_search_selector_trigger(
     );
     let model = SearchSelectorRenderModel {
         icons: look.stylesheet().common.icons.clone(),
-        geometry: look.stylesheet().common.search_selector.resolve_geometry_for(size.key(), Default::default()),
+        geometry: xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk(),
         id: id.clone(),
         trigger_label: if state.selector_selected {
             SharedString::from("California")
@@ -843,11 +840,7 @@ fn render_selector_popup_preview(
                 &items,
                 popup_look.clone(),
                 SearchSelectorPopupTemplates {
-                    geometry: look
-                        .stylesheet()
-                        .common
-                        .search_selector
-                        .resolve_geometry_for(size.key(), Default::default()),
+                    geometry: xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk(),
                     items: &default_search_selector_items_template(),
                     panel: &default_search_selector_panel_template(),
                 },

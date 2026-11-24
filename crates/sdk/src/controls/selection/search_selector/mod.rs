@@ -38,11 +38,9 @@ pub use callback::SearchSelectorEventExt;
 
 pub use model::SearchSelectorMotion;
 
-crate::theme::stylesheet::geometry::geometry_family!(
-    SearchSelectorStylesheet,
-    SearchSelectorGeometryStylesheet,
+crate::theme::stylesheet::geometry::lss_geometry!(
+    /// The search selector's trigger icons and search field, from `search_selector.lss`.
     SearchSelectorGeometry,
-    ResolvedSearchSelectorGeometry,
     "search_selector",
     [
         border_width,
@@ -58,25 +56,3 @@ crate::theme::stylesheet::geometry::geometry_family!(
         trailing_icon_size
     ]
 );
-
-impl SearchSelectorStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: SearchSelectorGeometryStylesheet {
-                border_width: Some(1.0),
-                search_icon_width: Some(18.0),
-                search_icon_size: Some(12.0),
-                trigger_icon_extra_width: Some(10.0),
-                trigger_extra_gap: Some(8.0),
-                search_padding: Some(8.0),
-                search_separator_height: Some(1.0),
-                search_padding_reduction: Some(3.0),
-                search_input_height_floor: Some(18.0),
-                search_chrome_height: Some(57.0),
-                trailing_icon_size: Some(14.0),
-            },
-            ..Default::default()
-        }
-    }
-}

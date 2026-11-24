@@ -1,5 +1,34 @@
 //! Typed common dimensions for remaining control families.
 
+/// A control's geometry read from its `.lss`: one `f32` per property of the same name on the control.
+macro_rules! lss_geometry {
+    ($(#[$meta:meta])* $name:ident, $control:literal, [$($field:ident),+ $(,)?]) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, Debug, Default, PartialEq)]
+        pub struct $name {
+            $(pub $field: f32,)+
+        }
+
+        impl $name {
+            #[doc = concat!("The geometry `binding` (a `", $control, "` control) resolves to. A property the file")]
+            /// lacks reads as zero.
+            pub fn from_binding(binding: &$crate::style::StyleBinding) -> Self {
+                let resolved = binding.resolve(&[], 1.0);
+                let root = resolved.root();
+                let number = |name: &str| root.value(name).and_then(xgpui_luma_style::Value::as_number).unwrap_or(0.0);
+                Self { $($field: number(stringify!($field)),)+ }
+            }
+
+            /// The SDK's own geometry, read once from its `.lss`.
+            pub fn sdk() -> Self {
+                static SDK: std::sync::OnceLock<$name> = std::sync::OnceLock::new();
+                *SDK.get_or_init(|| Self::from_binding(&$crate::style::StyleBinding::sdk($control)))
+            }
+        }
+    };
+}
+pub(crate) use lss_geometry;
+
 /// Selects one look-defined size key so SDK controls receive plain pixel geometry.
 pub trait SelectSizeKey: Sized + Clone {
     /// Returns a copy whose general geometry includes the authored values for `key`.
@@ -154,30 +183,20 @@ macro_rules! geometry_family_impl {
         }
     };
 }
-pub(crate) use {geometry_family, geometry_family_impl};
+pub(crate) use geometry_family_impl;
 
 pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
 pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
 pub use crate::controls::range::progress::theme::ProgressGeometry;
 pub use crate::controls::navigation::stepper::theme::StepperGeometry;
-pub use crate::controls::navigation::sidebar::theme::{
-    SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
-};
+pub use crate::controls::navigation::sidebar::theme::{SidebarGeometry};
 pub use crate::controls::collection::table::theme::TableGeometry;
-pub use crate::controls::overlay::popover_button::panel::{
-    PopoverStylesheet, PopoverGeometryStylesheet, PopoverGeometry, ResolvedPopoverGeometry,
-};
+pub use crate::controls::overlay::popover_button::panel::{PopoverGeometry};
 pub use crate::controls::overlay::slide_panel::SlidePanelGeometry;
 pub use crate::controls::choice::radio_group::RadioGroupGeometry;
-pub use crate::controls::selection::autocomplete::theme::{
-    AutocompleteStylesheet, AutocompleteGeometryStylesheet, AutocompleteGeometry, ResolvedAutocompleteGeometry,
-};
-pub use crate::controls::selection::combobox::{
-    ComboBoxStylesheet, ComboBoxGeometryStylesheet, ComboBoxGeometry, ResolvedComboBoxGeometry,
-};
-pub use crate::controls::selection::search_selector::{
-    SearchSelectorStylesheet, SearchSelectorGeometryStylesheet, SearchSelectorGeometry, ResolvedSearchSelectorGeometry,
-};
+pub use crate::controls::selection::autocomplete::theme::{AutocompleteGeometry};
+pub use crate::controls::selection::combobox::{ComboBoxGeometry};
+pub use crate::controls::selection::search_selector::{SearchSelectorGeometry};
 
 geometry_family!(
     ShellStylesheet,
@@ -292,11 +311,6 @@ mod tests {
     #[test]
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {
         ShellStylesheet::validate_contract();
-        SidebarStylesheet::validate_contract();
-        AutocompleteStylesheet::validate_contract();
-        ComboBoxStylesheet::validate_contract();
-        SearchSelectorStylesheet::validate_contract();
-        PopoverStylesheet::validate_contract();
     }
 }
 
