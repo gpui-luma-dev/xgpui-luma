@@ -1,6 +1,7 @@
-//! Checkbox work pane (issue #291): the SDK checkbox and its state matrix, the style key built from what
-//! the checkbox's `.lss` declares, and the control's events, beside the `.lss` inspector in a resizable
-//! split.
+//! Design surface page (issues #291, #376): an SDK control and its state matrix, the style key built
+//! from what the control's `.lss` declares, and the control's events, beside the `.lss` inspector in a
+//! resizable split. What differs per control comes from its [`SurfaceControl`]; the page is the same for
+//! every control.
 
 use std::sync::Arc;
 
@@ -50,13 +51,13 @@ const STRIP_LABEL_WIDTH: f32 = 96.;
 const ZOOM_RANGE: std::ops::Range<f32> = 1.0..10.0;
 const ZOOM_STEP: f32 = 0.25;
 const ZOOM_SLIDER_WIDTH: f32 = 140.;
-/// The stage grid's square at actual size; it scales with the zoom, like the checkbox.
+/// The stage grid's square at actual size; it scales with the zoom, like the control.
 const STAGE_GRID_SPACING: f32 = 10.;
 /// Wheel and two-finger scroll zoom on the Control stage: each pixel of scroll multiplies the zoom by
 /// e^rate (as the canvas lab does).
 const WHEEL_ZOOM_RATE: f32 = 0.005;
 /// A drag on the Control stage pans only once the pointer has moved this far, so a click on the
-/// checkbox stays a click.
+/// control stays a click.
 const PAN_THRESHOLD: f32 = 3.;
 /// The control's bounding box on the Control stage: dashed lines along its four edges across the whole
 /// stage, with a solid angle at each corner whose arms point outward along the lines.
@@ -143,12 +144,12 @@ enum Stage {
     Matrix,
 }
 
-/// How the person works with the live checkbox, like a designer's live and static previews.
+/// How the person works with the live control, like a designer's live and static previews.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) enum WorkMode {
-    /// The checkbox is live: real pointer and keyboard input, the key follows it, events are logged.
+    /// The control is live: real pointer and keyboard input, the key follows it, events are logged.
     Test,
-    /// The checkbox ignores input and draws the states picked below the stage; events are paused.
+    /// The control ignores input and draws the states picked below the stage; events are paused.
     Design,
 }
 
@@ -190,7 +191,7 @@ fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::Ap
         .when(!dark, |track| track.justify_start())
         .child(
             div()
-                .debug_selector(|| "workshop-checkbox-mode-icon".into())
+                .debug_selector(|| "workshop-surface-mode-icon".into())
                 .flex_none()
                 .h(px(empty))
                 .flex()
@@ -205,11 +206,11 @@ fn mode_track_content(model: &ButtonContentContext<SwitchData>, _: &mut gpui::Ap
 const MODE_TRACK_BORDER: f32 = 1.;
 const MODE_TRACK_PADDING: f32 = 1.;
 
-/// The state matrix's spacing: rows as tall as a checkbox, tight gaps between rows and columns.
+/// The state matrix's spacing: rows as tall as a control, tight gaps between rows and columns.
 const MATRIX_ROW_HEIGHT: f32 = 36.;
 const MATRIX_GAP_X: f32 = 12.;
 const MATRIX_GAP_Y: f32 = 2.;
-/// A cell's narrowest width: a checkbox and its "Label".
+/// A cell's narrowest width: a control and its "Label".
 const MATRIX_CELL_WIDTH: f32 = 96.;
 /// Room after the widest row label.
 const MATRIX_LABEL_PAD: f32 = 12.;
@@ -236,7 +237,7 @@ const NO_INTERACTION: &str = "none";
 
 /// The work pane: the control side (two thirds) and the inspector (a third), with a draggable divider
 /// between them.
-pub(super) struct CheckboxPane {
+pub(super) struct SurfacePage {
     look: Arc<Look>,
     theme: Theme,
     control: ControlId,
@@ -250,7 +251,7 @@ pub(super) struct CheckboxPane {
     left_rounded: bool,
 }
 
-impl CheckboxPane {
+impl SurfacePage {
     /// `control` is the page's `.lss` control in `theme`; `make_control` makes the live control the page
     /// shows (see [`SurfaceControl`]).
     pub(super) fn new(
@@ -265,7 +266,7 @@ impl CheckboxPane {
             cx.new(|cx| ControlSide::new(look.clone(), theme.clone(), control, make_control, inspector.clone(), cx));
         let title = side.read(cx).surface.title();
         let (side_view, inspector_view) = (side.clone(), inspector.clone());
-        let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-checkbox-split")
+        let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-surface-split")
             .show_border(false)
             .panel(ResizablePanelSpec::new_render(move || side_view.clone()).weight(2.).min(px(MIN_SIDE_WIDTH)))
             .panel(
@@ -297,7 +298,7 @@ impl CheckboxPane {
         let source = lss_inspector::control_source(&inspection)
             .map_or_else(String::new, |(file, layer)| format!("{file} · layer {layer}"));
         div()
-            .debug_selector(|| "workshop-checkbox-title".into())
+            .debug_selector(|| "workshop-surface-title".into())
             .flex_none()
             .flex()
             .flex_wrap()
@@ -331,12 +332,12 @@ impl CheckboxPane {
     }
 }
 
-impl Render for CheckboxPane {
+impl Render for SurfacePage {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let chrome = self.look.chrome();
         div()
-            .id("workshop-checkbox-pane")
-            .debug_selector(|| "workshop-checkbox-pane".into())
+            .id("workshop-surface-pane")
+            .debug_selector(|| "workshop-surface-pane".into())
             .size_full()
             .rounded_tr(px(CANVAS_INNER_RADIUS))
             .rounded_br(px(CANVAS_INNER_RADIUS))
@@ -380,19 +381,19 @@ pub(super) struct ControlSide {
     control: ControlId,
     /// The live control and what differs per control (see [`SurfaceControl`]).
     surface: Box<dyn SurfaceControl>,
-    /// The live checkbox's zoom on the Control stage, a visual aid: the checkbox draws from `theme` with
+    /// The live control's zoom on the Control stage, a visual aid: the control draws from `theme` with
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
-    /// How far the checkbox (and the grid with it) is moved from the Control stage's center.
+    /// How far the control (and the grid with it) is moved from the Control stage's center.
     pan: Point<Pixels>,
     /// The drag on the Control stage in progress, if any.
     pan_drag: Option<PanDrag>,
     /// Back to actual size, centered.
     actual_size: Entity<Button>,
-    /// The checkbox's bounds on the Control stage at the last paint, for its bounding box.
+    /// The control's bounds on the Control stage at the last paint, for its bounding box.
     control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
-    /// The states the live checkbox draws in Design mode; `None` in Test mode, where it draws as it is.
+    /// The states the live control draws in Design mode; `None` in Test mode, where it draws as it is.
     pinned: Option<StateSet>,
     stage: Stage,
     /// Radix tabs: Control · State matrix.
@@ -400,7 +401,7 @@ pub(super) struct ControlSide {
     /// The key's states, in config order: those the file's rules use, then any the template sets
     /// that no rule uses.
     states: Vec<KeyState>,
-    /// Test (live, the key follows the checkbox) or Design (the key is picked and the checkbox draws it).
+    /// Test (live, the key follows the control) or Design (the key is picked and the control draws it).
     work_mode: WorkMode,
     /// Radix toggle group: Test · Design.
     work_mode_picker: ControlGroup<ControlGroupItem>,
@@ -442,7 +443,7 @@ impl ControlSide {
             })
             .detach();
 
-        let stage_tabs = xgpui_luma_look_radix::Tabs::new("workshop-checkbox-stage")
+        let stage_tabs = xgpui_luma_look_radix::Tabs::new("workshop-surface-stage")
             .look(look.as_ref())
             .items([
                 xgpui_luma::controls::tabs::TabsItem::new("control").label("Control"),
@@ -470,7 +471,7 @@ impl ControlSide {
             .map(|(state, name)| {
                 // A state the live control can never reach is shown but never settable.
                 let reachable = !unreachable.contains(&name.as_str());
-                let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-checkbox-state-{name}"))
+                let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-surface-state-{name}"))
                     .look(look.as_ref())
                     .label(format!(":{name}"))
                     .checked(false)
@@ -486,7 +487,7 @@ impl ControlSide {
                 KeyState { template_only: !rule_states.contains(&state), reachable, state, switch }
             })
             .collect();
-        let zoom_slider = xgpui_luma_look_radix::Slider::new("workshop-checkbox-zoom")
+        let zoom_slider = xgpui_luma_look_radix::Slider::new("workshop-surface-zoom")
             .look(look.as_ref())
             .size(xgpui_luma_look_radix::SliderSize::One)
             .range(ZOOM_RANGE)
@@ -496,7 +497,7 @@ impl ControlSide {
             .spawn(cx);
         let work_mode_picker = xgpui_luma_look_radix::control_group_builder(
             look.as_ref(),
-            "workshop-checkbox-work-mode",
+            "workshop-surface-work-mode",
             xgpui_luma_look_radix::RadixSize::One,
         )
         .horizontal()
@@ -535,7 +536,7 @@ impl ControlSide {
                 }));
             let group = xgpui_luma_look_radix::control_group_builder(
                 look.as_ref(),
-                "workshop-checkbox-interaction",
+                "workshop-surface-interaction",
                 look.size(),
             )
             .horizontal()
@@ -567,14 +568,14 @@ impl ControlSide {
             .detach();
             group
         });
-        let reset = xgpui_luma_look_radix::Button::new("workshop-checkbox-reset")
+        let reset = xgpui_luma_look_radix::Button::new("workshop-surface-reset")
             .look(look.as_ref())
             .outline()
             .size(xgpui_luma_look_radix::ButtonSize::One)
             .label("Reset")
             .on_click(cx, |this: &mut Self, cx| this.apply(StyleKey::new(this.control), cx))
             .spawn(cx);
-        let actual_size = xgpui_luma_look_radix::Button::new("workshop-checkbox-actual-size")
+        let actual_size = xgpui_luma_look_radix::Button::new("workshop-surface-actual-size")
             .look(look.as_ref())
             .ghost()
             .size(xgpui_luma_look_radix::ButtonSize::One)
@@ -585,7 +586,7 @@ impl ControlSide {
             ControlEventStream::new(
                 cx,
                 look.clone(),
-                "workshop-checkbox-events",
+                "workshop-surface-events",
                 "The control's SDK events, with seconds since the first.",
             )
             .without_card()
@@ -594,7 +595,7 @@ impl ControlSide {
         let side = cx.weak_entity();
         let stage_slot = cx.new(|_| SideSlot { side: side.clone(), slot: Slot::Stage });
         let lower_slot = cx.new(|_| SideSlot { side, slot: Slot::Lower });
-        let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-checkbox-side-split")
+        let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-surface-side-split")
             .orientation(ResizablePanelsOrientation::Vertical)
             .show_border(false)
             .panel(ResizablePanelSpec::new_render(move || stage_slot.clone()).weight(1.).min(px(MIN_STAGE_HEIGHT)))
@@ -607,7 +608,7 @@ impl ControlSide {
         let mode_names: Vec<String> = theme.stylesheet().modes();
         let has_mode = |name: &str| mode_names.iter().any(|m| m == name);
         let mode_switch = (has_mode(LIGHT) && has_mode(DARK)).then(|| {
-            let switch = xgpui_luma_look_radix::Switch::new("workshop-checkbox-mode")
+            let switch = xgpui_luma_look_radix::Switch::new("workshop-surface-mode")
                 .look(look.as_ref())
                 .size(xgpui_luma_look_radix::SwitchSize::One)
                 .vertical()
@@ -652,7 +653,7 @@ impl ControlSide {
         }
     }
 
-    /// Inspect in another declared mode: the live checkbox, the matrix, the inspector and the stage
+    /// Inspect in another declared mode: the live control, the matrix, the inspector and the stage
     /// background all use the same stylesheet bound in `mode`.
     fn set_mode(&mut self, mode: &str, cx: &mut Context<Self>) {
         let Ok(theme) = self.theme.with_mode(mode) else {
@@ -671,7 +672,7 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Draw the stage checkbox `zoom` times its actual size. Zoom never moves it: it grows and shrinks
+    /// Draw the stage control `zoom` times its actual size. Zoom never moves it: it grows and shrinks
     /// about its own center, wherever it has been panned to.
     fn set_zoom(&mut self, zoom: f32, cx: &mut Context<Self>) {
         let zoom = zoom.clamp(ZOOM_RANGE.start, ZOOM_RANGE.end);
@@ -690,7 +691,7 @@ impl ControlSide {
         self.zoom_slider.update(cx, |slider, cx| slider.set_value(zoom, cx));
     }
 
-    /// Back to actual size with the checkbox centered.
+    /// Back to actual size with the control centered.
     fn reset_view(&mut self, cx: &mut Context<Self>) {
         self.pan = Point::default();
         self.pan_drag = None;
@@ -704,7 +705,7 @@ impl ControlSide {
         self.pan_drag = Some(PanDrag { start: position, pan: self.pan, panning: false });
     }
 
-    /// Follow the drag: the checkbox and the grid move with the pointer.
+    /// Follow the drag: the control and the grid move with the pointer.
     fn drag_pan(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
         let Some(drag) = self.pan_drag.as_mut() else {
             return;
@@ -744,7 +745,7 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Set one state by name in the key; a state the checkbox does not declare is ignored.
+    /// Set one state by name in the key; a state the control does not declare is ignored.
     fn set_state(&mut self, name: &str, on: bool, cx: &mut Context<Self>) {
         if let Some(state) = self.theme.stylesheet().config().state(name)
             && self.states.iter().any(|s| s.state == state)
@@ -793,8 +794,8 @@ impl ControlSide {
         self.apply(key, cx);
     }
 
-    /// Design keeps the key as it is (it becomes the picked states) and stops the checkbox taking input;
-    /// Test drops the picks and goes live, with the key following the checkbox again.
+    /// Design keeps the key as it is (it becomes the picked states) and stops the control taking input;
+    /// Test drops the picks and goes live, with the key following the control again.
     fn set_work_mode(&mut self, mode: WorkMode, cx: &mut Context<Self>) {
         if mode == self.work_mode {
             return;
@@ -828,7 +829,7 @@ impl ControlSide {
     fn tab_row(&self) -> AnyElement {
         let chrome = self.look.chrome();
         div()
-            .debug_selector(|| "workshop-checkbox-tab-row".into())
+            .debug_selector(|| "workshop-surface-tab-row".into())
             .flex_none()
             .h(px(TAB_ROW_HEIGHT))
             .flex()
@@ -839,14 +840,14 @@ impl ControlSide {
             .border_color(chrome.border)
             .child(
                 div()
-                    .debug_selector(|| "workshop-checkbox-work-mode".into())
+                    .debug_selector(|| "workshop-surface-work-mode".into())
                     .self_center()
                     .child(self.work_mode_picker.clone()),
             )
             .child(div().flex_1().self_center().when(self.stage == Stage::Control, |slot| {
                 slot.child(
                     div()
-                        .debug_selector(|| "workshop-checkbox-zoom".into())
+                        .debug_selector(|| "workshop-surface-zoom".into())
                         .flex()
                         .items_center()
                         .justify_end()
@@ -855,14 +856,14 @@ impl ControlSide {
                         .child(div().w(px(ZOOM_SLIDER_WIDTH)).child(self.zoom_slider.clone()))
                         .child(
                             div()
-                                .debug_selector(|| "workshop-checkbox-zoom-label".into())
+                                .debug_selector(|| "workshop-surface-zoom-label".into())
                                 .w(px(44.))
                                 .font_family(pane_type::MONO)
                                 .child(zoom_label(self.zoom)),
                         )
                         .child(
                             div()
-                                .debug_selector(|| "workshop-checkbox-actual-size".into())
+                                .debug_selector(|| "workshop-surface-actual-size".into())
                                 .child(self.actual_size.clone()),
                         ),
                 )
@@ -871,7 +872,7 @@ impl ControlSide {
             .into_any_element()
     }
 
-    /// The live checkbox centered on the stage, with a tag saying whether it is live or drawing picked
+    /// The live control centered on the stage, with a tag saying whether it is live or drawing picked
     /// states.
     fn control_stage(&self) -> AnyElement {
         let chrome = self.look.chrome();
@@ -887,7 +888,7 @@ impl ControlSide {
             .justify_center()
             .child(
                 div()
-                    .debug_selector(|| "workshop-checkbox-stage-tag".into())
+                    .debug_selector(|| "workshop-surface-stage-tag".into())
                     .absolute()
                     .top(px(10.))
                     .left(px(12.))
@@ -902,12 +903,12 @@ impl ControlSide {
             )
             .child(
                 div()
-                    .debug_selector(|| "workshop-checkbox-control".into())
+                    .debug_selector(|| "workshop-surface-control".into())
                     .relative()
                     .left(self.pan.x)
                     .top(self.pan.y)
                     .child(self.surface.view())
-                    // Measures the checkbox for its bounding box, which the stage draws under it.
+                    // Measures the control for its bounding box, which the stage draws under it.
                     .child({
                         let measured = self.control_bounds.clone();
                         gpui::canvas(move |bounds, _, _| measured.set(Some(bounds)), |_, _, _, _| {})
@@ -950,7 +951,7 @@ impl ControlSide {
         }
     }
 
-    /// The SDK checkbox template rendered for each state combination, drawn bare (no cell chrome). The
+    /// The control's template rendered for each state combination, drawn bare (no cell chrome). The
     /// current key's row and column labels are highlighted.
     fn matrix(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let chrome = self.look.chrome();
@@ -967,7 +968,7 @@ impl ControlSide {
                 states.iter().filter_map(|s| state_icon(Some(config.state_name(*s)), color)).collect()
             };
             let text = self.states_label(states, empty);
-            let selector = format!("workshop-checkbox-matrix-label-{text}");
+            let selector = format!("workshop-surface-matrix-label-{text}");
             div()
                 .debug_selector(move || selector.clone())
                 .flex()
@@ -1011,28 +1012,28 @@ impl ControlSide {
             grid = grid.child(cell().child(label(&states, "—", *column == current_column)), 0, c + 1);
         }
         for (r, row_states) in rows.iter().enumerate() {
-            // Row labels end at the column's right edge, beside the checkboxes they name.
+            // Row labels end at the column's right edge, beside the controls they name.
             let row_label = cell().justify_end().child(label(row_states, "base", current_row(row_states)));
             grid = grid.child(row_label, r + 1, 0);
             for (c, column) in columns.iter().enumerate() {
                 let states: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
-                let id = format!("workshop-checkbox-matrix-{r}-{c}").into();
+                let id = format!("workshop-surface-matrix-{r}-{c}").into();
                 let drawn = self.surface.cell(&self.theme, id, &self.state_set(&states), window, cx);
-                let selector = format!("workshop-checkbox-matrix-cell-{r}-{c}");
+                let selector = format!("workshop-surface-matrix-cell-{r}-{c}");
                 let drawn = cell().debug_selector(move || selector.clone()).child(drawn);
                 grid = grid.child(drawn, r + 1, c + 1);
             }
         }
         div()
-            .debug_selector(|| "workshop-checkbox-matrix".into())
+            .debug_selector(|| "workshop-surface-matrix".into())
             .p(px(20.))
             .child(grid.build().w_auto())
             .into_any_element()
     }
 
-    /// Design mode's lower panel: the states the checkbox draws, grouped like a designer's state
+    /// Design mode's lower panel: the states the control draws, grouped like a designer's state
     /// picker. One interaction state (the exclusive group), any of the other states, and the states the
-    /// checkbox can never reach, shown but not settable.
+    /// control can never reach, shown but not settable.
     fn states_panel(&self, cx: &gpui::App) -> AnyElement {
         let chrome = self.look.chrome();
         let config = self.theme.stylesheet().config();
@@ -1046,7 +1047,7 @@ impl ControlSide {
         };
         let switch = |s: &KeyState| {
             let name = config.state_name(s.state);
-            let selector = format!("workshop-checkbox-state-{name}");
+            let selector = format!("workshop-surface-state-{name}");
             div()
                 .flex()
                 .items_center()
@@ -1059,7 +1060,7 @@ impl ControlSide {
         let unreachable: Vec<&KeyState> = self.states.iter().filter(|s| !s.reachable).collect();
         let row = || div().flex().flex_wrap().items_center().gap(px(14.)).min_h(px(28.));
         div()
-            .debug_selector(|| "workshop-checkbox-states".into())
+            .debug_selector(|| "workshop-surface-states".into())
             .flex_none()
             .flex()
             .flex_col()
@@ -1109,7 +1110,7 @@ impl ControlSide {
             .into_any_element()
     }
 
-    /// Test mode's lower panel: the key's live states, then the checkbox's events.
+    /// Test mode's lower panel: the key's live states, then the control's events.
     fn events_panel(&self) -> AnyElement {
         let chrome = self.look.chrome();
         let config = self.theme.stylesheet().config();
@@ -1135,7 +1136,7 @@ impl ControlSide {
                 .child(format!(":{name}"))
         };
         div()
-            .debug_selector(|| "workshop-checkbox-live".into())
+            .debug_selector(|| "workshop-surface-live".into())
             .flex_none()
             .flex()
             .flex_col()
@@ -1187,7 +1188,7 @@ impl ControlSide {
         self.pick_interaction(id, cx);
     }
 
-    /// Zoom the stage checkbox as the slider would, for tests.
+    /// Zoom the stage control as the slider would, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn zoom_to(&mut self, zoom: f32, cx: &mut Context<Self>) {
         self.set_zoom(zoom, cx);
@@ -1268,7 +1269,7 @@ impl ControlSide {
 
 impl ControlSide {
     fn stage_slot(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        // The grid zooms and pans with the checkbox; the matrix is always at actual size and centered.
+        // The grid zooms and pans with the control; the matrix is always at actual size and centered.
         let control = self.stage == Stage::Control;
         let (stage, zoom, offset) = match self.stage {
             Stage::Control => (self.control_stage(), self.zoom, (f32::from(self.pan.x), f32::from(self.pan.y))),
@@ -1279,11 +1280,11 @@ impl ControlSide {
             .size_full()
             .child(
                 div()
-                    .id("workshop-checkbox-stage")
-                    .debug_selector(|| "workshop-checkbox-stage".into())
+                    .id("workshop-surface-stage")
+                    .debug_selector(|| "workshop-surface-stage".into())
                     .relative()
                     .size_full()
-                    // The matrix scrolls; the Control stage clips the panned and zoomed checkbox.
+                    // The matrix scrolls; the Control stage clips the panned and zoomed control.
                     .map(|stage| {
                         if control {
                             stage.overflow_hidden()
@@ -1293,7 +1294,7 @@ impl ControlSide {
                     })
                     .when_some(self.stage_background, |stage, background| stage.bg(background))
                     .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
-                    // The checkbox's bounding box, over the grid and under the checkbox and the stage tag.
+                    // The control's bounding box, over the grid and under the control and the stage tag.
                     .when(control, |stage| {
                         let (measured, color) = (
                             self.control_bounds.clone(),
@@ -1317,7 +1318,7 @@ impl ControlSide {
                     })
                     .child(div().relative().size_full().child(stage))
                     .when(control, |stage| {
-                        // Wheel, two-finger scroll and pinch zoom the checkbox about its own center; a drag
+                        // Wheel, two-finger scroll and pinch zoom the control about its own center; a drag
                         // (mouse, or a trackpad's three-finger drag) pans.
                         stage
                             .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
@@ -1357,7 +1358,7 @@ impl ControlSide {
             // Light/dark stays in the top-right corner while the matrix scrolls under it.
             .children(self.mode_switch.clone().map(|switch| {
                 div()
-                    .debug_selector(|| "workshop-checkbox-modes".into())
+                    .debug_selector(|| "workshop-surface-modes".into())
                     .absolute()
                     .top(px(10.))
                     .right(px(12.))
@@ -1370,7 +1371,7 @@ impl ControlSide {
     fn lower_slot(&self, cx: &gpui::App) -> AnyElement {
         let chrome = self.look.chrome();
         div()
-            .id("workshop-checkbox-lower")
+            .id("workshop-surface-lower")
             .size_full()
             .overflow_y_scroll()
             .border_t_1()
@@ -1466,7 +1467,7 @@ mod tests {
     use gpui::{Bounds, Focusable, Pixels, TestAppContext, VisualTestContext, point};
     use crate::workshop::{Sample, Workshop};
 
-    fn open(app: &mut TestAppContext) -> (Entity<Workshop>, Entity<CheckboxPane>, &mut VisualTestContext) {
+    fn open(app: &mut TestAppContext) -> (Entity<Workshop>, Entity<SurfacePage>, &mut VisualTestContext) {
         app.update(|cx| {
             xgpui_luma::init(cx).unwrap();
             xgpui_luma::key_handling::bind_default_control_keys(cx);
@@ -1478,13 +1479,13 @@ mod tests {
         workshop.update(cx, |v, cx| v.select("checkbox", cx));
         cx.run_until_parked();
         let pane = cx.update(|_, cx| match &workshop.read(cx).samples["checkbox"] {
-            Sample::Checkbox(v) => v.clone(),
+            Sample::Surface(v) => v.clone(),
             _ => panic!("missing checkbox pane"),
         });
         (workshop, pane, cx)
     }
 
-    fn winner_states(pane: &Entity<CheckboxPane>, part: &str, property: &str, cx: &mut VisualTestContext) -> String {
+    fn winner_states(pane: &Entity<SurfacePage>, part: &str, property: &str, cx: &mut VisualTestContext) -> String {
         cx.update(|_, cx| {
             let inspection = pane.read(cx).inspector().read(cx).inspection();
             let part = inspection.parts.iter().find(|p| p.part.name() == part).expect("part");
@@ -1498,11 +1499,11 @@ mod tests {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
         for id in [
-            "workshop-checkbox-pane",
-            "workshop-checkbox-modes",
-            "workshop-checkbox-work-mode",
-            "workshop-checkbox-control",
-            "workshop-checkbox-live",
+            "workshop-surface-pane",
+            "workshop-surface-modes",
+            "workshop-surface-work-mode",
+            "workshop-surface-control",
+            "workshop-surface-live",
             "style-inspector",
             "lss-inspector-attributes",
         ] {
@@ -1510,12 +1511,12 @@ mod tests {
         }
         assert!(cx.debug_bounds("workshop-style-column").is_none(), "no second inspector column");
         let (pane_bounds, title) = (
-            cx.debug_bounds("workshop-checkbox-pane").unwrap(),
-            cx.debug_bounds("workshop-checkbox-title").unwrap(),
+            cx.debug_bounds("workshop-surface-pane").unwrap(),
+            cx.debug_bounds("workshop-surface-title").unwrap(),
         );
         assert_eq!(title.size.width, pane_bounds.size.width, "title spans both sides");
         let (left, right) = (
-            cx.debug_bounds("workshop-checkbox-tab-row").unwrap(),
+            cx.debug_bounds("workshop-surface-tab-row").unwrap(),
             cx.debug_bounds("lss-inspector-tab-row").unwrap(),
         );
         assert_eq!((left.top(), left.size.height), (right.top(), right.size.height), "tab rows line up");
@@ -1548,7 +1549,7 @@ mod tests {
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "state matrix rendered");
+        assert!(cx.debug_bounds("workshop-surface-matrix").is_some(), "state matrix rendered");
     }
 
     #[test]
@@ -1563,7 +1564,7 @@ mod tests {
             let sizes = side.split.read(cx).panel_sizes_px();
             assert!((sizes[1] - LOWER_HEIGHT).abs() < 2., "lower panel starts at its height: {sizes:?}");
         });
-        assert!(cx.debug_bounds("workshop-checkbox-live").is_some(), "Test mode: events in the lower panel");
+        assert!(cx.debug_bounds("workshop-surface-live").is_some(), "Test mode: events in the lower panel");
     }
 
     #[gpui::test]
@@ -1579,30 +1580,30 @@ mod tests {
                 root.rows.iter().find(|r| r.property == "height").expect("height").explanation.value.clone()
             })
         };
-        assert!(cx.debug_bounds("workshop-checkbox-zoom").is_some(), "the Control stage offers zoom");
-        let actual = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        assert!(cx.debug_bounds("workshop-surface-zoom").is_some(), "the Control stage offers zoom");
+        let actual = cx.debug_bounds("workshop-surface-control").expect("control").size;
         let actual_height = inspected_height(cx);
 
         side.update(cx, |side, cx| side.zoom_to(2.0, cx));
         cx.run_until_parked();
-        let zoomed = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        let zoomed = cx.debug_bounds("workshop-surface-control").expect("control").size;
         assert!((zoomed.height - actual.height * 2.0).abs() <= px(1.), "{actual:?} → {zoomed:?}");
         assert!(zoomed.width > actual.width * 1.5, "the label grows too: {actual:?} → {zoomed:?}");
         assert_eq!(inspected_height(cx), actual_height, "the inspector shows actual-size values");
 
         side.update(cx, |side, cx| side.choose_mode("dark", cx));
         cx.run_until_parked();
-        let dark = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        let dark = cx.debug_bounds("workshop-surface-control").expect("control").size;
         assert_eq!(dark.height, zoomed.height, "a mode change keeps the zoom");
 
         side.update(cx, |side, cx| side.zoom_to(14.0, cx));
         cx.run_until_parked();
-        let most = cx.debug_bounds("workshop-checkbox-control").expect("control").size;
+        let most = cx.debug_bounds("workshop-surface-control").expect("control").size;
         assert!((most.height - actual.height * 10.0).abs() <= px(1.), "zoom stops at 10×: {most:?}");
 
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-zoom").is_none(), "the matrix is not zoomed");
+        assert!(cx.debug_bounds("workshop-surface-zoom").is_none(), "the matrix is not zoomed");
     }
 
     #[test]
@@ -1617,8 +1618,8 @@ mod tests {
 
         // The light/dark switch sits in the stage's top-right corner; turning it on binds dark.
         let (stage, corner) = (
-            cx.debug_bounds("workshop-checkbox-stage").expect("stage"),
-            cx.debug_bounds("workshop-checkbox-modes").expect("light/dark switch"),
+            cx.debug_bounds("workshop-surface-stage").expect("stage"),
+            cx.debug_bounds("workshop-surface-modes").expect("light/dark switch"),
         );
         assert!(corner.right() <= stage.right() && corner.right() > stage.right() - px(40.), "right edge");
         assert!(corner.top() >= stage.top() && corner.top() < stage.top() + px(20.), "top edge");
@@ -1633,7 +1634,7 @@ mod tests {
         let room_above = |icon: Bounds<Pixels>| icon.top() - corner.top();
         let room_below = |icon: Bounds<Pixels>| corner.bottom() - icon.bottom();
         // Light: the thumb rests at the bottom, so the sun's area is the empty top end.
-        let sun = cx.debug_bounds("workshop-checkbox-mode-icon").expect("sun");
+        let sun = cx.debug_bounds("workshop-surface-mode-icon").expect("sun");
         assert!(inside(sun) && sun.size.height > px(0.), "the sun is in the track: {sun:?} {corner:?}");
         assert!(room_above(sun) < room_below(sun), "sun up top: {sun:?} {corner:?}");
         let switch = cx.update(|_, cx| side.read(cx).mode_switch.clone()).expect("switch");
@@ -1642,7 +1643,7 @@ mod tests {
         cx.run_until_parked();
         assert_eq!(cx.update(|_, cx| side.read(cx).mode_and_stage()).0, "dark", "the switch binds dark");
         // Dark: the thumb rests at the top, so the moon's area is the empty bottom end.
-        let moon = cx.debug_bounds("workshop-checkbox-mode-icon").expect("moon");
+        let moon = cx.debug_bounds("workshop-surface-mode-icon").expect("moon");
         assert!(inside(moon), "the moon is in the track: {moon:?} {corner:?}");
         assert!(room_below(moon) < room_above(moon), "moon at the bottom: {moon:?} {corner:?}");
         // Both are the empty end the thumb leaves: the same length, short of the whole track.
@@ -1688,7 +1689,7 @@ mod tests {
 
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
+        assert!(cx.debug_bounds("workshop-surface-matrix").is_some(), "the matrix draws in dark");
     }
 
     #[test]
@@ -1798,7 +1799,7 @@ mod tests {
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
         cx.run_until_parked();
-        let states = cx.debug_bounds("workshop-checkbox-states").expect("state picker");
+        let states = cx.debug_bounds("workshop-surface-states").expect("state picker");
         assert!(f32::from(states.size.height) <= MIN_LOWER_HEIGHT, "state picker is {:?}", states.size.height);
     }
 
@@ -1825,8 +1826,8 @@ mod tests {
         );
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-states").is_some(), "Design mode: the state picker");
-        let invalid = cx.debug_bounds("workshop-checkbox-state-invalid").expect("invalid switch");
+        assert!(cx.debug_bounds("workshop-surface-states").is_some(), "Design mode: the state picker");
+        let invalid = cx.debug_bounds("workshop-surface-state-invalid").expect("invalid switch");
         let key_before = cx.update(|_, cx| side.read(cx).key);
         cx.simulate_click(invalid.center(), gpui::Modifiers::none());
         cx.run_until_parked();
@@ -1849,7 +1850,7 @@ mod tests {
         );
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "matrix renders every cell");
+        assert!(cx.debug_bounds("workshop-surface-matrix").is_some(), "matrix renders every cell");
     }
 
     #[test]
@@ -1933,13 +1934,13 @@ mod tests {
         let (_, pane, cx) = open(&mut app);
         let side = cx.update(|_, cx| pane.read(cx).side());
         let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
-        let control = || "workshop-checkbox-control";
+        let control = || "workshop-surface-control";
         let logged = |cx: &mut VisualTestContext| cx.update(|_, cx| side.read(cx).events.read(cx).count());
 
         // Test: live. Clicking checks the checkbox, the key follows and the event is logged.
         assert_eq!(cx.update(|_, cx| side.read(cx).work_mode()), WorkMode::Test);
-        assert!(cx.debug_bounds("workshop-checkbox-live").is_some());
-        assert!(cx.debug_bounds("workshop-checkbox-states").is_none());
+        assert!(cx.debug_bounds("workshop-surface-live").is_some());
+        assert!(cx.debug_bounds("workshop-surface-states").is_none());
         let at = cx.debug_bounds(control()).expect("control").center();
         cx.simulate_click(at, gpui::Modifiers::none());
         cx.run_until_parked();
@@ -1957,8 +1958,8 @@ mod tests {
         // Design: the picker shows, the checkbox ignores input and the log pauses.
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-states").is_some());
-        assert!(cx.debug_bounds("workshop-checkbox-live").is_none());
+        assert!(cx.debug_bounds("workshop-surface-states").is_some());
+        assert!(cx.debug_bounds("workshop-surface-live").is_none());
         let at = cx.debug_bounds(control()).expect("control").center();
         cx.simulate_click(at, gpui::Modifiers::none());
         cx.run_until_parked();
@@ -2010,7 +2011,7 @@ mod tests {
         }
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-checkbox-matrix").is_some(), "the matrix draws in dark");
+        assert!(cx.debug_bounds("workshop-surface-matrix").is_some(), "the matrix draws in dark");
     }
 
     #[gpui::test]
@@ -2021,15 +2022,15 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         let cell = |r: usize, c: usize, cx: &mut VisualTestContext| {
-            let name: &'static str = Box::leak(format!("workshop-checkbox-matrix-cell-{r}-{c}").into_boxed_str());
+            let name: &'static str = Box::leak(format!("workshop-surface-matrix-cell-{r}-{c}").into_boxed_str());
             cx.debug_bounds(name).unwrap_or_else(|| panic!("cell {r},{c}"))
         };
         // The longest row label ends before the first state column starts.
-        let longest = cx.debug_bounds("workshop-checkbox-matrix-label-:focused:checked:invalid").expect("label");
+        let longest = cx.debug_bounds("workshop-surface-matrix-label-:focused:checked:invalid").expect("label");
         let first = cell(7, 0, cx);
         assert!(longest.right() <= first.left(), "label clear of the cells: {longest:?} vs {first:?}");
         // Row labels are right-aligned: a short one ends where the longest does.
-        let base = cx.debug_bounds("workshop-checkbox-matrix-label-base").expect("base label");
+        let base = cx.debug_bounds("workshop-surface-matrix-label-base").expect("base label");
         assert!((base.right() - longest.right()).abs() <= px(1.), "right-aligned: {base:?} vs {longest:?}");
         // Rows a checkbox tall with a 2px gap; columns a cell wide with a 12px gap.
         let (a, b, c) = (cell(0, 0, cx), cell(1, 0, cx), cell(0, 1, cx));
@@ -2139,11 +2140,10 @@ mod tests {
                 (side.zoom, side.pan, side.zoom_slider.read(cx).value())
             })
         };
-        let stage = cx.debug_bounds("workshop-checkbox-stage").expect("stage");
+        let stage = cx.debug_bounds("workshop-surface-stage").expect("stage");
         let center = stage.center();
         let close = |a: Pixels, b: f32| (f32::from(a) - b).abs() < 0.5;
-        let control_center =
-            |cx: &mut VisualTestContext| cx.debug_bounds("workshop-checkbox-control").unwrap().center();
+        let control_center = |cx: &mut VisualTestContext| cx.debug_bounds("workshop-surface-control").unwrap().center();
         let same = |a: Point<Pixels>, b: Point<Pixels>| close(a.x, f32::from(b.x)) && close(a.y, f32::from(b.y));
 
         // The wheel (or a two-finger scroll) zooms in about the checkbox's own center, wherever the
@@ -2180,7 +2180,7 @@ mod tests {
         assert!(same(control_center(cx), before), "the panned checkbox stays put: {before:?}");
 
         // Actual size zooms back to 1× and recenters.
-        let actual = cx.debug_bounds("workshop-checkbox-actual-size").expect("Actual size button");
+        let actual = cx.debug_bounds("workshop-surface-actual-size").expect("Actual size button");
         cx.simulate_click(actual.center(), gpui::Modifiers::none());
         cx.run_until_parked();
         let (zoom, pan, slider) = view(cx);
@@ -2250,12 +2250,12 @@ mod tests {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
         let side = cx.update(|_, cx| pane.read(cx).side());
-        let control = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        let control = cx.debug_bounds("workshop-surface-control").expect("control");
         let measured = cx.update(|_, cx| side.read(cx).control_bounds.get());
         assert_eq!(measured, Some(control), "the box follows the checkbox");
         side.update(cx, |side, cx| side.zoom_to(3., cx));
         cx.run_until_parked();
-        let zoomed = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        let zoomed = cx.debug_bounds("workshop-surface-control").expect("control");
         assert_eq!(cx.update(|_, cx| side.read(cx).control_bounds.get()), Some(zoomed), "and its zoom");
     }
 }

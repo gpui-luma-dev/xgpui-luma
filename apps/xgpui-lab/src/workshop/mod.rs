@@ -26,7 +26,7 @@ mod sdk_sample;
 mod event_log_view;
 mod style_inspector;
 mod lss_inspector;
-mod checkbox_pane;
+mod surface_page;
 mod checkbox_surface;
 mod surface_control;
 mod pinned_template;
@@ -63,7 +63,8 @@ enum Sample {
     Input(Entity<input::InputSample>),
     Collection(Entity<collection::CollectionSample>),
     Choice(Entity<choice::ChoiceSample>),
-    Checkbox(Entity<checkbox_pane::CheckboxPane>),
+    /// A design surface page (see `surface_control`).
+    Surface(Entity<surface_page::SurfacePage>),
     Button(Entity<button::ButtonControlExposition>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
     Toolbar(Entity<toolbar::ToolbarControlExposition>),
@@ -88,7 +89,7 @@ impl Sample {
             Self::Input(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
             Self::Choice(v) => v.clone().into(),
-            Self::Checkbox(v) => v.clone().into(),
+            Self::Surface(v) => v.clone().into(),
             Self::Button(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Toolbar(v) => v.clone().into(),
@@ -113,7 +114,7 @@ impl Sample {
             Self::Input(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Checkbox(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
+            Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Button(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -125,6 +126,21 @@ impl Sample {
             Self::Mixer(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Display(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
         }
+    }
+
+    /// Converted pages: their chrome is the app's Radix look and follows its light/dark, and they paint
+    /// their own background (design surface pages round it to meet the canvas).
+    fn uses_shell_look(&self) -> bool {
+        matches!(self, Self::Button(_) | Self::Toolbar(_) | Self::Surface(_))
+    }
+}
+
+/// The Workshop pages shown on the design surface page: each page's `.lss` control and its
+/// [`surface_control::SurfaceControl`].
+fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfaceControl)> {
+    match id {
+        "checkbox" => Some(("checkbox", checkbox_surface::CheckboxSurface::make)),
+        _ => None,
     }
 }
 
@@ -160,7 +176,7 @@ pub(super) struct InspectedState {
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         "button" => &["button"],
-        // The checkbox work pane has its own inspector.
+        // Design surface pages (see `surface_control`) have their own inspector.
         "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
@@ -317,7 +333,18 @@ impl Workshop {
         self.selected = id;
         if !self.samples.contains_key(id) {
             let look = self.page_look.clone();
+            let surface = surface_control(id);
             let sample = sdk_sample::with_sdk_defaults(|| match id {
+                // A design surface page's own chrome (Radix) follows the app's light/dark; only its control
+                // and State matrix render with the SDK theme.
+                _ if surface.is_some() => surface.and_then(|(name, make_control)| {
+                    let (look, theme) = (self.shell_look.clone(), xgpui_luma::style::default_theme());
+                    theme.stylesheet().control(name).map(|control| {
+                        Sample::Surface(
+                            cx.new(|cx| surface_page::SurfacePage::new(look, theme.clone(), control, make_control, cx)),
+                        )
+                    })
+                }),
                 "shadow-button" => {
                     Some(Sample::ShadowButton(cx.new(|cx| shadow_button::ShadowButtonSample::new(look, cx))))
                 }
@@ -403,22 +430,6 @@ impl Workshop {
                 "accordion" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
                 )),
-                "checkbox" => {
-                    // The work pane's own chrome (Radix) follows the app's light/dark; only its control and
-                    // State matrix render with the SDK theme.
-                    let (look, theme) = (self.shell_look.clone(), xgpui_luma::style::default_theme());
-                    theme.stylesheet().control("checkbox").map(|control| {
-                        Sample::Checkbox(cx.new(|cx| {
-                            checkbox_pane::CheckboxPane::new(
-                                look,
-                                theme.clone(),
-                                control,
-                                checkbox_surface::CheckboxSurface::make,
-                                cx,
-                            )
-                        }))
-                    })
-                }
                 "pager" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
                 }
@@ -463,9 +474,9 @@ impl Workshop {
                 match &sample {
                     Sample::Button(v) => self.follow(id, v, cx),
                     Sample::Choice(v) => self.follow(id, v, cx),
-                    Sample::Checkbox(v) => {
+                    Sample::Surface(v) => {
                         let hidden = self.sidebar_hidden;
-                        v.update(cx, |pane, cx| pane.set_left_rounded(hidden, cx));
+                        v.update(cx, |page, cx| page.set_left_rounded(hidden, cx));
                     }
                     _ => {}
                 }
@@ -495,15 +506,17 @@ impl Workshop {
     /// rounded edge; with it shown they meet the sidebar and stay square.
     pub(crate) fn set_sidebar_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
         self.sidebar_hidden = hidden;
-        if let Some(Sample::Checkbox(pane)) = self.samples.get("checkbox") {
-            pane.update(cx, |pane, cx| pane.set_left_rounded(hidden, cx));
+        for sample in self.samples.values() {
+            if let Sample::Surface(page) = sample {
+                page.update(cx, |page, cx| page.set_left_rounded(hidden, cx));
+            }
         }
     }
 
     pub(crate) fn sync_theme(&mut self, mode: ThemeMode, cx: &mut Context<Self>) {
         self.shell_look.set_mode(mode);
-        for (id, sample) in &self.samples {
-            let look = if matches!(*id, "button" | "toolbar" | "checkbox") {
+        for sample in self.samples.values() {
+            let look = if sample.uses_shell_look() {
                 self.shell_look.clone()
             } else {
                 self.page_look.clone()
@@ -549,8 +562,8 @@ impl Workshop {
 
 impl Render for Workshop {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        // The checkbox pane paints its own (rounded) background, so the page shows none behind it.
-        let converted = matches!(self.selected, "button" | "toolbar" | "checkbox");
+        // Converted pages paint their own background, so the page shows none behind them.
+        let converted = self.samples.get(self.selected).is_some_and(Sample::uses_shell_look);
         let chrome = if converted {
             self.shell_look.chrome()
         } else {
