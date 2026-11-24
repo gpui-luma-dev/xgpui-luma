@@ -11,8 +11,6 @@
 //!
 //! **Surface**: filled `muted` background, no border, same text/selection tokens.
 
-use crate::provenance::ResolvedColor;
-
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ShadcnTextFieldStyle {
     #[default]
@@ -20,31 +18,4 @@ pub enum ShadcnTextFieldStyle {
     Input,
     Primary,
     Surface,
-}
-
-#[derive(Clone, Debug)]
-pub struct TextFieldColorTable {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: ResolvedColor,
-    pub placeholder: ResolvedColor,
-    pub icon: ResolvedColor,
-    pub selection_background: ResolvedColor,
-    pub selection_foreground: ResolvedColor,
-    pub caret: ResolvedColor,
-}
-
-impl TextFieldColorTable {
-    pub fn fallback() -> Self {
-        Self {
-            background: ResolvedColor::transparent(),
-            foreground: ResolvedColor::fallback_foreground(),
-            border: ResolvedColor::fallback_foreground(),
-            placeholder: ResolvedColor::fallback_foreground(),
-            icon: ResolvedColor::fallback_foreground(),
-            selection_background: ResolvedColor::fallback_foreground(),
-            selection_foreground: ResolvedColor::fallback_foreground(),
-            caret: ResolvedColor::fallback_foreground(),
-        }
-    }
 }

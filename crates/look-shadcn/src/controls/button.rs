@@ -1,5 +1,3 @@
-use crate::provenance::ResolvedColor;
-
 /// Button-local corner radius presets (shadcn/Shadcn `radius` prop).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ButtonRadiusPreset {
@@ -42,23 +40,6 @@ pub enum ShadcnButtonStyle {
     Outline,
     Ghost,
     ContentOnly,
-}
-
-#[derive(Clone, Debug)]
-pub struct ButtonColorPalette {
-    pub background: ResolvedColor,
-    pub foreground: ResolvedColor,
-    pub border: Option<ResolvedColor>,
-}
-
-impl ButtonColorPalette {
-    pub fn fallback() -> Self {
-        Self {
-            background: ResolvedColor::transparent(),
-            foreground: ResolvedColor::fallback_foreground(),
-            border: None,
-        }
-    }
 }
 
 // Mirrors the public semantic resolver with an additional selected stylesheet.

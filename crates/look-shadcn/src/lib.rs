@@ -1,6 +1,3 @@
-#[cfg(feature = "inspect")]
-pub mod inspect;
-
 mod action;
 mod look_context;
 pub mod catalog;
@@ -29,16 +26,9 @@ pub use tooltip::tooltip_theme;
 mod test_support;
 
 pub mod prelude;
-pub mod tables;
 
 pub use catalog::{CssMode, CssTokenCatalog, CssTokenMap, parse_css_catalog};
 pub use context::{sync_color_control_theme, with_look};
-/// Look-agnostic provenance types (shared with other looks via the SDK).
-pub use xgpui_luma::theme::provenance::{
-    ColorSource as LookColorSource, MetricSource as LookMetricSource, ResolvedColor as LookResolvedColor,
-    ResolvedMetric as LookResolvedMetric, ResolvedTypography as LookResolvedTypography,
-    TypographySource as LookTypographySource,
-};
 pub use ext::{LumaTypographyExt, ShadcnElementExt};
 pub use look::ShadcnLook;
 
@@ -55,7 +45,7 @@ pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
 pub use look_context::LookContext;
 pub use stylesheet::{StylesheetConfig, embedded_stylesheet};
-pub use elements::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look};
+pub use elements::{Badge, BadgeLook, BadgeIconPlacement, BadgeVariant, badge_look};
 pub use controls::{
     Frame, Accordion, Autocomplete, Button, ButtonRadiusPreset, Card, Checkbox, ComboBox, ContextMenu, IconGroup,
     Table, ListBoxBuilder, MenuChoiceGroup, Pager, PopupMenu, Progress, Radio, RadioGroup, Scrollbar, SearchSelector,
@@ -63,10 +53,7 @@ pub use controls::{
     TextArea, TextField, Toggle, ToggleLayout, Toolbar, TreeView, ShadcnTextFieldStyle, ShadcnToolbarItemExt,
     ToolbarTextFieldItemBuilder, slide_panel_background, slide_panel_panels_look,
 };
-pub use provenance::{
-    ColorSource, LookResolver, ResolvedSourceColor, MetricSource, ResolvedColor, ResolvedMetric, ResolvedTypography,
-    TypographySource,
-};
+pub use provenance::{ColorSource, LookResolver, ResolvedSourceColor, ResolvedColor};
 pub use usage::all_shadcn_theme_usages;
 
 #[cfg(test)]

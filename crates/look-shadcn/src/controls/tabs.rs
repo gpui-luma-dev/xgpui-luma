@@ -8,31 +8,6 @@
 //! | Disabled label    | `muted-foreground`            |
 //! | Disabled list bg  | `muted`                       |
 
-use crate::provenance::ResolvedColor;
-
-#[derive(Clone, Debug)]
-pub struct TabsListColorTable {
-    pub disabled_background: ResolvedColor,
-}
-
-impl TabsListColorTable {
-    pub fn fallback() -> Self {
-        Self { disabled_background: ResolvedColor::transparent() }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct TabsItemColorTable {
-    pub label_color: ResolvedColor,
-    pub indicator: Option<ResolvedColor>,
-}
-
-impl TabsItemColorTable {
-    pub fn fallback() -> Self {
-        Self { label_color: ResolvedColor::fallback_foreground(), indicator: None }
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
