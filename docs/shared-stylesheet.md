@@ -42,14 +42,14 @@ The parsed common schema rejects unknown typed fields. Families whose controls a
 only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
 `pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
 `progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
-`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared` and `slider`. Root sections belonging
+`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider` and `tooltip`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values
 
 The SDK ships one control scale and has no size vocabulary. Each family's
 `geometry` holds its sparse overrides; for example,
-`sheet.tooltip.geometry.max_width = Some(240.0)`. `ControlSizes<T>` is a keyed
+`sheet.sidebar.geometry.disabled_opacity = Some(0.5)`. `ControlSizes<T>` is a keyed
 map that looks use for their own sizes (Shadcn `sm`/`md`/`lg`, Radix `1`/`2`/`3`,
 named compact presets). A look resolves its size to pixels with
 `CommonStylesheet::with_size_key(key)` before handing the sheet to the SDK.

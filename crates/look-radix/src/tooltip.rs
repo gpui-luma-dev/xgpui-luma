@@ -32,18 +32,3 @@ mod tests {
         crate::control_group::assert_close(dark.foreground, fork.resolve_role(SemanticRole::Background).hsla());
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_tooltip_stylesheet() -> xgpui_luma::theme::stylesheet::TooltipStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    TooltipStylesheet {
-        geometry: TooltipGeometryStylesheet {
-            padding: Some(8.0),
-            padding_y: Some(4.0),
-            font_size: Some(12.0),
-            line_height: Some(16.0),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
-}

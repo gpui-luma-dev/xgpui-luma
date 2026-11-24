@@ -82,13 +82,6 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
 }
 
 #[test]
-fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
-    let stylesheet = Look::built_in().common_stylesheet();
-    // SDK helper recipes are inherited alongside Radix's own semantic sizes.
-    assert_eq!(stylesheet.tooltip.sizes.keys().collect::<Vec<_>>(), vec!["compact"]);
-}
-
-#[test]
 fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let look = Look::built_in();
     let fork = look.fork();
