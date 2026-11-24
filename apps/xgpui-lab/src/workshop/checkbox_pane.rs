@@ -4,9 +4,12 @@
 
 use std::sync::Arc;
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gpui::{
-    AnyElement, Context, Entity, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PinchEvent, Pixels,
-    Point, Render, ScrollEvent, WeakEntity, Window, div, prelude::*, px, svg,
+    AnyElement, Bounds, Context, Entity, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PinchEvent,
+    Pixels, Point, Render, ScrollEvent, WeakEntity, Window, div, point, prelude::*, px, size, svg,
 };
 use xgpui_luma::{GridLayout, GridTrack};
 use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
@@ -60,6 +63,69 @@ const WHEEL_ZOOM_RATE: f32 = 0.005;
 /// A drag on the Control stage pans only once the pointer has moved this far, so a click on the
 /// checkbox stays a click.
 const PAN_THRESHOLD: f32 = 3.;
+/// The control's bounding box on the Control stage: dashed lines along its four edges across the whole
+/// stage, with a solid angle at each corner whose arms point outward along the lines.
+const BOX_LINE: f32 = 1.;
+const BOX_DASH: f32 = 4.;
+const BOX_GAP: f32 = 3.;
+const BOX_CORNER_ARM: f32 = 8.;
+const BOX_CORNER_THICKNESS: f32 = 2.;
+/// The bounding box's color: this step of the look's accent scale.
+const BOX_ACCENT_STEP: u8 = 9;
+
+/// The rectangles that draw `control`'s bounding box on `stage`: the dashes of two vertical lines
+/// (just outside its left and right edges) and two horizontal lines (just outside its top and bottom),
+/// each running the stage's full length, then a solid angle at each of the four intersections with its
+/// arms pointing away from the control.
+fn bounding_box_rects(stage: Bounds<Pixels>, control: Bounds<Pixels>) -> Vec<Bounds<Pixels>> {
+    let rect = |x0: f32, y0: f32, x1: f32, y1: f32| Bounds::new(point(px(x0), px(y0)), size(px(x1 - x0), px(y1 - y0)));
+    let (left, right) = (f32::from(control.left()) - BOX_LINE, f32::from(control.right()));
+    let (top, bottom) = (f32::from(control.top()) - BOX_LINE, f32::from(control.bottom()));
+    let (stage_left, stage_right) = (f32::from(stage.left()), f32::from(stage.right()));
+    let (stage_top, stage_bottom) = (f32::from(stage.top()), f32::from(stage.bottom()));
+    let dashes = |from: f32, to: f32| {
+        (0..)
+            .map(move |i| from + i as f32 * (BOX_DASH + BOX_GAP))
+            .take_while(move |start| *start < to)
+            .map(move |start| (start, (start + BOX_DASH).min(to)))
+    };
+    let mut rects: Vec<Bounds<Pixels>> = Vec::new();
+    for x in [left, right] {
+        rects.extend(dashes(stage_top, stage_bottom).map(|(y0, y1)| rect(x, y0, x + BOX_LINE, y1)));
+    }
+    for y in [top, bottom] {
+        rects.extend(dashes(stage_left, stage_right).map(|(x0, x1)| rect(x0, y, x1, y + BOX_LINE)));
+    }
+    // Each corner's thick band covers its line and grows outward; the arms run outward from the corner.
+    let (arm, extra) = (BOX_CORNER_ARM, BOX_CORNER_THICKNESS - BOX_LINE);
+    for (x, outward_x) in [(left, -1.), (right, 1.)] {
+        for (y, outward_y) in [(top, -1.), (bottom, 1.)] {
+            let band_x = if outward_x < 0. {
+                (x - extra, x + BOX_LINE)
+            } else {
+                (x, x + BOX_LINE + extra)
+            };
+            let band_y = if outward_y < 0. {
+                (y - extra, y + BOX_LINE)
+            } else {
+                (y, y + BOX_LINE + extra)
+            };
+            let arm_x = if outward_x < 0. {
+                (x + BOX_LINE - arm, x + BOX_LINE)
+            } else {
+                (x, x + arm)
+            };
+            let arm_y = if outward_y < 0. {
+                (y + BOX_LINE - arm, y + BOX_LINE)
+            } else {
+                (y, y + arm)
+            };
+            rects.push(rect(arm_x.0, band_y.0, arm_x.1, band_y.1));
+            rects.push(rect(band_x.0, arm_y.0, band_x.1, arm_y.1));
+        }
+    }
+    rects
+}
 
 /// A drag on the Control stage: where the pointer went down, the pan then, and whether it has moved far
 /// enough to pan.
@@ -317,6 +383,8 @@ pub(super) struct ControlSide {
     pan_drag: Option<PanDrag>,
     /// Back to actual size, centered.
     actual_size: Entity<Button>,
+    /// The checkbox's bounds on the Control stage at the last paint, for its bounding box.
+    control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// The states the live checkbox draws in Design mode; `None` in Test mode, where it draws as it is.
     pinned: Option<PinnedCheckbox>,
     stage: Stage,
@@ -564,6 +632,7 @@ impl ControlSide {
             pan: Point::default(),
             pan_drag: None,
             actual_size,
+            control_bounds: Rc::default(),
             pinned: None,
             stage: Stage::Control,
             stage_tabs,
@@ -833,7 +902,14 @@ impl ControlSide {
                     .relative()
                     .left(self.pan.x)
                     .top(self.pan.y)
-                    .child(self.checkbox.clone()),
+                    .child(self.checkbox.clone())
+                    // Measures the checkbox for its bounding box, which the stage draws under it.
+                    .child({
+                        let measured = self.control_bounds.clone();
+                        gpui::canvas(move |bounds, _, _| measured.set(Some(bounds)), |_, _, _, _| {})
+                            .absolute()
+                            .inset_0()
+                    }),
             )
             .into_any_element()
     }
@@ -1224,6 +1300,28 @@ impl ControlSide {
                     })
                     .when_some(self.stage_background, |stage, background| stage.bg(background))
                     .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    // The checkbox's bounding box, over the grid and under the checkbox and the stage tag.
+                    .when(control, |stage| {
+                        let (measured, color) = (
+                            self.control_bounds.clone(),
+                            self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, BOX_ACCENT_STEP).hsla(),
+                        );
+                        stage.child(
+                            gpui::canvas(
+                                |_, _, _| (),
+                                move |bounds, _, window, _| {
+                                    let Some(control) = measured.get() else {
+                                        return;
+                                    };
+                                    for rect in bounding_box_rects(bounds, control) {
+                                        window.paint_quad(gpui::fill(rect, color));
+                                    }
+                                },
+                            )
+                            .absolute()
+                            .inset_0(),
+                        )
+                    })
                     .child(div().relative().size_full().child(stage))
                     .when(control, |stage| {
                         // Wheel, two-finger scroll and pinch zoom the checkbox about its own center; a drag
@@ -2106,5 +2204,58 @@ mod tests {
         });
         cx.run_until_parked();
         assert_eq!(view(cx).0, 1., "the matrix is not zoomed");
+    }
+
+    #[test]
+    fn the_bounding_box_runs_dashed_lines_across_the_stage_with_outward_corners() {
+        let stage = Bounds::new(point(px(0.), px(0.)), gpui::size(px(200.), px(100.)));
+        let control = Bounds::new(point(px(80.), px(40.)), gpui::size(px(40.), px(20.)));
+        let rects = bounding_box_rects(stage, control);
+        let inside = |r: &Bounds<Pixels>| {
+            r.left() >= stage.left() - px(BOX_CORNER_ARM)
+                && r.right() <= stage.right() + px(BOX_CORNER_ARM)
+                && r.top() >= stage.top() - px(BOX_CORNER_ARM)
+                && r.bottom() <= stage.bottom() + px(BOX_CORNER_ARM)
+        };
+        assert!(rects.iter().all(inside), "everything is on the stage");
+        // Dashes: vertical lines just outside the left and right edges, the stage's full height.
+        let at_x = |x: f32| -> Vec<&Bounds<Pixels>> {
+            rects.iter().filter(|r| r.left() == px(x) && r.size.width == px(BOX_LINE)).collect()
+        };
+        for x in [79., 120.] {
+            let dashes = at_x(x);
+            assert_eq!(dashes.first().map(|d| d.top()), Some(px(0.)), "from the stage's top at {x}");
+            assert_eq!(dashes.last().map(|d| d.bottom()), Some(px(100.)), "to its bottom at {x}");
+            assert!(dashes.iter().all(|d| d.size.height <= px(BOX_DASH)), "dashed at {x}");
+        }
+        // Horizontal lines just outside the top and bottom edges, the stage's full width.
+        for y in [39., 60.] {
+            let dashes: Vec<_> = rects.iter().filter(|r| r.top() == px(y) && r.size.height == px(BOX_LINE)).collect();
+            assert_eq!(dashes.first().map(|d| d.left()), Some(px(0.)), "from the stage's left at {y}");
+            assert_eq!(dashes.last().map(|d| d.right()), Some(px(200.)), "to its right at {y}");
+        }
+        // Corners: solid angles, thicker than the lines, with arms pointing away from the control. The
+        // top-left one's horizontal arm ends at the left line and runs left; its vertical arm runs up.
+        let corners: Vec<_> = rects.iter().filter(|r| r.size.width.max(r.size.height) == px(BOX_CORNER_ARM)).collect();
+        assert_eq!(corners.len(), 8, "two arms at each of four corners");
+        assert!(corners.iter().any(|r| r.right() == px(80.) && r.left() == px(72.) && r.size.height == px(2.)));
+        assert!(corners.iter().any(|r| r.bottom() == px(40.) && r.top() == px(32.) && r.size.width == px(2.)));
+        // The bottom-right one's arms run right and down from the right and bottom lines.
+        assert!(corners.iter().any(|r| r.left() == px(120.) && r.right() == px(128.)));
+        assert!(corners.iter().any(|r| r.top() == px(60.) && r.bottom() == px(68.)));
+    }
+
+    #[test]
+    fn the_control_stage_measures_the_checkbox_for_its_bounding_box() {
+        let mut app = TestAppContext::single();
+        let (_, pane, cx) = open(&mut app);
+        let side = cx.update(|_, cx| pane.read(cx).side());
+        let control = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        let measured = cx.update(|_, cx| side.read(cx).control_bounds.get());
+        assert_eq!(measured, Some(control), "the box follows the checkbox");
+        side.update(cx, |side, cx| side.zoom_to(3., cx));
+        cx.run_until_parked();
+        let zoomed = cx.debug_bounds("workshop-checkbox-control").expect("control");
+        assert_eq!(cx.update(|_, cx| side.read(cx).control_bounds.get()), Some(zoomed), "and its zoom");
     }
 }
