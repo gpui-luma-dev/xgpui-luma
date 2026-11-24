@@ -1194,14 +1194,16 @@ impl ControlSide {
         self.set_zoom(zoom, cx);
     }
 
+    /// The page's control as its concrete type, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn control_as<T: 'static>(&self) -> Option<&T> {
+        self.surface.as_any().downcast_ref::<T>()
+    }
+
     /// The SDK checkbox, for tests (the page shows the checkbox).
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn checkbox(&self) -> xgpui_luma::controls::checkbox::Checkbox {
-        self.surface
-            .as_any()
-            .downcast_ref::<super::checkbox_surface::CheckboxSurface>()
-            .expect("the checkbox page")
-            .checkbox()
+        self.control_as::<super::checkbox_surface::CheckboxSurface>().expect("the checkbox page").checkbox()
     }
 
     /// Whether a state is on in the key, for tests.

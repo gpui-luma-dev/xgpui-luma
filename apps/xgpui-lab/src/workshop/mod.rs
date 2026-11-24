@@ -28,6 +28,7 @@ mod style_inspector;
 mod lss_inspector;
 mod surface_page;
 mod checkbox_surface;
+mod switch_surface;
 mod surface_control;
 mod pinned_template;
 mod state_icons;
@@ -140,6 +141,7 @@ impl Sample {
 fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfaceControl)> {
     match id {
         "checkbox" => Some(("checkbox", checkbox_surface::CheckboxSurface::make)),
+        "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
         _ => None,
     }
 }
@@ -181,7 +183,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "accordion" => &["accordion"],
         "pager" => &["pager"],
         "radio-button" | "radio-group" => &["radio"],
-        "switch" => &["switch"],
         "toggle" => &["toggle"],
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
@@ -439,9 +440,6 @@ impl Workshop {
                 "radio-group" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
                 )),
-                "switch" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Switch, look, cx))))
-                }
                 "toggle" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Toggle, look, cx))))
                 }
