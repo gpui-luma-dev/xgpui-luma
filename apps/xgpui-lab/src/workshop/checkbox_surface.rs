@@ -13,8 +13,8 @@ use crate::theme::Look;
 use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 
-/// The checkbox's text, on the stage and in each State matrix cell.
-const LABEL: &str = "Label";
+/// The checkbox's text, on the stage and in each State matrix cell, with ascenders and descenders.
+const LABEL: &str = "Apply";
 
 pub(super) struct CheckboxSurface {
     checkbox: checkbox::Checkbox,

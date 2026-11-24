@@ -13,8 +13,8 @@ use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEv
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
-/// The button's text, on the stage and in each State matrix cell.
-const LABEL: &str = "Button";
+/// The button's text, on the stage and in each State matrix cell, with ascenders and descenders.
+const LABEL: &str = "Apply";
 
 /// The button template sets `selected` only for a toggle; a plain button never reaches it.
 const TOGGLE_ONLY: &str = "selected";

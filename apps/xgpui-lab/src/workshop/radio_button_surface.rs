@@ -16,8 +16,8 @@ use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEv
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
-/// The radio button's text, on the stage and in each State matrix cell.
-const LABEL: &str = "Label";
+/// The radio button's text, on the stage and in each State matrix cell, with ascenders and descenders.
+const LABEL: &str = "Quality";
 
 pub(super) struct RadioButtonSurface {
     radio: radio_button::RadioButton,

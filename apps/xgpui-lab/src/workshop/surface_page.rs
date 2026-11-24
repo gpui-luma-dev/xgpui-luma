@@ -210,7 +210,7 @@ const MODE_TRACK_PADDING: f32 = 1.;
 const MATRIX_ROW_HEIGHT: f32 = 36.;
 const MATRIX_GAP_X: f32 = 12.;
 const MATRIX_GAP_Y: f32 = 2.;
-/// A cell's narrowest width: a control and its "Label".
+/// A cell's narrowest width: a control and its label.
 const MATRIX_CELL_WIDTH: f32 = 96.;
 /// Room after the widest row label.
 const MATRIX_LABEL_PAD: f32 = 12.;
