@@ -14,7 +14,6 @@ use super::{
 pub(super) enum ChoiceKind {
     Accordion,
     Pager,
-    RadioButton,
     RadioGroup,
     Toggle,
 }
@@ -23,7 +22,6 @@ impl ChoiceKind {
         match self {
             Self::Accordion => "Accordion",
             Self::Pager => "Pager",
-            Self::RadioButton => "Radio Button",
             Self::RadioGroup => "Radio Group",
             Self::Toggle => "Toggle",
         }
@@ -32,7 +30,6 @@ impl ChoiceKind {
         match self {
             Self::Accordion => "Expand or collapse a section.",
             Self::Pager => "Move between pages and choose a page size.",
-            Self::RadioButton => "Select or clear a radio button.",
             Self::RadioGroup => "Choose one option from a group.",
             Self::Toggle => "Press or release a toggle.",
         }
@@ -42,7 +39,6 @@ impl ChoiceKind {
 enum Control {
     Accordion(accordion::Accordion),
     Pager(pager::Pager),
-    RadioButton(radio_button::RadioButton),
     RadioGroup(radio_group::RadioGroup<radio_group::RadioGroupItem>),
     Toggle(toggle::Toggle),
 }
@@ -51,7 +47,6 @@ impl Control {
         match self {
             Self::Accordion(v) => v.clone().into(),
             Self::Pager(v) => v.clone().into(),
-            Self::RadioButton(v) => v.clone().into(),
             Self::RadioGroup(v) => v.clone().into(),
             Self::Toggle(v) => v.clone().into(),
         }
@@ -100,11 +95,6 @@ impl ChoiceSample {
                     .with_template_modifier(|root, _| root.debug_selector(|| "workshop-sdk-pager".into()))
                     .spawn(cx),
             ),
-            ChoiceKind::RadioButton => Control::RadioButton(
-                radio_button::new("workshop-sdk-radio-button")
-                    .content(|_, _| div().child("Select option"))
-                    .spawn(cx),
-            ),
             ChoiceKind::RadioGroup => Control::RadioGroup(
                 radio_group::new("workshop-sdk-radio-group")
                     .template(radio_group::radio_group_buttons_template(
@@ -147,16 +137,6 @@ impl ChoiceSample {
                 })
                 .detach();
             }
-            Control::RadioButton(v) => {
-                cx.subscribe(v, |this: &mut Self, _, event: &radio_button::RadioButtonEvent, cx| {
-                    if let radio_button::RadioButtonEvent::Change { selected } = event {
-                        this.state = format!("Selected: {selected}");
-                        cx.emit(InspectedState { state: "selected", on: *selected });
-                    }
-                    this.record(event, cx);
-                })
-                .detach();
-            }
             Control::RadioGroup(v) => {
                 cx.subscribe(v, |this: &mut Self, _, event: &radio_group::RadioGroupEvent, cx| {
                     if let radio_group::RadioGroupEvent::Change { value } = event {
@@ -180,7 +160,6 @@ impl ChoiceSample {
         let state = match kind {
             ChoiceKind::Accordion => "details: expanded",
             ChoiceKind::Pager => "Page 1 of 12 · 10 per page",
-            ChoiceKind::RadioButton => "Selected: false",
             ChoiceKind::RadioGroup => "Selected: medium",
             ChoiceKind::Toggle => "Pressed: false",
         }
@@ -264,7 +243,6 @@ mod tests {
     }
     fn press_space(sample: &Entity<ChoiceSample>, cx: &mut VisualTestContext) {
         let focus = cx.update(|_, cx| match &sample.read(cx).control {
-            Control::RadioButton(v) => v.read(cx).focus_handle(cx),
             Control::Toggle(v) => v.read(cx).focus_handle(cx),
             _ => unreachable!(),
         });
@@ -277,7 +255,8 @@ mod tests {
     fn choice_style_inspectors_follow_the_sample_state() {
         let mut app = TestAppContext::single();
         let (workshop, cx) = setup(&mut app);
-        for (id, state) in [("radio-button", "selected"), ("toggle", "selected")] {
+        let (id, state) = ("toggle", "selected");
+        {
             let sample = select(&workshop, id, cx);
             let inspector = inspector(&workshop, id, cx);
             assert!(!cx.update(|_, cx| inspector.read(cx).state_on(state)), "{id}: starts off");
@@ -294,10 +273,10 @@ mod tests {
     fn choice_boolean_controls_use_keyboard_and_retain_state_across_navigation_and_app_theme() {
         let mut app = TestAppContext::single();
         let (workshop, cx) = setup(&mut app);
-        for id in ["radio-button", "toggle"] {
+        let id = "toggle";
+        {
             let sample = select(&workshop, id, cx);
             let focus = cx.update(|_, cx| match &sample.read(cx).control {
-                Control::RadioButton(v) => v.read(cx).focus_handle(cx),
                 Control::Toggle(v) => v.read(cx).focus_handle(cx),
                 _ => unreachable!(),
             });
@@ -309,7 +288,6 @@ mod tests {
                 let v = sample.read(cx);
                 assert!(v.state.ends_with("true"), "{id}: {}", v.state);
                 let checked = match &v.control {
-                    Control::RadioButton(v) => *v.read(cx).data(),
                     Control::Toggle(v) => *v.read(cx).data(),
                     _ => unreachable!(),
                 };

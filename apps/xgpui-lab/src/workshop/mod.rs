@@ -29,6 +29,7 @@ mod lss_inspector;
 mod surface_page;
 mod checkbox_surface;
 mod switch_surface;
+mod radio_button_surface;
 mod surface_control;
 mod pinned_template;
 mod state_icons;
@@ -142,6 +143,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
     match id {
         "checkbox" => Some(("checkbox", checkbox_surface::CheckboxSurface::make)),
         "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
+        "radio-button" => Some(("radio", radio_button_surface::RadioButtonSurface::make)),
         _ => None,
     }
 }
@@ -182,7 +184,7 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
-        "radio-button" | "radio-group" => &["radio"],
+        "radio-group" => &["radio"],
         "toggle" => &["toggle"],
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
@@ -434,9 +436,6 @@ impl Workshop {
                 "pager" => {
                     Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
                 }
-                "radio-button" => Some(Sample::Choice(
-                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioButton, look, cx)),
-                )),
                 "radio-group" => Some(Sample::Choice(
                     cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
                 )),
