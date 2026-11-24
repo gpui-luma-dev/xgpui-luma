@@ -9,6 +9,7 @@ use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::Theme;
 
 use super::surface_page::ControlSide;
+use crate::theme::Look;
 use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 
@@ -20,7 +21,7 @@ pub(super) struct CheckboxSurface {
 }
 
 impl CheckboxSurface {
-    pub(super) fn make(cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+    pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let checkbox = checkbox::new("workshop-sdk-checkbox").content(|_, _| div().child(LABEL)).spawn(cx);
         Box::new(Self { checkbox })
     }

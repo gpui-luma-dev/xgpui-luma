@@ -11,7 +11,6 @@ mod feedback;
 mod selection;
 mod shadow_button;
 mod custom_button;
-mod toolbar;
 mod color_arc;
 mod color_field;
 mod color_ring;
@@ -31,6 +30,7 @@ mod switch_surface;
 mod radio_button_surface;
 mod toggle_surface;
 mod button_surface;
+mod toolbar_surface;
 mod surface_control;
 mod pinned_template;
 mod state_icons;
@@ -69,7 +69,6 @@ enum Sample {
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
-    Toolbar(Entity<toolbar::ToolbarControlExposition>),
     Arc(Entity<color_arc::ColorArcExpositionLeftPane>),
     Field(Entity<color_field::ColorFieldExpositionLeftPane>),
     Ring(Entity<color_ring::ColorRingExpositionLeftPane>),
@@ -93,7 +92,6 @@ impl Sample {
             Self::Choice(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
-            Self::Toolbar(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
             Self::Field(v) => v.clone().into(),
             Self::Ring(v) => v.clone().into(),
@@ -117,7 +115,6 @@ impl Sample {
             Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Toolbar(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Field(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Ring(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -131,7 +128,7 @@ impl Sample {
     /// Converted pages: their chrome is the app's Radix look and follows its light/dark, and they paint
     /// their own background (design surface pages round it to meet the canvas).
     fn uses_shell_look(&self) -> bool {
-        matches!(self, Self::Toolbar(_) | Self::Surface(_))
+        matches!(self, Self::Surface(_))
     }
 }
 
@@ -143,6 +140,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
         "radio-button" => Some(("radio", radio_button_surface::RadioButtonSurface::make)),
         "button" => Some(("button", button_surface::ButtonSurface::make)),
+        "toolbar" => Some(("toolbar", toolbar_surface::ToolbarSurface::make)),
         "toggle" => Some(("toggle", toggle_surface::ToggleSurface::make)),
         _ => None,
     }
@@ -173,7 +171,6 @@ pub(crate) struct Workshop {
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         // Design surface pages (see `surface_control`) have their own inspector.
-        "toolbar" => &["toolbar"],
         "accordion" => &["accordion"],
         "pager" => &["pager"],
         "radio-group" => &["radio"],
@@ -417,9 +414,6 @@ impl Workshop {
                 )),
                 "custom-button" => Some(Sample::CustomButton(
                     cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
-                )),
-                "toolbar" => Some(Sample::Toolbar(
-                    cx.new(|cx| toolbar::ToolbarControlExposition::new(cx, self.shell_look.clone())),
                 )),
                 "color-arc" => Some(Sample::Arc(cx.new(|cx| color_arc::ColorArcExpositionLeftPane::new(cx, look)))),
                 "color-field" => {

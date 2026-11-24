@@ -195,27 +195,6 @@ pub(super) fn section(
         .into_any_element()
 }
 
-/// Fixed SDK presentation surface; the paint-only grid never captures input.
-pub(super) fn sdk_preview(id: &'static str, content: impl IntoElement) -> AnyElement {
-    div()
-        .id(id)
-        .debug_selector(move || id.into())
-        .relative()
-        .w_full()
-        .min_w_0()
-        .rounded(px(6.))
-        .bg(gpui::rgb(0xfafafa))
-        .text_color(gpui::rgb(0x202020))
-        .child(grid_background(GridLines {
-            spacing: DEFAULT_GRID_SPACING,
-            inset: 12.,
-            center: None,
-            color: default_line_color(),
-        }))
-        .child(div().relative().p(px(24.)).child(super::sdk_sample::isolated(content)))
-        .into_any_element()
-}
-
 #[cfg(test)]
 mod grid_tests {
     use super::grid_line_color;
