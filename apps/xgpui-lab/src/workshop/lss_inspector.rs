@@ -342,7 +342,7 @@ impl LssInspector {
                 let body_text = pane_type::body(&self.look);
                 let trigger = AccordionTrigger::custom(move |_, _| {
                     section_trigger(sections.read().ok().and_then(|s| s.get(&index).cloned()).as_ref())
-                        .typography_style(body_text.clone())
+                        .typography_style(body_text)
                         .into_any_element()
                 });
                 let content = AccordionContent::custom(move |_, _| body.clone().into_any_element());

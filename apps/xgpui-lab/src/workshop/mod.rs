@@ -27,6 +27,8 @@ mod event_log_view;
 mod style_inspector;
 mod lss_inspector;
 mod checkbox_pane;
+mod checkbox_surface;
+mod surface_control;
 mod pinned_template;
 mod state_icons;
 mod box_model;
@@ -406,9 +408,15 @@ impl Workshop {
                     // State matrix render with the SDK theme.
                     let (look, theme) = (self.shell_look.clone(), xgpui_luma::style::default_theme());
                     theme.stylesheet().control("checkbox").map(|control| {
-                        Sample::Checkbox(
-                            cx.new(|cx| checkbox_pane::CheckboxPane::new(look, theme.clone(), control, cx)),
-                        )
+                        Sample::Checkbox(cx.new(|cx| {
+                            checkbox_pane::CheckboxPane::new(
+                                look,
+                                theme.clone(),
+                                control,
+                                checkbox_surface::CheckboxSurface::make,
+                                cx,
+                            )
+                        }))
                     })
                 }
                 "pager" => {
