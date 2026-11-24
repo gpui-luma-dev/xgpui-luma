@@ -69,7 +69,7 @@ const BOX_LINE: f32 = 1.;
 const BOX_DASH: f32 = 4.;
 const BOX_GAP: f32 = 3.;
 const BOX_CORNER_ARM: f32 = 32.;
-const BOX_CORNER_THICKNESS: f32 = 8.;
+const BOX_CORNER_THICKNESS: f32 = 4.;
 /// The bounding box's color: this step of the look's accent scale.
 const BOX_ACCENT_STEP: u8 = 9;
 
