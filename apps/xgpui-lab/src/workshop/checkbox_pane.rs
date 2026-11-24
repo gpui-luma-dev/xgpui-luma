@@ -12,25 +12,23 @@ use gpui::{
     Pixels, Point, Render, ScrollEvent, WeakEntity, Window, div, point, prelude::*, px, size, svg,
 };
 use xgpui_luma::{GridLayout, GridTrack};
-use xgpui_luma::controls::button::{Button, ButtonRenderModel, ButtonTemplate};
+use xgpui_luma::controls::button::Button;
 use xgpui_luma::controls::control_group::{
     ControlGroup, ControlGroupEvent, ControlGroupItem, ControlGroupItemLike, ControlGroupItemRenderModel,
     make_control_group_item_template,
 };
-use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCheckboxTemplate};
 use xgpui_luma::controls::resizable_panels::{ResizablePanelSpec, ResizablePanels, ResizablePanelsOrientation};
 use xgpui_luma::controls::slider::Slider;
 use xgpui_luma::controls::button::ButtonContentContext;
 use xgpui_luma::controls::switch::{Switch, SwitchData};
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::{ControlId, Source, StateId, StyleKey, Stylesheet, Theme};
-use xgpui_luma::theme::InteractionState;
 
 use super::event_stream::ControlEventStream;
 use super::lss_inspector::{self, LssInspector, TAB_ROW_HEIGHT};
-use super::pinned_template::{PinnedCheckbox, PinnedCheckboxTemplate};
 use super::sample_layout::centered_ruled_background;
 use super::state_icons::state_icon;
+use super::surface_control::{MakeSurfaceControl, StateSet, SurfaceControl};
 use super::pane_type;
 use crate::screen::text;
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
@@ -48,9 +46,6 @@ const MIN_LOWER_HEIGHT: f32 = 240.;
 /// corners match it so nothing square shows past the rounded canvas.
 const CANVAS_INNER_RADIUS: f32 = 9.;
 const STRIP_LABEL_WIDTH: f32 = 96.;
-/// States the template reads that the live checkbox can never reach: `CheckboxBuilder` has no way to
-/// make it invalid.
-const UNREACHABLE_STATES: &[&str] = &["invalid"];
 /// The stage zoom's range and step: actual size up to ten times.
 const ZOOM_RANGE: std::ops::Range<f32> = 1.0..10.0;
 const ZOOM_STEP: f32 = 0.25;
@@ -245,6 +240,8 @@ pub(super) struct CheckboxPane {
     look: Arc<Look>,
     theme: Theme,
     control: ControlId,
+    /// The page title, from the control (see [`SurfaceControl::title`]).
+    title: &'static str,
     side: Entity<ControlSide>,
     inspector: Entity<LssInspector>,
     split: Entity<ResizablePanels>,
@@ -254,10 +251,19 @@ pub(super) struct CheckboxPane {
 }
 
 impl CheckboxPane {
-    /// `control` is the checkbox's `.lss` control in `theme`.
-    pub(super) fn new(look: Arc<Look>, theme: Theme, control: ControlId, cx: &mut Context<Self>) -> Self {
+    /// `control` is the page's `.lss` control in `theme`; `make_control` makes the live control the page
+    /// shows (see [`SurfaceControl`]).
+    pub(super) fn new(
+        look: Arc<Look>,
+        theme: Theme,
+        control: ControlId,
+        make_control: MakeSurfaceControl,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let inspector = cx.new(|cx| LssInspector::new(look.clone(), theme.clone(), control, cx));
-        let side = cx.new(|cx| ControlSide::new(look.clone(), theme.clone(), control, inspector.clone(), cx));
+        let side =
+            cx.new(|cx| ControlSide::new(look.clone(), theme.clone(), control, make_control, inspector.clone(), cx));
+        let title = side.read(cx).surface.title();
         let (side_view, inspector_view) = (side.clone(), inspector.clone());
         let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-checkbox-split")
             .show_border(false)
@@ -268,7 +274,7 @@ impl CheckboxPane {
                     .min(px(MIN_INSPECTOR_WIDTH)),
             )
             .spawn(cx);
-        Self { look, theme, control, side, inspector, split, left_rounded: false }
+        Self { look, theme, control, title, side, inspector, split, left_rounded: false }
     }
 
     pub(super) fn set_left_rounded(&mut self, rounded: bool, cx: &mut Context<Self>) {
@@ -301,7 +307,7 @@ impl CheckboxPane {
             .py(px(14.))
             .border_b_1()
             .border_color(chrome.border)
-            .child(text(look, pane_type::TITLE, "Checkbox"))
+            .child(text(look, pane_type::TITLE, self.title))
             .child(text(look, pane_type::CONTROL, source).text_color(chrome.muted_text))
             .into_any_element()
     }
@@ -351,7 +357,7 @@ struct KeyState {
     /// No rule in the file uses it; the template sets it in its key (and may draw it, e.g. the focus
     /// ring).
     template_only: bool,
-    /// The live control can reach it (see [`UNREACHABLE_STATES`]).
+    /// The live control can reach it (see [`SurfaceControl::unreachable_states`]).
     reachable: bool,
     switch: Switch,
 }
@@ -372,7 +378,8 @@ pub(super) struct ControlSide {
     /// The mode's text colors on the stage, for the matrix labels (see [`stage_text`]).
     stage_text: Option<StageText>,
     control: ControlId,
-    checkbox: checkbox::Checkbox,
+    /// The live control and what differs per control (see [`SurfaceControl`]).
+    surface: Box<dyn SurfaceControl>,
     /// The live checkbox's zoom on the Control stage, a visual aid: the checkbox draws from `theme` with
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
@@ -386,7 +393,7 @@ pub(super) struct ControlSide {
     /// The checkbox's bounds on the Control stage at the last paint, for its bounding box.
     control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// The states the live checkbox draws in Design mode; `None` in Test mode, where it draws as it is.
-    pinned: Option<PinnedCheckbox>,
+    pinned: Option<StateSet>,
     stage: Stage,
     /// Radix tabs: Control · State matrix.
     stage_tabs: Entity<xgpui_luma::controls::tabs::Tabs>,
@@ -415,28 +422,25 @@ impl ControlSide {
         look: Arc<Look>,
         theme: Theme,
         control: ControlId,
+        make_control: MakeSurfaceControl,
         inspector: Entity<LssInspector>,
         cx: &mut Context<Self>,
     ) -> Self {
         let config = theme.stylesheet().config().clone();
 
-        let checkbox = checkbox::new("workshop-sdk-checkbox").content(|_, _| div().child("Label")).spawn(cx);
-        cx.subscribe(&checkbox, |this: &mut Self, _, event: &CheckboxEvent, cx| {
-            // Design mode pauses the log. Enabling is the pane's own doing (Design disables input), not
-            // something the person did to the checkbox.
-            if this.work_mode == WorkMode::Design || matches!(event, CheckboxEvent::EnabledChanged { .. }) {
-                return;
-            }
-            let line = format!("{event:?}");
-            this.events.update(cx, |events, cx| events.append_line(&line, cx));
-            match event {
-                CheckboxEvent::Change { checked } => this.set_state("checked", *checked, cx),
-                CheckboxEvent::HoverChanged { hovered } => this.set_state("hover", *hovered, cx),
-                CheckboxEvent::FocusChanged { focused } => this.set_state("focused", *focused, cx),
-                _ => {}
-            }
-        })
-        .detach();
+        let surface = make_control(cx);
+        // Design mode pauses the log.
+        surface
+            .subscribe(cx, |this, event, cx| {
+                if this.work_mode == WorkMode::Design {
+                    return;
+                }
+                this.events.update(cx, |events, cx| events.append_line(&event.line, cx));
+                if let Some((name, on)) = event.state {
+                    this.set_state(name, on, cx);
+                }
+            })
+            .detach();
 
         let stage_tabs = xgpui_luma_look_radix::Tabs::new("workshop-checkbox-stage")
             .look(look.as_ref())
@@ -456,18 +460,16 @@ impl ControlSide {
             .spawn(cx);
         // States the file's rules use, plus states the template sets with no rule (e.g. `focused`).
         let rule_states = theme.stylesheet().axes(control).states;
-        let template_states: Vec<StateId> = checkbox::default_checkbox_template()
-            .style_states()
-            .into_iter()
-            .filter_map(|n| config.state(n))
-            .collect();
+        let template_states: Vec<StateId> =
+            surface.template_states().into_iter().filter_map(|n| config.state(n)).collect();
+        let unreachable = surface.unreachable_states();
         let states: Vec<KeyState> = config
             .state_names()
             .filter_map(|name| config.state(name).map(|state| (state, name.to_string())))
             .filter(|(state, _)| rule_states.contains(state) || template_states.contains(state))
             .map(|(state, name)| {
-                // A state the live checkbox can never reach is shown but never settable.
-                let reachable = !UNREACHABLE_STATES.contains(&name.as_str());
+                // A state the live control can never reach is shown but never settable.
+                let reachable = !unreachable.contains(&name.as_str());
                 let switch = xgpui_luma_look_radix::Switch::new(format!("workshop-checkbox-state-{name}"))
                     .look(look.as_ref())
                     .label(format!(":{name}"))
@@ -584,7 +586,7 @@ impl ControlSide {
                 cx,
                 look.clone(),
                 "workshop-checkbox-events",
-                "The checkbox's SDK events, with seconds since the first.",
+                "The control's SDK events, with seconds since the first.",
             )
             .without_card()
             .with_times()
@@ -618,6 +620,7 @@ impl ControlSide {
         let stage_probe = theme.stylesheet().with_source("app", Source::new("workshop/stage.lss", STAGE_PROBE)).ok();
         let stage_background = stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
         let stage_text = stage_probe.as_ref().and_then(|probe| stage_text(&theme, probe));
+        surface.bind(theme.clone(), None, cx);
         Self {
             look,
             theme,
@@ -626,7 +629,7 @@ impl ControlSide {
             stage_background,
             stage_text,
             control,
-            checkbox,
+            surface,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
             pan: Point::default(),
@@ -664,7 +667,7 @@ impl ControlSide {
         self.stage_background = self.stage_probe.as_ref().and_then(|probe| stage_color(&theme, probe));
         self.stage_text = self.stage_probe.as_ref().and_then(|probe| stage_text(&theme, probe));
         self.theme = theme;
-        self.bind_checkbox(cx);
+        self.bind_control(cx);
         cx.notify();
     }
 
@@ -676,7 +679,7 @@ impl ControlSide {
             return;
         }
         self.zoom = zoom;
-        self.bind_checkbox(cx);
+        self.bind_control(cx);
         cx.notify();
     }
 
@@ -715,25 +718,23 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// Give the live checkbox `theme` scaled by the zoom, drawing the pinned states if any. Only the
+    /// Give the live control `theme` scaled by the zoom, drawing the pinned states if any. Only the
     /// template changes; the control and its data are untouched.
-    fn bind_checkbox(&mut self, cx: &mut Context<Self>) {
+    fn bind_control(&mut self, cx: &mut Context<Self>) {
         let theme = self.theme.with_length_scale(self.zoom).unwrap_or_else(|_| self.theme.clone());
-        let template = PinnedCheckboxTemplate::new(Arc::new(StyledCheckboxTemplate::new(theme)), self.pinned);
-        self.checkbox.update(cx, |checkbox, cx| checkbox.set_template(Arc::new(template), cx));
+        self.surface.bind(theme, self.pinned.as_ref(), cx);
     }
 
-    /// In Design mode the live checkbox draws the key's states; in Test mode it draws as it is.
+    /// In Design mode the live control draws the key's states; in Test mode it draws as it is.
     fn sync_pinned(&mut self, cx: &mut Context<Self>) {
         let pinned = (self.work_mode == WorkMode::Design).then(|| {
             let states: Vec<StateId> =
                 self.states.iter().map(|s| s.state).filter(|s| self.key.active_states().contains(*s)).collect();
-            let (state, checked) = self.template_state(&states);
-            PinnedCheckbox { state, checked }
+            self.state_set(&states)
         });
         if pinned != self.pinned {
             self.pinned = pinned;
-            self.bind_checkbox(cx);
+            self.bind_control(cx);
         }
     }
 
@@ -802,7 +803,7 @@ impl ControlSide {
         if self.work_mode_picker.read(cx).selected_id().map(|s| s.as_ref()) != Some(mode.id()) {
             self.work_mode_picker.update(cx, |picker, cx| picker.set_selected_ids([mode.id()], cx));
         }
-        self.checkbox.update(cx, |checkbox, cx| checkbox.set_enabled(mode == WorkMode::Test, cx));
+        self.surface.set_enabled(mode == WorkMode::Test, cx);
         match mode {
             WorkMode::Test => self.apply(self.followed_key(cx), cx),
             WorkMode::Design => self.sync_pinned(cx),
@@ -810,13 +811,16 @@ impl ControlSide {
         cx.notify();
     }
 
-    /// The key for the checkbox as it is: only `checked`, since hover, press and focus are transient.
+    /// The key for the control as it is: only its lasting states (e.g. `checked`), since hover, press
+    /// and focus are transient.
     fn followed_key(&self, cx: &Context<Self>) -> StyleKey {
-        let base = StyleKey::new(self.control);
-        match self.theme.stylesheet().config().state("checked") {
-            Some(checked) => base.set_state(checked, *self.checkbox.read(cx).data()),
-            None => base,
-        }
+        let config = self.theme.stylesheet().config();
+        self.surface.lasting_states(cx).into_iter().fold(StyleKey::new(self.control), |key, (name, on)| {
+            match config.state(name) {
+                Some(state) => key.set_state(state, on),
+                None => key,
+            }
+        })
     }
 
     /// The stage toolbar, as tall as the inspector's tab row: Test · Design, the zoom (Control stage
@@ -902,7 +906,7 @@ impl ControlSide {
                     .relative()
                     .left(self.pan.x)
                     .top(self.pan.y)
-                    .child(self.checkbox.clone())
+                    .child(self.surface.view())
                     // Measures the checkbox for its bounding box, which the stage draws under it.
                     .child({
                         let measured = self.control_bounds.clone();
@@ -931,18 +935,10 @@ impl ControlSide {
         (columns, rows)
     }
 
-    /// The template's interaction state and checked data for a set of states.
-    fn template_state(&self, states: &[StateId]) -> (InteractionState, bool) {
+    /// A set of states by name, for the control (see [`StateSet`]).
+    fn state_set(&self, states: &[StateId]) -> StateSet {
         let config = self.theme.stylesheet().config();
-        let has = |name: &str| config.state(name).is_some_and(|s| states.contains(&s));
-        let interaction = InteractionState {
-            hovered: has("hover"),
-            pressed: has("pressed"),
-            focused: has("focused"),
-            disabled: has("disabled"),
-            invalid: has("invalid"),
-        };
-        (interaction, has("checked"))
+        StateSet::new(states.iter().map(|s| config.state_name(*s)))
     }
 
     fn states_label(&self, states: &[StateId], empty: &str) -> String {
@@ -962,7 +958,6 @@ impl ControlSide {
         // The labels sit on the stage, so they take its mode's text colors, not the app's; the key's row
         // and column are in full-strength text and bold.
         let text = self.stage_text.unwrap_or(StageText { strong: chrome.body_text, muted: chrome.muted_text });
-        let template = StyledCheckboxTemplate::new(self.theme.clone());
         // A header: each state's icon (the default icon for none), then the states as text.
         let label = |states: &[StateId], empty: &str, current: bool| {
             let color = if current { text.strong } else { text.muted };
@@ -1021,16 +1016,10 @@ impl ControlSide {
             grid = grid.child(row_label, r + 1, 0);
             for (c, column) in columns.iter().enumerate() {
                 let states: Vec<StateId> = row_states.iter().copied().chain(*column).collect();
-                let (state, checked) = self.template_state(&states);
-                let model = ButtonRenderModel {
-                    id: format!("workshop-checkbox-matrix-{r}-{c}").into(),
-                    data: CheckboxData::new(checked),
-                    state,
-                    content: Arc::new(|_, _| div().child("Label").into_any_element()),
-                    ..Default::default()
-                };
+                let id = format!("workshop-checkbox-matrix-{r}-{c}").into();
+                let drawn = self.surface.cell(&self.theme, id, &self.state_set(&states), window, cx);
                 let selector = format!("workshop-checkbox-matrix-cell-{r}-{c}");
-                let drawn = cell().debug_selector(move || selector.clone()).child(template.render(&model, window, cx));
+                let drawn = cell().debug_selector(move || selector.clone()).child(drawn);
                 grid = grid.child(drawn, r + 1, c + 1);
             }
         }
@@ -1080,7 +1069,7 @@ impl ControlSide {
             .child(
                 row()
                     .child(div().font_weight(pane_type::LABEL_WEIGHT).child("States"))
-                    .child(div().text_color(chrome.muted_text).child("pick what the checkbox draws"))
+                    .child(div().text_color(chrome.muted_text).child("pick what the control draws"))
                     .child(div().flex_1())
                     .child(self.reset.clone()),
             )
@@ -1108,7 +1097,7 @@ impl ControlSide {
                     row()
                         .child(heading("Not settable"))
                         .children(unreachable.iter().map(|s| switch(s)))
-                        .child(div().text_color(chrome.muted_text).child("a checkbox can't reach these")),
+                        .child(div().text_color(chrome.muted_text).child("the live control can't reach these")),
                 )
             })
             .child(
@@ -1174,10 +1163,10 @@ impl ControlSide {
             .into_any_element()
     }
 
-    /// The states the live checkbox is pinned to, for tests.
+    /// The states the live control is pinned to, for tests.
     #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn pinned(&self) -> Option<PinnedCheckbox> {
-        self.pinned
+    pub(super) fn pinned(&self) -> Option<StateSet> {
+        self.pinned.clone()
     }
 
     /// Choose Test or Design as the picker would, for tests.
@@ -1204,10 +1193,14 @@ impl ControlSide {
         self.set_zoom(zoom, cx);
     }
 
-    /// The SDK checkbox, for tests.
+    /// The SDK checkbox, for tests (the page shows the checkbox).
     #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn checkbox(&self) -> checkbox::Checkbox {
-        self.checkbox.clone()
+    pub(super) fn checkbox(&self) -> xgpui_luma::controls::checkbox::Checkbox {
+        self.surface
+            .as_any()
+            .downcast_ref::<super::checkbox_surface::CheckboxSurface>()
+            .expect("the checkbox page")
+            .checkbox()
     }
 
     /// Whether a state is on in the key, for tests.
@@ -1914,9 +1907,8 @@ mod tests {
         // focus is elsewhere.
         side.update(cx, |side, cx| side.toggle_state("focused", cx));
         cx.run_until_parked();
-        let focused =
-            PinnedCheckbox { state: InteractionState { focused: true, ..Default::default() }, checked: false };
-        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused));
+        let focused = StateSet::new(["focused"]);
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(focused.clone()));
         let checkbox = cx.update(|_, cx| side.read(cx).checkbox());
         cx.update(|window, cx| checkbox.read(cx).focus_handle(cx).focus(window, cx));
         cx.run_until_parked();
@@ -1928,7 +1920,7 @@ mod tests {
         side.update(cx, |side, cx| side.toggle_state("checked", cx));
         side.update(cx, |side, cx| side.zoom_to(2.0, cx));
         cx.run_until_parked();
-        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(PinnedCheckbox { checked: true, ..focused }));
+        assert_eq!(cx.update(|_, cx| side.read(cx).pinned()), Some(StateSet::new(["checked", "focused"])));
 
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Test, cx));
         cx.run_until_parked();
@@ -1980,7 +1972,7 @@ mod tests {
         assert!(cx.update(|_, cx| side.read(cx).state_on("pressed")));
         assert!(!cx.update(|_, cx| side.read(cx).state_on("hover")));
         let pinned = cx.update(|_, cx| side.read(cx).pinned()).expect("Design draws picked states");
-        assert!(pinned.state.pressed && !pinned.state.hovered && pinned.checked);
+        assert!(pinned.has("pressed") && !pinned.has("hover") && pinned.has("checked"), "{pinned:?}");
 
         // Back to Test drops the picks: the key is the checkbox as it is, drawn live.
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Test, cx));
