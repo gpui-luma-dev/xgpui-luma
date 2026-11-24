@@ -158,9 +158,6 @@ pub(crate) use {geometry_family, geometry_family_impl};
 
 pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
 pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
-pub use crate::controls::button::family::theme::{
-    ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
-};
 pub use crate::controls::range::progress::theme::ProgressGeometry;
 pub use crate::controls::overlay::tooltip::theme::{
     TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
@@ -259,7 +256,6 @@ mod tests {
         SearchSelectorStylesheet::validate_contract();
         PopoverStylesheet::validate_contract();
         SlidePanelStylesheet::validate_contract();
-        ButtonStylesheet::validate_contract();
         TooltipStylesheet::validate_contract();
     }
 }

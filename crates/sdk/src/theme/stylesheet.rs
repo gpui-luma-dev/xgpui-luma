@@ -98,7 +98,6 @@ common_stylesheet! {
     font_features: FontFeaturesStylesheet,
     icons: IconsStylesheet,
     slider: SliderStylesheet,
-    button: ButtonStylesheet,
     tooltip: TooltipStylesheet,
     autocomplete: AutocompleteStylesheet,
     combobox: ComboBoxStylesheet,

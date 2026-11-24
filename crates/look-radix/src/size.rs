@@ -121,14 +121,3 @@ pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::Com
 fn fill(slot: &mut Option<f32>, value: f32) {
     slot.get_or_insert(value);
 }
-
-/// Former SDK baseline control metrics for sizes 1–3, used for Radix fallback scales.
-pub(crate) fn scaffold_metrics(size: RadixSize) -> xgpui_luma::theme::MetricTokens {
-    let mut metrics = xgpui_luma::theme::MetricTokens::default();
-    metrics.control = match size {
-        RadixSize::One => ControlMetricTokens::new(28.0, 10.0, 5.0, 6.0, 5.0, 14.0),
-        RadixSize::Two => metrics.control,
-        RadixSize::Three => ControlMetricTokens::new(44.0, 18.0, 10.0, 10.0, 8.0, 18.0),
-    };
-    metrics
-}

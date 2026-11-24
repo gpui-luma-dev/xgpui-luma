@@ -220,25 +220,3 @@ pub struct ButtonMetricTokensRule {
     pub height: Option<String>,
     pub corner_radius: Option<String>,
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_button_stylesheet() -> xgpui_luma::theme::stylesheet::ButtonStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ButtonStylesheet {
-        sizes: [("sm", 12.0, 12.0, 14.0), ("md", 16.0, 14.0, 16.0), ("lg", 20.0, 16.0, 18.0)]
-            .into_iter()
-            .map(|(key, padding, font, icon)| {
-                (
-                    key.into(),
-                    ButtonGeometryStylesheet {
-                        padding_x: Some(padding),
-                        font_size: Some(font),
-                        icon_size: Some(icon),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-        ..Default::default()
-    }
-}

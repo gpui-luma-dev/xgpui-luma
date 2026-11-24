@@ -104,12 +104,3 @@ mod tests {
         assert_eq!(effective.a, 0.0);
     }
 }
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ButtonStylesheet,
-    ButtonGeometryStylesheet,
-    ButtonGeometry,
-    ResolvedButtonGeometry,
-    "button",
-    [height, padding_x, padding_y, gap, icon_size, font_size, line_height]
-);
