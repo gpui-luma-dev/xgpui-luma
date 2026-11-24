@@ -31,11 +31,7 @@ pub struct Localizer {
 
 impl Localizer {
     pub fn new(locale: Locale) -> Self {
-        Self {
-            locale,
-            bundles: HashMap::new(),
-            reported: Mutex::new(HashSet::new()),
-        }
+        Self { locale, bundles: HashMap::new(), reported: Mutex::new(HashSet::new()) }
     }
 
     pub fn locale(&self) -> &Locale {
