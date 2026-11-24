@@ -9,7 +9,7 @@ use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::theme::InteractionState;
 
-use super::checkbox_pane::ControlSide;
+use super::surface_page::ControlSide;
 
 /// A set of `.lss` states by name, e.g. `{checked, hover}`: what the page picks in Design mode and
 /// draws in each State matrix cell. Names are the stylesheet config's.

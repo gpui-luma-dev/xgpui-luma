@@ -8,7 +8,7 @@ use xgpui_luma::controls::checkbox::{self, CheckboxData, CheckboxEvent, StyledCh
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::Theme;
 
-use super::checkbox_pane::ControlSide;
+use super::surface_page::ControlSide;
 use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 
