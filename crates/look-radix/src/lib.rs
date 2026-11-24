@@ -196,15 +196,14 @@ pub use radio::{RadioSize, RadioVariant, radio_template, radio_template_for};
 pub use radio_builder::Radio;
 pub use radio_group::{RadioGroup, radio_group_template};
 pub use slider::{
-    SliderSize, SliderVariant, slider_geometry, slider_template, slider_template_for, slider_theme, slider_theme_for,
-    slider_theme_with,
+    SliderSize, SliderVariant, slider_template, slider_template_for, slider_theme, slider_theme_for, slider_theme_with,
 };
 pub use slider_builder::Slider;
 pub use switch::{SwitchSize, SwitchVariant, switch_template, switch_template_for};
 pub use switch_builder::Switch;
 pub use tabs::{
     TabsBaselineStyle, TabsMetrics, TabsStyle, TabsSize, TabsVariant, tabs_template, tabs_template_for, tabs_theme,
-    tabs_theme_for, tabs_geometry,
+    tabs_theme_for,
 };
 pub use tabs_builder::Tabs;
 pub use textarea::{TextAreaSize, textarea_template, textarea_theme, textarea_theme_with};

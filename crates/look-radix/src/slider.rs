@@ -85,31 +85,6 @@ impl SliderSize {
     }
 }
 
-/// The slider's dimensions at `size` and where they come from: the look's `slider.lss` (#287).
-pub fn slider_geometry(
-    look: &Look,
-    size: SliderSize,
-) -> (xgpui_luma::theme::stylesheet::SliderGeometry, xgpui_luma::theme::stylesheet::SliderGeometrySources) {
-    use xgpui_luma::theme::provenance::MetricSource;
-    use xgpui_luma::theme::stylesheet::{SliderGeometry, SliderGeometrySources};
-    let painted = slider_theme_for(look, SliderVariant::default(), size).resolve(Default::default());
-    let source = |field: &str| MetricSource::Constant { label: format!("slider.lss {field}") };
-    (
-        SliderGeometry {
-            width: painted.width,
-            height: painted.height,
-            track_height: painted.track_height,
-            thumb_size: painted.thumb_size,
-        },
-        SliderGeometrySources {
-            width: source("width"),
-            height: source("height"),
-            track_height: source("track_height"),
-            thumb_size: source("thumb_size"),
-        },
-    )
-}
-
 pub fn slider_theme(look: &Look) -> Arc<dyn SliderTheme> {
     slider_theme_with(look, SliderVariant::default())
 }
@@ -162,7 +137,6 @@ mod tests {
                     (SliderSize::Three, 24.0, 8.0, 20.0),
                 ] {
                     let theme = slider_theme_with(&look.with_size(size.control_size()), variant);
-                    let (inspected, _) = slider_geometry(&look, size);
                     for bits in 0..16 {
                         let state = InteractionState {
                             hovered: bits & 1 != 0,
@@ -176,8 +150,6 @@ mod tests {
                             (painted.width, painted.height, painted.track_height, painted.thumb_size, painted.radius),
                             (120.0, height, track, thumb, height / 2.0)
                         );
-                        assert_eq!(inspected.width, painted.width);
-                        assert_eq!(inspected.thumb_size, painted.thumb_size);
                     }
                 }
             }
@@ -189,10 +161,6 @@ mod tests {
         let look = Look::built_in();
         let theme = slider_theme_for(&look, SliderVariant::Surface, SliderSize::One);
         assert_eq!(theme.resolve(Default::default()).height, 16.0);
-        let (_, sources) = slider_geometry(&look, SliderSize::Two);
-        assert!(matches!(sources.height,
-            xgpui_luma::theme::provenance::MetricSource::Constant { label }
-            if label == "slider.lss height"));
     }
 
     #[test]
