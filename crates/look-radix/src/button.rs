@@ -532,33 +532,3 @@ mod tests {
         );
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_button_stylesheet() -> xgpui_luma::theme::stylesheet::ButtonStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ButtonStylesheet {
-        geometry: ButtonGeometryStylesheet { padding_y: Some(0.0), ..Default::default() },
-        sizes: [
-            ("1", 24.0, 8.0, 4.0, 12.0, 16.0, 12.0),
-            ("2", 32.0, 12.0, 8.0, 14.0, 20.0, 14.0),
-            ("3", 40.0, 16.0, 12.0, 16.0, 24.0, 16.0),
-            ("4", 48.0, 24.0, 12.0, 18.0, 26.0, 18.0),
-        ]
-        .into_iter()
-        .map(|(key, height, padding, gap, font, line, icon)| {
-            (
-                key.into(),
-                ButtonGeometryStylesheet {
-                    height: Some(height),
-                    padding_x: Some(padding),
-                    gap: Some(gap),
-                    font_size: Some(font),
-                    line_height: Some(line),
-                    icon_size: Some(icon),
-                    ..Default::default()
-                },
-            )
-        })
-        .collect(),
-    }
-}

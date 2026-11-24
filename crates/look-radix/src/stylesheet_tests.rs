@@ -15,7 +15,7 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
             (ButtonSize::Four, 48.0, 24.0, 12.0, 18.0, 26.0),
         ] {
             for radius in Radius::ALL {
-                let box_ = crate::button_layout::button_box_with_stylesheet(&look.common_stylesheet(), size, radius);
+                let box_ = crate::button_layout::button_box_for(size, radius);
                 assert_eq!(
                     (box_.height, box_.padding_x, box_.gap, box_.typography.size, box_.typography.line_height),
                     (height, padding, gap, font, line)
@@ -84,12 +84,6 @@ fn size_and_state_baselines_survive_shared_geometry_migration() {
 #[test]
 fn numeric_ranges_remain_independent_of_inherited_sdk_presets() {
     let stylesheet = Look::built_in().common_stylesheet();
-    for (sizes, count) in [(stylesheet.button.sizes.keys().collect::<Vec<_>>(), 4)] {
-        assert_eq!(sizes.iter().filter(|key| key.parse::<usize>().is_ok()).count(), count);
-        for index in 1..=count {
-            assert!(sizes.iter().any(|key| **key == index.to_string()));
-        }
-    }
     // SDK helper recipes are inherited alongside Radix's own semantic sizes.
     assert_eq!(stylesheet.tooltip.sizes.keys().collect::<Vec<_>>(), vec!["compact"]);
 }
@@ -104,7 +98,7 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
     let avatar = Avatar::new(&fork, "AB").size(AvatarSize::Nine).radius(Radius::Full);
     let explicit_avatar = Avatar::new(&fork, "A").style_override(|style| style.diameter = 33.0);
     let mut config = fork.common_stylesheet();
-    config.button.sizes.get_mut("4").unwrap().height = Some(57.0);
+    config.shell.geometry.height = Some(57.0);
     fork.set_common_stylesheet(config.clone());
     assert_ne!(look.common_stylesheet(), config);
     let _scale = StandardBoxScale::compute(&fork.metrics(), 1.0);
@@ -118,9 +112,6 @@ fn live_edits_zero_and_local_overrides_keep_forks_isolated() {
         (160.0, 80.0, 60.0)
     );
     assert_eq!(explicit_avatar.resolve_style().diameter, 33.0);
-    let box_ =
-        crate::button_layout::button_box_with_stylesheet(&fork.common_stylesheet(), ButtonSize::Four, Radius::Full);
-    assert_eq!((box_.height, box_.radius), (57.0, 28.5));
     assert_eq!(button_box_for(ButtonSize::Three, Radius::Full).height, 40.0);
 }
 

@@ -108,7 +108,6 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut common = CommonStylesheet {
         motion,
         slider: native_radix_slider(),
-        button: crate::button::native_button_stylesheet(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         ..Default::default()
     };
@@ -134,8 +133,9 @@ struct LookState {
     metrics: MetricTokens,
     /// Font families and text styles; [`Look::set_fonts`] changes the families.
     typography: RwLock<LumaTypography>,
-    /// Radix control metrics for sizes 1–3; `metrics.control` is size 2.
-    control_sizes: crate::RadixControlMetrics,
+    /// Radix control metrics for sizes 1–3; `metrics.control` is size 2. Read from the button `.lss` on
+    /// first use, since reading it builds a look.
+    control_sizes: std::sync::OnceLock<crate::RadixControlMetrics>,
     mode: AtomicU8,
     /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by [`Look::set_style_mode`].
     style_mode: RwLock<Option<String>>,
@@ -177,7 +177,7 @@ impl Look {
                 custom_inputs: RwLock::new([None; 2]),
                 metrics,
                 typography: RwLock::new(LumaTypography::default()),
-                control_sizes: crate::RadixControlMetrics::from_button_boxes(metrics.control),
+                control_sizes: std::sync::OnceLock::new(),
                 mode: AtomicU8::new(mode_to_u8(mode)),
                 style_mode: RwLock::new(None),
                 classic_shadow: RwLock::new(None),
@@ -308,13 +308,16 @@ impl Look {
 
     /// Radix control metrics for each size.
     pub fn control_sizes(&self) -> crate::RadixControlMetrics {
-        self.state.control_sizes
+        *self
+            .state
+            .control_sizes
+            .get_or_init(|| crate::RadixControlMetrics::from_button_boxes(self.state.metrics.control))
     }
 
     /// Shared metrics whose `control` scale is the given Radix size, for SDK geometry.
     pub fn metrics_for(&self, size: crate::RadixSize) -> MetricTokens {
         let mut metrics = self.state.metrics;
-        metrics.control = self.state.control_sizes.get(size);
+        metrics.control = self.control_sizes().get(size);
         metrics
     }
 

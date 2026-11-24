@@ -103,11 +103,23 @@ pub fn stylesheet() -> Stylesheet {
 }
 
 /// `look`'s scales bound to the Radix stylesheet in the look's style mode ([`Look::style_mode`]).
-/// A number from a Radix control's own properties in its `.lss` (the built-in look, light), at these
+/// A number from a Radix control's own properties in its `.lss` (the built-in palettes, light), at these
 /// attribute values (e.g. `[("size", "2")]`). For public size helpers, so they read the same values the
 /// controls draw. Zero when the control or property is missing.
+///
+/// The theme comes from a look built with placeholder metrics: the built-in look's metrics are themselves
+/// read here (the button box), and the Radix tokens don't depend on metrics.
 pub(crate) fn lss_number(control: &str, attrs: &[(&str, &str)], property: &str) -> f32 {
-    let theme = Look::built_in().style_theme();
+    static THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
+    let theme = THEME.get_or_init(|| {
+        Look::from_palettes(
+            crate::Accent::default(),
+            crate::Gray::default(),
+            xgpui_luma::theme::MetricTokens::default(),
+            ThemeMode::Light,
+        )
+        .style_theme()
+    });
     theme
         .key_named(control, attrs, &[])
         .ok()
