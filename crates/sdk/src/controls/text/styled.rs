@@ -121,7 +121,7 @@ impl TextFieldTheme for StyledTextFieldTheme {
         let input = self.input(state, enabled);
         let root = input.root();
         TextFieldLook {
-            helper_geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+            helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
             caret_width: number(root, "caret_width"),
             caret_height_extra: number(root, "caret_height_extra"),
             disabled_opacity: number(root, "disabled_opacity"),
@@ -202,7 +202,7 @@ impl TextAreaTheme for StyledTextAreaTheme {
         let input = self.input(state, enabled);
         let root = input.root();
         TextAreaLook {
-            helper_geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry(),
+            helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
             caret_width: number(root, "caret_width"),
             caret_height_extra: number(root, "caret_height_extra"),
             disabled_opacity: number(root, "disabled_opacity"),

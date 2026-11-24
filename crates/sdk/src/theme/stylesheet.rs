@@ -92,7 +92,6 @@ macro_rules! common_stylesheet {
 }
 common_stylesheet! {
     shell: ShellStylesheet,
-    shared: SharedStylesheet,
     row_limits: RowLimitsStylesheet,
     recipes: PaletteRecipes,
     font_features: FontFeaturesStylesheet,
@@ -168,44 +167,6 @@ impl CommonStylesheet {
                     traffic_light_inset: Some(9.0),
                     icon_size: Some(16.0),
                     border_width: Some(1.0),
-                },
-                ..Default::default()
-            },
-            shared: SharedStylesheet {
-                geometry: SharedGeometryStylesheet {
-                    popup_viewport_height: Some(220.0),
-                    popup_row_height: Some(28.0),
-                    menu_row_height: Some(27.0),
-                    menu_row_gap: Some(4.0),
-                    compact_textfield_height: Some(22.0),
-                    compact_textfield_padding_y: Some(2.0),
-                    textarea_resize_icon_size: Some(10.0),
-                    textarea_resize_inset: Some(3.0),
-                    textarea_resize_hit_size: Some(12.0),
-                    textarea_scrollbar_width: Some(12.0),
-                    textarea_scrollbar_inset: Some(2.0),
-                    scrollbar_width: Some(12.0),
-                    composition_underline_width: Some(1.0),
-                    label_baseline: Some(1.0),
-                    drag_offset: Some(12.0),
-                    drag_preview_width: Some(220.0),
-                    drag_padding_x: Some(12.0),
-                    drag_padding_y: Some(8.0),
-                    drag_border_width: Some(1.0),
-                    drag_marker_width: Some(2.0),
-                    split_sidebar_width: Some(280.0),
-                    split_sidebar_min_width: Some(220.0),
-                    split_sidebar_max_width: Some(420.0),
-                    selection_scrollbar_width: Some(16.0),
-                    textarea_resize_opacity: Some(0.75),
-                    wide_middle_gap: Some(24.0),
-                    wide_side_min_width: Some(240.0),
-                    wide_side_preferred_width: Some(280.0),
-                    wide_middle_min_width: Some(435.0),
-                    wide_middle_max_width: Some(435.0),
-                    form_field_gap: Some(4.0),
-                    page_size_trigger_width: Some(64.0),
-                    popup_icon_size: Some(16.0),
                 },
                 ..Default::default()
             },
@@ -529,16 +490,6 @@ impl CommonStylesheet {
         toml::from_str::<Document>(source)
             .map(|document| document.common)
             .map_err(|err| anyhow::anyhow!("parse common stylesheet: {err}"))
-    }
-}
-
-impl CommonStylesheet {
-    /// Shared helper dimensions resolved from this layer over the native SDK baseline.
-    pub fn shared_geometry(&self) -> SharedGeometry {
-        self.shared
-            .clone()
-            .with_baseline(&Self::sdk_default().shared)
-            .resolve_geometry(SharedGeometry::default())
     }
 }
 

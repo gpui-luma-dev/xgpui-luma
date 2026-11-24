@@ -48,13 +48,13 @@ impl ListRowScale {
             padding_y: snap_to_pixel(metrics.padding_y(), scale_factor),
             radius: metrics.radius(),
             gap: snap_to_pixel(metrics.gap(), scale_factor),
-            label_baseline_shift: label_baseline_shift(crate::theme::stylesheet::CommonStylesheet::sdk_default()),
+            label_baseline_shift: label_baseline_shift(),
         }
     }
 }
 
-pub(crate) fn label_baseline_shift(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> f32 {
-    stylesheet.shared_geometry().label_baseline
+pub(crate) fn label_baseline_shift() -> f32 {
+    crate::theme::stylesheet::SharedGeometry::sdk().label_baseline
 }
 
 /// Outer reach of a box shadow layer used to position absolute shadow backing.

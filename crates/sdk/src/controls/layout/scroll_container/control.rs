@@ -54,9 +54,7 @@ impl ScrollContainer {
             motion_config: Rc::new(RefCell::new(Default::default())),
             pending_smooth: Rc::default(),
             scrollbar,
-            scrollbar_width: px(crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .shared_geometry()
-                .scrollbar_width),
+            scrollbar_width: px(crate::theme::stylesheet::SharedGeometry::sdk().scrollbar_width),
             placement: ScrollbarPlacement::Inset,
             visibility: ScrollbarVisibility::AlwaysVisible,
             auto_hide_activate: ScrollbarAutoHideActivate::HoverOrMove,

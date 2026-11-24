@@ -45,7 +45,7 @@ pub fn split_view_template() -> Arc<dyn SplitViewTemplate> {
 /// }
 /// ```
 pub fn split_view_builder(look: &Look, id: impl Into<SharedString>) -> SplitViewBuilder {
-    let geometry = look.common_stylesheet().shared_geometry();
+    let geometry = xgpui_luma::theme::stylesheet::SharedGeometry::from_theme(&look.style_theme());
     SplitViewBuilder::new(id)
         .motion_defaults(look.motion_defaults().split_view)
         .sidebar_min_width(px(geometry.split_sidebar_min_width))

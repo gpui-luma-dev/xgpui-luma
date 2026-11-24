@@ -23,7 +23,7 @@ pub struct WideMiddle {
 
 impl WideMiddle {
     pub fn new() -> Self {
-        let geometry = crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry();
+        let geometry = crate::theme::stylesheet::SharedGeometry::sdk();
         Self {
             stacked: false,
             gap: geometry.wide_middle_gap,

@@ -61,12 +61,12 @@ pub fn icon_content(icon: impl Into<ControlIcon>) -> ControlPresenter<PopupMenuT
         ControlIcon::Lucide(icon) => Arc::new(move |_, _| {
             svg()
                 .path(icon.asset_path())
-                .size(px(crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().popup_icon_size))
+                .size(px(crate::theme::stylesheet::SharedGeometry::sdk().popup_icon_size))
                 .into_any_element()
         }),
         ControlIcon::SvgPath(path) => Arc::new(move |_, _| {
             svg()
-                .size(px(crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().popup_icon_size))
+                .size(px(crate::theme::stylesheet::SharedGeometry::sdk().popup_icon_size))
                 .path(path.clone())
                 .into_any_element()
         }),

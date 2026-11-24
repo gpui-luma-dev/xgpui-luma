@@ -109,15 +109,3 @@ mod tests {
         assert_eq!(RadixSize::default().key(), "2");
     }
 }
-
-/// Radix size-1 / size-3 presets for families that start from SDK defaults and have no
-/// Radix-authored size entries. Values only fill fields Radix leaves unset.
-pub(crate) fn apply_size_presets(common: &mut xgpui_luma::theme::stylesheet::CommonStylesheet) {
-    for (size, label_baseline) in [(RadixSize::One, 0.5), (RadixSize::Three, 1.5)] {
-        fill(&mut common.shared.sizes.get_or_default(size.key()).label_baseline, label_baseline);
-    }
-}
-
-fn fill(slot: &mut Option<f32>, value: f32) {
-    slot.get_or_insert(value);
-}

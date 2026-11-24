@@ -2,7 +2,6 @@ pub(crate) mod config;
 mod find;
 mod resolve;
 mod selector;
-mod size_presets;
 
 pub fn embedded_stylesheet() -> &'static StylesheetConfig {
     embedded()
@@ -33,14 +32,13 @@ pub fn native_shadcn_common_stylesheet() -> xgpui_luma::theme::stylesheet::Commo
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let mut common = CommonStylesheet {
+    let common = CommonStylesheet {
         motion,
         slider: native_shadcn_common_slider(),
         tooltip: crate::tooltip::native_tooltip_stylesheet(),
         sidebar: crate::controls::sidebar::native_sidebar_stylesheet(),
         ..Default::default()
     };
-    size_presets::apply_size_presets(&mut common);
     common.with_sdk_defaults()
 }
 
