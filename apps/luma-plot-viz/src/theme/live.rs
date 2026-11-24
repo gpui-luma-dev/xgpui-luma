@@ -41,7 +41,7 @@ impl Snapshot {
                 ThemeSource::Fixed(style),
                 Arc::new(move || xgpui_luma::controls::selector_list::default_selector_items_panel_look(&panel_tokens)),
             ),
-            tooltip: TooltipLook::from_tokens(&tokens, None),
+            tooltip: TooltipLook::from_tokens(&tokens),
             tokens,
         }
     }
@@ -230,12 +230,9 @@ mod tests {
             let tab = tabs.resolve_item(true, state);
             assert_eq!(tab.label_color, StyledTabsTheme::new(sdk("tabs")).resolve_item(true, state).label_color);
             let selector = selectors.resolve(SelectorTriggerStyle::default(), state, false);
-            // The selector trigger is the SDK's `.lss` outline trigger for the mode.
-            let expected = match mode {
-                ThemeMode::Light => tokens.palette.app.background,
-                ThemeMode::Dark => tokens.palette.app.background,
-            }
-            .to_rgb();
+            // The selector trigger is the SDK's base `.lss` trigger for the mode: the outline variant is a
+            // look's, not the SDK's (#287).
+            let expected = tokens.palette.surface.subtle.background.to_rgb();
             let got = selector.trigger_background.to_rgb();
             assert!((got.r - expected.r).abs() < 2e-3, "selector follows the mode: {got:?} != {expected:?}");
             let scrollbar = scrollbars.resolve(state, ScrollbarOrientation::Horizontal, ScrollbarStyle::Soft);
@@ -246,7 +243,7 @@ mod tests {
                     .thumb_background
             );
             let tip = tooltip.resolve();
-            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens, None).background);
+            assert_eq!(tip.background, TooltipLook::from_tokens(&tokens).background);
             colors.push([
                 button.foreground,
                 radio_label,

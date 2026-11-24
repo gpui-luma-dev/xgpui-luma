@@ -1,77 +1,21 @@
 //! Cross-family regression coverage for selected configuration and common geometry.
-use xgpui_luma::theme::InteractionState;
 use crate::ShadcnLook;
-use crate::size::ShadcnSize;
 
+/// The drag preview's geometry is the table's `.lss` (#287).
 #[test]
-fn migrated_literal_families_keep_their_bundled_size_baselines() {
-    use xgpui_luma::controls::scrollbar::{ScrollbarOrientation, ScrollbarStyle};
-    let look = crate::test_support::fallback_look();
-    for (size, diameter, track, thumb, badge) in [
-        (ShadcnSize::Sm, 48.0, 4.0, 12.0, 24.0),
-        (ShadcnSize::Md, 64.0, 6.0, 16.0, 32.0),
-        (ShadcnSize::Lg, 80.0, 8.0, 20.0, 40.0),
-    ] {
-        let progress = look.with_size(size).progress_theme().resolve(true);
-        assert_eq!((progress.size, progress.track_height, progress.thumb_size), (diameter, track, thumb));
-        assert_eq!(look.with_size(size).stepper_theme().resolve(true).step_badge_size, badge);
-        let scrollbar = crate::controls::scrollbar::scrollbar_look(
-            &look.mode_tokens(),
-            InteractionState::default(),
-            ScrollbarOrientation::Horizontal,
-            size,
-            ScrollbarStyle::Ghost,
-        );
-        assert_eq!(scrollbar.length, 260.0);
-    }
-}
-
-#[test]
-fn panel_and_group_chrome_use_selected_common_stylesheet() {
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.control_group.geometry]
-padding_x=0
-radius=7
-[common.selector_list.geometry]
-border_width=0
-disabled_opacity=0
-popup_offset_y=0
-window_margin=0
-[common.selection_panel.geometry]
-border_width=3
-disabled_opacity=0.2
-radius=11
-"#])
-    .unwrap();
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let list = look.selector_items_panel_look(crate::ShadcnSize::Md);
+fn table_drag_preview_geometry_comes_from_the_table_lss() {
+    use xgpui_luma::style::lss::Value;
+    let look = ShadcnLook::from_css_str(crate::FALLBACK_CSS).unwrap();
+    let theme = look.style_theme();
+    let resolved = theme.resolve(&theme.key_named("table", &[], &[]).expect("key"));
+    let number = |name| resolved.root().value(name).and_then(Value::as_number).expect(name);
+    let drag = look.table_theme().resolve_drag().geometry;
     assert_eq!(
-        (list.border_width, list.disabled_opacity, list.popup_offset_y, list.window_margin),
-        (0.0, 0.0, 0.0, 0.0)
+        (drag.drag_offset, drag.drag_width, drag.drag_padding_x, drag.drag_padding_y),
+        (number("drag_offset"), number("drag_width"), number("drag_padding_x"), number("drag_padding_y"))
     );
-    let selection = look.selection_panel_look(crate::ShadcnSize::Md);
-    assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (3.0, 0.2, 11.0));
-}
-
-#[test]
-fn table_drag_preview_uses_selected_size_and_zero_strokes() {
-    let mut config = crate::embedded_stylesheet().clone();
-    config.common = xgpui_luma::theme::stylesheet::CommonStylesheet::resolve_layers(&[r#"
-[common.table.geometry]
-drag_offset=5
-drag_width=180
-drag_padding_x=7
-drag_padding_y=3
-drag_border_width=0
-drag_marker_width=0
-[common.table.sizes.lg]
-drag_width=310
-"#])
-    .unwrap();
-    let look = ShadcnLook::from_css_str_with_stylesheet(crate::FALLBACK_CSS, config).unwrap();
-    let md = look.table_theme().resolve_drag().geometry;
-    assert_eq!((md.drag_offset, md.drag_width, md.drag_padding_x, md.drag_padding_y), (5.0, 180.0, 7.0, 3.0));
-    assert_eq!((md.drag_border_width, md.drag_marker_width), (0.0, 0.0));
-    assert_eq!(look.with_size(ShadcnSize::Lg).table_theme().resolve_drag().geometry.drag_width, 310.0);
+    assert_eq!(
+        (drag.drag_border_width, drag.drag_marker_width),
+        (number("drag_border_width"), number("drag_marker_width"))
+    );
 }

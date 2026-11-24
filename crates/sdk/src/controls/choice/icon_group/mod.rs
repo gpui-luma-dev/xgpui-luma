@@ -12,12 +12,3 @@ pub use model::{
 };
 
 pub use crate::controls::control_group::ControlGroupEventExt as IconGroupEventExt;
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    IconGroupStylesheet,
-    IconGroupGeometryStylesheet,
-    IconGroupGeometry,
-    ResolvedIconGroupGeometry,
-    "icon_group",
-    [padding_x, padding_y, gap, radius]
-);

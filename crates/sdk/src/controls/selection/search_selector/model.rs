@@ -33,7 +33,7 @@ pub type SearchSelectorPopupLookProvider = Arc<dyn Fn() -> SelectorItemsPanelLoo
 pub struct SearchSelectorModel {
     pub(crate) icons: crate::theme::stylesheet::IconsStylesheet,
     pub(crate) motion: crate::motion::MotionConfig<SearchSelectorMotion>,
-    pub(crate) stylesheet: crate::theme::stylesheet::SearchSelectorStylesheet,
+    pub(crate) geometry: crate::theme::stylesheet::SearchSelectorGeometry,
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
@@ -183,7 +183,7 @@ impl SearchSelectorBuilder {
             model: SearchSelectorModel {
                 motion: Default::default(),
                 icons: crate::theme::stylesheet::CommonStylesheet::sdk_default().icons.clone(),
-                stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().search_selector.clone(),
+                geometry: crate::theme::stylesheet::SearchSelectorGeometry::sdk(),
                 id: id.into(),
                 items: items.into_iter().collect(),
                 placeholder: SharedString::from("Select…"),
@@ -231,7 +231,6 @@ impl SearchSelectorBuilder {
             self.model.max_visible_rows = maximum;
         }
         self.model.icons = stylesheet.with_sdk_defaults().icons;
-        self.model.stylesheet = stylesheet.with_sdk_defaults().search_selector;
         self
     }
 
@@ -507,20 +506,15 @@ mod tests {
 mod stylesheet_tests {
     use super::*;
 
+    /// The search field geometry is `search_selector.lss`'s (#287).
     #[test]
-    fn search_affordance_snapshot_inherits_and_preserves_zero() {
-        let sheet = crate::theme::stylesheet::CommonStylesheet::parse("[common.search_selector.geometry]\nsearch_padding=0\nsearch_separator_height=0\nsearch_icon_size=21\nsearch_chrome_height=0").unwrap();
-        let builder = SearchSelectorBuilder::new("geometry", []).stylesheet(&sheet);
-        let geometry = builder.model.stylesheet.resolve_geometry(Default::default());
+    fn search_affordance_reads_search_selector_lss() {
+        let builder = SearchSelectorBuilder::new("geometry", []);
+        let sdk = |name| crate::style::sdk_number("search_selector", name);
+        let geometry = builder.model.geometry;
         assert_eq!(
-            (
-                geometry.search_padding,
-                geometry.search_separator_height,
-                geometry.search_icon_size,
-                geometry.search_chrome_height
-            ),
-            (0.0, 0.0, 21.0, 0.0)
+            (geometry.search_padding, geometry.search_icon_size, geometry.search_chrome_height),
+            (sdk("search_padding"), sdk("search_icon_size"), sdk("search_chrome_height"))
         );
-        assert_eq!(geometry.search_icon_width, 18.0);
     }
 }

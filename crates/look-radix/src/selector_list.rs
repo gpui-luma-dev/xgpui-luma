@@ -71,13 +71,7 @@ mod tests {
         let fork = original.fork();
         let before = selector_items_panel_look(&original, PopupMenuVariant::Solid, Tone::Accent);
         fork.set_palettes(Accent::Red, Gray::Slate);
-        let mut stylesheet = fork.common_stylesheet();
-        stylesheet.selector_list.geometry.item_height = Some(53.0);
-        stylesheet.selector_list.geometry.disabled_opacity = Some(0.3);
-        fork.set_common_stylesheet(stylesheet);
         let panel = selector_items_panel_look(&fork, PopupMenuVariant::Solid, Tone::Accent);
-        assert_eq!(panel.item_height, 53.0);
-        assert_eq!(panel.disabled_opacity, 0.3);
         assert_ne!(panel.item_hover_background, before.item_hover_background);
         let unchanged = selector_items_panel_look(&original, PopupMenuVariant::Solid, Tone::Accent);
         assert_eq!(unchanged.item_height, before.item_height);

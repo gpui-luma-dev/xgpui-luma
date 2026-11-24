@@ -2,29 +2,13 @@
 use std::sync::Arc;
 use gpui::{AnyElement, Pixels, SharedString, Size};
 use xgpui_luma::controls::{resizable_panels::*, slide_panel::*};
-use xgpui_luma::theme::InteractionState;
 use crate::{Look, SemanticRole};
 
-struct PanelsTheme {
-    look: Look,
-    styled: StyledResizablePanelsTheme,
-}
-impl ResizablePanelsTheme for PanelsTheme {
-    /// Handle pixels for the Look's Radix size.
-    fn resize_handle_metrics(&self) -> ResizeHandleMetrics {
-        ResizeHandleMetrics::from_stylesheet(&self.look.sized_stylesheet(self.look.size()))
-    }
-    fn resolve(&self, state: InteractionState) -> ResizablePanelsLook {
-        self.styled.resolve(state)
-    }
-}
-/// Live Radix frame, divider, grip and disabled styling from `.lss` (`style/resizable_panels.lss`), with
-/// the sized stylesheet's handle geometry.
+/// Live Radix frame, divider, grip, disabled styling and handle sizes from `.lss`
+/// (`style/resizable_panels.lss`), at the Look's size.
 /// Notify affected owners after editing the supplied Look.
 pub fn resizable_panels_theme(look: &Look) -> Arc<dyn ResizablePanelsTheme> {
-    let binding = crate::textfield::sized_binding(look, "resizable_panels");
-    let styled = StyledResizablePanelsTheme::new(binding, ResizeHandleMetrics::default());
-    Arc::new(PanelsTheme { look: look.clone(), styled })
+    Arc::new(StyledResizablePanelsTheme::new(crate::textfield::sized_binding(look, "resizable_panels")))
 }
 /// Native SDK panel template; pair with [`resizable_panels_theme`] when composing manually.
 pub fn resizable_panels_template() -> Arc<dyn ResizablePanelsTemplate> {
@@ -55,7 +39,8 @@ pub fn resizable_panels_builder(look: &Look, id: impl Into<SharedString>) -> Res
 /// Supply content/focus/resize handlers through the SDK state APIs and render functions.
 pub fn slide_panel_state(look: &Look, anchor: SlidePanelTopAnchor, size: SlidePanelSizeConfig) -> SlidePanelState {
     SlidePanelState::new(anchor, size)
-        .stylesheet(&look.sized_stylesheet(look.size()))
+        .with_geometry(SlidePanelGeometry::from_binding(&crate::textfield::sized_binding(look, "slide_panel")))
+        .handle_metrics(resizable_panels_theme(look).resize_handle_metrics())
         .motion_defaults(look.motion_defaults().slide_panel)
 }
 /// Resolve live Radix drawer resize chrome shared with Resizable Panels.
@@ -121,6 +106,7 @@ pub fn render_slide_panel_inset(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use xgpui_luma::theme::InteractionState;
     use crate::{Accent, Gray};
     use xgpui_luma::theme::ThemeMode;
     #[test]
@@ -153,26 +139,15 @@ mod tests {
     }
     #[test]
     fn panel_forks_and_captured_drawer_defaults_are_isolated() {
-        let base = Look::built_in();
-        let fork = base.fork();
-        // Radix size 1 uses the SDK handle scale from general geometry.
+        let fork = Look::built_in().fork();
+        // Radix size 1 is the SDK handle scale.
         let theme = resizable_panels_theme(&fork.with_size(crate::RadixSize::One));
-        let mut sheet = fork.common_stylesheet();
-        sheet.resizable_panels.geometry.hit_target = Some(25.0);
-        sheet.slide_panel.geometry.side_width = Some(280.0);
-        fork.set_common_stylesheet(sheet);
+        assert_eq!(theme.resize_handle_metrics(), ResizeHandleMetrics::default());
         let state =
             slide_panel_state(&fork, SlidePanelTopAnchor::WindowEdge, SlidePanelSizeConfig::new(0.0, 100.0, 500.0));
-        assert_eq!(theme.resize_handle_metrics().hit_target_px, 25.0);
-        assert_eq!(state.geometry().side_width, Some(280.0));
-        assert_ne!(
-            resizable_panels_theme(&base.with_size(crate::RadixSize::One)).resize_handle_metrics().hit_target_px,
-            25.0
-        );
-        let mut sheet = fork.common_stylesheet();
-        sheet.slide_panel.geometry.side_width = Some(320.0);
-        fork.set_common_stylesheet(sheet);
-        assert_eq!(state.geometry().side_width, Some(280.0));
+        // The drawer's size is the look's `slide_panel.lss`, which keeps the SDK's.
+        assert_eq!(state.geometry(), SlidePanelGeometry::sdk());
+        assert_eq!(state.resize_handle_metrics(), resizable_panels_theme(&fork).resize_handle_metrics());
     }
     #[cfg(feature = "test-support")]
     #[test]

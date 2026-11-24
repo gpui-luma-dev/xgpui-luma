@@ -8,6 +8,15 @@ autocomplete {
   muted_text: color = palette.surface.floating.foreground
   clear_icon: color = palette.surface.floating.foreground
   clear_icon_hover: color = palette.form.input.foreground
+  /// Layout (`AutocompleteGeometry`): the field-to-status gap, status spacing, the clear button's inset,
+  /// width and icon size, the trigger width and the popup's extra width.
+  gap = exact(10)
+  status_gap: length = exact(10)
+  clear_inset: length = exact(10)
+  clear_width: length = exact(18)
+  clear_icon_size: length = exact(12)
+  trigger_width: length = exact(240)
+  popup_extra_width: length = exact(24)
 
   /// The status line's text.
   part root {

@@ -21,33 +21,30 @@ pub struct SidebarMetricScale {
 }
 
 impl Default for SidebarMetricScale {
+    /// The SDK's sidebar dimensions, from its `sidebar.lss`.
     fn default() -> Self {
-        Self::from_stylesheet(crate::theme::stylesheet::CommonStylesheet::sdk_default())
+        Self::from_geometry(&SidebarGeometry::sdk())
     }
 }
 
 impl SidebarMetricScale {
     /// Capture resolved sidebar dimensions; explicit host metrics can be edited afterward.
-    pub fn from_stylesheet(stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let base = crate::theme::stylesheet::CommonStylesheet::sdk_default().sidebar.authored_geometry();
-        let geometry = stylesheet.sidebar.authored_geometry().with_fallback(&base);
+    pub fn from_geometry(geometry: &SidebarGeometry) -> Self {
         Self {
-            width_expanded: px(geometry.width_expanded.unwrap_or_default()),
-            width_icon_rail: px(geometry.width_icon_rail.unwrap_or_default()),
-            width_mobile: px(geometry.width_mobile.unwrap_or_default()),
-            item_height: px(geometry.item_height.unwrap_or_default()),
-            icon_size: px(geometry.item_icon_size.unwrap_or_default()),
-            rail_hit_width: px(geometry.rail_hit_width.unwrap_or_default()),
-            popover_offset: px(geometry.popover_offset.unwrap_or_default()),
+            width_expanded: px(geometry.width_expanded),
+            width_icon_rail: px(geometry.width_icon_rail),
+            width_mobile: px(geometry.width_mobile),
+            item_height: px(geometry.item_height),
+            icon_size: px(geometry.item_icon_size),
+            rail_hit_width: px(geometry.rail_hit_width),
+            popover_offset: px(geometry.popover_offset),
         }
     }
 }
 
-crate::theme::stylesheet::geometry::geometry_family!(
-    SidebarStylesheet,
-    SidebarGeometryStylesheet,
+crate::theme::stylesheet::geometry::lss_geometry!(
+    /// The sidebar's shell layout, from `sidebar.lss`.
     SidebarGeometry,
-    ResolvedSidebarGeometry,
     "sidebar",
     [
         section_height,
@@ -72,43 +69,10 @@ crate::theme::stylesheet::geometry::geometry_family!(
         window_margin,
         engine_item_height,
         engine_section_height,
-        engine_item_padding_x, rail_branch_indicator_size, rail_branch_overhang
-    ],
-    unit[subtitle_opacity, disabled_opacity]
+        engine_item_padding_x,
+        rail_branch_indicator_size,
+        rail_branch_overhang,
+        subtitle_opacity,
+        disabled_opacity
+    ]
 );
-
-impl SidebarStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: SidebarGeometryStylesheet {
-                rail_branch_indicator_size: Some(18.0),
-                rail_branch_overhang: Some(10.0),
-                container_gap: Some(8.0),
-                region_gap: Some(4.0),
-                header_padding_bottom: Some(8.0),
-                footer_padding_top: Some(8.0),
-                title_gap: Some(2.0),
-                title_padding_bottom: Some(4.0),
-                section_padding_top: Some(8.0),
-                disclosure_icon_size: Some(14.0),
-                rail_submenu_offset_x: Some(12.0),
-                window_margin: Some(8.0),
-                engine_item_height: Some(30.0),
-                engine_section_height: Some(20.0),
-                engine_item_padding_x: Some(8.0),
-                subtitle_opacity: Some(0.72),
-                disabled_opacity: Some(0.56),
-                width_expanded: Some(256.0),
-                width_icon_rail: Some(48.0),
-                width_mobile: Some(288.0),
-                item_height: Some(32.0),
-                item_icon_size: Some(16.0),
-                rail_hit_width: Some(6.0),
-                popover_offset: Some(8.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-}

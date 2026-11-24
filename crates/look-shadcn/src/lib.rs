@@ -9,7 +9,6 @@ mod context;
 mod controls;
 mod elements;
 mod ext;
-mod focus;
 mod look;
 mod mode;
 mod palette;
@@ -55,10 +54,7 @@ pub use mode::ShadcnModeTokens;
 pub use palette::{ShadcnActionRole, ShadcnPalette};
 pub use tokens::{ShadcnFont, ShadcnRadius, ShadcnShadow, ShadcnStyle, ShadcnTextRole, ShadcnTextSize, ShadcnToken};
 pub use look_context::LookContext;
-pub use stylesheet::{
-    ColorRuleMetadataSection, StylesheetConfig, all_color_rule_metadata, embedded_color_rule_metadata,
-    embedded_stylesheet,
-};
+pub use stylesheet::{StylesheetConfig, embedded_stylesheet};
 pub use elements::{Badge, BadgeLook, BadgeColorTable, BadgeIconPlacement, BadgeVariant, badge_look};
 pub use controls::{
     Frame, Accordion, Autocomplete, Button, ButtonRadiusPreset, Card, Checkbox, ComboBox, ContextMenu, IconGroup,
@@ -74,12 +70,11 @@ pub use provenance::{
 pub use usage::all_shadcn_theme_usages;
 
 #[cfg(test)]
-mod button_stylesheet_tests;
-
-#[cfg(test)]
 mod remaining_stylesheet_tests;
 #[cfg(test)]
 mod radius_catalog_tests;
+#[cfg(test)]
+mod live_edit_tests;
 
 #[cfg(all(test, feature = "test-support"))]
 mod event_callback_tests;

@@ -32,6 +32,7 @@ pager {
 
   variant minimal {
     button_min_width = exact(32)
+    group_gap        = exact(8)
     size 1 { button_min_width = exact(24) }
     size 3 { button_min_width = exact(40) }
   }

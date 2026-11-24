@@ -7,7 +7,9 @@ accordion {
   drag_handle_padding: length = exact(2)
   disabled_opacity: number = 0.56
   /// Content padding, space between rows and inside a trigger, and the icon and chevron sizes.
-  content_padding_y: length = metrics.control.padding_y * 1.5
+  /// Content padding as a share of the control's vertical padding.
+  content_padding_scale: number = 1.5
+  content_padding_y: length = metrics.control.padding_y * content_padding_scale
   item_gap: length = exact(0)
   inner_gap: length = metrics.control.gap
   icon_size: length = exact(16)

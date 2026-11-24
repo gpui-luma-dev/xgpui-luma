@@ -38,27 +38,9 @@ pub use callback::ComboBoxEventExt;
 
 pub use model::ComboBoxMotion;
 
-crate::theme::stylesheet::geometry::geometry_family!(
-    ComboBoxStylesheet,
-    ComboBoxGeometryStylesheet,
+crate::theme::stylesheet::geometry::lss_geometry!(
+    /// The combobox's open affordance, from `combobox.lss`.
     ComboBoxGeometry,
-    ResolvedComboBoxGeometry,
     "combobox",
     [affordance_inset, affordance_width, affordance_icon_size, affordance_gap, trigger_extra_gap]
 );
-
-impl ComboBoxStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: ComboBoxGeometryStylesheet {
-                affordance_inset: Some(10.0),
-                affordance_width: Some(18.0),
-                affordance_icon_size: Some(12.0),
-                affordance_gap: Some(2.0),
-                trigger_extra_gap: Some(8.0),
-            },
-            ..Default::default()
-        }
-    }
-}

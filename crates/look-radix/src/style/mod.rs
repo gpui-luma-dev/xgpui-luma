@@ -66,6 +66,7 @@ radix_sources![
     "slider.lss",
     "progress.lss",
     "control_group.lss",
+    "radio_group.lss",
     "toolbar.lss",
     "stepper.lss",
     "accordion.lss",
@@ -102,6 +103,30 @@ pub fn stylesheet() -> Stylesheet {
 }
 
 /// `look`'s scales bound to the Radix stylesheet in the look's style mode ([`Look::style_mode`]).
+/// A number from a Radix control's own properties in its `.lss` (the built-in palettes, light), at these
+/// attribute values (e.g. `[("size", "2")]`). For public size helpers, so they read the same values the
+/// controls draw. Zero when the control or property is missing.
+///
+/// The theme comes from a look built with placeholder metrics: the built-in look's metrics are themselves
+/// read here (the button box), and the Radix tokens don't depend on metrics.
+pub(crate) fn lss_number(control: &str, attrs: &[(&str, &str)], property: &str) -> f32 {
+    static THEME: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
+    let theme = THEME.get_or_init(|| {
+        Look::from_palettes(
+            crate::Accent::default(),
+            crate::Gray::default(),
+            xgpui_luma::theme::MetricTokens::default(),
+            ThemeMode::Light,
+        )
+        .style_theme()
+    });
+    theme
+        .key_named(control, attrs, &[])
+        .ok()
+        .and_then(|key| theme.resolve(&key).root().value(property).and_then(xgpui_luma::style::lss::Value::as_number))
+        .unwrap_or(0.0)
+}
+
 pub fn theme(look: &Look) -> Result<Theme, Diagnostics> {
     Theme::bind(&stylesheet(), Arc::new(RadixTokens::new(look)), &look.style_mode())
 }

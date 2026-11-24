@@ -53,7 +53,42 @@ pub fn parse_css_catalog(source: &str) -> Result<CssTokenCatalog> {
     if catalog.dark.is_empty() {
         bail!("CSS catalog is missing `.dark` custom properties");
     }
+    fill_optional_tokens(&mut catalog.light, ThemeMode::Light);
+    fill_optional_tokens(&mut catalog.dark, ThemeMode::Dark);
     Ok(catalog)
+}
+
+/// Optional tokens a theme may leave out, each with the token it falls back to, in order (a later
+/// entry can fall back to one filled by an earlier entry). shadcn themes normally set them all; without
+/// these, `.lss` rules and native colors that read them would draw nothing.
+const OPTIONAL_TOKENS: &[(&str, &str)] = &[
+    ("card", "background"),
+    ("card-foreground", "foreground"),
+    ("popover", "card"),
+    ("popover-foreground", "card-foreground"),
+    ("accent", "secondary"),
+    ("accent-foreground", "secondary-foreground"),
+];
+
+/// shadcn's default `--destructive` (the neutral theme), for themes that leave it out.
+fn default_destructive(mode: ThemeMode) -> &'static str {
+    match mode {
+        ThemeMode::Light => "oklch(0.577 0.245 27.325)",
+        ThemeMode::Dark => "oklch(0.704 0.191 22.216)",
+    }
+}
+
+/// Fill missing optional tokens in one mode's `:root` or `.dark` properties. Class-block modes layer
+/// over these maps, so they inherit the fallbacks. A token whose fallback is also missing stays missing.
+fn fill_optional_tokens(tokens: &mut BTreeMap<String, String>, mode: ThemeMode) {
+    for (token, fallback) in OPTIONAL_TOKENS {
+        if !tokens.contains_key(*token)
+            && let Some(value) = tokens.get(*fallback).cloned()
+        {
+            tokens.insert((*token).to_string(), value);
+        }
+    }
+    tokens.entry("destructive".to_string()).or_insert_with(|| default_destructive(mode).to_string());
 }
 
 enum Target {
@@ -254,6 +289,34 @@ fn skip_balanced(source: &str, mut index: usize, open: char, close: char) -> Res
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_optional_tokens_fall_back() {
+        let css = ":root { --background: #fff; --foreground: #111; --secondary: #eee; --secondary-foreground: #222; }
+.dark { --background: #000; --foreground: #fafafa; --secondary: #333; --secondary-foreground: #ddd; --card: #0a0a0a; }
+.hi-contrast { --foreground: #000; }";
+        let catalog = parse_css_catalog(css).expect("parses");
+        let light = &catalog.light;
+        assert_eq!(light["card"], "#fff", "card falls back to background");
+        assert_eq!(light["popover"], "#fff", "popover falls back to card, which fell back to background");
+        assert_eq!(light["popover-foreground"], "#111");
+        assert_eq!(light["accent"], "#eee", "accent falls back to secondary");
+        assert_eq!(light["accent-foreground"], "#222");
+        assert_eq!(light["destructive"], default_destructive(ThemeMode::Light));
+        let dark = &catalog.dark;
+        assert_eq!(dark["card"], "#0a0a0a", "a token the theme sets is kept");
+        assert_eq!(dark["popover"], "#0a0a0a", "popover follows the theme's own card");
+        assert_eq!(dark["destructive"], default_destructive(ThemeMode::Dark));
+        let hi_contrast = catalog.mode_map(&catalog.modes[0]);
+        assert_eq!(hi_contrast.get("accent"), Some("#eee"), "a class-block mode inherits its base's fallbacks");
+    }
+
+    #[test]
+    fn a_fallback_needs_its_source() {
+        let catalog = parse_css_catalog(":root { --background: #fff; } .dark { --background: #000; }").expect("parses");
+        assert!(!catalog.light.contains_key("accent"), "no secondary, so no accent: the look reports it missing");
+        assert!(catalog.light.contains_key("card"));
+    }
 
     #[test]
     fn parses_root_and_dark_blocks() {

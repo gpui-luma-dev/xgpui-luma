@@ -378,7 +378,7 @@ pub fn render_control_group_item_elements<T>(
 where
     T: ControlGroupItemLike + 'static,
 {
-    let opacity = model.stylesheet.control_group.geometry.disabled_opacity.unwrap_or_default();
+    let opacity = crate::style::sdk_number("control_group", "disabled_opacity");
     render_control_group_item_elements_with_opacity(model, handlers, window, cx, opacity)
 }
 

@@ -92,11 +92,7 @@ pub(crate) fn resolve_look(explicit: Option<&Look>, ambient: Option<&Look>) -> L
 pub(crate) fn embedded_common_stylesheet() -> &'static xgpui_luma::theme::stylesheet::CommonStylesheet {
     static STYLESHEET: std::sync::OnceLock<xgpui_luma::theme::stylesheet::CommonStylesheet> =
         std::sync::OnceLock::new();
-    STYLESHEET.get_or_init(|| {
-        let mut sheet = native_radix_stylesheet();
-        apply_radix_slider_stylesheet(&mut sheet);
-        sheet
-    })
+    STYLESHEET.get_or_init(native_radix_stylesheet)
 }
 
 /// Construct the remaining Radix common overrides without bundled TOML parsing.
@@ -105,34 +101,9 @@ pub fn native_radix_stylesheet() -> xgpui_luma::theme::stylesheet::CommonStylesh
     let mut motion = CommonStylesheet::sdk_default().motion.clone();
     motion.tabs.content =
         Some(TransitionSpec::Timed { duration_ms: 300, easing: xgpui_luma::motion::Easing::OutCubic });
-    let mut common = CommonStylesheet {
-        motion,
-        tabs: crate::tabs::native_tabs_stylesheet(),
-        slider: native_radix_slider(),
-        button: crate::button::native_button_stylesheet(),
-        textfield: crate::textfield::native_textfield_stylesheet(),
-        progress: crate::progress::native_progress_stylesheet(),
-        textarea: crate::textarea::native_textarea_stylesheet(),
-        floating_menu: crate::context_menu::native_floating_menu_stylesheet(),
-        tooltip: crate::tooltip::native_tooltip_stylesheet(),
-        toolbar: crate::toolbar::native_toolbar_stylesheet(),
-        segmented: crate::segmented::native_segmented_stylesheet(),
-        avatar: crate::avatar::native_avatar_stylesheet(),
-        badge: crate::badge::native_badge_stylesheet(),
-        card: crate::card::native_card_stylesheet(),
-        callout: crate::callout::native_callout_stylesheet(),
-        overlay_window: crate::overlay_window::native_overlay_window_stylesheet(),
-        popup_menu: crate::popup_menu::native_popup_menu_stylesheet(),
-        context_menu: crate::context_menu::native_context_menu_stylesheet(),
-        radio_group: crate::radio_group::native_radio_group_stylesheet(),
-        ..Default::default()
-    };
-    crate::size::apply_size_presets(&mut common);
+    let common = CommonStylesheet { motion, ..Default::default() };
     common.with_sdk_defaults()
 }
-
-pub use crate::slider::{native_radix_slider};
-pub(crate) use crate::slider::{apply_radix_slider_stylesheet};
 
 fn sized_stylesheets(
     stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
@@ -149,13 +120,13 @@ struct LookState {
     metrics: MetricTokens,
     /// Font families and text styles; [`Look::set_fonts`] changes the families.
     typography: RwLock<LumaTypography>,
-    /// Radix control metrics for sizes 1–3; `metrics.control` is size 2.
-    control_sizes: crate::RadixControlMetrics,
+    /// Radix control metrics for sizes 1–3; `metrics.control` is size 2. Read from the button `.lss` on
+    /// first use, since reading it builds a look.
+    control_sizes: std::sync::OnceLock<crate::RadixControlMetrics>,
     mode: AtomicU8,
     /// A style mode other than the scheme's own (e.g. `hi_contrast`), set by [`Look::set_style_mode`].
     style_mode: RwLock<Option<String>>,
     classic_shadow: RwLock<Option<ClassicButtonParams>>,
-    button_recipes: RwLock<Arc<crate::button_recipes::Recipes>>,
     tabs_style: RwLock<Option<crate::tabs::TabsStyle>>,
     common_stylesheet: RwLock<Arc<xgpui_luma::theme::stylesheet::CommonStylesheet>>,
     /// `common_stylesheet` with each [`crate::RadixSize`] merged into general geometry.
@@ -193,11 +164,10 @@ impl Look {
                 custom_inputs: RwLock::new([None; 2]),
                 metrics,
                 typography: RwLock::new(LumaTypography::default()),
-                control_sizes: crate::RadixControlMetrics::from_button_boxes(metrics.control),
+                control_sizes: std::sync::OnceLock::new(),
                 mode: AtomicU8::new(mode_to_u8(mode)),
                 style_mode: RwLock::new(None),
                 classic_shadow: RwLock::new(None),
-                button_recipes: RwLock::new(Arc::new(crate::button_recipes::embedded().clone())),
                 tabs_style: RwLock::new(None),
                 sized_stylesheets: RwLock::new(sized_stylesheets(&common)),
                 common_stylesheet: RwLock::new(common),
@@ -232,7 +202,6 @@ impl Look {
             *self.state.custom_inputs.read().unwrap_or_else(|p| p.into_inner());
         forked.store_stylesheet(self.stylesheet_snapshot());
         *forked.state.typography.write().unwrap_or_else(|p| p.into_inner()) = self.typography();
-        *forked.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = self.button_recipes();
         forked
     }
 
@@ -260,7 +229,9 @@ impl Look {
         size: xgpui_luma::controls::slide_panel::SlidePanelSizeConfig,
     ) -> xgpui_luma::controls::slide_panel::SlidePanelState {
         xgpui_luma::controls::slide_panel::SlidePanelState::new(anchor, size)
-            .stylesheet(&self.common_stylesheet())
+            .with_geometry(xgpui_luma::controls::slide_panel::SlidePanelGeometry::from_binding(
+                &xgpui_luma::style::StyleBinding::new("slide_panel", crate::textfield::live_source(self)),
+            ))
             .motion_defaults(self.motion_defaults().slide_panel)
     }
 
@@ -326,20 +297,22 @@ impl Look {
 
     /// Radix control metrics for each size.
     pub fn control_sizes(&self) -> crate::RadixControlMetrics {
-        self.state.control_sizes
+        *self
+            .state
+            .control_sizes
+            .get_or_init(|| crate::RadixControlMetrics::from_button_boxes(self.state.metrics.control))
     }
 
     /// Shared metrics whose `control` scale is the given Radix size, for SDK geometry.
     pub fn metrics_for(&self, size: crate::RadixSize) -> MetricTokens {
         let mut metrics = self.state.metrics;
-        metrics.control = self.state.control_sizes.get(size);
+        metrics.control = self.control_sizes().get(size);
         metrics
     }
 
     /// Shared tab geometry, baseline, and indicator settings for this look.
     pub fn tabs_style(&self) -> crate::tabs::TabsStyle {
-        self.tabs_style_override()
-            .unwrap_or_else(|| crate::tabs::TabsStyle::from_stylesheet(&self.common_stylesheet()))
+        self.tabs_style_override().unwrap_or_else(|| crate::tabs::TabsStyle::from_look(self))
     }
 
     pub(crate) fn tabs_style_override(&self) -> Option<crate::tabs::TabsStyle> {
@@ -386,51 +359,13 @@ impl Look {
         self.bump_revision();
     }
 
-    pub(crate) fn button_recipes(&self) -> Arc<crate::button_recipes::Recipes> {
-        self.state.button_recipes.read().unwrap_or_else(|p| p.into_inner()).clone()
-    }
-
-    /// Load sparse look-owned button recipes over the native look defaults.
-    /// Rules replace the complete ordered list. Programmatic Classic tuning stays
-    /// authoritative over stylesheet tuning.
-    pub fn set_button_recipes(&self, source: &str) -> anyhow::Result<()> {
-        let mut baseline = toml::Value::Table(toml::map::Map::from_iter([(
-            "button_recipes".into(),
-            toml::Value::try_from(crate::button_recipes::embedded())?,
-        )]));
-        let authored: toml::Value = toml::from_str(source)?;
-        anyhow::ensure!(
-            authored.as_table().is_some_and(|table| table.keys().all(|key| key == "button_recipes")),
-            "expected only a button_recipes table"
-        );
-        fn merge(base: &mut toml::Value, layer: toml::Value) {
-            match (base, layer) {
-                (toml::Value::Table(base), toml::Value::Table(layer)) => {
-                    for (key, value) in layer {
-                        if let Some(base) = base.get_mut(&key) {
-                            merge(base, value);
-                        } else {
-                            base.insert(key, value);
-                        }
-                    }
-                }
-                (base, layer) => *base = layer,
-            }
-        }
-        merge(&mut baseline, authored);
-        let parsed = crate::button_recipes::parse(&toml::to_string(&baseline)?)?;
-        *self.state.button_recipes.write().unwrap_or_else(|p| p.into_inner()) = Arc::new(parsed);
-        self.bump_revision();
-        Ok(())
-    }
-
     /// Current [`ButtonVariant::Classic`](crate::ButtonVariant::Classic) shadow geometry.
     pub fn classic_params(&self) -> ClassicButtonParams {
         self.state
             .classic_shadow
             .read()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .unwrap_or_else(|| self.button_recipes().classic)
+            .unwrap_or_default()
     }
 
     /// Retunes the Classic bubble for every button resolved from this look.
@@ -718,22 +653,22 @@ mod tests {
         let clone = look.clone();
         let fork = look.fork();
         let old = look.stylesheet_snapshot();
-        let original = old.slider.geometry.width;
+        let original = old.shell.geometry.height;
         let revision = look.revision();
         let mut edited = look.common_stylesheet();
-        edited.slider.geometry.width = Some(123.0);
+        edited.shell.geometry.height = Some(123.0);
         // Editing the public owned copy must not mutate live readers.
-        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, original);
+        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, original);
         look.set_common_stylesheet(edited);
         assert!(look.revision() > revision);
-        assert_eq!(clone.stylesheet_snapshot().slider.geometry.width, Some(123.0));
-        assert_eq!(old.slider.geometry.width, original);
-        assert_eq!(fork.stylesheet_snapshot().slider.geometry.width, original);
+        assert_eq!(clone.stylesheet_snapshot().shell.geometry.height, Some(123.0));
+        assert_eq!(old.shell.geometry.height, original);
+        assert_eq!(fork.stylesheet_snapshot().shell.geometry.height, original);
         let current = look.stylesheet_snapshot();
         look.set_mode(ThemeMode::Dark);
         assert!(Arc::ptr_eq(&current, &look.stylesheet_snapshot()));
         fork.set_common_stylesheet(Default::default());
-        assert_eq!(look.stylesheet_snapshot().slider.geometry.width, Some(123.0));
+        assert_eq!(look.stylesheet_snapshot().shell.geometry.height, Some(123.0));
     }
 
     #[test]
@@ -887,9 +822,6 @@ mod tests {
         // Assemble the controls independently from an empty sheet.
         let mut native = CommonStylesheet::default();
         define_sdk_slider(&mut native);
-        apply_radix_slider_stylesheet(&mut native);
-        crate::size::apply_size_presets(&mut native);
-        assert_eq!(native.slider, original.slider);
         assert_eq!(native.motion.slider, original.motion.slider);
         assert_eq!(native.recipes.0.get("slider"), original.recipes.0.get("slider"));
 

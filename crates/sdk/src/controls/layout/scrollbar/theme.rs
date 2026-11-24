@@ -38,32 +38,3 @@ pub fn default_scrollbar_theme() -> Arc<dyn ScrollbarTheme> {
 
     THEME.get_or_init(|| Arc::new(super::StyledScrollbarTheme::sdk())).clone()
 }
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ScrollbarStylesheet,
-    ScrollbarGeometryStylesheet,
-    ScrollbarGeometry,
-    ResolvedScrollbarGeometry,
-    "scrollbar",
-    [thickness, track_thickness, thumb_thickness, min_thumb_length, length_h, length_v],
-    unit[disabled_opacity, thumb_fraction]
-);
-
-impl ScrollbarStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: ScrollbarGeometryStylesheet {
-                thumb_fraction: Some(0.25),
-                disabled_opacity: Some(0.56),
-                thickness: Some(12.0),
-                track_thickness: Some(4.0),
-                thumb_thickness: Some(8.0),
-                min_thumb_length: Some(28.0),
-                length_h: Some(260.0),
-                length_v: Some(180.0),
-            },
-            sizes: Default::default(),
-        }
-    }
-}

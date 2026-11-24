@@ -37,29 +37,3 @@ pub fn default_context_menu_theme() -> Arc<dyn ContextMenuTheme> {
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledContextMenuTheme::sdk())).clone()
 }
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ContextMenuStylesheet,
-    ContextMenuGeometryStylesheet,
-    ContextMenuGeometry,
-    ResolvedContextMenuGeometry,
-    "context_menu",
-    [min_width, padding_x, padding_y, font_size, line_height, border_width, window_margin],
-    unit[disabled_opacity]
-);
-
-impl ContextMenuStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: ContextMenuGeometryStylesheet {
-                border_width: Some(1.0),
-                window_margin: Some(8.0),
-                disabled_opacity: Some(0.56),
-                min_width: Some(200.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
-}

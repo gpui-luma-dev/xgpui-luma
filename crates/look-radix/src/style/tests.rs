@@ -34,16 +34,28 @@ fn sources_list_every_lss_file() {
 
 #[test]
 fn every_axis_combination_resolves_without_problems() {
-    for (name, look) in looks() {
-        for mode in [ThemeMode::Light, ThemeMode::Dark] {
-            look.set_mode(mode);
-            let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
-            for control in theme.stylesheet().controls() {
-                let problems = theme.check(control);
-                assert!(problems.is_empty(), "{name} {mode:?} {control}: {problems}");
-            }
-        }
-    }
+    // `Theme::check` covers every declared mode for each control, and the native tokens hold both
+    // schemes, so one bound theme per look is enough. Looks are independent, so they run in parallel.
+    std::thread::scope(|scope| {
+        let runs: Vec<_> = looks()
+            .into_iter()
+            .map(|(name, look)| {
+                scope.spawn(move || {
+                    let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
+                    theme
+                        .stylesheet()
+                        .controls()
+                        .filter_map(|control| {
+                            let problems = theme.check(control);
+                            (!problems.is_empty()).then(|| format!("{name} {control}: {problems}"))
+                        })
+                        .collect::<Vec<String>>()
+                })
+            })
+            .collect();
+        let problems: Vec<String> = runs.into_iter().flat_map(|run| run.join().expect("no panic")).collect();
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    });
 }
 
 /// A resolved Radix checkbox: `attrs` as (attribute, value), `states` by name.
@@ -334,4 +346,44 @@ fn switch(look: &Look, attrs: &[(&str, &str)], states: &[&str]) -> std::sync::Ar
 
 fn track_shadow(resolved: &xgpui_luma::style::lss::Resolved) -> Vec<BoxShadow> {
     resolved.part(PartId::new("track")).shadow().map(|s| box_shadows(&s)).unwrap_or_default()
+}
+
+/// The SDK keeps only behaviour variants (#287), so the look draws the visual ones: each differs
+/// from the base trigger or shell, in both modes.
+#[test]
+fn look_defines_the_visual_variants() {
+    let look = Look::built_in().fork();
+    for mode in [ThemeMode::Light, ThemeMode::Dark] {
+        look.set_mode(mode);
+        let theme = look.style_theme();
+        let variant = theme.stylesheet().config().attribute("variant").expect("variant attribute");
+        for (control, name) in [
+            ("pager", "minimal"),
+            ("popup_menu", "outline"),
+            ("popup_menu", "ghost"),
+            ("scrollbar", "soft"),
+            ("selector", "outline"),
+            ("selector", "ghost"),
+            ("toolbar", "ghost"),
+        ] {
+            let base = StyleKey::new(ControlId::new(control));
+            let styled = base.attr(variant, AttrValue::named(name));
+            assert_ne!(theme.resolve(&styled), theme.resolve(&base), "{mode:?} {control} [{name}]");
+        }
+    }
+}
+
+/// Radix's radio group: side-by-side rows 8 apart and disabled rows at full opacity (the radio template
+/// dims the whole row); the stacked and item gaps are the SDK's (#287).
+#[test]
+fn radio_group_layout_comes_from_the_look_lss() {
+    use xgpui_luma::controls::radio_group::RadioGroupGeometry;
+    let look = Look::built_in().fork();
+    let geometry = RadioGroupGeometry::from_binding(&xgpui_luma::style::StyleBinding::new(
+        "radio_group",
+        crate::textfield::live_source(&look),
+    ));
+    let sdk = RadioGroupGeometry::sdk();
+    assert_eq!((geometry.horizontal_gap, geometry.disabled_opacity), (8.0, 1.0));
+    assert_eq!((geometry.vertical_gap, geometry.item_gap), (sdk.vertical_gap, sdk.item_gap));
 }

@@ -37,31 +37,6 @@ pub struct PopupMenuLook {
     pub floating_menu: FloatingMenuLook,
 }
 
-impl PopupMenuLook {
-    /// Resolve common trigger geometry before explicit consumer overrides.
-    /// Authored lengths snap at the supplied display scale; fonts retain logical units.
-    pub fn with_stylesheet(
-        mut self,
-        stylesheet: &crate::theme::stylesheet::PopupMenuStylesheet,
-        scale_factor: f32,
-    ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popup_menu.authored_geometry();
-        let recipe = stylesheet.authored_geometry().with_fallback(&baseline);
-        self.menu_offset_y = recipe.gap.unwrap_or(self.trigger_gap) * recipe.menu_offset_scale.unwrap_or_default();
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, PopupMenuGeometry, self,
-            [height => trigger_height, padding_x => trigger_padding_x, padding_y => trigger_padding_y,
-             gap => trigger_gap, icon_size => trigger_icon_size, radius => trigger_radius,
-             font_size => trigger_typography.size, line_height => trigger_typography.line_height,
-             menu_offset_y => menu_offset_y], defaults = Default::default());
-        self.trigger_height = crate::theme::snap_to_pixel(self.trigger_height, scale_factor);
-        self.trigger_padding_x = crate::theme::snap_to_pixel(self.trigger_padding_x, scale_factor);
-        self.trigger_padding_y = crate::theme::snap_to_pixel(self.trigger_padding_y, scale_factor);
-        self.trigger_gap = crate::theme::snap_to_pixel(self.trigger_gap, scale_factor);
-        self.trigger_icon_size = crate::theme::snap_to_pixel(self.trigger_icon_size, scale_factor);
-        self
-    }
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PopupMenuTriggerMetrics {
     pub without_elevation: bool,
@@ -116,42 +91,8 @@ pub fn compose_popup_menu_look(palette: &PopupMenuPalette, scale: &StandardBoxSc
         trigger_gap: scale.gap,
         trigger_height: scale.height,
         trigger_icon_size: scale.icon_size,
-        menu_offset_y: scale.gap
-            * crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .popup_menu
-                .geometry
-                .menu_offset_scale
-                .unwrap_or_default(),
+        // The SDK `.lss` offset as a share of its gap, applied to this theme's gap.
+        menu_offset_y: scale.gap * crate::style::sdk_menu_offset_share("popup_menu"),
         floating_menu: palette.floating_menu.clone(),
-    }
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    PopupMenuStylesheet,
-    PopupMenuGeometryStylesheet,
-    PopupMenuGeometry,
-    ResolvedPopupMenuGeometry,
-    "popup_menu",
-    [
-        height,
-        padding_x,
-        padding_y,
-        gap,
-        font_size,
-        line_height,
-        icon_size,
-        radius,
-        menu_offset_y,
-        menu_offset_scale
-    ]
-);
-
-impl PopupMenuStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: PopupMenuGeometryStylesheet { menu_offset_scale: Some(1.0 / 2.0), ..Default::default() },
-            ..Default::default()
-        }
     }
 }

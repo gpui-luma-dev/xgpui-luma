@@ -168,44 +168,26 @@ impl Default for RadixRadii {
     }
 }
 
+/// The button box at `size` and `radius`, from the built-in look's `button.lss` (size 2 is the base).
 pub fn button_box_for(size: ButtonSize, radius: Radius) -> ButtonBox {
-    button_box_with_stylesheet(crate::look::embedded_common_stylesheet(), size, radius)
-}
-
-pub(crate) fn button_box_with_stylesheet(
-    stylesheet: &xgpui_luma::theme::stylesheet::CommonStylesheet,
-    size: ButtonSize,
-    radius: Radius,
-) -> ButtonBox {
-    let control = crate::size::scaffold_metrics(size.control_size()).control;
-    let typography = xgpui_luma::theme::ThemeTokens::default().typography.text.label;
-    let geometry = stylesheet.button.resolve_geometry_for(
-        size.as_str(),
-        xgpui_luma::theme::stylesheet::ButtonGeometry {
-            height: control.height,
-            padding_x: control.padding_x,
-            padding_y: control.padding_y,
-            gap: control.gap,
-            icon_size: control.icon_size,
-            font_size: typography.size,
-            line_height: typography.line_height,
-        },
-    );
-
+    let sized = [("size", size.as_str())];
+    let attrs: &[(&str, &str)] = if size == ButtonSize::Two { &[] } else { &sized };
+    let number = |property| crate::style::lss_number("button", attrs, property);
+    let height = number("height");
     ButtonBox {
-        height: geometry.height,
-        padding_x: geometry.padding_x,
-        padding_y: geometry.padding_y,
-        gap: geometry.gap,
+        height,
+        padding_x: number("padding_x"),
+        padding_y: number("padding_y"),
+        gap: number("gap"),
         radius: if radius == Radius::Full {
-            geometry.height / 2.0
+            height / 2.0
         } else {
             resolve_button_radius(size, radius)
         },
-        icon_size: geometry.icon_size,
+        icon_size: number("icon_size"),
         typography: LumaTextStyle {
-            size: geometry.font_size,
-            line_height: geometry.line_height,
+            size: number("font_size"),
+            line_height: number("line_height"),
             weight: FontWeight::MEDIUM,
         },
     }
@@ -226,10 +208,7 @@ pub fn resolve_button_radius(size: ButtonSize, radius: Radius) -> f32 {
 }
 
 fn button_box_height(size: ButtonSize) -> f32 {
-    crate::look::embedded_common_stylesheet()
-        .button
-        .resolve_geometry_for(size.as_str(), Default::default())
-        .height
+    button_box_for(size, Radius::None).height
 }
 
 #[cfg(test)]

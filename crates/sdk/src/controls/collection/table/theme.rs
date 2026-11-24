@@ -1,5 +1,3 @@
-use crate::theme::stylesheet::CommonStylesheet;
-
 use std::sync::{Arc, OnceLock};
 
 use gpui::Hsla;
@@ -77,10 +75,23 @@ pub struct TableRowLook {
 }
 
 /// Theme-owned visuals for the compact drag preview and insertion feedback.
+/// The row drag preview's geometry, from `table.lss` (its `drag_*` properties).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TableGeometry {
+    /// The preview's offset from the pointer, both axes.
+    pub drag_offset: f32,
+    pub drag_width: f32,
+    pub drag_padding_x: f32,
+    pub drag_padding_y: f32,
+    pub drag_border_width: f32,
+    /// The insertion marker's width.
+    pub drag_marker_width: f32,
+}
+
 #[derive(Clone, Debug)]
 pub struct TableDragLook {
-    /// Captured, size-resolved preview and insertion feedback geometry.
-    pub geometry: crate::theme::stylesheet::TableGeometry,
+    /// Preview and insertion feedback geometry, from `table.lss`.
+    pub geometry: TableGeometry,
     pub background: Hsla,
     pub foreground: Hsla,
     pub valid_marker: Hsla,
@@ -94,9 +105,7 @@ pub trait TableTheme: Send + Sync {
         let look = self.resolve_look(true, true);
         let invalid = self.resolve_row(false, InteractionState { invalid: true, ..Default::default() });
         TableDragLook {
-            geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .table
-                .resolve_geometry(Default::default()),
+            geometry: super::styled::StyledTable::sdk().drag_geometry(),
             background: look.header_background,
             foreground: look.header_label_color,
             valid_marker: look.border,
@@ -125,97 +134,22 @@ pub fn default_table_theme() -> Arc<dyn TableTheme> {
 }
 
 impl TableRowLook {
-    /// Combines row colors and metrics with shared, size-specific row styling.
+    /// Combines row colors with the SDK's `table.lss` row layout and label baseline. `_stylesheet` is no
+    /// longer read: the layout is `.lss` (#287).
     pub fn from_palette(
         palette: &TableRowPalette,
         scale: &ListRowScale,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().table.authored_geometry();
-        let recipe = stylesheet.table.authored_geometry().with_fallback(&baseline);
+        let sdk = super::styled::StyledTable::sdk().row_look(false, InteractionState::default(), scale);
         Self {
             column_emphasis_weight: crate::theme::LumaTypography::default().text.title.weight,
-            column_padding_x: recipe.column_padding_x.unwrap_or_default(),
-            column_muted_opacity: recipe.column_muted_opacity.unwrap_or_default(),
-            row_divider_width: recipe.row_divider_width.unwrap_or_default(),
-            disabled_opacity: recipe.row_disabled_opacity.unwrap_or_default(),
             background: palette.background,
             label_color: palette.label_color,
             divider: palette.divider,
             label_typography: palette.label_typography,
-            radius: recipe.row_radius.unwrap_or_default(),
-            padding_x: scale.padding_x,
-            padding_y: scale.padding_y,
-            min_height: scale.min_height,
-            label_baseline_shift: crate::theme::scales::label_baseline_shift(stylesheet),
-        }
-    }
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    TableStylesheet,
-    TableGeometryStylesheet,
-    TableGeometry,
-    ResolvedTableGeometry,
-    "table",
-    [
-        row_divider_width,
-        padding_x,
-        padding_y,
-        padding_y_scale,
-        row_radius,
-        border_width,
-        header_divider_width,
-        header_padding_bottom_scale,
-        drag_offset,
-        drag_width,
-        drag_padding_x,
-        drag_padding_y,
-        drag_border_width,
-        drag_marker_width,
-        column_padding_x,
-        column_resize_hit_width,
-        column_resize_line_width,
-        column_resize_vertical_extension
-    ],
-    unit[row_hover_opacity, row_disabled_opacity, column_muted_opacity]
-);
-
-impl TableStylesheet {
-    /// Fills absent table fields from SDK defaults without copying unrelated families.
-    pub fn with_sdk_defaults(&self) -> Self {
-        self.clone().with_baseline(&CommonStylesheet::sdk_default().table)
-    }
-}
-
-impl TableStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: TableGeometryStylesheet {
-                row_divider_width: Some(1.0),
-                column_padding_x: Some(12.0),
-                column_muted_opacity: Some(0.65),
-                column_resize_hit_width: Some(10.0),
-                column_resize_line_width: Some(1.0),
-                column_resize_vertical_extension: Some(4.0),
-                drag_offset: Some(12.0),
-                drag_width: Some(220.0),
-                drag_padding_x: Some(12.0),
-                drag_padding_y: Some(8.0),
-                drag_border_width: Some(1.0),
-                drag_marker_width: Some(2.0),
-                border_width: Some(1.0),
-                header_divider_width: Some(1.0),
-                header_padding_bottom_scale: Some(3.0 / 4.0),
-                padding_x: Some(0.0),
-                padding_y_scale: Some(1.0 / 2.0),
-                row_radius: Some(0.0),
-                row_hover_opacity: Some(0.4),
-                row_disabled_opacity: Some(0.56),
-                ..Default::default()
-            },
-            ..Default::default()
+            label_baseline_shift: crate::theme::scales::label_baseline_shift(),
+            ..sdk
         }
     }
 }

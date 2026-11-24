@@ -1,0 +1,20 @@
+// SDK search selector. Layer: sdk. The trigger's icons and the popup's search field, read by
+// `SearchSelectorGeometry` (mod.rs); the list is the floating menu.
+
+/// A selector whose popup filters its choices by a search field.
+search_selector {
+  /// The popup border, the search icon's width and size, and the trigger's extra icon width and gap.
+  border_width = exact(1)
+  search_icon_width: length = exact(18)
+  search_icon_size: length = exact(12)
+  trigger_icon_extra_width: length = exact(10)
+  trigger_extra_gap: length = exact(8)
+  /// The search field's padding, separator, padding reduction, minimum input height and total chrome height,
+  /// and the trailing icon size.
+  search_padding: length = exact(8)
+  search_separator_height: length = exact(1)
+  search_padding_reduction: length = exact(3)
+  search_input_height_floor: length = exact(18)
+  search_chrome_height: length = exact(57)
+  trailing_icon_size: length = exact(14)
+}

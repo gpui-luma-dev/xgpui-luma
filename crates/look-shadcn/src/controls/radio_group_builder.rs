@@ -3,7 +3,7 @@
 use gpui::{Context, SharedString};
 use xgpui_luma::controls::control_group::{ControlGroupItemLike, ControlGroupTemplate};
 use xgpui_luma::controls::radio_group::{
-    RadioGroupBuilder, RadioGroupLayout, radio_group_button_item_element_template, radio_group_buttons_template,
+    RadioGroupBuilder, RadioGroupLayout, radio_group_button_item_element_template, radio_group_buttons_template_with,
 };
 
 use super::button::ShadcnButtonStyle;
@@ -196,7 +196,11 @@ where
             } else {
                 RadioGroupLayout::Vertical
             };
-            builder = builder.template(radio_group_buttons_template(radio_template, layout));
+            builder = builder.template(radio_group_buttons_template_with(
+                super::templates::radio::radio_group_binding(&look),
+                radio_template,
+                layout,
+            ));
         }
         builder
     }

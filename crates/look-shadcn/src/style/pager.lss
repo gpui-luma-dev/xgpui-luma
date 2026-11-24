@@ -23,5 +23,8 @@ pager {
     :disabled { background = css.muted  foreground = css.muted_foreground  muted_text = css.muted_foreground }
   }
 
-  variant minimal { button_min_width = exact(28) }
+  variant minimal {
+    button_min_width = exact(28)
+    group_gap        = exact(8)
+  }
 }

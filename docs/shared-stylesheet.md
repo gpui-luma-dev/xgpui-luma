@@ -25,12 +25,11 @@ templates; third-party looks use the same APIs.
 | Data | Typed owner |
 | --- | --- |
 | Per-control geometry, proportions and decoration | `common.<family>.geometry/sizes` |
-| Tab presentation geometry | `common.tabs.geometry/variants` |
 | Semantic state recipe mappings | `common.recipes.<family>` |
 | Named OpenType features (four-character tags, integer values) | `common.font_features` |
 | Default glyph identities | `common.icons` |
 | Picker viewport row budgets | `common.row_limits.<family>` |
-| Shared helper/compact-input/drag/layout chrome | `common.shared.geometry`, `CommonStylesheet::shared_geometry()` |
+| Shared helper/compact-input/drag/layout chrome | `.lss` `tokens { geometry { … } }` (`theme/tokens.lss`), read as `SharedGeometry` |
 | Title-bar dimensions and platform insets | `common.shell.geometry` |
 | Typed animation roles | `common.motion` |
 
@@ -39,14 +38,18 @@ public title-bar constants are authored directly in Rust.
 Bundled SDK and look initialization require no TOML parsing or build generation.
 Clone the cached baseline for independent edits; `.with(|sheet| ...)` edits that
 copy. Direct field mutation does not clear inherited size-specific fields.
-The parsed common schema rejects unknown typed fields. Root sections belonging
+The parsed common schema rejects unknown typed fields. Families whose controls are now styled
+only by `.lss` are not sections any more, so a sheet that sets them is an error naming the section:
+`pager`, `context_menu`, `dock_splitter`, `toolbar`, `textfield`, `textarea`, `selector`,
+`progress`, `overlay_window`, `popup_menu`, `accordion`, `tree_view`, `avatar`, `badge`,
+`card`, `callout`, `segmented`, `floating_menu`, `split_view`, `stepper`, `scrollbar`, `icon_group`, `toggle`, `selection_panel`, `table`, `control_group`, `radio_group`, `selector_list`, `resizable_panels`, `tabs`, `button`, `shared`, `slider`, `tooltip`, `slide_panel`, `popover`, `sidebar`, `autocomplete`, `combobox` and `search_selector`. Root sections belonging
 to a look are left for that look's parser.
 
 ## Rust geometry values
 
 The SDK ships one control scale and has no size vocabulary. Each family's
 `geometry` holds its sparse overrides; for example,
-`sheet.progress.geometry.track_height = Some(9.0)`. `ControlSizes<T>` is a keyed
+`sheet.sidebar.geometry.disabled_opacity = Some(0.5)`. `ControlSizes<T>` is a keyed
 map that looks use for their own sizes (Shadcn `sm`/`md`/`lg`, Radix `1`/`2`/`3`,
 named compact presets). A look resolves its size to pixels with
 `CommonStylesheet::with_size_key(key)` before handing the sheet to the SDK.
@@ -194,10 +197,10 @@ use xgpui_luma::{
     theme::{ThemeMode, stylesheet::CommonStylesheet},
 };
 let sheet = CommonStylesheet::sdk_default().clone().with(|sheet| {
-    sheet.progress.geometry.track_height = Some(9.0);
+    sheet.shell.geometry.height = Some(41.0);
 });
 let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde)?;
-assert_eq!(tokens.stylesheet.progress.geometry.track_height, Some(9.0));
+assert_eq!(tokens.stylesheet.shell.geometry.height, Some(41.0));
 ```
 
 Use the same resolved common sheet in a custom look, create its theme factories,

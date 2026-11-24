@@ -36,14 +36,14 @@ pub fn default_selection_panel_look(tokens: &ThemeTokens) -> SelectionPanelLook 
 }
 
 /// A selection panel from a `.lss` `selection_panel` binding (the floating menu's surface and rows unless a
-/// look restyles it), through the selector items panel, then the stylesheet's selection-panel geometry.
+/// look restyles it), through the selector items panel.
 pub fn styled_selection_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
     stylesheet: &crate::theme::stylesheet::CommonStylesheet,
 ) -> SelectionPanelLook {
     let panel = crate::controls::selector_list::styled_selector_items_panel_look(binding, metrics, stylesheet);
-    SelectionPanelLook::from_items_panel(panel).with_stylesheet(&stylesheet.selection_panel)
+    SelectionPanelLook::from_items_panel(panel)
 }
 
 impl SelectionPanelLook {
@@ -70,36 +70,4 @@ impl SelectionPanelLook {
             item_radius: panel.item_radius,
         }
     }
-
-    /// Independent panel overrides resolve after shared menu styling.
-    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectionPanelStylesheet) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectionPanelGeometry, self,
-            [padding => padding, min_width => min_width, item_height => item_height,
-             item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
-             font_size => item_typography.size, line_height => item_typography.line_height,
-             border_width => border_width, disabled_opacity => disabled_opacity, radius => radius, item_radius => item_radius]);
-        self
-    }
 }
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    SelectionPanelStylesheet,
-    SelectionPanelGeometryStylesheet,
-    SelectionPanelGeometry,
-    ResolvedSelectionPanelGeometry,
-    "selection_panel",
-    [
-        padding,
-        min_width,
-        item_height,
-        item_padding_x,
-        item_gap,
-        item_icon_size,
-        font_size,
-        line_height,
-        border_width,
-        radius,
-        item_radius
-    ],
-    unit[disabled_opacity]
-);

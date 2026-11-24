@@ -22,38 +22,24 @@ pub struct AccordionScale {
 }
 
 impl AccordionScale {
+    /// The row layout for a theme that supplies only metrics: fixed sizes from the SDK's
+    /// `accordion.lss`, the rest from `metrics`, so the theme keeps its own spacing.
     pub fn compute(metrics: &MetricTokens, scale_factor: f32) -> Self {
-        Self::compute_with_stylesheet(metrics, scale_factor, crate::theme::stylesheet::CommonStylesheet::sdk_default())
-    }
-
-    /// Derive the row layout from common appearance and shared metric tokens.
-    pub fn compute_with_stylesheet(
-        metrics: &MetricTokens,
-        scale_factor: f32,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
-    ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().accordion.authored_geometry();
-        let geometry = stylesheet.accordion.authored_geometry().with_fallback(&baseline);
+        let sdk = |property: &str| crate::style::sdk_number("accordion", property);
+        // `.lss` pads content by a share of the control's vertical padding.
+        let content_share = sdk("content_padding_scale");
         Self {
-            drag_handle_padding: geometry.drag_handle_padding.unwrap_or_default(),
-            disabled_opacity: geometry.disabled_opacity.unwrap_or_default(),
-            trigger_height: snap_to_pixel(
-                geometry.trigger_height.unwrap_or_else(|| metrics.control_height()),
-                scale_factor,
-            ),
-            padding_x: snap_to_pixel(geometry.padding_x.unwrap_or_else(|| metrics.padding_x()), scale_factor),
-            padding_y: snap_to_pixel(geometry.padding_y.unwrap_or_else(|| metrics.padding_y()), scale_factor),
-            content_padding_y: snap_to_pixel(
-                geometry
-                    .content_padding_y
-                    .unwrap_or_else(|| metrics.padding_y() * geometry.content_padding_scale.unwrap_or_default()),
-                scale_factor,
-            ),
-            radius: geometry.radius.unwrap_or_else(|| metrics.radius()),
-            item_gap: snap_to_pixel(geometry.item_gap.unwrap_or_default(), scale_factor),
-            inner_gap: snap_to_pixel(geometry.inner_gap.unwrap_or_else(|| metrics.gap()), scale_factor),
-            icon_size: geometry.icon_size.unwrap_or_default(),
-            chevron_size: geometry.chevron_size.unwrap_or_default(),
+            drag_handle_padding: sdk("drag_handle_padding"),
+            disabled_opacity: sdk("disabled_opacity"),
+            trigger_height: snap_to_pixel(metrics.control_height(), scale_factor),
+            padding_x: snap_to_pixel(metrics.padding_x(), scale_factor),
+            padding_y: snap_to_pixel(metrics.padding_y(), scale_factor),
+            content_padding_y: snap_to_pixel(metrics.padding_y() * content_share, scale_factor),
+            radius: metrics.radius(),
+            item_gap: snap_to_pixel(sdk("item_gap"), scale_factor),
+            inner_gap: snap_to_pixel(metrics.gap(), scale_factor),
+            icon_size: sdk("icon_size"),
+            chevron_size: sdk("chevron_size"),
         }
     }
 }
@@ -108,44 +94,4 @@ pub fn default_accordion_theme() -> Arc<dyn AccordionTheme> {
     static THEME: OnceLock<Arc<dyn AccordionTheme>> = OnceLock::new();
 
     THEME.get_or_init(|| Arc::new(super::styled::StyledAccordionTheme::sdk())).clone()
-}
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    AccordionStylesheet,
-    AccordionGeometryStylesheet,
-    AccordionGeometry,
-    ResolvedAccordionGeometry,
-    "accordion",
-    [
-        trigger_height,
-        padding_x,
-        padding_y,
-        content_padding_y,
-        content_padding_scale,
-        radius,
-        item_gap,
-        inner_gap,
-        icon_size,
-        chevron_size,
-        drag_handle_padding
-    ],
-    unit[disabled_opacity]
-);
-
-impl AccordionStylesheet {
-    /// Native SDK geometry, equivalent to the retained stylesheet.
-    pub fn native_default() -> Self {
-        Self {
-            geometry: AccordionGeometryStylesheet {
-                drag_handle_padding: Some(2.0),
-                disabled_opacity: Some(0.56),
-                content_padding_scale: Some(1.5),
-                item_gap: Some(0.0),
-                icon_size: Some(16.0),
-                chevron_size: Some(14.0),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    }
 }

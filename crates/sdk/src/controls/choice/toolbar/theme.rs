@@ -35,12 +35,3 @@ pub fn default_toolbar_theme() -> Arc<dyn ToolbarTheme> {
     static THEME: OnceLock<Arc<dyn ToolbarTheme>> = OnceLock::new();
     THEME.get_or_init(|| Arc::new(super::styled::StyledToolbarTheme::sdk())).clone()
 }
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ToolbarStylesheet,
-    ToolbarGeometryStylesheet,
-    ToolbarGeometry,
-    ResolvedToolbarGeometry,
-    "toolbar",
-    [padding_x, padding_y, gap, border_width, separator_width, radius]
-);

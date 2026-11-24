@@ -1,0 +1,13 @@
+// SDK radio group. Layer: sdk. The layout around a set of radio rows, read by the radio group templates
+// (template.rs); the rows are the radio button (`radio.lss`).
+
+/// A set of radio choices.
+radio_group {
+  /// Space between rows: stacked, and side by side.
+  vertical_gap: length = exact(8)
+  horizontal_gap: length = exact(12)
+  /// Space between a custom row's indicator and its content.
+  item_gap: length = exact(8)
+  /// Disabled rows' opacity.
+  disabled_opacity: number = 0.56
+}

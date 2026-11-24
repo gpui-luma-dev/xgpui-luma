@@ -64,14 +64,14 @@ pub fn styled_selector_items_panel_look(
 }
 
 impl SelectorItemsPanelLook {
-    /// Share menu chrome, metric border width and popover placement before panel overrides.
+    /// Share menu chrome, metric border width and the SDK's popover panel placement (`popover.lss`).
+    /// `_stylesheet` is no longer read (#287).
     pub fn from_menu(
         menu: crate::controls::floating_menu::FloatingMenuLook,
         metrics: &crate::theme::MetricTokens,
-        stylesheet: &crate::theme::stylesheet::CommonStylesheet,
+        _stylesheet: &crate::theme::stylesheet::CommonStylesheet,
     ) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default().popover.authored_geometry_for("panel");
-        let placement = stylesheet.popover.authored_geometry_for("panel").with_fallback(&baseline);
+        let placement = crate::theme::stylesheet::PopoverGeometry::sdk();
         Self {
             positive: menu.positive,
             background: menu.background,
@@ -79,8 +79,8 @@ impl SelectorItemsPanelLook {
             border: menu.border,
             border_width: metrics.border_width,
             disabled_opacity: menu.disabled_opacity,
-            popup_offset_y: placement.offset_y.unwrap_or_default(),
-            window_margin: placement.window_margin.unwrap_or_default(),
+            popup_offset_y: placement.panel_offset_y,
+            window_margin: placement.window_margin,
             shadow: menu.shadow,
             radius: menu.radius,
             padding: menu.padding,
@@ -95,19 +95,6 @@ impl SelectorItemsPanelLook {
             item_icon_size: menu.item_icon_size,
             item_radius: menu.item_radius,
         }
-        .with_stylesheet(&stylesheet.selector_list)
-    }
-
-    /// Apply independent panel overrides after resolving the shared menu baseline.
-    /// Consumer look callbacks run afterward.
-    pub fn with_stylesheet(mut self, stylesheet: &crate::theme::stylesheet::SelectorListStylesheet) -> Self {
-        crate::theme::stylesheet::apply_common_geometry!(stylesheet, SelectorListGeometry, self,
-            [padding => padding, min_width => min_width, item_height => item_height,
-             item_padding_x => item_padding_x, item_gap => item_gap, item_icon_size => item_icon_size,
-             font_size => item_typography.size, line_height => item_typography.line_height,
-             radius => radius, item_radius => item_radius, border_width => border_width,
-             disabled_opacity => disabled_opacity, popup_offset_y => popup_offset_y, window_margin => window_margin]);
-        self
     }
 }
 

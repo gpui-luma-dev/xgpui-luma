@@ -359,11 +359,7 @@ impl Scrollbar {
                 thumb_length_for(
                     track_length,
                     self.model.thumb_fraction,
-                    crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                        .scrollbar
-                        .authored_geometry()
-                        .min_thumb_length
-                        .unwrap_or_default(),
+                    crate::style::sdk_number("scrollbar", "min_thumb_length"),
                 )
             })
             .min(track_length)

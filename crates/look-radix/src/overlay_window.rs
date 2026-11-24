@@ -36,25 +36,3 @@ mod tests {
         assert_eq!((small.padding, small.min_width, small.estimated_height), (8.0, 280.0, 180.0));
     }
 }
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_overlay_window_stylesheet() -> xgpui_luma::theme::stylesheet::OverlayWindowStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    OverlayWindowStylesheet {
-        geometry: OverlayWindowGeometryStylesheet { backdrop_opacity: Some(0.42), ..Default::default() },
-        sizes: [("sm", 280.0, 360.0, 180.0), ("md", 360.0, 440.0, 220.0), ("lg", 440.0, 520.0, 260.0)]
-            .into_iter()
-            .map(|(key, min, max, height)| {
-                (
-                    key.into(),
-                    OverlayWindowGeometryStylesheet {
-                        min_width: Some(min),
-                        max_width: Some(max),
-                        estimated_height: Some(height),
-                        ..Default::default()
-                    },
-                )
-            })
-            .collect(),
-    }
-}

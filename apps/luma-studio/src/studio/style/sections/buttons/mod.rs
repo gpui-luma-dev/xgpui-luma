@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use gpui::{AnyElement, App, Entity, IntoElement, SharedString, Window, div, prelude::*, px};
 use xgpui_luma::controls::button_family::ButtonFamilyRole;
-use xgpui_luma::controls::button::{ButtonRenderModel, ButtonTemplate, default_button_template};
+use xgpui_luma::controls::button::ButtonRenderModel;
 use xgpui_luma::controls::tabs::Tabs;
 use xgpui_luma::theme::InteractionState;
 use xgpui_luma_look_shadcn::{ShadcnButtonStyle, ShadcnLook, ShadcnShadow};
 
 use crate::studio::style::shared::button_matrix::{
-    BUTTON_STYLE_VARIANTS, BUTTON_TABLE_STATE_COLUMN_WIDTH, SIZE_PREVIEW_STYLE, button_look_for_style,
-    render_button_size_radius_matrix, render_icon_button_state_header_cell, shadcn_style_id,
+    BUTTON_STYLE_VARIANTS, BUTTON_TABLE_STATE_COLUMN_WIDTH, SIZE_PREVIEW_STYLE, render_button_size_radius_matrix,
+    render_icon_button_state_header_cell, shadcn_style_id,
 };
 use crate::studio::style::shared::samples::{ButtonStateSample, ButtonTemplateVariant};
 use crate::studio::style::shared::shell::section_shell_with_width;
@@ -22,7 +22,6 @@ pub(crate) fn render_button_template_matrix_section(
     cx: &mut App,
 ) -> AnyElement {
     let chrome = look.chrome();
-    let template: Arc<dyn ButtonTemplate<()>> = default_button_template();
     let samples = [
         ButtonStateSample { id: "default", header: "default", state: InteractionState::default() },
         ButtonStateSample {
@@ -59,7 +58,6 @@ pub(crate) fn render_button_template_matrix_section(
         chrome.panel_background,
         render_button_preview_tabbed_content(
             look.as_ref(),
-            &template,
             &samples,
             preview_tabs,
             active_tab,
@@ -72,7 +70,6 @@ pub(crate) fn render_button_template_matrix_section(
 
 fn render_button_preview_tabbed_content(
     look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
     samples: &[ButtonStateSample],
     preview_tabs: Entity<Tabs>,
     active_tab: SharedString,
@@ -81,11 +78,11 @@ fn render_button_preview_tabbed_content(
     cx: &mut App,
 ) -> AnyElement {
     let body = if active_tab.as_ref() == "sizes" {
-        render_button_size_matrix(look, template, window, cx)
+        render_button_size_matrix(look, window, cx)
     } else if active_tab.as_ref() == "shadows" {
-        render_button_shadow_matrix(look, template, window, cx)
+        render_button_shadow_matrix(look, window, cx)
     } else {
-        render_button_template_matrix(look, template, samples, window, cx)
+        render_button_template_matrix(look, samples, window, cx)
     };
 
     div()
@@ -100,7 +97,6 @@ fn render_button_preview_tabbed_content(
 
 fn render_button_template_matrix(
     look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
     samples: &[ButtonStateSample],
     window: &mut Window,
     cx: &mut App,
@@ -118,28 +114,18 @@ fn render_button_template_matrix(
             description: SharedString::from(row.description),
             cells: samples
                 .iter()
-                .map(|sample| render_button_state_sample(template, look, row.style, variant, sample, window, cx))
+                .map(|sample| render_button_state_sample(look, row.style, variant, sample, window, cx))
                 .collect(),
         }
     }))
     .build()
 }
 
-fn render_button_size_matrix(
-    look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
-    window: &mut Window,
-    cx: &mut App,
-) -> AnyElement {
-    render_button_size_radius_matrix(look, template, SIZE_PREVIEW_STYLE, false, window, cx)
+fn render_button_size_matrix(look: &ShadcnLook, window: &mut Window, cx: &mut App) -> AnyElement {
+    render_button_size_radius_matrix(look, SIZE_PREVIEW_STYLE, false, window, cx)
 }
 
-fn render_button_shadow_matrix(
-    look: &ShadcnLook,
-    template: &Arc<dyn ButtonTemplate<()>>,
-    window: &mut Window,
-    cx: &mut App,
-) -> AnyElement {
+fn render_button_shadow_matrix(look: &ShadcnLook, window: &mut Window, cx: &mut App) -> AnyElement {
     const SHADOWS: [(ShadcnShadow, &str); 9] = [
         (ShadcnShadow::None, "none"),
         (ShadcnShadow::TwoXs, "2xs"),
@@ -153,13 +139,14 @@ fn render_button_shadow_matrix(
     ];
 
     let chrome = look.chrome();
+    let shadow_template = look.button_family_template::<()>(ShadcnButtonStyle::Primary, None);
     div()
         .w_full()
         .flex()
         .flex_col()
         .gap(px(12.0))
         .children(SHADOWS.into_iter().map(|(shadow, label)| {
-            let source = button_look_for_style(Arc::new(look.clone()), ShadcnButtonStyle::Primary);
+            let primary = look.clone();
             let shadows = look.shadow(shadow);
             let model = ButtonRenderModel {
                 id: SharedString::from(format!("luma-studio-button-shadow-{label}")),
@@ -171,8 +158,10 @@ fn render_button_shadow_matrix(
                 radius_override: std::cell::Cell::new(None),
                 elevation: true,
                 compact: false,
+                // The shadow token under test replaces the primary face's own shadow.
                 look: Some(Arc::new(move |model| {
-                    let mut resolved = source(model);
+                    let mut resolved =
+                        primary.button_face(ShadcnButtonStyle::Primary, model.role, primary.size(), None, model.state);
                     resolved.shadow = (!shadows.is_empty()).then(|| shadows.clone());
                     resolved
                 })),
@@ -185,14 +174,13 @@ fn render_button_shadow_matrix(
                 .items_center()
                 .gap(px(24.0))
                 .child(div().w(px(100.0)).text_sm().text_color(chrome.muted_text).child(format!("shadow-{label}")))
-                .child(template.render(&model, window, cx))
+                .child(shadow_template.render(&model, window, cx))
                 .into_any_element()
         }))
         .into_any_element()
 }
 
 pub(crate) fn render_button_state_sample(
-    template: &Arc<dyn ButtonTemplate<()>>,
     look: &ShadcnLook,
     style: ShadcnButtonStyle,
     variant: ButtonTemplateVariant,
@@ -206,7 +194,7 @@ pub(crate) fn render_button_state_sample(
         variant.id(),
         sample.id
     ));
-    let look = button_look_for_style(Arc::new(look.clone()), style);
+    let template = look.button_family_template::<()>(style, None);
     let model = ButtonRenderModel {
         id,
         data: (),
@@ -221,7 +209,6 @@ pub(crate) fn render_button_state_sample(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: Some(look),
         ..Default::default()
     };
 

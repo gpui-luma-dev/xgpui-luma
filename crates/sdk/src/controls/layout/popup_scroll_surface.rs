@@ -24,12 +24,8 @@ impl PopupScrollSurface {
     ) -> Self {
         Self {
             container: ScrollContainer::new(id, scrollbar_template, cx),
-            viewport_height: px(crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .shared_geometry()
-                .popup_viewport_height),
-            row_height: px(crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .shared_geometry()
-                .popup_row_height),
+            viewport_height: px(crate::theme::stylesheet::SharedGeometry::sdk().popup_viewport_height),
+            row_height: px(crate::theme::stylesheet::SharedGeometry::sdk().popup_row_height),
             content_top_padding: px(0.0),
             item_count: 0,
             scrolling_enabled: true,

@@ -68,20 +68,6 @@ pub(super) fn tabbed(
 ) -> AnyElement {
     let [fg, muted, border] = colors;
     let active = tabs.read(cx).active_id().cloned().unwrap_or_else(|| "template-preview".into());
-    // Preview-only typography experiment; keep control geometry and other sections intact.
-    let compact_look = (kind == Kind::Autocomplete && active.as_ref() == "template-preview").then(|| {
-        let fork = look.fork();
-        let mut sheet = fork.common_stylesheet();
-        let field = sheet.textfield.sizes.get_or_default("2");
-        field.font_size = Some(12.0);
-        field.line_height = Some(16.0);
-        let items = sheet.selector_list.sizes.get_or_default("2");
-        items.font_size = Some(12.0);
-        items.line_height = Some(16.0);
-        fork.set_common_stylesheet(sheet);
-        Arc::new(fork)
-    });
-    let look = compact_look.as_ref().unwrap_or(look);
     let rows = variants(kind);
     let samples = samples(kind);
     let mut grid = fixed_grid(
@@ -270,7 +256,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
             .render(
                 autocomplete::AutocompleteRenderModel {
                     icons: sheet.icons.clone(),
-                    geometry: sheet.autocomplete.resolve_geometry_for(size.key(), Default::default()),
+                    geometry: xgpui_luma::theme::stylesheet::AutocompleteGeometry::sdk(),
                     id: id.clone(),
                     textfield: super::textfields::selection_field(
                         look,
@@ -301,7 +287,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
         Kind::ComboBox => combobox::default_combobox_template().render(
             combobox::ComboBoxRenderModel {
                 icons: sheet.icons.clone(),
-                geometry: sheet.combobox.resolve_geometry_for(size.key(), Default::default()),
+                geometry: xgpui_luma::theme::stylesheet::ComboBoxGeometry::sdk(),
                 textfield: super::textfields::selection_field(
                     look,
                     &id,
@@ -351,7 +337,7 @@ fn sample(look: &Look, preview: Preview, window: &mut Window, cx: &mut App) -> A
                 .render(
                     search_selector::SearchSelectorRenderModel {
                         icons: sheet.icons.clone(),
-                        geometry: sheet.search_selector.resolve_geometry_for(size.key(), Default::default()),
+                        geometry: xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk(),
                         id: id.clone(),
                         trigger_label: "Option one".into(),
                         trigger_label_is_placeholder: false,
@@ -446,9 +432,8 @@ fn expanded_panel(
     if compact_selection(kind) {
         panel_look.min_width = preview_width(kind);
     }
-    let sheet = look.common_stylesheet();
     if kind == Kind::SearchSelector {
-        let geometry = sheet.search_selector.resolve_geometry_for(size.key(), Default::default());
+        let geometry = xgpui_luma::theme::stylesheet::SearchSelectorGeometry::sdk();
         let list = search_selector::default_search_selector_items_template().render(
             &search_selector::SearchSelectorItemsRenderModel {
                 trailing_icon_size: geometry.trailing_icon_size,

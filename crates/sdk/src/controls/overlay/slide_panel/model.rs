@@ -87,7 +87,7 @@ pub struct SlidePanelState {
     size_config: SlidePanelSizeConfig,
     resize_drag: Option<SlidePanelResizeSession>,
     resize_handle_hovered: bool,
-    geometry: crate::theme::stylesheet::SlidePanelGeometryStylesheet,
+    geometry: super::SlidePanelGeometry,
     handle_metrics: crate::controls::resizable_panels::ResizeHandleMetrics,
 }
 
@@ -131,26 +131,26 @@ impl SlidePanelState {
             size_config,
             resize_drag: None,
             resize_handle_hovered: false,
-            geometry: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .slide_panel
-                .authored_geometry_for("overlay"),
+            geometry: super::SlidePanelGeometry::sdk(),
             handle_metrics: crate::controls::resizable_panels::ResizeHandleMetrics::default(),
         }
     }
 
-    /// Capture visual defaults independently of motion. Explicit size config still wins.
-    pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
-        let baseline = crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .slide_panel
-            .authored_geometry_for("overlay");
-        self.geometry = stylesheet.slide_panel.authored_geometry_for("overlay").with_fallback(&baseline);
-        self.handle_metrics = crate::controls::resizable_panels::ResizeHandleMetrics::from_stylesheet(stylesheet);
+    /// The drawer's size (a look's `slide_panel.lss`); the SDK's by default. Explicit size config still wins.
+    pub fn with_geometry(mut self, geometry: super::SlidePanelGeometry) -> Self {
+        self.geometry = geometry;
         self
     }
 
-    /// Captured visual sizing; changes to the original stylesheet do not affect this state.
-    pub fn geometry(&self) -> &crate::theme::stylesheet::SlidePanelGeometryStylesheet {
-        &self.geometry
+    /// The resize edge's handle size (a look's resizable panels handle); the SDK's by default.
+    pub fn handle_metrics(mut self, metrics: crate::controls::resizable_panels::ResizeHandleMetrics) -> Self {
+        self.handle_metrics = metrics;
+        self
+    }
+
+    /// The drawer's size.
+    pub fn geometry(&self) -> super::SlidePanelGeometry {
+        self.geometry
     }
 
     pub fn resize_handle_metrics(&self) -> crate::controls::resizable_panels::ResizeHandleMetrics {

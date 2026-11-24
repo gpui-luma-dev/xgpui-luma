@@ -5,6 +5,33 @@
 sidebar {
   /// Row icon size.
   item_icon_size: length = exact(16)
+  /// Shell layout (`SidebarGeometry`): widths expanded, as an icon rail and on mobile; the host row height;
+  /// the rail's hit width and popover offset; container and region gaps; header, footer, title and section
+  /// spacing; the disclosure icon; the rail submenu's offset, edge margin, branch indicator and overhang;
+  /// the engine's row, section and padding sizes; and the subtitle and disabled opacities.
+  width_expanded: length = exact(256)
+  width_icon_rail: length = exact(48)
+  width_mobile: length = exact(288)
+  item_height: length = exact(32)
+  rail_hit_width: length = exact(6)
+  popover_offset: length = exact(8)
+  container_gap: length = exact(8)
+  region_gap: length = exact(4)
+  header_padding_bottom: length = exact(8)
+  footer_padding_top: length = exact(8)
+  title_gap: length = exact(2)
+  title_padding_bottom: length = exact(4)
+  section_padding_top: length = exact(8)
+  disclosure_icon_size: length = exact(14)
+  rail_submenu_offset_x: length = exact(12)
+  window_margin: length = exact(8)
+  rail_branch_indicator_size: length = exact(18)
+  rail_branch_overhang: length = exact(10)
+  engine_item_height: length = exact(30)
+  engine_section_height: length = exact(20)
+  engine_item_padding_x: length = exact(8)
+  subtitle_opacity: number = 0.72
+  disabled_opacity: number = 0.56
 
   /// A section label.
   part section {

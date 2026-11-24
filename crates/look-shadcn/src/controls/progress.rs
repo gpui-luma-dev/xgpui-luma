@@ -1,11 +1,5 @@
 //! Progress — accent track + accent-foreground fill.
 
-use crate::stylesheet::config::EnabledColorRule;
-use crate::stylesheet::config::control_size_key;
-use crate::stylesheet::config::find_enabled_color_rule;
-use serde::Deserialize;
-use std::collections::HashMap;
-
 use xgpui_luma::controls::progress::ProgressLook;
 use crate::size::ShadcnSize;
 
@@ -93,82 +87,6 @@ mod tests {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Default, PartialEq)]
-pub struct ProgressStylesheet {
-    #[serde(default)]
-    pub metrics: HashMap<String, ProgressMetricsRule>,
-    #[serde(default)]
-    pub color_rules: Vec<ProgressColorRule>,
-}
-
-impl ProgressStylesheet {
-    /// Native bundled progress colors.
-    pub fn native_default() -> Self {
-        Self {
-            color_rules: [(true, "accent", "accent-foreground"), (false, "muted-foreground", "muted-foreground")]
-                .into_iter()
-                .map(|(enabled, track, progress)| ProgressColorRule {
-                    enabled: Some(enabled),
-                    track_color: track.into(),
-                    progress_color: progress.into(),
-                })
-                .collect(),
-            ..Default::default()
-        }
-    }
-
-    pub fn metrics_for_size(&self, size: ShadcnSize) -> Option<&ProgressMetricsRule> {
-        self.metrics.get(control_size_key(size))
-    }
-
-    pub fn find_color_rule(&self, enabled: bool) -> Option<&ProgressColorRule> {
-        find_enabled_color_rule(&self.color_rules, enabled)
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
-pub struct ProgressMetricsRule {
-    pub size: f32,
-    pub stroke_width: f32,
-    #[serde(default = "default_progress_track_height")]
-    pub track_height: f32,
-    #[serde(default = "default_progress_thumb_size")]
-    pub thumb_size: f32,
-}
-
-fn default_progress_track_height() -> f32 {
-    6.0
-}
-
-fn default_progress_thumb_size() -> f32 {
-    16.0
-}
-
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub struct ProgressColorRule {
-    pub enabled: Option<bool>,
-    pub track_color: String,
-    pub progress_color: String,
-}
-
-impl EnabledColorRule for ProgressColorRule {
-    fn enabled(&self) -> Option<bool> {
-        self.enabled
-    }
-}
-
-/// Native common geometry owned by this control.
-pub(crate) fn native_progress_stylesheet() -> xgpui_luma::theme::stylesheet::ProgressStylesheet {
-    use xgpui_luma::theme::stylesheet::*;
-    ProgressStylesheet {
-        sizes: ["sm", "md", "lg"]
-            .into_iter()
-            .map(|key| (key.into(), ProgressGeometryStylesheet::default()))
-            .collect(),
-        ..Default::default()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct ProgressMetricTable {
     pub size: crate::ResolvedMetric,
@@ -194,28 +112,11 @@ pub fn resolve_progress_metrics_for_size(
 
     let look = crate::controls::progress::progress_look(mode, true, size);
 
-    let mut table = ProgressMetricTable {
+    // What the `.lss` resolves is what's drawn; `[common.progress]` is no longer a stylesheet section.
+    ProgressMetricTable {
         size: derived_metric("progress ring diameter", look.size),
         stroke_width: derived_metric("progress stroke width", look.stroke_width),
         track_height: derived_metric("progress track height", look.track_height),
         thumb_size: derived_metric("progress thumb size", look.thumb_size),
-    };
-    let geometry = mode.stylesheet().common.progress.inspect_geometry_for(
-        crate::tables::metrics::helpers::control_size_key(size),
-        xgpui_luma::theme::stylesheet::ProgressGeometry {
-            size: table.size.value_px,
-            stroke_width: table.stroke_width.value_px,
-            track_height: table.track_height.value_px,
-            thumb_size: table.thumb_size.value_px,
-            ..Default::default()
-        },
-    );
-    table.size = crate::tables::metrics::helpers::prefer_shared_metric(geometry.size, table.size);
-    table.stroke_width =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.stroke_width, table.stroke_width);
-    table.track_height =
-        crate::tables::metrics::helpers::prefer_shared_metric(geometry.track_height, table.track_height);
-    table.thumb_size = crate::tables::metrics::helpers::prefer_shared_metric(geometry.thumb_size, table.thumb_size);
-
-    table
+    }
 }

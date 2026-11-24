@@ -34,11 +34,10 @@ pub trait SidebarTheme: Send + Sync {
         crate::theme::stylesheet::CommonStylesheet::sdk_default().font_features.resolve("sidebar_section")
     }
 
-    /// Shared shell and row decoration used by the stock template.
+    /// Shared shell and row decoration used by the stock template: the SDK's `sidebar.lss` unless a theme
+    /// reads its own.
     fn geometry(&self) -> crate::theme::stylesheet::SidebarGeometry {
-        crate::theme::stylesheet::CommonStylesheet::sdk_default()
-            .sidebar
-            .resolve_geometry(Default::default())
+        crate::theme::stylesheet::SidebarGeometry::sdk()
     }
     /// Appearance of native drag previews and insertion feedback.
     fn resolve_drag(&self) -> crate::infra::drag_drop::DragDropLook {

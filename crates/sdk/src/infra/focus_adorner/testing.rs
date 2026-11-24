@@ -283,7 +283,7 @@ pub fn assert_search_selector_layout(theme: std::sync::Arc<dyn crate::controls::
                 );
                 let model = SearchSelectorRenderModel {
                     icons: Default::default(),
-                    geometry: SearchSelectorStylesheet::native_default().resolve_geometry(Default::default()),
+                    geometry: crate::theme::stylesheet::SearchSelectorGeometry::sdk(),
                     id: "stable-search-selector".into(),
                     trigger_label: "Choose a value".into(),
                     trigger_label_is_placeholder: !selected,

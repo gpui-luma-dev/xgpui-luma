@@ -1,24 +1,33 @@
 //! Typed common dimensions for remaining control families.
 
-// Adapt an existing resolved theme value without duplicating its token-derived
-// fallback construction. Only field mappings vary between control families.
-macro_rules! apply_common_geometry {
-    ($sheet:expr, key = $key:expr, $fallback:ident, $look:ident, [$($field:ident => $($target:ident).+),+ $(,)?] $(, defaults = $defaults:expr)?) => {{
-        let geometry = $sheet.resolve_geometry_for($key, $crate::theme::stylesheet::$fallback {
-            $($field: $look.$($target).+,)+
-            $(..$defaults)?
-        });
-        $($look.$($target).+ = geometry.$field;)+
-    }};
-    ($sheet:expr, $fallback:ident, $look:ident, [$($field:ident => $($target:ident).+),+ $(,)?] $(, defaults = $defaults:expr)?) => {{
-        let geometry = $sheet.resolve_geometry($crate::theme::stylesheet::$fallback {
-            $($field: $look.$($target).+,)+
-            $(..$defaults)?
-        });
-        $($look.$($target).+ = geometry.$field;)+
-    }};
+/// A control's geometry read from its `.lss`: one `f32` per property of the same name on the control.
+macro_rules! lss_geometry {
+    ($(#[$meta:meta])* $name:ident, $control:literal, [$($field:ident),+ $(,)?]) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, Debug, Default, PartialEq)]
+        pub struct $name {
+            $(pub $field: f32,)+
+        }
+
+        impl $name {
+            #[doc = concat!("The geometry `binding` (a `", $control, "` control) resolves to. A property the file")]
+            /// lacks reads as zero.
+            pub fn from_binding(binding: &$crate::style::StyleBinding) -> Self {
+                let resolved = binding.resolve(&[], 1.0);
+                let root = resolved.root();
+                let number = |name: &str| root.value(name).and_then(xgpui_luma_style::Value::as_number).unwrap_or(0.0);
+                Self { $($field: number(stringify!($field)),)+ }
+            }
+
+            /// The SDK's own geometry, read once from its `.lss`.
+            pub fn sdk() -> Self {
+                static SDK: std::sync::OnceLock<$name> = std::sync::OnceLock::new();
+                *SDK.get_or_init(|| Self::from_binding(&$crate::style::StyleBinding::sdk($control)))
+            }
+        }
+    };
 }
-pub(crate) use apply_common_geometry;
+pub(crate) use lss_geometry;
 
 /// Selects one look-defined size key so SDK controls receive plain pixel geometry.
 pub trait SelectSizeKey: Sized + Clone {
@@ -174,108 +183,20 @@ macro_rules! geometry_family_impl {
         }
     };
 }
-pub(crate) use {geometry_family, geometry_family_impl};
+pub(crate) use geometry_family_impl;
 
-pub use crate::controls::collection::tree_view::theme::{
-    TreeViewStylesheet, TreeViewGeometryStylesheet, TreeViewGeometry, ResolvedTreeViewGeometry,
-};
-pub use crate::controls::navigation::accordion::theme::{
-    AccordionStylesheet, AccordionGeometryStylesheet, AccordionGeometry, ResolvedAccordionGeometry,
-};
-pub use crate::controls::layout::split_view::theme::{
-    SplitViewStylesheet, SplitViewGeometryStylesheet, SplitViewGeometry, ResolvedSplitViewGeometry,
-};
-pub use crate::controls::layout::dock_splitter::theme::{
-    DockSplitterStylesheet, DockSplitterGeometryStylesheet, DockSplitterGeometry, ResolvedDockSplitterGeometry,
-};
-pub use crate::controls::layout::resizable_panels::theme::{
-    ResizablePanelsStylesheet, ResizablePanelsGeometryStylesheet, ResizablePanelsGeometry,
-    ResolvedResizablePanelsGeometry,
-};
-pub use crate::controls::button::family::theme::{
-    ButtonStylesheet, ButtonGeometryStylesheet, ButtonGeometry, ResolvedButtonGeometry,
-};
-pub use crate::controls::text::textfield::theme::{
-    TextFieldStylesheet, TextFieldGeometryStylesheet, TextFieldGeometry, ResolvedTextFieldGeometry,
-};
-pub use crate::controls::text::textarea::theme::{
-    TextAreaStylesheet, TextAreaGeometryStylesheet, TextAreaGeometry, ResolvedTextAreaGeometry,
-};
-pub use crate::controls::range::progress::theme::{
-    ProgressStylesheet, ProgressGeometryStylesheet, ProgressGeometry, ResolvedProgressGeometry,
-};
-pub use crate::controls::overlay::floating_menu::theme::{
-    FloatingMenuStylesheet, FloatingMenuGeometryStylesheet, FloatingMenuGeometry, ResolvedFloatingMenuGeometry,
-};
-pub use crate::controls::selection::selection_panel::theme::{
-    SelectionPanelStylesheet, SelectionPanelGeometryStylesheet, SelectionPanelGeometry, ResolvedSelectionPanelGeometry,
-};
-pub use crate::controls::overlay::tooltip::theme::{
-    TooltipStylesheet, TooltipGeometryStylesheet, TooltipGeometry, ResolvedTooltipGeometry,
-};
-pub use crate::controls::choice::toolbar::theme::{
-    ToolbarStylesheet, ToolbarGeometryStylesheet, ToolbarGeometry, ResolvedToolbarGeometry,
-};
-pub use crate::controls::button::family::theme::{
-    SegmentedStylesheet, SegmentedGeometryStylesheet, SegmentedGeometry, ResolvedSegmentedGeometry,
-};
-pub use crate::controls::overlay::overlay_window::theme::{
-    OverlayWindowStylesheet, OverlayWindowGeometryStylesheet, OverlayWindowGeometry, ResolvedOverlayWindowGeometry,
-};
-pub use crate::controls::overlay::popup_menu::theme::{
-    PopupMenuStylesheet, PopupMenuGeometryStylesheet, PopupMenuGeometry, ResolvedPopupMenuGeometry,
-};
-pub use crate::controls::overlay::context_menu::theme::{
-    ContextMenuStylesheet, ContextMenuGeometryStylesheet, ContextMenuGeometry, ResolvedContextMenuGeometry,
-};
-pub use crate::controls::choice::toggle::{
-    ToggleStylesheet, ToggleGeometryStylesheet, ToggleGeometry, ResolvedToggleGeometry,
-};
-pub use crate::controls::layout::scrollbar::theme::{
-    ScrollbarStylesheet, ScrollbarGeometryStylesheet, ScrollbarGeometry, ResolvedScrollbarGeometry,
-};
-pub use crate::controls::navigation::stepper::theme::{
-    StepperStylesheet, StepperGeometryStylesheet, StepperGeometry, ResolvedStepperGeometry,
-};
-pub use crate::controls::navigation::sidebar::theme::{
-    SidebarStylesheet, SidebarGeometryStylesheet, SidebarGeometry, ResolvedSidebarGeometry,
-};
-pub use crate::controls::choice::control_group::theme::{
-    ControlGroupStylesheet, ControlGroupGeometryStylesheet, ControlGroupGeometry, ResolvedControlGroupGeometry,
-};
-pub use crate::controls::collection::table::theme::{
-    TableStylesheet, TableGeometryStylesheet, TableGeometry, ResolvedTableGeometry,
-};
-pub use crate::controls::navigation::pager::theme::{
-    PagerStylesheet, PagerGeometryStylesheet, PagerGeometry, ResolvedPagerGeometry,
-};
-pub use crate::controls::selection::selector::theme::{
-    SelectorStylesheet, SelectorGeometryStylesheet, SelectorGeometry, ResolvedSelectorGeometry,
-};
-pub use crate::controls::selection::selector_list::{
-    SelectorListStylesheet, SelectorListGeometryStylesheet, SelectorListGeometry, ResolvedSelectorListGeometry,
-};
-pub use crate::controls::overlay::popover_button::panel::{
-    PopoverStylesheet, PopoverGeometryStylesheet, PopoverGeometry, ResolvedPopoverGeometry,
-};
-pub use crate::controls::overlay::slide_panel::{
-    SlidePanelStylesheet, SlidePanelGeometryStylesheet, SlidePanelGeometry, ResolvedSlidePanelGeometry,
-};
-pub use crate::controls::choice::radio_group::{
-    RadioGroupStylesheet, RadioGroupGeometryStylesheet, RadioGroupGeometry, ResolvedRadioGroupGeometry,
-};
-pub use crate::controls::choice::icon_group::{
-    IconGroupStylesheet, IconGroupGeometryStylesheet, IconGroupGeometry, ResolvedIconGroupGeometry,
-};
-pub use crate::controls::selection::autocomplete::theme::{
-    AutocompleteStylesheet, AutocompleteGeometryStylesheet, AutocompleteGeometry, ResolvedAutocompleteGeometry,
-};
-pub use crate::controls::selection::combobox::{
-    ComboBoxStylesheet, ComboBoxGeometryStylesheet, ComboBoxGeometry, ResolvedComboBoxGeometry,
-};
-pub use crate::controls::selection::search_selector::{
-    SearchSelectorStylesheet, SearchSelectorGeometryStylesheet, SearchSelectorGeometry, ResolvedSearchSelectorGeometry,
-};
+pub use crate::controls::layout::split_view::theme::SplitViewGeometry;
+pub use crate::controls::layout::dock_splitter::theme::DockSplitterGeometry;
+pub use crate::controls::range::progress::theme::ProgressGeometry;
+pub use crate::controls::navigation::stepper::theme::StepperGeometry;
+pub use crate::controls::navigation::sidebar::theme::{SidebarGeometry};
+pub use crate::controls::collection::table::theme::TableGeometry;
+pub use crate::controls::overlay::popover_button::panel::{PopoverGeometry};
+pub use crate::controls::overlay::slide_panel::SlidePanelGeometry;
+pub use crate::controls::choice::radio_group::RadioGroupGeometry;
+pub use crate::controls::selection::autocomplete::theme::{AutocompleteGeometry};
+pub use crate::controls::selection::combobox::{ComboBoxGeometry};
+pub use crate::controls::selection::search_selector::{SearchSelectorGeometry};
 
 geometry_family!(
     ShellStylesheet,
@@ -293,125 +214,103 @@ geometry_family!(
         fullscreen_left_padding
     ]
 );
-geometry_family!(
-    SharedStylesheet,
-    SharedGeometryStylesheet,
-    SharedGeometry,
-    ResolvedSharedGeometry,
-    "shared",
-    [
-        popup_viewport_height,
-        popup_row_height,
-        menu_row_height,
-        menu_row_gap,
-        compact_textfield_height,
-        compact_textfield_padding_y,
-        textarea_resize_icon_size,
-        textarea_resize_inset,
-        textarea_resize_hit_size,
-        textarea_scrollbar_width,
-        textarea_scrollbar_inset,
-        scrollbar_width,
-        composition_underline_width,
-        label_baseline,
-        drag_offset,
-        drag_preview_width,
-        drag_padding_x,
-        drag_padding_y,
-        drag_border_width,
-        drag_marker_width,
-        split_sidebar_width,
-        split_sidebar_min_width,
-        split_sidebar_max_width,
-        selection_scrollbar_width,
-        wide_middle_gap,
-        wide_side_min_width,
-        wide_side_preferred_width,
-        wide_middle_min_width,
-        wide_middle_max_width,
-        form_field_gap,
-        page_size_trigger_width,
-        popup_icon_size
-    ],
-    unit[textarea_resize_opacity]
+macro_rules! shared_geometry {
+    ($($field:ident),+ $(,)?) => {
+        /// Dimensions several controls share, from the theme's `geometry.*` tokens (`theme/tokens.lss`).
+        #[derive(Clone, Copy, Debug, Default, PartialEq)]
+        pub struct SharedGeometry {
+            $(pub $field: f32,)+
+        }
+
+        impl SharedGeometry {
+            /// The field names, each a `geometry.<name>` token.
+            pub const FIELDS: &'static [&'static str] = &[$(stringify!($field)),+];
+
+            /// `theme`'s `geometry.*` tokens. A missing token reads as zero.
+            pub fn from_theme(theme: &xgpui_luma_style::Theme) -> Self {
+                let number = |name: &str| {
+                    theme
+                        .token_with(&format!("geometry.{name}"), &[])
+                        .ok()
+                        .and_then(|value| value.as_number())
+                        .unwrap_or(0.0)
+                };
+                Self { $($field: number(stringify!($field)),)+ }
+            }
+        }
+    };
+}
+shared_geometry!(
+    popup_viewport_height,
+    popup_row_height,
+    menu_row_height,
+    menu_row_gap,
+    compact_textfield_height,
+    compact_textfield_padding_y,
+    textarea_resize_icon_size,
+    textarea_resize_inset,
+    textarea_resize_hit_size,
+    textarea_scrollbar_width,
+    textarea_scrollbar_inset,
+    scrollbar_width,
+    composition_underline_width,
+    label_baseline,
+    drag_offset,
+    drag_preview_width,
+    drag_padding_x,
+    drag_padding_y,
+    drag_border_width,
+    drag_marker_width,
+    split_sidebar_width,
+    split_sidebar_min_width,
+    split_sidebar_max_width,
+    selection_scrollbar_width,
+    wide_middle_gap,
+    wide_side_min_width,
+    wide_side_preferred_width,
+    wide_middle_min_width,
+    wide_middle_max_width,
+    form_field_gap,
+    page_size_trigger_width,
+    popup_icon_size,
+    textarea_resize_opacity
 );
-geometry_family!(
-    AvatarStylesheet,
-    AvatarGeometryStylesheet,
-    AvatarGeometry,
-    ResolvedAvatarGeometry,
-    "avatar",
-    [diameter, icon_size, font_size, two_letter_font_size]
-);
-geometry_family!(
-    BadgeStylesheet,
-    BadgeGeometryStylesheet,
-    BadgeGeometry,
-    ResolvedBadgeGeometry,
-    "badge",
-    [padding_x, padding_y, font_size, line_height, min_height, gap, icon_size]
-);
-geometry_family!(
-    CardStylesheet,
-    CardGeometryStylesheet,
-    CardGeometry,
-    ResolvedCardGeometry,
-    "card",
-    [padding, section_gap, header_gap, body_gap]
-);
-geometry_family!(
-    CalloutStylesheet,
-    CalloutGeometryStylesheet,
-    CalloutGeometry,
-    ResolvedCalloutGeometry,
-    "callout",
-    [padding, gap, icon_size, font_size]
-);
+
+impl SharedGeometry {
+    /// The SDK's own shared dimensions, read once from its `.lss` tokens.
+    pub fn sdk() -> Self {
+        static SDK: std::sync::OnceLock<SharedGeometry> = std::sync::OnceLock::new();
+        *SDK.get_or_init(|| Self::from_theme(&crate::style::default_theme()))
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every shared dimension is a `geometry.*` token in the SDK's `.lss` (#287), and a look's tokens
+    /// override it.
+    #[test]
+    fn shared_geometry_reads_the_geometry_tokens() {
+        let theme = crate::style::default_theme();
+        for field in SharedGeometry::FIELDS {
+            let value = theme.token_with(&format!("geometry.{field}"), &[]).expect(field);
+            assert!(value.as_number().is_some(), "geometry.{field} is a number");
+        }
+        let sheet = theme
+            .stylesheet()
+            .with_source(
+                "look",
+                xgpui_luma_style::Source::new("look.lss", "tokens { geometry { popup_row_height = 31 } }"),
+            )
+            .expect("compiles");
+        let look = SharedGeometry::from_theme(&theme.with_stylesheet(&sheet).expect("binds"));
+        assert_eq!(look.popup_row_height, 31.0);
+        assert_eq!(look.menu_row_height, SharedGeometry::sdk().menu_row_height, "the rest are the SDK's");
+    }
     #[test]
     fn typed_family_contracts_validate_every_field_and_preserve_precedence() {
-        ScrollbarStylesheet::validate_contract();
         ShellStylesheet::validate_contract();
-        SharedStylesheet::validate_contract();
-        TreeViewStylesheet::validate_contract();
-        AccordionStylesheet::validate_contract();
-        DockSplitterStylesheet::validate_contract();
-        SplitViewStylesheet::validate_contract();
-        ResizablePanelsStylesheet::validate_contract();
-        StepperStylesheet::validate_contract();
-        SidebarStylesheet::validate_contract();
-        ControlGroupStylesheet::validate_contract();
-        RadioGroupStylesheet::validate_contract();
-        AutocompleteStylesheet::validate_contract();
-        ComboBoxStylesheet::validate_contract();
-        SearchSelectorStylesheet::validate_contract();
-        IconGroupStylesheet::validate_contract();
-        TableStylesheet::validate_contract();
-        PagerStylesheet::validate_contract();
-        PopoverStylesheet::validate_contract();
-        SlidePanelStylesheet::validate_contract();
-        SelectorStylesheet::validate_contract();
-        SelectorListStylesheet::validate_contract();
-        ButtonStylesheet::validate_contract();
-        ToggleStylesheet::validate_contract();
-        TextFieldStylesheet::validate_contract();
-        TextAreaStylesheet::validate_contract();
-        ProgressStylesheet::validate_contract();
-        FloatingMenuStylesheet::validate_contract();
-        TooltipStylesheet::validate_contract();
-        SelectionPanelStylesheet::validate_contract();
-        ToolbarStylesheet::validate_contract();
-        SegmentedStylesheet::validate_contract();
-        AvatarStylesheet::validate_contract();
-        BadgeStylesheet::validate_contract();
-        CardStylesheet::validate_contract();
-        CalloutStylesheet::validate_contract();
-        OverlayWindowStylesheet::validate_contract();
-        PopupMenuStylesheet::validate_contract();
-        ContextMenuStylesheet::validate_contract();
     }
 }
 
@@ -419,10 +318,3 @@ impl SelectSizeKey for crate::theme::stylesheet::RowLimitsStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::PaletteRecipes {}
 impl SelectSizeKey for crate::theme::stylesheet::FontFeaturesStylesheet {}
 impl SelectSizeKey for crate::theme::stylesheet::IconsStylesheet {}
-impl SelectSizeKey for crate::theme::stylesheet::TabsStylesheet {}
-
-impl SelectSizeKey for crate::theme::stylesheet::SliderStylesheet {
-    fn select_size_key(&self, key: &str) -> Self {
-        Self { geometry: self.authored_geometry_for(key), sizes: self.sizes.clone() }
-    }
-}

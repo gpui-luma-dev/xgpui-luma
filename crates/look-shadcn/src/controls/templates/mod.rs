@@ -3,7 +3,7 @@
 mod button;
 mod switch;
 mod checkbox;
-mod radio;
+pub(crate) mod radio;
 mod slider;
 mod dock_splitter;
 mod resizable_panels;

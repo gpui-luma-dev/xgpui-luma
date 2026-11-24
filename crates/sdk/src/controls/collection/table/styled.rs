@@ -4,7 +4,7 @@
 use gpui::Hsla;
 use xgpui_luma_style::{PartId, PartView, Value};
 
-use super::theme::{TableDragLook, TableLook, TableRowLook, TableRowPalette, TableTheme};
+use super::theme::{TableDragLook, TableGeometry, TableLook, TableRowLook, TableRowPalette, TableTheme};
 use crate::infra::drag_drop::DragDropLook;
 use crate::style::StyleBinding;
 use crate::theme::{InteractionState, ListRowScale, LumaTextStyle, MetricTokens};
@@ -27,7 +27,7 @@ fn typography(part: PartView<'_>) -> LumaTextStyle {
 
 /// The table's drag preview and insertion feedback: the shared drag preview's colors and radius with the
 /// table's drag `geometry` (offset, width, padding, strokes).
-pub fn table_drag_look(preview: DragDropLook, geometry: crate::theme::stylesheet::TableGeometry) -> TableDragLook {
+pub fn table_drag_look(preview: DragDropLook, geometry: TableGeometry) -> TableDragLook {
     TableDragLook {
         geometry,
         background: preview.background,
@@ -89,6 +89,20 @@ impl StyledTable {
         self.binding.resolve(&states, 1.0)
     }
 
+    /// The row drag preview's geometry.
+    pub fn drag_geometry(&self) -> TableGeometry {
+        let resolved = self.binding.resolve(&[], 1.0);
+        let root = resolved.root();
+        TableGeometry {
+            drag_offset: number(root, "drag_offset"),
+            drag_width: number(root, "drag_width"),
+            drag_padding_x: number(root, "drag_padding_x"),
+            drag_padding_y: number(root, "drag_padding_y"),
+            drag_border_width: number(root, "drag_border_width"),
+            drag_marker_width: number(root, "drag_marker_width"),
+        }
+    }
+
     /// A body row's colors, selected or not, in `state`.
     pub fn row(&self, selected: bool, state: InteractionState) -> TableRowPalette {
         let resolved = self.resolve_row(selected, state);
@@ -137,7 +151,7 @@ impl TableTheme for StyledTableTheme {
     fn resolve_drag(&self) -> TableDragLook {
         table_drag_look(
             crate::infra::drag_drop::styled_drag_drop_look(&StyleBinding::sdk("drag_preview")),
-            crate::theme::stylesheet::CommonStylesheet::sdk_default().table.resolve_geometry(Default::default()),
+            self.0.drag_geometry(),
         )
     }
 

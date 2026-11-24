@@ -398,12 +398,3 @@ crate::infra::attachments::delegate_tooltips!(ToggleControl, gpui::Role::Button)
 
 #[cfg(all(test, feature = "test-support"))]
 mod callback_tests;
-
-crate::theme::stylesheet::geometry::geometry_family!(
-    ToggleStylesheet,
-    ToggleGeometryStylesheet,
-    ToggleGeometry,
-    ResolvedToggleGeometry,
-    "toggle",
-    [height, padding_x, padding_y, gap, icon_size, font_size, line_height]
-);

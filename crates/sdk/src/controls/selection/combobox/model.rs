@@ -35,7 +35,7 @@ pub enum TypingPolicy {
 pub struct ComboBoxModel {
     pub(crate) icons: crate::theme::stylesheet::IconsStylesheet,
     pub(crate) motion: crate::motion::MotionConfig<ComboBoxMotion>,
-    pub(crate) stylesheet: crate::theme::stylesheet::ComboBoxStylesheet,
+    pub(crate) geometry: crate::theme::stylesheet::ComboBoxGeometry,
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
@@ -181,7 +181,7 @@ impl ComboBoxBuilder {
             model: ComboBoxModel {
                 motion: Default::default(),
                 icons: crate::theme::stylesheet::CommonStylesheet::sdk_default().icons.clone(),
-                stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().combobox.clone(),
+                geometry: crate::theme::stylesheet::ComboBoxGeometry::sdk(),
                 id: id.into(),
                 items: items.into_iter().collect(),
                 placeholder: SharedString::from("Select…"),
@@ -227,7 +227,6 @@ impl ComboBoxBuilder {
             self.model.max_visible_rows = maximum;
         }
         self.model.icons = stylesheet.with_sdk_defaults().icons;
-        self.model.stylesheet = stylesheet.with_sdk_defaults().combobox;
         self
     }
 
@@ -475,17 +474,15 @@ mod tests {
 mod stylesheet_tests {
     use super::*;
 
+    /// The affordance geometry is `combobox.lss`'s (#287).
     #[test]
-    fn combobox_affordances_capture_independent_geometry_and_zero() {
-        let sheet = crate::theme::stylesheet::CommonStylesheet::parse(
-            "[common.combobox.geometry]\naffordance_inset=0\naffordance_width=31\naffordance_icon_size=23",
-        )
-        .unwrap();
-        let builder = ComboBoxBuilder::new("geometry", []).stylesheet(&sheet);
-        let geometry = builder.model.stylesheet.resolve_geometry(Default::default());
+    fn combobox_affordances_read_combobox_lss() {
+        let builder = ComboBoxBuilder::new("geometry", []);
+        let sdk = |name| crate::style::sdk_number("combobox", name);
+        let geometry = builder.model.geometry;
         assert_eq!(
             (geometry.affordance_inset, geometry.affordance_width, geometry.affordance_icon_size),
-            (0.0, 31.0, 23.0)
+            (sdk("affordance_inset"), sdk("affordance_width"), sdk("affordance_icon_size"))
         );
     }
 }

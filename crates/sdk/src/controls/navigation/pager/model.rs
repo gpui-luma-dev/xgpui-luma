@@ -56,9 +56,7 @@ impl Default for PagerTemplateParameters {
                 SharedString::from(format!("Page {current_page} of {page_count}"))
             }),
             page_size_label: None,
-            page_size_trigger_width: crate::theme::stylesheet::CommonStylesheet::sdk_default()
-                .shared_geometry()
-                .page_size_trigger_width,
+            page_size_trigger_width: crate::theme::stylesheet::SharedGeometry::sdk().page_size_trigger_width,
             first_label: None,
             previous_label: None,
             next_label: None,
@@ -218,7 +216,7 @@ impl PagerRenderModel<'_> {
         if width.is_finite() && width > 0.0 {
             width
         } else {
-            crate::theme::stylesheet::CommonStylesheet::sdk_default().shared_geometry().page_size_trigger_width
+            crate::theme::stylesheet::SharedGeometry::sdk().page_size_trigger_width
         }
     }
 
@@ -382,7 +380,7 @@ impl PagerBuilder {
         }
         if !self.model.page_size_trigger_width_explicit {
             self.model.template_parameters.page_size_trigger_width =
-                stylesheet.shared_geometry().page_size_trigger_width;
+                crate::theme::stylesheet::SharedGeometry::sdk().page_size_trigger_width;
         }
         if !self.model.icons_explicit {
             self.model.icons = PagerIcons::from_stylesheet(stylesheet);

@@ -1,6 +1,6 @@
 // SDK popup-menu trigger. Layer: sdk. Read by the `.lss` popup-menu theme (styled.rs); the menu itself is
-// the floating menu. A trigger is a button: the base is the primary trigger, and secondary, outline and
-// ghost are variants (the trigger style picks one), so each look's own button styles apply.
+// the floating menu. A trigger is a button: the trigger style sets the secondary, outline or ghost
+// variant, which the looks define (#287); here every style draws the base trigger.
 
 /// The button that opens a popup menu.
 popup_menu extends button {
@@ -9,25 +9,4 @@ popup_menu extends button {
 
   part root { shadow = elevation.control }
 
-  variant outline {
-    part root {
-      background := palette.app.background
-      border     := palette.border.default
-      shadow     := elevation.control
-      :hover    { background = palette.state.hover.background }
-      :pressed  { background = palette.state.pressed.background }
-      :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
-    }
-  }
-
-  variant ghost {
-    part root {
-      background := transparent
-      border     := none
-      shadow     := []
-      :hover    { background = palette.state.hover.background }
-      :pressed  { background = palette.state.hover.background }
-      :disabled { background = palette.state.disabled.background  foreground = palette.state.disabled.foreground }
-    }
-  }
 }

@@ -114,3 +114,27 @@ fn token_with_selects_size_scoped_values() {
     let unknown = light.token_with("metrics.gap", &[("tone", "red")]).expect_err("unknown attribute");
     assert!(unknown.message.contains("tone"), "{unknown}");
 }
+
+/// `Theme::check` covers every declared mode, not just the one the theme is bound in: a problem only
+/// the dark values have is reported by a light-bound theme. (The looks' every-axis tests rely on this.)
+#[test]
+fn check_covers_every_declared_mode() {
+    let tokens = "tokens {
+  look {
+    gap = 4
+    mode dark { gap = native.missing }
+  }
+}";
+    let control = "chip {
+  gap = look.gap
+}";
+    let sheet = Stylesheet::builder(luma_config())
+        .layer("sdk", [Source::new("tokens.lss", tokens), Source::new("chip.lss", control)])
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"));
+    let light = Theme::bind(&sheet, Arc::new(SchemeProbe), "light").expect("binds");
+    let resolved = light.resolve(&StyleKey::new(ControlId::new("chip")));
+    assert_eq!(resolved.root().gap(), Some(4.0), "light itself is fine");
+    let problems = light.check(ControlId::new("chip"));
+    assert!(problems.to_string().contains("native.missing"), "the dark-only problem is reported: {problems}");
+}

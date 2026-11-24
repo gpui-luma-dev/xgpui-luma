@@ -15,7 +15,11 @@ tree_view {
   indentation_width: length = exact(16)
   /// Node icon and disclosure chevron sizes, and their color.
   icon_size: length = metrics.control.icon_size
-  chevron_size: length = metrics.control.icon_size - 2
+  /// How far the chevron is inset in the icon size.
+  chevron_inset: length = exact(2)
+  chevron_size: length = metrics.control.icon_size - chevron_inset
+  /// Row height as a share of the control height.
+  row_height_scale: number = 0.85
   icon_color: color = palette.navigation.muted_foreground
   /// An inset outline drawn without changing the row; transparent draws none.
   outline: color = transparent
@@ -24,7 +28,7 @@ tree_view {
   part root {
     background  = transparent
     foreground  = palette.app.foreground
-    height      = metrics.control.control_height * 0.85
+    height      = metrics.control.control_height * row_height_scale
     padding_x   = metrics.control.padding_x
     gap         = metrics.control.gap
     radius      = exact(metrics.control.radius)

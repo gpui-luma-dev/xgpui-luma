@@ -47,24 +47,21 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
             line_height_source = TypographySource::Derived { note: "font_size × label line-height ratio".into() };
         }
     }
-    let family = if toggle { "toggle" } else { "button" };
-    let (font, line, font_path, line_path) = common_typography_overrides(stylesheet, size, toggle);
-    if let Some(font) = font {
-        let ratio = if style.size > 0.0 {
-            style.line_height / style.size
-        } else {
-            1.0
-        };
-        style.size = font;
-        style.line_height = font * ratio;
-        font_size_source =
-            TypographySource::Constant { label: format!("stylesheet · common.{family}.{font_path}.font_size") };
-        line_height_source = TypographySource::Derived { note: "font_size × label line-height ratio".into() };
-    }
-    if let Some(line) = line {
-        style.line_height = line;
-        line_height_source =
-            TypographySource::Constant { label: format!("stylesheet · common.{family}.{line_path}.line_height") };
+    {
+        // The control's own label size, as it draws: its `.lss` (#287).
+        let control = if toggle { "toggle" } else { "button" };
+        let theme = mode.style_theme();
+        let key = super::metrics::helpers::control_size_key(size);
+        if let Ok(key) = theme.key_named(control, &[("size", key)], &[]) {
+            let resolved = theme.resolve(&key);
+            let number = |name| resolved.root().value(name).and_then(xgpui_luma::style::lss::Value::as_number);
+            if let (Some(font), Some(line)) = (number("font_size"), number("line_height")) {
+                style.size = font;
+                style.line_height = line;
+                font_size_source = TypographySource::Constant { label: format!("{control}.lss · font_size") };
+                line_height_source = TypographySource::Constant { label: format!("{control}.lss · line_height") };
+            }
+        }
     }
     ControlTypographyTable {
         style,
@@ -80,41 +77,33 @@ pub(crate) fn resolve_control_typography_with_stylesheet(
     }
 }
 
-pub(crate) fn common_typography_overrides(
-    stylesheet: &StylesheetConfig,
-    size: ShadcnSize,
-    toggle: bool,
-) -> (Option<f32>, Option<f32>, String, String) {
-    let key = super::metrics::helpers::control_size_key(size);
-    let (specific_font, specific_line, general_font, general_line) = if toggle {
-        let specific = stylesheet.common.toggle.sizes.get(key);
-        (
-            specific.and_then(|value| value.font_size),
-            specific.and_then(|value| value.line_height),
-            stylesheet.common.toggle.geometry.font_size,
-            stylesheet.common.toggle.geometry.line_height,
-        )
-    } else {
-        let specific = stylesheet.common.button.sizes.get(key);
-        (
-            specific.and_then(|value| value.font_size),
-            specific.and_then(|value| value.line_height),
-            stylesheet.common.button.geometry.font_size,
-            stylesheet.common.button.geometry.line_height,
-        )
-    };
-    (
-        specific_font.or(general_font),
-        specific_line.or(general_line),
-        if specific_font.is_some() {
-            format!("sizes.{key}")
-        } else {
-            "geometry".into()
-        },
-        if specific_line.is_some() {
-            format!("sizes.{key}")
-        } else {
-            "geometry".into()
-        },
-    )
+#[cfg(test)]
+mod tests {
+    use xgpui_luma::style::lss::Value;
+
+    use super::*;
+
+    /// The button's and toggle's label typography is what each draws: its `.lss` font size and line
+    /// height at each size (#287).
+    #[test]
+    fn control_typography_reads_the_control_lss() {
+        let look = crate::ShadcnLook::from_css_str(crate::FALLBACK_CSS).expect("catalog");
+        let mode = look.mode_tokens();
+        let theme = mode.style_theme();
+        for (control, toggle) in [("button", false), ("toggle", true)] {
+            for size in [ShadcnSize::Sm, ShadcnSize::Md, ShadcnSize::Lg] {
+                let key = theme
+                    .key_named(control, &[("size", super::super::metrics::helpers::control_size_key(size))], &[])
+                    .expect("key");
+                let resolved = theme.resolve(&key);
+                let number = |name| resolved.root().value(name).and_then(Value::as_number).expect(name);
+                let table = resolve_control_typography(&mode, size, toggle);
+                assert_eq!(
+                    (table.style.size, table.style.line_height),
+                    (number("font_size"), number("line_height")),
+                    "{control} {size:?}"
+                );
+            }
+        }
+    }
 }

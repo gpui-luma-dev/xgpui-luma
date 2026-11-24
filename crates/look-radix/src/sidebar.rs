@@ -20,7 +20,10 @@ impl SidebarTheme for SidebarThemeAdapter {
         self.look.common_stylesheet().font_features.resolve("sidebar_section")
     }
     fn geometry(&self) -> xgpui_luma::theme::stylesheet::SidebarGeometry {
-        self.look.common_stylesheet().sidebar.resolve_geometry(Default::default())
+        xgpui_luma::theme::stylesheet::SidebarGeometry::from_binding(&xgpui_luma::style::StyleBinding::new(
+            "sidebar",
+            crate::textfield::live_source(&self.look),
+        ))
     }
     fn foreground(&self) -> gpui::Hsla {
         self.styled.foreground()

@@ -14,15 +14,7 @@ struct ShadcnTableTheme {
 
 impl TableTheme for ShadcnTableTheme {
     fn resolve_drag(&self) -> xgpui_luma::controls::table::TableDragLook {
-        let geometry = self
-            .theme
-            .mode_tokens()
-            .stylesheet()
-            .common
-            .table
-            .with_sdk_defaults()
-            .resolve_geometry_for(self.theme.size().key(), Default::default());
-        table_drag_look(super::drag::drag_look(&self.theme), geometry)
+        table_drag_look(super::drag::drag_look(&self.theme), self.styled.drag_geometry())
     }
 
     fn resolve_look(&self, enabled: bool, focused: bool) -> xgpui_luma::controls::table::TableLook {

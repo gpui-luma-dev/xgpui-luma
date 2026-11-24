@@ -164,24 +164,6 @@ mod tests {
         assert_eq!(autocomplete_theme(&look).resolve().status_color, initial.status_color);
         assert_ne!(theme.resolve().status_color, initial.status_color);
     }
-
-    #[test]
-    fn per_size_panel_overrides_resolve_live() {
-        let look = Look::built_in();
-        let mut sheet = look.common_stylesheet();
-        for (size, height) in [("1", 25.0), ("2", 37.0), ("3", 49.0)] {
-            sheet.selector_list.sizes.get_or_default(size).item_height = Some(height);
-            sheet.selection_panel.sizes.get_or_default(size).border_width = Some(0.0);
-        }
-        look.set_common_stylesheet(sheet);
-        for (size, height) in
-            [(crate::RadixSize::One, 25.0), (crate::RadixSize::Two, 37.0), (crate::RadixSize::Three, 49.0)]
-        {
-            let panel = selection_panel_look(&look, size);
-            assert_eq!(panel.item_height, height);
-            assert_eq!(panel.border_width, 0.0);
-        }
-    }
 }
 
 #[cfg(all(test, feature = "test-support"))]

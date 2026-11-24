@@ -254,10 +254,15 @@ fn render_toggle_size_radius_cell(
         let label = SharedString::from("Toggle");
         Arc::new(move |_, _| div().child(label.clone()).into_any_element())
     };
-    let look_source = if icon_only {
-        toggle_icon_look_for_semantic(Arc::new(look.clone()), style, size, radius, selected)
+    // Icon toggles combine the toggle's colors with the icon button's square box, which no single
+    // template draws; text toggles are the `.lss` template with the size and radius preset.
+    let (template, look_source) = if icon_only {
+        (
+            template.clone(),
+            Some(toggle_icon_look_for_semantic(Arc::new(look.clone()), style, size, radius, selected)),
+        )
     } else {
-        toggle_look_for_semantic(Arc::new(look.clone()), style, size, radius, selected)
+        (look.with_size(size).button_family_template::<ToggleData>(style, Some(radius)), None)
     };
     let model = ButtonRenderModel {
         id,
@@ -269,7 +274,7 @@ fn render_toggle_size_radius_cell(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: Some(look_source),
+        look: look_source,
         ..Default::default()
     };
 
@@ -319,12 +324,13 @@ fn render_toggle_state_sample(
         radius_override: std::cell::Cell::new(None),
         elevation: style != ShadcnButtonStyle::ContentOnly,
         compact: false,
-        look: Some(if icon_only {
-            toggle_icon_look_for_style(Arc::new(look.clone()), style)
-        } else {
-            toggle_button_look_for_style(Arc::new(look.clone()), style)
-        }),
+        look: icon_only.then(|| toggle_icon_look_for_style(Arc::new(look.clone()), style)),
         ..Default::default()
+    };
+    let template = if icon_only {
+        template.clone()
+    } else {
+        look.button_family_template::<ToggleData>(style, None)
     };
 
     div()
@@ -355,40 +361,10 @@ fn toggle_icon_look_for_semantic(
     Arc::new(move |model| theme.icon_toggle_face(style, selected, size, Some(radius), model.state))
 }
 
-fn toggle_look_for_semantic(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-    size: ShadcnSize,
-    radius: ButtonRadiusPreset,
-    selected: bool,
-) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
-    Arc::new(move |model| {
-        theme.button_face(style, ButtonFamilyRole::Toggle { selected }, size, Some(radius), model.state)
-    })
-}
-
 fn button_preview_look(
     model: &ButtonContentContext<ToggleData>,
 ) -> Option<xgpui_luma::controls::button_family::ButtonFamilyLook> {
     Some(model.look.clone())
-}
-
-fn toggle_button_look_for_style(
-    theme: Arc<ShadcnLook>,
-    style: ShadcnButtonStyle,
-) -> xgpui_luma::controls::button::ButtonLookSource<ToggleData> {
-    Arc::new(move |model| {
-        let role = ButtonFamilyRole::Toggle { selected: model.data.selected };
-        match style {
-            ShadcnButtonStyle::Primary => theme.as_ref().resolve_primary_button(role, theme.size(), model.state),
-            ShadcnButtonStyle::Secondary => theme.as_ref().resolve_secondary_button(role, theme.size(), model.state),
-            ShadcnButtonStyle::Outline => theme.as_ref().resolve_outline_button(role, theme.size(), model.state),
-            ShadcnButtonStyle::Ghost => theme.as_ref().resolve_ghost_button(role, theme.size(), model.state),
-            ShadcnButtonStyle::ContentOnly => {
-                theme.as_ref().resolve_content_only_button(role, theme.size(), model.state)
-            }
-        }
-    })
 }
 
 pub(crate) fn round_icon_glyph(model: &ButtonContentContext<ToggleData>, selected: bool) -> AnyElement {

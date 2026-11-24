@@ -17,7 +17,7 @@ impl ListBoxTemplate for Template {
             marker_color: gpui::white(),
             marker_width: 3.0,
             surface_color: None,
-            preview: TooltipLook::compact(gpui::black(), gpui::white(), 3.0),
+            preview: crate::controls::tooltip::default_tooltip_theme().resolve(),
         }
     }
     fn motion_defaults(&self) -> ListBoxMotion {

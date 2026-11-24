@@ -3,42 +3,31 @@ use crate::{color::GamutMapping, theme::ThemeMode};
 
 #[test]
 fn sparse_sheet_prepares_a_complete_sdk_theme_and_preserves_zero() {
-    let sheet = CommonStylesheet::parse("[common.progress.geometry]\nstroke_width=0").unwrap();
+    let sheet = CommonStylesheet::parse("[common.shell.geometry]\nleft_padding=0").unwrap();
     let tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
-    assert_eq!(tokens.stylesheet.progress.geometry.size, Some(64.0));
-    assert_eq!(tokens.stylesheet.progress.geometry.stroke_width, Some(0.0));
-}
-
-#[test]
-fn opacity_fields_reject_values_outside_zero_to_one() {
-    for family in ["floating_menu", "overlay_window", "resizable_panels"] {
-        let field = if family == "overlay_window" {
-            "backdrop_opacity"
-        } else {
-            "disabled_opacity"
-        };
-        for value in ["-1", "1.1", "nan", "inf"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\n{field}={value}")).is_err());
-        }
-    }
+    let baseline = CommonStylesheet::sdk_default().shell.geometry.height;
+    assert!(baseline.is_some(), "the SDK baseline sets the shell height");
+    assert_eq!(tokens.stylesheet.shell.geometry.height, baseline, "unset fields come from the baseline");
+    assert_eq!(tokens.stylesheet.shell.geometry.left_padding, Some(0.0), "an authored zero is kept");
 }
 
 #[test]
 fn math_values_resolve_through_layers_and_geometry_validation() {
     let sheet = CommonStylesheet::resolve_layers(&[
-        "[common.slider.geometry]\nwidth = 'math(32 * 2)'\n[common.overlay_window.geometry]\nbackdrop_opacity = 'math(1 / 4)'",
-        "[common.slider.geometry]\nthumb_size = 'math(0 / 28)'",
-    ]).unwrap();
-    assert_eq!(sheet.overlay_window.geometry.backdrop_opacity, Some(0.25));
-    assert_eq!(sheet.slider.geometry.width, Some(64.0));
-    assert_eq!(sheet.slider.geometry.thumb_size, Some(0.0));
+        "[common.shell.geometry]\nheight = 'math(32 * 2)'\nicon_size = 'math(1 / 4)'",
+        "[common.shell.geometry]\nleft_padding = 'math(0 / 28)'",
+    ])
+    .unwrap();
+    assert_eq!(sheet.shell.geometry.icon_size, Some(0.25));
+    assert_eq!(sheet.shell.geometry.height, Some(64.0));
+    assert_eq!(sheet.shell.geometry.left_padding, Some(0.0));
     // Direct serde ingress is also used by look-owned stylesheet documents.
-    let direct: CommonStylesheet = toml::from_str("[slider.geometry]\nheight = 'math(2 * 3)'").unwrap();
-    assert_eq!(direct.slider.geometry.height, Some(6.0));
+    let direct: CommonStylesheet = toml::from_str("[shell.geometry]\nheight = 'math(2 * 3)'").unwrap();
+    assert_eq!(direct.shell.geometry.height, Some(6.0));
     for source in [
-        "[common.slider.geometry]\nwidth = 'math(-1 / 2)'",
-        "[common.overlay_window.geometry]\nbackdrop_opacity = 'math(3 / 2)'",
-        "[common.slider.geometry]\nunknown = 'math(1 + 2)'",
+        "[common.shell.geometry]\nheight = 'math(-1 / 2)'",
+        "[common.shell.geometry]\nicon_size = 'math(-3 / 2)'",
+        "[common.shell.geometry]\nunknown = 'math(1 + 2)'",
     ] {
         assert!(CommonStylesheet::parse(source).is_err(), "accepted {source}");
     }
@@ -56,36 +45,80 @@ fn selector_panel_baseline_retains_stock_metrics_and_inherits_menu_overrides() {
 }
 
 #[test]
-fn selector_panel_chrome_inherits_tokens_and_placement_before_independent_overrides() {
+fn selector_panel_chrome_inherits_tokens_and_popover_placement() {
     use crate::controls::{selector_list::default_selector_items_panel_look, selection_panel::default_selection_panel_look};
-    let sheet = CommonStylesheet::resolve_layers(&[r#"
-[common.popover.geometry]
-window_margin=13
-[common.popover.sizes.panel]
-offset_y=9
-[common.selection_panel.geometry]
-border_width=0
-disabled_opacity=0
-radius=9
-"#])
-    .unwrap();
-    let mut tokens = sheet.theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
+    let mut tokens =
+        CommonStylesheet::sdk_default().theme_tokens(ThemeMode::Light, GamutMapping::CssLocalMinde).unwrap();
     tokens.metrics.border_width = 3.0;
     let look = default_selector_items_panel_look(&tokens);
-    // The menu's colors and rows come from `.lss`; the border width from the tokens and placement from
-    // the sheet.
-    assert_eq!((look.border_width, look.popup_offset_y, look.window_margin), (3.0, 9.0, 13.0));
+    // The menu's colors and rows come from `.lss`, the border width from the tokens, and the placement from
+    // the SDK's `popover.lss` panel offset and margin.
+    let sdk = |name| crate::style::sdk_number("popover", name);
+    assert_eq!(
+        (look.border_width, look.popup_offset_y, look.window_margin),
+        (3.0, sdk("panel_offset_y"), sdk("window_margin"))
+    );
     let selection = default_selection_panel_look(&tokens);
-    assert_eq!((selection.border_width, selection.disabled_opacity, selection.radius), (0.0, 0.0, 9.0));
-    for family in ["selector_list", "selection_panel"] {
-        for value in ["-1", "1.1", "nan"] {
-            assert!(CommonStylesheet::parse(&format!("[common.{family}.geometry]\ndisabled_opacity={value}")).is_err());
-        }
-    }
+    // The selection panel is the items panel: no geometry of its own.
+    assert_eq!(
+        (selection.border_width, selection.disabled_opacity, selection.radius),
+        (look.border_width, look.disabled_opacity, look.radius)
+    );
 }
 
 #[test]
 fn token_tables_are_not_stylesheet_fields() {
     // Token values live in the SDK's `.lss` token files, not in the common stylesheet.
     assert!(CommonStylesheet::parse("[common.tokens.metrics]\nborder_width = 3").is_err());
+}
+
+/// Families no control reads any more are not stylesheet sections: a sheet that sets them is an
+/// error naming the section, not silently ignored (#287).
+#[test]
+fn removed_families_are_rejected() {
+    for family in [
+        "pager",
+        "context_menu",
+        "dock_splitter",
+        "toolbar",
+        "textfield",
+        "textarea",
+        "selector",
+        "progress",
+        "overlay_window",
+        "popup_menu",
+        "accordion",
+        "tree_view",
+        "avatar",
+        "badge",
+        "card",
+        "callout",
+        "segmented",
+        "floating_menu",
+        "split_view",
+        "stepper",
+        "scrollbar",
+        "icon_group",
+        "toggle",
+        "selection_panel",
+        "table",
+        "control_group",
+        "radio_group",
+        "selector_list",
+        "resizable_panels",
+        "tabs",
+        "button",
+        "shared",
+        "slider",
+        "tooltip",
+        "slide_panel",
+        "popover",
+        "sidebar",
+        "autocomplete",
+        "combobox",
+        "search_selector",
+    ] {
+        let error = CommonStylesheet::parse(&format!("[common.{family}.geometry]\nheight = 10")).expect_err(family);
+        assert!(error.to_string().contains(family), "{family}: {error}");
+    }
 }

@@ -25,7 +25,7 @@ pub struct AutocompleteModel {
     pub(crate) row_limits: (usize, usize),
     pub(crate) icons: crate::theme::stylesheet::IconsStylesheet,
     pub(crate) motion: crate::motion::MotionConfig<AutocompleteMotion>,
-    pub(crate) stylesheet: crate::theme::stylesheet::AutocompleteStylesheet,
+    pub(crate) geometry: crate::theme::stylesheet::AutocompleteGeometry,
     pub(crate) id: SharedString,
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
@@ -165,7 +165,7 @@ impl AutocompleteBuilder {
                     .row_limits
                     .resolve("autocomplete"),
                 icons: crate::theme::stylesheet::CommonStylesheet::sdk_default().icons.clone(),
-                stylesheet: crate::theme::stylesheet::CommonStylesheet::sdk_default().autocomplete.clone(),
+                geometry: crate::theme::stylesheet::AutocompleteGeometry::sdk(),
                 id: id.into(),
                 items: items.into_iter().collect(),
                 placeholder: SharedString::from("Type to filter…"),
@@ -190,7 +190,6 @@ impl AutocompleteBuilder {
     pub fn stylesheet(mut self, stylesheet: &crate::theme::stylesheet::CommonStylesheet) -> Self {
         self.model.row_limits = stylesheet.row_limits.resolve("autocomplete");
         self.model.icons = stylesheet.with_sdk_defaults().icons;
-        self.model.stylesheet = stylesheet.with_sdk_defaults().autocomplete;
         self
     }
 
@@ -355,17 +354,18 @@ mod tests {
 mod stylesheet_tests {
     use super::*;
 
+    /// The layout is `autocomplete.lss`'s (#287); `stylesheet` keeps a custom theme provider.
     #[test]
-    fn affordance_snapshot_keeps_size_overrides_and_preserves_custom_theme_provider() {
-        let mut sheet =
-            crate::theme::stylesheet::CommonStylesheet::parse("[common.autocomplete.geometry]\nclear_width=27")
-                .unwrap();
+    fn layout_reads_autocomplete_lss_and_stylesheet_keeps_custom_theme_provider() {
+        let sheet = crate::theme::stylesheet::CommonStylesheet::sdk_default().clone();
         let original = AutocompleteBuilder::new("snapshot", []);
         let theme = original.model.autocomplete_theme.clone();
         let builder = original.stylesheet(&sheet);
-        sheet.autocomplete.geometry.clear_width = Some(41.0);
         assert!(Arc::ptr_eq(&theme, &builder.model.autocomplete_theme));
-        assert_eq!(builder.model.stylesheet.resolve_geometry(Default::default()).clear_width, 27.0);
-        assert_eq!(builder.model.stylesheet.resolve_geometry(Default::default()).clear_icon_size, 12.0);
+        let sdk = |name| crate::style::sdk_number("autocomplete", name);
+        assert_eq!(
+            (builder.model.geometry.clear_width, builder.model.geometry.clear_icon_size),
+            (sdk("clear_width"), sdk("clear_icon_size"))
+        );
     }
 }
