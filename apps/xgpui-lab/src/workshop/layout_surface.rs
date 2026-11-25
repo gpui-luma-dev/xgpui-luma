@@ -1,5 +1,6 @@
-//! SDK layout controls on the design surface page (issue #383): DockPanel (with a DockSplitter, the part
-//! that has an `.lss`), Resizable Panels and Split View. Each `.lss` has one state, `:disabled`; Design mode
+//! SDK layout controls on the design surface page (issue #383): DockPanel (with DockSplitters, the part that
+//! has an `.lss`), Resizable Panels and Split View. Splitters and dividers draw their grips (thumbs), as Luma
+//! Studio shows them, so the thumb styling is on the stage. Each `.lss` has one state, `:disabled`; Design mode
 //! pins it through the control's theme. Each State matrix cell is a small control of its own, drawn in that
 //! cell's states.
 
@@ -10,7 +11,8 @@ use std::sync::Arc;
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::DockPanel;
 use xgpui_luma::controls::dock_splitter::{
-    DockSplitter, DockSplitterEvent, DockSplitterLook, DockSplitterTheme, SplitterOrientation, StyledDockSplitterTheme,
+    DockSplitter, DockSplitterBuilder, DockSplitterEvent, DockSplitterLook, DockSplitterTheme, SplitterOrientation,
+    StyledDockSplitterTheme, ThemedDockSplitterTemplate,
 };
 use xgpui_luma::controls::resizable_panels::{
     ResizablePanelSpec, ResizablePanels, ResizablePanelsBuilder, ResizablePanelsEvent, ResizablePanelsLook,
@@ -80,60 +82,107 @@ fn dock_splitter_theme(theme: Theme, enabled: Option<bool>) -> Arc<PinnedDockSpl
     Arc::new(PinnedDockSplitterTheme { base: StyledDockSplitterTheme::new(binding("dock_splitter", theme)), enabled })
 }
 
-const LEFT_WIDTH: f32 = 120.;
+/// The library's and the console's sizes at rest, and how far a drag can take them.
+const LEFT_WIDTH: f32 = 140.;
+const BOTTOM_HEIGHT: f32 = 80.;
+const LEFT_RANGE: (f32, f32) = (80., 260.);
+const BOTTOM_RANGE: (f32, f32) = (40., 160.);
+/// The docked layout's size on the stage.
+const DOCK_SIZE: (f32, f32) = (520., 300.);
 
-/// A toolbar, a library and a playground docked in order; the splitter resizes the library.
+/// A splitter drawn with its grip (the thumb), as Luma Studio shows them.
+fn grip_splitter(id: impl Into<SharedString>, orientation: SplitterOrientation) -> DockSplitterBuilder {
+    DockSplitter::new(id, orientation).template(Arc::new(ThemedDockSplitterTemplate::new(true)))
+}
+
+/// A toolbar, a library, a console and a playground, docked in order; a splitter (with its grip) resizes
+/// the library and another the console, so both orientations show.
 struct DockHost {
-    splitter: Entity<DockSplitter>,
+    left_splitter: Entity<DockSplitter>,
+    bottom_splitter: Entity<DockSplitter>,
     left_width: f32,
+    bottom_height: f32,
     drag_start: f32,
 }
 
 impl DockHost {
     fn new(cx: &mut Context<Self>) -> Self {
-        let splitter = DockSplitter::new("workshop-sdk-dock-splitter", SplitterOrientation::Vertical).spawn(cx);
-        cx.subscribe(&splitter, |this: &mut Self, _, event: &DockSplitterEvent, cx| match event {
+        let left_splitter = grip_splitter("workshop-sdk-dock-splitter", SplitterOrientation::Vertical).spawn(cx);
+        let bottom_splitter =
+            grip_splitter("workshop-sdk-dock-bottom-splitter", SplitterOrientation::Horizontal).spawn(cx);
+        cx.subscribe(&left_splitter, |this: &mut Self, _, event: &DockSplitterEvent, cx| match event {
             DockSplitterEvent::ResizeStart => this.drag_start = this.left_width,
             DockSplitterEvent::Resize { total_delta } => {
-                this.left_width = (this.drag_start + total_delta).clamp(60., 240.);
+                this.left_width = (this.drag_start + total_delta).clamp(LEFT_RANGE.0, LEFT_RANGE.1);
                 cx.notify();
             }
             _ => {}
         })
         .detach();
-        Self { splitter, left_width: LEFT_WIDTH, drag_start: LEFT_WIDTH }
+        // The console sits below its splitter, so dragging down shrinks it.
+        cx.subscribe(&bottom_splitter, |this: &mut Self, _, event: &DockSplitterEvent, cx| match event {
+            DockSplitterEvent::ResizeStart => this.drag_start = this.bottom_height,
+            DockSplitterEvent::Resize { total_delta } => {
+                this.bottom_height = (this.drag_start - total_delta).clamp(BOTTOM_RANGE.0, BOTTOM_RANGE.1);
+                cx.notify();
+            }
+            _ => {}
+        })
+        .detach();
+        Self { left_splitter, bottom_splitter, left_width: LEFT_WIDTH, bottom_height: BOTTOM_HEIGHT, drag_start: 0. }
     }
 }
 
 impl Render for DockHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().debug_selector(|| "workshop-layout-viewport".into()).w(px(460.)).h(px(240.)).child(
-            DockPanel::new()
-                .top(div().debug_selector(|| "workshop-dock-top".into()).h(px(40.)).flex_none().child(pane("Toolbar")))
-                .left(
-                    div()
-                        .debug_selector(|| "workshop-dock-left".into())
-                        .w(px(self.left_width))
-                        .flex_none()
-                        .child(pane("Library")),
-                )
-                .left(self.splitter.clone())
-                .fill(div().debug_selector(|| "workshop-dock-fill".into()).size_full().child(pane("Playground"))),
-        )
+        div()
+            .debug_selector(|| "workshop-layout-viewport".into())
+            .w(px(DOCK_SIZE.0))
+            .h(px(DOCK_SIZE.1))
+            .child(
+                DockPanel::new()
+                    .top(
+                        div()
+                            .debug_selector(|| "workshop-dock-top".into())
+                            .h(px(40.))
+                            .flex_none()
+                            .child(pane("Toolbar")),
+                    )
+                    .left(
+                        div()
+                            .debug_selector(|| "workshop-dock-left".into())
+                            .w(px(self.left_width))
+                            .flex_none()
+                            .child(pane("Library")),
+                    )
+                    .left(self.left_splitter.clone())
+                    .bottom(
+                        div()
+                            .debug_selector(|| "workshop-dock-bottom".into())
+                            .h(px(self.bottom_height))
+                            .flex_none()
+                            .child(pane("Console")),
+                    )
+                    .bottom(self.bottom_splitter.clone())
+                    .fill(div().debug_selector(|| "workshop-dock-fill".into()).size_full().child(pane("Playground"))),
+            )
     }
 }
 
 pub(super) struct DockPanelSurface {
     host: Entity<DockHost>,
-    splitter: Entity<DockSplitter>,
+    splitters: [Entity<DockSplitter>; 2],
     cells: Cells,
 }
 
 impl DockPanelSurface {
     pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let host = cx.new(DockHost::new);
-        let splitter = host.read(cx).splitter.clone();
-        Box::new(Self { host, splitter, cells: Cells::default() })
+        let splitters = {
+            let host = host.read(cx);
+            [host.left_splitter.clone(), host.bottom_splitter.clone()]
+        };
+        Box::new(Self { host, splitters, cells: Cells::default() })
     }
 }
 
@@ -147,13 +196,17 @@ impl SurfaceControl for DockPanelSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let styled = dock_splitter_theme(theme, pinned_enabled(pinned));
-        self.splitter.update(cx, |splitter, cx| splitter.set_theme(styled, cx));
+        for splitter in &self.splitters {
+            let styled = dock_splitter_theme(theme.clone(), pinned_enabled(pinned));
+            splitter.update(cx, |splitter, cx| splitter.set_theme(styled, cx));
+        }
         self.cells.clear();
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {
-        self.splitter.update(cx, |splitter, cx| splitter.set_enabled(enabled, cx));
+        for splitter in &self.splitters {
+            splitter.update(cx, |splitter, cx| splitter.set_enabled(enabled, cx));
+        }
     }
 
     fn template_states(&self) -> Vec<&'static str> {
@@ -161,19 +214,24 @@ impl SurfaceControl for DockPanelSurface {
     }
 
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
-        cx.subscribe(&self.splitter, move |side: &mut ControlSide, _, event: &DockSplitterEvent, cx| {
-            // Enabling is the page's own doing; every drag frame is noise.
-            if matches!(event, DockSplitterEvent::EnabledChanged { .. } | DockSplitterEvent::Resize { .. }) {
-                return;
-            }
-            on_event(side, SurfaceEvent { line: format!("{event:?}"), state: None }, cx);
-        })
+        let follow = |splitter: &Entity<DockSplitter>, name: &'static str, cx: &mut Context<ControlSide>| {
+            cx.subscribe(splitter, move |side: &mut ControlSide, _, event: &DockSplitterEvent, cx| {
+                // Enabling is the page's own doing; every drag frame is noise.
+                if matches!(event, DockSplitterEvent::EnabledChanged { .. } | DockSplitterEvent::Resize { .. }) {
+                    return;
+                }
+                on_event(side, SurfaceEvent { line: format!("{name}: {event:?}"), state: None }, cx);
+            })
+        };
+        let left = follow(&self.splitters[0], "library", cx);
+        let bottom = follow(&self.splitters[1], "console", cx);
+        Subscription::join(left, bottom)
     }
 
-    /// Two panes and the splitter between them.
+    /// A library, a playground and the splitter (with its grip) between them.
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, _: &mut Window, cx: &mut App) -> AnyElement {
         let splitter = self.cells.get(&id, || {
-            DockSplitter::new(id.clone(), SplitterOrientation::Vertical)
+            grip_splitter(id.clone(), SplitterOrientation::Vertical)
                 .enabled(false)
                 .theme(dock_splitter_theme(theme.clone(), pinned_enabled(Some(states))))
                 .spawn(cx)
@@ -181,9 +239,9 @@ impl SurfaceControl for DockPanelSurface {
         });
         div()
             .flex()
-            .w(px(220.))
-            .h(px(72.))
-            .child(div().w(px(90.)).flex_none().child(pane("Library")))
+            .w(px(240.))
+            .h(px(96.))
+            .child(div().w(px(100.)).flex_none().child(pane("Library")))
             .child(splitter)
             .child(div().flex_1().child(pane("Playground")))
             .into_any_element()
@@ -220,8 +278,11 @@ fn resizable_theme(theme: Theme, enabled: Option<bool>) -> Arc<PinnedResizablePa
     })
 }
 
+/// Two panels split by a divider drawn with its grip, always shown, as Luma Studio shows them.
 fn panels(id: impl Into<SharedString>, first: &'static str, second: &'static str) -> ResizablePanelsBuilder {
     ResizablePanelsBuilder::new(id)
+        .show_handle(true)
+        .handle_grip(true)
         .panel(
             ResizablePanelSpec::new_render(move || pane(first).debug_selector(|| "workshop-layout-first".into()))
                 .min(px(60.)),
@@ -241,23 +302,46 @@ impl Render for PanelsHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .debug_selector(|| "workshop-layout-viewport".into())
-            .w(px(460.))
-            .h(px(240.))
+            .w(px(DOCK_SIZE.0))
+            .h(px(DOCK_SIZE.1))
             .child(self.panels.clone())
     }
 }
 
 pub(super) struct ResizablePanelsSurface {
-    panels: Entity<ResizablePanels>,
+    /// The outer, side-by-side split and the stacked split nested in its second panel.
+    panels: [Entity<ResizablePanels>; 2],
     host: Entity<PanelsHost>,
     cells: Cells,
 }
 
 impl ResizablePanelsSurface {
     pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        let panels = panels("workshop-sdk-resizable-panels", "Typography", "Display").spawn(cx);
-        let host = cx.new(|_| PanelsHost { panels: panels.clone() });
-        Box::new(Self { panels, host, cells: Cells::default() })
+        let stacked = ResizablePanelsBuilder::vertical("workshop-sdk-resizable-stacked")
+            .show_handle(true)
+            .handle_grip(true)
+            .panel(ResizablePanelSpec::new_render(|| pane("Display")).min(px(40.)))
+            .panel(ResizablePanelSpec::new_render(|| pane("Spacing")).min(px(40.)))
+            .spawn(cx);
+        let nested = stacked.clone();
+        let outer = ResizablePanelsBuilder::new("workshop-sdk-resizable-panels")
+            .show_handle(true)
+            .handle_grip(true)
+            .panel(
+                ResizablePanelSpec::new_render(|| pane("Typography").debug_selector(|| "workshop-layout-first".into()))
+                    .weight(2.)
+                    .min(px(60.)),
+            )
+            .panel(
+                ResizablePanelSpec::new_render(move || {
+                    div().debug_selector(|| "workshop-layout-second".into()).size_full().child(nested.clone())
+                })
+                .weight(3.)
+                .min(px(60.)),
+            )
+            .spawn(cx);
+        let host = cx.new(|_| PanelsHost { panels: outer.clone() });
+        Box::new(Self { panels: [outer, stacked], host, cells: Cells::default() })
     }
 }
 
@@ -271,13 +355,17 @@ impl SurfaceControl for ResizablePanelsSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let styled = resizable_theme(theme, pinned_enabled(pinned));
-        self.panels.update(cx, |panels, cx| panels.set_theme(styled, cx));
+        for panels in &self.panels {
+            let styled = resizable_theme(theme.clone(), pinned_enabled(pinned));
+            panels.update(cx, |panels, cx| panels.set_theme(styled, cx));
+        }
         self.cells.clear();
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {
-        self.panels.update(cx, |panels, cx| panels.set_enabled(enabled, cx));
+        for panels in &self.panels {
+            panels.update(cx, |panels, cx| panels.set_enabled(enabled, cx));
+        }
     }
 
     fn template_states(&self) -> Vec<&'static str> {
@@ -285,14 +373,21 @@ impl SurfaceControl for ResizablePanelsSurface {
     }
 
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
-        cx.subscribe(&self.panels, move |side: &mut ControlSide, _, event: &ResizablePanelsEvent, cx| {
-            // Enabling is the page's own doing; size reports arrive every frame.
-            if matches!(event, ResizablePanelsEvent::EnabledChanged { .. } | ResizablePanelsEvent::SizesChanged { .. })
-            {
-                return;
-            }
-            on_event(side, SurfaceEvent { line: format!("{event:?}"), state: None }, cx);
-        })
+        let follow = |panels: &Entity<ResizablePanels>, name: &'static str, cx: &mut Context<ControlSide>| {
+            cx.subscribe(panels, move |side: &mut ControlSide, _, event: &ResizablePanelsEvent, cx| {
+                // Enabling is the page's own doing; size reports arrive every frame.
+                if matches!(
+                    event,
+                    ResizablePanelsEvent::EnabledChanged { .. } | ResizablePanelsEvent::SizesChanged { .. }
+                ) {
+                    return;
+                }
+                on_event(side, SurfaceEvent { line: format!("{name}: {event:?}"), state: None }, cx);
+            })
+        };
+        let outer = follow(&self.panels[0], "side by side", cx);
+        let stacked = follow(&self.panels[1], "stacked", cx);
+        Subscription::join(outer, stacked)
     }
 
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, _: &mut Window, cx: &mut App) -> AnyElement {
@@ -303,7 +398,7 @@ impl SurfaceControl for ResizablePanelsSurface {
                 .spawn(cx)
                 .into()
         });
-        div().w(px(220.)).h(px(72.)).child(panels).into_any_element()
+        div().w(px(240.)).h(px(96.)).child(panels).into_any_element()
     }
 
     #[cfg(all(test, feature = "test-support"))]
@@ -449,6 +544,21 @@ mod tests {
             cx.debug_bounds("workshop-dock-left").expect("left").size.width > left.size.width,
             "dragging resizes"
         );
+
+        // The console docks at the bottom under its own splitter; dragging that splitter up grows it.
+        let bottom = cx.debug_bounds("workshop-dock-bottom").expect("console");
+        let fill = cx.debug_bounds("workshop-dock-fill").expect("fill");
+        assert_eq!(bottom.size.height, px(BOTTOM_HEIGHT));
+        let start = point(fill.center().x, (fill.bottom() + bottom.top()) / 2.);
+        let end = start - point(px(0.), px(30.));
+        cx.simulate_mouse_down(start, MouseButton::Left, Default::default());
+        cx.simulate_mouse_move(end, MouseButton::Left, Default::default());
+        cx.simulate_mouse_move(end, MouseButton::Left, Default::default());
+        cx.simulate_mouse_up(end, MouseButton::Left, Default::default());
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-dock-bottom").expect("console").size.height > bottom.size.height, "grows");
+        let text = cx.update(|_, cx| side.read(cx).events_text(cx));
+        assert!(text.contains("console: ResizeEnd"), "each splitter's events are labelled: {text}");
 
         pin_disabled_and_show_matrix(&side, cx);
     }
