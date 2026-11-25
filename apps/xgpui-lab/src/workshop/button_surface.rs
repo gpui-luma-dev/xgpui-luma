@@ -1,10 +1,16 @@
-//! The SDK button on the design surface page (issue #376). A button has no lasting state: it is never
-//! on or off, so its key only ever follows hover, press and focus, and Test mode logs its clicks.
+//! The SDK button on the design surface page (issue #376), and the icon button (issue #393). A button
+//! has no lasting state: it is never on or off, so its key only ever follows hover, press and focus,
+//! and Test mode logs its clicks. The icon button is the same `Button` and `button.lss` in the Icon
+//! role, which draws `icon_radius` and `icon_size` with no padding.
 
 use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*};
-use xgpui_luma::controls::button::{Button, ButtonEvent, ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
+use lucide_svg_static::Icon as LucideIcon;
+use xgpui_luma::controls::button::{
+    Button, ButtonEvent, ButtonRenderModel, ButtonTemplate, ControlIcon, StyledButtonTemplate,
+};
+use xgpui_luma::controls::button_family::ButtonFamilyRole;
 use xgpui_luma::prelude::HasPresenter;
 use xgpui_luma::style::lss::Theme;
 
@@ -19,14 +25,24 @@ const LABEL: &str = "Apply";
 /// The button template sets `selected` only for a toggle; a plain button never reaches it.
 const TOGGLE_ONLY: &str = "selected";
 
+/// The icon button's glyph, on the stage and in each State matrix cell.
+const ICON: LucideIcon = LucideIcon::Settings;
+
 pub(super) struct ButtonSurface {
     button: Entity<Button>,
+    /// An icon button (`Button::icon`) rather than a labelled one.
+    icon: bool,
 }
 
 impl ButtonSurface {
     pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let button = Button::new("workshop-sdk-button").content(|_, _| div().child(LABEL)).spawn(cx);
-        Box::new(Self { button })
+        Box::new(Self { button, icon: false })
+    }
+
+    pub(super) fn make_icon(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+        let button = Button::icon("workshop-sdk-icon-button", ICON).spawn(cx);
+        Box::new(Self { button, icon: true })
     }
 
     /// The SDK button, for tests.
@@ -38,7 +54,7 @@ impl ButtonSurface {
 
 impl SurfaceControl for ButtonSurface {
     fn title(&self) -> &'static str {
-        "Button"
+        if self.icon { "Icon Button" } else { "Button" }
     }
 
     fn view(&self) -> AnyView {
@@ -87,11 +103,22 @@ impl SurfaceControl for ButtonSurface {
         window: &mut Window,
         cx: &mut App,
     ) -> AnyElement {
-        let model = ButtonRenderModel {
-            id,
-            state: states.interaction(),
-            content: Arc::new(|_, _| div().child(LABEL).into_any_element()),
-            ..Default::default()
+        let model = if self.icon {
+            ButtonRenderModel {
+                id,
+                state: states.interaction(),
+                icon: Some(ControlIcon::from(ICON)),
+                role: ButtonFamilyRole::Icon,
+                round: true,
+                ..Default::default()
+            }
+        } else {
+            ButtonRenderModel {
+                id,
+                state: states.interaction(),
+                content: Arc::new(|_, _| div().child(LABEL).into_any_element()),
+                ..Default::default()
+            }
         };
         StyledButtonTemplate::<()>::new(theme.clone()).render(&model, window, cx).into_any_element()
     }
@@ -110,7 +137,7 @@ mod tests {
     use crate::workshop::surface_page::{SurfacePage, WorkMode};
     use crate::workshop::{Sample, Workshop};
 
-    fn open(app: &mut TestAppContext) -> (Entity<SurfacePage>, &mut VisualTestContext) {
+    fn open<'a>(app: &'a mut TestAppContext, id: &'static str) -> (Entity<SurfacePage>, &'a mut VisualTestContext) {
         app.update(|cx| {
             xgpui_luma::init(cx).unwrap();
             xgpui_luma::key_handling::bind_default_control_keys(cx);
@@ -119,11 +146,11 @@ mod tests {
             window.activate_window();
             Workshop::new(crate::theme::default_look(), cx)
         });
-        workshop.update(cx, |v, cx| v.select("button", cx));
+        workshop.update(cx, |v, cx| v.select(id, cx));
         cx.run_until_parked();
-        let page = cx.update(|_, cx| match &workshop.read(cx).samples["button"] {
+        let page = cx.update(|_, cx| match &workshop.read(cx).samples[id] {
             Sample::Surface(v) => v.clone(),
-            _ => panic!("the button page is a design surface page"),
+            _ => panic!("the {id} page is a design surface page"),
         });
         (page, cx)
     }
@@ -131,7 +158,7 @@ mod tests {
     #[test]
     fn the_button_page_is_a_design_surface_page() {
         let mut app = TestAppContext::single();
-        let (page, cx) = open(&mut app);
+        let (page, cx) = open(&mut app, "button");
         for id in ["workshop-surface-pane", "workshop-surface-control", "workshop-surface-live", "style-inspector"] {
             assert!(cx.debug_bounds(id).is_some(), "{id} rendered");
         }
@@ -167,5 +194,35 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw buttons");
+    }
+
+    #[test]
+    fn the_icon_button_page_draws_an_icon_button() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = open(&mut app, "icon-button");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        let button = cx.update(|_, cx| side.read(cx).control_as::<ButtonSurface>().expect("a button").button());
+        cx.update(|window, cx| {
+            let model = button.read(cx).render_model(window);
+            assert!(matches!(model.role, ButtonFamilyRole::Icon), "the live control is an icon button");
+            assert!(model.icon.is_some(), "it has a glyph");
+        });
+
+        // Test: a click is logged, as on the Button page.
+        let at = cx.debug_bounds("workshop-surface-control").expect("control").center();
+        cx.simulate_click(at, gpui::Modifiers::none());
+        cx.run_until_parked();
+        let text = cx.update(|_, cx| side.read(cx).events_text(cx));
+        assert!(text.contains("Click"), "the click is logged: {text}");
+
+        // Design pins the picked state; the matrix draws icon buttons.
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        side.update(cx, |side, cx| side.choose_interaction("hover", cx));
+        cx.run_until_parked();
+        let pinned = cx.update(|_, cx| side.read(cx).pinned()).expect("Design draws picked states");
+        assert!(pinned.has("hover"), "{pinned:?}");
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw icon buttons");
     }
 }
