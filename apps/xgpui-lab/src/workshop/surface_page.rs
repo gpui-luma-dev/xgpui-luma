@@ -946,6 +946,7 @@ impl ControlSide {
                     .relative()
                     .left(self.pan.x)
                     .top(self.pan.y)
+                    .when_some(self.surface.stage_width(), |control, width| control.w(px(width * self.zoom)))
                     .child(self.surface.view())
                     // Measures the control for its bounding box, which the stage draws under it.
                     .child({

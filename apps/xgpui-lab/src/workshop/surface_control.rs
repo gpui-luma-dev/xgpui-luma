@@ -99,6 +99,12 @@ pub(super) trait SurfaceControl {
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, window: &mut Window, cx: &mut App)
     -> AnyElement;
 
+    /// The width the stage gives the live control at actual size, for a control with no width of its own
+    /// (a slider, a progress bar); it scales with the zoom. `None`: the control sizes itself.
+    fn stage_width(&self) -> Option<f32> {
+        None
+    }
+
     /// The live control's own status text (e.g. an autocomplete's search status), shown in Test mode's
     /// lower panel rather than on the stage. Most controls have none.
     fn status(&self) -> Option<SharedString> {

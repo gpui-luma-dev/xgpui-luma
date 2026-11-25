@@ -21,6 +21,8 @@ use super::surface_page::ControlSide;
 use crate::theme::Look;
 
 const VALUE: f32 = 40.;
+/// A bar has no width of its own: the stage gives it one, scaled with the zoom.
+const STAGE_WIDTH: f32 = 240.;
 /// The shape option's items: id, label, and whether it is the ring.
 const SHAPES: [(&str, &str, bool); 2] = [("bar", "Bar", false), ("ring", "Ring", true)];
 
@@ -73,6 +75,8 @@ impl ProgressSurface {
             {
                 shared.ring.set(*ring);
                 shared.apply(&target, cx);
+                // The stage's width for the control changes with the shape.
+                cx.notify();
             }
         })
         .detach();
@@ -135,6 +139,11 @@ impl SurfaceControl for ProgressSurface {
 
     fn view(&self) -> AnyView {
         self.progress.clone().into()
+    }
+
+    /// A bar fills the width it is given and has none of its own; a ring sizes itself.
+    fn stage_width(&self) -> Option<f32> {
+        (!self.binding.ring.get()).then_some(STAGE_WIDTH)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
@@ -214,6 +223,9 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "progress");
         let side = cx.update(|_, cx| page.read(cx).side());
+        // No width of its own: the stage gives it one.
+        let control = cx.debug_bounds("workshop-surface-control").expect("the control");
+        assert_eq!(control.size.width, px(STAGE_WIDTH), "the stage gives it a width");
         let (progress, picker) = cx.update(|_, cx| {
             let surface = side.read(cx).control_as::<ProgressSurface>().expect("a progress");
             (surface.progress(), surface.shape_picker())
