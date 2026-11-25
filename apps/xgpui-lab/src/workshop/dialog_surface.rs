@@ -1,23 +1,22 @@
-//! The SDK overlay window on the design surface page (issue #383): the four Dialog pages (Modal, Modeless,
-//! Positioning, Draggable). Its `.lss` (`overlay_window`) has no states; `variant modal` dims the page and
-//! casts the dialog shadow. The live control is an Open button and the window it opens; the matrix draws the
-//! window's shell in place.
+//! The SDK overlay window on the design surface page: one Dialog page (issues #383, #393). Its `.lss`
+//! (`overlay_window`) has no states and one variant, `modal`, which dims the page behind the window and
+//! casts the dialog shadow. Where a dialog opens and whether it drags are behavior, not look, so the page
+//! draws the window open, inline in a frame that stands for the page behind it, and offers Modeless ·
+//! Modal: Modal fills the frame with the backdrop. The matrix draws the same frame.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use gpui::{
-    AnyElement, AnyView, App, Context, Div, Entity, SharedString, Stateful, Subscription, Window, div, prelude::*, px,
-};
-use xgpui_luma::controls::button::{Button, HasPresenter};
+use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
+use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupItem};
 use xgpui_luma::controls::overlay_window::{
-    OverlayWindowBuilder, OverlayWindowControl, OverlayWindowElementRenderer, OverlayWindowEvent, OverlayWindowLook,
-    OverlayWindowMode, OverlayWindowPosition, OverlayWindowRenderModel, OverlayWindowTemplate,
-    OverlayWindowTemplateHandlers, OverlayWindowTemplateParts, StyledOverlayWindowTheme, ThemedOverlayWindowTemplate,
+    OverlayWindowElementRenderer, OverlayWindowMode, OverlayWindowPosition, OverlayWindowRenderModel,
+    OverlayWindowTemplate, OverlayWindowTemplateHandlers, OverlayWindowTemplateParts, StyledOverlayWindowTheme,
+    ThemedOverlayWindowTemplate,
 };
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
-use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
+use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl};
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
@@ -25,66 +24,13 @@ use crate::theme::Look;
 const HEADING: &str = "Shipping preferences";
 const BODY: &str = "Pick a delivery day, and we'll keep you posted by email.";
 
-#[derive(Clone, Copy, PartialEq)]
-enum DialogKind {
-    Modal,
-    Modeless,
-    Positioning,
-    Draggable,
-}
+/// The frame standing for the page behind the window: room around a window at its widest.
+const FRAME_WIDTH: f32 = 600.;
+const FRAME_HEIGHT: f32 = 280.;
 
-impl DialogKind {
-    fn title(self) -> &'static str {
-        match self {
-            Self::Modal => "Dialog Modal",
-            Self::Modeless => "Dialog Modeless",
-            Self::Positioning => "Dialog Positioning",
-            Self::Draggable => "Dialog Draggable",
-        }
-    }
-
-    fn mode(self) -> OverlayWindowMode {
-        match self {
-            Self::Modal | Self::Draggable => OverlayWindowMode::Modal,
-            Self::Modeless | Self::Positioning => OverlayWindowMode::Modeless,
-        }
-    }
-}
-
-/// The window's template, swapped when the page binds a theme (the window takes its template once).
-#[derive(Clone)]
-struct SwappableTemplate(Arc<Mutex<Arc<ThemedOverlayWindowTemplate>>>);
-
-impl SwappableTemplate {
-    fn current(&self) -> Arc<ThemedOverlayWindowTemplate> {
-        self.0
-            .lock()
-            .map(|template| template.clone())
-            .unwrap_or_else(|poisoned| poisoned.into_inner().clone())
-    }
-
-    fn set(&self, template: ThemedOverlayWindowTemplate) {
-        let mut current = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        *current = Arc::new(template);
-    }
-}
-
-impl OverlayWindowTemplate for SwappableTemplate {
-    fn resolve_look(&self, mode: OverlayWindowMode) -> OverlayWindowLook {
-        self.current().resolve_look(mode)
-    }
-
-    fn render(
-        &self,
-        model: &OverlayWindowRenderModel<'_>,
-        look: &OverlayWindowLook,
-        parts: OverlayWindowTemplateParts,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Stateful<Div> {
-        self.current().render(model, look, parts, window, cx)
-    }
-}
+/// The variant option's items.
+const MODELESS: &str = "modeless";
+const MODAL: &str = "modal";
 
 /// The overlay window template for the `overlay_window` control in `theme`.
 fn template(theme: Theme) -> ThemedOverlayWindowTemplate {
@@ -92,107 +38,7 @@ fn template(theme: Theme) -> ThemedOverlayWindowTemplate {
     ThemedOverlayWindowTemplate::new(Arc::new(StyledOverlayWindowTheme::new(binding)))
 }
 
-/// The window's content: heading, body and a Close button (none in a matrix cell).
-fn content(close: Option<Entity<Button>>) -> OverlayWindowElementRenderer {
-    Arc::new(move |_, _, _| {
-        div()
-            .flex()
-            .flex_col()
-            .gap(px(12.))
-            .child(div().font_weight(gpui::FontWeight::SEMIBOLD).child(HEADING))
-            .child(BODY)
-            .when_some(close.clone(), |content, close| content.child(div().flex().justify_end().child(close)))
-            .into_any_element()
-    })
-}
-
-/// The Open button and the window it opens.
-struct DialogHost {
-    window: Entity<OverlayWindowControl>,
-    open: Entity<Button>,
-}
-
-impl DialogHost {
-    fn new(kind: DialogKind, look: &Arc<Look>, template: SwappableTemplate, cx: &mut Context<Self>) -> Self {
-        let close = xgpui_luma_look_radix::Button::new("workshop-sdk-dialog-close")
-            .look(look.as_ref())
-            .soft()
-            .size(xgpui_luma_look_radix::ButtonSize::One)
-            .content(|_, _| div().child("Close"))
-            .on_click(cx, |this: &mut Self, cx| this.window.update(cx, |window, cx| window.dismiss(cx)))
-            .spawn(cx);
-        let mut builder = OverlayWindowBuilder::new("workshop-sdk-dialog")
-            .mode(kind.mode())
-            .template(Arc::new(template))
-            .with_template_modifier(|root, _| root.debug_selector(|| "workshop-sdk-dialog-bounds".into()));
-        match kind {
-            DialogKind::Positioning => builder = builder.position(OverlayWindowPosition::BottomRight),
-            // Centered dragging estimates the height; an explicit origin avoids a jump when a drag starts.
-            DialogKind::Draggable => builder = builder.draggable(true).absolute_position(100., 100.),
-            DialogKind::Modal | DialogKind::Modeless => {}
-        }
-        let content = content(Some(close));
-        let window = builder.content(move |model, window, cx| content(model, window, cx)).spawn(cx);
-        let open = xgpui_luma_look_radix::Button::new("workshop-sdk-dialog-open")
-            .look(look.as_ref())
-            .size(xgpui_luma_look_radix::ButtonSize::Two)
-            .content(|_, _| div().child("Open shipping dialog"))
-            .on_click(cx, |this: &mut Self, cx| {
-                use gpui::Focusable;
-                let focus = this.open.read(cx).focus_handle(cx);
-                this.window.update(cx, |window, cx| window.open_from(Some(focus), cx));
-            })
-            .spawn(cx);
-        Self { window, open }
-    }
-}
-
-impl Render for DialogHost {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().child(self.open.clone()).child(self.window.clone())
-    }
-}
-
-pub(super) struct DialogSurface {
-    kind: DialogKind,
-    host: Entity<DialogHost>,
-    template: SwappableTemplate,
-}
-
-impl DialogSurface {
-    fn make(kind: DialogKind, look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        let sdk = ThemedOverlayWindowTemplate::new(Arc::new(StyledOverlayWindowTheme::sdk()));
-        let template = SwappableTemplate(Arc::new(Mutex::new(Arc::new(sdk))));
-        let shared = template.clone();
-        let host = cx.new(|cx| DialogHost::new(kind, look, shared, cx));
-        Box::new(Self { kind, host, template })
-    }
-
-    pub(super) fn make_modal(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        Self::make(DialogKind::Modal, look, cx)
-    }
-
-    pub(super) fn make_modeless(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        Self::make(DialogKind::Modeless, look, cx)
-    }
-
-    pub(super) fn make_positioning(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        Self::make(DialogKind::Positioning, look, cx)
-    }
-
-    pub(super) fn make_draggable(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        Self::make(DialogKind::Draggable, look, cx)
-    }
-
-    /// The SDK overlay window and its Open button, for tests.
-    #[cfg(all(test, feature = "test-support"))]
-    fn parts(&self, cx: &App) -> (Entity<OverlayWindowControl>, Entity<Button>) {
-        let host = self.host.read(cx);
-        (host.window.clone(), host.open.clone())
-    }
-}
-
-/// Handlers that do nothing, for a State matrix cell.
+/// Handlers that do nothing: the window is drawn, not opened.
 fn inert_handlers() -> OverlayWindowTemplateHandlers {
     OverlayWindowTemplateHandlers {
         key_down: Box::new(|_, _, _| {}),
@@ -202,9 +48,117 @@ fn inert_handlers() -> OverlayWindowTemplateHandlers {
     }
 }
 
+/// The window open in its frame, drawn from `theme` in `mode`: Modal fills the frame with the backdrop.
+fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut Window, cx: &mut App) -> AnyElement {
+    let template = template(theme.clone());
+    let look = template.resolve_look(mode);
+    let content: OverlayWindowElementRenderer = Arc::new(|_, _, _| {
+        div()
+            .flex()
+            .flex_col()
+            .gap(px(12.))
+            .child(div().font_weight(gpui::FontWeight::SEMIBOLD).child(HEADING))
+            .child(BODY)
+            .into_any_element()
+    });
+    let model = OverlayWindowRenderModel {
+        id: &id,
+        mode,
+        position: OverlayWindowPosition::Center,
+        dismissible: true,
+        draggable: false,
+        width: None,
+        focused: false,
+        content: &content,
+    };
+    let parts = OverlayWindowTemplateParts { header_drag_handle: None, handlers: inert_handlers() };
+    let backdrop = match mode {
+        OverlayWindowMode::Modal => look.backdrop_background,
+        OverlayWindowMode::Modeless => gpui::transparent_black(),
+    };
+    div()
+        .w(px(FRAME_WIDTH))
+        .h(px(FRAME_HEIGHT))
+        .flex()
+        .items_center()
+        .justify_center()
+        .bg(backdrop)
+        .child(template.render(&model, &look, parts, window, cx))
+        .into_any_element()
+}
+
+/// The live dialog: the window open in its frame, in the theme last bound and the picked variant.
+struct DialogHost {
+    theme: Option<Theme>,
+    mode: OverlayWindowMode,
+}
+
+impl Render for DialogHost {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = self.theme.clone();
+        div()
+            .debug_selector(|| "workshop-sdk-dialog".into())
+            .children(theme.map(|theme| dialog("workshop-sdk-dialog".into(), &theme, self.mode, window, cx)))
+    }
+}
+
+pub(super) struct DialogSurface {
+    host: Entity<DialogHost>,
+    /// Radix toggle group: Modeless · Modal (the `.lss` variant).
+    variant_picker: ControlGroup<ControlGroupItem>,
+}
+
+impl DialogSurface {
+    pub(super) fn make(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+        let host = cx.new(|_| DialogHost { theme: None, mode: OverlayWindowMode::Modeless });
+        let variant_picker = xgpui_luma_look_radix::control_group_builder(
+            look.as_ref(),
+            "workshop-surface-dialog-variant",
+            xgpui_luma_look_radix::RadixSize::One,
+        )
+        .horizontal()
+        .single_required()
+        .items([ControlGroupItem::new(MODELESS).label("Modeless"), ControlGroupItem::new(MODAL).label("Modal")])
+        .selected_ids([MODELESS])
+        .spawn(cx);
+        let target = host.clone();
+        cx.subscribe(&variant_picker, move |_: &mut ControlSide, _, event: &ControlGroupEvent, cx| {
+            if let ControlGroupEvent::Change { selected_ids, .. } = event
+                && let Some(id) = selected_ids.first()
+            {
+                let mode = if id.as_ref() == MODAL {
+                    OverlayWindowMode::Modal
+                } else {
+                    OverlayWindowMode::Modeless
+                };
+                target.update(cx, |host, cx| {
+                    host.mode = mode;
+                    cx.notify();
+                });
+                // The matrix draws the picked variant too.
+                cx.notify();
+            }
+        })
+        .detach();
+        Box::new(Self { host, variant_picker })
+    }
+
+    /// The picked variant, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    fn mode(&self, cx: &App) -> OverlayWindowMode {
+        self.host.read(cx).mode
+    }
+
+    /// The variant option, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    fn variant_picker(&self) -> ControlGroup<ControlGroupItem> {
+        self.variant_picker.clone()
+    }
+}
+
 impl SurfaceControl for DialogSurface {
     fn title(&self) -> &'static str {
-        self.kind.title()
+        "Dialog"
     }
 
     fn view(&self) -> AnyView {
@@ -212,28 +166,24 @@ impl SurfaceControl for DialogSurface {
     }
 
     fn bind(&self, theme: Theme, _pinned: Option<&StateSet>, cx: &mut App) {
-        self.template.set(template(theme));
-        let window = self.host.read(cx).window.clone();
-        window.update(cx, |_, cx| cx.notify());
+        self.host.update(cx, |host, cx| {
+            host.theme = Some(theme);
+            cx.notify();
+        });
     }
 
-    fn set_enabled(&self, enabled: bool, cx: &mut App) {
-        let open = self.host.read(cx).open.clone();
-        open.update(cx, |open, cx| open.set_enabled(enabled, cx));
-    }
+    /// The window is drawn, not opened, so there is no input to turn off.
+    fn set_enabled(&self, _enabled: bool, _cx: &mut App) {}
 
     fn template_states(&self) -> Vec<&'static str> {
         Vec::new()
     }
 
-    fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
-        let window = self.host.read(cx).window.clone();
-        cx.subscribe(&window, move |side: &mut ControlSide, _, event: &OverlayWindowEvent, cx| {
-            on_event(side, SurfaceEvent { line: format!("{event:?}"), state: None }, cx);
-        })
+    /// A drawn window emits no events.
+    fn subscribe(&self, cx: &mut Context<ControlSide>, _on_event: OnSurfaceEvent) -> Subscription {
+        cx.observe(&self.host, |_, _, cx| cx.notify())
     }
 
-    /// The window's shell, in place.
     fn cell(
         &self,
         theme: &Theme,
@@ -242,22 +192,12 @@ impl SurfaceControl for DialogSurface {
         window: &mut Window,
         cx: &mut App,
     ) -> AnyElement {
-        let template = template(theme.clone());
-        let mode = self.kind.mode();
-        let look = template.resolve_look(mode);
-        let content = content(None);
-        let model = OverlayWindowRenderModel {
-            id: &id,
-            mode,
-            position: OverlayWindowPosition::Center,
-            dismissible: true,
-            draggable: false,
-            width: None,
-            focused: false,
-            content: &content,
-        };
-        let parts = OverlayWindowTemplateParts { header_drag_handle: None, handlers: inert_handlers() };
-        template.render(&model, &look, parts, window, cx).into_any_element()
+        let mode = self.host.read(cx).mode;
+        dialog(id, theme, mode, window, cx)
+    }
+
+    fn options(&self) -> Option<AnyElement> {
+        Some(self.variant_picker.clone().into_any_element())
     }
 
     #[cfg(all(test, feature = "test-support"))]
@@ -268,36 +208,35 @@ impl SurfaceControl for DialogSurface {
 
 #[cfg(all(test, feature = "test-support"))]
 mod tests {
-    use gpui::{Focusable, TestAppContext};
+    use gpui::TestAppContext;
 
     use super::*;
     use crate::workshop::tests_support::open_surface;
 
     #[test]
-    fn the_dialog_pages_open_and_dismiss_and_draw_a_matrix_cell() {
-        for id in ["dialog-modal", "dialog-modeless", "dialog-positioning", "dialog-draggable"] {
-            let mut app = TestAppContext::single();
-            let (page, cx) = open_surface(&mut app, id);
-            let side = cx.update(|_, cx| page.read(cx).side());
-            let (window, open) =
-                cx.update(|_, cx| side.read(cx).control_as::<DialogSurface>().expect("a dialog").parts(cx));
+    fn the_dialog_page_draws_the_open_window_and_switches_to_modal() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = open_surface(&mut app, "dialog");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        assert!(cx.debug_bounds("workshop-sdk-dialog").is_some(), "the window is drawn open");
+        let picker = cx.update(|_, cx| side.read(cx).control_as::<DialogSurface>().expect("a dialog").variant_picker());
+        let mode = |cx: &mut gpui::VisualTestContext| {
+            cx.update(|_, cx| side.read(cx).control_as::<DialogSurface>().expect("a dialog").mode(cx))
+        };
+        assert!(matches!(mode(cx), OverlayWindowMode::Modeless), "Modeless first");
 
-            cx.update(|w, cx| open.read(cx).focus_handle(cx).focus(w, cx));
-            cx.run_until_parked();
-            cx.simulate_keystrokes("space");
-            cx.run_until_parked();
-            cx.update(|_, cx| assert!(window.read(cx).is_open(), "{id} opens"));
-            assert!(cx.debug_bounds("workshop-sdk-dialog-bounds").is_some(), "{id} draws its window");
-            let text = cx.update(|_, cx| side.read(cx).events_text(cx));
-            assert!(text.contains("Opened"), "{id} logs opening: {text}");
+        picker.update(cx, |_, cx| {
+            cx.emit(ControlGroupEvent::Change {
+                changed_id: MODAL.into(),
+                selected: true,
+                selected_ids: vec![MODAL.into()],
+            })
+        });
+        cx.run_until_parked();
+        assert!(matches!(mode(cx), OverlayWindowMode::Modal), "the option picks the modal variant");
 
-            window.update(cx, |window, cx| window.dismiss(cx));
-            cx.run_until_parked();
-            cx.update(|_, cx| assert!(!window.read(cx).is_open(), "{id} dismisses"));
-
-            side.update(cx, |side, cx| side.show_matrix(cx));
-            cx.run_until_parked();
-            assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "{id}'s matrix draws the window");
-        }
+        side.update(cx, |side, cx| side.show_matrix(cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "the matrix draws the window");
     }
 }

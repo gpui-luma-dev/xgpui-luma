@@ -3,6 +3,7 @@
 pub(crate) mod catalog;
 mod accordion_surface;
 mod pager_surface;
+mod popover_surface;
 mod radio_group_surface;
 mod table_surface;
 mod tree_view_surface;
@@ -12,12 +13,15 @@ mod slider_surface;
 mod scrollbar_surface;
 mod menu_surface;
 mod layout_surface;
+mod listbox_surface;
 mod sidebar_surface;
+mod slide_panel_surface;
 mod tabs_surface;
 mod badge_surface;
 mod progress_surface;
 mod stepper_surface;
 mod dialog_surface;
+mod display_surface;
 mod selection_surface;
 mod shadow_button;
 mod custom_button;
@@ -54,10 +58,7 @@ use std::{
     },
 };
 use gpui::{Context, Entity, Render, Window, div, prelude::*, px};
-use xgpui_luma::controls::{
-    accordion::{Accordion, AccordionItem, AccordionTrigger, AccordionContent},
-    button::Button,
-};
+use xgpui_luma::controls::button::Button;
 use xgpui_luma::theme::ThemeMode;
 use xgpui_luma::prelude::HasPresenter;
 use crate::theme::{ColorVizLookExt, Look};
@@ -136,9 +137,11 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "paging-table" => Some(("table", table_surface::TableSurface::make_paging)),
         "scrolling-table" => Some(("table", table_surface::TableSurface::make_scrolling)),
         "tree-view" => Some(("tree_view", tree_view_surface::TreeViewSurface::make)),
+        "listbox" => Some(("listbox", listbox_surface::ListBoxSurface::make)),
         "dock-panel" => Some(("dock_splitter", layout_surface::DockPanelSurface::make)),
         "resizable-panels" => Some(("resizable_panels", layout_surface::ResizablePanelsSurface::make)),
         "split-view-unified" => Some(("split_view", layout_surface::SplitViewSurface::make)),
+        "slide-panel" => Some(("slide_panel", slide_panel_surface::SlidePanelSurface::make)),
         "popup-selector" => Some(("selector", selection_surface::SelectorSurface::make)),
         "split-button" => Some(("popup_menu", selection_surface::SplitButtonSurface::make)),
         "selection-panel" => Some(("selection_panel", selection_surface::UnthemedSurface::make_selection_panel)),
@@ -146,14 +149,17 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
         "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
         "context-menu" => Some(("context_menu", menu_surface::ContextMenuSurface::make)),
+        "floating-menu" => Some(("floating_menu", menu_surface::FloatingMenuSurface::make)),
         "popup-menu" => Some(("popup_menu", menu_surface::PopupMenuSurface::make)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
+        "avatar" => Some(("avatar", display_surface::DecorationSurface::make_avatar)),
+        "callout" => Some(("callout", display_surface::DecorationSurface::make_callout)),
+        "card" => Some(("card", display_surface::DecorationSurface::make_card)),
+        "tooltip" => Some(("tooltip", display_surface::DecorationSurface::make_tooltip)),
+        "popover" => Some(("popover", popover_surface::PopoverSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
-        "dialog-modal" => Some(("overlay_window", dialog_surface::DialogSurface::make_modal)),
-        "dialog-modeless" => Some(("overlay_window", dialog_surface::DialogSurface::make_modeless)),
-        "dialog-positioning" => Some(("overlay_window", dialog_surface::DialogSurface::make_positioning)),
-        "dialog-draggable" => Some(("overlay_window", dialog_surface::DialogSurface::make_draggable)),
+        "dialog" => Some(("overlay_window", dialog_surface::DialogSurface::make)),
         _ => None,
     }
 }
@@ -164,8 +170,14 @@ struct NavigationEntry {
     button: Entity<Button>,
 }
 
+/// Entries listed under Other Controls rather than with the SDK controls.
+const OTHER_CONTROLS: &[&str] = &["custom-button", "shadow-button"];
+
 pub(crate) struct Workshop {
-    pub(crate) sidebar: Accordion,
+    /// Luma Controls: every SDK control page in one list, in alphabetical order.
+    pub(crate) controls_sidebar: Vec<Entity<Button>>,
+    /// Other Controls: the custom button and prototypes.
+    pub(crate) other_sidebar: Vec<Entity<Button>>,
     pub(crate) color_sidebar: Vec<Entity<Button>>,
     selected: &'static str,
     navigation: Vec<NavigationEntry>,
@@ -179,7 +191,8 @@ pub(crate) struct Workshop {
 impl Workshop {
     pub(crate) fn new(shell_look: Arc<Look>, cx: &mut Context<Self>) -> Self {
         let mut navigation = Vec::new();
-        let mut groups = Vec::new();
+        let mut controls = Vec::new();
+        let mut other_sidebar = Vec::new();
         let mut color_sidebar = Vec::new();
         for group in COMPONENT_CATALOG {
             let mut rows = Vec::new();
@@ -232,38 +245,26 @@ impl Workshop {
                         )
                 });
                 button.update(cx, |button, cx| button.set_template(Arc::new(template), cx));
-                rows.push(button.clone());
+                if group.id == "color" {
+                    rows.push(button.clone());
+                } else if OTHER_CONTROLS.contains(&id) {
+                    other_sidebar.push(button.clone());
+                } else {
+                    controls.push((label, button.clone()));
+                }
                 navigation.push(NavigationEntry { id, selected, button });
             }
             if group.id == "color" {
                 color_sidebar = rows;
-                continue;
             }
-            groups.push(AccordionItem::new(
-                group.id,
-                AccordionTrigger::new(group.label),
-                AccordionContent::custom(move |_, _| {
-                    div().w_full().flex().flex_col().pl(px(20.)).gap_1().children(rows.clone()).into_any_element()
-                }),
-            ));
         }
-        // Radix size 1 is the compact navigation size.
-        let sidebar_look = shell_look.with_size(xgpui_luma_look_radix::RadixSize::One);
-        let sidebar = xgpui_luma_look_radix::accordion_builder(&sidebar_look, "control-workshop-catalog")
-            .template(crate::app::nav_accordion::template_with_labels(
-                &sidebar_look,
-                COMPONENT_CATALOG.iter().filter(|g| g.id != "color").map(|g| (g.id, g.label)).collect(),
-            ))
-            .multiple()
-            .collapsible(true)
-            .item_dividers(false)
-            .content_padding_y(4.)
-            .items(groups)
-            .spawn(cx);
+        controls.sort_by_key(|(label, _)| label.to_lowercase());
+        let controls_sidebar = controls.into_iter().map(|(_, button)| button).collect();
         let page_look = crate::theme::default_look();
         page_look.set_mode(ThemeMode::Light);
         let mut this = Self {
-            sidebar,
+            controls_sidebar,
+            other_sidebar,
             color_sidebar,
             selected: "color-field",
             navigation,
@@ -370,19 +371,10 @@ impl Render for Workshop {
             self.page_look.chrome()
         };
         let unavailable_reason = match self.selected {
-            "slide-panel" => Some(
-                "The SDK provides SlidePanelState and overlay rendering helpers, but no standalone Slide Panel control. A default control sample is unavailable.",
-            ),
             "split-view-inset" => Some(
                 "The SDK provides one SplitView control with no Inset variant. Its default template is demonstrated on the Split View: Unified screen.",
             ),
-            "floating-menu" => Some(
-                "The SDK provides Floating Menu rendering and navigation for Context Menu and Popup Menu, but no standalone Floating Menu control.",
-            ),
             "toggle-group" => Some("The SDK does not provide a dedicated Toggle Group control."),
-            "listbox" => Some(
-                "The SDK provides ListBox state and behavior, but no default visual template. A native default sample is unavailable.",
-            ),
             _ => None,
         };
         let mut root = div()
@@ -448,6 +440,7 @@ mod tests {
                 let (_, rest) = rest.split_once("label: \"")?;
                 Some((id, rest.split('"').next().unwrap()))
             })
+            .filter(|(id, _)| !catalog::STUDIO_ONLY.contains(id))
             .collect();
         let all: Vec<_> = COMPONENT_CATALOG.iter().flat_map(|g| g.entries.iter().map(|e| (e.id, e.label))).collect();
         let actual: Vec<_> = all.iter().copied().filter(|(id, _)| !catalog::LAB_ONLY.contains(id)).collect();
@@ -468,12 +461,12 @@ mod tests {
                 "Prototypes"
             ]
         );
-        assert_eq!(all.len(), 50);
+        assert_eq!(all.len(), 52);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.entries.len()).collect::<Vec<_>>(),
-            [4, 8, 4, 4, 6, 3, 5, 2, 7, 6, 1]
+            [4, 8, 4, 4, 6, 3, 5, 2, 9, 6, 1]
         );
-        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 50);
+        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 52);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.id).collect::<Vec<_>>(),
             [
@@ -501,9 +494,9 @@ mod tests {
             let workshop = view.read(cx);
             assert_eq!(workshop.selected, "color-field");
             assert_eq!(workshop.page_look.mode(), ThemeMode::Light);
-            assert!(!workshop.sidebar.read(cx).is_expanded(&"color".into()));
             assert_eq!(workshop.color_sidebar.len(), 6);
-            assert!(!workshop.sidebar.read(cx).is_expanded(&"command".into()));
+            assert_eq!(workshop.other_sidebar.len(), 2, "custom button and the prototype");
+            assert_eq!(workshop.controls_sidebar.len() + 8, workshop.navigation.len());
         });
         let field = cx.update(|_, cx| view.read(cx).samples["color-field"].view().entity_id());
         for group in COMPONENT_CATALOG {
@@ -530,10 +523,7 @@ mod tests {
                                 | "feedback"
                                 | "selection"
                                 | "prototypes"
-                        ) && !matches!(
-                            entry.id,
-                            "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
-                        )
+                        ) && !matches!(entry.id, "toggle-group" | "split-view-inset")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -547,7 +537,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 45);
+            assert_eq!(view.read(cx).samples.len(), 50);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
@@ -576,29 +566,14 @@ mod tests {
     }
 
     #[test]
-    fn listbox_without_sdk_default_renderer_shows_message_instead_of_substitute() {
-        let mut app = TestAppContext::single();
-        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        view.update(cx, |v, cx| v.select("listbox", cx));
-        cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
-        cx.update(|_, cx| {
-            assert_eq!(view.read(cx).selected, "listbox");
-            assert!(!view.read(cx).samples.contains_key("listbox"));
-        });
-    }
-
-    #[test]
-    fn unsupported_layout_and_menu_entries_explain_sdk_limitations() {
+    fn split_view_inset_explains_the_sdk_limitation() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        for id in ["slide-panel", "split-view-inset", "floating-menu"] {
-            view.update(cx, |v, cx| v.select(id, cx));
-            cx.run_until_parked();
-            assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some(), "{id}");
-            cx.update(|_, cx| assert!(!view.read(cx).samples.contains_key(id)));
-        }
+        view.update(cx, |v, cx| v.select("split-view-inset", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
+        cx.update(|_, cx| assert!(!view.read(cx).samples.contains_key("split-view-inset")));
     }
 
     #[test]
@@ -626,7 +601,8 @@ mod tests {
                 .child(
                     div()
                         .w(px(260.))
-                        .child(self.workshop.read(cx).sidebar.clone())
+                        .child(div().flex().flex_col().children(self.workshop.read(cx).controls_sidebar.clone()))
+                        .child(div().flex().flex_col().children(self.workshop.read(cx).other_sidebar.clone()))
                         .child(div().flex().flex_col().children(self.workshop.read(cx).color_sidebar.clone())),
                 )
                 .child(div().flex_1().child(self.workshop.clone()))
@@ -634,7 +610,7 @@ mod tests {
     }
 
     #[test]
-    fn workshop_group_links_support_keyboard_activation() {
+    fn workshop_links_support_keyboard_activation() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (host, cx) = app.add_window_view(|window, cx| {
@@ -643,9 +619,8 @@ mod tests {
         });
         cx.update(|_, cx| xgpui_luma::key_handling::bind_default_control_keys(cx));
         cx.run_until_parked();
-        let folder = cx.debug_bounds("nav-folder-Command-closed").unwrap();
-        let folder_label = cx.debug_bounds("nav-label-Command").unwrap();
-        assert!((folder_label.left() - folder.right() - px(6.)).abs() < px(1.));
+        // No group folders: the controls are one flat list, labels aligned with the color controls'.
+        assert!(cx.debug_bounds("nav-folder-Command-closed").is_none(), "no group accordion");
         let field_label = cx.debug_bounds("workshop-label-color-field").unwrap();
         for (label_id, row_id) in [
             ("workshop-label-color-arc", "workshop-color-arc"),
@@ -653,6 +628,8 @@ mod tests {
             ("workshop-label-color-slider", "workshop-color-slider"),
             ("workshop-label-color-slider-revealed", "workshop-color-slider-revealed"),
             ("workshop-label-color-multi-mixer", "workshop-color-multi-mixer"),
+            ("workshop-label-button", "workshop-button"),
+            ("workshop-label-custom-button", "workshop-custom-button"),
         ] {
             let label = cx.debug_bounds(label_id).unwrap();
             let row = cx.debug_bounds(row_id).unwrap();

@@ -125,10 +125,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn sdk_badge_is_a_pill_with_label_text() {
+    fn sdk_badge_is_an_outlined_pill_with_label_text() {
         let look = StyledBadge::sdk().look();
         assert_eq!(look.radius, 999.0);
-        assert!(look.border.is_none());
+        assert!(look.border.is_some_and(|border| border.a > 0.0), "an edge sets it apart from a subtle surface");
         assert_eq!(look.min_height, look.typography.line_height + 2.0 * look.padding_y);
         assert!(look.background.a > 0.0 && look.foreground.a > 0.0);
     }

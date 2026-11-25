@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window, prelude::*};
+use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::slider::{
     self, Slider, SliderEvent, SliderInputStrategy, SliderLook, SliderRenderModel, SliderTemplate,
     SliderTemplateHandlers, SliderThumbPolicy, SliderThumbRole, SliderThumbValue, StyledSliderTheme,
@@ -23,6 +23,10 @@ const STATES: [&str; 3] = ["hover", "pressed", "disabled"];
 /// The live slider's starting value, and where each State matrix cell's thumb sits (0–1).
 const VALUE: f32 = 50.;
 const CELL_POSITION: f32 = 0.5;
+/// A slider has no width of its own: the stage gives it one (scaled with the zoom), and so does each
+/// matrix cell.
+const STAGE_WIDTH: f32 = 240.;
+const CELL_WIDTH: f32 = 200.;
 
 pub(super) struct SliderSurface {
     slider: Slider,
@@ -123,6 +127,11 @@ impl SurfaceControl for SliderSurface {
         self.slider.clone().into()
     }
 
+    /// A slider fills the width it is given and has none of its own.
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_WIDTH)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         let template = PinnedSliderTemplate { base: template(theme), pinned: pinned.cloned() };
         self.slider.update(cx, |slider, cx| slider.set_template(Arc::new(template), cx));
@@ -183,7 +192,10 @@ impl SurfaceControl for SliderSurface {
             state: pinned_state(states),
             domain_track: None,
         };
-        template(theme.clone()).render(&model, inert_handlers(), thumb, window, cx).into_any_element()
+        div()
+            .w(px(CELL_WIDTH))
+            .child(template(theme.clone()).render(&model, inert_handlers(), thumb, window, cx))
+            .into_any_element()
     }
 
     #[cfg(all(test, feature = "test-support"))]
@@ -205,6 +217,9 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "slider");
         let side = cx.update(|_, cx| page.read(cx).side());
+        // No width of its own: the stage gives it one.
+        let control = cx.debug_bounds("workshop-surface-control").expect("the control");
+        assert_eq!(control.size.width, px(STAGE_WIDTH), "the stage gives it a width");
         let slider = cx.update(|_, cx| side.read(cx).control_as::<SliderSurface>().expect("a slider").slider());
 
         cx.update(|window, cx| slider.read(cx).focus_handle(cx).focus(window, cx));
