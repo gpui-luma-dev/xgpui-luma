@@ -1,7 +1,9 @@
 //! Control Workshop. Catalog and complete sample compositions are copied from Luma Studio;
 //! inspector and documentation hosts intentionally stay out of this application.
 pub(crate) mod catalog;
-mod choice;
+mod accordion_surface;
+mod pager_surface;
+mod radio_group_surface;
 mod collection;
 mod textfield_surface;
 mod textarea_surface;
@@ -67,7 +69,6 @@ enum Sample {
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     Collection(Entity<collection::CollectionSample>),
-    Choice(Entity<choice::ChoiceSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
@@ -90,7 +91,6 @@ impl Sample {
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
-            Self::Choice(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
@@ -112,7 +112,6 @@ impl Sample {
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Choice(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -146,6 +145,9 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "textarea" => Some(("textarea", textarea_surface::TextAreaSurface::make)),
         "slider" => Some(("slider", slider_surface::SliderSurface::make)),
         "scrollbar" => Some(("scrollbar", scrollbar_surface::ScrollbarSurface::make)),
+        "accordion" => Some(("accordion", accordion_surface::AccordionSurface::make)),
+        "pager" => Some(("pager", pager_surface::PagerSurface::make)),
+        "radio-group" => Some(("radio", radio_group_surface::RadioGroupSurface::make)),
         _ => None,
     }
 }
@@ -175,9 +177,6 @@ pub(crate) struct Workshop {
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         // Design surface pages (see `surface_control`) have their own inspector.
-        "accordion" => &["accordion"],
-        "pager" => &["pager"],
-        "radio-group" => &["radio"],
         "paging-table" => &["table", "pager"],
         "scrolling-table" => &["table", "scrollbar"],
         "tree-view" => &["tree_view"],
@@ -390,15 +389,6 @@ impl Workshop {
                 }))),
                 "tree-view" => Some(Sample::Collection(
                     cx.new(|cx| collection::CollectionSample::new(collection::CollectionKind::TreeView, look, cx)),
-                )),
-                "accordion" => Some(Sample::Choice(
-                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Accordion, look, cx)),
-                )),
-                "pager" => {
-                    Some(Sample::Choice(cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::Pager, look, cx))))
-                }
-                "radio-group" => Some(Sample::Choice(
-                    cx.new(|cx| choice::ChoiceSample::new(choice::ChoiceKind::RadioGroup, look, cx)),
                 )),
                 "custom-button" => Some(Sample::CustomButton(
                     cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
