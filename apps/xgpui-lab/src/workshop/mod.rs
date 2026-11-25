@@ -13,7 +13,10 @@ mod menu;
 mod layout;
 mod sidebar_surface;
 mod tabs_surface;
-mod feedback;
+mod badge_surface;
+mod progress_surface;
+mod stepper_surface;
+mod dialog_surface;
 mod selection;
 mod shadow_button;
 mod custom_button;
@@ -42,7 +45,6 @@ mod pinned_template;
 mod state_icons;
 mod box_model;
 mod pane_type;
-mod display;
 
 use std::{
     collections::HashMap,
@@ -65,7 +67,6 @@ use catalog::COMPONENT_CATALOG;
 enum Sample {
     ShadowButton(Entity<shadow_button::ShadowButtonSample>),
     Selection(Entity<selection::SelectionSample>),
-    Feedback(Entity<feedback::FeedbackSample>),
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     Collection(Entity<collection::CollectionSample>),
@@ -78,7 +79,6 @@ enum Sample {
     Slider(Entity<color_slider::ColorSliderExpositionLeftPane>),
     Revealed(Entity<color_slider_revealed::ColorSliderRevealedPane>),
     Mixer(Entity<color_multi_mixer::ColorMultiMixerControlExposition>),
-    Display(Entity<display::DisplaySample>),
 }
 
 impl Sample {
@@ -86,7 +86,6 @@ impl Sample {
         match self {
             Self::ShadowButton(v) => v.clone().into(),
             Self::Selection(v) => v.clone().into(),
-            Self::Feedback(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
@@ -98,7 +97,6 @@ impl Sample {
             Self::Slider(v) => v.clone().into(),
             Self::Revealed(v) => v.clone().into(),
             Self::Mixer(v) => v.clone().into(),
-            Self::Display(v) => v.clone().into(),
         }
     }
 
@@ -106,7 +104,6 @@ impl Sample {
         match self {
             Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Feedback(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -118,7 +115,6 @@ impl Sample {
             Self::Slider(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Revealed(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Mixer(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Display(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
         }
     }
 
@@ -148,6 +144,13 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "radio-group" => Some(("radio", radio_group_surface::RadioGroupSurface::make)),
         "sidebar" => Some(("sidebar", sidebar_surface::SidebarSurface::make)),
         "tabs-navigation" => Some(("tabs", tabs_surface::TabsSurface::make)),
+        "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
+        "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
+        "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
+        "dialog-modal" => Some(("overlay_window", dialog_surface::DialogSurface::make_modal)),
+        "dialog-modeless" => Some(("overlay_window", dialog_surface::DialogSurface::make_modeless)),
+        "dialog-positioning" => Some(("overlay_window", dialog_surface::DialogSurface::make_positioning)),
+        "dialog-draggable" => Some(("overlay_window", dialog_surface::DialogSurface::make_draggable)),
         _ => None,
     }
 }
@@ -186,10 +189,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "dock-panel" => &["dock_splitter"],
         "resizable-panels" => &["resizable_panels"],
         "split-view-unified" => &["split_view"],
-        "badge" => &["badge", "card"],
-        "progress" => &["progress"],
-        "stepper" => &["stepper"],
-        "dialog-modal" | "dialog-modeless" | "dialog-positioning" | "dialog-draggable" => &["overlay_window"],
         "selection-panel" => &["selection_panel"],
         "popup-selector" => &["selector", "floating_menu"],
         "search-selector" | "combobox" => &["textfield", "floating_menu"],
@@ -338,25 +337,6 @@ impl Workshop {
                 )),
                 "autocomplete-textfield" => Some(Sample::Selection(
                     cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Autocomplete, look, cx)),
-                )),
-                "dialog-draggable" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Draggable, look, cx)),
-                )),
-                "dialog-positioning" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Positioning, look, cx)),
-                )),
-                "dialog-modeless" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Modeless, look, cx)),
-                )),
-                "dialog-modal" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Modal, look, cx)),
-                )),
-                "badge" => Some(Sample::Display(cx.new(|cx| display::DisplaySample::new(look, cx)))),
-                "stepper" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Stepper, look, cx)),
-                )),
-                "progress" => Some(Sample::Feedback(
-                    cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Progress, look, cx)),
                 )),
                 "dock-panel" => {
                     Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Dock, look, cx))))
@@ -713,7 +693,6 @@ mod tests {
         view.update(cx, |v, cx| v.select("badge", cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-sdk-badges").is_some());
-        assert!(cx.debug_bounds("workshop-sdk-card").is_some());
     }
 
     #[test]
