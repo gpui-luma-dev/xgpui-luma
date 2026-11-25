@@ -20,6 +20,8 @@ slider {
   /// The unfilled track.
   part track {
     background = palette.surface.subtle.background
+    border       = palette.border.default
+    border_width = exact(metrics.border_width)
     :disabled { background = palette.state.disabled.background }
   }
 

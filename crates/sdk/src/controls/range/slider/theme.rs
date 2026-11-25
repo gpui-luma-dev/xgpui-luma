@@ -13,6 +13,9 @@ pub struct SliderLook {
     /// Captured radial layout and disabled-track presentation.
     pub decoration: crate::theme::stylesheet::SliderDecoration,
     pub track_background: Hsla,
+    /// The track's outline, over its filled and unfilled parts (linear sliders). A zero width draws none.
+    pub track_border: Hsla,
+    pub track_border_width: f32,
     pub fill_background: Hsla,
     pub thumb_background: Hsla,
     pub thumb_border: Hsla,

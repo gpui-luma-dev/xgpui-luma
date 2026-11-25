@@ -213,3 +213,17 @@ mod tests {
         assert!(classic.thumb_shadow.len() > surface.thumb_shadow.len());
     }
 }
+
+#[cfg(test)]
+mod track_border_tests {
+    /// Radix tracks keep no outline although the SDK's have one (#397).
+    #[test]
+    fn radix_tracks_draw_no_outline() {
+        let look = crate::Look::built_in();
+        for variant in [super::SliderVariant::Classic, super::SliderVariant::Surface, super::SliderVariant::Soft] {
+            let slider = super::slider_theme_for(&look, variant, super::SliderSize::Two).resolve(Default::default());
+            assert_eq!(slider.track_border_width, 0.0, "{variant:?}");
+        }
+        assert_eq!(crate::progress::progress_theme(&look).resolve(true).track_border_width, 0.0);
+    }
+}

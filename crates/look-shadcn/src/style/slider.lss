@@ -22,8 +22,10 @@ slider {
   size sm { part root { height = exact(24) } }
   size lg { part root { height = exact(40) } }
 
+  // No track outline (the SDK draws one); set a width here to give the shadcn track a border.
   part track {
     background = css.border
+    border_width = exact(0)
     :disabled { background = css.border }
   }
 

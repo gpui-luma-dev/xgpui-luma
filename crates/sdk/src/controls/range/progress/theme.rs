@@ -23,6 +23,9 @@ pub struct ProgressLook {
     /// Resolved sweep and shimmer appearance, independent of phase/timing.
     pub geometry: crate::theme::stylesheet::ProgressGeometry,
     pub track_color: Hsla,
+    /// The track's outline, drawn over the track and the filled amount (a linear bar). A zero width draws none.
+    pub track_border: Hsla,
+    pub track_border_width: f32,
     pub progress_color: Hsla,
     pub thumb_color: Hsla,
     pub track_height: f32,

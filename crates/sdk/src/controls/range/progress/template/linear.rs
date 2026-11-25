@@ -110,13 +110,18 @@ impl ProgressTemplate for LinearProgressTemplate {
                     }
                 };
 
+                // The outline frames the whole track over the fill, so it reads as one bordered bar.
+                let outline_node =
+                    track_outline(&look, track_radius).left_0().right_0().top(px(track_inset)).h(px(track_height));
+
                 let mut root = div()
                     .id(model.id.clone())
                     .relative()
                     .w_full()
                     .h(px(cross_extent))
                     .child(track_node)
-                    .child(fill_node);
+                    .child(fill_node)
+                    .child(outline_node);
 
                 if model.show_thumb && !model.indeterminate {
                     let thumb_node =
@@ -173,13 +178,17 @@ impl ProgressTemplate for LinearProgressTemplate {
                     }
                 };
 
+                let outline_node =
+                    track_outline(&look, track_radius).top_0().bottom_0().left(px(track_inset)).w(px(track_height));
+
                 let mut root = div()
                     .id(model.id.clone())
                     .relative()
                     .w(px(cross_extent))
                     .h_full()
                     .child(track_node)
-                    .child(fill_node);
+                    .child(fill_node)
+                    .child(outline_node);
 
                 if model.show_thumb && !model.indeterminate {
                     let thumb_node =
@@ -287,4 +296,12 @@ fn render_vertical_shimmer(
         .child(band(start, fraction, soft))
         .child(band(start + fraction * geometry.shimmer_mid_offset, fraction * geometry.shimmer_mid_width, mid))
         .child(band(start + fraction * geometry.shimmer_core_offset, fraction * geometry.shimmer_core_width, color))
+}
+
+/// An outline the track's shape (place it like the track), drawn over the fill; empty when the look's
+/// track border width is zero.
+fn track_outline(look: &crate::controls::progress::ProgressLook, radius: gpui::Pixels) -> Div {
+    div().absolute().rounded(radius).when(look.track_border_width > 0.0, |outline| {
+        outline.border(px(look.track_border_width)).border_color(look.track_border)
+    })
 }
