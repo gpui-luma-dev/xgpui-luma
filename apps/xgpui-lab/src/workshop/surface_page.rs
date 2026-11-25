@@ -53,7 +53,7 @@ const ZOOM_STEP: f32 = 0.25;
 const ZOOM_SLIDER_WIDTH: f32 = 140.;
 /// The stage grid's square at actual size; it scales with the zoom, like the control.
 const STAGE_GRID_SPACING: f32 = 10.;
-/// Wheel and two-finger scroll zoom on the Control stage: each pixel of scroll multiplies the zoom by
+/// Ctrl+wheel (Cmd on macOS) zooms the Control stage: each pixel of scroll multiplies the zoom by
 /// e^rate (as the canvas lab does).
 const WHEEL_ZOOM_RATE: f32 = 0.005;
 /// A drag on the Control stage pans only once the pointer has moved this far, so a click on the
@@ -708,6 +708,23 @@ impl ControlSide {
         cx.notify();
     }
 
+    /// Whether `position` is over the live control in Test mode, where the wheel and a left drag are the
+    /// control's (in Design mode the control ignores input, so the stage takes them).
+    fn over_live_control(&self, position: Point<Pixels>) -> bool {
+        self.work_mode == WorkMode::Test && self.control_bounds.get().is_some_and(|bounds| bounds.contains(&position))
+    }
+
+    /// Pan by a wheel or two-finger scroll, like scrolling a page: the control moves with the content.
+    /// With Shift a mouse wheel's vertical turn pans sideways.
+    fn pan_by(&mut self, delta: Point<Pixels>, sideways: bool) {
+        let delta = if sideways && delta.x == px(0.) {
+            point(delta.y, px(0.))
+        } else {
+            delta
+        };
+        self.pan = self.pan + delta;
+    }
+
     /// A press on the Control stage starts a drag that pans once it moves past [`PAN_THRESHOLD`].
     fn start_pan(&mut self, position: Point<Pixels>) {
         self.pan_drag = Some(PanDrag { start: position, pan: self.pan, panning: false });
@@ -1336,12 +1353,22 @@ impl ControlSide {
                     })
                     .child(div().relative().size_full().child(stage))
                     .when(control, |stage| {
-                        // Wheel, two-finger scroll and pinch zoom the control about its own center; a drag
-                        // (mouse, or a trackpad's three-finger drag) pans.
+                        // Ctrl+wheel (Cmd on macOS) and pinch zoom the control about its own center. A
+                        // plain wheel or two-finger scroll pans (Shift: sideways), and so does a drag from
+                        // the empty stage or a middle-button drag. In Test mode the wheel and a left drag
+                        // over the live control go to the control, so scrollbars, lists and splitters work.
                         stage
                             .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
-                                let delta = f32::from(event.delta.pixel_delta(px(24.)).y);
-                                this.zoom_by((delta * WHEEL_ZOOM_RATE).clamp(-1., 1.).exp(), cx);
+                                let delta = event.delta.pixel_delta(px(24.));
+                                if event.modifiers.secondary(cx) {
+                                    let delta = f32::from(delta.y);
+                                    this.zoom_by((delta * WHEEL_ZOOM_RATE).clamp(-1., 1.).exp(), cx);
+                                } else if this.over_live_control(event.position) {
+                                    return;
+                                } else {
+                                    this.pan_by(delta, event.modifiers.shift);
+                                    cx.notify();
+                                }
                                 cx.stop_propagation();
                             }))
                             .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
@@ -1350,7 +1377,11 @@ impl ControlSide {
                             }))
                             .on_mouse_down(
                                 MouseButton::Left,
-                                cx.listener(|this, event: &MouseDownEvent, _, _| this.start_pan(event.position)),
+                                cx.listener(|this, event: &MouseDownEvent, _, _| {
+                                    if !this.over_live_control(event.position) {
+                                        this.start_pan(event.position);
+                                    }
+                                }),
                             )
                             .on_mouse_down(
                                 MouseButton::Middle,
@@ -2169,7 +2200,7 @@ mod tests {
     }
 
     #[test]
-    fn the_control_stage_zooms_with_wheel_and_pinch_and_pans_with_a_drag() {
+    fn the_control_stage_zooms_with_ctrl_wheel_and_pinch_and_leaves_the_live_control_its_input() {
         let mut app = TestAppContext::single();
         let (_, pane, cx) = open(&mut app);
         let side = cx.update(|_, cx| pane.read(cx).side());
@@ -2185,22 +2216,49 @@ mod tests {
         let control_center = |cx: &mut VisualTestContext| cx.debug_bounds("workshop-surface-control").unwrap().center();
         let same = |a: Point<Pixels>, b: Point<Pixels>| close(a.x, f32::from(b.x)) && close(a.y, f32::from(b.y));
 
-        // The wheel (or a two-finger scroll) zooms in about the checkbox's own center, wherever the
-        // pointer is: the checkbox stays put. The slider follows.
-        let before = control_center(cx);
-        cx.simulate_event(ScrollEvent {
-            position: center + point(px(120.), px(40.)),
-            delta: gpui::ScrollDelta::Pixels(point(px(0.), px(100.))),
-            ..Default::default()
-        });
+        let wheel = |cx: &mut VisualTestContext, position: Point<Pixels>, modifiers: gpui::Modifiers| {
+            cx.simulate_event(ScrollEvent {
+                position,
+                delta: gpui::ScrollDelta::Pixels(point(px(0.), px(100.))),
+                modifiers,
+                ..Default::default()
+            });
+            cx.run_until_parked();
+        };
+        let zoom_key = cx.update(|_, cx| gpui::Modifiers::secondary_key(cx));
+
+        // In Test mode a plain wheel over the live checkbox is the checkbox's: no zoom, no pan; a press
+        // on it is a click, not the start of a pan.
+        let on_control = control_center(cx);
+        wheel(cx, on_control, gpui::Modifiers::none());
+        assert_eq!(view(cx), (1., Point::default(), 1.), "the wheel over the live control is the control's");
+        cx.simulate_mouse_down(on_control, MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_move(on_control + point(px(40.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_up(on_control + point(px(40.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
         cx.run_until_parked();
+        assert_eq!(view(cx).1, Point::default(), "a drag from the live control doesn't pan");
+
+        // A plain wheel on the empty stage pans like scrolling a page; Shift pans sideways.
+        let off_control = center + point(px(120.), px(40.));
+        wheel(cx, off_control, gpui::Modifiers::none());
+        assert_eq!(view(cx).0, 1., "a plain wheel never zooms");
+        assert!(close(view(cx).1.y, 100.) && close(view(cx).1.x, 0.), "wheel pans: {:?}", view(cx).1);
+        wheel(cx, off_control, gpui::Modifiers::shift());
+        assert!(close(view(cx).1.x, 100.) && close(view(cx).1.y, 100.), "Shift pans sideways: {:?}", view(cx).1);
+        side.update(cx, |side, cx| side.reset_view(cx));
+        cx.run_until_parked();
+
+        // Ctrl+wheel (Cmd on macOS) zooms in about the checkbox's own center, wherever the pointer is
+        // (over the control too): the checkbox stays put. The slider follows.
+        let before = control_center(cx);
+        wheel(cx, off_control, zoom_key);
         let (zoom, pan, slider) = view(cx);
-        assert!((zoom - 0.5f32.exp()).abs() < 0.01, "wheel zooms in: {zoom}");
+        assert!((zoom - 0.5f32.exp()).abs() < 0.01, "Ctrl+wheel zooms in: {zoom}");
         assert_eq!(pan, Point::default(), "zoom never pans");
         assert!(same(control_center(cx), before), "the checkbox stays put: {before:?}");
         assert!(slider > 1.4, "the slider follows: {slider}");
 
-        // A drag on the stage pans the checkbox with the pointer.
+        // A drag on the empty stage pans the checkbox with the pointer.
         let start = stage.origin + point(px(30.), stage.size.height - px(30.));
         cx.simulate_mouse_down(start, MouseButton::Left, gpui::Modifiers::none());
         cx.simulate_mouse_move(start + point(px(40.), px(-20.)), MouseButton::Left, gpui::Modifiers::none());
@@ -2224,6 +2282,16 @@ mod tests {
         cx.run_until_parked();
         let (zoom, pan, slider) = view(cx);
         assert_eq!((zoom, pan, slider), (1., Point::default(), 1.), "back to actual size");
+
+        // In Design mode the control ignores input, so a drag from it pans.
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        cx.run_until_parked();
+        let on_control = control_center(cx);
+        cx.simulate_mouse_down(on_control, MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_move(on_control + point(px(40.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_up(on_control + point(px(40.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.run_until_parked();
+        assert!(close(view(cx).1.x, 40.), "Design: a drag from the control pans: {:?}", view(cx).1);
 
         // The wheel never zooms the State matrix.
         side.update(cx, |side, cx| side.show_matrix(cx));
