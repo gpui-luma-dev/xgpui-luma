@@ -54,3 +54,107 @@ impl StyledCallout {
         }
     }
 }
+
+/// A callout drawn from `.lss`: a message on a tinted strip, with an optional leading icon aligned to its first
+/// line. Looks keep their own callouts (with tones and variants); this is the SDK's.
+pub struct Callout {
+    text: gpui::SharedString,
+    icon: Option<crate::controls::button::ControlIcon>,
+    styled: StyledCallout,
+}
+
+impl Callout {
+    /// A callout showing `text`, from the SDK's `.lss` alone.
+    pub fn new(text: impl Into<gpui::SharedString>) -> Self {
+        Self { text: text.into(), icon: None, styled: StyledCallout::sdk() }
+    }
+
+    /// Lead the message with `icon`.
+    pub fn icon(mut self, icon: impl Into<crate::controls::button::ControlIcon>) -> Self {
+        self.icon = Some(icon.into());
+        self
+    }
+
+    /// Draw from `styled` (a look's binding or variant) instead of the SDK alone.
+    pub fn styled(mut self, styled: StyledCallout) -> Self {
+        self.styled = styled;
+        self
+    }
+}
+
+impl gpui::IntoElement for Callout {
+    type Element = gpui::Div;
+
+    fn into_element(self) -> gpui::Div {
+        use gpui::{div, prelude::*, px};
+        let look = self.styled.look();
+        let icon = self.icon.map(|icon| match icon {
+            crate::controls::button::ControlIcon::Lucide(icon) => {
+                crate::infra::icon::lucide_icon(icon, look.foreground, look.icon_size)
+            }
+            crate::controls::button::ControlIcon::SvgPath(path) => {
+                gpui::svg().path(path).size(px(look.icon_size)).text_color(look.foreground).into_any_element()
+            }
+        });
+        div()
+            .flex()
+            .items_start()
+            .gap(px(look.gap))
+            .p(px(look.padding))
+            .rounded(px(look.radius))
+            .bg(look.background)
+            .text_color(look.foreground)
+            .text_size(px(look.font_size))
+            .children(icon.map(|icon| div().flex_none().child(icon)))
+            .child(div().debug_selector(|| "callout-text".into()).min_w(px(0.)).child(self.text))
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod element_tests {
+    use gpui::{Context, Render, TestAppContext, Window, div, prelude::*, px};
+
+    use super::*;
+
+    struct Harness {
+        icon: bool,
+    }
+
+    impl Render for Harness {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let callout = Callout::new("Shipping delays may apply.");
+            let callout = if self.icon {
+                callout.icon(lucide_svg_static::Icon::Info)
+            } else {
+                callout
+            };
+            div().w(px(400.)).child(div().debug_selector(|| "callout".into()).child(callout))
+        }
+    }
+
+    /// The SDK callout paints its tinted strip, and an icon takes its size and gap ahead of the text (#397).
+    #[test]
+    fn paints_its_strip_and_leads_with_the_icon() {
+        let look = StyledCallout::sdk().look();
+        let mut app = TestAppContext::single();
+        let (view, cx) = app.add_window_view(|_, _| Harness { icon: false });
+        cx.run_until_parked();
+        let painted = cx.update(|window, _| {
+            window.painted_quads().iter().any(|quad| quad.background == gpui::Background::from(look.background))
+        });
+        assert!(painted, "the strip is painted");
+        let plain = cx.debug_bounds("callout").expect("the callout is drawn");
+        view.update(cx, |view, cx| {
+            view.icon = true;
+            cx.notify();
+        });
+        cx.run_until_parked();
+        let with_icon = cx.debug_bounds("callout").expect("the callout is drawn");
+        let text = cx.debug_bounds("callout-text").expect("the text is drawn");
+        assert_eq!(with_icon.size.width, plain.size.width, "the icon goes inside the strip");
+        assert!(
+            text.left() >= with_icon.left() + px(look.padding + look.icon_size + look.gap),
+            "the text starts after the icon: {text:?} in {with_icon:?}"
+        );
+    }
+}
