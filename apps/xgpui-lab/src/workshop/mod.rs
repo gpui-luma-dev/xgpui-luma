@@ -13,7 +13,9 @@ mod slider_surface;
 mod scrollbar_surface;
 mod menu_surface;
 mod layout_surface;
+mod listbox_surface;
 mod sidebar_surface;
+mod slide_panel_surface;
 mod tabs_surface;
 mod badge_surface;
 mod progress_surface;
@@ -135,9 +137,11 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "paging-table" => Some(("table", table_surface::TableSurface::make_paging)),
         "scrolling-table" => Some(("table", table_surface::TableSurface::make_scrolling)),
         "tree-view" => Some(("tree_view", tree_view_surface::TreeViewSurface::make)),
+        "listbox" => Some(("listbox", listbox_surface::ListBoxSurface::make)),
         "dock-panel" => Some(("dock_splitter", layout_surface::DockPanelSurface::make)),
         "resizable-panels" => Some(("resizable_panels", layout_surface::ResizablePanelsSurface::make)),
         "split-view-unified" => Some(("split_view", layout_surface::SplitViewSurface::make)),
+        "slide-panel" => Some(("slide_panel", slide_panel_surface::SlidePanelSurface::make)),
         "popup-selector" => Some(("selector", selection_surface::SelectorSurface::make)),
         "split-button" => Some(("popup_menu", selection_surface::SplitButtonSurface::make)),
         "selection-panel" => Some(("selection_panel", selection_surface::UnthemedSurface::make_selection_panel)),
@@ -367,16 +371,10 @@ impl Render for Workshop {
             self.page_look.chrome()
         };
         let unavailable_reason = match self.selected {
-            "slide-panel" => Some(
-                "The SDK provides SlidePanelState and overlay rendering helpers, but no standalone Slide Panel control. A default control sample is unavailable.",
-            ),
             "split-view-inset" => Some(
                 "The SDK provides one SplitView control with no Inset variant. Its default template is demonstrated on the Split View: Unified screen.",
             ),
             "toggle-group" => Some("The SDK does not provide a dedicated Toggle Group control."),
-            "listbox" => Some(
-                "The SDK provides ListBox state and behavior, but no default visual template. A native default sample is unavailable.",
-            ),
             _ => None,
         };
         let mut root = div()
@@ -525,7 +523,7 @@ mod tests {
                                 | "feedback"
                                 | "selection"
                                 | "prototypes"
-                        ) && !matches!(entry.id, "toggle-group" | "listbox" | "slide-panel" | "split-view-inset")
+                        ) && !matches!(entry.id, "toggle-group" | "split-view-inset")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -539,7 +537,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 48);
+            assert_eq!(view.read(cx).samples.len(), 50);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
@@ -568,29 +566,14 @@ mod tests {
     }
 
     #[test]
-    fn listbox_without_sdk_default_renderer_shows_message_instead_of_substitute() {
-        let mut app = TestAppContext::single();
-        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        view.update(cx, |v, cx| v.select("listbox", cx));
-        cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
-        cx.update(|_, cx| {
-            assert_eq!(view.read(cx).selected, "listbox");
-            assert!(!view.read(cx).samples.contains_key("listbox"));
-        });
-    }
-
-    #[test]
-    fn unsupported_layout_entries_explain_sdk_limitations() {
+    fn split_view_inset_explains_the_sdk_limitation() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        for id in ["slide-panel", "split-view-inset"] {
-            view.update(cx, |v, cx| v.select(id, cx));
-            cx.run_until_parked();
-            assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some(), "{id}");
-            cx.update(|_, cx| assert!(!view.read(cx).samples.contains_key(id)));
-        }
+        view.update(cx, |v, cx| v.select("split-view-inset", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
+        cx.update(|_, cx| assert!(!view.read(cx).samples.contains_key("split-view-inset")));
     }
 
     #[test]
