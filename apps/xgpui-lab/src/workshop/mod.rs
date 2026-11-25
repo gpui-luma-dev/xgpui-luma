@@ -143,6 +143,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
         "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
         "context-menu" => Some(("context_menu", menu_surface::ContextMenuSurface::make)),
+        "floating-menu" => Some(("floating_menu", menu_surface::FloatingMenuSurface::make)),
         "popup-menu" => Some(("popup_menu", menu_surface::PopupMenuSurface::make)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
@@ -368,9 +369,6 @@ impl Render for Workshop {
             "split-view-inset" => Some(
                 "The SDK provides one SplitView control with no Inset variant. Its default template is demonstrated on the Split View: Unified screen.",
             ),
-            "floating-menu" => Some(
-                "The SDK provides Floating Menu rendering and navigation for Context Menu and Popup Menu, but no standalone Floating Menu control.",
-            ),
             "toggle-group" => Some("The SDK does not provide a dedicated Toggle Group control."),
             "listbox" => Some(
                 "The SDK provides ListBox state and behavior, but no default visual template. A native default sample is unavailable.",
@@ -522,10 +520,7 @@ mod tests {
                                 | "feedback"
                                 | "selection"
                                 | "prototypes"
-                        ) && !matches!(
-                            entry.id,
-                            "toggle-group" | "listbox" | "floating-menu" | "slide-panel" | "split-view-inset"
-                        )
+                        ) && !matches!(entry.id, "toggle-group" | "listbox" | "slide-panel" | "split-view-inset")
                     );
                     assert_eq!(workshop.navigation.iter().filter(|n| n.selected.load(Ordering::Relaxed)).count(), 1);
                 });
@@ -539,7 +534,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 45);
+            assert_eq!(view.read(cx).samples.len(), 46);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
@@ -581,11 +576,11 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_layout_and_menu_entries_explain_sdk_limitations() {
+    fn unsupported_layout_entries_explain_sdk_limitations() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        for id in ["slide-panel", "split-view-inset", "floating-menu"] {
+        for id in ["slide-panel", "split-view-inset"] {
             view.update(cx, |v, cx| v.select(id, cx));
             cx.run_until_parked();
             assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some(), "{id}");

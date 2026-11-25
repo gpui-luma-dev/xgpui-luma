@@ -99,6 +99,12 @@ pub(super) trait SurfaceControl {
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, window: &mut Window, cx: &mut App)
     -> AnyElement;
 
+    /// The live control's own status text (e.g. an autocomplete's search status), shown in Test mode's
+    /// lower panel rather than on the stage. Most controls have none.
+    fn status(&self) -> Option<SharedString> {
+        None
+    }
+
     /// Settings of the live control that aren't `.lss` states (e.g. a toolbar's focus strategy), in the
     /// page's look, shown on the page's lower panel. Most controls have none.
     fn options(&self) -> Option<AnyElement> {

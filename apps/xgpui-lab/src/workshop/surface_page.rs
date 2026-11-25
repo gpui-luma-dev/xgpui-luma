@@ -1245,6 +1245,27 @@ impl ControlSide {
                     .when(live.is_empty(), |row| row.child(none()))
                     .children(live.into_iter().map(tag)),
             )
+            // The control's own status text, here rather than on the stage.
+            .children(self.surface.status().map(|status| {
+                div()
+                    .debug_selector(|| "workshop-surface-status".into())
+                    .flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .px(px(18.))
+                    .py(px(10.))
+                    .border_b_1()
+                    .border_color(chrome.border)
+                    .child(
+                        div()
+                            .w(px(STRIP_LABEL_WIDTH))
+                            .flex_shrink_0()
+                            .font_weight(pane_type::LABEL_WEIGHT)
+                            .text_color(chrome.muted_text)
+                            .child("STATUS"),
+                    )
+                    .child(div().font_family(pane_type::MONO).text_color(chrome.muted_text).child(status))
+            }))
             .child(div().px(px(18.)).py(px(10.)).child(self.events.clone()))
             .into_any_element()
     }

@@ -11,7 +11,7 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::MenuItem;
@@ -327,6 +327,36 @@ type MakeCell = fn(SharedString, bool, &mut App) -> AnyView;
 type Subscribe = fn(&AnyView, &mut Context<ControlSide>, OnSurfaceEvent) -> Subscription;
 type SetEnabled = fn(&AnyView, bool, &mut App);
 
+/// The SDK autocomplete template without its status line: the line (search status, matches, last event)
+/// is left out of the drawing and kept in `status` for the page's lower panel.
+struct StatusAside {
+    base: Arc<dyn autocomplete::AutocompleteTemplate>,
+    status: Arc<Mutex<SharedString>>,
+}
+
+impl StatusAside {
+    fn wrap(status: Arc<Mutex<SharedString>>) -> Arc<dyn autocomplete::AutocompleteTemplate> {
+        Arc::new(Self { base: Arc::new(autocomplete::DefaultAutocompleteTemplate::new()), status })
+    }
+}
+
+impl autocomplete::AutocompleteTemplate for StatusAside {
+    fn render(
+        &self,
+        mut model: autocomplete::AutocompleteRenderModel,
+        handlers: autocomplete::AutocompleteTemplateHandlers,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> gpui::Stateful<gpui::Div> {
+        if let Ok(mut status) = self.status.lock() {
+            *status = format!("{} · {}", model.status_label, model.status_detail).into();
+        }
+        model.status_label = SharedString::default();
+        model.status_detail = SharedString::default();
+        self.base.render(model, handlers, window, cx)
+    }
+}
+
 /// A selection control drawn from the SDK's own styles: the page shows it beside its `.lss`, unbound.
 pub(super) struct UnthemedSurface {
     title: &'static str,
@@ -336,16 +366,28 @@ pub(super) struct UnthemedSurface {
     make_cell: MakeCell,
     width: f32,
     cells: Cells,
+    /// The status text the control would draw above itself, shown on the lower panel instead.
+    status: Option<Arc<Mutex<SharedString>>>,
 }
 
 impl UnthemedSurface {
     fn new(
         title: &'static str,
         view: AnyView,
-        (set_enabled, subscribe, make_cell): (SetEnabled, Subscribe, MakeCell),
+        handlers: (SetEnabled, Subscribe, MakeCell),
         width: f32,
     ) -> Box<dyn SurfaceControl> {
-        Box::new(Self { title, view, set_enabled, subscribe, make_cell, width, cells: Cells::default() })
+        Self::with_status(title, view, handlers, width, None)
+    }
+
+    fn with_status(
+        title: &'static str,
+        view: AnyView,
+        (set_enabled, subscribe, make_cell): (SetEnabled, Subscribe, MakeCell),
+        width: f32,
+        status: Option<Arc<Mutex<SharedString>>>,
+    ) -> Box<dyn SurfaceControl> {
+        Box::new(Self { title, view, set_enabled, subscribe, make_cell, width, cells: Cells::default(), status })
     }
 
     pub(super) fn make_selection_panel(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
@@ -387,8 +429,11 @@ impl UnthemedSurface {
     }
 
     pub(super) fn make_autocomplete(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        let view = autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items()).spawn(cx);
-        Self::new(
+        let status = Arc::new(Mutex::new(SharedString::default()));
+        let view = autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items())
+            .template(StatusAside::wrap(status.clone()))
+            .spawn(cx);
+        Self::with_status(
             "Autocomplete TextBox",
             view.into(),
             (
@@ -408,10 +453,15 @@ impl UnthemedSurface {
                     Err(_) => Subscription::new(|| {}),
                 },
                 |id, enabled, cx| {
-                    autocomplete::AutocompleteBuilder::new(id, filter_items()).enabled(enabled).spawn(cx).into()
+                    autocomplete::AutocompleteBuilder::new(id, filter_items())
+                        .template(StatusAside::wrap(Arc::default()))
+                        .enabled(enabled)
+                        .spawn(cx)
+                        .into()
                 },
             ),
             260.,
+            Some(status),
         )
     }
 
@@ -492,6 +542,10 @@ impl SurfaceControl for UnthemedSurface {
 
     fn template_states(&self) -> Vec<&'static str> {
         Vec::new()
+    }
+
+    fn status(&self) -> Option<SharedString> {
+        self.status.as_ref().and_then(|status| status.lock().ok().map(|status| status.clone()))
     }
 
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
