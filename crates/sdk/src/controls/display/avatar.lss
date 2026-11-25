@@ -4,12 +4,14 @@
 
 /// A person or entity's picture, or its initials.
 avatar {
-  /// The font size for a two-letter fallback, and an icon fallback's size.
+  /// The font size for a two-letter fallback.
   two_letter_font_size: length = typography.text.label.size
-  icon_size: length = exact(24)
+  /// An icon fallback's box: Lucide glyphs fill about two thirds of it, so this matches the letters' height.
+  icon_size: length = typography.text.label.size * 1.25
 
   part root {
-    background  = palette.surface.subtle.background
+    // A step darker than panels and subtle surfaces (light) or lighter (dark), so the circle shows on them.
+    background  = palette.state.pressed.background
     foreground  = palette.app.foreground
     height      = exact(40)
     radius      = exact(999)
