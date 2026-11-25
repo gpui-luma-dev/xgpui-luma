@@ -85,6 +85,13 @@ impl SelectorItemsPanelLook {
             item_radius: menu.item_radius,
         }
     }
+
+    /// Anchored popup placement from a look's `popover.lss` instead of the SDK's.
+    pub fn with_placement(mut self, placement: crate::theme::stylesheet::PopoverGeometry) -> Self {
+        self.popup_offset_y = placement.panel_offset_y;
+        self.window_margin = placement.window_margin;
+        self
+    }
 }
 
 pub type SelectorPanelClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;

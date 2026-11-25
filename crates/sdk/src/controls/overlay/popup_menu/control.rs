@@ -153,6 +153,11 @@ impl PopupMenu {
         cx.notify();
     }
 
+    /// Whether the control takes input.
+    pub fn is_enabled(&self) -> bool {
+        self.model.enabled
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         let changed = self.model.enabled != enabled;
         self.model.enabled = enabled;

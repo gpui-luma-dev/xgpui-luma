@@ -153,6 +153,11 @@ impl TextFieldControl {
         self.state.focused
     }
 
+    /// Whether the control takes input.
+    pub fn is_enabled(&self) -> bool {
+        self.model.enabled
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;

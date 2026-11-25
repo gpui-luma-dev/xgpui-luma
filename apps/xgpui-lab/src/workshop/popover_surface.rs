@@ -10,6 +10,8 @@ use xgpui_luma::controls::button::{Button, HasPresenter};
 use xgpui_luma::controls::card::Card;
 use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement};
 use xgpui_luma::style::lss::Theme;
+use xgpui_luma::style::{StyleBinding, ThemeSource};
+use xgpui_luma::theme::stylesheet::PopoverGeometry;
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
@@ -84,8 +86,12 @@ impl SurfaceControl for PopoverSurface {
         self.host.clone().into()
     }
 
-    /// The popover's `.lss` is placement only, read when the popover is built; nothing to rebind.
-    fn bind(&self, _theme: Theme, _pinned: Option<&StateSet>, _cx: &mut App) {}
+    /// The popover's `.lss` is placement only: rebind where it opens.
+    fn bind(&self, theme: Theme, _pinned: Option<&StateSet>, cx: &mut App) {
+        let geometry = PopoverGeometry::from_binding(&StyleBinding::new("popover", ThemeSource::Fixed(theme)));
+        let popover = self.host.read(cx).popover.clone();
+        popover.update(cx, |popover, cx| popover.set_geometry(geometry, cx));
+    }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {
         self.trigger.update(cx, |trigger, cx| trigger.set_enabled(enabled, cx));

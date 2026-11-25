@@ -46,8 +46,8 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) content: PopoverContent<D>,
     pub(super) placement: PopoverPlacement,
     pub(super) dismiss_policy: PopoverDismissPolicy,
-    explicit_offset_y: bool,
-    explicit_window_margin: bool,
+    pub(super) explicit_offset_y: bool,
+    pub(super) explicit_window_margin: bool,
     pub(super) offset_y: Pixels,
     pub(super) window_margin: Pixels,
     pub(super) initial_content_size: Option<gpui::Size<Pixels>>,
@@ -143,6 +143,17 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         self.window_margin = value.into();
         self
     }
+    /// Where the popover opens (a look's `popover.lss`); the SDK's by default. An explicit
+    /// [`offset_y`](Self::offset_y) or [`window_margin`](Self::window_margin) still wins.
+    pub fn with_geometry(mut self, geometry: crate::theme::stylesheet::PopoverGeometry) -> Self {
+        if !self.explicit_offset_y {
+            self.offset_y = px(geometry.button_offset_y);
+        }
+        if !self.explicit_window_margin {
+            self.window_margin = px(geometry.window_margin);
+        }
+        self
+    }
     pub fn initial_content_size(mut self, value: gpui::Size<Pixels>) -> Self {
         self.initial_content_size = Some(value);
         self
@@ -183,5 +194,19 @@ mod stylesheet_tests {
         assert_eq!((baseline.offset_y, baseline.window_margin), (px(sdk("button_offset_y")), px(sdk("window_margin"))));
         let explicit = PopoverButtonBuilder::<()>::new("explicit").offset_y(px(0.0)).window_margin(px(0.0));
         assert_eq!((explicit.offset_y, explicit.window_margin), (px(0.0), px(0.0)));
+    }
+
+    /// A look's geometry replaces the SDK's, but not an explicit builder value (#397).
+    #[test]
+    fn with_geometry_rebinds_placement_except_explicit_values() {
+        let geometry = crate::theme::stylesheet::PopoverGeometry {
+            button_offset_y: 6.0,
+            panel_offset_y: 7.0,
+            window_margin: 12.0,
+        };
+        let themed = PopoverButtonBuilder::<()>::new("themed").with_geometry(geometry);
+        assert_eq!((themed.offset_y, themed.window_margin), (px(6.0), px(12.0)));
+        let explicit = PopoverButtonBuilder::<()>::new("explicit").offset_y(px(1.0)).with_geometry(geometry);
+        assert_eq!((explicit.offset_y, explicit.window_margin), (px(1.0), px(12.0)));
     }
 }

@@ -160,6 +160,11 @@ impl ToggleControl {
         cx.notify();
     }
 
+    /// Whether the toggle takes input.
+    pub fn is_enabled(&self, cx: &gpui::App) -> bool {
+        self.button.read(cx).is_enabled()
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.button.update(cx, |button, cx| button.set_enabled(enabled, cx));
         cx.notify();

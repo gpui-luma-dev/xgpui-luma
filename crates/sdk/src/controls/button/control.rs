@@ -79,6 +79,11 @@ impl<D: Clone + 'static> Button<D> {
         cx.notify();
     }
 
+    /// Whether the button takes input.
+    pub fn is_enabled(&self) -> bool {
+        self.model.enabled
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.model.enabled = enabled;
         if self.command.set_enabled(enabled, cx) {
