@@ -18,7 +18,7 @@ mod badge_surface;
 mod progress_surface;
 mod stepper_surface;
 mod dialog_surface;
-mod selection;
+mod selection_surface;
 mod shadow_button;
 mod custom_button;
 mod color_arc;
@@ -67,7 +67,6 @@ use catalog::COMPONENT_CATALOG;
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
     ShadowButton(Entity<shadow_button::ShadowButtonSample>),
-    Selection(Entity<selection::SelectionSample>),
     Menu(Entity<menu::MenuSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
@@ -84,7 +83,6 @@ impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
             Self::ShadowButton(v) => v.clone().into(),
-            Self::Selection(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
@@ -100,7 +98,6 @@ impl Sample {
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
             Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -145,6 +142,12 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "dock-panel" => Some(("dock_splitter", layout_surface::DockPanelSurface::make)),
         "resizable-panels" => Some(("resizable_panels", layout_surface::ResizablePanelsSurface::make)),
         "split-view-unified" => Some(("split_view", layout_surface::SplitViewSurface::make)),
+        "popup-selector" => Some(("selector", selection_surface::SelectorSurface::make)),
+        "split-button" => Some(("popup_menu", selection_surface::SplitButtonSurface::make)),
+        "selection-panel" => Some(("selection_panel", selection_surface::UnthemedSurface::make_selection_panel)),
+        "autocomplete-textfield" => Some(("autocomplete", selection_surface::UnthemedSurface::make_autocomplete)),
+        "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
+        "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
@@ -183,11 +186,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         // Design surface pages (see `surface_control`) have their own inspector.
         "context-menu" => &["context_menu", "floating_menu"],
         "popup-menu" => &["popup_menu", "floating_menu"],
-        "split-button" => &["button", "popup_menu"],
-        "selection-panel" => &["selection_panel"],
-        "popup-selector" => &["selector", "floating_menu"],
-        "search-selector" | "combobox" => &["textfield", "floating_menu"],
-        "autocomplete-textfield" => &["autocomplete", "textfield"],
         _ => &[],
     }
 }
@@ -315,24 +313,6 @@ impl Workshop {
                 "shadow-button" => {
                     Some(Sample::ShadowButton(cx.new(|cx| shadow_button::ShadowButtonSample::new(look, cx))))
                 }
-                "split-button" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::SplitButton, look, cx)),
-                )),
-                "selection-panel" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Panel, look, cx)),
-                )),
-                "popup-selector" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Selector, look, cx)),
-                )),
-                "search-selector" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::SearchSelector, look, cx)),
-                )),
-                "combobox" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::ComboBox, look, cx)),
-                )),
-                "autocomplete-textfield" => Some(Sample::Selection(
-                    cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Autocomplete, look, cx)),
-                )),
                 "context-menu" => {
                     Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
                 }
