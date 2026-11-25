@@ -1,5 +1,14 @@
-//! Catalog copied from Luma Studio’s Controls popup. IDs, membership, and entry order match Studio;
-//! folder labels use Explorer casing in the Lab.
+//! Catalog copied from Luma Studio’s Controls popup. IDs, membership, and entry order match Studio,
+//! except `LAB_ONLY` and `STUDIO_ONLY` (checked by the catalog test); folder labels use Explorer casing in the Lab.
+
+/// Entries the Lab has and Studio doesn’t: SDK controls that get their own design surface page.
+#[cfg(test)]
+pub const LAB_ONLY: &[&str] = &["icon-button", "dialog", "avatar", "callout", "card", "popover", "tooltip"];
+
+/// Studio entries the Lab folds into one page: the four Dialog entries differ only in behavior, so the Lab
+/// has one Dialog page.
+#[cfg(test)]
+pub const STUDIO_ONLY: &[&str] = &["dialog-modal", "dialog-modeless", "dialog-positioning", "dialog-draggable"];
 
 #[derive(Clone, Copy, Debug)]
 pub struct ComponentCatalogEntry {
@@ -17,6 +26,7 @@ pub struct ComponentCatalogGroup {
 const COMMAND_ENTRIES: &[ComponentCatalogEntry] = &[
     ComponentCatalogEntry { id: "button", label: "Button" },
     ComponentCatalogEntry { id: "custom-button", label: "Custom Button" },
+    ComponentCatalogEntry { id: "icon-button", label: "Icon Button" },
     ComponentCatalogEntry { id: "toolbar", label: "Toolbar" },
 ];
 
@@ -74,13 +84,15 @@ const NAVIGATION_ENTRIES: &[ComponentCatalogEntry] = &[
 ];
 
 const FEEDBACK_ENTRIES: &[ComponentCatalogEntry] = &[
+    ComponentCatalogEntry { id: "avatar", label: "Avatar" },
     ComponentCatalogEntry { id: "badge", label: "Badge" },
+    ComponentCatalogEntry { id: "callout", label: "Callout" },
+    ComponentCatalogEntry { id: "card", label: "Card" },
+    ComponentCatalogEntry { id: "popover", label: "Popover" },
+    ComponentCatalogEntry { id: "tooltip", label: "Tooltip" },
     ComponentCatalogEntry { id: "progress", label: "Progress" },
     ComponentCatalogEntry { id: "stepper", label: "Stepper" },
-    ComponentCatalogEntry { id: "dialog-modal", label: "Dialog Modal" },
-    ComponentCatalogEntry { id: "dialog-modeless", label: "Dialog Modeless" },
-    ComponentCatalogEntry { id: "dialog-positioning", label: "Dialog Positioning" },
-    ComponentCatalogEntry { id: "dialog-draggable", label: "Dialog Draggable" },
+    ComponentCatalogEntry { id: "dialog", label: "Dialog" },
 ];
 
 const SELECTION_ENTRIES: &[ComponentCatalogEntry] = &[

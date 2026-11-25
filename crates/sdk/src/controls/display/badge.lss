@@ -1,5 +1,6 @@
 // SDK badge. Layer: sdk. Read by `StyledBadge` (badge.rs): a non-interactive label's colors, frame, text
-// and icon size. Looks add variants and sizes; the border is drawn only when it has color.
+// and icon size. Looks add variants and sizes. Its fill is the subtle surface, so the edge is what sets it
+// apart from a subtle background; the border is drawn only when it has color.
 
 /// A small non-interactive label.
 badge {
@@ -9,7 +10,7 @@ badge {
   part root {
     background   = palette.surface.subtle.background
     foreground   = palette.app.foreground
-    border       = transparent
+    border       = palette.border.default
     border_width = exact(1)
     radius       = exact(999)
     padding_x    = exact(metrics.control.padding_x)

@@ -60,6 +60,11 @@ impl SurfaceControl for RadioGroupSurface {
         "Radio Group"
     }
 
+    /// The group's own `radio_group.lss` lays the rows out (the gaps between them).
+    fn composed(&self) -> &'static [&'static str] {
+        &["radio_group"]
+    }
+
     fn view(&self) -> AnyView {
         self.group.clone().into()
     }
@@ -155,6 +160,8 @@ mod tests {
         let mut app = TestAppContext::single();
         let (page, cx) = open_surface(&mut app, "radio-group");
         let side = cx.update(|_, cx| page.read(cx).side());
+        // Its own radio_group.lss (the rows' layout) is offered beside radio.lss.
+        assert!(cx.debug_bounds("workshop-surface-stylesheets").is_some(), "a tab per composed stylesheet");
         let group = cx.update(|_, cx| side.read(cx).control_as::<RadioGroupSurface>().expect("a radio group").group());
         assert!(cx.update(|_, cx| side.read(cx).state_on("selected")), "a row starts selected");
 

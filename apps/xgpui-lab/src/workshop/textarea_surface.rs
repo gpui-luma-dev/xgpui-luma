@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, prelude::*};
+use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::text::StyledTextAreaTheme;
 use xgpui_luma::controls::textarea::{
     TextArea, TextAreaBuilder, TextAreaEvent, TextAreaRenderModel, TextAreaState, TextAreaTemplate,
@@ -26,6 +26,9 @@ const STATES: [&str; 4] = ["hover", "focused", "invalid", "disabled"];
 
 /// Rows the textarea shows.
 const ROWS: usize = 3;
+/// The textarea fills its width: the stage's (scaled with the zoom) and each matrix cell's.
+const STAGE_WIDTH: f32 = 360.;
+const CELL_WIDTH: f32 = 300.;
 
 pub(super) struct TextAreaSurface {
     area: Entity<TextArea>,
@@ -36,6 +39,7 @@ impl TextAreaSurface {
         let area = TextAreaBuilder::new("workshop-sdk-textarea")
             .placeholder(PLACEHOLDER)
             .rows(ROWS)
+            .full_width(true)
             .validator(Arc::new(|text: &str| !text.chars().any(|c| c.is_ascii_digit())))
             .spawn(cx);
         Box::new(Self { area })
@@ -126,6 +130,11 @@ impl SurfaceControl for TextAreaSurface {
         self.area.clone().into()
     }
 
+    /// The textarea fills the width it's given.
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_WIDTH)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         let theme = theme_for(theme);
         let template =
@@ -175,14 +184,17 @@ impl SurfaceControl for TextAreaSurface {
             placeholder: &placeholder,
             value: &value,
             enabled: !states.has("disabled"),
-            full_width: false,
+            full_width: true,
             rows: ROWS,
             state: pinned_state(TextAreaState::default(), states),
             caret_visible: false,
             vertical_scroll: 0.,
             line_metrics: Vec::new(),
         };
-        template.render(&model, inert_handlers(), window, cx).into_any_element()
+        div()
+            .w(px(CELL_WIDTH))
+            .child(template.render(&model, inert_handlers(), window, cx))
+            .into_any_element()
     }
 
     #[cfg(all(test, feature = "test-support"))]

@@ -23,6 +23,10 @@ use crate::theme::Look;
 
 /// The steps' labels, with ascenders and descenders.
 const LABELS: [&str; 3] = ["Shipping", "Payment", "Display"];
+/// The stepper fills its width: the stage's (scaled with the zoom) and each matrix cell's, wide enough
+/// that no step label wraps.
+const STAGE_WIDTH: f32 = 480.;
+const CELL_WIDTH: f32 = 420.;
 
 pub(super) struct StepperSurface {
     stepper: Stepper,
@@ -122,6 +126,11 @@ impl SurfaceControl for StepperSurface {
         self.stepper.clone().into()
     }
 
+    /// The stepper fills the width it's given; wide enough that no step label wraps.
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_WIDTH)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         let enabled = pinned.map(|states| !states.has("disabled"));
         let template = PinnedStepperTemplate { base: template(theme), enabled };
@@ -171,7 +180,7 @@ impl SurfaceControl for StepperSurface {
             content_height: None,
             icons: &icons,
         };
-        div().w(px(320.)).child(template(theme.clone()).render(&model, window, cx)).into_any_element()
+        div().w(px(CELL_WIDTH)).child(template(theme.clone()).render(&model, window, cx)).into_any_element()
     }
 
     fn options(&self) -> Option<AnyElement> {
