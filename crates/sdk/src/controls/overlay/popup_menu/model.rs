@@ -81,6 +81,8 @@ pub struct PopupMenuModel {
     pub(crate) content: ControlPresenter<PopupMenuTriggerModel>,
     pub(crate) items: Vec<MenuItem>,
     pub(crate) enabled: bool,
+    /// Drawn as `:invalid` (e.g. a required choice left unmade).
+    pub(crate) invalid: bool,
     pub(crate) tab_stop: bool,
     pub(crate) placement: PopupMenuPlacement,
     pub(crate) trigger_style: PopupMenuTriggerStyle,
@@ -252,6 +254,7 @@ impl PopupMenuBuilder {
                 content: default_trigger_content(),
                 items: Vec::new(),
                 enabled: true,
+                invalid: false,
                 tab_stop: true,
                 placement: PopupMenuPlacement::Smart,
                 trigger_style: PopupMenuTriggerStyle::default(),
@@ -333,6 +336,12 @@ impl PopupMenuBuilder {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
+        self
+    }
+
+    /// Draw the trigger as `:invalid`, like [`crate::controls::selector::SelectorBuilder::invalid`].
+    pub fn invalid(mut self, invalid: bool) -> Self {
+        self.model.invalid = invalid;
         self
     }
 

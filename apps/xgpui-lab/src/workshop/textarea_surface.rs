@@ -1,6 +1,6 @@
 //! The SDK textarea on the design surface page (issue #383). Its `.lss` (`textarea`, which extends
 //! `textfield`) reads hover, focus, invalid and disabled; the textarea is invalid while its text holds a
-//! digit. It emits no hover event, so Test mode's key doesn't follow hover. State matrix cells show the
+//! digit. Test mode's key follows hover and focus from its events. State matrix cells show the
 //! placeholder only: the template draws text from line measurements only the live control makes.
 
 use std::sync::Arc;
@@ -163,6 +163,7 @@ impl SurfaceControl for TextAreaSurface {
             let state = match event {
                 TextAreaEvent::Change { .. } => Some(("invalid", area.read(cx).state().invalid)),
                 TextAreaEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                TextAreaEvent::HoverChanged { hovered } => Some(("hover", *hovered)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

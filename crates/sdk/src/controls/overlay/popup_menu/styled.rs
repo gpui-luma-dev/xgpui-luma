@@ -66,6 +66,7 @@ impl StyledPopupMenuTheme {
             ("pressed", state.pressed),
             ("focused", state.focused),
             ("disabled", state.disabled),
+            ("invalid", state.invalid),
         ];
         self.binding.resolve_for(variant, &states, scale)
     }

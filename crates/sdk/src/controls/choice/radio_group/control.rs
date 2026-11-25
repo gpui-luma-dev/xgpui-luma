@@ -114,6 +114,12 @@ where
             ControlGroupEvent::ItemFocused { item_id } => {
                 cx.emit(RadioGroupEvent::ItemFocused { item_id: item_id.clone() });
             }
+            ControlGroupEvent::ItemHoverChanged { item_id, hovered } => {
+                cx.emit(RadioGroupEvent::ItemHoverChanged { item_id: item_id.clone(), hovered: *hovered });
+            }
+            ControlGroupEvent::ItemPressedChanged { item_id, pressed } => {
+                cx.emit(RadioGroupEvent::ItemPressedChanged { item_id: item_id.clone(), pressed: *pressed });
+            }
             ControlGroupEvent::ItemBoundsChanged { .. } => {}
         }
     }

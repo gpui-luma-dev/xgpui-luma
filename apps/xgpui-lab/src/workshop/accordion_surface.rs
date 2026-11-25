@@ -26,6 +26,10 @@ const SECTIONS: [(&str, &str, &str); 2] = [
     ("quality", "Quality guarantee", "Faulty goods qualify for a prompt replacement."),
 ];
 
+/// The accordion fills its width: the stage gives it this one (resizable), so opening or closing a section
+/// never changes it.
+const STAGE_WIDTH: f32 = 360.;
+
 /// The `.lss` states the trigger rows read, and `focused` for the keyboard focus affordance.
 const STATES: [&str; 4] = ["hover", "pressed", "focused", "disabled"];
 
@@ -179,6 +183,10 @@ impl SurfaceControl for AccordionSurface {
         self.accordion.clone().into()
     }
 
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_WIDTH)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         let template = PinnedAccordionTemplate { base: template(theme), pinned: pinned.cloned() };
         self.accordion.update(cx, |accordion, cx| accordion.set_template(Arc::new(template), cx));
@@ -201,6 +209,7 @@ impl SurfaceControl for AccordionSurface {
             let state = match event {
                 AccordionEvent::ItemHoverChanged { hovered, .. } => Some(("hover", *hovered)),
                 AccordionEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                AccordionEvent::ItemPressedChanged { pressed, .. } => Some(("pressed", *pressed)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

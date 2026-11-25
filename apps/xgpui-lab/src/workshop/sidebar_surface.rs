@@ -234,6 +234,8 @@ impl SurfaceControl for SidebarSurface {
             let state = match event {
                 SidebarEvent::HoverChanged { id } => Some(("hover", id.is_some())),
                 SidebarEvent::Select { .. } => Some(("selected", true)),
+                SidebarEvent::ItemPressedChanged { pressed, .. } => Some(("pressed", *pressed)),
+                SidebarEvent::FocusChanged { focused } => Some(("focused", *focused)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

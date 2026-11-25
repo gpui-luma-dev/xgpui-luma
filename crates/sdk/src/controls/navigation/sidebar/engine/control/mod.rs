@@ -27,6 +27,7 @@ pub enum SidebarPanelEngineEvent {
     FocusChanged { focused: bool },
     ItemFocused { node_id: SharedString, label: SharedString },
     ItemHoverChanged { node_id: SharedString, hovered: bool },
+    ItemPressedChanged { node_id: SharedString, pressed: bool },
     RailSubmenuOpenChanged { node_id: Option<SharedString> },
     EnabledChanged { enabled: bool },
 }
@@ -295,7 +296,7 @@ impl SidebarPanelEngine {
         self.focus_subscription_keys.clear();
         if !enabled {
             self.clear_hovered_node(cx);
-            self.pressed_node = None;
+            self.set_pressed_node(None, cx);
             self.close_rail_submenu(cx);
             self.emit_focus_changed(false, cx);
         }
@@ -307,7 +308,7 @@ impl SidebarPanelEngine {
         if self.model.collapsed != collapsed {
             self.model.collapsed = collapsed;
             self.clear_hovered_node(cx);
-            self.pressed_node = None;
+            self.set_pressed_node(None, cx);
             self.close_rail_submenu(cx);
             cx.emit(SidebarPanelEngineEvent::CollapsedChanged { collapsed });
             cx.notify();

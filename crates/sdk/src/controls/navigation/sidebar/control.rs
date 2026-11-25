@@ -27,6 +27,12 @@ pub enum SidebarEvent {
     /// Fired when item hover state changes (used for collapsed popover tracking).
     HoverChanged { id: Option<SharedString> },
 
+    /// Fired when the primary button goes down (`pressed`) or up on an item.
+    ItemPressedChanged { id: SharedString, pressed: bool },
+
+    /// Fired when keyboard focus enters (`focused`) or leaves the sidebar.
+    FocusChanged { focused: bool },
+
     /// Fired when a sub-menu branch expands or collapses.
     SubMenuToggle { id: SharedString, open: bool },
 
@@ -211,7 +217,12 @@ impl SidebarControl {
                     cx.emit(SidebarEvent::EnabledChanged { enabled: *enabled });
                 }
             }
-            SidebarPanelEngineEvent::FocusChanged { .. } => {}
+            SidebarPanelEngineEvent::FocusChanged { focused } => {
+                cx.emit(SidebarEvent::FocusChanged { focused: *focused });
+            }
+            SidebarPanelEngineEvent::ItemPressedChanged { node_id, pressed } => {
+                cx.emit(SidebarEvent::ItemPressedChanged { id: node_id.clone(), pressed: *pressed });
+            }
         }
     }
 }

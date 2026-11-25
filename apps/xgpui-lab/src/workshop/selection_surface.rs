@@ -167,11 +167,6 @@ impl SurfaceControl for SelectorSurface {
         vec!["focused"]
     }
 
-    /// `SelectorBuilder` has no way to make the trigger invalid.
-    fn unreachable_states(&self) -> &'static [&'static str] {
-        &["invalid"]
-    }
-
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
         cx.subscribe(&self.selector, move |side: &mut ControlSide, _, event: &SelectorEvent, cx| {
             let state = match event {
@@ -287,11 +282,6 @@ impl SurfaceControl for SplitButtonSurface {
 
     fn template_states(&self) -> Vec<&'static str> {
         vec!["focused"]
-    }
-
-    /// `SplitButtonBuilder` has no way to make the button invalid.
-    fn unreachable_states(&self) -> &'static [&'static str] {
-        &["invalid"]
     }
 
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {

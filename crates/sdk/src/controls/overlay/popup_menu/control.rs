@@ -175,6 +175,18 @@ impl PopupMenu {
         cx.notify();
     }
 
+    /// Draw the trigger as `:invalid`.
+    pub fn set_invalid(&mut self, invalid: bool, cx: &mut Context<Self>) {
+        if self.model.invalid != invalid {
+            self.model.invalid = invalid;
+            cx.notify();
+        }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        self.model.invalid
+    }
+
     /// Disable only the primary face of a split trigger, preserving menu access.
     pub fn set_primary_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.model.primary_enabled = enabled;
@@ -185,11 +197,15 @@ impl PopupMenu {
     }
 
     pub(crate) fn split_state(&self, window: &Window) -> crate::controls::split_button::SplitButtonState {
-        self.split_state.resolved(
+        let mut state = self.split_state.resolved(
             self.model.enabled,
             self.model.primary_enabled,
             self.interaction.render_state(self.model.enabled, window).focused,
-        )
+        );
+        // Both faces of an invalid split trigger draw `:invalid`.
+        state.primary.invalid = self.model.invalid;
+        state.disclosure.invalid = self.model.invalid;
+        state
     }
 
     pub(crate) fn attachment_state(&self, window: &Window) -> crate::theme::InteractionState {
@@ -248,8 +264,15 @@ impl PopupMenu {
             highlight: self.highlight_model(),
             enabled: self.model.enabled,
             focus: ControlFocusState::from_focus_handle(self.model.enabled, self.interaction.focus_handle(), window),
-            state: self.interaction.render_state(self.model.enabled, window),
+            state: self.render_state(window),
         }
+    }
+
+    /// The trigger's interaction state, with `invalid` from the model.
+    fn render_state(&self, window: &Window) -> crate::theme::InteractionState {
+        let mut state = self.interaction.render_state(self.model.enabled, window);
+        state.invalid = self.model.invalid;
+        state
     }
 
     fn highlight_model(&self) -> Option<FloatingMenuHighlight> {

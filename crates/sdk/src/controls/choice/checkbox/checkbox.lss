@@ -5,8 +5,9 @@
 checkbox {
   /// Whole-control opacity when disabled.
   disabled_opacity: number = metrics.disabled_opacity
-  /// Minimum row height.
-  height = metrics.control.control_height
+  /// Minimum row height: the indicator plus 3px above and below (24px at the default size, the
+  /// WCAG 2.2 minimum target), not the 36px button and field height, so stacked rows sit close.
+  height = indicator_size + 6
   /// Space between the indicator and the label.
   gap    = metrics.control.gap
   radius = exact(metrics.control.radius)

@@ -39,10 +39,22 @@ struct TextFieldLayoutPreview {
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum TextFieldEvent {
-    Change { value: String },
-    Submit { value: String },
-    FocusChanged { focused: bool },
-    EnabledChanged { enabled: bool },
+    Change {
+        value: String,
+    },
+    Submit {
+        value: String,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    EnabledChanged {
+        enabled: bool,
+    },
+    /// The pointer moved onto (`hovered`) or off the field.
+    HoverChanged {
+        hovered: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -166,7 +178,10 @@ impl TextFieldControl {
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled && self.model.tab_stop);
         if !enabled {
-            self.state.set_hovered(false);
+            if self.state.hovered {
+                self.state.set_hovered(false);
+                cx.emit(TextFieldEvent::HoverChanged { hovered: false });
+            }
             self.mouse_selecting = false;
         }
         cx.emit(TextFieldEvent::EnabledChanged { enabled });
@@ -490,7 +505,10 @@ impl TextFieldControl {
             return;
         }
 
-        self.state.set_hovered(*hovered);
+        if self.state.hovered != *hovered {
+            self.state.set_hovered(*hovered);
+            cx.emit(TextFieldEvent::HoverChanged { hovered: *hovered });
+        }
         cx.notify();
     }
 

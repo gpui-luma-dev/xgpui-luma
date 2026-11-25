@@ -2195,7 +2195,7 @@ mod tests {
         );
         assert_eq!(
             summary("root", "height", cx),
-            (shown("height", Kind::Length), "metrics.control.control_height".into(), None)
+            (shown("height", Kind::Length), "indicator_size + 6".into(), None)
         );
 
         let side = cx.update(|_, cx| pane.read(cx).side());

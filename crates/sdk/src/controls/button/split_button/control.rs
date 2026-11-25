@@ -60,6 +60,12 @@ impl SplitButton {
         self.popup.update(cx, |popup, cx| popup.set_enabled(enabled, cx));
         cx.notify();
     }
+    /// Draw both faces as `:invalid`.
+    pub fn set_invalid(&mut self, invalid: bool, cx: &mut Context<Self>) {
+        self.popup.update(cx, |popup, cx| popup.set_invalid(invalid, cx));
+        cx.notify();
+    }
+
     /// Enable or disable only the primary action; menu access stays available.
     pub fn set_primary_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.popup.update(cx, |popup, cx| popup.set_primary_enabled(enabled, cx));

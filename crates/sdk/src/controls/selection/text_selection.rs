@@ -22,6 +22,6 @@ pub fn map_event(event: &TextFieldEvent) -> Option<TextSelectionEvent> {
         TextFieldEvent::Submit { value } => Some(TextSelectionEvent::Submit { value: value.clone() }),
         TextFieldEvent::FocusChanged { focused: true } => Some(TextSelectionEvent::FocusEnter),
         TextFieldEvent::FocusChanged { focused: false } => Some(TextSelectionEvent::FocusLeave),
-        TextFieldEvent::EnabledChanged { .. } => None,
+        TextFieldEvent::EnabledChanged { .. } | TextFieldEvent::HoverChanged { .. } => None,
     }
 }
