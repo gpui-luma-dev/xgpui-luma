@@ -1,6 +1,6 @@
 //! The SDK text field on the design surface page (issue #383). Its `.lss` (`textfield`) reads hover,
 //! focus, invalid and disabled; the field is invalid while its text holds a digit, so `:invalid` can be
-//! reached by typing one. The text field emits no hover event, so Test mode's key doesn't follow hover.
+//! reached by typing one. Test mode's key follows hover and focus from the field's events.
 
 use std::sync::Arc;
 
@@ -165,6 +165,7 @@ impl SurfaceControl for TextFieldSurface {
             let state = match event {
                 TextFieldEvent::Change { .. } => Some(("invalid", field.read(cx).state().invalid)),
                 TextFieldEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                TextFieldEvent::HoverChanged { hovered } => Some(("hover", *hovered)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

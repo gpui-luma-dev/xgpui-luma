@@ -24,10 +24,28 @@ pub use crate::controls::control_group::ControlGroupItemLike as RadioGroupItemLi
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum RadioGroupEvent {
-    Change { value: Option<SharedString> },
-    Activate { value: SharedString },
-    FocusChanged { focused: bool },
-    ItemFocused { item_id: SharedString },
+    Change {
+        value: Option<SharedString>,
+    },
+    Activate {
+        value: SharedString,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    ItemFocused {
+        item_id: SharedString,
+    },
+    /// The pointer moved onto (`hovered`) or off a radio.
+    ItemHoverChanged {
+        item_id: SharedString,
+        hovered: bool,
+    },
+    /// The primary button went down (`pressed`) or up on a radio.
+    ItemPressedChanged {
+        item_id: SharedString,
+        pressed: bool,
+    },
 }
 
 pub struct RadioGroupBuilder<T>

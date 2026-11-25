@@ -455,9 +455,18 @@ mod tests {
             reads(&["checked"], "glyph", "foreground", "palette.state.selected.foreground");
             reads(&["disabled"], "glyph", "foreground", "palette.state.disabled.foreground");
             reads(&[], "root", "focus_border", "palette.focus.ring");
-            reads(&[], "root", "height", "metrics.control.control_height");
             reads(&[], "root", "gap", "metrics.control.gap");
             reads(&[], "root", "focus_width", "metrics.focus.width");
+        }
+    }
+
+    /// Choice rows are as tall as their indicator plus 3px above and below (#397), not the shared
+    /// control height, so stacked rows sit close.
+    #[test]
+    fn choice_rows_fit_their_indicator() {
+        for control in ["checkbox", "radio"] {
+            let (height, indicator) = (sdk_number(control, "height"), sdk_number(control, "indicator_size"));
+            assert_eq!(height, indicator + 6.0, "{control}");
         }
     }
 
@@ -474,7 +483,6 @@ mod tests {
             reads(&["selected", "pressed"], "indicator", "border", "palette.state.pressed.background");
             reads(&["selected", "disabled"], "indicator", "border", "palette.form.input.border");
             reads(&["selected"], "dot", "foreground", "palette.state.selected.foreground");
-            reads(&[], "root", "height", "metrics.control.control_height");
             reads(&[], "root", "gap", "metrics.control.gap");
         }
     }

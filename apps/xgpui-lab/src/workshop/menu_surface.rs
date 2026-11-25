@@ -378,11 +378,6 @@ impl SurfaceControl for PopupMenuSurface {
         vec!["focused"]
     }
 
-    /// `PopupMenuBuilder` has no way to make the trigger invalid.
-    fn unreachable_states(&self) -> &'static [&'static str] {
-        &["invalid"]
-    }
-
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
         cx.subscribe(&self.menu, move |side: &mut ControlSide, _, event: &PopupMenuEvent, cx| {
             // Enabling is the page's own doing (Design disables input), not something the person did.

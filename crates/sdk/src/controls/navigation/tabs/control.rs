@@ -17,13 +17,44 @@ use crate::motion::{DisclosureMotion, VisualTransition};
 #[non_exhaustive]
 pub enum TabsEvent {
     DragDrop(super::TabsDragEvent),
-    Change { tab_id: SharedString, label: SharedString },
-    Activate { tab_id: SharedString, label: SharedString },
-    Reactivate { tab_id: SharedString, label: SharedString },
-    DropdownRequested { tab_id: SharedString, label: SharedString, bounds: Option<Bounds<Pixels>> },
-    ItemBoundsChanged { tab_id: SharedString, bounds: Bounds<Pixels> },
-    FocusChanged { focused: bool },
-    ItemFocused { tab_id: SharedString, label: SharedString },
+    Change {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    Activate {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    Reactivate {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    DropdownRequested {
+        tab_id: SharedString,
+        label: SharedString,
+        bounds: Option<Bounds<Pixels>>,
+    },
+    ItemBoundsChanged {
+        tab_id: SharedString,
+        bounds: Bounds<Pixels>,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    ItemFocused {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    /// The pointer moved onto (`hovered`) or off a tab.
+    ItemHoverChanged {
+        tab_id: SharedString,
+        hovered: bool,
+    },
+    /// The primary button went down (`pressed`) or up on a tab.
+    ItemPressedChanged {
+        tab_id: SharedString,
+        pressed: bool,
+    },
 }
 
 pub struct Tabs {
@@ -559,6 +590,14 @@ fn translate_group_event(
             };
             vec![TabsEvent::ItemFocused { tab_id, label }]
         }
+        ControlGroupEvent::ItemHoverChanged { item_id, hovered } => match item_event_payload(items, item_id) {
+            Some((tab_id, _)) => vec![TabsEvent::ItemHoverChanged { tab_id, hovered: *hovered }],
+            None => Vec::new(),
+        },
+        ControlGroupEvent::ItemPressedChanged { item_id, pressed } => match item_event_payload(items, item_id) {
+            Some((tab_id, _)) => vec![TabsEvent::ItemPressedChanged { tab_id, pressed: *pressed }],
+            None => Vec::new(),
+        },
     }
 }
 

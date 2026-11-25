@@ -108,6 +108,8 @@ impl SurfaceControl for RadioGroupSurface {
             let state = match event {
                 RadioGroupEvent::Change { value } => Some(("selected", value.is_some())),
                 RadioGroupEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                RadioGroupEvent::ItemHoverChanged { hovered, .. } => Some(("hover", *hovered)),
+                RadioGroupEvent::ItemPressedChanged { pressed, .. } => Some(("pressed", *pressed)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

@@ -165,6 +165,7 @@ impl SurfaceControl for TabsSurface {
             let state = match event {
                 TabsEvent::Change { .. } => Some(("selected", true)),
                 TabsEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                TabsEvent::ItemPressedChanged { pressed, .. } => Some(("pressed", *pressed)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

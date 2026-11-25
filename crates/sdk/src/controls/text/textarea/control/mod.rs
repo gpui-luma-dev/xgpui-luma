@@ -20,9 +20,19 @@ use self::layout::TextAreaLayoutCache;
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum TextAreaEvent {
-    Change { value: String },
-    FocusChanged { focused: bool },
-    EnabledChanged { enabled: bool },
+    Change {
+        value: String,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    EnabledChanged {
+        enabled: bool,
+    },
+    /// The pointer moved onto (`hovered`) or off the text area.
+    HoverChanged {
+        hovered: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -211,7 +221,10 @@ impl TextArea {
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
         if !enabled {
-            self.state.set_hovered(false);
+            if self.state.hovered {
+                self.state.set_hovered(false);
+                cx.emit(TextAreaEvent::HoverChanged { hovered: false });
+            }
             self.mouse_selecting = false;
             self.stop_selection_autoscroll();
         }

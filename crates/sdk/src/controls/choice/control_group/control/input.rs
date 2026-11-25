@@ -311,6 +311,7 @@ where
             }
             cx.notify();
         }
+        self.sync_item_visual_events(cx);
     }
 
     pub(super) fn handle_item_bounds(&mut self, index: usize, bounds: Bounds<Pixels>, cx: &mut Context<Self>) {
@@ -340,6 +341,7 @@ where
             if !changed {
                 self.focus_item_for_strategy(index, window, cx);
             }
+            self.sync_item_visual_events(cx);
             cx.notify();
         }
     }
@@ -347,7 +349,33 @@ where
     pub(super) fn handle_item_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
         if self.pressed_item.is_some() {
             self.pressed_item = None;
+            self.sync_item_visual_events(cx);
             cx.notify();
+        }
+    }
+
+    /// Report the hovered and pressed items when they differ from the ones last reported: the one left
+    /// first (`false`), then the one entered (`true`).
+    pub(super) fn sync_item_visual_events(&mut self, cx: &mut Context<Self>) {
+        let id = |index: Option<usize>| index.and_then(|i| self.model.items.get(i)).map(|item| item.id().clone());
+        let (hovered, pressed) = (id(self.hovered_item), id(self.pressed_item));
+        if hovered != self.emitted_hovered {
+            if let Some(item_id) = self.emitted_hovered.take() {
+                cx.emit(ControlGroupEvent::ItemHoverChanged { item_id, hovered: false });
+            }
+            if let Some(item_id) = hovered.clone() {
+                cx.emit(ControlGroupEvent::ItemHoverChanged { item_id, hovered: true });
+            }
+            self.emitted_hovered = hovered;
+        }
+        if pressed != self.emitted_pressed {
+            if let Some(item_id) = self.emitted_pressed.take() {
+                cx.emit(ControlGroupEvent::ItemPressedChanged { item_id, pressed: false });
+            }
+            if let Some(item_id) = pressed.clone() {
+                cx.emit(ControlGroupEvent::ItemPressedChanged { item_id, pressed: true });
+            }
+            self.emitted_pressed = pressed;
         }
     }
 
@@ -514,5 +542,51 @@ where
             }
             cx.stop_propagation();
         }
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod visual_event_tests {
+    use std::{cell::RefCell, rc::Rc};
+
+    use gpui::TestAppContext;
+
+    use crate::controls::control_group::{ControlGroupControl, ControlGroupEvent, ControlGroupItem};
+
+    /// Hover and press are reported item by item, the one left before the one entered, and disabling the
+    /// group releases both (#397).
+    #[test]
+    fn hover_and_press_are_reported_left_before_entered() {
+        let mut cx = TestAppContext::single();
+        let group = cx.update(|cx| {
+            ControlGroupControl::new("group")
+                .items([ControlGroupItem::new("a"), ControlGroupItem::new("b")])
+                .spawn(cx)
+        });
+        let events = Rc::new(RefCell::new(Vec::<String>::new()));
+        let log = events.clone();
+        cx.update(|cx| {
+            cx.subscribe(&group, move |_, event: &ControlGroupEvent, _| match event {
+                ControlGroupEvent::ItemHoverChanged { item_id, hovered } => {
+                    log.borrow_mut().push(format!("hover {item_id} {hovered}"))
+                }
+                ControlGroupEvent::ItemPressedChanged { item_id, pressed } => {
+                    log.borrow_mut().push(format!("press {item_id} {pressed}"))
+                }
+                _ => {}
+            })
+            .detach()
+        });
+        group.update(&mut cx, |group, cx| {
+            group.handle_item_hover(0, true, cx);
+            group.handle_item_hover(1, true, cx);
+            group.pressed_item = Some(1);
+            group.sync_item_visual_events(cx);
+            group.set_enabled(false, cx);
+        });
+        assert_eq!(
+            *events.borrow(),
+            ["hover a true", "hover a false", "hover b true", "press b true", "hover b false", "press b false"]
+        );
     }
 }

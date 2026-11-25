@@ -206,7 +206,7 @@ impl SidebarPanelEngine {
         } else if self.hovered_node.as_ref() == Some(&node_id) {
             self.set_hovered_node(None, cx);
             if self.pressed_node.as_ref() == Some(&node_id) {
-                self.pressed_node = None;
+                self.set_pressed_node(None, cx);
             }
             cx.notify();
         }
@@ -223,14 +223,14 @@ impl SidebarPanelEngine {
             if let Some(focus_handle) = self.row_focus_handles.get(&node_id) {
                 focus_handle.focus(window, cx);
             }
-            self.pressed_node = Some(node_id);
+            self.set_pressed_node(Some(node_id), cx);
             cx.notify();
         }
     }
 
     pub(super) fn handle_node_mouse_up(&mut self, _event: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
         if self.pressed_node.is_some() {
-            self.pressed_node = None;
+            self.set_pressed_node(None, cx);
             cx.notify();
         }
     }
@@ -270,7 +270,7 @@ impl SidebarPanelEngine {
         } else if self.hovered_node.as_ref() == Some(&node_id) {
             self.set_hovered_node(None, cx);
             if self.pressed_node.as_ref() == Some(&node_id) {
-                self.pressed_node = None;
+                self.set_pressed_node(None, cx);
             }
             cx.notify();
         }
@@ -287,7 +287,7 @@ impl SidebarPanelEngine {
             if let Some(focus_handle) = self.rail_focus_handles.get(&node_id) {
                 focus_handle.focus(window, cx);
             }
-            self.pressed_node = Some(node_id);
+            self.set_pressed_node(Some(node_id), cx);
             cx.notify();
         }
     }
@@ -403,6 +403,20 @@ impl SidebarPanelEngine {
         }
 
         cx.emit(SidebarPanelEngineEvent::Activate { node_id, label });
+    }
+
+    /// Press `pressed_node` (or none), reporting the row released first and then the one pressed.
+    pub(super) fn set_pressed_node(&mut self, pressed_node: Option<SharedString>, cx: &mut Context<Self>) {
+        if self.pressed_node == pressed_node {
+            return;
+        }
+        if let Some(node_id) = self.pressed_node.take() {
+            cx.emit(SidebarPanelEngineEvent::ItemPressedChanged { node_id, pressed: false });
+        }
+        if let Some(node_id) = pressed_node {
+            cx.emit(SidebarPanelEngineEvent::ItemPressedChanged { node_id: node_id.clone(), pressed: true });
+            self.pressed_node = Some(node_id);
+        }
     }
 
     pub(super) fn set_hovered_node(&mut self, hovered_node: Option<SharedString>, cx: &mut Context<Self>) {
