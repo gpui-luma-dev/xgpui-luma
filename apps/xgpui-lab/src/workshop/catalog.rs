@@ -3,7 +3,7 @@
 
 /// Entries the Lab has and Studio doesn’t: SDK controls that get their own design surface page.
 #[cfg(test)]
-pub const LAB_ONLY: &[&str] = &["icon-button", "dialog"];
+pub const LAB_ONLY: &[&str] = &["icon-button", "dialog", "avatar", "callout", "card"];
 
 /// Studio entries the Lab folds into one page: the four Dialog entries differ only in behavior, so the Lab
 /// has one Dialog page.
@@ -84,7 +84,10 @@ const NAVIGATION_ENTRIES: &[ComponentCatalogEntry] = &[
 ];
 
 const FEEDBACK_ENTRIES: &[ComponentCatalogEntry] = &[
+    ComponentCatalogEntry { id: "avatar", label: "Avatar" },
     ComponentCatalogEntry { id: "badge", label: "Badge" },
+    ComponentCatalogEntry { id: "callout", label: "Callout" },
+    ComponentCatalogEntry { id: "card", label: "Card" },
     ComponentCatalogEntry { id: "progress", label: "Progress" },
     ComponentCatalogEntry { id: "stepper", label: "Stepper" },
     ComponentCatalogEntry { id: "dialog", label: "Dialog" },
