@@ -11,7 +11,8 @@ mod slider_surface;
 mod scrollbar_surface;
 mod menu;
 mod layout;
-mod navigation;
+mod sidebar_surface;
+mod tabs_surface;
 mod feedback;
 mod selection;
 mod shadow_button;
@@ -65,7 +66,6 @@ enum Sample {
     ShadowButton(Entity<shadow_button::ShadowButtonSample>),
     Selection(Entity<selection::SelectionSample>),
     Feedback(Entity<feedback::FeedbackSample>),
-    Navigation(Entity<navigation::NavigationSample>),
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     Collection(Entity<collection::CollectionSample>),
@@ -87,7 +87,6 @@ impl Sample {
             Self::ShadowButton(v) => v.clone().into(),
             Self::Selection(v) => v.clone().into(),
             Self::Feedback(v) => v.clone().into(),
-            Self::Navigation(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Collection(v) => v.clone().into(),
@@ -108,7 +107,6 @@ impl Sample {
             Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Feedback(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Navigation(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -148,6 +146,8 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "accordion" => Some(("accordion", accordion_surface::AccordionSurface::make)),
         "pager" => Some(("pager", pager_surface::PagerSurface::make)),
         "radio-group" => Some(("radio", radio_group_surface::RadioGroupSurface::make)),
+        "sidebar" => Some(("sidebar", sidebar_surface::SidebarSurface::make)),
+        "tabs-navigation" => Some(("tabs", tabs_surface::TabsSurface::make)),
         _ => None,
     }
 }
@@ -186,8 +186,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "dock-panel" => &["dock_splitter"],
         "resizable-panels" => &["resizable_panels"],
         "split-view-unified" => &["split_view"],
-        "sidebar" => &["sidebar"],
-        "tabs-navigation" => &["tabs"],
         "badge" => &["badge", "card"],
         "progress" => &["progress"],
         "stepper" => &["stepper"],
@@ -359,12 +357,6 @@ impl Workshop {
                 )),
                 "progress" => Some(Sample::Feedback(
                     cx.new(|cx| feedback::FeedbackSample::new(feedback::FeedbackKind::Progress, look, cx)),
-                )),
-                "sidebar" => Some(Sample::Navigation(
-                    cx.new(|cx| navigation::NavigationSample::new(navigation::NavigationKind::Sidebar, look, cx)),
-                )),
-                "tabs-navigation" => Some(Sample::Navigation(
-                    cx.new(|cx| navigation::NavigationSample::new(navigation::NavigationKind::Tabs, look, cx)),
                 )),
                 "dock-panel" => {
                     Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Dock, look, cx))))
