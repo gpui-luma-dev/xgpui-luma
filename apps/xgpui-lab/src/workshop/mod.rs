@@ -4,7 +4,8 @@ pub(crate) mod catalog;
 mod accordion_surface;
 mod pager_surface;
 mod radio_group_surface;
-mod collection;
+mod table_surface;
+mod tree_view_surface;
 mod textfield_surface;
 mod textarea_surface;
 mod slider_surface;
@@ -69,7 +70,6 @@ enum Sample {
     Selection(Entity<selection::SelectionSample>),
     Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
-    Collection(Entity<collection::CollectionSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
@@ -88,7 +88,6 @@ impl Sample {
             Self::Selection(v) => v.clone().into(),
             Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
-            Self::Collection(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
@@ -106,7 +105,6 @@ impl Sample {
             Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Collection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -144,6 +142,9 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "radio-group" => Some(("radio", radio_group_surface::RadioGroupSurface::make)),
         "sidebar" => Some(("sidebar", sidebar_surface::SidebarSurface::make)),
         "tabs-navigation" => Some(("tabs", tabs_surface::TabsSurface::make)),
+        "paging-table" => Some(("table", table_surface::TableSurface::make_paging)),
+        "scrolling-table" => Some(("table", table_surface::TableSurface::make_scrolling)),
+        "tree-view" => Some(("tree_view", tree_view_surface::TreeViewSurface::make)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
@@ -180,9 +181,6 @@ pub(crate) struct Workshop {
 fn lss_controls(id: &str) -> &'static [&'static str] {
     match id {
         // Design surface pages (see `surface_control`) have their own inspector.
-        "paging-table" => &["table", "pager"],
-        "scrolling-table" => &["table", "scrollbar"],
-        "tree-view" => &["tree_view"],
         "context-menu" => &["context_menu", "floating_menu"],
         "popup-menu" => &["popup_menu", "floating_menu"],
         "split-button" => &["button", "popup_menu"],
@@ -351,17 +349,6 @@ impl Workshop {
                     Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
                 }
                 "popup-menu" => Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Popup, look, cx)))),
-                "paging-table" => {
-                    Some(Sample::Collection(cx.new(|cx| {
-                        collection::CollectionSample::new(collection::CollectionKind::PagingTable, look, cx)
-                    })))
-                }
-                "scrolling-table" => Some(Sample::Collection(cx.new(|cx| {
-                    collection::CollectionSample::new(collection::CollectionKind::ScrollingTable, look, cx)
-                }))),
-                "tree-view" => Some(Sample::Collection(
-                    cx.new(|cx| collection::CollectionSample::new(collection::CollectionKind::TreeView, look, cx)),
-                )),
                 "custom-button" => Some(Sample::CustomButton(
                     cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
                 )),
@@ -693,6 +680,19 @@ mod tests {
         view.update(cx, |v, cx| v.select("badge", cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-sdk-badges").is_some());
+    }
+
+    #[test]
+    fn listbox_without_sdk_default_renderer_shows_message_instead_of_substitute() {
+        let mut app = TestAppContext::single();
+        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        view.update(cx, |v, cx| v.select("listbox", cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some());
+        cx.update(|_, cx| {
+            assert_eq!(view.read(cx).selected, "listbox");
+            assert!(!view.read(cx).samples.contains_key("listbox"));
+        });
     }
 
     #[test]
