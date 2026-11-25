@@ -1,14 +1,14 @@
 //! The SDK toolbar on the design surface page (issue #376), shell only. The toolbar's `.lss`
 //! (`toolbar`) styles its shell, whose one state is `:disabled`; the buttons, toggles, menus and
 //! selectors inside it keep their own `.lss` and stay live, but aren't picked or inspected here (states
-//! that belong to items are #302's to design). The focus strategy is the page's one option.
+//! that belong to items are #302's to design). The page has no options: the toolbar's focus strategy
+//! is keyboard behavior, not part of its look.
 
 use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window, div, prelude::*};
 use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::controls::button::{Button, HasPresenter};
-use xgpui_luma::controls::control_group::{ControlGroup, ControlGroupEvent, ControlGroupFocusStrategy, ControlGroupItem};
 use xgpui_luma::controls::selector::SelectorItem;
 use xgpui_luma::controls::toolbar::{
     StyledToolbarTheme, Toolbar, ToolbarBuilder, ToolbarEvent, ToolbarItem, ToolbarItemKind, ToolbarLook,
@@ -22,66 +22,14 @@ use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEv
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
-/// The focus strategy option's items.
-const ROVING: &str = "roving";
-const SEQUENTIAL: &str = "sequential";
-
 pub(super) struct ToolbarSurface {
     toolbar: Toolbar,
-    /// Radix toggle group: Roving · Sequential focus.
-    focus_picker: ControlGroup<ControlGroupItem>,
 }
 
 impl ToolbarSurface {
-    pub(super) fn make(look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        let toolbar = editing_toolbar(cx);
-        toolbar.update(cx, |toolbar, cx| toolbar.set_focus_strategy(ControlGroupFocusStrategy::RovingItemFocus, cx));
-        let focus_picker = xgpui_luma_look_radix::control_group_builder(
-            look.as_ref(),
-            "workshop-surface-toolbar-focus",
-            xgpui_luma_look_radix::RadixSize::One,
-        )
-        .horizontal()
-        .single_required()
-        .items([
-            ControlGroupItem::new(ROVING).label("Roving focus"),
-            ControlGroupItem::new(SEQUENTIAL).label("Sequential focus"),
-        ])
-        .selected_ids([ROVING])
-        .spawn(cx);
-        let target = toolbar.clone();
-        cx.subscribe(&focus_picker, move |_: &mut ControlSide, _, event: &ControlGroupEvent, cx| {
-            if let ControlGroupEvent::Change { selected_ids, .. } = event
-                && let Some(id) = selected_ids.first()
-            {
-                set_focus_mode(&target, id, cx);
-            }
-        })
-        .detach();
-        Box::new(Self { toolbar, focus_picker })
+    pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+        Box::new(Self { toolbar: editing_toolbar(cx) })
     }
-
-    /// The SDK toolbar, for tests.
-    #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn toolbar(&self) -> Toolbar {
-        self.toolbar.clone()
-    }
-
-    /// The focus strategy option, for tests.
-    #[cfg(all(test, feature = "test-support"))]
-    pub(super) fn focus_picker(&self) -> ControlGroup<ControlGroupItem> {
-        self.focus_picker.clone()
-    }
-}
-
-/// Give the toolbar the focus strategy for an option item.
-fn set_focus_mode(toolbar: &Toolbar, id: &str, cx: &mut App) {
-    let strategy = if id == SEQUENTIAL {
-        ControlGroupFocusStrategy::ActiveDescendant
-    } else {
-        ControlGroupFocusStrategy::RovingItemFocus
-    };
-    toolbar.update(cx, |toolbar, cx| toolbar.set_focus_strategy(strategy, cx));
 }
 
 /// The toolbar shell from a base theme, enabled as the toolbar is or as Design mode picks it.
@@ -162,10 +110,6 @@ impl SurfaceControl for ToolbarSurface {
         let separator = || ToolbarRenderedItem { kind: ToolbarItemKind::Separator, element: div().into_any_element() };
         let items = vec![item("Heading"), item("Quote"), separator(), item("Typography")];
         template.render(&model, items, window, cx).into_any_element()
-    }
-
-    fn options(&self) -> Option<AnyElement> {
-        Some(self.focus_picker.clone().into_any_element())
     }
 
     #[cfg(all(test, feature = "test-support"))]
@@ -351,37 +295,16 @@ mod tests {
     }
 
     #[test]
-    fn the_toolbar_page_shows_the_shell_and_its_focus_option() {
+    fn the_toolbar_page_shows_the_shell_without_options() {
         let mut app = TestAppContext::single();
-        let (workshop, page, cx) = open(&mut app);
-        for id in ["workshop-surface-pane", "workshop-surface-control", "workshop-surface-options", "style-inspector"] {
+        let (_, page, cx) = open(&mut app);
+        for id in ["workshop-surface-pane", "workshop-surface-control", "style-inspector"] {
             assert!(cx.debug_bounds(id).is_some(), "{id} rendered");
         }
         assert!(cx.debug_bounds("workshop-style-column").is_none(), "no old inspector column");
+        // Focus strategy is keyboard behavior, not look, so the page offers no options.
+        assert!(cx.debug_bounds("workshop-surface-options").is_none(), "no focus option");
         let side = cx.update(|_, cx| page.read(cx).side());
-        let (toolbar, picker) = cx.update(|_, cx| {
-            let surface = side.read(cx).control_as::<ToolbarSurface>().expect("a toolbar");
-            (surface.toolbar(), surface.focus_picker())
-        });
-
-        // The focus option sets the live toolbar's strategy and survives navigation and app theme.
-        assert_eq!(cx.update(|_, cx| toolbar.read(cx).focus_strategy()), ControlGroupFocusStrategy::RovingItemFocus);
-        picker.update(cx, |_, cx| {
-            cx.emit(ControlGroupEvent::Change {
-                changed_id: SEQUENTIAL.into(),
-                selected: true,
-                selected_ids: vec![SEQUENTIAL.into()],
-            })
-        });
-        cx.run_until_parked();
-        workshop.update(cx, |v, cx| {
-            v.select("button", cx);
-            v.sync_theme(xgpui_luma::theme::ThemeMode::Dark, cx);
-            v.select("toolbar", cx);
-        });
-        cx.run_until_parked();
-        assert_eq!(cx.update(|_, cx| toolbar.read(cx).focus_strategy()), ControlGroupFocusStrategy::ActiveDescendant);
-        assert!(cx.debug_bounds("workshop-surface-options").is_some(), "the option stays");
 
         // Shell only: one state, :disabled, picked in Design.
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
