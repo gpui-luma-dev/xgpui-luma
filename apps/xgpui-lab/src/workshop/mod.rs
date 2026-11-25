@@ -11,7 +11,7 @@ mod textarea_surface;
 mod slider_surface;
 mod scrollbar_surface;
 mod menu;
-mod layout;
+mod layout_surface;
 mod sidebar_surface;
 mod tabs_surface;
 mod badge_surface;
@@ -68,7 +68,6 @@ use catalog::COMPONENT_CATALOG;
 enum Sample {
     ShadowButton(Entity<shadow_button::ShadowButtonSample>),
     Selection(Entity<selection::SelectionSample>),
-    Layout(Entity<layout::LayoutSample>),
     Menu(Entity<menu::MenuSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
@@ -86,7 +85,6 @@ impl Sample {
         match self {
             Self::ShadowButton(v) => v.clone().into(),
             Self::Selection(v) => v.clone().into(),
-            Self::Layout(v) => v.clone().into(),
             Self::Menu(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
@@ -103,7 +101,6 @@ impl Sample {
         match self {
             Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Selection(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Layout(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -145,6 +142,9 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "paging-table" => Some(("table", table_surface::TableSurface::make_paging)),
         "scrolling-table" => Some(("table", table_surface::TableSurface::make_scrolling)),
         "tree-view" => Some(("tree_view", tree_view_surface::TreeViewSurface::make)),
+        "dock-panel" => Some(("dock_splitter", layout_surface::DockPanelSurface::make)),
+        "resizable-panels" => Some(("resizable_panels", layout_surface::ResizablePanelsSurface::make)),
+        "split-view-unified" => Some(("split_view", layout_surface::SplitViewSurface::make)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
@@ -184,9 +184,6 @@ fn lss_controls(id: &str) -> &'static [&'static str] {
         "context-menu" => &["context_menu", "floating_menu"],
         "popup-menu" => &["popup_menu", "floating_menu"],
         "split-button" => &["button", "popup_menu"],
-        "dock-panel" => &["dock_splitter"],
-        "resizable-panels" => &["resizable_panels"],
-        "split-view-unified" => &["split_view"],
         "selection-panel" => &["selection_panel"],
         "popup-selector" => &["selector", "floating_menu"],
         "search-selector" | "combobox" => &["textfield", "floating_menu"],
@@ -336,15 +333,6 @@ impl Workshop {
                 "autocomplete-textfield" => Some(Sample::Selection(
                     cx.new(|cx| selection::SelectionSample::new(selection::SelectionKind::Autocomplete, look, cx)),
                 )),
-                "dock-panel" => {
-                    Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Dock, look, cx))))
-                }
-                "resizable-panels" => Some(Sample::Layout(
-                    cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Resizable, look, cx)),
-                )),
-                "split-view-unified" => {
-                    Some(Sample::Layout(cx.new(|cx| layout::LayoutSample::new(layout::LayoutKind::Split, look, cx))))
-                }
                 "context-menu" => {
                     Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
                 }
@@ -693,6 +681,19 @@ mod tests {
             assert_eq!(view.read(cx).selected, "listbox");
             assert!(!view.read(cx).samples.contains_key("listbox"));
         });
+    }
+
+    #[test]
+    fn unsupported_layout_entries_explain_sdk_limitations() {
+        let mut app = TestAppContext::single();
+        app.update(|cx| xgpui_luma::init(cx).unwrap());
+        let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
+        for id in ["slide-panel", "split-view-inset"] {
+            view.update(cx, |v, cx| v.select(id, cx));
+            cx.run_until_parked();
+            assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some(), "{id}");
+            cx.update(|_, cx| assert!(!view.read(cx).samples.contains_key(id)));
+        }
     }
 
     #[test]
