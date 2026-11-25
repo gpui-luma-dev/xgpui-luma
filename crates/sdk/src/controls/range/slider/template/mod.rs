@@ -395,6 +395,38 @@ pub(crate) fn paint_radial_fill_track(
     paint_arc_open_end_caps(center, track_radius, min_angle, max_angle, start_color, end_color, arc_thickness, window);
 }
 
+/// The thickness a radial track and its fill are drawn at inside an outline `border_width` wide, so the outline
+/// shows within the track's size like the linear track's. Without a border it is the whole thickness.
+pub(crate) fn radial_track_inner_thickness(thickness: f32, border_width: f32) -> f32 {
+    if border_width > 0.0 {
+        (thickness - border_width * 2.0).max(0.0)
+    } else {
+        thickness
+    }
+}
+
+/// Paint a radial track's outline: the whole track shape (with its round end caps when the arc is open) in
+/// `border`, and return the thickness to draw the track and fill at on top (see
+/// [`radial_track_inner_thickness`]). Without a border it paints nothing.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_radial_track_outline(
+    bounds: Bounds<Pixels>,
+    track_radius: f32,
+    min_angle: f32,
+    max_angle: f32,
+    border: Hsla,
+    border_width: f32,
+    thickness: f32,
+    window: &mut Window,
+) -> f32 {
+    if border_width <= 0.0 {
+        return thickness;
+    }
+    paint_radial_annulus(bounds, track_radius, min_angle, max_angle, border, thickness, window);
+    paint_arc_open_end_caps(bounds.center(), track_radius, min_angle, max_angle, border, border, thickness, window);
+    radial_track_inner_thickness(thickness, border_width)
+}
+
 pub(crate) fn paint_arc_round_cap(
     center: Point<Pixels>,
     radius: f32,
@@ -472,6 +504,14 @@ mod tests {
     use gpui::hsla;
 
     use super::*;
+
+    /// A bordered radial track is drawn thinner by the border on both sides, inside the outline (#397).
+    #[test]
+    fn radial_tracks_draw_inside_their_outline() {
+        assert_eq!(radial_track_inner_thickness(8.0, 0.0), 8.0, "no border: full thickness");
+        assert_eq!(radial_track_inner_thickness(8.0, 1.0), 6.0, "a 1px outline on each side");
+        assert_eq!(radial_track_inner_thickness(2.0, 2.0), 0.0, "never negative");
+    }
 
     #[test]
     fn arc_fill_end_cap_colors_match_outer_segment_ends() {

@@ -252,6 +252,15 @@ impl SliderControl {
         cx.notify();
     }
 
+    /// Switch how pointer input maps to a value: along the track (horizontal or vertical) or around an arc
+    /// (`Angular`, for the dial and ring templates). The value is kept.
+    pub fn set_strategy(&mut self, strategy: SliderInputStrategy, cx: &mut Context<Self>) {
+        if self.model.strategy != strategy {
+            self.model.strategy = strategy;
+            cx.notify();
+        }
+    }
+
     pub fn set_domain_track(&mut self, renderer: Arc<dyn DomainTrackRenderer>, cx: &mut Context<Self>) {
         self.model.presentation = TrackPresentation::Domain;
         self.model.domain_track = Some(renderer);

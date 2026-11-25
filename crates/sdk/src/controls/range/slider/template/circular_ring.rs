@@ -4,8 +4,8 @@ use gpui::{App, Div, Stateful, Window, canvas, div, px, prelude::*};
 
 use super::{
     SliderTemplate, SliderTemplateHandlers, attach_radial_interaction, effective_thumb_radius, paint_radial_annulus,
-    paint_radial_fill_track, render_slider_thumb_at, track_bounds_canvas, track_muted_background,
-    track_surface_background, uses_static_track_surface,
+    paint_radial_fill_track, paint_radial_track_outline, render_slider_thumb_at, track_bounds_canvas,
+    track_muted_background, track_surface_background, uses_static_track_surface,
 };
 use crate::controls::slider::{SliderTheme, default_slider_theme};
 
@@ -63,6 +63,7 @@ impl SliderTemplate for ThemedCircularRingTemplate {
         let fill_background = look.fill_background;
         let surface_background = track_surface_background(model, &look);
         let static_surface = uses_static_track_surface(model);
+        let (track_border, track_border_width) = (look.track_border, look.track_border_width);
         let thumb_radius = effective_thumb_radius(model, &look, window.rem_size());
 
         let (track_bounds, interaction) = handlers.into();
@@ -75,6 +76,17 @@ impl SliderTemplate for ThemedCircularRingTemplate {
                 canvas(
                     move |_, _, _| (),
                     move |bounds, _, window, _| {
+                        // The outline first; the track and fill are drawn inside it.
+                        let arc_thickness = paint_radial_track_outline(
+                            bounds,
+                            track_radius,
+                            min_angle,
+                            max_angle,
+                            track_border,
+                            track_border_width,
+                            arc_thickness,
+                            window,
+                        );
                         if static_surface {
                             paint_radial_annulus(
                                 bounds,
