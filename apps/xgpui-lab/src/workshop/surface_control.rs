@@ -111,6 +111,12 @@ pub(super) trait SurfaceControl {
         None
     }
 
+    /// The height the stage gives the live control at actual size, like [`Self::stage_width`]. The stage
+    /// shows a resize handle on each axis that has a size, so the control can be dragged to another.
+    fn stage_height(&self) -> Option<f32> {
+        None
+    }
+
     /// The live control's own status text (e.g. an autocomplete's search status), shown in Test mode's
     /// lower panel rather than on the stage. Most controls have none.
     fn status(&self) -> Option<SharedString> {

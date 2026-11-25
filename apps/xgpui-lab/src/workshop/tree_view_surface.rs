@@ -102,6 +102,9 @@ fn template(theme: PinnedTreeTheme) -> Arc<ThemedTreeViewTemplate> {
     Arc::new(ThemedTreeViewTemplate::new(Arc::new(theme)))
 }
 
+/// The tree's size on the stage, at actual size.
+const STAGE_SIZE: (f32, f32) = (300., 220.);
+
 /// Gives the tree, which fills its parent, a size on the stage.
 struct TreeHost {
     tree: TreeView<()>,
@@ -109,7 +112,7 @@ struct TreeHost {
 
 impl Render for TreeHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().w(px(300.)).h(px(220.)).child(self.tree.clone())
+        div().size_full().child(self.tree.clone())
     }
 }
 
@@ -141,6 +144,15 @@ impl SurfaceControl for TreeViewSurface {
 
     fn view(&self) -> AnyView {
         self.host.clone().into()
+    }
+
+    /// The tree fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_SIZE.0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(STAGE_SIZE.1)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
