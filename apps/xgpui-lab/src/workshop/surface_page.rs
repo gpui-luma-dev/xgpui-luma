@@ -210,6 +210,9 @@ const MODE_TRACK_PADDING: f32 = 1.;
 const MATRIX_ROW_HEIGHT: f32 = 36.;
 const MATRIX_GAP_X: f32 = 12.;
 const MATRIX_GAP_Y: f32 = 2.;
+/// Room around the largest control the cells draw: columns and rows grow to fit it with this much.
+const MATRIX_CELL_ROOM_X: f32 = 24.;
+const MATRIX_CELL_ROOM_Y: f32 = 4.;
 /// A cell's narrowest width: a control and its label.
 const MATRIX_CELL_WIDTH: f32 = 96.;
 /// Room after the widest row label.
@@ -394,10 +397,14 @@ pub(super) struct ControlSide {
     pan: Point<Pixels>,
     /// The drag on the Control stage in progress, if any.
     pan_drag: Option<PanDrag>,
-    /// Back to actual size, centered.
-    actual_size: Entity<Button>,
     /// The control's bounds on the Control stage at the last paint, for its bounding box.
     control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    /// The Control stage's bounds at the last paint, to keep the panned control on it.
+    stage_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
+    /// The largest control the matrix cells drew at the last paint, which sizes its columns and rows;
+    /// `matrix_cell_next` gathers this paint's (gpui measures elements only while painting).
+    matrix_cell: Rc<Cell<gpui::Size<Pixels>>>,
+    matrix_cell_next: Rc<Cell<gpui::Size<Pixels>>>,
     /// The states the live control draws in Design mode; `None` in Test mode, where it draws as it is.
     pinned: Option<StateSet>,
     stage: Stage,
@@ -583,13 +590,6 @@ impl ControlSide {
             .label("Reset")
             .on_click(cx, |this: &mut Self, cx| this.apply(StyleKey::new(this.control), cx))
             .spawn(cx);
-        let actual_size = xgpui_luma_look_radix::Button::new("workshop-surface-actual-size")
-            .look(look.as_ref())
-            .ghost()
-            .size(xgpui_luma_look_radix::ButtonSize::One)
-            .label("Actual size")
-            .on_click(cx, |this: &mut Self, cx| this.reset_view(cx))
-            .spawn(cx);
         let events = cx.new(|cx| {
             ControlEventStream::new(
                 cx,
@@ -643,8 +643,10 @@ impl ControlSide {
             zoom_slider,
             pan: Point::default(),
             pan_drag: None,
-            actual_size,
             control_bounds: Rc::default(),
+            stage_bounds: Rc::default(),
+            matrix_cell: Rc::default(),
+            matrix_cell_next: Rc::default(),
             pinned: None,
             stage: Stage::Control,
             stage_tabs,
@@ -687,7 +689,10 @@ impl ControlSide {
         if zoom == self.zoom {
             return;
         }
+        // The control grows or shrinks about its center, so the pan that kept it on the stage may not.
+        let scale = zoom / self.zoom;
         self.zoom = zoom;
+        self.pan = self.clamped_pan(self.pan, scale);
         self.bind_control(cx);
         cx.notify();
     }
@@ -699,7 +704,8 @@ impl ControlSide {
         self.zoom_slider.update(cx, |slider, cx| slider.set_value(zoom, cx));
     }
 
-    /// Back to actual size with the control centered.
+    /// Back to actual size with the control centered, for tests.
+    #[cfg(all(test, feature = "test-support"))]
     fn reset_view(&mut self, cx: &mut Context<Self>) {
         self.pan = Point::default();
         self.pan_drag = None;
@@ -722,7 +728,19 @@ impl ControlSide {
         } else {
             delta
         };
-        self.pan = self.pan + delta;
+        self.pan = self.clamped_pan(self.pan + delta, 1.);
+    }
+
+    /// `pan`, limited so the control can't leave the stage: a control smaller than the stage stays
+    /// wholly on it; one larger (zoomed in) can be moved only until its edge meets the stage's, so it
+    /// always fills the stage. `scale` is the control's size now over its size at the last paint.
+    fn clamped_pan(&self, pan: Point<Pixels>, scale: f32) -> Point<Pixels> {
+        let (Some(stage), Some(control)) = (self.stage_bounds.get(), self.control_bounds.get()) else {
+            return pan;
+        };
+        let limit = |stage: Pixels, control: Pixels| (f32::from(stage) - f32::from(control) * scale).abs() / 2.;
+        let (x, y) = (limit(stage.size.width, control.size.width), limit(stage.size.height, control.size.height));
+        point(px(f32::from(pan.x).clamp(-x, x)), px(f32::from(pan.y).clamp(-y, y)))
     }
 
     /// A press on the Control stage starts a drag that pans once it moves past [`PAN_THRESHOLD`].
@@ -740,7 +758,8 @@ impl ControlSide {
             return;
         }
         drag.panning = true;
-        self.pan = drag.pan + moved;
+        let pan = drag.pan + moved;
+        self.pan = self.clamped_pan(pan, 1.);
         cx.notify();
     }
 
@@ -885,11 +904,6 @@ impl ControlSide {
                                 .w(px(44.))
                                 .font_family(pane_type::MONO)
                                 .child(zoom_label(self.zoom)),
-                        )
-                        .child(
-                            div()
-                                .debug_selector(|| "workshop-surface-actual-size".into())
-                                .child(self.actual_size.clone()),
                         ),
                 )
             }))
@@ -1029,14 +1043,31 @@ impl ControlSide {
             icons + text_width(window, &self.look, &self.states_label(states, empty))
         };
         let row_label_width = rows.iter().map(|r| label_width(r, "base")).fold(0., f32::max) + MATRIX_LABEL_PAD;
+        // Columns and rows also fit the largest control the cells drew last paint, with room around it.
+        let drawn = self.matrix_cell.get();
         let column_width = columns
             .iter()
             .map(|c| label_width(&c.iter().copied().collect::<Vec<_>>(), "—"))
-            .fold(MATRIX_CELL_WIDTH, f32::max);
+            .fold(MATRIX_CELL_WIDTH.max(f32::from(drawn.width) + MATRIX_CELL_ROOM_X), f32::max);
+        let row_height = MATRIX_ROW_HEIGHT.max(f32::from(drawn.height) + MATRIX_CELL_ROOM_Y);
         let tracks = std::iter::once(GridTrack::Px(row_label_width))
             .chain(std::iter::repeat_n(GridTrack::Px(column_width), columns.len()));
         let mut grid = GridLayout::new().columns(tracks).gap_x(MATRIX_GAP_X).gap_y(MATRIX_GAP_Y);
-        let cell = || div().h(px(MATRIX_ROW_HEIGHT)).flex().items_center();
+        let cell = || div().h(px(row_height)).flex().items_center();
+        // Each cell's control reports its size to this paint's gathering.
+        let measure = || {
+            let next = self.matrix_cell_next.clone();
+            gpui::canvas(
+                move |bounds, _, _| {
+                    let max = next.get();
+                    next.set(size(max.width.max(bounds.size.width), max.height.max(bounds.size.height)));
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0()
+        };
+        self.matrix_cell_next.set(gpui::Size::default());
         grid = grid.child(cell(), 0, 0);
         for (c, column) in columns.iter().enumerate() {
             let states: Vec<StateId> = column.iter().copied().collect();
@@ -1051,14 +1082,29 @@ impl ControlSide {
                 let id = format!("workshop-surface-matrix-{r}-{c}").into();
                 let drawn = self.surface.cell(&self.theme, id, &self.state_set(&states), window, cx);
                 let selector = format!("workshop-surface-matrix-cell-{r}-{c}");
+                let control = format!("workshop-surface-matrix-control-{r}-{c}");
+                let drawn =
+                    div().debug_selector(move || control.clone()).relative().flex_none().child(drawn).child(measure());
                 let drawn = cell().debug_selector(move || selector.clone()).child(drawn);
                 grid = grid.child(drawn, r + 1, c + 1);
             }
         }
+        // After every cell has reported: if the largest control changed, size the grid to it next frame.
+        let (current, next, side) = (self.matrix_cell.clone(), self.matrix_cell_next.clone(), cx.entity_id());
+        let settle = gpui::canvas(
+            move |_, window, cx| {
+                if next.get() != current.get() {
+                    current.set(next.get());
+                    window.defer(cx, move |_, cx| cx.notify(side));
+                }
+            },
+            |_, _, _, _| {},
+        );
         div()
             .debug_selector(|| "workshop-surface-matrix".into())
             .p(px(20.))
             .child(grid.build().w_auto())
+            .child(settle)
             .into_any_element()
     }
 
@@ -1147,7 +1193,9 @@ impl ControlSide {
             .filter(|s| self.key.active_states().contains(s.state))
             .map(|s| self.label_of(s.state))
             .collect();
-        let tag = |name: &str| {
+        // "none" draws in the same box as a state, unbordered, so the row keeps its height either way
+        // and the events below never shift.
+        let tag_box = || {
             div()
                 .flex()
                 .items_center()
@@ -1156,11 +1204,20 @@ impl ControlSide {
                 .py(px(2.))
                 .rounded(px(6.))
                 .border_1()
-                .border_color(chrome.border)
                 .font_family(pane_type::MONO)
                 .text_color(chrome.muted_text)
+        };
+        let tag = |name: &str| {
+            tag_box()
+                .border_color(chrome.border)
                 .children(state_icon(Some(name), chrome.muted_text))
                 .child(format!(":{name}"))
+        };
+        let none = || {
+            tag_box()
+                .border_color(gpui::transparent_black())
+                .child(div().size(px(MATRIX_ICON_SIZE)).flex_none())
+                .child("none")
         };
         div()
             .debug_selector(|| "workshop-surface-live".into())
@@ -1169,6 +1226,7 @@ impl ControlSide {
             .flex_col()
             .child(
                 div()
+                    .debug_selector(|| "workshop-surface-live-row".into())
                     .flex()
                     .flex_wrap()
                     .items_center()
@@ -1184,7 +1242,7 @@ impl ControlSide {
                             .text_color(chrome.muted_text)
                             .child("LIVE STATES"),
                     )
-                    .when(live.is_empty(), |row| row.child(div().text_color(chrome.muted_text).child("none")))
+                    .when(live.is_empty(), |row| row.child(none()))
                     .children(live.into_iter().map(tag)),
             )
             .child(div().px(px(18.)).py(px(10.)).child(self.events.clone()))
@@ -1302,6 +1360,30 @@ impl ControlSide {
     }
 }
 
+/// For tests: the shown matrix's controls don't touch their neighbors across or (when there's a second
+/// row) down.
+#[cfg(all(test, feature = "test-support"))]
+pub(super) fn assert_matrix_controls_apart(cx: &mut gpui::VisualTestContext) {
+    let mut at = |r: usize, c: usize| {
+        let id: &'static str = Box::leak(format!("workshop-surface-matrix-control-{r}-{c}").into_boxed_str());
+        cx.debug_bounds(id)
+    };
+    let first = at(0, 0).expect("a first cell");
+    let across = at(0, 1).expect("a second column");
+    assert!(first.right() + px(8.) <= across.left(), "apart across: {first:?} then {across:?}");
+    if let Some(down) = at(1, 0) {
+        assert!(first.bottom() + px(4.) <= down.top(), "apart down: {first:?} then {down:?}");
+    }
+}
+
+impl ControlSide {
+    /// The live-states row's height, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn live_row_height(cx: &mut gpui::VisualTestContext) -> Pixels {
+        cx.debug_bounds("workshop-surface-live-row").expect("the live states row").size.height
+    }
+}
+
 impl ControlSide {
     fn stage_slot(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         // The grid zooms and pans with the control; the matrix is always at actual size and centered.
@@ -1335,9 +1417,10 @@ impl ControlSide {
                             self.control_bounds.clone(),
                             self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, BOX_ACCENT_STEP).hsla(),
                         );
+                        let stage_bounds = self.stage_bounds.clone();
                         stage.child(
                             gpui::canvas(
-                                |_, _, _| (),
+                                move |bounds, _, _| stage_bounds.set(Some(bounds)),
                                 move |bounds, _, window, _| {
                                     let Some(control) = measured.get() else {
                                         return;
@@ -2102,9 +2185,11 @@ mod tests {
         // Row labels are right-aligned: a short one ends where the longest does.
         let base = cx.debug_bounds("workshop-surface-matrix-label-base").expect("base label");
         assert!((base.right() - longest.right()).abs() <= px(1.), "right-aligned: {base:?} vs {longest:?}");
-        // Rows a checkbox tall with a 2px gap; columns a cell wide with a 12px gap.
+        // Rows a checkbox tall plus a little room, with a 2px gap; columns a cell wide with a 12px gap.
         let (a, b, c) = (cell(0, 0, cx), cell(1, 0, cx), cell(0, 1, cx));
-        assert_eq!(b.top() - a.top(), px(38.), "row stride");
+        let checkbox = cx.debug_bounds("workshop-surface-matrix-control-0-0").expect("a drawn checkbox").size.height;
+        let row = checkbox.max(px(MATRIX_ROW_HEIGHT - MATRIX_CELL_ROOM_Y)) + px(MATRIX_CELL_ROOM_Y + MATRIX_GAP_Y);
+        assert_eq!(b.top() - a.top(), row, "row stride");
         assert!(c.left() - a.left() <= px(150.), "column stride is tight: {:?}", c.left() - a.left());
     }
 
@@ -2276,9 +2361,19 @@ mod tests {
         assert_eq!(pan, panned, "pinch never pans");
         assert!(same(control_center(cx), before), "the panned checkbox stays put: {before:?}");
 
-        // Actual size zooms back to 1× and recenters.
-        let actual = cx.debug_bounds("workshop-surface-actual-size").expect("Actual size button");
-        cx.simulate_click(actual.center(), gpui::Modifiers::none());
+        // A long drag can't take the checkbox off the stage: it stops with the checkbox's edge on the
+        // stage's.
+        let start = stage.origin + point(px(30.), stage.size.height - px(30.));
+        cx.simulate_mouse_down(start, MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_move(start + point(px(1200.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.simulate_mouse_up(start + point(px(1200.), px(0.)), MouseButton::Left, gpui::Modifiers::none());
+        cx.run_until_parked();
+        let control = cx.debug_bounds("workshop-surface-control").expect("control");
+        assert!(control.right() <= stage.right() + px(0.5), "stays on the stage: {control:?} in {stage:?}");
+        assert!(control.right() >= stage.right() - px(1.), "and reaches its edge: {control:?} in {stage:?}");
+
+        // Back to actual size, recentered.
+        side.update(cx, |side, cx| side.reset_view(cx));
         cx.run_until_parked();
         let (zoom, pan, slider) = view(cx);
         assert_eq!((zoom, pan, slider), (1., Point::default(), 1.), "back to actual size");

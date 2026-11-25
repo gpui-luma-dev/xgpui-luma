@@ -167,11 +167,14 @@ mod tests {
         let button = cx.update(|_, cx| side.read(cx).control_as::<ButtonSurface>().expect("a button").button());
 
         // Test: a click is logged; a button has no lasting state, so the key only follows hover and focus.
+        let idle = ControlSide::live_row_height(cx);
         let at = cx.debug_bounds("workshop-surface-control").expect("control").center();
         cx.simulate_click(at, gpui::Modifiers::none());
         cx.run_until_parked();
         let text = cx.update(|_, cx| side.read(cx).events_text(cx));
         assert!(text.contains("Click"), "the click is logged: {text}");
+        // The live states went from none to :focused without the row changing height.
+        assert_eq!(ControlSide::live_row_height(cx), idle, "the events below don't shift");
 
         // No :selected (the template sets it only for a toggle); a button can't be invalid.
         let template_only = cx.update(|_, cx| side.read(cx).template_only_states());
@@ -194,6 +197,7 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw buttons");
+        crate::workshop::surface_page::assert_matrix_controls_apart(cx);
     }
 
     #[test]
@@ -224,5 +228,6 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw icon buttons");
+        crate::workshop::surface_page::assert_matrix_controls_apart(cx);
     }
 }

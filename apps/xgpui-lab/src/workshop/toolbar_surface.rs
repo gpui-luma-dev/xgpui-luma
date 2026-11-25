@@ -394,6 +394,7 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-1").is_some(), "matrix cells draw the shell");
+        crate::workshop::surface_page::assert_matrix_controls_apart(cx);
     }
 
     #[test]
