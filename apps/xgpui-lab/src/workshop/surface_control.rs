@@ -99,6 +99,12 @@ pub(super) trait SurfaceControl {
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, window: &mut Window, cx: &mut App)
     -> AnyElement;
 
+    /// Other `.lss` controls the live control composes (e.g. a radio group's `radio_group` layout beside
+    /// its `radio` rows), each shown in its own inspector beside the page's. Most controls compose none.
+    fn composed(&self) -> &'static [&'static str] {
+        &[]
+    }
+
     /// The width the stage gives the live control at actual size, for a control with no width of its own
     /// (a slider, a progress bar); it scales with the zoom. `None`: the control sizes itself.
     fn stage_width(&self) -> Option<f32> {

@@ -254,6 +254,62 @@ pub(super) struct SurfacePage {
     left_rounded: bool,
 }
 
+/// The `.lss` file a control's rules come from, e.g. `radio.lss`.
+fn lss_file_name(theme: &Theme, control: ControlId) -> Option<String> {
+    lss_inspector::control_source(&theme.inspect(&StyleKey::new(control), None)).map(|(file, _)| file.to_string())
+}
+
+/// The inspector column: the page's inspector, and when the control composes other `.lss` controls, a tab
+/// per file above it to switch to each one's inspector.
+struct InspectorColumn {
+    inspectors: Vec<Entity<LssInspector>>,
+    active: usize,
+    tabs: Option<Entity<xgpui_luma::controls::tabs::Tabs>>,
+}
+
+impl InspectorColumn {
+    fn new(
+        look: &Arc<Look>,
+        primary: (gpui::SharedString, Entity<LssInspector>),
+        composed: Vec<(gpui::SharedString, Entity<LssInspector>)>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let files: Vec<gpui::SharedString> =
+            std::iter::once(primary.0.clone()).chain(composed.iter().map(|(file, _)| file.clone())).collect();
+        let tabs = (!composed.is_empty()).then(|| {
+            let ids = files.clone();
+            xgpui_luma_look_radix::Tabs::new("workshop-surface-stylesheets")
+                .look(look.as_ref())
+                .items(
+                    files
+                        .iter()
+                        .map(|file| xgpui_luma::controls::tabs::TabsItem::new(file.clone()).label(file.clone())),
+                )
+                .active(files[0].clone())
+                .on_value_changed(cx, move |this: &mut Self, id, _, cx| {
+                    this.active = ids.iter().position(|file| *file == *id).unwrap_or(0);
+                    cx.notify();
+                })
+                .spawn(cx)
+        });
+        let inspectors = std::iter::once(primary.1).chain(composed.into_iter().map(|(_, i)| i)).collect();
+        Self { inspectors, active: 0, tabs }
+    }
+}
+
+impl Render for InspectorColumn {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .children(self.tabs.clone().map(|tabs| {
+                div().debug_selector(|| "workshop-surface-stylesheets".into()).flex_none().px(px(12.)).child(tabs)
+            }))
+            .child(div().flex_1().min_h_0().children(self.inspectors.get(self.active).cloned()))
+    }
+}
+
 impl SurfacePage {
     /// `control` is the page's `.lss` control in `theme`; `make_control` makes the live control the page
     /// shows (see [`SurfaceControl`]).
@@ -273,15 +329,27 @@ impl SurfacePage {
             side.apply(key, cx);
         });
         let title = side.read(cx).surface.title();
-        let (side_view, inspector_view) = (side.clone(), inspector.clone());
+        // An inspector of its own for each `.lss` control the live control composes.
+        let composed: Vec<(gpui::SharedString, Entity<LssInspector>)> = side
+            .read(cx)
+            .surface
+            .composed()
+            .iter()
+            .filter_map(|name| theme.stylesheet().control(name).map(|control| (*name, control)))
+            .map(|(name, control)| {
+                let file: gpui::SharedString =
+                    lss_file_name(&theme, control).unwrap_or_else(|| format!("{name}.lss")).into();
+                (file, cx.new(|cx| LssInspector::new(look.clone(), theme.clone(), control, cx)))
+            })
+            .collect();
+        side.update(cx, |side, _| side.composed_inspectors = composed.iter().map(|(_, i)| i.clone()).collect());
+        let primary: gpui::SharedString = lss_file_name(&theme, control).unwrap_or_default().into();
+        let column = cx.new(|cx| InspectorColumn::new(&look, (primary, inspector.clone()), composed, cx));
+        let side_view = side.clone();
         let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-surface-split")
             .show_border(false)
             .panel(ResizablePanelSpec::new_render(move || side_view.clone()).weight(2.).min(px(MIN_SIDE_WIDTH)))
-            .panel(
-                ResizablePanelSpec::new_render(move || inspector_view.clone())
-                    .weight(1.)
-                    .min(px(MIN_INSPECTOR_WIDTH)),
-            )
+            .panel(ResizablePanelSpec::new_render(move || column.clone()).weight(1.).min(px(MIN_INSPECTOR_WIDTH)))
             .spawn(cx);
         Self { look, theme, control, title, side, inspector, split, left_rounded: false }
     }
@@ -294,7 +362,10 @@ impl SurfacePage {
     pub(super) fn sync_look(&mut self, look: Arc<Look>, cx: &mut Context<Self>) {
         self.look = look.clone();
         self.side.update(cx, |side, cx| side.sync_look(look.clone(), cx));
-        self.inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
+        self.inspector.update(cx, |inspector, cx| inspector.sync_look(look.clone(), cx));
+        for inspector in self.side.read(cx).composed_inspectors.clone() {
+            inspector.update(cx, |inspector, cx| inspector.sync_look(look.clone(), cx));
+        }
         cx.notify();
     }
 
@@ -425,6 +496,8 @@ pub(super) struct ControlSide {
     reset: Entity<Button>,
     key: StyleKey,
     inspector: Entity<LssInspector>,
+    /// Inspectors for the `.lss` controls the live control composes, kept in step with the page's mode.
+    composed_inspectors: Vec<Entity<LssInspector>>,
     events: Entity<ControlEventStream>,
     /// Stage above, states and events below.
     split: Entity<ResizablePanels>,
@@ -658,6 +731,7 @@ impl ControlSide {
             reset,
             key: StyleKey::new(control),
             inspector,
+            composed_inspectors: Vec::new(),
             events,
             split,
         }
@@ -669,6 +743,9 @@ impl ControlSide {
         let Ok(theme) = self.theme.with_mode(mode) else {
             return;
         };
+        for inspector in &self.composed_inspectors {
+            inspector.update(cx, |inspector, cx| inspector.set_theme(theme.clone(), cx));
+        }
         self.inspector.update(cx, |inspector, cx| inspector.set_theme(theme.clone(), cx));
         if let Some(switch) = &self.mode_switch
             && *switch.read(cx).data() != (mode == DARK)
