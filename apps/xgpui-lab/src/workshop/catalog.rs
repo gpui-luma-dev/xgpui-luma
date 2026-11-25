@@ -1,9 +1,14 @@
 //! Catalog copied from Luma Studio’s Controls popup. IDs, membership, and entry order match Studio,
-//! except the Lab-only entries in `LAB_ONLY` (checked by the catalog test); folder labels use Explorer casing in the Lab.
+//! except `LAB_ONLY` and `STUDIO_ONLY` (checked by the catalog test); folder labels use Explorer casing in the Lab.
 
 /// Entries the Lab has and Studio doesn’t: SDK controls that get their own design surface page.
 #[cfg(test)]
-pub const LAB_ONLY: &[&str] = &["icon-button"];
+pub const LAB_ONLY: &[&str] = &["icon-button", "dialog"];
+
+/// Studio entries the Lab folds into one page: the four Dialog entries differ only in behavior, so the Lab
+/// has one Dialog page.
+#[cfg(test)]
+pub const STUDIO_ONLY: &[&str] = &["dialog-modal", "dialog-modeless", "dialog-positioning", "dialog-draggable"];
 
 #[derive(Clone, Copy, Debug)]
 pub struct ComponentCatalogEntry {
@@ -82,10 +87,7 @@ const FEEDBACK_ENTRIES: &[ComponentCatalogEntry] = &[
     ComponentCatalogEntry { id: "badge", label: "Badge" },
     ComponentCatalogEntry { id: "progress", label: "Progress" },
     ComponentCatalogEntry { id: "stepper", label: "Stepper" },
-    ComponentCatalogEntry { id: "dialog-modal", label: "Dialog Modal" },
-    ComponentCatalogEntry { id: "dialog-modeless", label: "Dialog Modeless" },
-    ComponentCatalogEntry { id: "dialog-positioning", label: "Dialog Positioning" },
-    ComponentCatalogEntry { id: "dialog-draggable", label: "Dialog Draggable" },
+    ComponentCatalogEntry { id: "dialog", label: "Dialog" },
 ];
 
 const SELECTION_ENTRIES: &[ComponentCatalogEntry] = &[

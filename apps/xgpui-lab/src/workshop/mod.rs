@@ -148,10 +148,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
-        "dialog-modal" => Some(("overlay_window", dialog_surface::DialogSurface::make_modal)),
-        "dialog-modeless" => Some(("overlay_window", dialog_surface::DialogSurface::make_modeless)),
-        "dialog-positioning" => Some(("overlay_window", dialog_surface::DialogSurface::make_positioning)),
-        "dialog-draggable" => Some(("overlay_window", dialog_surface::DialogSurface::make_draggable)),
+        "dialog" => Some(("overlay_window", dialog_surface::DialogSurface::make)),
         _ => None,
     }
 }
@@ -438,6 +435,7 @@ mod tests {
                 let (_, rest) = rest.split_once("label: \"")?;
                 Some((id, rest.split('"').next().unwrap()))
             })
+            .filter(|(id, _)| !catalog::STUDIO_ONLY.contains(id))
             .collect();
         let all: Vec<_> = COMPONENT_CATALOG.iter().flat_map(|g| g.entries.iter().map(|e| (e.id, e.label))).collect();
         let actual: Vec<_> = all.iter().copied().filter(|(id, _)| !catalog::LAB_ONLY.contains(id)).collect();
@@ -458,12 +456,12 @@ mod tests {
                 "Prototypes"
             ]
         );
-        assert_eq!(all.len(), 50);
+        assert_eq!(all.len(), 47);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.entries.len()).collect::<Vec<_>>(),
-            [4, 8, 4, 4, 6, 3, 5, 2, 7, 6, 1]
+            [4, 8, 4, 4, 6, 3, 5, 2, 4, 6, 1]
         );
-        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 50);
+        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 47);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.id).collect::<Vec<_>>(),
             [
@@ -534,7 +532,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 46);
+            assert_eq!(view.read(cx).samples.len(), 43);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
