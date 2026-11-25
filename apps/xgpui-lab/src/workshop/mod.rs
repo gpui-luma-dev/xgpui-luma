@@ -121,6 +121,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "switch" => Some(("switch", switch_surface::SwitchSurface::make)),
         "radio-button" => Some(("radio", radio_button_surface::RadioButtonSurface::make)),
         "button" => Some(("button", button_surface::ButtonSurface::make)),
+        "icon-button" => Some(("button", button_surface::ButtonSurface::make_icon)),
         "toolbar" => Some(("toolbar", toolbar_surface::ToolbarSurface::make)),
         "toggle" => Some(("toggle", toggle_surface::ToggleSurface::make)),
         "textfield" => Some(("textfield", textfield_surface::TextFieldSurface::make)),
@@ -448,7 +449,8 @@ mod tests {
                 Some((id, rest.split('"').next().unwrap()))
             })
             .collect();
-        let actual: Vec<_> = COMPONENT_CATALOG.iter().flat_map(|g| g.entries.iter().map(|e| (e.id, e.label))).collect();
+        let all: Vec<_> = COMPONENT_CATALOG.iter().flat_map(|g| g.entries.iter().map(|e| (e.id, e.label))).collect();
+        let actual: Vec<_> = all.iter().copied().filter(|(id, _)| !catalog::LAB_ONLY.contains(id)).collect();
         assert_eq!(actual, expected);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.label).collect::<Vec<_>>(),
@@ -466,12 +468,12 @@ mod tests {
                 "Prototypes"
             ]
         );
-        assert_eq!(actual.len(), 49);
+        assert_eq!(all.len(), 50);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.entries.len()).collect::<Vec<_>>(),
-            [3, 8, 4, 4, 6, 3, 5, 2, 7, 6, 1]
+            [4, 8, 4, 4, 6, 3, 5, 2, 7, 6, 1]
         );
-        assert_eq!(actual.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 49);
+        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 50);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.id).collect::<Vec<_>>(),
             [
@@ -545,7 +547,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 44);
+            assert_eq!(view.read(cx).samples.len(), 45);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
