@@ -10,7 +10,7 @@ mod textfield_surface;
 mod textarea_surface;
 mod slider_surface;
 mod scrollbar_surface;
-mod menu;
+mod menu_surface;
 mod layout_surface;
 mod sidebar_surface;
 mod tabs_surface;
@@ -32,7 +32,6 @@ mod event_stream;
 mod sample_layout;
 mod sdk_sample;
 mod event_log_view;
-mod style_inspector;
 mod lss_inspector;
 mod surface_page;
 mod checkbox_surface;
@@ -67,7 +66,6 @@ use catalog::COMPONENT_CATALOG;
 // Keep routing independent of sample implementation, with typed retained entities.
 enum Sample {
     ShadowButton(Entity<shadow_button::ShadowButtonSample>),
-    Menu(Entity<menu::MenuSample>),
     /// A design surface page (see `surface_control`).
     Surface(Entity<surface_page::SurfacePage>),
     CustomButton(Entity<custom_button::CustomButtonControlExposition>),
@@ -83,7 +81,6 @@ impl Sample {
     fn view(&self) -> gpui::AnyView {
         match self {
             Self::ShadowButton(v) => v.clone().into(),
-            Self::Menu(v) => v.clone().into(),
             Self::Surface(v) => v.clone().into(),
             Self::CustomButton(v) => v.clone().into(),
             Self::Arc(v) => v.clone().into(),
@@ -98,7 +95,6 @@ impl Sample {
     fn sync_look(&self, look: Arc<Look>, cx: &mut gpui::App) {
         match self {
             Self::ShadowButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
-            Self::Menu(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Surface(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::CustomButton(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
             Self::Arc(v) => v.update(cx, |v, cx| v.sync_look(look, cx)),
@@ -148,6 +144,8 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "autocomplete-textfield" => Some(("autocomplete", selection_surface::UnthemedSurface::make_autocomplete)),
         "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
         "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
+        "context-menu" => Some(("context_menu", menu_surface::ContextMenuSurface::make)),
+        "popup-menu" => Some(("popup_menu", menu_surface::PopupMenuSurface::make)),
         "badge" => Some(("badge", badge_surface::BadgeSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
@@ -171,23 +169,10 @@ pub(crate) struct Workshop {
     selected: &'static str,
     navigation: Vec<NavigationEntry>,
     samples: HashMap<&'static str, Sample>,
-    /// Style inspectors for each page's `.lss` controls, created with the page.
-    inspectors: HashMap<&'static str, Vec<(&'static str, Entity<style_inspector::StyleInspector>)>>,
     shell_look: Arc<Look>,
     page_look: Arc<Look>,
     /// Whether the shell's sidebar is hidden, so pages meet the canvas's rounded left edge.
     sidebar_hidden: bool,
-}
-
-/// The SDK `.lss` controls a Workshop page shows, inspected beside its sample. Pages without SDK
-/// styling have none.
-fn lss_controls(id: &str) -> &'static [&'static str] {
-    match id {
-        // Design surface pages (see `surface_control`) have their own inspector.
-        "context-menu" => &["context_menu", "floating_menu"],
-        "popup-menu" => &["popup_menu", "floating_menu"],
-        _ => &[],
-    }
 }
 
 impl Workshop {
@@ -282,7 +267,6 @@ impl Workshop {
             selected: "color-field",
             navigation,
             samples: HashMap::new(),
-            inspectors: HashMap::new(),
             shell_look,
             page_look,
             sidebar_hidden: false,
@@ -313,10 +297,6 @@ impl Workshop {
                 "shadow-button" => {
                     Some(Sample::ShadowButton(cx.new(|cx| shadow_button::ShadowButtonSample::new(look, cx))))
                 }
-                "context-menu" => {
-                    Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Context, look, cx))))
-                }
-                "popup-menu" => Some(Sample::Menu(cx.new(|cx| menu::MenuSample::new(menu::MenuKind::Popup, look, cx)))),
                 "custom-button" => Some(Sample::CustomButton(
                     cx.new(|cx| custom_button::CustomButtonControlExposition::new(cx, self.shell_look.clone())),
                 )),
@@ -347,18 +327,6 @@ impl Workshop {
                 self.samples.insert(id, sample);
             }
         }
-        if self.samples.contains_key(id) && !self.inspectors.contains_key(id) {
-            let theme = xgpui_luma::style::default_theme();
-            let inspectors = lss_controls(id)
-                .iter()
-                .filter_map(|&name| {
-                    let control = theme.stylesheet().control(name)?;
-                    let (look, theme) = (self.page_look.clone(), theme.clone());
-                    Some((name, cx.new(|cx| style_inspector::StyleInspector::new(look, theme, control, cx))))
-                })
-                .collect();
-            self.inspectors.insert(id, inspectors);
-        }
         for entry in &self.navigation {
             entry.selected.store(entry.id == id, Ordering::Relaxed);
             entry.button.update(cx, |_, cx| cx.notify());
@@ -387,40 +355,7 @@ impl Workshop {
             };
             sample.sync_look(look, cx);
         }
-        for inspector in self.inspectors.values().flatten().map(|(_, inspector)| inspector) {
-            let look = self.page_look.clone();
-            inspector.update(cx, |inspector, cx| inspector.sync_look(look, cx));
-        }
         cx.notify();
-    }
-}
-
-impl Workshop {
-    /// Each `.lss` control of the page, inspected: every part and property with the rule and tokens it
-    /// comes from.
-    fn style_column(&self, inspectors: &[(&'static str, Entity<style_inspector::StyleInspector>)]) -> gpui::AnyElement {
-        div()
-            .id("workshop-style-column")
-            .debug_selector(|| "workshop-style-column".into())
-            .flex_none()
-            .w(px(460.))
-            .h_full()
-            .overflow_y_scroll()
-            .p(px(16.))
-            .flex()
-            .flex_col()
-            .gap(px(16.))
-            .children(inspectors.iter().map(|(name, inspector)| {
-                sample_layout::card(
-                    &self.page_look,
-                    name,
-                    name,
-                    "Every themeable value, with the rule and tokens it comes from.",
-                    428.,
-                    inspector.clone(),
-                )
-            }))
-            .into_any_element()
     }
 }
 
@@ -470,17 +405,7 @@ impl Render for Workshop {
             } else {
                 sdk_sample::isolated(sample.view()).into_any_element()
             };
-            let inspectors = self.inspectors.get(self.selected).filter(|inspectors| !inspectors.is_empty());
-            root = match inspectors {
-                Some(inspectors) => root.child(
-                    div()
-                        .size_full()
-                        .flex()
-                        .child(div().relative().flex_1().min_w_0().h_full().child(content))
-                        .child(self.style_column(inspectors)),
-                ),
-                None => root.child(content),
-            };
+            root = root.child(content);
         } else if let Some((group, entry)) = COMPONENT_CATALOG
             .iter()
             .find_map(|g| g.entries.iter().find(|e| e.id == self.selected).map(|e| (g, e)))
@@ -627,27 +552,25 @@ mod tests {
     }
 
     #[test]
-    fn lss_pages_show_a_style_inspector_for_each_control() {
+    fn design_surface_pages_name_sdk_lss_controls_and_open_as_surface_pages() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
         let theme = xgpui_luma::style::default_theme();
         for group in COMPONENT_CATALOG {
             for entry in group.entries {
+                let Some((name, _)) = surface_control(entry.id) else {
+                    continue;
+                };
+                assert!(theme.stylesheet().control(name).is_some(), "{name} is an SDK .lss control");
                 view.update(cx, |v, cx| v.select(entry.id, cx));
                 cx.run_until_parked();
-                let names = lss_controls(entry.id);
-                for name in names {
-                    assert!(theme.stylesheet().control(name).is_some(), "{name} is an SDK .lss control");
-                }
-                let shown = cx.update(|_, cx| view.read(cx).inspectors.get(entry.id).map_or(0, Vec::len));
-                assert_eq!(shown, names.len(), "{}", entry.id);
-                assert_eq!(cx.debug_bounds("workshop-style-column").is_some(), !names.is_empty(), "{}", entry.id);
+                cx.update(|_, cx| {
+                    assert!(matches!(view.read(cx).samples[entry.id], Sample::Surface(_)), "{}", entry.id)
+                });
+                assert!(cx.debug_bounds("workshop-surface-control").is_some(), "{} draws its control", entry.id);
             }
         }
-        view.update(cx, |v, cx| v.select("badge", cx));
-        cx.run_until_parked();
-        assert!(cx.debug_bounds("workshop-sdk-badges").is_some());
     }
 
     #[test]
@@ -664,11 +587,11 @@ mod tests {
     }
 
     #[test]
-    fn unsupported_layout_entries_explain_sdk_limitations() {
+    fn unsupported_layout_and_menu_entries_explain_sdk_limitations() {
         let mut app = TestAppContext::single();
         app.update(|cx| xgpui_luma::init(cx).unwrap());
         let (view, cx) = app.add_window_view(|_, cx| Workshop::new(crate::theme::default_look(), cx));
-        for id in ["slide-panel", "split-view-inset"] {
+        for id in ["slide-panel", "split-view-inset", "floating-menu"] {
             view.update(cx, |v, cx| v.select(id, cx));
             cx.run_until_parked();
             assert!(cx.debug_bounds("workshop-sdk-unavailable").is_some(), "{id}");

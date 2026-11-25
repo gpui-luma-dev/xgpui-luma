@@ -227,10 +227,16 @@ impl PopupMenuTheme for PinnedPopupMenuTheme {
     }
 }
 
-fn split_button_template(theme: Theme, pinned: Option<StateSet>) -> Arc<ThemedSplitButtonTemplate> {
+/// The `popup_menu` control in `theme`, its trigger in the picked states when some are pinned. Split Button
+/// and Popup Menu share it.
+pub(super) fn popup_menu_theme(theme: Theme, pinned: Option<StateSet>) -> Arc<dyn PopupMenuTheme> {
     let menu: MenuSource = Arc::new(|| xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve());
     let base = StyledPopupMenuTheme::new(ThemeSource::Fixed(theme), menu);
-    Arc::new(ThemedSplitButtonTemplate::new(Arc::new(PinnedPopupMenuTheme { base, pinned })))
+    Arc::new(PinnedPopupMenuTheme { base, pinned })
+}
+
+fn split_button_template(theme: Theme, pinned: Option<StateSet>) -> Arc<ThemedSplitButtonTemplate> {
+    Arc::new(ThemedSplitButtonTemplate::new(popup_menu_theme(theme, pinned)))
 }
 
 fn split_button(id: impl Into<SharedString>) -> SplitButtonBuilder {
