@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
 mod control;
+mod look;
 mod model;
 
 pub(super) use control::{PopoverPanel, PopoverPanelEvent};
 pub(super) use model::{PopoverPanelDismissPolicy, PopoverPanelPlacement};
 
+pub use look::PopoverPanelLook;
 pub use model::PopoverMotion;
 
 crate::theme::stylesheet::geometry::lss_geometry!(
