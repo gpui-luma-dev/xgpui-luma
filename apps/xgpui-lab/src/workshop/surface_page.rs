@@ -65,9 +65,10 @@ const BOX_LINE: f32 = 1.;
 const BOX_DASH: f32 = 4.;
 const BOX_GAP: f32 = 3.;
 const BOX_CORNER_ARM: f32 = 32.;
-const BOX_CORNER_THICKNESS: f32 = 4.;
-/// The bounding box's color: this step of the look's accent scale.
-const BOX_ACCENT_STEP: u8 = 9;
+const BOX_CORNER_THICKNESS: f32 = 2.;
+/// The bounding box's color: a fixed mid gray, independent of the look's accent (like the grid, it
+/// is stage chrome, not theme).
+const BOX_COLOR: u32 = 0x8c8c8c;
 
 /// The rectangles that draw `control`'s bounding box on `stage`: the dashes of two vertical lines
 /// (just outside its left and right edges) and two horizontal lines (just outside its top and bottom),
@@ -464,6 +465,10 @@ pub(super) struct ControlSide {
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
+    /// Whether the stage draws its grid and the control's bounding box; off shows the control on a
+    /// plain background.
+    show_guides: bool,
+    guides_switch: Switch,
     /// How far the control (and the grid with it) is moved from the Control stage's center.
     pan: Point<Pixels>,
     /// The drag on the Control stage in progress, if any.
@@ -580,6 +585,16 @@ impl ControlSide {
             .step(ZOOM_STEP)
             .value(ZOOM_RANGE.start)
             .on_value_changed(cx, |this: &mut Self, _, zoom, cx| this.set_zoom(zoom, cx))
+            .spawn(cx);
+        let guides_switch = xgpui_luma_look_radix::Switch::new("workshop-surface-guides")
+            .look(look.as_ref())
+            .size(xgpui_luma_look_radix::SwitchSize::One)
+            .label("Guides")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.show_guides = on;
+                cx.notify();
+            })
             .spawn(cx);
         let work_mode_picker = xgpui_luma_look_radix::control_group_builder(
             look.as_ref(),
@@ -714,6 +729,8 @@ impl ControlSide {
             surface,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
+            show_guides: true,
+            guides_switch,
             pan: Point::default(),
             pan_drag: None,
             control_bounds: Rc::default(),
@@ -964,6 +981,12 @@ impl ControlSide {
                     .debug_selector(|| "workshop-surface-work-mode".into())
                     .self_center()
                     .child(self.work_mode_picker.clone()),
+            )
+            .child(
+                div()
+                    .debug_selector(|| "workshop-surface-guides".into())
+                    .self_center()
+                    .child(self.guides_switch.clone()),
             )
             .child(div().flex_1().self_center().when(self.stage == Stage::Control, |slot| {
                 slot.child(
@@ -1509,19 +1532,20 @@ impl ControlSide {
                         }
                     })
                     .when_some(self.stage_background, |stage, background| stage.bg(background))
-                    .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    .when(self.show_guides, |stage| {
+                        stage.child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    })
                     // The control's bounding box, over the grid and under the control and the stage tag.
+                    // The canvas stays when guides are hidden: it also records the stage's bounds for panning.
                     .when(control, |stage| {
-                        let (measured, color) = (
-                            self.control_bounds.clone(),
-                            self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, BOX_ACCENT_STEP).hsla(),
-                        );
+                        let (measured, color): (_, Hsla) = (self.control_bounds.clone(), gpui::rgb(BOX_COLOR).into());
+                        let show_guides = self.show_guides;
                         let stage_bounds = self.stage_bounds.clone();
                         stage.child(
                             gpui::canvas(
                                 move |bounds, _, _| stage_bounds.set(Some(bounds)),
                                 move |bounds, _, window, _| {
-                                    let Some(control) = measured.get() else {
+                                    let Some(control) = measured.get().filter(|_| show_guides) else {
                                         return;
                                     };
                                     for rect in bounding_box_rects(bounds, control) {

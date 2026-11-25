@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 pub(crate) use xgpui_luma_look_radix::Look;
-use xgpui_luma_look_radix::{Accent, CustomColors, Gray, SemanticRole};
+use xgpui_luma_look_radix::{Accent, Gray, SemanticRole};
 use xgpui_luma::theme::{LumaChrome, LumaTextStyle, LumaTypography, ThemeMode};
 use gpui::{Styled, px};
 
@@ -15,24 +15,16 @@ pub(crate) fn register_fonts(cx: &mut gpui::App) -> anyhow::Result<()> {
     cx.text_system().add_fonts(vec![std::borrow::Cow::Borrowed(IBM_PLEX_MONO)])
 }
 
-/// Custom Radix accent and neutral palette used at startup.
+/// Radix orange accent and sand neutral palette used at startup.
 pub(crate) fn default_look() -> Arc<Look> {
     let look = Look::built_in();
     // The theme's mono token is the lab's one monospace family; text roles read it from here.
     let mut fonts = look.typography().font;
     fonts.mono.family = MONO_FAMILY.into();
     look.set_fonts(fonts);
-    look.set_palettes(Accent::Gray, Gray::Sand);
-    let seed = xgpui_luma::color::ColorValue::srgb(90. / 255., 97. / 255., 105. / 255., 1.);
-    for mode in [ThemeMode::Light, ThemeMode::Dark] {
-        look.set_mode(mode);
-        // Keep light chrome off-white so native macOS traffic-light effects
-        // remain legible against the app background.
-        let value = if mode == ThemeMode::Dark { 0. } else { 240. / 255. };
-        let background = xgpui_luma::color::ColorValue::srgb(value, value, value, 1.);
-        look.set_custom_colors(CustomColors { accent: seed, gray: seed, background })
-            .expect("opaque sRGB palette seeds are valid");
-    }
+    // Named palettes only; `chrome()` keeps the light app background off-white
+    // so native macOS traffic-light effects remain legible.
+    look.set_palettes(Accent::Orange, Gray::Sand);
     look.set_mode(ThemeMode::Dark);
     Arc::new(look)
 }
