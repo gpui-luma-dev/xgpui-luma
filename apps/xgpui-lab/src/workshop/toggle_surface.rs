@@ -16,8 +16,8 @@ use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEv
 use super::surface_page::ControlSide;
 use crate::theme::Look;
 
-/// The toggle's text, on the stage and in each State matrix cell.
-const LABEL: &str = "Bold";
+/// The toggle's text, on the stage and in each State matrix cell, with ascenders and descenders.
+const LABEL: &str = "Highlight";
 
 pub(super) struct ToggleSurface {
     toggle: toggle::Toggle,

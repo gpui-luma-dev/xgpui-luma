@@ -210,7 +210,7 @@ const MODE_TRACK_PADDING: f32 = 1.;
 const MATRIX_ROW_HEIGHT: f32 = 36.;
 const MATRIX_GAP_X: f32 = 12.;
 const MATRIX_GAP_Y: f32 = 2.;
-/// A cell's narrowest width: a control and its "Label".
+/// A cell's narrowest width: a control and its label.
 const MATRIX_CELL_WIDTH: f32 = 96.;
 /// Room after the widest row label.
 const MATRIX_LABEL_PAD: f32 = 12.;
@@ -264,6 +264,11 @@ impl SurfacePage {
         let inspector = cx.new(|cx| LssInspector::new(look.clone(), theme.clone(), control, cx));
         let side =
             cx.new(|cx| ControlSide::new(look.clone(), theme.clone(), control, make_control, inspector.clone(), cx));
+        // Test mode: the key starts as the control is (e.g. a radio group that starts with a choice).
+        side.update(cx, |side, cx| {
+            let key = side.followed_key(cx);
+            side.apply(key, cx);
+        });
         let title = side.read(cx).surface.title();
         let (side_view, inspector_view) = (side.clone(), inspector.clone());
         let split = xgpui_luma_look_radix::resizable_panels_builder(&look, "workshop-surface-split")
