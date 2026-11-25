@@ -34,6 +34,7 @@ mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
 mod sample_layout;
+mod stage_rulers;
 mod sdk_sample;
 mod event_log_view;
 mod lss_inspector;
