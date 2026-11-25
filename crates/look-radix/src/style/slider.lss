@@ -12,8 +12,10 @@ slider {
   size 1 { part root { height = exact(16)  radius = exact(8) } }
   size 3 { part root { height = exact(24)  radius = exact(12) } }
 
+  // No track outline (the SDK draws one); set a width here to give the Radix track a border.
   part track {
     background = alpha(gray[3], 0.55)
+    border_width = exact(0)
     :disabled { background = alpha(gray[4], 0.55) }
   }
 

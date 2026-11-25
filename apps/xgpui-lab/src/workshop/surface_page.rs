@@ -2193,10 +2193,7 @@ mod tests {
             summary("root", "indicator_scale", cx),
             (shown("indicator_scale", Kind::Number), String::new(), None)
         );
-        assert_eq!(
-            summary("root", "height", cx),
-            (shown("height", Kind::Length), "indicator_size + 6".into(), None)
-        );
+        assert_eq!(summary("root", "height", cx), (shown("height", Kind::Length), "indicator_size + 6".into(), None));
 
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.toggle_state("checked", cx));

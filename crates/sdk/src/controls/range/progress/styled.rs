@@ -20,6 +20,7 @@ pub fn styled_progress_look(binding: &StyleBinding, enabled: bool) -> ProgressLo
     let resolved = binding.resolve(&[("disabled", !enabled)], 1.0);
     let root = resolved.root();
     let fill = color(resolved.part(PartId::new("fill")), "background");
+    let track = resolved.part(PartId::new("track"));
     let geometry = ProgressGeometry {
         track_height: number(root, "track_height"),
         size: number(root, "ring_size"),
@@ -34,7 +35,9 @@ pub fn styled_progress_look(binding: &StyleBinding, enabled: bool) -> ProgressLo
         shimmer_core_width: number(root, "shimmer_core_width"),
     };
     ProgressLook {
-        track_color: color(resolved.part(PartId::new("track")), "background"),
+        track_color: color(track, "background"),
+        track_border: color(track, "border"),
+        track_border_width: number(track, "border_width"),
         progress_color: fill,
         thumb_color: fill,
         track_height: geometry.track_height,

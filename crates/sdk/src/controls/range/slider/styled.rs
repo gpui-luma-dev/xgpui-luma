@@ -38,6 +38,8 @@ pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> Sl
             disabled_opacity: number(root, "disabled_opacity"),
         },
         track_background: color(track, "background"),
+        track_border: color(track, "border"),
+        track_border_width: number(track, "border_width"),
         fill_background: color(fill, "background"),
         thumb_background: color(thumb, "background"),
         thumb_border: color(thumb, "border"),
