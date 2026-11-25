@@ -212,7 +212,16 @@ impl SearchSelectorTemplate for DefaultSearchSelectorTemplate {
             trigger = trigger.shadow(shadows);
         }
 
-        let trigger_chrome = div().id("trigger").relative().w_full().child(trigger);
+        // The focus ring, like the selector's, but inset inside the trigger's edge so focusing never changes
+        // the trigger's size (the selector reserves room around its trigger; this one never has).
+        let focused = model.trigger_state.focus_visible && model.enabled && !model.trigger_state.invalid;
+        let focus = crate::infra::focus_adorner::FocusAdorner::new(crate::theme::MetricTokens::default().focus);
+        let trigger_chrome = div().id("trigger").relative().w_full().child(trigger).child(focus.overlay(
+            trigger_look.trigger_focus_border,
+            focused,
+            trigger_look.trigger_radius,
+            true,
+        ));
 
         div()
             .id((model.id.clone(), 0usize))
