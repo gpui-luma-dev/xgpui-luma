@@ -593,6 +593,28 @@ impl SearchSelectorControl {
         cx.notify();
     }
 
+    /// Replace the trigger's theme (its hover, pressed, focus, disabled, invalid, open and selected looks),
+    /// e.g. to rebind it to a look's `selector.lss`.
+    pub fn set_selector_theme(
+        &mut self,
+        theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.selector_theme = theme;
+        cx.notify();
+    }
+
+    /// Replace the popup search field's template, e.g. to rebind it to a look's `textfield.lss`.
+    pub fn set_textfield_template(
+        &mut self,
+        template: std::sync::Arc<dyn crate::controls::textfield::TextFieldTemplate>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.textfield_template = template.clone();
+        self.popup_search_textfield.update(cx, |textfield, cx| textfield.set_template(template, cx));
+        cx.notify();
+    }
+
     #[deprecated(note = "Prefer set_panel_template(...) + set_item_template(...)")]
     pub fn set_items_template(
         &mut self,

@@ -4,9 +4,11 @@
 badge {
   icon_size = shadcn.control_font_size
 
+  // No edge unless a variant gives one (outline): the SDK badge has a default edge.
   part root {
     background  = css.primary
     foreground  = css.primary_foreground
+    border      = transparent
     font_size   = shadcn.control_font_size
     line_height = font_size * typography.text.label.line_height / typography.text.label.size
   }

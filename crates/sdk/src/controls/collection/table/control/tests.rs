@@ -416,6 +416,10 @@ fn paged_drop_uses_dataset_gap_and_keeps_current_page() {
 }
 
 #[test]
+#[cfg_attr(
+    any(target_os = "windows", target_os = "linux"),
+    ignore = "xgpui test windows never report hover on Windows/Linux, and edge auto-scroll stops unless Window::is_window_hovered(); passes on macOS"
+)]
 fn preview_stays_beside_pointer_and_stationary_edge_scrolls_virtualized_rows() {
     let mut app = TestAppContext::single();
     let (table, cx) = setup(&mut app, 100, TableSelectionMode::Extended);

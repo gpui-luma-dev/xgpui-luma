@@ -537,6 +537,18 @@ impl ComboBoxControl {
         cx.notify();
     }
 
+    /// Replace the hosted text field's template (where the field's hover, focus, invalid and disabled
+    /// looks come from), e.g. to rebind it to a look's `textfield.lss`.
+    pub fn set_textfield_template(
+        &mut self,
+        template: std::sync::Arc<dyn crate::controls::textfield::TextFieldTemplate>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.textfield_template = template.clone();
+        self.textfield.update(cx, |textfield, cx| textfield.set_template(template, cx));
+        cx.notify();
+    }
+
     pub fn set_items_template(&mut self, template: std::sync::Arc<dyn ComboBoxItemsTemplate>, cx: &mut Context<Self>) {
         self.model.items_template = template;
         cx.notify();

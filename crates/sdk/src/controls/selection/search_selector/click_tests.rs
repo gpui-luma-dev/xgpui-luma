@@ -93,3 +93,98 @@ fn disabled_rows_preserve_click_targets_after_filtering() {
         }
     }
 }
+
+/// A selector theme that counts the trigger looks it resolves, around the SDK's.
+struct RecordingSelectorTheme(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+impl crate::controls::selector::SelectorTheme for RecordingSelectorTheme {
+    fn resolve(
+        &self,
+        trigger_style: crate::controls::selector::SelectorTriggerStyle,
+        state: crate::theme::InteractionState,
+        without_elevation: bool,
+    ) -> crate::controls::selector::SelectorPalette {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        crate::controls::selector::default_selector_theme().resolve(trigger_style, state, without_elevation)
+    }
+
+    fn metrics(&self) -> crate::theme::MetricTokens {
+        crate::controls::selector::default_selector_theme().metrics()
+    }
+}
+
+/// A text-field template that counts the frames it draws, around the SDK's.
+struct RecordingTextField(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+impl crate::controls::textfield::TextFieldTemplate for RecordingTextField {
+    fn render(
+        &self,
+        model: &crate::controls::textfield::TextFieldRenderModel<'_>,
+        handlers: crate::controls::textfield::TextFieldTemplateHandlers,
+        window: &mut gpui::Window,
+        cx: &mut gpui::App,
+    ) -> gpui::Stateful<gpui::Div> {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        crate::controls::textfield::default_textfield_template().render(model, handlers, window, cx)
+    }
+}
+
+/// `set_selector_theme` reaches the trigger the live search selector draws, and `set_textfield_template` the
+/// popup's search field once it opens (#397).
+#[test]
+fn theme_setters_reach_the_drawn_trigger_and_search_field() {
+    let mut app = TestAppContext::single();
+    let (selector, cx) = app.add_window_view(|window, cx| {
+        window.activate_window();
+        let builder = SearchSelectorBuilder::new("themed", [SelectionItem::new("a", "A")]).motion_enabled(false);
+        SearchSelectorControl::from_builder(builder, cx)
+    });
+    cx.run_until_parked();
+    let (trigger, field) = (
+        std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+        std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+    );
+    let (theme, template) = (
+        std::sync::Arc::new(RecordingSelectorTheme(trigger.clone())),
+        std::sync::Arc::new(RecordingTextField(field.clone())),
+    );
+    selector.update(cx, |selector, cx| {
+        selector.set_selector_theme(theme, cx);
+        selector.set_textfield_template(template, cx);
+    });
+    cx.run_until_parked();
+    assert!(trigger.load(std::sync::atomic::Ordering::SeqCst) > 0, "the trigger is drawn with the new theme");
+    selector.update(cx, |selector, cx| selector.open_popup_with_all_items(cx));
+    cx.run_until_parked();
+    assert!(
+        field.load(std::sync::atomic::Ordering::SeqCst) > 0,
+        "the open popup's search field uses the new template"
+    );
+}
+
+/// The trigger draws its focus ring when focused, like the selector's; it never did before (#397).
+#[test]
+fn the_trigger_draws_a_focus_ring_when_focused() {
+    let mut app = TestAppContext::single();
+    let (selector, cx) = app.add_window_view(|window, cx| {
+        window.activate_window();
+        let builder = SearchSelectorBuilder::new("focus-ring", [SelectionItem::new("a", "A")]).motion_enabled(false);
+        SearchSelectorControl::from_builder(builder, cx)
+    });
+    cx.run_until_parked();
+    let ring = crate::controls::selector::default_selector_theme()
+        .resolve(
+            crate::controls::selector::SelectorTriggerStyle::default(),
+            crate::theme::InteractionState { focused: true, ..Default::default() },
+            false,
+        )
+        .trigger_focus_border;
+    assert!(ring.a > 0.0, "the SDK selector theme has a focus ring color");
+    let ring_painted = |cx: &mut gpui::VisualTestContext| {
+        cx.update(|window, _| window.painted_quads().iter().any(|quad| quad.border_color == ring))
+    };
+    assert!(!ring_painted(cx), "no ring before focus");
+    cx.update(|window, app| selector.read(app).focus_handle(app).focus(window, app));
+    cx.run_until_parked();
+    assert!(ring_painted(cx), "a ring once focused");
+}
