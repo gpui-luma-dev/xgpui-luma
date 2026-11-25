@@ -1,4 +1,5 @@
-//! SDK display decorations on the design surface page (issue #393): Card, Avatar and Callout. Each `.lss`
+//! SDK display decorations on the design surface page (issue #393): Card, Avatar, Callout and Tooltip (its
+//! bubble drawn open by the SDK's own renderer). Each `.lss`
 //! has no states, so the page offers its stylesheet and a single matrix cell, like Badge.
 //!
 //! Card is the SDK's own element. Avatar and Callout have `.lss` files the SDK reads (`StyledAvatar`,
@@ -12,6 +13,7 @@ use lucide_svg_static::Icon as LucideIcon;
 use xgpui_luma::controls::avatar::StyledAvatar;
 use xgpui_luma::controls::callout::StyledCallout;
 use xgpui_luma::controls::card::{Card, StyledCard};
+use xgpui_luma::controls::tooltip::{TooltipRenderModel, bubble, styled_tooltip_look};
 use xgpui_luma::infra::icon::lucide_icon;
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
@@ -83,6 +85,28 @@ fn callout(theme: &Theme) -> AnyElement {
         .into_any_element()
 }
 
+/// A tooltip bubble drawn open by the SDK's own renderer, with a shortcut after its text.
+fn tooltip(theme: &Theme) -> AnyElement {
+    let look = styled_tooltip_look(&binding("tooltip", theme));
+    bubble(&TooltipRenderModel {
+        placement: look.placement,
+        shortcut_gap: look.shortcut_gap,
+        shortcut_font_size: look.shortcut_font_size,
+        shortcut_opacity: look.shortcut_opacity,
+        text: "Copy styling".into(),
+        shortcut: Some("Ctrl+Shift+C".into()),
+        background: look.background,
+        foreground: look.foreground,
+        padding: look.padding,
+        padding_y: look.padding_y,
+        radius: look.radius,
+        max_width: look.max_width,
+        text_size: look.text_size,
+        line_height: look.line_height,
+        shadow: look.shadow,
+    })
+}
+
 /// Draws a passive decoration from the theme last bound; decorations are elements, so the page needs a view.
 struct DecorationHost {
     theme: Option<Theme>,
@@ -121,6 +145,10 @@ impl DecorationSurface {
 
     pub(super) fn make_avatar(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         Self::make("Avatar", "workshop-sdk-avatar", avatars, cx)
+    }
+
+    pub(super) fn make_tooltip(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+        Self::make("Tooltip", "workshop-sdk-tooltip", tooltip, cx)
     }
 
     pub(super) fn make_callout(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
@@ -179,6 +207,7 @@ mod tests {
             ("card", "workshop-sdk-card"),
             ("avatar", "workshop-sdk-avatar"),
             ("callout", "workshop-sdk-callout"),
+            ("tooltip", "workshop-sdk-tooltip"),
         ] {
             let mut app = TestAppContext::single();
             let (page, cx) = open_surface(&mut app, id);

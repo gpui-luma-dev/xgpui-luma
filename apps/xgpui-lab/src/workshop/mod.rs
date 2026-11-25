@@ -3,6 +3,7 @@
 pub(crate) mod catalog;
 mod accordion_surface;
 mod pager_surface;
+mod popover_surface;
 mod radio_group_surface;
 mod table_surface;
 mod tree_view_surface;
@@ -150,6 +151,8 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "avatar" => Some(("avatar", display_surface::DecorationSurface::make_avatar)),
         "callout" => Some(("callout", display_surface::DecorationSurface::make_callout)),
         "card" => Some(("card", display_surface::DecorationSurface::make_card)),
+        "tooltip" => Some(("tooltip", display_surface::DecorationSurface::make_tooltip)),
+        "popover" => Some(("popover", popover_surface::PopoverSurface::make)),
         "progress" => Some(("progress", progress_surface::ProgressSurface::make)),
         "stepper" => Some(("stepper", stepper_surface::StepperSurface::make)),
         "dialog" => Some(("overlay_window", dialog_surface::DialogSurface::make)),
@@ -460,12 +463,12 @@ mod tests {
                 "Prototypes"
             ]
         );
-        assert_eq!(all.len(), 50);
+        assert_eq!(all.len(), 52);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.entries.len()).collect::<Vec<_>>(),
-            [4, 8, 4, 4, 6, 3, 5, 2, 7, 6, 1]
+            [4, 8, 4, 4, 6, 3, 5, 2, 9, 6, 1]
         );
-        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 50);
+        assert_eq!(all.iter().map(|(id, _)| id).collect::<std::collections::HashSet<_>>().len(), 52);
         assert_eq!(
             COMPONENT_CATALOG.iter().map(|g| g.id).collect::<Vec<_>>(),
             [
@@ -536,7 +539,7 @@ mod tests {
         });
         cx.update(|_, cx| {
             assert_eq!(view.read(cx).page_look.mode(), ThemeMode::Light);
-            assert_eq!(view.read(cx).samples.len(), 46);
+            assert_eq!(view.read(cx).samples.len(), 48);
             assert_eq!(view.read(cx).samples["color-field"].view().entity_id(), field);
             assert_eq!(view.read(cx).shell_look.mode(), ThemeMode::Light);
         });
