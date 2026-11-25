@@ -40,6 +40,8 @@ pub struct ComboBoxModel {
     pub(crate) items: Vec<SelectionItem>,
     pub(crate) placeholder: SharedString,
     pub(crate) enabled: bool,
+    /// Build the diagnostic status line (search status, selection, last event and key); off by default.
+    pub(crate) debug_status: bool,
     pub(crate) scroll_interaction: crate::interaction::ScrollInteraction,
     pub(crate) invalid: bool,
     pub(crate) full_width: bool,
@@ -186,6 +188,7 @@ impl ComboBoxBuilder {
                 items: items.into_iter().collect(),
                 placeholder: SharedString::from("Select…"),
                 enabled: true,
+                debug_status: false,
                 scroll_interaction: crate::interaction::ScrollInteraction::VIEWPORT,
                 invalid: false,
                 full_width: true,
@@ -260,6 +263,13 @@ impl ComboBoxBuilder {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
+        self
+    }
+
+    /// Show a diagnostic status line (search status, selection, match count, last event and key)
+    /// in the render model's `status_label` / `status_detail`. Off by default: both are empty.
+    pub fn debug_status(mut self, debug_status: bool) -> Self {
+        self.model.debug_status = debug_status;
         self
     }
 

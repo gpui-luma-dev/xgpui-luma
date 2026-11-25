@@ -145,7 +145,7 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "popup-selector" => Some(("selector", selection_surface::SelectorSurface::make)),
         "split-button" => Some(("popup_menu", selection_surface::SplitButtonSurface::make)),
         "selection-panel" => Some(("selection_panel", selection_surface::UnthemedSurface::make_selection_panel)),
-        "autocomplete-textfield" => Some(("autocomplete", selection_surface::UnthemedSurface::make_autocomplete)),
+        "autocomplete-textfield" => Some(("autocomplete", selection_surface::AutocompleteSurface::make)),
         "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
         "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
         "context-menu" => Some(("context_menu", menu_surface::ContextMenuSurface::make)),

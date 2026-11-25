@@ -23,7 +23,7 @@ const PLACEHOLDER: &str = "Type a quick reply…";
 const SAMPLE: &str = "Quickly typed";
 
 /// The `.lss` states the text-field themes read.
-const STATES: [&str; 4] = ["hover", "focused", "invalid", "disabled"];
+pub(super) const STATES: [&str; 4] = ["hover", "focused", "invalid", "disabled"];
 
 pub(super) struct TextFieldSurface {
     field: TextField,
@@ -46,7 +46,7 @@ impl TextFieldSurface {
 }
 
 /// The text-field template for the `textfield` control in `theme`.
-fn template(theme: Theme) -> ThemedTextFieldTemplate {
+pub(super) fn template(theme: Theme) -> ThemedTextFieldTemplate {
     let theme = StyledTextFieldTheme::new(ThemeSource::Fixed(theme));
     ThemedTextFieldTemplate::new(Arc::new(theme))
 }
@@ -64,9 +64,9 @@ fn pinned_state(live: TextFieldState, states: &StateSet) -> TextFieldState {
 }
 
 /// Draws the base template with the picked states (Design mode), or as the field is.
-struct PinnedTextFieldTemplate {
-    base: ThemedTextFieldTemplate,
-    pinned: Option<StateSet>,
+pub(super) struct PinnedTextFieldTemplate {
+    pub(super) base: ThemedTextFieldTemplate,
+    pub(super) pinned: Option<StateSet>,
 }
 
 impl TextFieldTemplate for PinnedTextFieldTemplate {

@@ -759,14 +759,20 @@ impl Render for SearchSelectorControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {} | matches: {} | last: {} | keyboard: {}",
-            selected_label.clone().unwrap_or_else(|| "none".to_string()),
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) = if self.model.debug_status {
+            (
+                SharedString::from(format!("status: {}", self.behavior.state.status.label())),
+                SharedString::from(format!(
+                    "selected: {} | matches: {} | last: {} | keyboard: {}",
+                    selected_label.clone().unwrap_or_else(|| "none".to_string()),
+                    self.behavior.state.filtered.len(),
+                    self.last_event,
+                    self.last_keyboard_event
+                )),
+            )
+        } else {
+            (SharedString::default(), SharedString::default())
+        };
 
         let popup_content = if self.model.enabled && self.presence.should_paint() {
             let list_id = SharedString::from("search-selector-menu");

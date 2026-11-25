@@ -662,13 +662,19 @@ impl Render for ComboBoxControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) = if self.model.debug_status {
+            (
+                SharedString::from(format!("status: {}", self.behavior.state.status.label())),
+                SharedString::from(format!(
+                    "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
+                    self.behavior.state.filtered.len(),
+                    self.last_event,
+                    self.last_keyboard_event
+                )),
+            )
+        } else {
+            (SharedString::default(), SharedString::default())
+        };
 
         let popup_content = if self.model.enabled && self.presence.should_paint() && !visible_indices.is_empty() {
             let menu_id = SharedString::from("combobox-menu");

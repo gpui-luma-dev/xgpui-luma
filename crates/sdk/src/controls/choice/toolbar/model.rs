@@ -33,6 +33,28 @@ pub enum ToolbarItemSource {
     TextField(TextField),
 }
 
+impl ToolbarItemSource {
+    pub(crate) fn is_enabled(&self, cx: &App) -> bool {
+        match self {
+            Self::CommandButton(entity) => entity.read(cx).is_enabled(),
+            Self::ToggleButton(entity) => entity.read(cx).is_enabled(cx),
+            Self::Menu(entity) => entity.read(cx).is_enabled(),
+            Self::Selector(entity) => entity.read(cx).is_enabled(),
+            Self::TextField(entity) => entity.read(cx).is_enabled(),
+        }
+    }
+
+    pub(crate) fn set_enabled(&self, enabled: bool, cx: &mut App) {
+        match self {
+            Self::CommandButton(entity) => entity.update(cx, |control, cx| control.set_enabled(enabled, cx)),
+            Self::ToggleButton(entity) => entity.update(cx, |control, cx| control.set_enabled(enabled, cx)),
+            Self::Menu(entity) => entity.update(cx, |control, cx| control.set_enabled(enabled, cx)),
+            Self::Selector(entity) => entity.update(cx, |control, cx| control.set_enabled(enabled, cx)),
+            Self::TextField(entity) => entity.update(cx, |control, cx| control.set_enabled(enabled, cx)),
+        }
+    }
+}
+
 pub type ToolbarClickHandler = Arc<dyn Fn(&mut Context<ToolbarControl>) + 'static>;
 pub type ToolbarChangeHandler = Arc<dyn Fn(&super::ToolbarValue, &mut Context<ToolbarControl>) + 'static>;
 

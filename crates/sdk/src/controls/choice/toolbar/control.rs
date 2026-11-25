@@ -36,6 +36,10 @@ pub struct ToolbarControl {
     variant: ToolbarVariant,
     focus_strategy: ControlGroupFocusStrategy,
     template: std::sync::Arc<dyn super::ToolbarTemplate>,
+    enabled: bool,
+    /// Hosted controls this toolbar disabled while it is disabled, re-enabled with it. Controls the host
+    /// disabled itself are not in here, so they stay disabled.
+    held_disabled: Vec<ToolbarItemSource>,
     _item_subscriptions: Vec<Subscription>,
 }
 
@@ -73,9 +77,12 @@ impl ToolbarControl {
             variant: model.variant,
             focus_strategy: model.focus_strategy,
             template: model.template,
+            enabled: model.enabled,
+            held_disabled: Vec::new(),
             _item_subscriptions: Vec::new(),
         };
         toolbar.rewire_item_subscriptions(cx);
+        toolbar.hold_sources(cx);
         toolbar
     }
 
@@ -98,17 +105,34 @@ impl ToolbarControl {
     }
 
     pub fn set_items(&mut self, items: impl IntoIterator<Item = ToolbarItem>, cx: &mut Context<Self>) {
+        self.release_sources(cx);
         self.items = items.into_iter().collect();
         self.group.update(cx, |group, cx| {
             group.set_items(self.items.clone(), cx);
         });
         self.rewire_item_subscriptions(cx);
+        self.hold_sources(cx);
     }
 
+    /// Enable or disable the toolbar and the controls it hosts. A hosted control that was already
+    /// disabled stays disabled when the toolbar is enabled again.
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.group.update(cx, |group, cx| {
             group.set_enabled(enabled, cx);
         });
+        if self.enabled == enabled {
+            return;
+        }
+        self.enabled = enabled;
+        if enabled {
+            self.release_sources(cx);
+        } else {
+            self.hold_sources(cx);
+        }
+    }
+
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     pub fn set_variant(&mut self, variant: ToolbarVariant, cx: &mut Context<Self>) {
@@ -151,6 +175,26 @@ impl ToolbarControl {
 
     fn rewire_item_subscriptions(&mut self, cx: &mut Context<Self>) {
         self._item_subscriptions = wire_item_subscriptions(&self.items, cx);
+    }
+
+    /// While disabled, disable every hosted control that is enabled, and remember it.
+    fn hold_sources(&mut self, cx: &mut Context<Self>) {
+        if self.enabled {
+            return;
+        }
+        for source in self.items.iter().filter_map(|item| item.event_source.clone()) {
+            if source.is_enabled(cx) {
+                source.set_enabled(false, cx);
+                self.held_disabled.push(source);
+            }
+        }
+    }
+
+    /// Re-enable the hosted controls [`Self::hold_sources`] disabled.
+    fn release_sources(&mut self, cx: &mut Context<Self>) {
+        for source in std::mem::take(&mut self.held_disabled) {
+            source.set_enabled(true, cx);
+        }
     }
 
     fn dispatch_click(&mut self, id: &SharedString, cx: &mut Context<Self>) {

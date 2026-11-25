@@ -1,5 +1,6 @@
-//! The SDK slider on the design surface page (issue #383). Its `.lss` (`slider`) reads hover, pressed and
-//! disabled. Its focus ring is drawn outside the template, so `:focused` can't be pinned.
+//! The SDK slider on the design surface page (issue #383). Its `.lss` (`slider`) reads hover, pressed,
+//! focused and disabled. The focus ring itself is drawn outside the template, so pinning `:focused` shows
+//! only what the `.lss` styles for it.
 
 use std::sync::Arc;
 
@@ -18,7 +19,7 @@ use super::surface_page::ControlSide;
 use crate::theme::Look;
 
 /// The `.lss` states the slider theme reads.
-const STATES: [&str; 3] = ["hover", "pressed", "disabled"];
+const STATES: [&str; 4] = ["hover", "pressed", "focused", "disabled"];
 
 /// The live slider's starting value, and where each State matrix cell's thumb sits (0–1).
 const VALUE: f32 = 50.;
@@ -53,7 +54,7 @@ fn template(theme: Theme) -> ThemedSliderTemplate {
 
 /// The picked states as the slider's interaction state.
 fn pinned_state(states: &StateSet) -> InteractionState {
-    InteractionState { focused: false, invalid: false, ..states.interaction() }
+    InteractionState { invalid: false, ..states.interaction() }
 }
 
 /// Draws the base template with the picked states (Design mode), or as the slider is.

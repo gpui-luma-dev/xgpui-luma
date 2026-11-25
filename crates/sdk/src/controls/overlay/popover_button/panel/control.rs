@@ -158,6 +158,14 @@ impl PopoverPanel {
         cx.notify();
     }
 
+    pub fn set_window_margin(&mut self, window_margin: Pixels, cx: &mut Context<Self>) {
+        if self.model.window_margin == window_margin {
+            return;
+        }
+        self.model.window_margin = window_margin;
+        cx.notify();
+    }
+
     pub fn set_initial_content_size(&mut self, size: Size<Pixels>, cx: &mut Context<Self>) {
         if self.model.initial_content_size == Some(size) {
             return;

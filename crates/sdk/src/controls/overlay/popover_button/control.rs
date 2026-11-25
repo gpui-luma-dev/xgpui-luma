@@ -18,6 +18,9 @@ pub struct PopoverButton<D = ()> {
     panel: Entity<PopoverPanel>,
     trigger_on_pointer_down: bool,
     measure_trigger: bool,
+    /// The builder set these explicitly, so [`Self::set_geometry`] leaves them alone.
+    explicit_offset_y: bool,
+    explicit_window_margin: bool,
 }
 
 impl<D: 'static> EventEmitter<PopoverButtonEvent> for PopoverButton<D> {}
@@ -81,7 +84,22 @@ impl<D: Default + 'static> PopoverButton<D> {
             panel,
             trigger_on_pointer_down: builder.trigger_on_pointer_down,
             measure_trigger,
+            explicit_offset_y: builder.explicit_offset_y,
+            explicit_window_margin: builder.explicit_window_margin,
         }
+    }
+    /// Rebind where the popover opens (a look's `popover.lss`), e.g. after a theme change. Values set
+    /// explicitly on the builder are kept.
+    pub fn set_geometry(&mut self, geometry: crate::theme::stylesheet::PopoverGeometry, cx: &mut Context<Self>) {
+        let (offset_y, window_margin) = (!self.explicit_offset_y, !self.explicit_window_margin);
+        self.panel.update(cx, |panel, cx| {
+            if offset_y {
+                panel.set_offset_y(gpui::px(geometry.button_offset_y), cx);
+            }
+            if window_margin {
+                panel.set_window_margin(gpui::px(geometry.window_margin), cx);
+            }
+        });
     }
     pub fn is_open(&self, cx: &App) -> bool {
         self.panel.read(cx).is_open()

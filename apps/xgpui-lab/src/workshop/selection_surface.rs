@@ -2,9 +2,11 @@
 //!
 //! - **Selector** (`selector`, which extends `button`) and **Split Button** (`popup_menu`, which extends
 //!   `button`) take a theme, so the page binds their `.lss` and Design mode pins the picked states.
-//! - **Selection Panel** (`selection_panel`), **Autocomplete** (`autocomplete`), **ComboBox** (`combobox`)
-//!   and **SearchSelector** (`search_selector`) draw from the SDK's own styles and take no theme, so their
-//!   pages show the live control beside its `.lss` without binding or pinning it.
+//! - **Autocomplete** (`autocomplete`) takes no theme of its own, but its hosted text field does: the page
+//!   binds and pins the field (`textfield.lss`, shown beside the autocomplete's `.lss`).
+//! - **Selection Panel** (`selection_panel`), **ComboBox** (`combobox`) and **SearchSelector**
+//!   (`search_selector`) draw from the SDK's own styles and take no theme, so their pages show the live
+//!   control beside its `.lss` without binding or pinning it.
 //!
 //! Each State matrix cell is a small control of its own, drawn in that cell's states where the control
 //! takes a theme.
@@ -31,7 +33,9 @@ use xgpui_luma::theme::{InteractionState, MetricTokens, StandardBoxScale};
 
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
+use super::textfield_surface::{PinnedTextFieldTemplate, STATES as TEXTFIELD_STATES, template as textfield_template};
 use crate::theme::Look;
+use xgpui_luma::controls::textfield::TextFieldTemplate;
 
 /// The options: id, label (with ascenders and descenders) and whether it can be chosen.
 const ITEMS: [(&str, &str, bool); 5] = [
@@ -357,6 +361,97 @@ impl autocomplete::AutocompleteTemplate for StatusAside {
     }
 }
 
+// --- Autocomplete ------------------------------------------------------------------------------------------
+
+/// Autocomplete's own `.lss` has only its status line, clear button and layout; its states are the hosted
+/// text field's (`textfield.lss`, shown beside it). The page binds and pins that field's template.
+pub(super) struct AutocompleteSurface {
+    control: Entity<autocomplete::AutocompleteControl>,
+    cells: Cells,
+    /// The status text the control would draw above itself, shown on the lower panel instead.
+    status: Arc<Mutex<SharedString>>,
+}
+
+/// The hosted text field's template for the `textfield` control in `theme`, drawn in `pinned` when set.
+fn autocomplete_field(theme: Theme, pinned: Option<StateSet>) -> Arc<dyn TextFieldTemplate> {
+    Arc::new(PinnedTextFieldTemplate { base: textfield_template(theme), pinned })
+}
+
+impl AutocompleteSurface {
+    const WIDTH: f32 = 260.;
+
+    pub(super) fn make(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
+        let status = Arc::new(Mutex::new(SharedString::default()));
+        let control = autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items())
+            .template(StatusAside::wrap(status.clone()))
+            .debug_status(true)
+            .spawn(cx);
+        Box::new(Self { control, cells: Cells::default(), status })
+    }
+}
+
+impl SurfaceControl for AutocompleteSurface {
+    fn title(&self) -> &'static str {
+        "Autocomplete TextBox"
+    }
+
+    fn view(&self) -> AnyView {
+        self.control.clone().into()
+    }
+
+    /// The hosted field's `textfield.lss` draws its states.
+    fn composed(&self) -> &'static [&'static str] {
+        &["textfield"]
+    }
+
+    fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
+        self.cells.clear();
+        let field = autocomplete_field(theme, pinned.cloned());
+        self.control.update(cx, |control, cx| control.set_textfield_template(field, cx));
+    }
+
+    fn set_enabled(&self, enabled: bool, cx: &mut App) {
+        self.control.update(cx, |control, cx| control.set_enabled(enabled, cx));
+    }
+
+    fn template_states(&self) -> Vec<&'static str> {
+        TEXTFIELD_STATES.to_vec()
+    }
+
+    fn status(&self) -> Option<SharedString> {
+        self.status.lock().ok().map(|status| status.clone())
+    }
+
+    fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
+        cx.subscribe(&self.control, move |side: &mut ControlSide, _, event: &autocomplete::AutocompleteEvent, cx| {
+            let state = match event {
+                autocomplete::AutocompleteEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                _ => None,
+            };
+            on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);
+        })
+    }
+
+    /// An autocomplete of its own, its field drawn in the cell's states.
+    fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, _: &mut Window, cx: &mut App) -> AnyElement {
+        let cell = self.cells.get(&id, || {
+            autocomplete::AutocompleteBuilder::new(id.clone(), filter_items())
+                .textfield_template(autocomplete_field(theme.clone(), Some(states.clone())))
+                .enabled(!states.has("disabled"))
+                .spawn(cx)
+                .into()
+        });
+        div().w(px(Self::WIDTH)).child(cell).into_any_element()
+    }
+
+    #[cfg(all(test, feature = "test-support"))]
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+// --- Controls that take no theme (continued) ---------------------------------------------------------------
+
 /// A selection control drawn from the SDK's own styles: the page shows it beside its `.lss`, unbound.
 pub(super) struct UnthemedSurface {
     title: &'static str,
@@ -366,28 +461,16 @@ pub(super) struct UnthemedSurface {
     make_cell: MakeCell,
     width: f32,
     cells: Cells,
-    /// The status text the control would draw above itself, shown on the lower panel instead.
-    status: Option<Arc<Mutex<SharedString>>>,
 }
 
 impl UnthemedSurface {
     fn new(
         title: &'static str,
         view: AnyView,
-        handlers: (SetEnabled, Subscribe, MakeCell),
-        width: f32,
-    ) -> Box<dyn SurfaceControl> {
-        Self::with_status(title, view, handlers, width, None)
-    }
-
-    fn with_status(
-        title: &'static str,
-        view: AnyView,
         (set_enabled, subscribe, make_cell): (SetEnabled, Subscribe, MakeCell),
         width: f32,
-        status: Option<Arc<Mutex<SharedString>>>,
     ) -> Box<dyn SurfaceControl> {
-        Box::new(Self { title, view, set_enabled, subscribe, make_cell, width, cells: Cells::default(), status })
+        Box::new(Self { title, view, set_enabled, subscribe, make_cell, width, cells: Cells::default() })
     }
 
     pub(super) fn make_selection_panel(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
@@ -425,43 +508,6 @@ impl UnthemedSurface {
                 |id, enabled, cx| panel(id).enabled(enabled).spawn(cx).into(),
             ),
             220.,
-        )
-    }
-
-    pub(super) fn make_autocomplete(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
-        let status = Arc::new(Mutex::new(SharedString::default()));
-        let view = autocomplete::AutocompleteBuilder::new("workshop-sdk-autocomplete", filter_items())
-            .template(StatusAside::wrap(status.clone()))
-            .spawn(cx);
-        Self::with_status(
-            "Autocomplete TextBox",
-            view.into(),
-            (
-                |view, enabled, cx| {
-                    if let Ok(control) = view.clone().downcast::<autocomplete::AutocompleteControl>() {
-                        control.update(cx, |control, cx| control.set_enabled(enabled, cx));
-                    }
-                },
-                |view, cx, on_event| match view.clone().downcast::<autocomplete::AutocompleteControl>() {
-                    Ok(control) => cx.subscribe(
-                        &control,
-                        move |side: &mut ControlSide, _, event: &autocomplete::AutocompleteEvent, cx| {
-                            on_event(side, SurfaceEvent { line: format!("{event:?}"), state: None }, cx);
-                        },
-                    ),
-                    // The view is always this control; nothing to follow otherwise.
-                    Err(_) => Subscription::new(|| {}),
-                },
-                |id, enabled, cx| {
-                    autocomplete::AutocompleteBuilder::new(id, filter_items())
-                        .template(StatusAside::wrap(Arc::default()))
-                        .enabled(enabled)
-                        .spawn(cx)
-                        .into()
-                },
-            ),
-            260.,
-            Some(status),
         )
     }
 
@@ -544,10 +590,6 @@ impl SurfaceControl for UnthemedSurface {
         Vec::new()
     }
 
-    fn status(&self) -> Option<SharedString> {
-        self.status.as_ref().and_then(|status| status.lock().ok().map(|status| status.clone()))
-    }
-
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {
         (self.subscribe)(&self.view, cx, on_event)
     }
@@ -617,8 +659,22 @@ mod tests {
     }
 
     #[test]
+    fn the_autocomplete_page_pins_its_text_field_states() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = open_surface(&mut app, "autocomplete-textfield");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        assert!(cx.update(|_, cx| side.read(cx).control_as::<AutocompleteSurface>().is_some()));
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        side.update(cx, |side, cx| side.toggle_state("focused", cx));
+        cx.run_until_parked();
+        let pinned = cx.update(|_, cx| side.read(cx).pinned()).expect("Design draws picked states");
+        assert!(pinned.has("focused"), "{pinned:?}");
+        pin_and_show_matrix(&side, "hover", cx);
+    }
+
+    #[test]
     fn the_unthemed_selection_pages_show_their_control_and_a_matrix() {
-        for id in ["selection-panel", "autocomplete-textfield", "combobox", "search-selector"] {
+        for id in ["selection-panel", "combobox", "search-selector"] {
             let mut app = TestAppContext::single();
             let (page, cx) = open_surface(&mut app, id);
             let side = cx.update(|_, cx| page.read(cx).side());
