@@ -3,6 +3,7 @@
 // hairline ring; classic and soft add depth. Sizes 1–3.
 
 slider {
+  disabled_opacity = 0.56
   track_height = exact(6)
   thumb_size   = exact(16)
   size 1 { track_height = exact(4)  thumb_size = exact(12) }

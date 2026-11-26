@@ -3,6 +3,7 @@
 // Indicator, dot and label colors ignore hover and pressed, so they own their property (`:=`).
 
 radio {
+  disabled_opacity = metrics.disabled_opacity
   size sm { indicator_scale = 0.45 }
   size lg { indicator_scale = 0.55 }
 

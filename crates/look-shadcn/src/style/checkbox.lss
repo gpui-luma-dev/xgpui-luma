@@ -5,6 +5,7 @@
 // so they own their property (`:=`) against the SDK's hover and pressed rules.
 
 checkbox {
+  disabled_opacity = metrics.disabled_opacity
   size sm { indicator_scale = 0.45  indicator_radius = 2  glyph_inset = 2 }
   size lg { indicator_scale = 0.55  indicator_radius = 6  glyph_inset = 4 }
 

@@ -8,7 +8,7 @@ slider {
   /// The radial (dial and ring) templates' size and track radius, and disabled opacity.
   dial_size: length = exact(200)
   dial_track_radius: length = exact(72)
-  disabled_opacity: number = 0.56
+  disabled_opacity: number = 1
 
   /// The whole control.
   part root {

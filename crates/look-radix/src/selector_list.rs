@@ -1,13 +1,15 @@
 //! Shared selector row and panel styling for SDK selection controls.
 
 use xgpui_luma::controls::selector_list::SelectorItemsPanelLook;
+use xgpui_luma::style::{StyleBinding, ThemeSource};
+use xgpui_luma::theme::stylesheet::PopoverGeometry;
 
 use crate::{Look, PopupMenuVariant, Tone, floating_menu_look_for};
 
 /// Resolve Radix row and panel styling for the SDK selector-items template.
 ///
-/// Reuses menu colors and geometry, then applies `selector_list` stylesheet
-/// overrides using the existing Radix size key (`"2"`). Pair with the SDK's
+/// Reuses menu colors and geometry, placed by the look's `popover.lss`, then applies
+/// `selector_list` stylesheet overrides using the existing Radix size key (`"2"`). Pair with the SDK's
 /// `default_selector_items_template`; state, input, and callbacks stay in the SDK.
 /// Resolve again during render after changing the supplied Look, and notify the
 /// owner. Explicit and forked Looks are used directly, without ambient lookup.
@@ -30,7 +32,9 @@ pub fn selector_items_panel_look_for(
     tone: Tone,
     size: crate::RadixSize,
 ) -> SelectorItemsPanelLook {
+    let popover = StyleBinding::new("popover", ThemeSource::Fixed(look.style_theme()));
     SelectorItemsPanelLook::from_menu(floating_menu_look_for(look, variant, tone, size), &look.metrics_for(size))
+        .with_placement(PopoverGeometry::from_binding(&popover))
 }
 
 #[cfg(test)]
@@ -38,6 +42,15 @@ mod tests {
     use super::*;
     use crate::{Accent, Gray, floating_menu_look};
     use xgpui_luma::theme::ThemeMode;
+
+    /// Radix selector popups are placed by the look's `popover.lss`, not the SDK's alone (#397).
+    #[test]
+    fn popups_are_placed_by_the_looks_popover_lss() {
+        let look = Look::built_in();
+        let want = PopoverGeometry::from_binding(&StyleBinding::new("popover", ThemeSource::Fixed(look.style_theme())));
+        let panel = selector_items_panel_look(&look, PopupMenuVariant::Solid, Tone::Accent);
+        assert_eq!((panel.popup_offset_y, panel.window_margin), (want.panel_offset_y, want.window_margin));
+    }
 
     #[test]
     fn shared_chrome_tracks_mode_palette_variant_and_tone() {

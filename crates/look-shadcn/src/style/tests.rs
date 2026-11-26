@@ -403,3 +403,30 @@ fn look_defines_the_visual_variants() {
         }
     }
 }
+
+/// The SDK's button family draws `:disabled` without fading; Shadcn keeps its fade on every control that
+/// extends the button, the text field, the choices, groups and bars (#397).
+#[test]
+fn disabled_controls_keep_the_shadcn_fade() {
+    let look = ShadcnLook::built_in();
+    for control in [
+        "button",
+        "toggle",
+        "popup_menu",
+        "selector",
+        "textfield",
+        "textarea",
+        "checkbox",
+        "radio",
+        "switch",
+        "control_group",
+        "context_menu",
+        "scrollbar",
+        "slider",
+        "resizable_panels",
+        "radio_group",
+    ] {
+        let opacity = resolve(control, &look, &[], &[]).root().value("disabled_opacity").and_then(Value::as_number);
+        assert!(opacity.is_some_and(|value| value < 1.0), "{control}: {opacity:?}");
+    }
+}

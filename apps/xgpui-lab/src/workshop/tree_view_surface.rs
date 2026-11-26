@@ -93,8 +93,14 @@ impl TreeViewTheme for PinnedTreeTheme {
         MetricTokens::default()
     }
 
+    /// In Design mode the page turns the tree's input off, which fades every row; only a picked `:disabled`
+    /// fades them (#397).
     fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
-        self.base.scale(scale_factor)
+        let scale = self.base.scale(scale_factor);
+        match &self.pinned {
+            Some((states, _)) if !states.has("disabled") => TreeViewScale { disabled_opacity: 1.0, ..scale },
+            _ => scale,
+        }
     }
 }
 
@@ -245,5 +251,20 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw trees");
+    }
+
+    /// Design mode turns the tree's input off; its rows fade only when `:disabled` is picked (#397).
+    #[test]
+    fn design_mode_rows_fade_only_for_a_picked_disabled() {
+        let theme = xgpui_luma::style::default_theme;
+        let fade = |pinned: Option<StateSet>| {
+            PinnedTreeTheme::new(theme(), pinned.map(|states| (states, Selected::Keep)))
+                .resolve_scale(1.0)
+                .disabled_opacity
+        };
+        let sdk = fade(None);
+        assert!(sdk < 1.0, "the SDK tree fades disabled rows: {sdk}");
+        assert_eq!(fade(Some(StateSet::new(["pressed"]))), 1.0, "input off in Design, but not :disabled");
+        assert_eq!(fade(Some(StateSet::new(["disabled"]))), sdk, "a picked :disabled fades");
     }
 }

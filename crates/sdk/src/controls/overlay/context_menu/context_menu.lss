@@ -4,7 +4,7 @@
 /// An area that opens a menu on secondary click.
 context_menu {
   /// Whole-target opacity when disabled, and the menu's edge margin.
-  disabled_opacity: number = 0.56
+  disabled_opacity: number = 1
   window_margin: length = exact(8)
 
   /// The target.

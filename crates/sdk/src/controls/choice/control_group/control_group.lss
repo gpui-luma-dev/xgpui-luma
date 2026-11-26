@@ -5,7 +5,7 @@
 control_group {
   /// Space between rows in a vertical group, and default rows' opacity when disabled.
   vertical_gap: length = exact(8)
-  disabled_opacity: number = 0.56
+  disabled_opacity: number = 1
 
   /// The frame.
   part root {

@@ -3,8 +3,8 @@
 
 /// An indicator box with a checkmark, and a label.
 checkbox {
-  /// Whole-control opacity when disabled.
-  disabled_opacity: number = metrics.disabled_opacity
+  /// Whole-control opacity when disabled; 1, since `:disabled` draws its own colors (#397).
+  disabled_opacity: number = 1
   /// Minimum row height: the indicator plus 3px above and below (24px at the default size, the
   /// WCAG 2.2 minimum target), not the 36px button and field height, so stacked rows sit close.
   height = indicator_size + 6

@@ -234,7 +234,7 @@ mod tests {
                 "sdk",
                 xgpui_luma_style::Source::new(
                     "look.lss",
-                    "radio_group { horizontal_gap = exact(5)  disabled_opacity = 1 }",
+                    "radio_group { horizontal_gap = exact(5)  disabled_opacity = 0.5 }",
                 ),
             )
             .expect("compiles");
@@ -242,8 +242,9 @@ mod tests {
             "radio_group",
             ThemeSource::Fixed(theme.with_stylesheet(&sheet).expect("binds")),
         ));
-        assert_eq!((look.horizontal_gap, look.disabled_opacity), (5.0, 1.0));
+        assert_eq!((look.horizontal_gap, look.disabled_opacity), (5.0, 0.5));
         assert_eq!((look.vertical_gap, look.item_gap), (sdk.vertical_gap, sdk.item_gap), "unset values are the SDK's");
-        assert!(sdk.vertical_gap > 0.0 && sdk.horizontal_gap > 0.0 && sdk.disabled_opacity < 1.0);
+        assert!(sdk.vertical_gap > 0.0 && sdk.horizontal_gap > 0.0);
+        assert_eq!(sdk.disabled_opacity, 1.0, "the SDK's radios draw their own disabled colors (#397)");
     }
 }

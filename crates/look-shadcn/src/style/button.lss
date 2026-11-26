@@ -4,6 +4,8 @@
 
 button {
   padding_x      = 16
+  /// shadcn fades a disabled button (`disabled:opacity-50`-like).
+  disabled_opacity = metrics.disabled_opacity
   text_icon_size = icon_size
   muted_foreground = css.muted_foreground
   size sm { padding_x = 12 }

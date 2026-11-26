@@ -4,8 +4,8 @@
 
 /// A track with a sliding thumb, and a label.
 switch {
-  /// Whole-control opacity when disabled.
-  disabled_opacity: number = metrics.disabled_opacity
+  /// Whole-control opacity when disabled; 1, since `:disabled` draws its own colors (#397).
+  disabled_opacity: number = 1
   /// Space between the track and the label.
   gap = metrics.control.gap
   border_width = exact(metrics.border_width)

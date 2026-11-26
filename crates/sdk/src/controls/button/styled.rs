@@ -399,3 +399,37 @@ mod style_states_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod disabled_opacity_tests {
+    use crate::style::default_theme;
+    use xgpui_luma_style::Value;
+
+    /// SDK controls whose `:disabled` draws its own fill and text don't also fade: a faded fill lets whatever is
+    /// behind the control show through (#397). The button family, text fields, choices, groups and bars.
+    #[test]
+    fn sdk_disabled_controls_do_not_fade() {
+        let theme = default_theme();
+        for control in [
+            "button",
+            "toggle",
+            "popup_menu",
+            "selector",
+            "textfield",
+            "textarea",
+            "checkbox",
+            "radio",
+            "switch",
+            "control_group",
+            "context_menu",
+            "scrollbar",
+            "slider",
+            "resizable_panels",
+            "radio_group",
+        ] {
+            let key = theme.key_named(control, &[], &[]).expect("key");
+            let opacity = theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number);
+            assert_eq!(opacity, Some(1.0), "{control}");
+        }
+    }
+}

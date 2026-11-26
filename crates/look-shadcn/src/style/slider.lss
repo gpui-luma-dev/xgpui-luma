@@ -2,6 +2,7 @@
 // a primary-ringed thumb with `shadow-sm`; secondary uses the secondary foreground. Sizes sm, md, lg.
 
 slider {
+  disabled_opacity = 0.56
   // Corner radius presets for the track and thumb ends: a corner never exceeds half the part, so medium,
   // large and full are all pills.
   radius none   { part track { radius = exact(0) }  part thumb { radius = exact(0) } }

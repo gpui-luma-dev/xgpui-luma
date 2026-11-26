@@ -755,6 +755,13 @@ impl Render for ComboBoxControl {
             trigger_bounds: Box::new(cx.listener(Self::handle_trigger_bounds)),
         };
 
+        // Disabled, the arrow and clear button take the field's disabled icon color, and don't brighten on hover.
+        let (status_color, muted_text_color) = if self.model.enabled {
+            (autocomplete_look.status_color, autocomplete_look.muted_text_color)
+        } else {
+            let icon = self.model.textfield_template.resolve_look(TextFieldState::default(), false).icon;
+            (icon, icon)
+        };
         let render_model = ComboBoxRenderModel {
             icons: self.model.icons.clone(),
             geometry,
@@ -766,8 +773,8 @@ impl Render for ComboBoxControl {
             minimum_trigger_width,
             status_label,
             status_detail,
-            status_color: autocomplete_look.status_color,
-            muted_text_color: autocomplete_look.muted_text_color,
+            status_color,
+            muted_text_color,
             popup_bounds: self.trigger_bounds,
             popup_look: look,
             popup_content,

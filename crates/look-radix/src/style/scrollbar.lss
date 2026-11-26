@@ -2,6 +2,7 @@
 // when disabled; the soft track gray 3. Sizes 1–3.
 
 scrollbar {
+  disabled_opacity = 0.56
   thumb = gray[8]
   size 1 { thickness = exact(10)  track_thickness = exact(3)  thumb_thickness = exact(6)   min_thumb_length = exact(24) }
   size 3 { thickness = exact(14)  track_thickness = exact(5)  thumb_thickness = exact(10)  min_thumb_length = exact(32) }
