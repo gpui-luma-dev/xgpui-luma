@@ -3,6 +3,7 @@
 // size 1 is the SDK's scale.
 
 resizable_panels {
+  disabled_opacity = 0.45
   lane_width      = exact(12)
   hit_target      = exact(14)
   grip_cross_axis = exact(6)

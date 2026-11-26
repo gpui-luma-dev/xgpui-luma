@@ -43,6 +43,11 @@ impl CompositeItemState {
     }
 }
 
+/// Maps each item's state before its template draws it (#397): the item's id and the state input gives it, to the
+/// state drawn. A preview, a doc page or a snapshot can draw one row hovered, pressed, focused, selected or
+/// disabled among rows at rest. Only the look changes: input, selection and events still follow the real state.
+pub type ItemStateOverride<Id> = std::sync::Arc<dyn Fn(&Id, CompositeItemState) -> CompositeItemState + Send + Sync>;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MenuPath {
     Root(usize),

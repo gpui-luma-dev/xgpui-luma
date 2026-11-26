@@ -54,6 +54,8 @@ impl ScrollbarTheme for StyledScrollbarTheme {
         ScrollbarLook {
             disabled_opacity: number(root, "disabled_opacity"),
             track_background: color(root, "background"),
+            track_border: color(root, "border"),
+            track_border_width: number(root, "border_width"),
             thumb_background: color(root, "thumb"),
             length: number(
                 root,

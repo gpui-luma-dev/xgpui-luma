@@ -158,6 +158,22 @@ impl PopoverPanel {
         cx.notify();
     }
 
+    /// Rebind the panel drawn around the content (a look's `popover.lss`).
+    pub fn set_look(&mut self, look: super::PopoverPanelLook, cx: &mut Context<Self>) {
+        if self.model.look != look {
+            self.model.look = look;
+            cx.notify();
+        }
+    }
+
+    pub fn set_window_margin(&mut self, window_margin: Pixels, cx: &mut Context<Self>) {
+        if self.model.window_margin == window_margin {
+            return;
+        }
+        self.model.window_margin = window_margin;
+        cx.notify();
+    }
+
     pub fn set_initial_content_size(&mut self, size: Size<Pixels>, cx: &mut Context<Self>) {
         if self.model.initial_content_size == Some(size) {
             return;
@@ -369,7 +385,7 @@ impl Render for PopoverPanel {
                 panel.update(cx, |panel, cx| panel.handle_content_bounds(bounds, cx));
             })
             .opacity(opacity)
-            .child(content)
+            .child(self.model.look.wrap(content))
             .into_any_element();
 
         let overlay = anchored()

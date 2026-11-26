@@ -17,13 +17,44 @@ use crate::motion::{DisclosureMotion, VisualTransition};
 #[non_exhaustive]
 pub enum TabsEvent {
     DragDrop(super::TabsDragEvent),
-    Change { tab_id: SharedString, label: SharedString },
-    Activate { tab_id: SharedString, label: SharedString },
-    Reactivate { tab_id: SharedString, label: SharedString },
-    DropdownRequested { tab_id: SharedString, label: SharedString, bounds: Option<Bounds<Pixels>> },
-    ItemBoundsChanged { tab_id: SharedString, bounds: Bounds<Pixels> },
-    FocusChanged { focused: bool },
-    ItemFocused { tab_id: SharedString, label: SharedString },
+    Change {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    Activate {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    Reactivate {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    DropdownRequested {
+        tab_id: SharedString,
+        label: SharedString,
+        bounds: Option<Bounds<Pixels>>,
+    },
+    ItemBoundsChanged {
+        tab_id: SharedString,
+        bounds: Bounds<Pixels>,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    ItemFocused {
+        tab_id: SharedString,
+        label: SharedString,
+    },
+    /// The pointer moved onto (`hovered`) or off a tab.
+    ItemHoverChanged {
+        tab_id: SharedString,
+        hovered: bool,
+    },
+    /// The primary button went down (`pressed`) or up on a tab.
+    ItemPressedChanged {
+        tab_id: SharedString,
+        pressed: bool,
+    },
 }
 
 pub struct Tabs {
@@ -410,6 +441,18 @@ impl Tabs {
         self.refresh_group_template(cx);
     }
 
+    /// Draw each tab in the state `map` gives it, from its id and the state input gives it (`selected` is the active
+    /// tab), or as input gives it (`None`). Only the look changes; the active tab, input and events follow the real
+    /// state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.group.update(cx, |group, cx| group.set_item_state_override(map, cx));
+        cx.notify();
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.enabled = enabled;
         if !enabled {
@@ -559,6 +602,14 @@ fn translate_group_event(
             };
             vec![TabsEvent::ItemFocused { tab_id, label }]
         }
+        ControlGroupEvent::ItemHoverChanged { item_id, hovered } => match item_event_payload(items, item_id) {
+            Some((tab_id, _)) => vec![TabsEvent::ItemHoverChanged { tab_id, hovered: *hovered }],
+            None => Vec::new(),
+        },
+        ControlGroupEvent::ItemPressedChanged { item_id, pressed } => match item_event_payload(items, item_id) {
+            Some((tab_id, _)) => vec![TabsEvent::ItemPressedChanged { tab_id, pressed: *pressed }],
+            None => Vec::new(),
+        },
     }
 }
 

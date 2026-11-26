@@ -18,6 +18,9 @@ pub struct PopoverButton<D = ()> {
     panel: Entity<PopoverPanel>,
     trigger_on_pointer_down: bool,
     measure_trigger: bool,
+    /// The builder set these explicitly, so [`Self::set_geometry`] leaves them alone.
+    explicit_offset_y: bool,
+    explicit_window_margin: bool,
 }
 
 impl<D: 'static> EventEmitter<PopoverButtonEvent> for PopoverButton<D> {}
@@ -61,7 +64,8 @@ impl<D: Default + 'static> PopoverButton<D> {
             .window_margin(builder.window_margin)
             .focus_on_open(builder.focus_on_open)
             .motion_enabled(builder.motion_enabled)
-            .motion_defaults(motion);
+            .motion_defaults(motion)
+            .look(builder.panel_look);
         let panel = if let Some(size) = builder.initial_content_size {
             panel.initial_content_size(size).spawn(cx)
         } else {
@@ -81,7 +85,26 @@ impl<D: Default + 'static> PopoverButton<D> {
             panel,
             trigger_on_pointer_down: builder.trigger_on_pointer_down,
             measure_trigger,
+            explicit_offset_y: builder.explicit_offset_y,
+            explicit_window_margin: builder.explicit_window_margin,
         }
+    }
+    /// Rebind where the popover opens (a look's `popover.lss`), e.g. after a theme change. Values set
+    /// explicitly on the builder are kept.
+    pub fn set_geometry(&mut self, geometry: crate::theme::stylesheet::PopoverGeometry, cx: &mut Context<Self>) {
+        let (offset_y, window_margin) = (!self.explicit_offset_y, !self.explicit_window_margin);
+        self.panel.update(cx, |panel, cx| {
+            if offset_y {
+                panel.set_offset_y(gpui::px(geometry.button_offset_y), cx);
+            }
+            if window_margin {
+                panel.set_window_margin(gpui::px(geometry.window_margin), cx);
+            }
+        });
+    }
+    /// Rebind the panel drawn around the content (a look's `popover.lss` `panel` part).
+    pub fn set_panel_look(&mut self, look: super::panel::PopoverPanelLook, cx: &mut Context<Self>) {
+        self.panel.update(cx, |panel, cx| panel.set_look(look, cx));
     }
     pub fn is_open(&self, cx: &App) -> bool {
         self.panel.read(cx).is_open()
@@ -130,5 +153,69 @@ impl<D: 'static> Render for PopoverButton<D> {
         }
         root = root.child(self.panel.clone());
         root
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod panel_look_tests {
+    use gpui::{Context, Entity, Render, TestAppContext, Window, div, px};
+
+    use super::*;
+    use crate::controls::popover_button::PopoverPanelLook;
+
+    struct Host(Entity<PopoverButton<()>>);
+
+    impl Host {
+        fn new(look: Option<PopoverPanelLook>, cx: &mut Context<Self>) -> Self {
+            let mut builder = PopoverButton::<()>::new("popover")
+                .trigger(|_, _| div().w(px(80.)).h(px(20.)).into_any_element())
+                .content(|_, _, _| div().w(px(100.)).h(px(40.)).into_any_element())
+                .motion_enabled(false);
+            if let Some(look) = look {
+                builder = builder.panel_look(look);
+            }
+            Self(builder.spawn(cx))
+        }
+    }
+
+    impl Render for Host {
+        fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            div().size_full().child(self.0.clone())
+        }
+    }
+
+    fn open(
+        app: &mut TestAppContext,
+        look: Option<PopoverPanelLook>,
+    ) -> (Entity<PopoverButton<()>>, &mut gpui::VisualTestContext) {
+        let (host, cx) = app.add_window_view(|_, cx| Host::new(look, cx));
+        let button = cx.update(|_, cx| host.read(cx).0.clone());
+        button.update(cx, |button, cx| button.open(cx));
+        cx.run_until_parked();
+        (button, cx)
+    }
+
+    /// The SDK popover draws no panel; turned on, it draws the part's fill around border and padding (#397).
+    #[test]
+    fn the_panel_is_off_in_the_sdk_and_drawn_when_shown() {
+        let mut app = TestAppContext::single();
+        let (_, cx) = open(&mut app, None);
+        assert!(cx.debug_bounds("popover-panel").is_none(), "no panel in the SDK");
+
+        let look = PopoverPanelLook::sdk().shown(true);
+        let mut app = TestAppContext::single();
+        let (button, cx) = open(&mut app, Some(look.clone()));
+        let panel = cx.debug_bounds("popover-panel").expect("a shown panel is drawn");
+        let width = 100. + 2. * look.padding + 2. * look.border_width;
+        assert_eq!(panel.size.width, px(width), "content, padding and border");
+        let filled = cx.update(|window, _| {
+            window.painted_quads().iter().any(|quad| quad.background == gpui::Background::from(look.background))
+        });
+        assert!(filled, "the panel's fill is painted");
+
+        // Rebinding to the SDK's look turns the panel off again.
+        button.update(cx, |button, cx| button.set_panel_look(PopoverPanelLook::sdk(), cx));
+        cx.run_until_parked();
+        assert!(cx.debug_bounds("popover-panel").is_none(), "rebinding turns it off");
     }
 }

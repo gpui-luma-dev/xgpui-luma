@@ -2,19 +2,17 @@
 //! bubble drawn open by the SDK's own renderer). Each `.lss`
 //! has no states, so the page offers its stylesheet and a single matrix cell, like Badge.
 //!
-//! Card is the SDK's own element. Avatar and Callout have `.lss` files the SDK reads (`StyledAvatar`,
-//! `StyledCallout`), but no SDK element draws them; only the looks do. Their pages draw a plain stand-in
-//! from the SDK's resolved look values, so the stylesheet can be designed, until the SDK has an element.
+//! Card, Avatar and Callout are the SDK's own elements (Avatar and Callout since #397), each drawn from its
+//! `.lss` bound to the page's theme.
 
 use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use lucide_svg_static::Icon as LucideIcon;
-use xgpui_luma::controls::avatar::StyledAvatar;
-use xgpui_luma::controls::callout::StyledCallout;
+use xgpui_luma::controls::avatar::{Avatar, StyledAvatar};
+use xgpui_luma::controls::callout::{Callout, StyledCallout};
 use xgpui_luma::controls::card::{Card, StyledCard};
 use xgpui_luma::controls::tooltip::{TooltipRenderModel, bubble, styled_tooltip_look};
-use xgpui_luma::infra::icon::lucide_icon;
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
@@ -40,48 +38,28 @@ fn card(theme: &Theme) -> AnyElement {
         .into_any_element()
 }
 
-/// Avatars with one- and two-letter fallbacks (stand-ins drawn from `AvatarLook`).
+/// SDK avatars with one- and two-letter and icon fallbacks.
 fn avatars(theme: &Theme) -> AnyElement {
-    let look = StyledAvatar::new(binding("avatar", theme)).look();
-    let avatar = |text: &'static str| {
-        let size = if text.chars().count() > 1 {
-            look.two_letter_font_size
-        } else {
-            look.font_size
-        };
-        div()
-            .size(px(look.diameter))
-            .flex()
-            .flex_none()
-            .items_center()
-            .justify_center()
-            .rounded(px(look.radius))
-            .bg(look.background)
-            .text_color(look.foreground)
-            .when(!look.font_family.is_empty(), |avatar| avatar.font_family(look.font_family.clone()))
-            .text_size(px(size))
-            .line_height(px(look.line_height))
-            .font_weight(look.font_weight)
-            .child(text)
-    };
-    div().flex().gap(px(8.)).child(avatar("Q")).child(avatar("JG")).into_any_element()
+    let styled = || StyledAvatar::new(binding("avatar", theme));
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.))
+        .child(Avatar::new("Q").styled(styled()))
+        .child(Avatar::new("JG").styled(styled()))
+        .child(Avatar::new("").icon(LucideIcon::User).styled(styled()))
+        .into_any_element()
 }
 
-/// A callout with a leading icon (a stand-in drawn from `CalloutLook`).
+/// An SDK callout with a leading icon.
 fn callout(theme: &Theme) -> AnyElement {
-    let look = StyledCallout::new(binding("callout", theme)).look();
     div()
         .w(px(320.))
-        .flex()
-        .items_start()
-        .gap(px(look.gap))
-        .p(px(look.padding))
-        .rounded(px(look.radius))
-        .bg(look.background)
-        .text_color(look.foreground)
-        .text_size(px(look.font_size))
-        .child(div().flex_none().child(lucide_icon(LucideIcon::Info, look.foreground, look.icon_size)))
-        .child("Shipping delays may apply to your region this week.")
+        .child(
+            Callout::new("Shipping delays may apply to your region this week.")
+                .icon(LucideIcon::Info)
+                .styled(StyledCallout::new(binding("callout", theme))),
+        )
         .into_any_element()
 }
 
@@ -220,5 +198,19 @@ mod tests {
             cx.run_until_parked();
             assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "{id}'s matrix draws");
         }
+    }
+
+    /// The Avatar and Callout pages draw the SDK's own elements, not stand-ins (#397).
+    #[test]
+    fn the_avatar_and_callout_pages_draw_the_sdk_elements() {
+        let mut app = TestAppContext::single();
+        let (_, cx) = open_surface(&mut app, "avatar");
+        let row = cx.debug_bounds("workshop-sdk-avatar").expect("the avatars are drawn");
+        let diameter = StyledAvatar::sdk().look().diameter;
+        assert_eq!(row.size.height, px(diameter), "a row of SDK avatars, one diameter tall");
+
+        let mut app = TestAppContext::single();
+        let (_, cx) = open_surface(&mut app, "callout");
+        assert!(cx.debug_bounds("callout-text").is_some(), "the SDK callout's text is drawn");
     }
 }

@@ -218,7 +218,10 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
             .w(px(track_width))
             .h(px(track_height))
             .bg(look.track_background)
-            .rounded(px(look.radius));
+            .rounded(px(look.radius))
+            .when(look.track_border_width > 0.0, |track| {
+                track.border(px(look.track_border_width)).border_color(look.track_border)
+            });
 
         let thumb = div()
             .id("thumb")

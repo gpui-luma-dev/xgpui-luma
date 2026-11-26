@@ -12,15 +12,17 @@ scrollbar {
   /// A standalone bar's length, horizontal and vertical.
   length_h: length = exact(260)
   length_v: length = exact(180)
-  /// The whole bar's opacity when disabled.
-  disabled_opacity: number = 0.56
+  /// The whole bar's opacity when disabled; 1, since `:disabled` draws its own colors (#397).
+  disabled_opacity: number = 1
   /// The thumb.
   thumb: color = palette.border.default
 
-  /// The track.
+  /// The track. It has no outline by default (`border_width` 0); a design that wants a visible track sets one.
   part root {
-    background = transparent
-    radius     = exact(999)
+    background   = transparent
+    border       = palette.border.default
+    border_width = exact(0)
+    radius       = exact(999)
     :hover    { thumb = palette.state.hover.background }
     :pressed  { thumb = palette.state.pressed.background }
     :disabled { background = palette.state.disabled.background  thumb = palette.state.disabled.foreground }

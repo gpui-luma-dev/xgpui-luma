@@ -46,12 +46,21 @@ pub fn default_selector_items_panel_look(tokens: &ThemeTokens) -> SelectorItemsP
 }
 
 /// A selector items panel from a `.lss` floating-menu binding (the `floating_menu` control, or one that
-/// extends it), with the SDK's popover panel placement.
+/// extends it), placed by the same theme's `popover.lss` (#397).
 pub fn styled_selector_items_panel_look(
     binding: &crate::style::StyleBinding,
     metrics: &crate::theme::MetricTokens,
 ) -> SelectorItemsPanelLook {
+    let popover = crate::style::StyleBinding::new("popover", crate::style::ThemeSource::Fixed(binding.theme()));
     SelectorItemsPanelLook::from_menu(crate::controls::floating_menu::styled_floating_menu_look(binding), metrics)
+        .with_placement(crate::theme::stylesheet::PopoverGeometry::from_binding(&popover))
+}
+
+/// The panel a selector opens, read from `source`'s `floating_menu.lss` and `popover.lss` each time it is
+/// drawn, with the SDK's metrics (#397): the menu hook for selectors, so they open the host's menu, not the SDK's.
+pub fn selector_items_panel_source(source: crate::style::ThemeSource) -> crate::controls::selector::ItemsPanelSource {
+    let binding = crate::style::StyleBinding::new("floating_menu", source);
+    Arc::new(move || styled_selector_items_panel_look(&binding, &crate::theme::MetricTokens::default()))
 }
 
 impl SelectorItemsPanelLook {
@@ -84,6 +93,13 @@ impl SelectorItemsPanelLook {
             item_icon_size: menu.item_icon_size,
             item_radius: menu.item_radius,
         }
+    }
+
+    /// Anchored popup placement from a look's `popover.lss` instead of the SDK's.
+    pub fn with_placement(mut self, placement: crate::theme::stylesheet::PopoverGeometry) -> Self {
+        self.popup_offset_y = placement.panel_offset_y;
+        self.window_margin = placement.window_margin;
+        self
     }
 }
 
@@ -424,5 +440,27 @@ fn render_selection_checkmark(selected: bool, color: gpui::Hsla, size: f32, icon
         render_icon_source(icon, color, size)
     } else {
         div().size(px(size)).into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod placement_tests {
+    use super::*;
+    use crate::style::{StyleBinding, ThemeSource, default_theme};
+
+    /// A selector popup is placed by its theme's `popover.lss`, not the SDK's alone (#397): a theme at twice
+    /// the length scale opens it twice as far from its trigger.
+    #[test]
+    fn selector_popups_are_placed_by_their_themes_popover_lss() {
+        let sdk = crate::theme::stylesheet::PopoverGeometry::sdk();
+        let scaled = default_theme().with_length_scale(2.0).expect("scaled theme");
+        let panel = styled_selector_items_panel_look(
+            &StyleBinding::new("floating_menu", ThemeSource::Fixed(scaled.clone())),
+            &crate::theme::MetricTokens::default(),
+        );
+        assert!(sdk.panel_offset_y > 0.0 && sdk.window_margin > 0.0, "{sdk:?}");
+        assert_eq!((panel.popup_offset_y, panel.window_margin), (sdk.panel_offset_y * 2.0, sdk.window_margin * 2.0));
+        let source = selector_items_panel_source(ThemeSource::Fixed(scaled))();
+        assert_eq!(source.popup_offset_y, sdk.panel_offset_y * 2.0, "the source helper too");
     }
 }

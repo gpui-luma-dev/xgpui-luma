@@ -60,6 +60,12 @@ impl SidebarPanelEngine {
             .then(|| self.rail_submenu_content.clone())
             .flatten();
 
+        let mut rail_nodes = rail_nodes;
+        let mut rail_footer_nodes = rail_footer_nodes;
+        if let Some(map) = &self.item_state_override {
+            apply_item_state_override(&mut rail_nodes, map);
+            apply_item_state_override(&mut rail_footer_nodes, map);
+        }
         if self.model.collapsed {
             self.visible_focus_nodes = visible_focus_nodes;
 
@@ -141,6 +147,13 @@ impl SidebarPanelEngine {
                 }
             }
             attach(&mut nodes, owner, &self.drop_layout);
+        }
+        let mut header_nodes = header_nodes;
+        let mut footer_nodes = footer_nodes;
+        if let Some(map) = &self.item_state_override {
+            for nodes in [&mut header_nodes, &mut nodes, &mut footer_nodes] {
+                apply_item_state_override(nodes, map);
+            }
         }
         self.visible_focus_nodes = visible_focus_nodes;
 
@@ -276,6 +289,7 @@ pub(super) fn render_nodes(
             focused: focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
             expanded: node.expanded,
             enabled: sidebar_enabled && node.enabled,
+            disabled: !(sidebar_enabled && node.enabled),
         };
         visible_index += 1;
 
@@ -365,6 +379,7 @@ pub(super) fn render_collapsed_rail_nodes(
             focused: focus_handle.as_ref().is_some_and(|focus_handle| focus_handle.is_focused(window)),
             expanded: node.expanded,
             enabled: sidebar_enabled && node.enabled,
+            disabled: !(sidebar_enabled && node.enabled),
         };
 
         rendered_nodes.push(RenderedNavNode {
@@ -386,4 +401,72 @@ pub(super) fn render_collapsed_rail_nodes(
     }
 
     rendered_nodes
+}
+
+/// Each row's drawn state, as `map` gives it from the row's id and its state (#397). Only the look fields change:
+/// hover, press, selection, focus, and `disabled`; `enabled` (input) stays.
+fn apply_item_state_override(
+    nodes: &mut [RenderedNavNode],
+    map: &crate::infra::state::ItemStateOverride<SharedString>,
+) {
+    for node in nodes {
+        let state = &mut node.state;
+        let drawn = map(
+            &state.id,
+            crate::infra::state::CompositeItemState {
+                disabled: state.disabled,
+                hovered: state.hovered,
+                pressed: state.pressed,
+                selected: state.selected,
+                active: state.focused,
+                focus_visible: state.focused,
+            },
+        );
+        state.hovered = drawn.hovered;
+        state.pressed = drawn.pressed;
+        state.selected = drawn.selected;
+        state.focused = drawn.active;
+        state.disabled = drawn.disabled;
+        apply_item_state_override(&mut node.children, map);
+    }
+}
+
+#[cfg(test)]
+mod item_state_override_tests {
+    use gpui::prelude::*;
+
+    use super::super::super::{NavNode, SidebarPanelEngineBuilder};
+    use super::*;
+    use crate::infra::state::CompositeItemState;
+
+    /// A state override changes the mapped row's drawn state only; `enabled` (input) stays (#397).
+    #[test]
+    fn a_state_override_maps_one_rows_drawn_state() {
+        let mut app = gpui::TestAppContext::single();
+        let (engine, cx) = app.add_window_view(|_, cx| {
+            SidebarPanelEngine::from_builder(
+                SidebarPanelEngineBuilder::new("override-sidebar")
+                    .motion_enabled(false)
+                    .items([NavNode::new("a").label("A"), NavNode::new("b").label("B")]),
+                cx,
+            )
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| {
+            engine.update(app, |view, cx| {
+                view.set_item_state_override(
+                    Some(std::sync::Arc::new(|id: &SharedString, state: CompositeItemState| CompositeItemState {
+                        hovered: id.as_ref() == "a",
+                        disabled: id.as_ref() == "a",
+                        ..state
+                    })),
+                    cx,
+                );
+                let model = view.render_model(window, cx);
+                let (a, b) = (&model.nodes[0].state, &model.nodes[1].state);
+                assert!(a.hovered && a.disabled && a.enabled, "drawn hovered and disabled, input still on");
+                assert!(!b.hovered && !b.disabled, "others as they are");
+            });
+        });
+    }
 }

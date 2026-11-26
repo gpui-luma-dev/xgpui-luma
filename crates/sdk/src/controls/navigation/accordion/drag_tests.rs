@@ -304,6 +304,10 @@ fn first_and_append_gaps_and_stale_completion_preserve_content() {
 }
 
 #[test]
+#[cfg_attr(
+    any(target_os = "windows", target_os = "linux"),
+    ignore = "xgpui test windows never report hover on Windows/Linux, and edge auto-scroll stops unless Window::is_window_hovered(); passes on macOS"
+)]
 fn viewport_auto_scroll_stops_after_cancel() {
     struct Scroller(Entity<AccordionControl>);
     impl Render for Scroller {

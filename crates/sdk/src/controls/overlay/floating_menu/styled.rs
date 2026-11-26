@@ -85,3 +85,29 @@ impl FloatingMenuTheme for StyledFloatingMenuTheme {
 pub(super) fn sdk_theme() -> Arc<dyn FloatingMenuTheme> {
     Arc::new(StyledFloatingMenuTheme::sdk())
 }
+
+/// The menu a popup opens, read from `source`'s `floating_menu.lss` each time it is drawn (#397): the menu hook
+/// for popup menus, split buttons, context menus and autocompletes, so they open the host's menu, not the SDK's.
+pub fn floating_menu_source(source: crate::style::ThemeSource) -> crate::controls::popup_menu::MenuSource {
+    let binding = StyleBinding::new("floating_menu", source);
+    Arc::new(move || styled_floating_menu_look(&binding))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::style::{ThemeSource, dark_theme};
+
+    /// The menu hooks open the host theme's floating menu, not the SDK's (#397).
+    #[test]
+    fn menu_sources_read_the_host_theme() {
+        let sdk = styled_floating_menu_look(&StyleBinding::sdk("floating_menu"));
+        let menu = floating_menu_source(ThemeSource::Fixed(dark_theme()))();
+        assert_ne!(menu.background, sdk.background, "the dark theme's menu, not the SDK's");
+        let dark = styled_floating_menu_look(&StyleBinding::new("floating_menu", ThemeSource::Fixed(dark_theme())));
+        assert_eq!((menu.background, menu.foreground, menu.border), (dark.background, dark.foreground, dark.border));
+
+        let panel = crate::controls::selector_list::selector_items_panel_source(ThemeSource::Fixed(dark_theme()))();
+        assert_eq!((panel.background, panel.foreground, panel.border), (dark.background, dark.foreground, dark.border));
+    }
+}

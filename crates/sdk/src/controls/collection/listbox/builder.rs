@@ -319,6 +319,12 @@ impl<'a, M: 'static, T: 'static, K: Clone + Eq + Hash + 'static> ListBoxBuilder<
         self
     }
 
+    /// Assemble one frame with the SDK's own chrome from `listbox.lss` ([`super::ThemedListBoxTemplate`]), for a
+    /// listbox no look styles (#397).
+    pub fn build_default(self, window: &mut Window, cx: &mut Context<M>) -> Surface {
+        self.build(&super::ThemedListBoxTemplate::sdk(), window, cx)
+    }
+
     /// Assemble one frame using the existing SDK bindings and scroll handle.
     /// The supplied template builds only look-specific surfaces and chrome;
     /// mounted-row composition and all input/scroll/drop wiring stay here.

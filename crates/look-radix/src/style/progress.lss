@@ -9,7 +9,8 @@ progress {
   size 1 { track_height = exact(4)  ring_size = exact(4)  stroke_width = exact(4) }
   size 3 { track_height = exact(8)  ring_size = exact(8)  stroke_width = exact(8) }
 
-  part track { background = gray[3] }
+  // No track outline (the SDK draws one); set a width here to give the Radix track a border.
+  part track { background = gray[3]  border_width = exact(0) }
 
   part fill {
     background = tone[9]

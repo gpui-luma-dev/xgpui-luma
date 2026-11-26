@@ -296,6 +296,10 @@ fn virtualized_group_drops_use_collection_gaps_after_rows_are_unmounted() {
 }
 
 #[test]
+#[cfg_attr(
+    any(target_os = "windows", target_os = "linux"),
+    ignore = "xgpui test windows never report hover on Windows/Linux, and edge auto-scroll stops unless Window::is_window_hovered(); passes on macOS"
+)]
 fn virtualized_drag_auto_scroll_mounts_new_targets_without_focus() {
     let mut app = TestAppContext::single();
     let (view, cx) = app.add_window_view(|_, cx| {
@@ -380,6 +384,10 @@ fn content_sized_drops_follow_actual_row_halves_in_both_rendering_modes() {
 }
 
 #[test]
+#[cfg_attr(
+    any(target_os = "windows", target_os = "linux"),
+    ignore = "xgpui test windows never report hover on Windows/Linux, and edge auto-scroll stops unless Window::is_window_hovered(); passes on macOS"
+)]
 fn measured_drag_auto_scroll_mounts_targets_without_focus() {
     let mut app = TestAppContext::single();
     let (view, cx) = app.add_window_view(|_, cx| {

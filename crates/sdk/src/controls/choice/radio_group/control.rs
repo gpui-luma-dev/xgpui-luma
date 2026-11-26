@@ -43,6 +43,18 @@ where
         self.group.update(cx, |group, cx| group.set_motion_enabled(enabled, cx));
         cx.notify();
     }
+    /// Draw each row in the state `map` gives it, from its id and the state input gives it (`selected` is the checked
+    /// row), or as input gives it (`None`). Only the look changes; selection, input and events follow the real state
+    /// (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.group.update(cx, |group, cx| group.set_item_state_override(map, cx));
+        cx.notify();
+    }
+
     pub fn inner_group(&self) -> Entity<ControlGroupControl<T>> {
         self.group.clone()
     }
@@ -113,6 +125,12 @@ where
             }
             ControlGroupEvent::ItemFocused { item_id } => {
                 cx.emit(RadioGroupEvent::ItemFocused { item_id: item_id.clone() });
+            }
+            ControlGroupEvent::ItemHoverChanged { item_id, hovered } => {
+                cx.emit(RadioGroupEvent::ItemHoverChanged { item_id: item_id.clone(), hovered: *hovered });
+            }
+            ControlGroupEvent::ItemPressedChanged { item_id, pressed } => {
+                cx.emit(RadioGroupEvent::ItemPressedChanged { item_id: item_id.clone(), pressed: *pressed });
             }
             ControlGroupEvent::ItemBoundsChanged { .. } => {}
         }

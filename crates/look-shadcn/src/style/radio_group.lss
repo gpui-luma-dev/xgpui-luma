@@ -1,0 +1,6 @@
+// Shadcn radio group. Layer: look, over the SDK's. Shadcn fades a disabled row, which the SDK doesn't
+// (its radios draw their own `:disabled` colors).
+
+radio_group {
+  disabled_opacity = 0.56
+}

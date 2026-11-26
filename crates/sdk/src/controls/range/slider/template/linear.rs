@@ -94,6 +94,11 @@ impl SliderTemplate for ThemedSliderTemplate {
                 let thumb_center_offset = -(look.thumb_size * 0.5);
 
                 let track = render_horizontal_track(model, &look, track_top, cross_axis, track_radius, track_bounds);
+                let outline = track_outline(&look, track_radius)
+                    .left(px(0.0))
+                    .right(px(0.0))
+                    .top(px(track_top))
+                    .h(px(cross_axis));
 
                 let thumbs = ordered_thumbs(model).into_iter().map(|thumb| {
                     let display_percentage = display_position(thumb.position.clamp(0.0, 1.0), model.reversed);
@@ -111,7 +116,7 @@ impl SliderTemplate for ThemedSliderTemplate {
                     attach_thumb_drag(node, &model_id, thumb.id, thumb_mouse_down.clone(), drag_move.clone(), enabled)
                 });
 
-                root.child(track).children(thumbs)
+                root.child(track).child(outline).children(thumbs)
             }
             SliderOrientation::Vertical => {
                 let track_left = (short_axis - cross_axis) * 0.5;
@@ -119,6 +124,11 @@ impl SliderTemplate for ThemedSliderTemplate {
 
                 let track =
                     render_vertical_track(model, &look, track_left, long_axis, cross_axis, track_radius, track_bounds);
+                let outline = track_outline(&look, track_radius)
+                    .left(px(track_left))
+                    .top(px(0.0))
+                    .w(px(cross_axis))
+                    .h(px(long_axis));
 
                 let thumbs = ordered_thumbs(model).into_iter().map(|thumb| {
                     let display_percentage = display_position(thumb.position.clamp(0.0, 1.0), model.reversed);
@@ -137,12 +147,20 @@ impl SliderTemplate for ThemedSliderTemplate {
                     attach_thumb_drag(node, &model_id, thumb.id, thumb_mouse_down.clone(), drag_move.clone(), enabled)
                 });
 
-                root.child(track).children(thumbs)
+                root.child(track).child(outline).children(thumbs)
             }
         };
 
         attach_linear_interaction(root, model, interaction)
     }
+}
+
+/// An outline the track's shape (place it like the track), over the track's segments and under the thumbs;
+/// empty when the look's track border width is zero.
+fn track_outline(look: &crate::controls::slider::SliderLook, radius: Pixels) -> Div {
+    div().absolute().rounded(radius).when(look.track_border_width > 0.0, |outline| {
+        outline.border(px(look.track_border_width)).border_color(look.track_border)
+    })
 }
 
 /// Inactive thumbs first; active thumb last so it paints on top while dragging.

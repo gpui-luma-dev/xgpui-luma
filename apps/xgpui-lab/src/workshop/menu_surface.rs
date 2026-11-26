@@ -15,13 +15,13 @@ use xgpui_luma::controls::context_menu::{
 };
 use xgpui_luma::controls::floating_menu::{
     FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
-    default_floating_menu_template, styled_floating_menu_look,
+    default_floating_menu_template, floating_menu_source, styled_floating_menu_look,
 };
 use xgpui_luma::infra::icon::DisclosureIcons;
 use xgpui_luma::infra::menu_item::MenuItem;
 use xgpui_luma::infra::state::MenuPath;
 use xgpui_luma::motion::overlay_presence::OverlayPresence;
-use xgpui_luma::controls::popup_menu::{MenuSource, PopupMenu, PopupMenuBuilder, PopupMenuEvent, ThemedPopupMenuTemplate};
+use xgpui_luma::controls::popup_menu::{PopupMenu, PopupMenuBuilder, PopupMenuEvent, ThemedPopupMenuTemplate};
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::theme::{InteractionState, MetricTokens};
@@ -248,7 +248,7 @@ impl ContextMenuTheme for PinnedContextMenuTheme {
 }
 
 fn context_template(theme: Theme, pinned: Option<StateSet>) -> Arc<ThemedContextMenuTemplate> {
-    let menu: MenuSource = Arc::new(|| xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve());
+    let menu = floating_menu_source(ThemeSource::Fixed(theme.clone()));
     let base = StyledContextMenuTheme::new(ThemeSource::Fixed(theme), menu);
     Arc::new(ThemedContextMenuTemplate::new(Arc::new(PinnedContextMenuTheme { base, pinned })))
 }
@@ -376,11 +376,6 @@ impl SurfaceControl for PopupMenuSurface {
 
     fn template_states(&self) -> Vec<&'static str> {
         vec!["focused"]
-    }
-
-    /// `PopupMenuBuilder` has no way to make the trigger invalid.
-    fn unreachable_states(&self) -> &'static [&'static str] {
-        &["invalid"]
     }
 
     fn subscribe(&self, cx: &mut Context<ControlSide>, on_event: OnSurfaceEvent) -> Subscription {

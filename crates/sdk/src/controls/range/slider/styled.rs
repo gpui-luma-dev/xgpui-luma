@@ -17,7 +17,12 @@ fn number(part: PartView<'_>, name: &str) -> f32 {
 
 /// The slider for `binding` (the `slider` control) in `state`.
 pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> SliderLook {
-    let states = [("hover", state.hovered), ("pressed", state.pressed), ("disabled", state.disabled)];
+    let states = [
+        ("hover", state.hovered),
+        ("pressed", state.pressed),
+        ("focused", state.focused),
+        ("disabled", state.disabled),
+    ];
     let resolved = binding.resolve(&states, 1.0);
     let root = resolved.root();
     let (track, fill, thumb) = (
@@ -33,6 +38,8 @@ pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> Sl
             disabled_opacity: number(root, "disabled_opacity"),
         },
         track_background: color(track, "background"),
+        track_border: color(track, "border"),
+        track_border_width: number(track, "border_width"),
         fill_background: color(fill, "background"),
         thumb_background: color(thumb, "background"),
         thumb_border: color(thumb, "border"),

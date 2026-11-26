@@ -30,6 +30,9 @@ pub struct NavNodeState {
     pub focused: bool,
     pub expanded: bool,
     pub enabled: bool,
+    /// Whether the row draws disabled: `!enabled`, unless a state override (`set_item_state_override`) changes it.
+    /// Input follows `enabled` (#397).
+    pub disabled: bool,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

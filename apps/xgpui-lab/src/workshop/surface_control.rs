@@ -7,6 +7,7 @@ use std::any::Any;
 use std::sync::Arc;
 
 use gpui::{AnyElement, AnyView, App, Context, SharedString, Subscription, Window};
+use xgpui_luma::infra::state::{CompositeItemState, ItemStateOverride};
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::theme::InteractionState;
 
@@ -40,6 +41,33 @@ impl StateSet {
             disabled: self.has("disabled"),
             invalid: self.has("invalid"),
         }
+    }
+
+    /// The state override for a multi-row control in Design mode (#397): `first` draws these states, every other item
+    /// draws at rest (the page turns input off, which would draw them disabled). The others keep their selection,
+    /// unless `selected` is picked: then only `first` is selected.
+    pub(super) fn first_item_override<Id: PartialEq + Send + Sync + 'static>(
+        &self,
+        first: Id,
+    ) -> ItemStateOverride<Id> {
+        let states = self.clone();
+        Arc::new(move |id: &Id, live: CompositeItemState| {
+            if *id == first {
+                CompositeItemState {
+                    hovered: states.has("hover"),
+                    pressed: states.has("pressed"),
+                    disabled: states.has("disabled"),
+                    selected: states.has("selected"),
+                    active: states.has("focused"),
+                    focus_visible: states.has("focused"),
+                }
+            } else {
+                CompositeItemState {
+                    selected: live.selected && !states.has("selected"),
+                    ..CompositeItemState::default()
+                }
+            }
+        })
     }
 }
 
@@ -108,6 +136,12 @@ pub(super) trait SurfaceControl {
     /// The width the stage gives the live control at actual size, for a control with no width of its own
     /// (a slider, a progress bar); it scales with the zoom. `None`: the control sizes itself.
     fn stage_width(&self) -> Option<f32> {
+        None
+    }
+
+    /// The height the stage gives the live control at actual size, like [`Self::stage_width`]. The stage
+    /// shows a resize handle on each axis that has a size, so the control can be dragged to another.
+    fn stage_height(&self) -> Option<f32> {
         None
     }
 

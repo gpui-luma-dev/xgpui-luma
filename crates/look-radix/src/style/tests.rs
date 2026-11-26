@@ -387,3 +387,32 @@ fn radio_group_layout_comes_from_the_look_lss() {
     assert_eq!((geometry.horizontal_gap, geometry.disabled_opacity), (8.0, 1.0));
     assert_eq!((geometry.vertical_gap, geometry.item_gap), (sdk.vertical_gap, sdk.item_gap));
 }
+
+/// The SDK's button family draws `:disabled` without fading; Radix keeps its fade on every control that
+/// extends the button, the text field, the choices, groups and bars (#397).
+#[test]
+fn disabled_controls_keep_the_radix_fade() {
+    let theme = Look::built_in().style_theme();
+    let opacity = |control: &str| {
+        let key = theme.key_named(control, &[], &[]).expect("key");
+        theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number)
+    };
+    for control in [
+        "button",
+        "toggle",
+        "popup_menu",
+        "selector",
+        "textfield",
+        "textarea",
+        "checkbox",
+        "radio",
+        "switch",
+        "control_group",
+        "context_menu",
+        "scrollbar",
+        "slider",
+        "resizable_panels",
+    ] {
+        assert!(opacity(control).is_some_and(|value| value < 1.0), "{control}: {:?}", opacity(control));
+    }
+}

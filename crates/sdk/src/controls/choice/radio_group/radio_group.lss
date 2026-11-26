@@ -8,6 +8,6 @@ radio_group {
   horizontal_gap: length = exact(12)
   /// Space between a custom row's indicator and its content.
   item_gap: length = exact(8)
-  /// Disabled rows' opacity.
-  disabled_opacity: number = 0.56
+  /// Disabled rows' opacity; 1, since a row's radio draws its own `:disabled` colors (#397).
+  disabled_opacity: number = 1
 }

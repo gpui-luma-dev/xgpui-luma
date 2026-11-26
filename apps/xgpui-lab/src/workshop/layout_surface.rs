@@ -89,6 +89,8 @@ const LEFT_RANGE: (f32, f32) = (80., 260.);
 const BOTTOM_RANGE: (f32, f32) = (40., 160.);
 /// The docked layout's size on the stage.
 const DOCK_SIZE: (f32, f32) = (520., 300.);
+/// The split view's size on the stage, at actual size.
+const SPLIT_SIZE: (f32, f32) = (460., 240.);
 
 /// A splitter drawn with its grip (the thumb), as Luma Studio shows them.
 fn grip_splitter(id: impl Into<SharedString>, orientation: SplitterOrientation) -> DockSplitterBuilder {
@@ -135,37 +137,27 @@ impl DockHost {
 
 impl Render for DockHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .debug_selector(|| "workshop-layout-viewport".into())
-            .w(px(DOCK_SIZE.0))
-            .h(px(DOCK_SIZE.1))
-            .child(
-                DockPanel::new()
-                    .top(
-                        div()
-                            .debug_selector(|| "workshop-dock-top".into())
-                            .h(px(40.))
-                            .flex_none()
-                            .child(pane("Toolbar")),
-                    )
-                    .left(
-                        div()
-                            .debug_selector(|| "workshop-dock-left".into())
-                            .w(px(self.left_width))
-                            .flex_none()
-                            .child(pane("Library")),
-                    )
-                    .left(self.left_splitter.clone())
-                    .bottom(
-                        div()
-                            .debug_selector(|| "workshop-dock-bottom".into())
-                            .h(px(self.bottom_height))
-                            .flex_none()
-                            .child(pane("Console")),
-                    )
-                    .bottom(self.bottom_splitter.clone())
-                    .fill(div().debug_selector(|| "workshop-dock-fill".into()).size_full().child(pane("Playground"))),
-            )
+        div().debug_selector(|| "workshop-layout-viewport".into()).size_full().child(
+            DockPanel::new()
+                .top(div().debug_selector(|| "workshop-dock-top".into()).h(px(40.)).flex_none().child(pane("Toolbar")))
+                .left(
+                    div()
+                        .debug_selector(|| "workshop-dock-left".into())
+                        .w(px(self.left_width))
+                        .flex_none()
+                        .child(pane("Library")),
+                )
+                .left(self.left_splitter.clone())
+                .bottom(
+                    div()
+                        .debug_selector(|| "workshop-dock-bottom".into())
+                        .h(px(self.bottom_height))
+                        .flex_none()
+                        .child(pane("Console")),
+                )
+                .bottom(self.bottom_splitter.clone())
+                .fill(div().debug_selector(|| "workshop-dock-fill".into()).size_full().child(pane("Playground"))),
+        )
     }
 }
 
@@ -193,6 +185,15 @@ impl SurfaceControl for DockPanelSurface {
 
     fn view(&self) -> AnyView {
         self.host.clone().into()
+    }
+
+    /// The host fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(DOCK_SIZE.0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(DOCK_SIZE.1)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
@@ -300,11 +301,7 @@ struct PanelsHost {
 
 impl Render for PanelsHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .debug_selector(|| "workshop-layout-viewport".into())
-            .w(px(DOCK_SIZE.0))
-            .h(px(DOCK_SIZE.1))
-            .child(self.panels.clone())
+        div().debug_selector(|| "workshop-layout-viewport".into()).size_full().child(self.panels.clone())
     }
 }
 
@@ -352,6 +349,15 @@ impl SurfaceControl for ResizablePanelsSurface {
 
     fn view(&self) -> AnyView {
         self.host.clone().into()
+    }
+
+    /// The host fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(DOCK_SIZE.0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(DOCK_SIZE.1)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
@@ -437,11 +443,7 @@ struct SplitHost {
 
 impl Render for SplitHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .debug_selector(|| "workshop-layout-viewport".into())
-            .w(px(460.))
-            .h(px(240.))
-            .child(self.split.clone())
+        div().debug_selector(|| "workshop-layout-viewport".into()).size_full().child(self.split.clone())
     }
 }
 
@@ -466,6 +468,15 @@ impl SurfaceControl for SplitViewSurface {
 
     fn view(&self) -> AnyView {
         self.host.clone().into()
+    }
+
+    /// The host fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(SPLIT_SIZE.0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(SPLIT_SIZE.1)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {

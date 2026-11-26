@@ -19,11 +19,28 @@ use crate::theme::observe_theme_revision;
 #[non_exhaustive]
 pub enum AccordionEvent {
     DragDrop(super::AccordionDragEvent),
-    ExpandedChanged { item_id: SharedString, expanded: bool },
-    FocusChanged { focused: bool },
-    ItemFocused { item_id: SharedString },
-    ItemHoverChanged { item_id: SharedString, hovered: bool },
-    EnabledChanged { enabled: bool },
+    ExpandedChanged {
+        item_id: SharedString,
+        expanded: bool,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    ItemFocused {
+        item_id: SharedString,
+    },
+    ItemHoverChanged {
+        item_id: SharedString,
+        hovered: bool,
+    },
+    /// The primary button went down (`pressed`) or up on a trigger.
+    ItemPressedChanged {
+        item_id: SharedString,
+        pressed: bool,
+    },
+    EnabledChanged {
+        enabled: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -62,6 +79,8 @@ pub struct AccordionControl {
     pub(super) hovered_item_index: Option<usize>,
     pub(super) pressed_item_index: Option<usize>,
     emitted_focused: bool,
+    /// Maps each item's drawn state (`set_item_state_override`).
+    item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
 
 impl EventEmitter<AccordionEvent> for AccordionControl {}
@@ -133,6 +152,7 @@ impl AccordionControl {
             hovered_item_index: None,
             pressed_item_index: None,
             emitted_focused: false,
+            item_state_override: None,
         }
     }
 
@@ -145,6 +165,18 @@ impl AccordionControl {
         self.drag_tooltips.clear();
         self.hovered_drag_handle = None;
         self.model.template = template;
+        cx.notify();
+    }
+
+    /// Draw each item's trigger in the state `map` gives it, from its id and the state input gives it (`selected` is
+    /// expanded), or as input gives it (`None`). Only the look changes; expansion, input and events follow the real
+    /// state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
         cx.notify();
     }
 
@@ -170,7 +202,7 @@ impl AccordionControl {
             }
             self.focused_item_index = None;
             self.hovered_item_index = None;
-            self.pressed_item_index = None;
+            self.set_pressed_item(None, cx);
             self.emit_focus_changed(false, cx);
         }
         cx.emit(AccordionEvent::EnabledChanged { enabled });
@@ -245,6 +277,16 @@ impl AccordionControl {
                     .unwrap_or_else(|| if expanded { 1.0 } else { 0.0 });
                 let content_height_px = self.content_heights_px.get(index).copied().unwrap_or(0.0);
 
+                let state = CompositeItemState {
+                    hovered: item_enabled && self.hovered_item_index == Some(index),
+                    pressed: item_enabled && self.pressed_item_index == Some(index),
+                    disabled: !item_enabled,
+                    selected: expanded,
+                    active: item_enabled && has_keyboard_focus,
+                    focus_visible: item_enabled && focus.focus_visible && has_keyboard_focus,
+                };
+                let state = self.item_state_override.as_ref().map_or(state, |map| map(&item.id, state));
+
                 AccordionItemRenderModel {
                     id: &item.id,
                     trigger: &item.trigger,
@@ -253,14 +295,7 @@ impl AccordionControl {
                     progress,
                     content_height_px,
                     enabled: item_enabled,
-                    state: CompositeItemState {
-                        hovered: item_enabled && self.hovered_item_index == Some(index),
-                        pressed: item_enabled && self.pressed_item_index == Some(index),
-                        disabled: !item_enabled,
-                        selected: expanded,
-                        active: item_enabled && has_keyboard_focus,
-                        focus_visible: item_enabled && focus.focus_visible && has_keyboard_focus,
-                    },
+                    state,
                 }
             })
             .collect();
@@ -282,6 +317,22 @@ impl AccordionControl {
         }
     }
 
+    /// Press `index` (or none), reporting the trigger released first and then the one pressed.
+    fn set_pressed_item(&mut self, index: Option<usize>, cx: &mut Context<Self>) {
+        if self.pressed_item_index == index {
+            return;
+        }
+        let id = |index: Option<usize>| index.and_then(|i| self.model.items.get(i)).map(|item| item.id.clone());
+        let (released, pressed) = (id(self.pressed_item_index), id(index));
+        self.pressed_item_index = index;
+        if let Some(item_id) = released {
+            cx.emit(AccordionEvent::ItemPressedChanged { item_id, pressed: false });
+        }
+        if let Some(item_id) = pressed {
+            cx.emit(AccordionEvent::ItemPressedChanged { item_id, pressed: true });
+        }
+    }
+
     fn handle_item_hover(&mut self, index: usize, hovered: bool, cx: &mut Context<Self>) {
         if !self.model.enabled || !self.model.items.get(index).is_some_and(|item| item.enabled) {
             return;
@@ -299,7 +350,7 @@ impl AccordionControl {
         } else if self.hovered_item_index == Some(index) {
             self.hovered_item_index = None;
             if self.pressed_item_index == Some(index) {
-                self.pressed_item_index = None;
+                self.set_pressed_item(None, cx);
             }
             cx.emit(AccordionEvent::ItemHoverChanged { item_id: self.model.items[index].id.clone(), hovered: false });
             cx.notify();
@@ -320,7 +371,7 @@ impl AccordionControl {
                 .map(|idx| {
                     Box::new(cx.listener(move |this, _, window, cx| {
                         if this.model.enabled && this.model.items[idx].enabled {
-                            this.pressed_item_index = Some(idx);
+                            this.set_pressed_item(Some(idx), cx);
                             this.set_focused_item_index(Some(idx), cx);
                             this.focus_handle.focus(window, cx);
                             cx.notify();
@@ -332,7 +383,7 @@ impl AccordionControl {
                 .map(|idx| {
                     Box::new(cx.listener(move |this, _, _, cx| {
                         if this.pressed_item_index == Some(idx) {
-                            this.pressed_item_index = None;
+                            this.set_pressed_item(None, cx);
                             cx.notify();
                         }
                     })) as _
@@ -696,5 +747,46 @@ mod tests {
 
         apply_accordion_item_hover(&mut hovered, 2, true);
         assert_eq!(hovered, Some(2));
+    }
+}
+
+#[cfg(test)]
+mod item_state_override_tests {
+    use gpui::{IntoElement, div};
+
+    use super::*;
+    use crate::controls::accordion::{AccordionContent, AccordionItem, AccordionTrigger};
+    use crate::infra::state::CompositeItemState;
+
+    /// A state override changes the mapped trigger's drawn state; expansion stays (#397).
+    #[test]
+    fn a_state_override_maps_one_triggers_drawn_state() {
+        let mut app = gpui::TestAppContext::single();
+        let item = |id: &'static str| {
+            AccordionItem::new(id, AccordionTrigger::new(id), AccordionContent::custom(|_, _| div().into_any_element()))
+        };
+        let (accordion, cx) = app.add_window_view(|_, cx| {
+            AccordionControl::from_builder(
+                crate::controls::accordion::new("override-accordion").items([item("a"), item("b")]),
+                cx,
+            )
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| {
+            accordion.update(app, |accordion, cx| {
+                accordion.set_item_state_override(
+                    Some(std::sync::Arc::new(|id: &SharedString, state: CompositeItemState| CompositeItemState {
+                        hovered: id.as_ref() == "b",
+                        selected: id.as_ref() == "b",
+                        ..state
+                    })),
+                    cx,
+                );
+                let model = accordion.render_model(window);
+                let (a, b) = (&model.items[0], &model.items[1]);
+                assert!(b.state.hovered && b.state.selected && !b.expanded, "b drawn hovered and open, but closed");
+                assert!(!a.state.hovered, "a as it is");
+            });
+        });
     }
 }

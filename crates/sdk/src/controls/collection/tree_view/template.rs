@@ -299,7 +299,9 @@ impl ThemedTreeViewTemplate {
                 })
                 .on_mouse_up(gpui::MouseButton::Left, move |event, window, cx| (handlers.mouse_up)(event, window, cx))
                 .on_click(move |event, window, cx| (handlers.click)(event, window, cx));
-        } else {
+        }
+        // The fade follows the drawn state, which a state override can change; input follows `enabled`.
+        if node.state.disabled {
             row = row.opacity(scale.disabled_opacity * height_factor.max(0.0));
         }
 

@@ -51,37 +51,26 @@ fn cell_nodes() -> Vec<TreeNode<()>> {
     ]
 }
 
-/// How a pinned tree draws `:selected`: keeping the tree's own selection, or on every row (a matrix cell,
-/// whose tree has none).
-#[derive(Clone, Copy)]
-enum Selected {
-    Keep,
-    Every,
-}
-
 /// The tree from a theme's `tree_view` control, every row in the picked states when some are pinned.
 struct PinnedTreeTheme {
     base: StyledTreeView,
-    pinned: Option<(StateSet, Selected)>,
+    pinned: Option<StateSet>,
 }
 
 impl PinnedTreeTheme {
-    fn new(theme: Theme, pinned: Option<(StateSet, Selected)>) -> Self {
+    fn new(theme: Theme, pinned: Option<StateSet>) -> Self {
         Self { base: StyledTreeView::new(StyleBinding::new("tree_view", ThemeSource::Fixed(theme))), pinned }
     }
 
     fn state(&self, state: InteractionState) -> InteractionState {
-        self.pinned.as_ref().map_or(state, |(states, _)| states.interaction())
+        self.pinned.as_ref().map_or(state, StateSet::interaction)
     }
 }
 
 impl TreeViewTheme for PinnedTreeTheme {
     fn resolve_row(&self, state: InteractionState, selected: bool) -> TreeViewPalette {
-        let selected = match &self.pinned {
-            Some((states, Selected::Keep)) => selected && states.has("selected"),
-            Some((states, Selected::Every)) => states.has("selected"),
-            None => selected,
-        };
+        // A matrix cell's tree has no selection of its own: `:selected` draws on every row.
+        let selected = self.pinned.as_ref().map_or(selected, |states| states.has("selected"));
         self.base.row(self.state(state), selected)
     }
 
@@ -93,14 +82,22 @@ impl TreeViewTheme for PinnedTreeTheme {
         MetricTokens::default()
     }
 
+    /// A matrix cell's tree takes no input, which fades every row; only a picked `:disabled` fades them (#397).
     fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
-        self.base.scale(scale_factor)
+        let scale = self.base.scale(scale_factor);
+        match &self.pinned {
+            Some(states) if !states.has("disabled") => TreeViewScale { disabled_opacity: 1.0, ..scale },
+            _ => scale,
+        }
     }
 }
 
 fn template(theme: PinnedTreeTheme) -> Arc<ThemedTreeViewTemplate> {
     Arc::new(ThemedTreeViewTemplate::new(Arc::new(theme)))
 }
+
+/// The tree's size on the stage, at actual size.
+const STAGE_SIZE: (f32, f32) = (300., 220.);
 
 /// Gives the tree, which fills its parent, a size on the stage.
 struct TreeHost {
@@ -109,7 +106,7 @@ struct TreeHost {
 
 impl Render for TreeHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().w(px(300.)).h(px(220.)).child(self.tree.clone())
+        div().size_full().child(self.tree.clone())
     }
 }
 
@@ -143,9 +140,23 @@ impl SurfaceControl for TreeViewSurface {
         self.host.clone().into()
     }
 
+    /// The tree fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_SIZE.0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(STAGE_SIZE.1)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let template = template(PinnedTreeTheme::new(theme, pinned.map(|states| (states.clone(), Selected::Keep))));
-        self.tree.update(cx, |tree, cx| tree.set_template(template, cx));
+        // Design mode pins the picked states on the first row only; the others draw at rest (#397).
+        let rows = pinned.map(|states| states.first_item_override(SharedString::from("projects")));
+        let template = template(PinnedTreeTheme::new(theme, None));
+        self.tree.update(cx, |tree, cx| {
+            tree.set_template(template, cx);
+            tree.set_item_state_override(rows, cx);
+        });
         // Cells are remade in the new theme.
         self.cells.borrow_mut().clear();
     }
@@ -186,7 +197,7 @@ impl SurfaceControl for TreeViewSurface {
             .borrow_mut()
             .entry(id.clone())
             .or_insert_with(|| {
-                let theme = PinnedTreeTheme::new(theme.clone(), Some((states.clone(), Selected::Every)));
+                let theme = PinnedTreeTheme::new(theme.clone(), Some(states.clone()));
                 TreeViewBuilder::new(id).items(cell_nodes()).enabled(false).template(template(theme)).spawn(cx)
             })
             .clone();
@@ -233,5 +244,34 @@ mod tests {
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-0").is_some(), "matrix cells draw trees");
+    }
+
+    /// Design mode draws the picked states on the first row only; the others draw at rest, not disabled (#397).
+    #[test]
+    fn design_mode_pins_the_first_row_only() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = open_surface(&mut app, "tree-view");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
+        side.update(cx, |side, cx| side.choose_interaction("hover", cx));
+        cx.run_until_parked();
+        let theme = cx.update(|_, cx| side.read(cx).bound_theme());
+        let styled = StyledTreeView::new(StyleBinding::new("tree_view", ThemeSource::Fixed(theme)));
+        let hover = styled.row(InteractionState { hovered: true, ..Default::default() }, false).background;
+        let hover = gpui::Background::from(hover.expect("a hovered row has a fill"));
+        let hovered =
+            cx.update(|window, _| window.painted_quads().iter().filter(|quad| quad.background == hover).count());
+        assert_eq!(hovered, 1, "only the first row draws hovered");
+    }
+
+    /// A matrix cell's tree takes no input; its rows fade only when `:disabled` is picked (#397).
+    #[test]
+    fn cell_rows_fade_only_for_a_picked_disabled() {
+        let theme = xgpui_luma::style::default_theme;
+        let fade = |pinned: Option<StateSet>| PinnedTreeTheme::new(theme(), pinned).resolve_scale(1.0).disabled_opacity;
+        let sdk = fade(None);
+        assert!(sdk < 1.0, "the SDK tree fades disabled rows: {sdk}");
+        assert_eq!(fade(Some(StateSet::new(["pressed"]))), 1.0, "input off in Design, but not :disabled");
+        assert_eq!(fade(Some(StateSet::new(["disabled"]))), sdk, "a picked :disabled fades");
     }
 }

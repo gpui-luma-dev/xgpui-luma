@@ -7,7 +7,7 @@ use gpui::{
 };
 
 use super::super::TextAreaTemplateHandlers;
-use super::{TextArea, TextAreaDrag};
+use super::{TextArea, TextAreaDrag, TextAreaEvent};
 use crate::controls::text::{EditableTextPolicy, FocusNavigation, handle_key_down, select_all, word_cluster_range};
 
 impl TextArea {
@@ -92,7 +92,10 @@ impl TextArea {
             return;
         }
 
-        self.state.set_hovered(*hovered);
+        if self.state.hovered != *hovered {
+            self.state.set_hovered(*hovered);
+            cx.emit(TextAreaEvent::HoverChanged { hovered: *hovered });
+        }
         cx.notify();
     }
 

@@ -616,7 +616,7 @@ fn render_item_row(
         hovered: state.hovered,
         pressed: state.pressed,
         focused: state.focused,
-        disabled: !state.enabled,
+        disabled: state.disabled,
         invalid: false,
     };
     let look = if has_children {
@@ -671,7 +671,9 @@ fn render_item_row(
 
     if state.enabled {
         row = row.cursor_pointer();
-    } else {
+    }
+    // The fade follows the drawn state, which a state override can change; input follows `enabled`.
+    if state.disabled {
         row = row.opacity(theme.geometry().disabled_opacity);
     }
 
@@ -716,7 +718,7 @@ fn render_collapsed_rail_node(
         hovered: state.hovered,
         pressed: state.pressed,
         focused: state.focused,
-        disabled: !state.enabled,
+        disabled: state.disabled,
         invalid: false,
     };
     let look = if has_children {
@@ -787,7 +789,9 @@ fn render_collapsed_rail_node(
 
     if state.enabled {
         row = row.cursor_pointer();
-    } else {
+    }
+    // The fade follows the drawn state, which a state override can change; input follows `enabled`.
+    if state.disabled {
         row = row.opacity(theme.geometry().disabled_opacity);
     }
 
@@ -919,6 +923,7 @@ mod focus_tests {
                         focused: interaction.focused,
                         expanded: false,
                         enabled: !interaction.disabled,
+                        disabled: interaction.disabled,
                     };
                     let handlers = RowHandlers {
                         bounds: None,

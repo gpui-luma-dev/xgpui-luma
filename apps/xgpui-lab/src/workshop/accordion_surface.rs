@@ -26,6 +26,10 @@ const SECTIONS: [(&str, &str, &str); 2] = [
     ("quality", "Quality guarantee", "Faulty goods qualify for a prompt replacement."),
 ];
 
+/// The accordion fills its width: the stage gives it this one (resizable), so opening or closing a section
+/// never changes it.
+const STAGE_WIDTH: f32 = 360.;
+
 /// The `.lss` states the trigger rows read, and `focused` for the keyboard focus affordance.
 const STATES: [&str; 4] = ["hover", "pressed", "focused", "disabled"];
 
@@ -129,35 +133,6 @@ fn pinned_model<'a>(model: &AccordionRenderModel<'a>, states: &StateSet) -> Acco
     }
 }
 
-/// Draws the base template with the picked states (Design mode), or as the accordion is.
-struct PinnedAccordionTemplate {
-    base: ThemedAccordionTemplate,
-    pinned: Option<StateSet>,
-}
-
-impl AccordionTemplate for PinnedAccordionTemplate {
-    fn drag_tooltip_theme(&self) -> Arc<dyn xgpui_luma::controls::tooltip::TooltipTheme> {
-        self.base.drag_tooltip_theme()
-    }
-
-    fn resolve_drag(&self) -> xgpui_luma::infra::drag_drop::DragDropLook {
-        self.base.resolve_drag()
-    }
-
-    fn render(
-        &self,
-        model: &AccordionRenderModel<'_>,
-        handlers: AccordionTemplateHandlers,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> gpui::Stateful<gpui::Div> {
-        match &self.pinned {
-            Some(states) => self.base.render(&pinned_model(model, states), handlers, window, cx),
-            None => self.base.render(model, handlers, window, cx),
-        }
-    }
-}
-
 /// Handlers that do nothing, one per row, for a State matrix cell.
 fn inert_handlers(rows: usize) -> AccordionTemplateHandlers {
     AccordionTemplateHandlers {
@@ -179,9 +154,17 @@ impl SurfaceControl for AccordionSurface {
         self.accordion.clone().into()
     }
 
+    fn stage_width(&self) -> Option<f32> {
+        Some(STAGE_WIDTH)
+    }
+
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let template = PinnedAccordionTemplate { base: template(theme), pinned: pinned.cloned() };
-        self.accordion.update(cx, |accordion, cx| accordion.set_template(Arc::new(template), cx));
+        // Design mode pins the picked states on the first trigger only; the others draw at rest (#397).
+        let rows = pinned.map(|states| states.first_item_override(SharedString::from(SECTIONS[0].0)));
+        self.accordion.update(cx, |accordion, cx| {
+            accordion.set_template(Arc::new(template(theme)), cx);
+            accordion.set_item_state_override(rows, cx);
+        });
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {
@@ -201,6 +184,7 @@ impl SurfaceControl for AccordionSurface {
             let state = match event {
                 AccordionEvent::ItemHoverChanged { hovered, .. } => Some(("hover", *hovered)),
                 AccordionEvent::FocusChanged { focused } => Some(("focused", *focused)),
+                AccordionEvent::ItemPressedChanged { pressed, .. } => Some(("pressed", *pressed)),
                 _ => None,
             };
             on_event(side, SurfaceEvent { line: format!("{event:?}"), state }, cx);

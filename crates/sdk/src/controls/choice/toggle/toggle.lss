@@ -4,5 +4,10 @@
 toggle extends button {
   part root {
     :selected { background = palette.state.selected.background  foreground = palette.state.selected.foreground }
+    // `button`'s :hover and :pressed only set the background, which would leave the selected (light on
+    // dark) text on a hover or pressed gray. An "on" toggle keeps its face when hovered, like a selected
+    // segment or tree row, and takes the pressed gray with the normal text when pressed.
+    :selected:hover   { background = palette.state.selected.background  foreground = palette.state.selected.foreground }
+    :selected:pressed { background = palette.state.pressed.background   foreground = palette.app.foreground }
   }
 }

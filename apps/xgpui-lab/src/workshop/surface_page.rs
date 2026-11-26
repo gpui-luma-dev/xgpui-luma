@@ -31,6 +31,7 @@ use super::sample_layout::centered_ruled_background;
 use super::state_icons::state_icon;
 use super::surface_control::{MakeSurfaceControl, StateSet, SurfaceControl};
 use super::pane_type;
+use super::stage_rulers::{self, RULER_SIZE, RulerColors};
 use crate::screen::text;
 use crate::theme::{ColorVizLookExt, Look, TypographyExt};
 
@@ -65,9 +66,10 @@ const BOX_LINE: f32 = 1.;
 const BOX_DASH: f32 = 4.;
 const BOX_GAP: f32 = 3.;
 const BOX_CORNER_ARM: f32 = 32.;
-const BOX_CORNER_THICKNESS: f32 = 4.;
-/// The bounding box's color: this step of the look's accent scale.
-const BOX_ACCENT_STEP: u8 = 9;
+const BOX_CORNER_THICKNESS: f32 = 2.;
+/// The bounding box's color: a fixed mid gray, independent of the look's accent (like the grid, it
+/// is stage chrome, not theme).
+const BOX_COLOR: u32 = 0x8c8c8c;
 
 /// The rectangles that draw `control`'s bounding box on `stage`: the dashes of two vertical lines
 /// (just outside its left and right edges) and two horizontal lines (just outside its top and bottom),
@@ -131,6 +133,20 @@ struct PanDrag {
     pan: Point<Pixels>,
     panning: bool,
 }
+
+/// A drag of a resize handle on the Control stage: which axes it sizes, where it started, and the
+/// control's size (actual size) then.
+struct ResizeDrag {
+    width: bool,
+    height: bool,
+    start: Point<Pixels>,
+    size: (f32, f32),
+}
+
+/// A resizable control never gets smaller than this on either axis, at actual size.
+const MIN_STAGE_SIZE: f32 = 24.;
+/// A resize handle's square.
+const HANDLE_SIZE: f32 = 9.;
 
 /// The zoom as the stage toolbar shows it: at most two decimals, no trailing zeros (`1×`, `2.5×`).
 fn zoom_label(zoom: f32) -> String {
@@ -464,10 +480,18 @@ pub(super) struct ControlSide {
     /// every length scaled by it. The matrix and the inspector stay at actual size.
     zoom: f32,
     zoom_slider: Slider,
+    /// Whether the stage draws its grid, the control's bounding box and the rulers; off shows the
+    /// control on a plain background.
+    show_guides: bool,
+    guides_switch: Switch,
     /// How far the control (and the grid with it) is moved from the Control stage's center.
     pan: Point<Pixels>,
     /// The drag on the Control stage in progress, if any.
     pan_drag: Option<PanDrag>,
+    /// The size the control was dragged to (actual size), on each axis the page gives a size; `None`
+    /// keeps the page's.
+    resized: (Option<f32>, Option<f32>),
+    resize_drag: Option<ResizeDrag>,
     /// The control's bounds on the Control stage at the last paint, for its bounding box.
     control_bounds: Rc<Cell<Option<Bounds<Pixels>>>>,
     /// The Control stage's bounds at the last paint, to keep the panned control on it.
@@ -580,6 +604,16 @@ impl ControlSide {
             .step(ZOOM_STEP)
             .value(ZOOM_RANGE.start)
             .on_value_changed(cx, |this: &mut Self, _, zoom, cx| this.set_zoom(zoom, cx))
+            .spawn(cx);
+        let guides_switch = xgpui_luma_look_radix::Switch::new("workshop-surface-guides")
+            .look(look.as_ref())
+            .size(xgpui_luma_look_radix::SwitchSize::One)
+            .label("Guides")
+            .checked(true)
+            .on_value_changed(cx, |this: &mut Self, on, cx| {
+                this.show_guides = on;
+                cx.notify();
+            })
             .spawn(cx);
         let work_mode_picker = xgpui_luma_look_radix::control_group_builder(
             look.as_ref(),
@@ -714,8 +748,12 @@ impl ControlSide {
             surface,
             zoom: ZOOM_RANGE.start,
             zoom_slider,
+            show_guides: true,
+            guides_switch,
             pan: Point::default(),
             pan_drag: None,
+            resized: (None, None),
+            resize_drag: None,
             control_bounds: Rc::default(),
             stage_bounds: Rc::default(),
             matrix_cell: Rc::default(),
@@ -821,6 +859,40 @@ impl ControlSide {
     }
 
     /// A press on the Control stage starts a drag that pans once it moves past [`PAN_THRESHOLD`].
+    /// The live control's size on the stage at actual size: the page's on each axis it gives one, or
+    /// what it was dragged to.
+    fn stage_size(&self) -> (Option<f32>, Option<f32>) {
+        (
+            self.surface.stage_width().map(|width| self.resized.0.unwrap_or(width)),
+            self.surface.stage_height().map(|height| self.resized.1.unwrap_or(height)),
+        )
+    }
+
+    fn start_resize(&mut self, width: bool, height: bool, position: Point<Pixels>) {
+        let (w, h) = self.stage_size();
+        self.pan_drag = None;
+        self.resize_drag =
+            Some(ResizeDrag { width, height, start: position, size: (w.unwrap_or(0.), h.unwrap_or(0.)) });
+    }
+
+    /// Follow a resize drag. The control is anchored at its top-left (see `control_stage`), so the handle
+    /// stays under the pointer.
+    fn drag_resize(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+        let Some(drag) = self.resize_drag.as_ref() else {
+            return;
+        };
+        let moved = position - drag.start;
+        if drag.width {
+            let width = (drag.size.0 + f32::from(moved.x) / self.zoom).max(MIN_STAGE_SIZE).round();
+            self.resized.0 = Some(width);
+        }
+        if drag.height {
+            let height = (drag.size.1 + f32::from(moved.y) / self.zoom).max(MIN_STAGE_SIZE).round();
+            self.resized.1 = Some(height);
+        }
+        cx.notify();
+    }
+
     fn start_pan(&mut self, position: Point<Pixels>) {
         self.pan_drag = Some(PanDrag { start: position, pan: self.pan, panning: false });
     }
@@ -965,6 +1037,12 @@ impl ControlSide {
                     .self_center()
                     .child(self.work_mode_picker.clone()),
             )
+            .child(
+                div()
+                    .debug_selector(|| "workshop-surface-guides".into())
+                    .self_center()
+                    .child(self.guides_switch.clone()),
+            )
             .child(div().flex_1().self_center().when(self.stage == Stage::Control, |slot| {
                 slot.child(
                     div()
@@ -990,8 +1068,10 @@ impl ControlSide {
 
     /// The live control centered on the stage, with a tag saying whether it is live or drawing picked
     /// states.
-    fn control_stage(&self) -> AnyElement {
+    fn control_stage(&self, cx: &mut Context<Self>) -> AnyElement {
         let chrome = self.look.chrome();
+        let (width, height) = self.stage_size();
+        let (anchor_width, anchor_height) = (self.surface.stage_width(), self.surface.stage_height());
         let tag = match self.work_mode {
             WorkMode::Test => "Live",
             WorkMode::Design => "Picked states · not live",
@@ -1006,8 +1086,9 @@ impl ControlSide {
                 div()
                     .debug_selector(|| "workshop-surface-stage-tag".into())
                     .absolute()
-                    .top(px(10.))
-                    .left(px(12.))
+                    // Clear of the rulers when they show.
+                    .top(px(10. + if self.show_guides { RULER_SIZE } else { 0. }))
+                    .left(px(12. + if self.show_guides { RULER_SIZE } else { 0. }))
                     .px(px(8.))
                     .py(px(2.))
                     .rounded(px(6.))
@@ -1017,21 +1098,76 @@ impl ControlSide {
                     .text_color(chrome.muted_text)
                     .child(tag),
             )
+            // The anchor keeps the page's size, so it stays centered while the control is resized; the
+            // control sits at its top-left. Re-centering a resized control would move its top-left by
+            // half a pixel whenever the layout rounds its scaled size, and the rulers with it.
             .child(
                 div()
-                    .debug_selector(|| "workshop-surface-control".into())
                     .relative()
+                    .flex_none()
                     .left(self.pan.x)
                     .top(self.pan.y)
-                    .when_some(self.surface.stage_width(), |control, width| control.w(px(width * self.zoom)))
-                    .child(self.surface.view())
-                    // Measures the control for its bounding box, which the stage draws under it.
-                    .child({
-                        let measured = self.control_bounds.clone();
-                        gpui::canvas(move |bounds, _, _| measured.set(Some(bounds)), |_, _, _, _| {})
-                            .absolute()
-                            .inset_0()
-                    }),
+                    .when_some(anchor_width, |anchor, width| anchor.w(px(width * self.zoom)))
+                    .when_some(anchor_height, |anchor, height| anchor.h(px(height * self.zoom)))
+                    .child(self.stage_control(width, height, cx)),
+            )
+            .into_any_element()
+    }
+
+    /// The live control at `width` × `height` (actual size, scaled by the zoom) where the page gives
+    /// them, with its resize handles and the canvas that measures it.
+    fn stage_control(&self, width: Option<f32>, height: Option<f32>, cx: &mut Context<Self>) -> AnyElement {
+        let guides = self.show_guides;
+        div()
+            .debug_selector(|| "workshop-surface-control".into())
+            .relative()
+            .when_some(width, |control, width| control.w(px(width * self.zoom)))
+            .when_some(height, |control, height| control.h(px(height * self.zoom)))
+            .child(self.surface.view())
+            // A handle on each axis the control can be sized on, over the control. They are guides
+            // too: they hide with the grid, box and rulers.
+            .when(guides && width.is_some(), |control| control.child(self.resize_handle(true, false, cx)))
+            .when(guides && height.is_some(), |control| control.child(self.resize_handle(false, true, cx)))
+            .when(guides && width.is_some() && height.is_some(), |control| {
+                control.child(self.resize_handle(true, true, cx))
+            })
+            // Measures the control for its bounding box, which the stage draws under it.
+            .child({
+                let measured = self.control_bounds.clone();
+                gpui::canvas(move |bounds, _, _| measured.set(Some(bounds)), |_, _, _, _| {}).absolute().inset_0()
+            })
+            .into_any_element()
+    }
+
+    /// A square handle on the control's right edge (`width`), bottom edge (`height`) or bottom-right
+    /// corner (both). Dragging it resizes the control; it takes the press, so the stage doesn't pan.
+    fn resize_handle(&self, width: bool, height: bool, cx: &mut Context<Self>) -> AnyElement {
+        let half = px(-HANDLE_SIZE / 2.);
+        let name = match (width, height) {
+            (true, false) => "workshop-surface-resize-width",
+            (false, true) => "workshop-surface-resize-height",
+            _ => "workshop-surface-resize-both",
+        };
+        div()
+            .id(name)
+            .debug_selector(move || name.into())
+            .absolute()
+            .size(px(HANDLE_SIZE))
+            .rounded(px(2.))
+            .border_1()
+            .border_color(gpui::white())
+            .bg(gpui::rgb(BOX_COLOR))
+            .map(|handle| match (width, height) {
+                (true, false) => handle.right(half).top(gpui::relative(0.5)).mt(half).cursor_ew_resize(),
+                (false, true) => handle.bottom(half).left(gpui::relative(0.5)).ml(half).cursor_ns_resize(),
+                _ => handle.right(half).bottom(half).cursor_nwse_resize(),
+            })
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                    this.start_resize(width, height, event.position);
+                    cx.stop_propagation();
+                }),
             )
             .into_any_element()
     }
@@ -1440,6 +1576,12 @@ impl ControlSide {
         self.stage_text.map(|t| (t.strong, t.muted))
     }
 
+    /// The bound theme, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn bound_theme(&self) -> Theme {
+        self.theme.clone()
+    }
+
     /// The bound mode and stage background, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn mode_and_stage(&self) -> (String, Option<Hsla>) {
@@ -1487,8 +1629,11 @@ impl ControlSide {
     fn stage_slot(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         // The grid zooms and pans with the control; the matrix is always at actual size and centered.
         let control = self.stage == Stage::Control;
+        let chrome_background = self.look.chrome().content_background;
+        // The mode switch sits inside the rulers' corner when they show.
+        let inset = if control && self.show_guides { RULER_SIZE } else { 0. };
         let (stage, zoom, offset) = match self.stage {
-            Stage::Control => (self.control_stage(), self.zoom, (f32::from(self.pan.x), f32::from(self.pan.y))),
+            Stage::Control => (self.control_stage(cx), self.zoom, (f32::from(self.pan.x), f32::from(self.pan.y))),
             Stage::Matrix => (self.matrix(window, cx), 1., (0., 0.)),
         };
         div()
@@ -1509,19 +1654,20 @@ impl ControlSide {
                         }
                     })
                     .when_some(self.stage_background, |stage, background| stage.bg(background))
-                    .child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    .when(self.show_guides, |stage| {
+                        stage.child(centered_ruled_background(STAGE_GRID_SPACING * zoom, offset, self.stage_background))
+                    })
                     // The control's bounding box, over the grid and under the control and the stage tag.
+                    // The canvas stays when guides are hidden: it also records the stage's bounds for panning.
                     .when(control, |stage| {
-                        let (measured, color) = (
-                            self.control_bounds.clone(),
-                            self.look.resolve_step(xgpui_luma_look_radix::ScaleFamily::Color, BOX_ACCENT_STEP).hsla(),
-                        );
+                        let (measured, color): (_, Hsla) = (self.control_bounds.clone(), gpui::rgb(BOX_COLOR).into());
+                        let show_guides = self.show_guides;
                         let stage_bounds = self.stage_bounds.clone();
                         stage.child(
                             gpui::canvas(
                                 move |bounds, _, _| stage_bounds.set(Some(bounds)),
                                 move |bounds, _, window, _| {
-                                    let Some(control) = measured.get() else {
+                                    let Some(control) = measured.get().filter(|_| show_guides) else {
                                         return;
                                     };
                                     for rect in bounding_box_rects(bounds, control) {
@@ -1534,6 +1680,27 @@ impl ControlSide {
                         )
                     })
                     .child(div().relative().size_full().child(stage))
+                    // Rulers over everything on the stage, measured from the control's top-left.
+                    .when(control && self.show_guides, |stage| {
+                        let measured = self.control_bounds.clone();
+                        let zoom = self.zoom;
+                        let colors = RulerColors {
+                            background: self.stage_background.unwrap_or(chrome_background),
+                            ink: gpui::rgb(BOX_COLOR).into(),
+                        };
+                        stage.child(
+                            gpui::canvas(
+                                |_, _, _| (),
+                                move |bounds, _, window, cx| {
+                                    if let Some(control) = measured.get() {
+                                        stage_rulers::paint_rulers(bounds, control, zoom, colors, window, cx);
+                                    }
+                                },
+                            )
+                            .absolute()
+                            .inset_0(),
+                        )
+                    })
                     .when(control, |stage| {
                         // Ctrl+wheel (Cmd on macOS) and pinch zoom the control about its own center. A
                         // plain wheel or two-finger scroll pans (Shift: sideways), and so does a drag from
@@ -1572,13 +1739,19 @@ impl ControlSide {
                             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                                 if event.pressed_button.is_none() {
                                     this.pan_drag = None;
+                                    this.resize_drag = None;
+                                } else if this.resize_drag.is_some() {
+                                    this.drag_resize(event.position, cx);
                                 } else {
                                     this.drag_pan(event.position, cx);
                                 }
                             }))
                             .on_mouse_up(
                                 MouseButton::Left,
-                                cx.listener(|this, _: &MouseUpEvent, _, _| this.pan_drag = None),
+                                cx.listener(|this, _: &MouseUpEvent, _, _| {
+                                    this.pan_drag = None;
+                                    this.resize_drag = None;
+                                }),
                             )
                             .on_mouse_up(
                                 MouseButton::Middle,
@@ -1591,7 +1764,7 @@ impl ControlSide {
                 div()
                     .debug_selector(|| "workshop-surface-modes".into())
                     .absolute()
-                    .top(px(10.))
+                    .top(px(10. + inset))
                     .right(px(12.))
                     .child(switch)
             }))
@@ -1858,6 +2031,101 @@ mod tests {
         assert!(cx.debug_bounds("workshop-surface-zoom").is_none(), "the matrix is not zoomed");
     }
 
+    /// A page that gives the control a size gets resize handles; dragging one keeps the top-left still.
+    #[test]
+    fn resize_handles_size_the_control_and_keep_its_top_left() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = crate::workshop::tests_support::open_surface(&mut app, "tree-view");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        for handle in
+            ["workshop-surface-resize-width", "workshop-surface-resize-height", "workshop-surface-resize-both"]
+        {
+            assert!(cx.debug_bounds(handle).is_some(), "{handle}");
+        }
+        let before = cx.debug_bounds("workshop-surface-control").expect("control");
+        side.update(cx, |side, cx| {
+            side.start_resize(true, true, point(px(0.), px(0.)));
+            side.drag_resize(point(px(40.), px(-20.)), cx);
+        });
+        cx.run_until_parked();
+        let after = cx.debug_bounds("workshop-surface-control").expect("control");
+        assert_eq!(after.size, size(before.size.width + px(40.), before.size.height - px(20.)));
+        assert_eq!(after.origin, before.origin, "the top-left stays");
+    }
+
+    /// The Table and ListBox pages fill the size dragged to (#397): the table's fill column and frame,
+    /// the list's width (its height is its rows').
+    #[test]
+    fn resizable_pages_fill_the_size_dragged_to() {
+        for (id, probe, height) in [
+            ("paging-table", "table-column-1", true),
+            ("scrolling-table", "table-column-1", true),
+            ("listbox", "workshop-sdk-listbox", false),
+        ] {
+            let mut app = TestAppContext::single();
+            let (page, cx) = crate::workshop::tests_support::open_surface(&mut app, id);
+            let side = cx.update(|_, cx| page.read(cx).side());
+            let handle = if height {
+                "workshop-surface-resize-both"
+            } else {
+                "workshop-surface-resize-width"
+            };
+            assert!(cx.debug_bounds(handle).is_some(), "{id}: {handle}");
+            let before = cx.debug_bounds(probe).expect(probe);
+            let frame = |cx: &mut gpui::VisualTestContext| {
+                let control = cx.debug_bounds("workshop-surface-control").expect("control");
+                cx.update(|window, _| {
+                    let scale = window.scale_factor();
+                    let inside = control.scale(scale);
+                    window
+                        .painted_quads()
+                        .iter()
+                        .filter(|quad| {
+                            inside.contains(&quad.bounds.origin)
+                                && quad.bounds.size.width >= inside.size.width - gpui::ScaledPixels(2.)
+                        })
+                        .map(|quad| quad.bounds.size.height.0 / scale)
+                        .fold(0., f32::max)
+                })
+            };
+            let frame_before = frame(cx);
+            side.update(cx, |side, cx| {
+                side.start_resize(true, height, point(px(0.), px(0.)));
+                side.drag_resize(point(px(40.), px(30.)), cx);
+            });
+            cx.run_until_parked();
+            let after = cx.debug_bounds(probe).expect(probe);
+            assert_eq!(after.size.width, before.size.width + px(40.), "{id} fills the width");
+            if height {
+                assert!(
+                    (frame(cx) - frame_before - 30.).abs() < 1.,
+                    "{id} fills the height: {frame_before} -> {}",
+                    frame(cx)
+                );
+            }
+        }
+    }
+
+    /// At a fractional zoom the layout rounds the scaled size; the control's top-left (and the rulers
+    /// measured from it) must not move by the rounding while it is resized.
+    #[test]
+    fn resizing_at_a_fractional_zoom_never_moves_the_top_left() {
+        let mut app = TestAppContext::single();
+        let (page, cx) = crate::workshop::tests_support::open_surface(&mut app, "tree-view");
+        let side = cx.update(|_, cx| page.read(cx).side());
+        side.update(cx, |side, cx| side.zoom_to(1.5, cx));
+        cx.run_until_parked();
+        let start = cx.debug_bounds("workshop-surface-control").expect("control").origin;
+        side.update(cx, |side, _| side.start_resize(true, true, point(px(0.), px(0.))));
+        for step in 1..12 {
+            let moved = step as f32 * 0.75;
+            side.update(cx, |side, cx| side.drag_resize(point(px(moved), px(moved)), cx));
+            cx.run_until_parked();
+            let origin = cx.debug_bounds("workshop-surface-control").expect("control").origin;
+            assert_eq!(origin, start, "step {step}");
+        }
+    }
+
     #[test]
     fn choosing_a_mode_rebinds_the_control_matrix_inspector_and_stage() {
         let mut app = TestAppContext::single();
@@ -1874,7 +2142,9 @@ mod tests {
             cx.debug_bounds("workshop-surface-modes").expect("light/dark switch"),
         );
         assert!(corner.right() <= stage.right() && corner.right() > stage.right() - px(40.), "right edge");
-        assert!(corner.top() >= stage.top() && corner.top() < stage.top() + px(20.), "top edge");
+        // Below the top ruler, which shows with the guides.
+        let top = stage.top() + px(RULER_SIZE);
+        assert!(corner.top() >= top && corner.top() < top + px(20.), "top edge, below the ruler");
         // Vertical. Sizes come from the Radix look, so they're checked as relationships, not pixels.
         assert!(corner.size.height > corner.size.width, "vertical: {corner:?}");
         let inside = |icon: Bounds<Pixels>| {
@@ -1982,10 +2252,7 @@ mod tests {
             summary("root", "indicator_scale", cx),
             (shown("indicator_scale", Kind::Number), String::new(), None)
         );
-        assert_eq!(
-            summary("root", "height", cx),
-            (shown("height", Kind::Length), "metrics.control.control_height".into(), None)
-        );
+        assert_eq!(summary("root", "height", cx), (shown("height", Kind::Length), "indicator_size + 6".into(), None));
 
         let side = cx.update(|_, cx| pane.read(cx).side());
         side.update(cx, |side, cx| side.toggle_state("checked", cx));

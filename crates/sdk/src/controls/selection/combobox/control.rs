@@ -537,6 +537,18 @@ impl ComboBoxControl {
         cx.notify();
     }
 
+    /// Replace the hosted text field's template (where the field's hover, focus, invalid and disabled
+    /// looks come from), e.g. to rebind it to a look's `textfield.lss`.
+    pub fn set_textfield_template(
+        &mut self,
+        template: std::sync::Arc<dyn crate::controls::textfield::TextFieldTemplate>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.textfield_template = template.clone();
+        self.textfield.update(cx, |textfield, cx| textfield.set_template(template, cx));
+        cx.notify();
+    }
+
     pub fn set_items_template(&mut self, template: std::sync::Arc<dyn ComboBoxItemsTemplate>, cx: &mut Context<Self>) {
         self.model.items_template = template;
         cx.notify();
@@ -662,13 +674,19 @@ impl Render for ComboBoxControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) = if self.model.debug_status {
+            (
+                SharedString::from(format!("status: {}", self.behavior.state.status.label())),
+                SharedString::from(format!(
+                    "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
+                    self.behavior.state.filtered.len(),
+                    self.last_event,
+                    self.last_keyboard_event
+                )),
+            )
+        } else {
+            (SharedString::default(), SharedString::default())
+        };
 
         let popup_content = if self.model.enabled && self.presence.should_paint() && !visible_indices.is_empty() {
             let menu_id = SharedString::from("combobox-menu");
@@ -737,6 +755,13 @@ impl Render for ComboBoxControl {
             trigger_bounds: Box::new(cx.listener(Self::handle_trigger_bounds)),
         };
 
+        // Disabled, the arrow and clear button take the field's disabled icon color, and don't brighten on hover.
+        let (status_color, muted_text_color) = if self.model.enabled {
+            (autocomplete_look.status_color, autocomplete_look.muted_text_color)
+        } else {
+            let icon = self.model.textfield_template.resolve_look(TextFieldState::default(), false).icon;
+            (icon, icon)
+        };
         let render_model = ComboBoxRenderModel {
             icons: self.model.icons.clone(),
             geometry,
@@ -748,8 +773,8 @@ impl Render for ComboBoxControl {
             minimum_trigger_width,
             status_label,
             status_detail,
-            status_color: autocomplete_look.status_color,
-            muted_text_color: autocomplete_look.muted_text_color,
+            status_color,
+            muted_text_color,
             popup_bounds: self.trigger_bounds,
             popup_look: look,
             popup_content,

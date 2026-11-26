@@ -455,9 +455,64 @@ mod tests {
             reads(&["checked"], "glyph", "foreground", "palette.state.selected.foreground");
             reads(&["disabled"], "glyph", "foreground", "palette.state.disabled.foreground");
             reads(&[], "root", "focus_border", "palette.focus.ring");
-            reads(&[], "root", "height", "metrics.control.control_height");
             reads(&[], "root", "gap", "metrics.control.gap");
             reads(&[], "root", "focus_width", "metrics.focus.width");
+        }
+    }
+
+    /// The slider and progress tracks are outlined in the default border, so they show on any surface; the
+    /// scrollbar track reads the same border but draws none by default (#397).
+    #[test]
+    fn tracks_can_have_a_border() {
+        for theme in fixture::themes() {
+            for control in ["slider", "progress"] {
+                fixture::assert_reads(&theme, control, &[], "track", "border", "palette.border.default");
+            }
+        }
+        for control in ["slider", "progress"] {
+            let binding = StyleBinding::sdk(control);
+            let resolved = binding.resolve(&[], 1.0);
+            let width = resolved.part(xgpui_luma_style::PartId::new("track")).value("border_width");
+            assert!(width.and_then(xgpui_luma_style::Value::as_number).is_some_and(|w| w > 0.0), "{control}");
+        }
+        // The scrollbar track (its root) can be outlined too, but draws none by default.
+        for theme in fixture::themes() {
+            fixture::assert_reads(&theme, "scrollbar", &[], "root", "border", "palette.border.default");
+        }
+        let scrollbar = StyleBinding::sdk("scrollbar").resolve(&[], 1.0);
+        assert_eq!(scrollbar.root().value("border_width").and_then(xgpui_luma_style::Value::as_number), Some(0.0));
+    }
+
+    /// A table row hovers like every other control, not in a chart color (#397).
+    #[test]
+    fn table_rows_hover_in_the_shared_hover_color() {
+        for theme in fixture::themes() {
+            fixture::assert_reads(&theme, "table", &["hover"], "row", "background", "palette.state.hover.background");
+        }
+    }
+
+    /// An "on" toggle keeps light-on-dark text readable when hovered, and takes normal text on the pressed
+    /// gray (#397): `button`'s :hover and :pressed only change the background.
+    #[test]
+    fn a_selected_toggle_keeps_readable_text_when_hovered_or_pressed() {
+        for theme in fixture::themes() {
+            let reads = |states: &[&str], prop: &str, token: &str| {
+                fixture::assert_reads(&theme, "toggle", states, "root", prop, token)
+            };
+            reads(&["selected", "hover"], "background", "palette.state.selected.background");
+            reads(&["selected", "hover"], "foreground", "palette.state.selected.foreground");
+            reads(&["selected", "pressed", "hover"], "background", "palette.state.pressed.background");
+            reads(&["selected", "pressed", "hover"], "foreground", "palette.app.foreground");
+        }
+    }
+
+    /// Choice rows are as tall as their indicator plus 3px above and below (#397), not the shared
+    /// control height, so stacked rows sit close.
+    #[test]
+    fn choice_rows_fit_their_indicator() {
+        for control in ["checkbox", "radio"] {
+            let (height, indicator) = (sdk_number(control, "height"), sdk_number(control, "indicator_size"));
+            assert_eq!(height, indicator + 6.0, "{control}");
         }
     }
 
@@ -474,7 +529,6 @@ mod tests {
             reads(&["selected", "pressed"], "indicator", "border", "palette.state.pressed.background");
             reads(&["selected", "disabled"], "indicator", "border", "palette.form.input.border");
             reads(&["selected"], "dot", "foreground", "palette.state.selected.foreground");
-            reads(&[], "root", "height", "metrics.control.control_height");
             reads(&[], "root", "gap", "metrics.control.gap");
         }
     }

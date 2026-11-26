@@ -36,7 +36,7 @@ impl ToolbarSurface {
 struct PinnedToolbarTheme {
     base: Arc<dyn ToolbarTheme>,
     /// In Design mode, whether the shell draws enabled (`:disabled` not picked), whatever the live
-    /// toolbar is (the page disables its input in Design mode).
+    /// toolbar is.
     enabled: Option<bool>,
 }
 
@@ -69,9 +69,9 @@ impl SurfaceControl for ToolbarSurface {
         self.toolbar.update(cx, |toolbar, cx| toolbar.set_template(template, cx));
     }
 
-    fn set_enabled(&self, enabled: bool, cx: &mut App) {
-        self.toolbar.update(cx, |toolbar, cx| toolbar.set_enabled(enabled, cx));
-    }
+    /// The toolbar stays enabled in Design mode too: disabling it disables its items, which would draw their
+    /// own `:disabled` though only the shell is designed here; the shell's `:disabled` is picked (#397).
+    fn set_enabled(&self, _enabled: bool, _cx: &mut App) {}
 
     /// The shell's one state.
     fn template_states(&self) -> Vec<&'static str> {
@@ -316,6 +316,12 @@ mod tests {
         assert_eq!(rows, ["base"]);
         side.update(cx, |side, cx| side.show_matrix(cx));
         cx.run_until_parked();
+        let toolbar =
+            cx.update(|_, cx| side.read(cx).control_as::<ToolbarSurface>().expect("a toolbar").toolbar.clone());
+        assert!(
+            cx.update(|_, cx| toolbar.read(cx).is_enabled()),
+            "Design keeps the items enabled, not drawn :disabled"
+        );
         assert!(cx.debug_bounds("workshop-surface-matrix-cell-0-1").is_some(), "matrix cells draw the shell");
         crate::workshop::surface_page::assert_matrix_controls_apart(cx);
     }

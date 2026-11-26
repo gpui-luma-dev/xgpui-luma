@@ -593,6 +593,28 @@ impl SearchSelectorControl {
         cx.notify();
     }
 
+    /// Replace the trigger's theme (its hover, pressed, focus, disabled, invalid, open and selected looks),
+    /// e.g. to rebind it to a look's `selector.lss`.
+    pub fn set_selector_theme(
+        &mut self,
+        theme: std::sync::Arc<dyn crate::controls::selector::SelectorTheme>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.selector_theme = theme;
+        cx.notify();
+    }
+
+    /// Replace the popup search field's template, e.g. to rebind it to a look's `textfield.lss`.
+    pub fn set_textfield_template(
+        &mut self,
+        template: std::sync::Arc<dyn crate::controls::textfield::TextFieldTemplate>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.textfield_template = template.clone();
+        self.popup_search_textfield.update(cx, |textfield, cx| textfield.set_template(template, cx));
+        cx.notify();
+    }
+
     #[deprecated(note = "Prefer set_panel_template(...) + set_item_template(...)")]
     pub fn set_items_template(
         &mut self,
@@ -759,14 +781,20 @@ impl Render for SearchSelectorControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {} | matches: {} | last: {} | keyboard: {}",
-            selected_label.clone().unwrap_or_else(|| "none".to_string()),
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) = if self.model.debug_status {
+            (
+                SharedString::from(format!("status: {}", self.behavior.state.status.label())),
+                SharedString::from(format!(
+                    "selected: {} | matches: {} | last: {} | keyboard: {}",
+                    selected_label.clone().unwrap_or_else(|| "none".to_string()),
+                    self.behavior.state.filtered.len(),
+                    self.last_event,
+                    self.last_keyboard_event
+                )),
+            )
+        } else {
+            (SharedString::default(), SharedString::default())
+        };
 
         let popup_content = if self.model.enabled && self.presence.should_paint() {
             let list_id = SharedString::from("search-selector-menu");

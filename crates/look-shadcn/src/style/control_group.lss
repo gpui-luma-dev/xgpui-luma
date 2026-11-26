@@ -1,6 +1,7 @@
 // Shadcn control group. Layer: look. A muted frame with the border edge; muted-foreground when disabled.
 
 control_group {
+  disabled_opacity = 0.56
   part root {
     background = css.muted
     border     = css.border

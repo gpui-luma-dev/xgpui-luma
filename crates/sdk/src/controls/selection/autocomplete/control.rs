@@ -354,6 +354,39 @@ impl AutocompleteControl {
         cx.notify();
     }
 
+    /// Replace the hosted text field's template (where the field's hover, focus, invalid and disabled
+    /// looks come from), e.g. to rebind it to a look's `textfield.lss`.
+    pub fn set_textfield_template(
+        &mut self,
+        template: std::sync::Arc<dyn crate::controls::textfield::TextFieldTemplate>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.textfield_template = template.clone();
+        self.textfield.update(cx, |textfield, cx| textfield.set_template(template, cx));
+        cx.notify();
+    }
+
+    /// Replace where the control's look and its popup menu come from, e.g. to rebind them to a look's
+    /// `autocomplete.lss` and `floating_menu.lss`.
+    pub fn set_autocomplete_theme(
+        &mut self,
+        theme: std::sync::Arc<dyn super::theme::AutocompleteTheme>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.autocomplete_theme = theme;
+        cx.notify();
+    }
+
+    /// Replace where the popup's panel look comes from, e.g. to rebind it to a look's `floating_menu.lss`.
+    pub fn set_popup_look_provider(
+        &mut self,
+        provider: super::model::AutocompletePopupLookProvider,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.popup_look_provider = provider;
+        cx.notify();
+    }
+
     pub fn set_items_template(
         &mut self,
         template: std::sync::Arc<dyn AutocompleteItemsTemplate>,
@@ -448,13 +481,19 @@ impl Render for AutocompleteControl {
             })
             .collect::<Vec<_>>();
 
-        let status_label = SharedString::from(format!("status: {}", self.behavior.state.status.label()));
-        let status_detail = SharedString::from(format!(
-            "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
-            self.behavior.state.filtered.len(),
-            self.last_event,
-            self.last_keyboard_event
-        ));
+        let (status_label, status_detail) = if self.model.debug_status {
+            (
+                SharedString::from(format!("status: {}", self.behavior.state.status.label())),
+                SharedString::from(format!(
+                    "selected: {selected_label} | matches: {} | last: {} | keyboard: {}",
+                    self.behavior.state.filtered.len(),
+                    self.last_event,
+                    self.last_keyboard_event
+                )),
+            )
+        } else {
+            (SharedString::default(), SharedString::default())
+        };
 
         let trigger_width = self.trigger_bounds.map(|bounds| bounds.size.width).unwrap_or(px(geometry.trigger_width));
         let popup_width = {

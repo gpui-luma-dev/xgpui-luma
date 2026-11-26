@@ -9,7 +9,7 @@
 
 mod model;
 mod styled;
-pub use styled::{StyledFloatingMenuTheme, styled_floating_menu_look};
+pub use styled::{StyledFloatingMenuTheme, floating_menu_source, styled_floating_menu_look};
 mod template;
 pub(crate) mod theme;
 

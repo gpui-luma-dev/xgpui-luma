@@ -11,6 +11,9 @@ pub struct ScrollbarLook {
     /// Whole-scrollbar opacity when disabled.
     pub disabled_opacity: f32,
     pub track_background: Hsla,
+    /// The track's outline, under the thumb. The SDK draws none (width 0); a look or design can set one.
+    pub track_border: Hsla,
+    pub track_border_width: f32,
     pub thumb_background: Hsla,
     pub length: f32,
     pub thickness: f32,

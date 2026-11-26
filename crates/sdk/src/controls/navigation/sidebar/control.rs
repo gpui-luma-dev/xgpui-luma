@@ -27,6 +27,12 @@ pub enum SidebarEvent {
     /// Fired when item hover state changes (used for collapsed popover tracking).
     HoverChanged { id: Option<SharedString> },
 
+    /// Fired when the primary button goes down (`pressed`) or up on an item.
+    ItemPressedChanged { id: SharedString, pressed: bool },
+
+    /// Fired when keyboard focus enters (`focused`) or leaves the sidebar.
+    FocusChanged { focused: bool },
+
     /// Fired when a sub-menu branch expands or collapses.
     SubMenuToggle { id: SharedString, open: bool },
 
@@ -110,6 +116,17 @@ impl SidebarControl {
             .update(cx, |panel, cx| panel.set_collapsed(presentation == SidebarPresentation::Icons, cx));
         cx.emit(SidebarEvent::PresentationChanged { presentation });
         cx.notify();
+    }
+
+    /// Draw each row in the state `map` gives it, from its id and the state input gives it (`selected` is the current
+    /// page), or as input gives it (`None`). Only the look changes; selection, input and events follow the real state
+    /// (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.panel.update(cx, |panel, cx| panel.set_item_state_override(map, cx));
     }
 
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
@@ -211,7 +228,12 @@ impl SidebarControl {
                     cx.emit(SidebarEvent::EnabledChanged { enabled: *enabled });
                 }
             }
-            SidebarPanelEngineEvent::FocusChanged { .. } => {}
+            SidebarPanelEngineEvent::FocusChanged { focused } => {
+                cx.emit(SidebarEvent::FocusChanged { focused: *focused });
+            }
+            SidebarPanelEngineEvent::ItemPressedChanged { node_id, pressed } => {
+                cx.emit(SidebarEvent::ItemPressedChanged { id: node_id.clone(), pressed: *pressed });
+            }
         }
     }
 }

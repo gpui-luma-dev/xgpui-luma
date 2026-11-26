@@ -228,6 +228,10 @@ fn retained_view_focus_and_body_motion_survive_native_move_and_stale_commit_fail
 }
 
 #[test]
+#[cfg_attr(
+    any(target_os = "windows", target_os = "linux"),
+    ignore = "xgpui test windows never report hover on Windows/Linux, and edge auto-scroll stops unless Window::is_window_hovered(); passes on macOS"
+)]
 fn overflowing_strip_scrolls_during_admitted_drag_and_stops_after_escape() {
     let mut app = TestAppContext::single();
     let (page, cx) = setup(&mut app, 0);

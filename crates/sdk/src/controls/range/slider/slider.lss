@@ -8,7 +8,7 @@ slider {
   /// The radial (dial and ring) templates' size and track radius, and disabled opacity.
   dial_size: length = exact(200)
   dial_track_radius: length = exact(72)
-  disabled_opacity: number = 0.56
+  disabled_opacity: number = 1
 
   /// The whole control.
   part root {
@@ -20,6 +20,8 @@ slider {
   /// The unfilled track.
   part track {
     background = palette.surface.subtle.background
+    border       = palette.border.default
+    border_width = exact(metrics.border_width)
     :disabled { background = palette.state.disabled.background }
   }
 

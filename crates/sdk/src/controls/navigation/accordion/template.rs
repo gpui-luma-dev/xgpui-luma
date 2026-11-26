@@ -230,7 +230,9 @@ impl AccordionTemplate for ThemedAccordionTemplate {
                     .on_mouse_down(gpui::MouseButton::Left, down_handler)
                     .on_mouse_up(gpui::MouseButton::Left, up_handler)
                     .on_click(click_handler);
-            } else {
+            }
+            // The fade follows the drawn state, which a state override can change; input follows `enabled`.
+            if item.state.disabled {
                 trigger = trigger.opacity(scale.disabled_opacity);
             }
 

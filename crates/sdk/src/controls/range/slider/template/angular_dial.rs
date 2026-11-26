@@ -4,7 +4,7 @@ use gpui::{App, Div, Stateful, Window, canvas, div, px, prelude::*};
 
 use super::{
     SliderTemplate, SliderTemplateHandlers, attach_radial_interaction, effective_thumb_radius, paint_radial_annulus,
-    paint_radial_fill_track, render_slider_thumb_at, track_bounds_canvas,
+    paint_radial_fill_track, paint_radial_track_outline, render_slider_thumb_at, track_bounds_canvas,
 };
 use crate::controls::slider::{SliderTheme, default_slider_theme};
 
@@ -60,6 +60,7 @@ impl SliderTemplate for ThemedAngularDialTemplate {
         let presentation = model.presentation;
         let track_background = look.track_background;
         let fill_background = look.fill_background;
+        let (track_border, track_border_width) = (look.track_border, look.track_border_width);
         let thumb_radius = effective_thumb_radius(model, &look, window.rem_size());
 
         let (track_bounds, interaction) = handlers.into();
@@ -71,28 +72,41 @@ impl SliderTemplate for ThemedAngularDialTemplate {
             .child(
                 canvas(
                     move |_, _, _| (),
-                    move |bounds, _, window, _| match presentation {
-                        TrackPresentation::Fill => paint_radial_fill_track(
+                    move |bounds, _, window, _| {
+                        // The outline first; the track and fill are drawn inside it.
+                        let arc_thickness = paint_radial_track_outline(
                             bounds,
                             track_radius,
                             min_angle,
                             max_angle,
-                            display_percentage,
-                            track_background,
-                            fill_background,
+                            track_border,
+                            track_border_width,
                             arc_thickness,
                             window,
-                        ),
-                        TrackPresentation::Domain => {
-                            paint_radial_annulus(
+                        );
+                        match presentation {
+                            TrackPresentation::Fill => paint_radial_fill_track(
                                 bounds,
                                 track_radius,
                                 min_angle,
                                 max_angle,
+                                display_percentage,
                                 track_background,
+                                fill_background,
                                 arc_thickness,
                                 window,
-                            );
+                            ),
+                            TrackPresentation::Domain => {
+                                paint_radial_annulus(
+                                    bounds,
+                                    track_radius,
+                                    min_angle,
+                                    max_angle,
+                                    track_background,
+                                    arc_thickness,
+                                    window,
+                                );
+                            }
                         }
                     },
                 )

@@ -34,6 +34,7 @@ mod color_multi_mixer;
 mod color_exposition_common;
 mod event_stream;
 mod sample_layout;
+mod stage_rulers;
 mod sdk_sample;
 mod event_log_view;
 mod lss_inspector;
@@ -144,10 +145,10 @@ fn surface_control(id: &str) -> Option<(&'static str, surface_control::MakeSurfa
         "slide-panel" => Some(("slide_panel", slide_panel_surface::SlidePanelSurface::make)),
         "popup-selector" => Some(("selector", selection_surface::SelectorSurface::make)),
         "split-button" => Some(("popup_menu", selection_surface::SplitButtonSurface::make)),
-        "selection-panel" => Some(("selection_panel", selection_surface::UnthemedSurface::make_selection_panel)),
-        "autocomplete-textfield" => Some(("autocomplete", selection_surface::UnthemedSurface::make_autocomplete)),
-        "combobox" => Some(("combobox", selection_surface::UnthemedSurface::make_combobox)),
-        "search-selector" => Some(("search_selector", selection_surface::UnthemedSurface::make_search_selector)),
+        "selection-panel" => Some(("selection_panel", selection_surface::SelectionPanelSurface::make)),
+        "autocomplete-textfield" => Some(("autocomplete", selection_surface::AutocompleteSurface::make)),
+        "combobox" => Some(("combobox", selection_surface::ComboBoxSurface::make)),
+        "search-selector" => Some(("search_selector", selection_surface::SearchSelectorSurface::make)),
         "context-menu" => Some(("context_menu", menu_surface::ContextMenuSurface::make)),
         "floating-menu" => Some(("floating_menu", menu_surface::FloatingMenuSurface::make)),
         "popup-menu" => Some(("popup_menu", menu_surface::PopupMenuSurface::make)),

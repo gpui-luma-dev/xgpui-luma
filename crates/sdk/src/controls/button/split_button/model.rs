@@ -184,6 +184,10 @@ impl SplitButtonBuilder {
     pub fn enabled(self, enabled: bool) -> Self {
         self.map_popup(|popup| popup.enabled(enabled))
     }
+    /// Draw both faces as `:invalid`.
+    pub fn invalid(self, invalid: bool) -> Self {
+        self.map_popup(|popup| popup.invalid(invalid))
+    }
     pub fn tab_stop(self, tab_stop: bool) -> Self {
         self.map_popup(|popup| popup.tab_stop(tab_stop))
     }

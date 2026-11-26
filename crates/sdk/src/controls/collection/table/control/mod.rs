@@ -89,6 +89,8 @@ where
     wheel_gesture_active: bool,
     /// When fill-height + paged, row height stretched so `page_size` rows fill the viewport.
     fill_row_height: Option<f32>,
+    /// Maps each row's drawn state by row index (`set_item_state_override`).
+    item_state_override: Option<crate::infra::state::ItemStateOverride<usize>>,
     row_key: Option<keys::RowKeyFn<T>>,
     row_keys: Vec<SharedString>,
     selection_anchor: Option<usize>,
@@ -183,6 +185,7 @@ where
             emitted_focused: false,
             wheel_gesture_active: false,
             fill_row_height: None,
+            item_state_override: None,
             row_key: None,
             row_keys: Vec::new(),
             selection_anchor: None,
@@ -428,6 +431,17 @@ where
             self.snap_scroll_position();
         }
         self.emit_scroll_changed_if_needed(cx);
+        cx.notify();
+    }
+
+    /// Draw each row in the state `map` gives it, from its row index and the state input gives it, or as input gives
+    /// it (`None`). Only the look changes; selection, input and events follow the real state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<usize>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
         cx.notify();
     }
 

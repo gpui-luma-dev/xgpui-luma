@@ -43,6 +43,8 @@ pub struct PopoverPanelModel {
     pub(crate) window_margin: Pixels,
     pub(crate) focus_on_open: bool,
     pub(crate) initial_content_size: Option<Size<Pixels>>,
+    /// The panel drawn around the content (`popover.lss`'s `panel` part).
+    pub(crate) look: super::PopoverPanelLook,
 }
 
 pub struct PopoverPanelRenderModel<'a> {
@@ -88,6 +90,7 @@ impl PopoverPanelBuilder {
                 window_margin: gpui::px(geometry.window_margin),
                 focus_on_open: true,
                 initial_content_size: None,
+                look: super::PopoverPanelLook::sdk(),
             },
         }
     }
@@ -149,6 +152,12 @@ impl PopoverPanelBuilder {
 
     pub fn initial_content_size(mut self, size: Size<Pixels>) -> Self {
         self.model.initial_content_size = Some(size);
+        self
+    }
+
+    /// The panel drawn around the content; the SDK's (off) by default.
+    pub fn look(mut self, look: super::PopoverPanelLook) -> Self {
+        self.model.look = look;
         self
     }
 

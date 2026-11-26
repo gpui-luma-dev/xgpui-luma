@@ -18,11 +18,34 @@ use self::selection::{enabled_item_index_by_id, normalize_active_id, normalize_m
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum ControlGroupEvent {
-    Activate { activated_id: SharedString },
-    Change { changed_id: SharedString, selected: bool, selected_ids: Vec<SharedString> },
-    ItemBoundsChanged { item_id: SharedString, bounds: Bounds<Pixels> },
-    FocusChanged { focused: bool },
-    ItemFocused { item_id: SharedString },
+    Activate {
+        activated_id: SharedString,
+    },
+    Change {
+        changed_id: SharedString,
+        selected: bool,
+        selected_ids: Vec<SharedString>,
+    },
+    ItemBoundsChanged {
+        item_id: SharedString,
+        bounds: Bounds<Pixels>,
+    },
+    FocusChanged {
+        focused: bool,
+    },
+    ItemFocused {
+        item_id: SharedString,
+    },
+    /// The pointer moved onto (`hovered`) or off an item.
+    ItemHoverChanged {
+        item_id: SharedString,
+        hovered: bool,
+    },
+    /// The primary button went down (`pressed`) or up on an item.
+    ItemPressedChanged {
+        item_id: SharedString,
+        pressed: bool,
+    },
 }
 
 pub struct ControlGroupControl<T>
@@ -38,9 +61,14 @@ where
     emitted_focused: bool,
     hovered_item: Option<usize>,
     pressed_item: Option<usize>,
+    /// The items last reported hovered and pressed (see `sync_item_visual_events`).
+    emitted_hovered: Option<SharedString>,
+    emitted_pressed: Option<SharedString>,
     item_bounds: Vec<Option<Bounds<Pixels>>>,
     selection_transitions: HashMap<SharedString, VisualTransition>,
     scroll_handle: Option<ScrollHandle>,
+    /// Maps each item's drawn state (`set_item_state_override`).
+    item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
 
 impl<T> EventEmitter<ControlGroupEvent> for ControlGroupControl<T> where T: ControlGroupItemLike + 'static {}
@@ -87,9 +115,12 @@ where
             emitted_focused: false,
             hovered_item: None,
             pressed_item: None,
+            emitted_hovered: None,
+            emitted_pressed: None,
             item_bounds: Vec::new(),
             selection_transitions,
             scroll_handle: scrollable.then(ScrollHandle::new),
+            item_state_override: None,
         }
     }
     pub fn selected_ids(&self) -> &[SharedString] {
@@ -198,6 +229,18 @@ where
         self.clear_item_focus_subscriptions();
         normalize_model(&mut self.model);
         self.sync_selection_transitions();
+        self.sync_item_visual_events(cx);
+        cx.notify();
+    }
+
+    /// Draw each item in the state `map` gives it, from its id and the state input gives it, or as input gives it
+    /// (`None`). Only the look changes; selection, input and events follow the real state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
         cx.notify();
     }
 
@@ -212,6 +255,7 @@ where
             self.pressed_item = None;
             self.emit_focus_changed(false, cx);
         }
+        self.sync_item_visual_events(cx);
 
         cx.notify();
     }

@@ -96,3 +96,35 @@ fn disabled_rows_preserve_click_targets_after_filtering() {
         }
     }
 }
+
+/// A text-field template that counts the frames it draws, around the SDK's.
+struct RecordingTextField(std::sync::Arc<std::sync::atomic::AtomicUsize>);
+
+impl crate::controls::textfield::TextFieldTemplate for RecordingTextField {
+    fn render(
+        &self,
+        model: &crate::controls::textfield::TextFieldRenderModel<'_>,
+        handlers: crate::controls::textfield::TextFieldTemplateHandlers,
+        window: &mut gpui::Window,
+        cx: &mut gpui::App,
+    ) -> gpui::Stateful<gpui::Div> {
+        self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        crate::controls::textfield::default_textfield_template().render(model, handlers, window, cx)
+    }
+}
+
+/// `set_textfield_template` reaches the field the live combobox draws, not only its model (#397).
+#[test]
+fn set_textfield_template_draws_the_hosted_field_with_it() {
+    let mut app = TestAppContext::single();
+    let (combobox, cx) = app.add_window_view(|_, cx| {
+        let builder = ComboBoxBuilder::new("themed", [SelectionItem::new("a", "A")]).motion_enabled(false);
+        ComboBoxControl::from_builder(builder, cx)
+    });
+    cx.run_until_parked();
+    let drawn = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let template = std::sync::Arc::new(RecordingTextField(drawn.clone()));
+    combobox.update(cx, |combobox, cx| combobox.set_textfield_template(template, cx));
+    cx.run_until_parked();
+    assert!(drawn.load(std::sync::atomic::Ordering::SeqCst) > 0, "the field is drawn with the new template");
+}

@@ -27,6 +27,7 @@ pub enum SidebarPanelEngineEvent {
     FocusChanged { focused: bool },
     ItemFocused { node_id: SharedString, label: SharedString },
     ItemHoverChanged { node_id: SharedString, hovered: bool },
+    ItemPressedChanged { node_id: SharedString, pressed: bool },
     RailSubmenuOpenChanged { node_id: Option<SharedString> },
     EnabledChanged { enabled: bool },
 }
@@ -58,6 +59,8 @@ pub struct SidebarPanelEngine {
     _subscriptions: Vec<Subscription>,
     branch_transitions: HashMap<SharedString, VisualTransition>,
     branch_heights_px: HashMap<SharedString, f32>,
+    /// Maps each row's drawn state (`set_item_state_override`).
+    pub(super) item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
 
 impl EventEmitter<SidebarPanelEngineEvent> for SidebarPanelEngine {}
@@ -165,6 +168,7 @@ impl SidebarPanelEngine {
             _subscriptions: subscriptions,
             branch_transitions: HashMap::new(),
             branch_heights_px: HashMap::new(),
+            item_state_override: None,
         };
         engine.rebuild_tooltips(cx);
         engine.sync_branch_state();
@@ -285,6 +289,18 @@ impl SidebarPanelEngine {
         self.model.collapsed
     }
 
+    /// Draw each row in the state `map` gives it, from its id and the state input gives it (`selected` is the current
+    /// page), or as input gives it (`None`). Only the look changes; selection, input and events follow the real state
+    /// (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
+        cx.notify();
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;
@@ -295,7 +311,7 @@ impl SidebarPanelEngine {
         self.focus_subscription_keys.clear();
         if !enabled {
             self.clear_hovered_node(cx);
-            self.pressed_node = None;
+            self.set_pressed_node(None, cx);
             self.close_rail_submenu(cx);
             self.emit_focus_changed(false, cx);
         }
@@ -307,7 +323,7 @@ impl SidebarPanelEngine {
         if self.model.collapsed != collapsed {
             self.model.collapsed = collapsed;
             self.clear_hovered_node(cx);
-            self.pressed_node = None;
+            self.set_pressed_node(None, cx);
             self.close_rail_submenu(cx);
             cx.emit(SidebarPanelEngineEvent::CollapsedChanged { collapsed });
             cx.notify();
