@@ -7593,9 +7593,9 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xgpui"
-version = "5.0.0"
+version = "5.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd063ebbf8066e2e7c83df131d6ebe51f95c3d1bfc26d95e3fab34872cee0bc9"
+checksum = "c66d79bf8b9cee45c988e954118aa13eec05580d914790585439563b7b634b06"
 dependencies = [
  "accesskit",
  "anyhow",
@@ -7728,9 +7728,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-curve"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b26d3da44d7bee7576102ac984bac568a815fc764126157f3ec40612b92a35"
+checksum = "f7e35353f42605bef37e6f69d5196525836e09af216a8e998b1c77eb12e987b7"
 dependencies = [
  "kurbo",
  "xgpui",
@@ -7987,9 +7987,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macos"
-version = "6.0.0"
+version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bf229819d9f302d0082dbe38a14c12c24e0c68928cdf16d5c0b725574e2e355"
+checksum = "1fce008b65989e2315d6a9a474e99c8848b24642a45a0240fbbe4e76bedc5eca"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -8028,9 +8028,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-macros"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89dd26466fd588f29c7a93f363222f6183827843b7cfcee9d71e01076b47515e"
+checksum = "3334c60d2ff7b1e1b1d037f36ad9a80ee5b4e1a77aefa676f7e66249ddfb630e"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -8112,9 +8112,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-shell"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80e7539b4935d1aff7c4894914946ce168c31c4b35891fdbf7e1698425fa5488"
+checksum = "dc8c3e5324e41f6255a21e903489e087bac81fb725294722283fcb6bbcfbe0b8"
 dependencies = [
  "anyhow",
  "xgpui",
@@ -8122,9 +8122,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-svg"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc3a9944397ccb9608fca15f5528841405e6e5f33dab8f562a8ee1d5a9722162"
+checksum = "5798d23bd5b3d0b3d0ed7db608161e51ef4587453e42d5cd76d482cbfc037fce"
 dependencies = [
  "anyhow",
  "web-time",
@@ -8194,9 +8194,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-windows"
-version = "4.0.0"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6e3154c2b55c147e6c72c0b2da60064083feb86cbfcef59db0401ec1e1a09a0"
+checksum = "67158b6e4fd48d8bf404383c8699fbffce77752dbd8572fb6618e2c559f5556f"
 dependencies = [
  "accesskit",
  "accesskit_windows",

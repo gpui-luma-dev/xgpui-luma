@@ -54,9 +54,9 @@ pub(super) fn panel(
     let error = built.as_ref().err().map(ToString::to_string);
     let built = built.ok().flatten();
     div()
-        .flex_1()
-        .min_w_0()
+        .w_full()
         .h(px(height))
+        .debug_selector(|| "svg-path-panel".into())
         .rounded_lg()
         .bg(look.chrome().panel_background)
         .overflow_hidden()
