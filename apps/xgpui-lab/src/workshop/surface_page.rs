@@ -1576,6 +1576,12 @@ impl ControlSide {
         self.stage_text.map(|t| (t.strong, t.muted))
     }
 
+    /// The bound theme, for tests.
+    #[cfg(all(test, feature = "test-support"))]
+    pub(super) fn bound_theme(&self) -> Theme {
+        self.theme.clone()
+    }
+
     /// The bound mode and stage background, for tests.
     #[cfg(all(test, feature = "test-support"))]
     pub(super) fn mode_and_stage(&self) -> (String, Option<Hsla>) {

@@ -54,6 +54,13 @@ pub fn styled_selector_items_panel_look(
     SelectorItemsPanelLook::from_menu(crate::controls::floating_menu::styled_floating_menu_look(binding), metrics)
 }
 
+/// The panel a selector opens, read from `source`'s `floating_menu.lss` each time it is drawn, with the SDK's
+/// metrics (#397): the menu hook for selectors, so they open the host's menu, not the SDK's.
+pub fn selector_items_panel_source(source: crate::style::ThemeSource) -> crate::controls::selector::ItemsPanelSource {
+    let binding = crate::style::StyleBinding::new("floating_menu", source);
+    Arc::new(move || styled_selector_items_panel_look(&binding, &crate::theme::MetricTokens::default()))
+}
+
 impl SelectorItemsPanelLook {
     /// Share menu chrome, metric border width and the SDK's popover panel placement (`popover.lss`).
     pub fn from_menu(

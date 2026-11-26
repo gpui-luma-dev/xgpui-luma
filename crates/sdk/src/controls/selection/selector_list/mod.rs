@@ -13,7 +13,7 @@ pub use items_template::{
     SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers, SelectorItemsTemplateModifier,
     SelectorPanelClickHandler, SelectorPanelHoverHandler, SelectorPanelMouseDownHandler,
     SelectorPanelScrollWheelHandler, default_selector_items_panel_look, default_selector_items_template,
-    styled_selector_items_panel_look,
+    selector_items_panel_source, styled_selector_items_panel_look,
 };
 pub use model::{SelectorItem, SelectorItemLike, SelectorPath, normalize_selector_items};
 pub(crate) use items_template::items_template_with_modifier;
