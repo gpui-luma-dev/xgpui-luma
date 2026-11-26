@@ -1,7 +1,7 @@
 //! The SDK listbox on the design surface page (issue #393). The SDK owns the listbox's state, input and
-//! scrolling, but has no default template: looks supply the surface and row chrome (`ListBoxTemplate`). The
-//! page supplies a plain one drawn from the SDK's own `StyledListBox` (`listbox.lss`), as the looks do. Design
-//! mode pins the picked states on the surface and the first row; each State matrix cell draws a short list.
+//! scrolling, and draws its surface and rows from `listbox.lss` (`ThemedListBoxTemplate`, #397); looks can supply
+//! their own `ListBoxTemplate`. The page draws the SDK's, in the theme it binds. Design mode pins the picked
+//! states on the surface and the first row; each State matrix cell draws a short list.
 
 use std::sync::Arc;
 
@@ -12,9 +12,8 @@ use gpui::{
 use xgpui_luma::controls::listbox::{
     ListBoxBuilder, ListBoxControl, ListBoxDragLook, ListBoxFlow, ListBoxInput, ListBoxItemState, ListBoxMotion,
     ListBoxRenderModel, ListBoxRowLook, ListBoxRowRenderModel, ListBoxSnapshot, ListBoxState, ListBoxTemplate,
-    SelectionMode, StyledListBox,
+    SelectionMode, StyledListBox, ThemedListBoxTemplate,
 };
-use xgpui_luma::controls::tooltip::styled_tooltip_look;
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
@@ -65,53 +64,40 @@ fn picked_row(styled: &StyledListBox, states: &StateSet) -> ListBoxRowLook {
     styled.row(state, states.has("focused"), states.has("hover"), states.has("pressed"))
 }
 
-/// The page's surface and row chrome from `listbox.lss`; `pinned` draws on the surface and the first row.
+/// The SDK's listbox chrome (`ThemedListBoxTemplate`, from `listbox.lss`); in Design mode the picked states draw on
+/// the surface and the first row.
 struct PageTemplate {
-    styled: StyledListBox,
+    themed: ThemedListBoxTemplate,
     pinned: Option<StateSet>,
-    enabled: bool,
 }
 
 impl ListBoxTemplate for PageTemplate {
-    fn render(&self, model: &ListBoxRenderModel, _: &mut App) -> Stateful<Div> {
-        let (enabled, focused) = match &self.pinned {
-            Some(states) => (!states.has("disabled"), states.has("focused")),
-            None => (self.enabled, model.focused),
+    fn render(&self, model: &ListBoxRenderModel, cx: &mut App) -> Stateful<Div> {
+        let surface = self.themed.render(model, cx);
+        let Some(states) = &self.pinned else {
+            return surface;
         };
-        let surface = self.styled.surface(enabled, focused);
-        div()
-            .bg(surface.background)
-            .border(px(surface.border_width))
-            .border_color(surface.border)
-            .rounded(px(surface.radius))
-            .overflow_hidden()
-            .p_1()
-            .id(model.id)
-            .w_full()
-            .min_w_0()
+        let picked = self.themed.styled().surface(!states.has("disabled"), states.has("focused"));
+        surface.bg(picked.background).border_color(picked.border)
     }
 
-    fn render_row(&self, model: &ListBoxRowRenderModel, _: &mut App) -> Stateful<Div> {
-        let row = match &self.pinned {
+    fn render_row(&self, model: &ListBoxRowRenderModel, cx: &mut App) -> Stateful<Div> {
+        match &self.pinned {
             Some(states) if model.id == item_id(&ITEMS[0].0) => {
-                fixed_row(picked_row(&self.styled, states), model.id.clone())
+                fixed_row(picked_row(self.themed.styled(), states), model.id.clone())
+                    .w_full()
+                    .when(!model.content_sized, |row| row.h_full())
             }
-            _ => self.styled.paint_row(model.id.clone(), model.state, model.focus_visible),
-        };
-        row.flex().items_center().w_full().when(!model.content_sized, |row| row.h_full())
-    }
-
-    fn drag_look(&self) -> ListBoxDragLook {
-        ListBoxDragLook {
-            marker_color: self.styled.surface(true, true).border,
-            marker_width: 2.,
-            surface_color: None,
-            preview: styled_tooltip_look(&StyleBinding::sdk("tooltip")),
+            _ => self.themed.render_row(model, cx),
         }
     }
 
+    fn drag_look(&self) -> ListBoxDragLook {
+        self.themed.drag_look()
+    }
+
     fn motion_defaults(&self) -> ListBoxMotion {
-        ListBoxMotion::default()
+        self.themed.motion_defaults()
     }
 }
 
@@ -154,11 +140,12 @@ impl Render for ListBoxHost {
         let Some(theme) = self.theme.clone() else {
             return div().into_any_element();
         };
-        let template = PageTemplate { styled: styled(&theme), pinned: self.pinned.clone(), enabled: self.enabled };
+        let template = PageTemplate { themed: ThemedListBoxTemplate::new(styled(&theme)), pinned: self.pinned.clone() };
         let layout = ListBoxFlow::Vertical { visible_items: ITEMS.len(), item_height: ROW_HEIGHT, gap: ROW_GAP }
             .layout((0., 0.));
         let list = ListBoxBuilder::from_control("workshop-sdk-listbox", &mut self.list, layout, |surface, item, _| {
-            surface.child(item.item.1)
+            // The SDK row draws state chrome only; this page's content is a label, centered in the row.
+            surface.flex().items_center().child(item.item.1)
         })
         .build(&template, window, cx);
         div().debug_selector(|| "workshop-sdk-listbox".into()).w_full().child(list).into_any_element()

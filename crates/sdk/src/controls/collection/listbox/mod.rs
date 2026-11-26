@@ -11,6 +11,8 @@ pub use builder::ListBoxBuilder;
 mod template;
 mod styled;
 pub use styled::{ListBoxRowLook, ListBoxSurfaceLook, StyledListBox};
+mod themed;
+pub use themed::ThemedListBoxTemplate;
 pub use template::{ListBoxTemplate, ListBoxRenderModel, ListBoxRowRenderModel, ListBoxDragLook};
 mod binding;
 mod callback;
