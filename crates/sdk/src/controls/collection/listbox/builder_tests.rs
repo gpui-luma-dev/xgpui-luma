@@ -27,6 +27,8 @@ impl ListBoxTemplate for Template {
 struct Harness {
     list: ListBoxControl<Self, u32, u32>,
     rendered: Rc<RefCell<Vec<(u32, ListBoxItemState)>>>,
+    /// Build with the SDK's own chrome (`build_default`) instead of [`Template`].
+    sdk_chrome: bool,
 }
 impl Harness {
     fn new(cx: &mut Context<Self>) -> Self {
@@ -43,6 +45,7 @@ impl Harness {
             )
             .virtualization(ListBoxVirtualization::Uniform { overscan: 1 }),
             rendered: Rc::default(),
+            sdk_chrome: false,
         }
     }
     fn input(&mut self, input: ListBoxInput<u32>, _: &mut Window, cx: &mut Context<Self>) {
@@ -54,13 +57,17 @@ impl Render for Harness {
         self.rendered.borrow_mut().clear();
         let rendered = self.rendered.clone();
         let layout = ListBoxFlow::Vertical { visible_items: 3, item_height: 36.0, gap: 4.0 }.layout((0.0, 0.0));
-        ListBoxBuilder::from_control("custom-list", &mut self.list, layout, move |surface, item, _| {
+        let builder = ListBoxBuilder::from_control("custom-list", &mut self.list, layout, move |surface, item, _| {
             rendered.borrow_mut().push((item.key, item.state));
             surface.child(div().debug_selector(|| format!("custom-content-{}", item.key)).size(px(10.0)))
         })
-        .empty(div().debug_selector(|| "custom-empty".into()).size(px(20.0)))
-        .build(&Template, window, cx)
-        .w(px(200.0))
+        .empty(div().debug_selector(|| "custom-empty".into()).size(px(20.0)));
+        let surface = if self.sdk_chrome {
+            builder.build_default(window, cx)
+        } else {
+            builder.build(&Template, window, cx)
+        };
+        surface.w(px(200.0))
     }
 }
 fn settle(cx: &mut VisualTestContext) {
@@ -100,4 +107,20 @@ fn shared_builder_preserves_custom_surface_row_content_and_empty_hooks() {
         assert!(view.read(app).rendered.borrow().is_empty());
         assert_eq!(view.read(app).list.state.snapshot().items().len(), 100);
     });
+}
+
+/// Without a look, `build_default` draws the SDK's `listbox.lss`: its surface, and a selected row's fill (#397).
+#[test]
+fn build_default_draws_the_sdk_listbox_lss() {
+    let mut app = TestAppContext::single();
+    let (view, cx) = app.add_window_view(|_, cx| Harness { sdk_chrome: true, ..Harness::new(cx) });
+    cx.update(|_, app| view.update(app, |host, cx| host.list.apply(ListBoxInput::Select(1), cx)));
+    settle(cx);
+    let styled = crate::controls::listbox::StyledListBox::sdk();
+    let surface = styled.surface(true, false).background;
+    let selected = styled.row(ListBoxItemState { selected: true, active: true, enabled: true }, false, false, false);
+    let fills: Vec<gpui::Hsla> =
+        cx.update(|window, _| window.painted_quads().iter().filter_map(|quad| quad.background.as_solid()).collect());
+    assert!(fills.contains(&surface), "the surface: {fills:?}");
+    assert!(fills.contains(&selected.background), "the selected row: {fills:?}");
 }

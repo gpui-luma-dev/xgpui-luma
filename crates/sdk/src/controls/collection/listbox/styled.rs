@@ -55,6 +55,11 @@ impl StyledListBox {
         Self { binding: StyleBinding::sdk("listbox") }
     }
 
+    /// The theme this reads.
+    pub(crate) fn theme(&self) -> crate::style::lss::Theme {
+        self.binding.theme()
+    }
+
     /// The surface, enabled or not, with or without focus.
     pub fn surface(&self, enabled: bool, focused: bool) -> ListBoxSurfaceLook {
         let resolved = self.binding.resolve(&[("focused", focused), ("disabled", !enabled)], 1.0);
