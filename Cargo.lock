@@ -7728,21 +7728,12 @@ dependencies = [
 
 [[package]]
 name = "xgpui-curve"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b26d3da44d7bee7576102ac984bac568a815fc764126157f3ec40612b92a35"
-dependencies = [
- "kurbo",
- "xgpui",
-]
-
-[[package]]
-name = "xgpui-curve"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7e35353f42605bef37e6f69d5196525836e09af216a8e998b1c77eb12e987b7"
 dependencies = [
  "kurbo",
+ "xgpui",
 ]
 
 [[package]]
@@ -7840,7 +7831,7 @@ dependencies = [
  "xgpui-apple",
  "xgpui-canvas",
  "xgpui-color",
- "xgpui-curve 0.2.0",
+ "xgpui-curve",
  "xgpui-gamut",
  "xgpui-gpu-interop",
  "xgpui-luma",
@@ -8138,7 +8129,7 @@ dependencies = [
  "anyhow",
  "web-time",
  "xgpui",
- "xgpui-curve 0.3.0",
+ "xgpui-curve",
 ]
 
 [[package]]
