@@ -7707,9 +7707,9 @@ dependencies = [
 
 [[package]]
 name = "xgpui-canvas"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ab3f2264a4ea5eb1d972099a052bfc14c7adbd569f45b39c67b4bae3e96b191"
+checksum = "fea73bc923e09881fb1cb1a46d8f6bb40924b4342cd93cbb96feb403aee128cf"
 dependencies = [
  "anyhow",
  "bytemuck",
