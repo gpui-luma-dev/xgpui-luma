@@ -310,7 +310,7 @@ mod tests {
             assert!(sample.read(cx).color_valid);
             assert_eq!(format_rgb_triplet(sample.read(cx).color_override.unwrap()), "255, 0, 0");
         });
-        cx.simulate_keystrokes("cmd-a");
+        cx.simulate_keystrokes("secondary-a");
         cx.simulate_input("彩色");
         cx.run_until_parked();
         cx.update(|_, cx| {
