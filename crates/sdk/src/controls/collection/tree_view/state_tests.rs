@@ -269,3 +269,38 @@ fn only_existing_branches_can_have_expansion_state() {
         assert_eq!(tree.expand_transitions.len(), 1);
     });
 }
+
+/// A state override draws the mapped row in its mapped state and leaves the real state alone (#397).
+#[test]
+fn a_state_override_draws_one_row_hovered_without_changing_state() {
+    let mut app = TestAppContext::single();
+    let (tree, cx) = setup(&mut app, TreeViewSelectionMode::Single);
+    let hover = crate::controls::tree_view::StyledTreeView::sdk()
+        .row(crate::theme::InteractionState { hovered: true, ..Default::default() }, false)
+        .background
+        .expect("the SDK paints a hovered row");
+    let hovered_rows = |cx: &mut VisualTestContext| {
+        cx.run_until_parked();
+        cx.update(|window, _| {
+            window
+                .painted_quads()
+                .iter()
+                .filter(|quad| quad.background == gpui::Background::from(hover))
+                .count()
+        })
+    };
+    let before = hovered_rows(cx);
+    tree.update(cx, |tree, cx| {
+        tree.set_item_state_override(
+            Some(std::sync::Arc::new(|id: &SharedString, state: CompositeItemState| CompositeItemState {
+                hovered: state.hovered || id.as_ref() == "x",
+                ..state
+            })),
+            cx,
+        );
+    });
+    assert_eq!(hovered_rows(cx), before + 1, "only the mapped row draws hovered");
+    cx.update(|_, app| assert!(tree.read(app).selected_ids().is_empty(), "state is untouched"));
+    tree.update(cx, |tree, cx| tree.set_item_state_override(None, cx));
+    assert_eq!(hovered_rows(cx), before, "cleared");
+}

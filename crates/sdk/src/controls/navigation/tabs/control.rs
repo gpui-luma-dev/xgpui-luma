@@ -441,6 +441,18 @@ impl Tabs {
         self.refresh_group_template(cx);
     }
 
+    /// Draw each tab in the state `map` gives it, from its id and the state input gives it (`selected` is the active
+    /// tab), or as input gives it (`None`). Only the look changes; the active tab, input and events follow the real
+    /// state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.group.update(cx, |group, cx| group.set_item_state_override(map, cx));
+        cx.notify();
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.enabled = enabled;
         if !enabled {

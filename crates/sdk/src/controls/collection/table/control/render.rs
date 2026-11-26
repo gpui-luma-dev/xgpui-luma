@@ -88,13 +88,19 @@ where
         let hovered = enabled && self.hovered_index == Some(index);
         let pressed = enabled && self.pressed_index == Some(index);
         let keyboard_active = active && focus.focused;
-        let interaction = InteractionState {
+        let state = crate::infra::state::CompositeItemState {
             hovered,
             pressed,
-            focused: keyboard_active,
             disabled: !enabled && !keyboard_active,
-            invalid: false,
+            selected,
+            active: keyboard_active,
+            focus_visible: keyboard_active && focus.focus_visible,
         };
+        // A state override changes only the look: the drawn hover, press, selection, focus and disabled.
+        let state = self.item_state_override.as_ref().map_or(state, |map| map(&index, state));
+        let (hovered, pressed, selected) = (state.hovered, state.pressed, state.selected);
+        let interaction =
+            InteractionState { hovered, pressed, focused: state.active, disabled: state.disabled, invalid: false };
         let scale_factor = window.scale_factor();
         let scale = ListRowScale::compute(&self.model.theme.metrics(), scale_factor);
         let mut look = self.model.theme.resolve_row_look(selected, interaction, &scale);

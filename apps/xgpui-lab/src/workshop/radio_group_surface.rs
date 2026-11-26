@@ -17,7 +17,6 @@ use xgpui_luma::controls::radio_group::{
 use xgpui_luma::style::lss::Theme;
 use xgpui_luma::style::{StyleBinding, ThemeSource};
 
-use super::pinned_template::{Pin, PinnedTemplate};
 use super::surface_control::{OnSurfaceEvent, StateSet, SurfaceControl, SurfaceEvent};
 use super::surface_page::ControlSide;
 use crate::theme::Look;
@@ -70,19 +69,13 @@ impl SurfaceControl for RadioGroupSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        // Rows draw their dots settled (no fill animation in flight).
-        let pin = pinned.map(|states| {
-            let keep = states.has("selected");
-            Pin::<RadioButtonData> {
-                state: states.interaction(),
-                data: Arc::new(move |live: &RadioButtonData| RadioButtonData::new(keep && live.selected)),
-            }
-        });
-        let rows = PinnedTemplate::new(Arc::new(StyledRadioButtonTemplate::new(theme.clone())), pin);
-        let template =
-            radio_group_buttons_template_with(group_binding(&theme), Arc::new(rows), RadioGroupLayout::Vertical);
+        let rows = Arc::new(StyledRadioButtonTemplate::new(theme.clone()));
+        let template = radio_group_buttons_template_with(group_binding(&theme), rows, RadioGroupLayout::Vertical);
         let inner = self.group.read(cx).inner_group();
         inner.update(cx, |group, cx| group.set_template(template, cx));
+        // Design mode pins the picked states on the first row only; the others draw at rest (#397).
+        let first = pinned.map(|states| states.first_item_override(SharedString::from(ROWS[0].0)));
+        self.group.update(cx, |group, cx| group.set_item_state_override(first, cx));
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {

@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use gpui::{AnyElement, AnyView, App, Context, Div, Entity, SharedString, Stateful, Subscription, Window, prelude::*};
+use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, prelude::*};
 use xgpui_luma::controls::tabs::{
     ControlFocusState, StyledTabsTheme, Tabs, TabsBuilder, TabsEvent, TabsItem, TabsItemState, TabsRenderItem,
     TabsRenderModel, TabsTemplate, TabsTemplateHandlers, TabsTriggerKind, TabsWidthMode, ThemedTabsTemplate,
@@ -96,27 +96,6 @@ fn pinned_model<'a>(model: &TabsRenderModel<'a>, states: &StateSet) -> TabsRende
     }
 }
 
-/// Draws the base template with the picked states (Design mode), or as the tabs are.
-struct PinnedTabsTemplate {
-    base: ThemedTabsTemplate,
-    pinned: Option<StateSet>,
-}
-
-impl TabsTemplate for PinnedTabsTemplate {
-    fn render(
-        &self,
-        model: &TabsRenderModel<'_>,
-        handlers: TabsTemplateHandlers,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Stateful<Div> {
-        match &self.pinned {
-            Some(states) => self.base.render(&pinned_model(model, states), handlers, window, cx),
-            None => self.base.render(model, handlers, window, cx),
-        }
-    }
-}
-
 /// Handlers that do nothing, one per tab, for a State matrix cell.
 fn inert_handlers(tabs: usize) -> TabsTemplateHandlers {
     TabsTemplateHandlers {
@@ -139,8 +118,12 @@ impl SurfaceControl for TabsSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let template = PinnedTabsTemplate { base: template(theme), pinned: pinned.cloned() };
-        self.tabs.update(cx, |tabs, cx| tabs.set_template(Arc::new(template), cx));
+        // Design mode pins the picked states on the first tab only; the others draw at rest (#397).
+        let rows = pinned.map(|states| states.first_item_override(SharedString::from(TABS[0].0)));
+        self.tabs.update(cx, |tabs, cx| {
+            tabs.set_template(Arc::new(template(theme)), cx);
+            tabs.set_item_state_override(rows, cx);
+        });
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {

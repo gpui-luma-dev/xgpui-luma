@@ -76,16 +76,24 @@ fn table_builder(id: impl Into<SharedString>, count: usize) -> table::TableBuild
 struct PinnedTableTheme {
     base: StyledTable,
     pinned: Option<StateSet>,
+    /// Whether the rows draw the picked states too (matrix cells), or only the frame (the live table, whose rows a
+    /// state override pins).
+    rows: bool,
 }
 
 impl PinnedTableTheme {
     fn new(theme: Theme, pinned: Option<StateSet>) -> Self {
-        Self { base: StyledTable::new(StyleBinding::new("table", ThemeSource::Fixed(theme))), pinned }
+        Self { base: StyledTable::new(StyleBinding::new("table", ThemeSource::Fixed(theme))), pinned, rows: true }
+    }
+
+    /// This theme with only the frame in the picked states.
+    fn frame_only(self) -> Self {
+        Self { rows: false, ..self }
     }
 
     /// A row's selection and state: the picked ones (`:selected` keeps the row's own), or the row's.
     fn row_states(&self, selected: bool, state: InteractionState) -> (bool, InteractionState) {
-        match &self.pinned {
+        match self.pinned.as_ref().filter(|_| self.rows) {
             Some(states) => (selected && states.has("selected"), states.interaction()),
             None => (selected, state),
         }
@@ -185,8 +193,13 @@ impl SurfaceControl for TableSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let styled = Arc::new(PinnedTableTheme::new(theme, pinned.cloned()));
-        self.table.update(cx, |table, cx| table.set_theme(styled, cx));
+        // The frame draws the picked states; of the rows, only the first does, the others draw at rest (#397).
+        let styled = Arc::new(PinnedTableTheme::new(theme, pinned.cloned()).frame_only());
+        let rows = pinned.map(|states| states.first_item_override(0usize));
+        self.table.update(cx, |table, cx| {
+            table.set_theme(styled, cx);
+            table.set_item_state_override(rows, cx);
+        });
         // Cells are remade in the new theme.
         self.cells.borrow_mut().clear();
     }
