@@ -602,7 +602,7 @@ mod tests {
         for (selector, value) in [("tooltip-text", "Changed help"), ("tooltip-shortcut", "Ctrl+S")] {
             let bounds = cx.debug_bounds(selector).unwrap();
             cx.simulate_click(bounds.center(), Default::default());
-            cx.simulate_keystrokes("cmd-a");
+            cx.simulate_keystrokes("secondary-a");
             cx.simulate_input(value);
             cx.run_until_parked();
         }
@@ -617,7 +617,7 @@ mod tests {
         assert_eq!(painted.lock().unwrap().last(), Some(&("Changed help".into(), Some("Ctrl+S".into()))));
         let bounds = cx.debug_bounds("tooltip-text").unwrap();
         cx.simulate_click(bounds.center(), Default::default());
-        cx.simulate_keystrokes("cmd-a backspace");
+        cx.simulate_keystrokes("secondary-a backspace");
         cx.run_until_parked();
         let count = painted.lock().unwrap().len();
         hover(cx);
@@ -655,7 +655,7 @@ mod tests {
         for (selector, value) in [("tooltip-text", "Updated help"), ("tooltip-shortcut", "Ctrl+S")] {
             let bounds = cx.debug_bounds(selector).expect("painted text input");
             cx.simulate_click(bounds.center(), Default::default());
-            cx.simulate_keystrokes("cmd-a");
+            cx.simulate_keystrokes("secondary-a");
             cx.simulate_input(value);
             cx.run_until_parked();
         }
