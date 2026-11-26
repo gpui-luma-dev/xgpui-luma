@@ -366,6 +366,27 @@ impl AutocompleteControl {
         cx.notify();
     }
 
+    /// Replace where the control's look and its popup menu come from, e.g. to rebind them to a look's
+    /// `autocomplete.lss` and `floating_menu.lss`.
+    pub fn set_autocomplete_theme(
+        &mut self,
+        theme: std::sync::Arc<dyn super::theme::AutocompleteTheme>,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.autocomplete_theme = theme;
+        cx.notify();
+    }
+
+    /// Replace where the popup's panel look comes from, e.g. to rebind it to a look's `floating_menu.lss`.
+    pub fn set_popup_look_provider(
+        &mut self,
+        provider: super::model::AutocompletePopupLookProvider,
+        cx: &mut Context<Self>,
+    ) {
+        self.model.popup_look_provider = provider;
+        cx.notify();
+    }
+
     pub fn set_items_template(
         &mut self,
         template: std::sync::Arc<dyn AutocompleteItemsTemplate>,

@@ -18,14 +18,15 @@ use std::sync::{Arc, Mutex};
 use gpui::{AnyElement, AnyView, App, Context, Entity, SharedString, Subscription, Window, div, prelude::*, px};
 use xgpui_luma::controls::context_menu::MenuItem;
 use xgpui_luma::controls::popup_menu::{
-    MenuSource, PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
+    PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics, PopupMenuTriggerStyle,
     StyledPopupMenuTheme,
 };
 use xgpui_luma::controls::selector::{
-    ItemsPanelSource, Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorLook, SelectorPalette,
-    SelectorTheme, SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme, ThemedSelectorTemplate,
+    Selector, SelectorBuilder, SelectorEvent, SelectorItem, SelectorLook, SelectorPalette, SelectorTheme,
+    SelectorTriggerStyle, SelectorVisualState, StyledSelectorTheme, ThemedSelectorTemplate,
 };
 use xgpui_luma::controls::split_button::{SplitButton, SplitButtonBuilder, SplitButtonEvent, ThemedSplitButtonTemplate};
+use xgpui_luma::controls::floating_menu::floating_menu_source;
 use xgpui_luma::controls::{autocomplete, combobox, search_selector, selection_panel, selector_list};
 use xgpui_luma::style::ThemeSource;
 use xgpui_luma::style::lss::Theme;
@@ -113,7 +114,7 @@ impl SelectorTheme for PinnedSelectorTheme {
 }
 
 fn selector_template(theme: Theme, pinned: Option<StateSet>) -> Arc<ThemedSelectorTemplate<SelectorItem>> {
-    let panel: ItemsPanelSource = Arc::new(|| selector_list::default_selector_items_panel_look(&Default::default()));
+    let panel = selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone()));
     let base = StyledSelectorTheme::new(ThemeSource::Fixed(theme), panel);
     Arc::new(ThemedSelectorTemplate::new(
         Arc::new(PinnedSelectorTheme { base, pinned }),
@@ -229,7 +230,7 @@ impl PopupMenuTheme for PinnedPopupMenuTheme {
 /// The `popup_menu` control in `theme`, its trigger in the picked states when some are pinned. Split Button
 /// and Popup Menu share it.
 pub(super) fn popup_menu_theme(theme: Theme, pinned: Option<StateSet>) -> Arc<dyn PopupMenuTheme> {
-    let menu: MenuSource = Arc::new(|| xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve());
+    let menu = floating_menu_source(ThemeSource::Fixed(theme.clone()));
     let base = StyledPopupMenuTheme::new(ThemeSource::Fixed(theme), menu);
     Arc::new(PinnedPopupMenuTheme { base, pinned })
 }
@@ -363,6 +364,12 @@ fn autocomplete_field(theme: Theme, pinned: Option<StateSet>) -> Arc<dyn TextFie
     Arc::new(PinnedTextFieldTemplate { base: textfield_template(theme), pinned })
 }
 
+/// The `autocomplete` control in `theme`, its popup the theme's floating menu.
+fn autocomplete_theme(theme: Theme) -> Arc<dyn autocomplete::AutocompleteTheme> {
+    let binding = xgpui_luma::style::StyleBinding::new("autocomplete", ThemeSource::Fixed(theme.clone()));
+    Arc::new(autocomplete::StyledAutocompleteTheme::new(binding, floating_menu_source(ThemeSource::Fixed(theme))))
+}
+
 impl AutocompleteSurface {
     const WIDTH: f32 = 260.;
 
@@ -392,8 +399,12 @@ impl SurfaceControl for AutocompleteSurface {
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         self.cells.clear();
-        let field = autocomplete_field(theme, pinned.cloned());
-        self.control.update(cx, |control, cx| control.set_textfield_template(field, cx));
+        let field = autocomplete_field(theme.clone(), pinned.cloned());
+        self.control.update(cx, |control, cx| {
+            control.set_autocomplete_theme(autocomplete_theme(theme.clone()), cx);
+            control.set_popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
+            control.set_textfield_template(field, cx);
+        });
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {
@@ -422,6 +433,8 @@ impl SurfaceControl for AutocompleteSurface {
     fn cell(&self, theme: &Theme, id: SharedString, states: &StateSet, _: &mut Window, cx: &mut App) -> AnyElement {
         let cell = self.cells.get(&id, || {
             autocomplete::AutocompleteBuilder::new(id.clone(), filter_items())
+                .autocomplete_theme(autocomplete_theme(theme.clone()))
+                .popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
                 .textfield_template(autocomplete_field(theme.clone(), Some(states.clone())))
                 .enabled(!states.has("disabled"))
                 .spawn(cx)
@@ -551,7 +564,7 @@ impl search_selector::SearchSelectorTemplate for PinnedSearchSelectorTemplate {
 
 /// The trigger's theme for the `selector` control in `theme`, drawn in `pinned` when set.
 fn search_selector_trigger(theme: Theme, pinned: Option<StateSet>) -> Arc<dyn SelectorTheme> {
-    let panel: ItemsPanelSource = Arc::new(|| selector_list::default_selector_items_panel_look(&Default::default()));
+    let panel = selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone()));
     Arc::new(PinnedSelectorTheme { base: StyledSelectorTheme::new(ThemeSource::Fixed(theme), panel), pinned })
 }
 
@@ -582,9 +595,10 @@ impl SurfaceControl for SearchSelectorSurface {
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
         self.cells.clear();
         let trigger = search_selector_trigger(theme.clone(), pinned.cloned());
-        let field = autocomplete_field(theme, None);
+        let field = autocomplete_field(theme.clone(), None);
         self.control.update(cx, |control, cx| {
             control.set_selector_theme(trigger, cx);
+            control.set_popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme)), cx);
             control.set_textfield_template(field, cx);
             control.set_template(Arc::new(PinnedSearchSelectorTemplate { pinned: pinned.cloned() }), cx);
         });
@@ -616,6 +630,7 @@ impl SurfaceControl for SearchSelectorSurface {
         let cell = self.cells.get(&id, || {
             search_selector::SearchSelectorBuilder::new(id.clone(), filter_items())
                 .selector_theme(search_selector_trigger(theme.clone(), Some(states.clone())))
+                .popup_look_provider(selector_list::selector_items_panel_source(ThemeSource::Fixed(theme.clone())))
                 .template(Arc::new(PinnedSearchSelectorTemplate { pinned: Some(states.clone()) }))
                 .textfield_template(autocomplete_field(theme.clone(), None))
                 .enabled(!states.has("disabled"))
@@ -777,6 +792,31 @@ mod tests {
     use crate::workshop::surface_page::WorkMode;
     use crate::workshop::tests_support::open_surface;
 
+    /// The pages open the bound theme's floating menu, not the SDK's (#397).
+    #[test]
+    fn popups_open_the_bound_themes_menu() {
+        let dark = xgpui_luma::style::dark_theme();
+        let want = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+            &xgpui_luma::style::StyleBinding::new("floating_menu", ThemeSource::Fixed(dark.clone())),
+        );
+        let sdk = xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve();
+        assert_ne!(want.background, sdk.background, "the dark menu differs from the SDK's");
+
+        let popup = popup_menu_theme(dark.clone(), None).resolve(
+            PopupMenuTriggerStyle::default(),
+            PopupMenuTriggerMetrics::default(),
+            InteractionState::default(),
+        );
+        assert_eq!(popup.floating_menu.background, want.background, "popup menu and split button");
+        let selector = search_selector_trigger(dark.clone(), None).resolve(
+            SelectorTriggerStyle::default(),
+            InteractionState::default(),
+            false,
+        );
+        assert_eq!(selector.items_panel.background, want.background, "selector");
+        assert_eq!(autocomplete_theme(dark).resolve().menu.background, want.background, "autocomplete");
+    }
+
     fn pin_and_show_matrix(side: &Entity<ControlSide>, state: &str, cx: &mut gpui::VisualTestContext) {
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));
         side.update(cx, |side, cx| side.choose_interaction(state, cx));
@@ -832,6 +872,35 @@ mod tests {
         let pinned = cx.update(|_, cx| side.read(cx).pinned()).expect("Design draws picked states");
         assert!(pinned.has("focused"), "{pinned:?}");
         pin_and_show_matrix(&side, "hover", cx);
+    }
+
+    /// Autocomplete and SearchSelector open their popup in the bound theme's floating menu: switched to dark,
+    /// the open popup paints the dark menu's fill, not the SDK's (#397).
+    #[test]
+    fn the_autocomplete_and_search_selector_popups_follow_the_bound_theme() {
+        for (id, typed) in [("autocomplete-textfield", Some("a")), ("search-selector", None)] {
+            let mut app = TestAppContext::single();
+            let (page, cx) = open_surface(&mut app, id);
+            let side = cx.update(|_, cx| page.read(cx).side());
+            side.update(cx, |side, cx| side.choose_mode("dark", cx));
+            cx.run_until_parked();
+            let theme = cx.update(|_, cx| side.read(cx).bound_theme());
+            let want = selector_list::selector_items_panel_source(ThemeSource::Fixed(theme))().background;
+            let sdk = selector_list::default_selector_items_panel_look(&Default::default()).background;
+            assert_ne!(want, sdk, "{id}: the dark menu differs from the SDK's");
+
+            let at = cx.debug_bounds("workshop-surface-control").expect("the control").center();
+            cx.simulate_click(at, Default::default());
+            cx.run_until_parked();
+            if let Some(text) = typed {
+                cx.simulate_input(text);
+                cx.run_until_parked();
+            }
+            let painted = cx.update(|window, _| {
+                window.painted_quads().iter().any(|quad| quad.background == gpui::Background::from(want))
+            });
+            assert!(painted, "{id}: the open popup paints the dark menu's fill");
+        }
     }
 
     /// Design mode pins `state` with the key's switch (or the interaction picker for an exclusive state).

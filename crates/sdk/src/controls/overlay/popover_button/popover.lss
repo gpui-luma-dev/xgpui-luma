@@ -1,5 +1,5 @@
 // SDK popover. Layer: sdk. Where a popover opens, read by `PopoverGeometry` (panel/mod.rs) for the popover
-// button and the anchored popover panel.
+// button and the anchored popover panel; its `panel` part by `PopoverPanelLook` (panel/look.rs).
 
 /// A floating panel anchored to a trigger.
 popover {
@@ -7,4 +7,18 @@ popover {
   button_offset_y: length = exact(0)
   panel_offset_y: length = exact(4)
   window_margin: length = exact(8)
+
+  /// Whether the popover draws its panel (1) or leaves chrome to its content (0: a card, a menu).
+  show_panel: number = 0
+
+  /// The panel drawn around the content while `show_panel` is on: a floating surface, like menus.
+  part panel {
+    background   = palette.surface.floating.background
+    foreground   = palette.surface.floating.foreground
+    border       = palette.surface.floating.border
+    border_width = exact(metrics.border_width)
+    shadow       = elevation.menu
+    radius       = exact(8)
+    padding      = exact(12)
+  }
 }

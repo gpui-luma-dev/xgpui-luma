@@ -55,6 +55,7 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) motion_enabled: bool,
     pub(super) trigger_on_pointer_down: bool,
     pub(super) measure_trigger: bool,
+    pub(super) panel_look: super::panel::PopoverPanelLook,
 }
 
 impl<D: Default + 'static> PopoverButtonBuilder<D> {
@@ -104,6 +105,7 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             motion_enabled: true,
             trigger_on_pointer_down: true,
             measure_trigger: true,
+            panel_look: super::panel::PopoverPanelLook::sdk(),
         }
     }
 
@@ -152,6 +154,11 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         if !self.explicit_window_margin {
             self.window_margin = px(geometry.window_margin);
         }
+        self
+    }
+    /// The panel drawn around the content (a look's `popover.lss` `panel` part); off in the SDK.
+    pub fn panel_look(mut self, look: super::panel::PopoverPanelLook) -> Self {
+        self.panel_look = look;
         self
     }
     pub fn initial_content_size(mut self, value: gpui::Size<Pixels>) -> Self {
