@@ -2053,6 +2053,59 @@ mod tests {
         assert_eq!(after.origin, before.origin, "the top-left stays");
     }
 
+    /// The Table and ListBox pages fill the size dragged to (#397): the table's fill column and frame,
+    /// the list's width (its height is its rows').
+    #[test]
+    fn resizable_pages_fill_the_size_dragged_to() {
+        for (id, probe, height) in [
+            ("paging-table", "table-column-1", true),
+            ("scrolling-table", "table-column-1", true),
+            ("listbox", "workshop-sdk-listbox", false),
+        ] {
+            let mut app = TestAppContext::single();
+            let (page, cx) = crate::workshop::tests_support::open_surface(&mut app, id);
+            let side = cx.update(|_, cx| page.read(cx).side());
+            let handle = if height {
+                "workshop-surface-resize-both"
+            } else {
+                "workshop-surface-resize-width"
+            };
+            assert!(cx.debug_bounds(handle).is_some(), "{id}: {handle}");
+            let before = cx.debug_bounds(probe).expect(probe);
+            let frame = |cx: &mut gpui::VisualTestContext| {
+                let control = cx.debug_bounds("workshop-surface-control").expect("control");
+                cx.update(|window, _| {
+                    let scale = window.scale_factor();
+                    let inside = control.scale(scale);
+                    window
+                        .painted_quads()
+                        .iter()
+                        .filter(|quad| {
+                            inside.contains(&quad.bounds.origin)
+                                && quad.bounds.size.width >= inside.size.width - gpui::ScaledPixels(2.)
+                        })
+                        .map(|quad| quad.bounds.size.height.0 / scale)
+                        .fold(0., f32::max)
+                })
+            };
+            let frame_before = frame(cx);
+            side.update(cx, |side, cx| {
+                side.start_resize(true, height, point(px(0.), px(0.)));
+                side.drag_resize(point(px(40.), px(30.)), cx);
+            });
+            cx.run_until_parked();
+            let after = cx.debug_bounds(probe).expect(probe);
+            assert_eq!(after.size.width, before.size.width + px(40.), "{id} fills the width");
+            if height {
+                assert!(
+                    (frame(cx) - frame_before - 30.).abs() < 1.,
+                    "{id} fills the height: {frame_before} -> {}",
+                    frame(cx)
+                );
+            }
+        }
+    }
+
     /// At a fractional zoom the layout rounds the scaled size; the control's top-left (and the rulers
     /// measured from it) must not move by the rounding while it is resized.
     #[test]

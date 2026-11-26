@@ -36,6 +36,11 @@ const NAMES: [&str; 6] = [
 const ROWS: usize = 48;
 const CELL_ROWS: usize = 3;
 
+/// The live table's size on the stage at actual size, which can be dragged: the paging table's fits eight
+/// rows and its pager, the scrolling table's eight rows (#397).
+const PAGING_STAGE: (f32, f32) = (610., 385.);
+const SCROLLING_STAGE: (f32, f32) = (360., 321.);
+
 pub(super) struct Row {
     id: usize,
     name: String,
@@ -128,7 +133,7 @@ pub(super) struct TableSurface {
 impl TableSurface {
     pub(super) fn make_paging(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let paging = table::PagingTableBuilder::new(
-            table_builder("workshop-sdk-paging-table", ROWS).paged(8).visible_rows(8),
+            table_builder("workshop-sdk-paging-table", ROWS).paged(8).fill_height(),
             pager::PagerBuilder::new("workshop-sdk-table-pager").page_size_options([8, 16, 24]),
         )
         .spawn(cx);
@@ -139,9 +144,16 @@ impl TableSurface {
     pub(super) fn make_scrolling(_look: &Arc<Look>, cx: &mut Context<ControlSide>) -> Box<dyn SurfaceControl> {
         let table = table_builder("workshop-sdk-scrolling-table", ROWS)
             .scroll_mode(table::TableScrollMode::ScrollSmooth)
-            .visible_rows(8)
+            .fill_height()
             .spawn(cx);
         Box::new(Self { kind: TableKind::Scrolling, view: table.clone().into(), table, cells: RefCell::default() })
+    }
+
+    fn stage(&self) -> (f32, f32) {
+        match self.kind {
+            TableKind::Paging => PAGING_STAGE,
+            TableKind::Scrolling => SCROLLING_STAGE,
+        }
     }
 
     /// The SDK table, for tests.
@@ -161,6 +173,15 @@ impl SurfaceControl for TableSurface {
 
     fn view(&self) -> AnyView {
         self.view.clone()
+    }
+
+    /// The table fills the size the stage gives it, which can be dragged.
+    fn stage_width(&self) -> Option<f32> {
+        Some(self.stage().0)
+    }
+
+    fn stage_height(&self) -> Option<f32> {
+        Some(self.stage().1)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
