@@ -3,8 +3,9 @@
 
 /// A single-line text input.
 textfield {
-  /// Whole-input opacity when disabled.
-  disabled_opacity: number = 0.6
+  /// Whole-input opacity when disabled. 1: `:disabled` draws its own fill and text, and fading them would let
+  /// whatever is behind the field show through its fill.
+  disabled_opacity: number = 1
   height       = metrics.control.control_height
   padding_x    = metrics.control.padding_x
   padding_y    = metrics.control.padding_y

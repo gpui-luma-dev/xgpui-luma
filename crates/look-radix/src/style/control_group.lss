@@ -1,6 +1,7 @@
 // Radix control group. Layer: look. The surface frame with the border role, enabled or not.
 
 control_group {
+  disabled_opacity = 0.56
   part root {
     background = radix.role.surface
     border     = radix.role.border

@@ -12,8 +12,8 @@ scrollbar {
   /// A standalone bar's length, horizontal and vertical.
   length_h: length = exact(260)
   length_v: length = exact(180)
-  /// The whole bar's opacity when disabled.
-  disabled_opacity: number = 0.56
+  /// The whole bar's opacity when disabled; 1, since `:disabled` draws its own colors (#397).
+  disabled_opacity: number = 1
   /// The thumb.
   thumb: color = palette.border.default
 

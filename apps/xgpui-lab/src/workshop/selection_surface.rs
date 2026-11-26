@@ -903,6 +903,24 @@ mod tests {
         }
     }
 
+    /// A disabled field or trigger paints its `:disabled` fill opaque, not faded over what's behind it (#397).
+    #[test]
+    fn disabled_fills_are_opaque() {
+        for (id, control) in [("combobox", "textfield"), ("popup-menu", "popup_menu"), ("split-button", "popup_menu")] {
+            let mut app = TestAppContext::single();
+            let (page, cx) = open_surface(&mut app, id);
+            let side = cx.update(|_, cx| page.read(cx).side());
+            side.update(cx, |side, cx| side.show_matrix(cx));
+            cx.run_until_parked();
+            let theme = cx.update(|_, cx| side.read(cx).bound_theme());
+            let key = theme.key_named(control, &[], &["disabled"]).expect("key");
+            let fill = theme.resolve(&key).root().background().expect("a disabled fill");
+            let fill = gpui::Background::from(gpui::Hsla::from(fill));
+            let painted = cx.update(|window, _| window.painted_quads().iter().any(|quad| quad.background == fill));
+            assert!(painted, "{id}: a disabled cell paints its fill at full opacity");
+        }
+    }
+
     /// Design mode pins `state` with the key's switch (or the interaction picker for an exclusive state).
     fn pin(side: &Entity<ControlSide>, state: &str, exclusive: bool, cx: &mut gpui::VisualTestContext) -> StateSet {
         side.update(cx, |side, cx| side.choose_work_mode(WorkMode::Design, cx));

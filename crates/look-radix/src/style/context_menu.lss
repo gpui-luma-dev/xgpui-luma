@@ -2,6 +2,7 @@
 // while focused, and muted text when disabled.
 
 context_menu {
+  disabled_opacity = 0.56
   part root {
     background  = radix.role.surface
     foreground  = radix.role.foreground

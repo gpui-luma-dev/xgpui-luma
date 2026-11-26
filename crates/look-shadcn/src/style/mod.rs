@@ -36,6 +36,7 @@ shadcn_sources![
     "tokens.lss",
     "checkbox.lss",
     "radio.lss",
+    "radio_group.lss",
     "switch.lss",
     "button.lss",
     "toggle.lss",

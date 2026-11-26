@@ -4,6 +4,8 @@
 // are variants. The textarea extends the text field, so it draws the same.
 
 textfield {
+  /// shadcn fades a disabled input (`disabled:opacity-50`-like).
+  disabled_opacity = 0.6
   part root {
     background           := shadcn.field_background
     foreground           := css.foreground

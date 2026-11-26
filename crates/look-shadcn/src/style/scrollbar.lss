@@ -2,6 +2,7 @@
 // disabled track muted, with a muted-foreground thumb when disabled. Sizes sm and lg.
 
 scrollbar {
+  disabled_opacity = 0.56
   thumb = css.border
   size sm { thickness = exact(10)  track_thickness = exact(3)  thumb_thickness = exact(6)   min_thumb_length = exact(24) }
   size lg { thickness = exact(14)  track_thickness = exact(5)  thumb_thickness = exact(10)  min_thumb_length = exact(32) }

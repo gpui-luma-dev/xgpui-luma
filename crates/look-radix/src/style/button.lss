@@ -5,6 +5,7 @@
 
 button {
   height    = 32
+  disabled_opacity = metrics.disabled_opacity
   padding_x = 12
   padding_y = 0
   gap       = 8
