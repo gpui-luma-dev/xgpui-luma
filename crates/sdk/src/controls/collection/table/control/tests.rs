@@ -920,3 +920,34 @@ fn resize_hit_target_uses_resolved_width_and_remains_centered_with_hidden_stroke
     assert_eq!(updated.center(), original.center());
     assert_eq!(updated.size.height, original.size.height + px(6.0));
 }
+
+/// A state override draws the mapped row in its mapped state and leaves the real state alone (#397).
+#[test]
+fn a_state_override_draws_one_row_hovered_without_changing_state() {
+    let mut app = TestAppContext::single();
+    let (table, cx) = setup(&mut app, 8, TableSelectionMode::Single);
+    let hover = crate::controls::table::StyledTable::sdk()
+        .row(false, crate::theme::InteractionState { hovered: true, ..Default::default() })
+        .background;
+    let hovered_rows = |cx: &mut VisualTestContext| {
+        cx.run_until_parked();
+        cx.update(|window, _| {
+            window
+                .painted_quads()
+                .iter()
+                .filter(|quad| quad.background == gpui::Background::from(hover))
+                .count()
+        })
+    };
+    let before = hovered_rows(cx);
+    table.update(cx, |table, cx| {
+        table.set_item_state_override(
+            Some(std::sync::Arc::new(|index: &usize, state: crate::infra::state::CompositeItemState| {
+                crate::infra::state::CompositeItemState { hovered: state.hovered || *index == 2, ..state }
+            })),
+            cx,
+        );
+    });
+    assert_eq!(hovered_rows(cx), before + 1, "only the mapped row draws hovered");
+    cx.update(|_, app| assert!(table.read(app).selected_indices().is_empty(), "state is untouched"));
+}

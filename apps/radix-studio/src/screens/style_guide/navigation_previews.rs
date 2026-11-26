@@ -622,6 +622,7 @@ fn sidebar_sample(
                 focused: index == 1 && cell.state.focused,
                 expanded: false,
                 enabled: enabled && !cell.state.disabled,
+                disabled: !(enabled && !cell.state.disabled),
             },
             custom_element: None,
             focus_handle: None,

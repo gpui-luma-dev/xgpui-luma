@@ -6,9 +6,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use gpui::{
-    AnyElement, AnyView, App, Context, Div, Entity, Hsla, SharedString, Stateful, Subscription, Window, div, prelude::*,
-};
+use gpui::{AnyElement, AnyView, App, Context, Entity, Hsla, SharedString, Subscription, Window, div, prelude::*};
 use xgpui_luma::controls::scroll_container::ScrollContainer;
 use xgpui_luma::controls::scrollbar::default_scrollbar_template;
 use xgpui_luma::controls::sidebar::{
@@ -121,6 +119,7 @@ fn pin_nodes(nodes: &mut [SidebarRenderedNode], states: &StateSet) {
         state.pressed = states.has("pressed");
         state.focused = states.has("focused");
         state.enabled = !states.has("disabled");
+        state.disabled = states.has("disabled");
         state.selected &= states.has("selected");
         pin_nodes(&mut node.children, states);
     }
@@ -141,29 +140,6 @@ fn pinned_model(mut model: SidebarPanelRenderModel, states: &StateSet) -> Sideba
         model.selected_id = None;
     }
     model
-}
-
-/// Draws the base template with the picked states (Design mode), or as the sidebar is.
-struct PinnedSidebarTemplate {
-    base: ThemedSidebarPanelTemplate,
-    pinned: Option<StateSet>,
-}
-
-impl SidebarPanelTemplate for PinnedSidebarTemplate {
-    fn render(
-        &self,
-        model: SidebarPanelRenderModel,
-        main_scroll: &ScrollContainer,
-        handlers: SidebarPanelTemplateHandlers,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> Stateful<Div> {
-        let model = match &self.pinned {
-            Some(states) => pinned_model(model, states),
-            None => model,
-        };
-        self.base.render(model, main_scroll, handlers, window, cx)
-    }
 }
 
 /// A matrix cell's node: a section label or a row.
@@ -188,6 +164,7 @@ fn cell_node(id: &str, kind: SidebarNodeKind, label: &str, index: usize, selecte
             focused: false,
             expanded: false,
             enabled: true,
+            disabled: false,
         },
         custom_element: None,
         focus_handle: None,
@@ -208,8 +185,12 @@ impl SurfaceControl for SidebarSurface {
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
-        let template = PinnedSidebarTemplate { base: template(theme), pinned: pinned.cloned() };
-        self.sidebar.update(cx, |sidebar, cx| sidebar.set_panel_template(Arc::new(template), cx));
+        // Design mode pins the picked states on the first row only; the others draw at rest (#397).
+        let rows = pinned.map(|states| states.first_item_override(SharedString::from(SELECTED)));
+        self.sidebar.update(cx, |sidebar, cx| {
+            sidebar.set_panel_template(Arc::new(template(theme)), cx);
+            sidebar.set_item_state_override(rows, cx);
+        });
     }
 
     fn set_enabled(&self, enabled: bool, cx: &mut App) {

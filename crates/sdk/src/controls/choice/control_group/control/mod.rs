@@ -67,6 +67,8 @@ where
     item_bounds: Vec<Option<Bounds<Pixels>>>,
     selection_transitions: HashMap<SharedString, VisualTransition>,
     scroll_handle: Option<ScrollHandle>,
+    /// Maps each item's drawn state (`set_item_state_override`).
+    item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
 
 impl<T> EventEmitter<ControlGroupEvent> for ControlGroupControl<T> where T: ControlGroupItemLike + 'static {}
@@ -118,6 +120,7 @@ where
             item_bounds: Vec::new(),
             selection_transitions,
             scroll_handle: scrollable.then(ScrollHandle::new),
+            item_state_override: None,
         }
     }
     pub fn selected_ids(&self) -> &[SharedString] {
@@ -227,6 +230,17 @@ where
         normalize_model(&mut self.model);
         self.sync_selection_transitions();
         self.sync_item_visual_events(cx);
+        cx.notify();
+    }
+
+    /// Draw each item in the state `map` gives it, from its id and the state input gives it, or as input gives it
+    /// (`None`). Only the look changes; selection, input and events follow the real state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
         cx.notify();
     }
 

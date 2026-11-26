@@ -98,6 +98,8 @@ where
     _scrollbar_subscription: Option<Subscription>,
     scrollbar_active: bool,
     scrollbar_hide_task: Option<gpui::Task<()>>,
+    /// Maps each row's drawn state (`set_item_state_override`).
+    item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
     scrollbar_scrollable: bool,
     viewport_offset: Option<gpui::ListOffset>,
     projection: super::projection::Projection,
@@ -187,6 +189,7 @@ where
             _scrollbar_subscription: scrollbar_subscription,
             scrollbar_active: false,
             scrollbar_hide_task: None,
+            item_state_override: None,
             scrollbar_scrollable: false,
             viewport_offset: None,
             projection,
@@ -358,6 +361,18 @@ where
     pub fn set_template(&mut self, template: std::sync::Arc<dyn super::TreeViewTemplate<T>>, cx: &mut Context<Self>) {
         self.cancel_position();
         self.model.template = template;
+        self.list_state.remeasure();
+        cx.notify();
+    }
+
+    /// Draw each row in the state `map` gives it, from its node id and the state input gives it, or as input gives it
+    /// (`None`). Only the look changes; selection, input and events follow the real state (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
         self.list_state.remeasure();
         cx.notify();
     }
@@ -784,6 +799,7 @@ where
             active: focus.focused && active,
             focus_visible: focus.focus_visible && active,
         };
+        let state = self.item_state_override.as_ref().map_or(state, |map| map(&node.id, state));
 
         let render_node = FlatTreeNode {
             id: &node.id,

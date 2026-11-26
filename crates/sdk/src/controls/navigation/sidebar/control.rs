@@ -118,6 +118,17 @@ impl SidebarControl {
         cx.notify();
     }
 
+    /// Draw each row in the state `map` gives it, from its id and the state input gives it (`selected` is the current
+    /// page), or as input gives it (`None`). Only the look changes; selection, input and events follow the real state
+    /// (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.panel.update(cx, |panel, cx| panel.set_item_state_override(map, cx));
+    }
+
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.model.enabled == enabled {
             return;

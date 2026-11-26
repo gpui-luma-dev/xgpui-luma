@@ -59,6 +59,8 @@ pub struct SidebarPanelEngine {
     _subscriptions: Vec<Subscription>,
     branch_transitions: HashMap<SharedString, VisualTransition>,
     branch_heights_px: HashMap<SharedString, f32>,
+    /// Maps each row's drawn state (`set_item_state_override`).
+    pub(super) item_state_override: Option<crate::infra::state::ItemStateOverride<SharedString>>,
 }
 
 impl EventEmitter<SidebarPanelEngineEvent> for SidebarPanelEngine {}
@@ -166,6 +168,7 @@ impl SidebarPanelEngine {
             _subscriptions: subscriptions,
             branch_transitions: HashMap::new(),
             branch_heights_px: HashMap::new(),
+            item_state_override: None,
         };
         engine.rebuild_tooltips(cx);
         engine.sync_branch_state();
@@ -284,6 +287,18 @@ impl SidebarPanelEngine {
 
     pub fn collapsed(&self) -> bool {
         self.model.collapsed
+    }
+
+    /// Draw each row in the state `map` gives it, from its id and the state input gives it (`selected` is the current
+    /// page), or as input gives it (`None`). Only the look changes; selection, input and events follow the real state
+    /// (#397).
+    pub fn set_item_state_override(
+        &mut self,
+        map: Option<crate::infra::state::ItemStateOverride<SharedString>>,
+        cx: &mut Context<Self>,
+    ) {
+        self.item_state_override = map;
+        cx.notify();
     }
 
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {

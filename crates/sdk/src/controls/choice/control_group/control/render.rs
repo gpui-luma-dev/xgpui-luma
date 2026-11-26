@@ -41,6 +41,18 @@ where
                     item_focus_visible = keyboard_focus_visible;
                 }
 
+                let state = CompositeItemState {
+                    hovered: enabled && self.hovered_item == Some(index),
+                    pressed: enabled && self.pressed_item == Some(index),
+                    disabled: !enabled,
+                    selected,
+                    active: item_active,
+                    focus_visible: item_focus_visible,
+                };
+                let state = self.item_state_override.as_ref().map_or(state, |map| map(item.id(), state));
+                // The drawn selection follows the mapped state.
+                let selected = state.selected;
+
                 ControlGroupItemRenderModel {
                     group_id: &self.model.id,
                     stylesheet: &self.model.stylesheet,
@@ -60,14 +72,7 @@ where
                     },
                     active,
                     enabled,
-                    state: CompositeItemState {
-                        hovered: enabled && self.hovered_item == Some(index),
-                        pressed: enabled && self.pressed_item == Some(index),
-                        disabled: !enabled,
-                        selected,
-                        active: item_active,
-                        focus_visible: item_focus_visible,
-                    },
+                    state,
                     selection_mode: self.model.selection_mode,
                     foreground: None,
                 }
@@ -180,5 +185,44 @@ where
         );
 
         root.into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod item_state_override_tests {
+    use crate::controls::control_group::{ControlGroupControl, ControlGroupItem};
+    use crate::infra::state::CompositeItemState;
+    use gpui::SharedString;
+
+    /// A state override changes the mapped item's drawn state and selection only (#397).
+    #[test]
+    fn a_state_override_maps_one_items_drawn_state() {
+        let mut app = gpui::TestAppContext::single();
+        let (group, cx) = app.add_window_view(|_, cx| {
+            ControlGroupControl::from_builder(
+                ControlGroupControl::new("override-group")
+                    .items([ControlGroupItem::new("a"), ControlGroupItem::new("b")])
+                    .selected_ids(["b"]),
+                cx,
+            )
+        });
+        cx.run_until_parked();
+        cx.update(|window, app| {
+            group.update(app, |group, cx| {
+                group.set_item_state_override(
+                    Some(std::sync::Arc::new(|id: &SharedString, state: CompositeItemState| CompositeItemState {
+                        pressed: id.as_ref() == "a",
+                        selected: id.as_ref() == "a",
+                        ..state
+                    })),
+                    cx,
+                );
+                let model = group.render_model(window, cx);
+                let (a, b) = (&model.items[0], &model.items[1]);
+                assert!(a.state.pressed && a.selected && a.state.selected, "a drawn pressed and selected");
+                assert!(!b.selected, "b drawn unselected");
+                assert_eq!(model.selected_ids, [SharedString::from("b")], "the real selection is b");
+            });
+        });
     }
 }
