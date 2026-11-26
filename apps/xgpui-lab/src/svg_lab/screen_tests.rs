@@ -158,3 +158,14 @@ fn rendering_footer_stays_put_while_artwork_status_restarts() {
         }
     }
 }
+#[test]
+fn path_effect_panels_have_height() {
+    let mut app = TestAppContext::single();
+    app.update(|cx| xgpui_luma::init(cx).unwrap());
+    let (page, cx) = app.add_window_view(|_, cx| SvgPage::new(crate::theme::default_look(), cx));
+    page.update(cx, |p, cx| p.activate("Path Effects".into(), cx));
+    cx.simulate_resize(size(px(1280.), px(2400.)));
+    cx.run_until_parked();
+    let panel = cx.debug_bounds("svg-path-panel").expect("path panel");
+    assert_eq!(panel.size.height, px(170.), "path panel collapsed: {panel:?}");
+}
