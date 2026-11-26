@@ -161,7 +161,7 @@ impl Render for ListBoxHost {
             surface.child(item.item.1)
         })
         .build(&template, window, cx);
-        div().debug_selector(|| "workshop-sdk-listbox".into()).w(px(WIDTH)).child(list).into_any_element()
+        div().debug_selector(|| "workshop-sdk-listbox".into()).w_full().child(list).into_any_element()
     }
 }
 
@@ -182,6 +182,11 @@ impl SurfaceControl for ListBoxSurface {
 
     fn view(&self) -> AnyView {
         self.host.clone().into()
+    }
+
+    /// The list fills the width the stage gives it, which can be dragged; its height is its rows' (#397).
+    fn stage_width(&self) -> Option<f32> {
+        Some(WIDTH)
     }
 
     fn bind(&self, theme: Theme, pinned: Option<&StateSet>, cx: &mut App) {
