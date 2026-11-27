@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, SharedString, Stateful, Window, div, px, prelude::*, svg};
@@ -42,6 +43,10 @@ pub type FloatingMenuTemplateModifier =
 
 pub trait FloatingMenuTemplate: Send + Sync {
     fn render(&self, model: &FloatingMenuRenderModel<'_>, handlers: FloatingMenuTemplateHandlers) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn FloatingMenuTemplate {
+    type Model<'a> = FloatingMenuRenderModel<'a>;
 }
 
 /// Visual structure for a noninteractive menu divider. Its outer height must match
@@ -99,29 +104,6 @@ impl ThemedFloatingMenuTemplate {
 impl Default for ThemedFloatingMenuTemplate {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-struct ModifiedFloatingMenuTemplate {
-    base: Arc<dyn FloatingMenuTemplate>,
-    modifiers: Vec<FloatingMenuTemplateModifier>,
-}
-
-impl ModifiedFloatingMenuTemplate {
-    fn new(base: Arc<dyn FloatingMenuTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: FloatingMenuTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &FloatingMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -234,10 +216,10 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
     }
 }
 
-impl FloatingMenuTemplate for ModifiedFloatingMenuTemplate {
+impl FloatingMenuTemplate for ModifiedTemplate<dyn FloatingMenuTemplate> {
     fn render(&self, model: &FloatingMenuRenderModel<'_>, handlers: FloatingMenuTemplateHandlers) -> Stateful<Div> {
         let root = self.base.render(model, handlers);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -254,7 +236,7 @@ pub fn floating_menu_template_with_modifier<F>(
 where
     F: Fn(Stateful<Div>, &FloatingMenuRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedFloatingMenuTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 pub fn render_floating_menu(

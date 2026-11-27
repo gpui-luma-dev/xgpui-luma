@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Div, Stateful, Window, div, px, prelude::*};
@@ -16,6 +17,10 @@ pub trait TableTemplate: Send + Sync {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn TableTemplate {
+    type Model<'a> = TableRenderModel<'a>;
 }
 
 /// Paints list shell from resolved [`TableRenderModel`] only (no theme lookup).
@@ -103,30 +108,7 @@ impl TableTemplate for DefaultTableShellTemplate {
     }
 }
 
-struct ModifiedTableTemplate {
-    base: Arc<dyn TableTemplate>,
-    modifiers: Vec<TableTemplateModifier>,
-}
-
-impl ModifiedTableTemplate {
-    fn new(base: Arc<dyn TableTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TableTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TableRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-impl TableTemplate for ModifiedTableTemplate {
+impl TableTemplate for ModifiedTemplate<dyn TableTemplate> {
     fn render(
         &self,
         model: &TableRenderModel<'_>,
@@ -136,7 +118,7 @@ impl TableTemplate for ModifiedTableTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, header, body, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -155,11 +137,5 @@ pub(super) fn modified_table_template<F>(template: Arc<dyn TableTemplate>, modif
 where
     F: Fn(Stateful<Div>, &TableRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedTableTemplate::new(template).with_modifier(Box::new(modifier)).into()
-}
-
-impl ModifiedTableTemplate {
-    fn into(self) -> Arc<dyn TableTemplate> {
-        Arc::new(self)
-    }
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }

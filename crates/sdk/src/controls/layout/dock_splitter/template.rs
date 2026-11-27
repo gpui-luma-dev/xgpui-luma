@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, KeyDownEvent, MouseButton, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
@@ -29,6 +30,10 @@ pub trait DockSplitterTemplate: Send + Sync {
         _window: &mut Window,
         _cx: &mut App,
     ) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn DockSplitterTemplate {
+    type Model<'a> = DockSplitterRenderModel<'a>;
 }
 
 pub struct ThemedDockSplitterTemplate {
@@ -69,29 +74,6 @@ pub fn default_dock_splitter_template() -> Arc<dyn DockSplitterTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedDockSplitterTemplate::new(false))).clone()
 }
 
-struct ModifiedDockSplitterTemplate {
-    base: Arc<dyn DockSplitterTemplate>,
-    modifiers: Vec<DockSplitterTemplateModifier>,
-}
-
-impl ModifiedDockSplitterTemplate {
-    fn new(base: Arc<dyn DockSplitterTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: DockSplitterTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &DockSplitterRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn template_with_modifier<F>(
     template: Arc<dyn DockSplitterTemplate>,
     modifier: F,
@@ -99,10 +81,10 @@ pub(super) fn template_with_modifier<F>(
 where
     F: Fn(Stateful<Div>, &DockSplitterRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedDockSplitterTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl DockSplitterTemplate for ModifiedDockSplitterTemplate {
+impl DockSplitterTemplate for ModifiedTemplate<dyn DockSplitterTemplate> {
     fn render(
         &self,
         model: &DockSplitterRenderModel<'_>,
@@ -112,7 +94,7 @@ impl DockSplitterTemplate for ModifiedDockSplitterTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, look, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

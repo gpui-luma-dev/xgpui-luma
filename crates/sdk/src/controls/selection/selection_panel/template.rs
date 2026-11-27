@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
 use gpui::{App, Div, SharedString, Stateful, div, prelude::*, px};
@@ -60,39 +61,14 @@ where
     ) -> Stateful<Div>;
 }
 
-struct ModifiedSelectionPanelTemplate<T>
+impl<T> RenderModel for dyn SelectionPanelTemplate<T>
 where
     T: SelectionPanelItemLike + 'static,
 {
-    base: Arc<dyn SelectionPanelTemplate<T>>,
-    modifiers: Vec<SelectionPanelModifier<T>>,
+    type Model<'a> = SelectionPanelRenderModel<'a, T>;
 }
 
-impl<T> ModifiedSelectionPanelTemplate<T>
-where
-    T: SelectionPanelItemLike + 'static,
-{
-    fn new(base: Arc<dyn SelectionPanelTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(Stateful<Div>, &SelectionPanelRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectionPanelRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
-    }
-}
-
-impl<T> SelectionPanelTemplate<T> for ModifiedSelectionPanelTemplate<T>
+impl<T> SelectionPanelTemplate<T> for ModifiedTemplate<dyn SelectionPanelTemplate<T>>
 where
     T: SelectionPanelItemLike + 'static,
 {
@@ -103,7 +79,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -115,7 +91,7 @@ where
     T: SelectionPanelItemLike + 'static,
     F: for<'a> Fn(Stateful<Div>, &SelectionPanelRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedSelectionPanelTemplate::new(template).with_modifier(modifier))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 pub struct DefaultSelectionPanelTemplate;

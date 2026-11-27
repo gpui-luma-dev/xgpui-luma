@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -177,6 +178,10 @@ pub trait TabsTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn TabsTemplate {
+    type Model<'a> = TabsRenderModel<'a>;
+}
+
 pub struct ThemedTabsTemplate {
     theme: Arc<dyn TabsTheme>,
     modifiers: Vec<TabsTemplateModifier>,
@@ -203,29 +208,6 @@ impl ThemedTabsTemplate {
     }
 }
 
-struct ModifiedTabsTemplate {
-    base: Arc<dyn TabsTemplate>,
-    modifiers: Vec<TabsTemplateModifier>,
-}
-
-impl ModifiedTabsTemplate {
-    fn new(base: Arc<dyn TabsTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: TabsTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TabsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_tabs_template() -> Arc<dyn TabsTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn TabsTemplate>> = OnceLock::new();
 
@@ -236,10 +218,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn TabsTemplate>, modifie
 where
     F: Fn(Stateful<Div>, &TabsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedTabsTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl TabsTemplate for ModifiedTabsTemplate {
+impl TabsTemplate for ModifiedTemplate<dyn TabsTemplate> {
     fn render(
         &self,
         model: &TabsRenderModel<'_>,
@@ -248,7 +230,7 @@ impl TabsTemplate for ModifiedTabsTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{App, Div, Stateful, Window, div, px, prelude::*};
@@ -17,6 +18,10 @@ pub trait ToolbarTemplate: Send + Sync {
         window: &mut Window,
         cx: &mut App,
     ) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn ToolbarTemplate {
+    type Model<'a> = ToolbarRenderModel<'a>;
 }
 
 pub struct ToolbarRenderedItem {
@@ -39,29 +44,6 @@ impl ThemedToolbarTemplate {
         F: Fn(Stateful<Div>, &ToolbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
     {
         self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ToolbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
-struct ModifiedToolbarTemplate {
-    base: Arc<dyn ToolbarTemplate>,
-    modifiers: Vec<ToolbarTemplateModifier>,
-}
-
-impl ModifiedToolbarTemplate {
-    fn new(base: Arc<dyn ToolbarTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: ToolbarTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
         self
     }
 
@@ -114,7 +96,7 @@ impl ToolbarTemplate for ThemedToolbarTemplate {
     }
 }
 
-impl ToolbarTemplate for ModifiedToolbarTemplate {
+impl ToolbarTemplate for ModifiedTemplate<dyn ToolbarTemplate> {
     fn render(
         &self,
         model: &ToolbarRenderModel<'_>,
@@ -123,7 +105,7 @@ impl ToolbarTemplate for ModifiedToolbarTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, items, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -140,7 +122,7 @@ pub(super) fn modified_toolbar_template<F>(template: Arc<dyn ToolbarTemplate>, m
 where
     F: Fn(Stateful<Div>, &ToolbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedToolbarTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 pub(crate) fn render_fallback_toolbar_item(model: &ToolbarItemRenderModel) -> gpui::AnyElement {

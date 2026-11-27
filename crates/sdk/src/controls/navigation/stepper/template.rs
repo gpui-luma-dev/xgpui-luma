@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, Div, FontWeight, SharedString, Stateful, Window, div, px, relative, prelude::*};
@@ -12,6 +13,10 @@ pub type StepperTemplateModifier =
 
 pub trait StepperTemplate: Send + Sync {
     fn render(&self, model: &StepperRenderModel<'_>, window: &mut Window, cx: &mut App) -> Stateful<Div>;
+}
+
+impl RenderModel for dyn StepperTemplate {
+    type Model<'a> = StepperRenderModel<'a>;
 }
 
 pub struct ThemedStepperTemplate {
@@ -39,40 +44,17 @@ pub fn default_stepper_template() -> Arc<dyn StepperTemplate> {
     TEMPLATE.get_or_init(|| Arc::new(ThemedStepperTemplate::new(default_stepper_theme()))).clone()
 }
 
-struct ModifiedStepperTemplate {
-    base: Arc<dyn StepperTemplate>,
-    modifiers: Vec<StepperTemplateModifier>,
-}
-
-impl ModifiedStepperTemplate {
-    fn new(base: Arc<dyn StepperTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: StepperTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &StepperRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub(super) fn template_with_modifier<F>(template: Arc<dyn StepperTemplate>, modifier: F) -> Arc<dyn StepperTemplate>
 where
     F: Fn(Stateful<Div>, &StepperRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedStepperTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl StepperTemplate for ModifiedStepperTemplate {
+impl StepperTemplate for ModifiedTemplate<dyn StepperTemplate> {
     fn render(&self, model: &StepperRenderModel<'_>, window: &mut Window, cx: &mut App) -> Stateful<Div> {
         let root = self.base.render(model, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, MouseDownEvent, SharedString, Stateful, Window, div, prelude::*, px};
@@ -35,6 +36,10 @@ pub trait PagerTemplate: Send + Sync {
     ) -> AnyElement;
 }
 
+impl RenderModel for dyn PagerTemplate {
+    type Model<'a> = PagerRenderModel<'a>;
+}
+
 pub struct ThemedPagerTemplate {
     theme: Arc<dyn PagerTheme>,
     modifiers: Vec<PagerTemplateModifier>,
@@ -61,29 +66,6 @@ impl ThemedPagerTemplate {
     }
 }
 
-struct ModifiedPagerTemplate {
-    base: Arc<dyn PagerTemplate>,
-    modifiers: Vec<PagerTemplateModifier>,
-}
-
-impl ModifiedPagerTemplate {
-    fn new(base: Arc<dyn PagerTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: PagerTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PagerRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-}
-
 pub fn default_pager_template() -> Arc<dyn PagerTemplate> {
     static TEMPLATE: OnceLock<Arc<dyn PagerTemplate>> = OnceLock::new();
 
@@ -94,10 +76,10 @@ pub(super) fn template_with_modifier<F>(template: Arc<dyn PagerTemplate>, modifi
 where
     F: Fn(Stateful<Div>, &PagerRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    Arc::new(ModifiedPagerTemplate::new(template).with_modifier(Box::new(modifier)))
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl PagerTemplate for ModifiedPagerTemplate {
+impl PagerTemplate for ModifiedTemplate<dyn PagerTemplate> {
     fn render(
         &self,
         model: &PagerRenderModel<'_>,
@@ -107,7 +89,7 @@ impl PagerTemplate for ModifiedPagerTemplate {
     ) -> AnyElement {
         let root = div().id((model.id.clone(), 0usize));
         let root = root.child(self.base.render(model, handlers, window, cx));
-        self.apply_modifiers(root, model).into_any_element()
+        self.apply(root, model).into_any_element()
     }
 }
 

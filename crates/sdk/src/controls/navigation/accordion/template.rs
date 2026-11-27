@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
 use gpui::{AnyElement, App, ClickEvent, Div, MouseDownEvent, MouseUpEvent, Stateful, Window, div, px, prelude::*};
@@ -45,6 +46,10 @@ pub trait AccordionTemplate: Send + Sync {
     ) -> Stateful<Div>;
 }
 
+impl RenderModel for dyn AccordionTemplate {
+    type Model<'a> = AccordionRenderModel<'a>;
+}
+
 pub struct ThemedAccordionTemplate {
     theme: Arc<dyn AccordionTheme>,
     modifiers: Vec<AccordionTemplateModifier>,
@@ -71,34 +76,7 @@ impl ThemedAccordionTemplate {
     }
 }
 
-struct ModifiedAccordionTemplate {
-    base: Arc<dyn AccordionTemplate>,
-    modifiers: Vec<AccordionTemplateModifier>,
-}
-
-impl ModifiedAccordionTemplate {
-    fn new(base: Arc<dyn AccordionTemplate>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: AccordionTemplateModifier) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &AccordionRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-
-    fn into_arc(self) -> Arc<dyn AccordionTemplate> {
-        Arc::new(self)
-    }
-}
-
-impl AccordionTemplate for ModifiedAccordionTemplate {
+impl AccordionTemplate for ModifiedTemplate<dyn AccordionTemplate> {
     fn drag_tooltip_theme(&self) -> Arc<dyn crate::controls::tooltip::TooltipTheme> {
         self.base.drag_tooltip_theme()
     }
@@ -115,7 +93,7 @@ impl AccordionTemplate for ModifiedAccordionTemplate {
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
@@ -132,7 +110,7 @@ pub(super) fn modified_accordion_template<F>(
 where
     F: Fn(Stateful<Div>, &AccordionRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedAccordionTemplate::new(template).with_modifier(Box::new(modifier)).into_arc()
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
 impl AccordionTemplate for ThemedAccordionTemplate {

@@ -1,3 +1,4 @@
+use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::Arc;
 
 use gpui::{
@@ -87,20 +88,19 @@ where
     ) -> Stateful<Div>;
 }
 
+impl<T> RenderModel for dyn SelectorTemplate<T>
+where
+    T: SelectorItemLike + 'static,
+{
+    type Model<'a> = SelectorRenderModel<'a, T>;
+}
+
 pub struct ThemedSelectorTemplate<T = SelectorItem>
 where
     T: SelectorItemLike + 'static,
 {
     theme: Arc<dyn SelectorTheme>,
     items_template: Arc<dyn SelectorItemsTemplate<T>>,
-    modifiers: Vec<SelectorTemplateModifier<T>>,
-}
-
-struct ModifiedSelectorTemplate<T = SelectorItem>
-where
-    T: SelectorItemLike + 'static,
-{
-    base: Arc<dyn SelectorTemplate<T>>,
     modifiers: Vec<SelectorTemplateModifier<T>>,
 }
 
@@ -128,31 +128,6 @@ where
     }
 }
 
-impl<T> ModifiedSelectorTemplate<T>
-where
-    T: SelectorItemLike + 'static,
-{
-    fn new(base: Arc<dyn SelectorTemplate<T>>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier(mut self, modifier: SelectorTemplateModifier<T>) -> Self {
-        self.modifiers.push(modifier);
-        self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SelectorRenderModel<'_, T>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
-    }
-
-    fn into_arc(self) -> Arc<dyn SelectorTemplate<T>> {
-        Arc::new(self)
-    }
-}
-
 pub fn default_selector_template<T>() -> Arc<dyn SelectorTemplate<T>>
 where
     T: SelectorItemLike + 'static,
@@ -168,10 +143,10 @@ where
     T: SelectorItemLike + 'static,
     F: for<'a> Fn(Stateful<Div>, &SelectorRenderModel<'a, T>) -> Stateful<Div> + Send + Sync + 'static,
 {
-    ModifiedSelectorTemplate::new(template).with_modifier(Box::new(modifier)).into_arc()
+    Arc::new(ModifiedTemplate::new(template, Box::new(modifier)))
 }
 
-impl<T> SelectorTemplate<T> for ModifiedSelectorTemplate<T>
+impl<T> SelectorTemplate<T> for ModifiedTemplate<dyn SelectorTemplate<T>>
 where
     T: SelectorItemLike + 'static,
 {
@@ -187,7 +162,7 @@ where
         cx: &mut App,
     ) -> Stateful<Div> {
         let root = self.base.render(model, handlers, window, cx);
-        self.apply_modifiers(root, model)
+        self.apply(root, model)
     }
 }
 
