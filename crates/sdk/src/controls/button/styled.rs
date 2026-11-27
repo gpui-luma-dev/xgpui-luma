@@ -401,7 +401,6 @@ mod style_states_tests {
 #[cfg(test)]
 mod disabled_opacity_tests {
     use crate::style::{default_theme, part_opacity};
-    use xgpui_luma_style::Value;
 
     /// SDK controls whose `:disabled` draws its own fill and text don't also fade: a faded fill lets whatever is
     /// behind the control show through (#397). Migrated controls carry the fade as `:disabled { opacity }` (#413).
@@ -421,6 +420,10 @@ mod disabled_opacity_tests {
             "scrollbar",
             "slider",
             "resizable_panels",
+            "control_group",
+            "context_menu",
+            "radio_group",
+            "floating_menu",
         ] {
             let sheet = theme.stylesheet();
             let id = sheet.control(control).expect("declared");
@@ -430,12 +433,6 @@ mod disabled_opacity_tests {
             for part in resolved.parts() {
                 assert_eq!(part_opacity(resolved.part(part)), 1.0, "{control} {part:?}");
             }
-        }
-        // Not yet moved to `:disabled { opacity }`.
-        for control in ["control_group", "context_menu", "radio_group"] {
-            let key = theme.key_named(control, &[], &[]).expect("key");
-            let opacity = theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number);
-            assert_eq!(opacity, Some(1.0), "{control}");
         }
     }
 }

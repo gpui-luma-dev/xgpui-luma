@@ -49,7 +49,7 @@ pub fn styled_floating_menu_look(binding: &StyleBinding) -> FloatingMenuLook {
         item_gap: number(item, "gap"),
         item_icon_size: number(root, "item_icon_size"),
         item_radius: number(item, "radius"),
-        disabled_opacity: number(root, "disabled_opacity"),
+        item_disabled_opacity: crate::style::part_opacity(disabled.part(PartId::new("item"))),
         submenu_offset_x: number(root, "submenu_offset_x"),
         separator_color: color(separator, "background"),
         separator_thickness: number(separator, "height"),

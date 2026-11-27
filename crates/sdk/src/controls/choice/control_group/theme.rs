@@ -27,8 +27,9 @@ pub struct ControlGroupListLook {
     pub vertical_gap: f32,
     /// Shell border thickness in logical pixels; zero removes it.
     pub border_width: f32,
-    /// Opacity of default disabled items; custom item templates own their opacity.
-    pub disabled_opacity: f32,
+    /// A disabled default row's opacity: the `item` part's `:disabled { opacity }`. Custom item templates own
+    /// their opacity.
+    pub item_disabled_opacity: f32,
 }
 
 pub trait ControlGroupTheme: Send + Sync {

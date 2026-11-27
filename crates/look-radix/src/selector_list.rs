@@ -67,7 +67,7 @@ mod tests {
                         assert_eq!(panel.item_hover_background, menu.item_hover_background);
                         assert_eq!(panel.item_hover_foreground, menu.item_hover_foreground);
                         assert_eq!(panel.item_disabled_foreground, menu.item_disabled_foreground);
-                        assert_eq!(panel.disabled_opacity, menu.disabled_opacity);
+                        assert_eq!(panel.item_disabled_opacity, menu.item_disabled_opacity);
                     }
                 }
             }

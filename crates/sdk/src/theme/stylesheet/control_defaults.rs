@@ -61,8 +61,8 @@ fn selector_panel_chrome_inherits_tokens_and_popover_placement() {
     let selection = default_selection_panel_look(&tokens);
     // The selection panel is the items panel: no geometry of its own.
     assert_eq!(
-        (selection.border_width, selection.disabled_opacity, selection.radius),
-        (look.border_width, look.disabled_opacity, look.radius)
+        (selection.border_width, selection.item_disabled_opacity, selection.radius),
+        (look.border_width, look.item_disabled_opacity, look.radius)
     );
 }
 

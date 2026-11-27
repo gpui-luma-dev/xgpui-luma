@@ -378,7 +378,8 @@ pub fn render_control_group_item_elements<T>(
 where
     T: ControlGroupItemLike + 'static,
 {
-    let opacity = crate::style::sdk_number("control_group", "disabled_opacity");
+    let disabled = crate::style::StyleBinding::sdk("control_group").resolve(&[("disabled", true)], 1.0);
+    let opacity = crate::style::part_opacity(disabled.part(xgpui_luma_style::PartId::new("item")));
     render_control_group_item_elements_with_opacity(model, handlers, window, cx, opacity)
 }
 
@@ -387,7 +388,7 @@ fn render_control_group_item_elements_with_opacity<T>(
     handlers: ControlGroupTemplateHandlers,
     window: &mut Window,
     cx: &mut App,
-    disabled_opacity: f32,
+    item_disabled_opacity: f32,
 ) -> ControlGroupItemElements
 where
     T: ControlGroupItemLike + 'static,
@@ -405,7 +406,7 @@ where
         if item.enabled {
             element = element.cursor_pointer();
         } else if model.item_element_template.is_none() {
-            element = element.opacity(disabled_opacity);
+            element = crate::style::fade(element, item_disabled_opacity);
         }
 
         if model.scroll_handle.is_some() {
@@ -438,12 +439,12 @@ pub(crate) fn render_control_group_items<T>(
     handlers: ControlGroupTemplateHandlers,
     window: &mut Window,
     cx: &mut App,
-    disabled_opacity: f32,
+    item_disabled_opacity: f32,
 ) -> Vec<AnyElement>
 where
     T: ControlGroupItemLike + 'static,
 {
-    render_control_group_item_elements_with_opacity(model, handlers, window, cx, disabled_opacity)
+    render_control_group_item_elements_with_opacity(model, handlers, window, cx, item_disabled_opacity)
         .into_elements()
         .collect()
 }

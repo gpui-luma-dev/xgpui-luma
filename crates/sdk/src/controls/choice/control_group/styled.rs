@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use gpui::Hsla;
-use xgpui_luma_style::{PartView, Value};
+use xgpui_luma_style::{PartId, PartView, Value};
 
 use super::theme::{ControlGroupItemPalette, ControlGroupListLook, ControlGroupTheme};
 use crate::controls::button::StyledButtonTemplate;
@@ -60,7 +60,9 @@ impl ControlGroupTheme for StyledControlGroupTheme {
             gap: number(root, "gap"),
             vertical_gap: number(root, "vertical_gap"),
             border_width: number(root, "border_width"),
-            disabled_opacity: number(root, "disabled_opacity"),
+            item_disabled_opacity: crate::style::part_opacity(
+                self.binding.resolve(&[("disabled", true)], 1.0).part(PartId::new("item")),
+            ),
         }
     }
 

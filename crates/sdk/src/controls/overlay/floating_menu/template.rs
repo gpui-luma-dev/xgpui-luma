@@ -203,7 +203,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
                     ));
                 }
             } else {
-                row = row.opacity(look.disabled_opacity).child(render_submenu_affordance(
+                row = crate::style::fade(row, look.item_disabled_opacity).child(render_submenu_affordance(
                     !item.submenu_items().is_empty(),
                     color,
                     look.item_icon_size,
@@ -534,7 +534,7 @@ fn render_floating_submenu(
                 row = row.cursor_pointer().on_click(item_click);
             }
         } else if !enabled {
-            row = row.opacity(look.disabled_opacity);
+            row = crate::style::fade(row, look.item_disabled_opacity);
         }
 
         submenu = submenu.child(apply_row_paint(row, paint));

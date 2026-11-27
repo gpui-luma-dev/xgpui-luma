@@ -1,8 +1,7 @@
 // Radix context-menu target. Layer: look. The surface with the border role, the focus role as its edge
-// while focused, and muted text when disabled.
+// while focused, and muted text when disabled (no fade).
 
 context_menu {
-  disabled_opacity = 0.56
   part root {
     background  = radix.role.surface
     foreground  = radix.role.foreground

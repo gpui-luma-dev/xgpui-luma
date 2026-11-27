@@ -19,8 +19,8 @@ pub struct SelectorItemsPanelLook {
     pub border: gpui::Hsla,
     /// Shell border thickness, also used when aligning popup rows.
     pub border_width: f32,
-    /// Additional opacity applied to disabled rows.
-    pub disabled_opacity: f32,
+    /// A disabled row's opacity (the floating menu's `item` part).
+    pub item_disabled_opacity: f32,
     /// Vertical offset for anchored popups; inline panels ignore this value.
     pub popup_offset_y: f32,
     /// Minimum viewport edge margin for anchored popup placement.
@@ -76,7 +76,7 @@ impl SelectorItemsPanelLook {
             foreground: menu.foreground,
             border: menu.border,
             border_width: metrics.border_width,
-            disabled_opacity: menu.disabled_opacity,
+            item_disabled_opacity: menu.item_disabled_opacity,
             popup_offset_y: placement.panel_offset_y,
             window_margin: placement.window_margin,
             shadow: menu.shadow,
@@ -372,7 +372,7 @@ where
                     row = row.on_click(click);
                 }
             } else {
-                row = row.opacity(look.disabled_opacity);
+                row = crate::style::fade(row, look.item_disabled_opacity);
             }
 
             rows = rows.child(row);
