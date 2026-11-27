@@ -35,7 +35,7 @@ pub(crate) fn fit_list_popup(
     look: &SelectorItemsPanelLook,
     chrome: gpui::Pixels,
     wanted_rows: usize,
-    viewport: gpui::Size<gpui::Pixels>,
+    viewport: impl Into<crate::infra::popup_placement::PopupSpace>,
 ) -> ListPopupFit {
     use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide};
     use gpui::px;

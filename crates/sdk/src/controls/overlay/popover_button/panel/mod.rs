@@ -5,7 +5,7 @@ mod look;
 mod model;
 
 pub(super) use control::{PopoverPanel, PopoverPanelEvent};
-pub(super) use model::{PopoverPanelDismissPolicy, PopoverPanelPlacement};
+pub(super) use model::PopoverPanelPlacement;
 
 pub use look::PopoverPanelLook;
 pub use model::PopoverMotion;

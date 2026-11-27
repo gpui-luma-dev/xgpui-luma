@@ -2,6 +2,7 @@
 #[path = "click_tests.rs"]
 mod click_tests;
 
+use crate::infra::popup_placement::PopupSpace;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, FocusHandle, Focusable, IntoElement, KeyDownEvent,
@@ -817,7 +818,7 @@ impl Render for SearchSelectorControl {
                     &look,
                     px(geometry.search_chrome_height),
                     wanted_rows,
-                    window.viewport_size(),
+                    PopupSpace::of(window, cx),
                 )
             });
             let popup_placement = fit.map(|fit| fit.placement);

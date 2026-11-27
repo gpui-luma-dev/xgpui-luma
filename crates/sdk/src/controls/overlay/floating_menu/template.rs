@@ -218,11 +218,15 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
 
         if let Some(submenu) = submenu {
             // Beside its row, flipping to the other side at the window edge (#433).
+            // Deferred, so a scrolling parent menu does not clip it.
             let row_top = px(look.padding + row_offset(model.items, model.open_submenu.unwrap_or(0), look));
             menu = menu.child(
-                attached_popup(PopupSide::End, submenu)
-                    .band(row_top, px(look.item_height))
-                    .window_margin(px(look.window_margin)),
+                gpui::deferred(
+                    attached_popup(PopupSide::End, submenu)
+                        .band(row_top, px(look.item_height))
+                        .window_margin(px(look.window_margin)),
+                )
+                .with_priority(2),
             );
         }
 

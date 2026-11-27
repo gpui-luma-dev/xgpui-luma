@@ -3,9 +3,10 @@ use gpui::{
     MouseButton, MouseDownEvent, Pixels, Render, SharedString, Size, Subscription, Window, div, prelude::*, px,
 };
 
-use super::model::{PopoverPanelBuilder, PopoverPanelDismissPolicy, PopoverPanelPlacement, PopoverPanelRenderModel};
+use super::model::{PopoverPanelBuilder, PopoverPanelPlacement, PopoverPanelRenderModel};
+use crate::infra::popup_dismiss::DismissReason;
 use crate::infra::ElementExt;
-use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::motion::overlay_presence::OverlayPresence;
 use crate::focus::EscapeFocus;
 
@@ -188,8 +189,7 @@ impl PopoverPanel {
             open: self.model.open,
             anchor_bounds: self.model.anchor_bounds,
             placement: self.model.placement,
-            dismiss_policy: self.model.dismiss_policy,
-            dismissible: self.model.dismissible,
+            dismiss: self.model.dismiss,
             focused: self.focus_handle.is_focused(window),
             content_bounds: self.content_bounds,
         }
@@ -223,19 +223,11 @@ impl PopoverPanel {
     }
 
     fn can_dismiss_on_click_away(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnClickAway | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
+        self.model.dismiss.allows(DismissReason::ClickOutside)
     }
 
     fn can_dismiss_on_focus_loss(&self) -> bool {
-        self.model.dismissible
-            && matches!(
-                self.model.dismiss_policy,
-                PopoverPanelDismissPolicy::CloseOnFocusLoss | PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-            )
+        self.model.dismiss.allows(DismissReason::FocusLoss)
     }
 
     fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) {
@@ -298,7 +290,7 @@ impl PopoverPanel {
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.model.open && self.model.dismissible {
+        if self.model.open && self.model.dismiss.allows(DismissReason::Escape) {
             self.dismiss(cx);
         } else {
             cx.propagate();
@@ -369,7 +361,7 @@ impl Render for PopoverPanel {
             content_size,
             self.model.placement,
             self.model.offset_y,
-            window.viewport_size(),
+            PopupSpace::of(window, cx),
             self.model.window_margin,
         );
         let scale_size = content_size.unwrap_or(Size { width: px(0.0), height: px(0.0) });
@@ -414,7 +406,7 @@ fn resolve_popover_panel_placement(
     content_size: Option<Size<Pixels>>,
     placement: PopoverPanelPlacement,
     offset_y: Pixels,
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
     window_margin: Pixels,
 ) -> ResolvedPopupPlacement {
     let (side, align, flip) = match placement {

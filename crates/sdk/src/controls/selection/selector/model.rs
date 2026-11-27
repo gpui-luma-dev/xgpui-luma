@@ -57,6 +57,7 @@ where
     pub(crate) invalid: bool,
     pub(crate) tab_stop: bool,
     pub(crate) placement: SelectorPlacement,
+    pub(crate) dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(crate) opening_mode: SelectorOpeningMode,
     pub(crate) trigger_style: SelectorTriggerStyle,
     pub(crate) icons_explicit: bool,
@@ -216,6 +217,7 @@ where
                 invalid: false,
                 tab_stop: true,
                 placement: SelectorPlacement::Smart,
+                dismiss: crate::infra::popup_dismiss::PopupDismiss::LIGHT,
                 opening_mode: SelectorOpeningMode::default(),
                 trigger_style: SelectorTriggerStyle::default(),
                 icons_explicit: false,
@@ -314,6 +316,12 @@ where
     /// Choose dropdown placement or selected-item-centered opening.
     pub fn opening_mode(mut self, mode: SelectorOpeningMode) -> Self {
         self.model.opening_mode = mode;
+        self
+    }
+
+    /// What closes the popup: an outside click, focus loss or Escape by default.
+    pub fn dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
         self
     }
 

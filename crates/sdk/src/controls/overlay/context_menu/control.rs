@@ -325,7 +325,7 @@ impl ContextMenu {
     }
 
     fn handle_mouse_down_out(&mut self, _event: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.dismiss_menu(cx) {
+        if self.model.dismiss.click_outside && self.dismiss_menu(cx) {
             cx.notify();
         }
     }
@@ -467,7 +467,7 @@ impl ContextMenu {
     }
 
     fn handle_escape_focus(&mut self, _: &EscapeFocus, _window: &mut Window, cx: &mut Context<Self>) {
-        if self.menu_position.is_some() {
+        if self.menu_position.is_some() && self.model.dismiss.escape {
             self.dismiss_menu(cx);
             cx.notify();
         } else {
@@ -483,7 +483,7 @@ impl ContextMenu {
 
     fn handle_focus_out(&mut self, _: FocusOutEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let focused = self.emit_focus_changed(false, cx);
-        let closed = self.dismiss_menu(cx);
+        let closed = self.model.dismiss.focus_loss && self.dismiss_menu(cx);
         if focused || closed {
             cx.notify();
         }

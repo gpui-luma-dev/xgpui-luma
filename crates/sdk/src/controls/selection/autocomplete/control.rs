@@ -2,6 +2,7 @@ use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, Pixels, Render, ScrollEvent,
     SharedString, Subscription, TextRun, Window, font, px,
 };
+use crate::infra::popup_placement::PopupSpace;
 use crate::controls::selector_list::{SelectorItem, SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::controls::scrollbar::ScrollbarEvent;
 
@@ -529,7 +530,7 @@ impl Render for AutocompleteControl {
             let max_visible_rows = self.model.row_limits.1.max(min_visible_rows);
             let wanted_rows = menu_items.len().clamp(min_visible_rows, max_visible_rows);
             let fit = self.trigger_bounds.map(|trigger| {
-                fit_list_popup(trigger, popup_width, &look, px(0.0), wanted_rows, window.viewport_size())
+                fit_list_popup(trigger, popup_width, &look, px(0.0), wanted_rows, PopupSpace::of(window, cx))
             });
             popup_placement = fit.map(|fit| fit.placement);
             // Rows beyond the space on the opening side scroll.

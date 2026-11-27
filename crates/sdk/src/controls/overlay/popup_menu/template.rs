@@ -9,7 +9,7 @@ use lucide_svg_static::Icon as LucideIcon;
 use super::{PopupMenuPlacement, PopupMenuRenderModel, PopupMenuTriggerModel};
 use crate::controls::button::face::{Face, FaceLook, FaceShape};
 use crate::infra::ElementExt;
-use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
+use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, PopupSpace, ResolvedPopupPlacement};
 use crate::controls::floating_menu::render_floating_menu_with_submenu_hovers_and_icons_and_transition;
 use crate::infra::icon::render_disclosure_icon;
 use crate::controls::popup_menu::{PopupMenuLook, PopupMenuTheme, PopupMenuTriggerMetrics, default_popup_menu_theme};
@@ -141,7 +141,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
         model: &PopupMenuRenderModel<'_>,
         handlers: PopupMenuTemplateHandlers,
         window: &mut Window,
-        _cx: &mut App,
+        cx: &mut App,
     ) -> Stateful<Div> {
         let PopupMenuTemplateHandlers {
             split_faces,
@@ -172,7 +172,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
         } else {
             InteractionState { hovered: model.state.hovered || model.open, ..model.state }
         };
-        let look = self.theme.resolve_look(model.trigger_style, metrics, state, scale_factor, _cx);
+        let look = self.theme.resolve_look(model.trigger_style, metrics, state, scale_factor, cx);
         let theme_metrics = self.theme.metrics();
         let face_look = popup_menu_face_look(&look, &theme_metrics);
         let trigger_model = PopupMenuTriggerModel {
@@ -190,7 +190,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 model.state
             },
         };
-        let face_content = (model.content)(&trigger_model, _cx);
+        let face_content = (model.content)(&trigger_model, cx);
         // The trigger is a button face (#430): its fill, border, shadow, focus ring and fade come from one place.
         let face = Face {
             id: "trigger".into(),
@@ -217,7 +217,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 PopupMenuTriggerMetrics { open: false, ..metrics },
                 model.split_state.primary,
                 scale_factor,
-                _cx,
+                cx,
             );
             let disclosure_look = self.theme.resolve_look(
                 model.trigger_style,
@@ -227,7 +227,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                     ..model.split_state.disclosure
                 },
                 scale_factor,
-                _cx,
+                cx,
             );
             let mut action_face = div()
                 .id("action-face")
@@ -364,7 +364,7 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 model.placement,
                 &look,
                 model.items,
-                window.viewport_size(),
+                PopupSpace::of(window, cx),
             );
             let content_size = estimated_menu_size(
                 &look,
@@ -385,7 +385,9 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                     model.highlight,
                     crate::infra::icon::DisclosureIcons::default(),
                     model.submenu_transition,
-                ),
+                )
+                // Taller than the space on its side, the menu scrolls (#433).
+                .when(placement.scrolling, |menu| menu.max_h(placement.max_size.height).overflow_y_scroll()),
             );
             let overlay = anchored()
                 .snap_to_window_with_margin(px(look.floating_menu.window_margin))
@@ -432,7 +434,7 @@ fn resolve_popup_menu_placement(
     placement: PopupMenuPlacement,
     look: &PopupMenuLook,
     items: &[crate::infra::menu_item::MenuItem],
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
 ) -> ResolvedPopupPlacement {
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })

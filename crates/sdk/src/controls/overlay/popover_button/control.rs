@@ -5,11 +5,8 @@ use gpui::{
     div, prelude::*,
 };
 
-use super::model::{
-    PopoverButtonBuilder, PopoverButtonEvent, PopoverDismissPolicy, PopoverPlacement, PopoverRenderModel,
-    PopoverTrigger,
-};
-use super::panel::{PopoverPanel, PopoverPanelDismissPolicy, PopoverPanelEvent, PopoverPanelPlacement};
+use super::model::{PopoverButtonBuilder, PopoverButtonEvent, PopoverPlacement, PopoverRenderModel, PopoverTrigger};
+use super::panel::{PopoverPanel, PopoverPanelEvent, PopoverPanelPlacement};
 
 pub struct PopoverButton<D = ()> {
     id: SharedString,
@@ -52,14 +49,7 @@ impl<D: Default + 'static> PopoverButton<D> {
                 PopoverPlacement::BelowCenter => PopoverPanelPlacement::BelowCenter,
                 PopoverPlacement::AboveStart => PopoverPanelPlacement::AboveStart,
             })
-            .dismiss_policy(match builder.dismiss_policy {
-                PopoverDismissPolicy::CloseOnClickAway => PopoverPanelDismissPolicy::CloseOnClickAway,
-                PopoverDismissPolicy::CloseOnFocusLoss => PopoverPanelDismissPolicy::CloseOnFocusLoss,
-                PopoverDismissPolicy::CloseOnClickAwayOrFocusLoss => {
-                    PopoverPanelDismissPolicy::CloseOnClickAwayOrFocusLoss
-                }
-                PopoverDismissPolicy::KeepOpen => PopoverPanelDismissPolicy::KeepOpen,
-            })
+            .dismiss(builder.dismiss)
             .offset_y(builder.offset_y)
             .window_margin(builder.window_margin)
             .focus_on_open(builder.focus_on_open)

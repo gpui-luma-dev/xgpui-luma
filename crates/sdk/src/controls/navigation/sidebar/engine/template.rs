@@ -10,7 +10,7 @@ use gpui::{
 use lucide_svg_static::Icon as LucideIcon;
 
 use super::{NavNodeKind, SidebarPanelEngineRenderModel, RenderedNavNode, RenderedRailSubmenu};
-use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide};
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{InteractionState, LumaTextStyle, LumaTypography};
@@ -242,7 +242,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
                         rail_submenu_item_clicks,
                         rail_submenu_bounds,
                         rail_submenu_mouse_down_out.expect("rail submenu should have outside click handler"),
-                        window.viewport_size(),
+                        PopupSpace::of(window, cx),
                     ))
                     .with_priority(1),
                 );
@@ -841,7 +841,7 @@ fn render_rail_submenu_overlay(
     item_clicks: Vec<FloatingMenuClickHandler>,
     bounds_handler: Option<SidebarPanelBoundsHandler>,
     mouse_down_out: SidebarPanelMouseDownHandler,
-    viewport: gpui::Size<Pixels>,
+    viewport: PopupSpace,
 ) -> impl IntoElement {
     let menu = render_floating_menu(
         &submenu.id,

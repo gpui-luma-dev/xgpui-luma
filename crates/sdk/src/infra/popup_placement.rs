@@ -18,6 +18,40 @@ pub enum LayoutDirection {
     RightToLeft,
 }
 
+impl gpui::Global for LayoutDirection {}
+
+/// The app's layout direction; left to right until [`set_layout_direction`].
+pub fn layout_direction(cx: &gpui::App) -> LayoutDirection {
+    cx.try_global::<LayoutDirection>().copied().unwrap_or_default()
+}
+
+/// Set the layout direction every popup's start and end placements follow.
+pub fn set_layout_direction(direction: LayoutDirection, cx: &mut gpui::App) {
+    cx.set_global(direction);
+}
+
+/// The space a popup is placed in: the window size and the layout direction.
+/// A bare window size converts to it, left to right.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[non_exhaustive]
+pub struct PopupSpace {
+    pub viewport: Size<Pixels>,
+    pub direction: LayoutDirection,
+}
+
+impl PopupSpace {
+    /// The window's size and the app's layout direction.
+    pub fn of(window: &gpui::Window, cx: &gpui::App) -> Self {
+        Self { viewport: window.viewport_size(), direction: layout_direction(cx) }
+    }
+}
+
+impl From<Size<Pixels>> for PopupSpace {
+    fn from(viewport: Size<Pixels>) -> Self {
+        Self { viewport, direction: LayoutDirection::LeftToRight }
+    }
+}
+
 /// The side of the anchor a popup opens on.
 ///
 /// `End` and `Start` are logical: in a left-to-right layout `End` is the right
@@ -82,7 +116,10 @@ pub struct PopupPlacementRequest {
 }
 
 impl PopupPlacementRequest {
-    pub fn new(anchor: Bounds<Pixels>, side: PopupSide, viewport: Size<Pixels>) -> Self {
+    /// A popup on `side` of `anchor`. `space` is the window size, with the
+    /// app's layout direction when it is a [`PopupSpace`].
+    pub fn new(anchor: Bounds<Pixels>, side: PopupSide, space: impl Into<PopupSpace>) -> Self {
+        let PopupSpace { viewport, direction } = space.into();
         Self {
             anchor,
             side,
@@ -93,7 +130,7 @@ impl PopupPlacementRequest {
             viewport,
             window_margin: px(0.0),
             min_main_size: px(0.0),
-            direction: LayoutDirection::LeftToRight,
+            direction,
         }
     }
 
@@ -319,7 +356,8 @@ pub struct AttachedPopup {
     flip: bool,
     gap: Pixels,
     window_margin: Pixels,
-    direction: LayoutDirection,
+    /// `None` follows the app's [`layout_direction`].
+    direction: Option<LayoutDirection>,
     band: Option<(Pixels, Pixels)>,
 }
 
@@ -332,7 +370,7 @@ pub fn attached_popup(side: PopupSide, child: impl gpui::IntoElement) -> Attache
         flip: true,
         gap: px(0.0),
         window_margin: px(0.0),
-        direction: LayoutDirection::LeftToRight,
+        direction: None,
         band: None,
     }
 }
@@ -359,7 +397,7 @@ impl AttachedPopup {
     }
 
     pub fn direction(mut self, direction: LayoutDirection) -> Self {
-        self.direction = direction;
+        self.direction = Some(direction);
         self
     }
 
@@ -434,7 +472,7 @@ impl gpui::Element for AttachedPopup {
             .gap(self.gap)
             .content_size(Some(holder.size))
             .window_margin(self.window_margin)
-            .direction(self.direction)
+            .direction(self.direction.unwrap_or_else(|| layout_direction(cx)))
             .resolve();
         let target = placement.bounds(holder.size, viewport, self.window_margin);
         let offset = target.origin - holder.origin;
@@ -691,5 +729,44 @@ mod attached_tests {
         let (popup, target) = popup_and_target(cx, None);
         assert_eq!(popup.right(), target.left());
         assert_eq!(popup.top(), target.top());
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod direction_tests {
+    use gpui::{Context, IntoElement, Render, TestAppContext, Window, div, prelude::*, px};
+
+    use super::*;
+
+    /// A box at the window's right edge with a popup attached to its end.
+    struct Host;
+
+    impl Render for Host {
+        fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let left = window.viewport_size().width.as_f32() - 100.0;
+            div().size_full().child(
+                div()
+                    .debug_selector(|| "target".into())
+                    .absolute()
+                    .left(px(left))
+                    .top(px(10.0))
+                    .w(px(80.0))
+                    .h(px(20.0))
+                    .child(attached_popup(
+                        PopupSide::End,
+                        div().debug_selector(|| "popup".into()).w(px(200.0)).h(px(50.0)),
+                    )),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn right_to_left_setting_opens_the_end_side_on_the_left(cx: &mut TestAppContext) {
+        cx.update(|cx| set_layout_direction(LayoutDirection::RightToLeft, cx));
+        let (_, cx) = cx.add_window_view(|_, _| Host);
+        cx.run_until_parked();
+        let popup = cx.debug_bounds("popup").expect("popup drawn");
+        let target = cx.debug_bounds("target").expect("target drawn");
+        assert_eq!(popup.right(), target.left());
     }
 }

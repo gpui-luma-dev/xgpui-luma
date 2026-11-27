@@ -65,7 +65,7 @@ fn dialog(id: SharedString, theme: &Theme, mode: OverlayWindowMode, window: &mut
         id: &id,
         mode,
         position: OverlayWindowPosition::Center,
-        dismissible: true,
+        dismiss: xgpui_luma::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
         draggable: false,
         width: None,
         focused: false,

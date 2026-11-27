@@ -13,6 +13,7 @@ pub mod lock;
 pub(crate) mod interaction;
 pub mod menu_item;
 pub(crate) mod menu_navigation;
+pub mod popup_dismiss;
 pub mod popup_placement;
 pub mod presenter;
 pub mod rounded_shell;

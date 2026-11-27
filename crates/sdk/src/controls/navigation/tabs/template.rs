@@ -10,7 +10,9 @@ use super::indicator::TabsIndicatorMotion;
 use super::{TabsItem, TabsItemAccessory, TabsRenderItem, TabsRenderModel, model::TabsWidthMode};
 use crate::controls::button_family::{ButtonFamilyLook, ButtonFamilyRole};
 use crate::infra::ElementExt;
-use crate::infra::popup_placement::{PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement};
+use crate::infra::popup_placement::{
+    LayoutDirection, PopupAlign, PopupPlacementRequest, PopupSide, ResolvedPopupPlacement, layout_direction,
+};
 use crate::infra::lock;
 use crate::controls::button::{ButtonRenderModel, ButtonTemplate, StyledButtonTemplate};
 use crate::controls::control_group::{
@@ -39,6 +41,8 @@ pub struct TabsOverlayState {
     trigger_bounds: Arc<Mutex<Option<Bounds<Pixels>>>>,
     presence: Arc<Mutex<OverlayPresence>>,
     last_overlay: Arc<Mutex<Option<TabsCachedOverlay>>>,
+    /// The app's layout direction, read when the trigger is laid out.
+    direction: Arc<Mutex<LayoutDirection>>,
 }
 
 #[derive(Clone)]
@@ -56,6 +60,7 @@ impl Default for TabsOverlayState {
             trigger_bounds: Arc::new(Mutex::new(None)),
             presence: Arc::new(Mutex::new(OverlayPresence::new(false, true))),
             last_overlay: Arc::new(Mutex::new(None)),
+            direction: Arc::new(Mutex::new(LayoutDirection::default())),
         }
     }
 }
@@ -452,10 +457,12 @@ where
     let mut root = div()
         .on_children_prepainted({
             let trigger_bounds = overlay_state.trigger_bounds.clone();
-            move |bounds, _, _| {
+            let direction = overlay_state.direction.clone();
+            move |bounds, _, cx| {
                 if let Some(bounds) = bounds.first() {
                     *lock::mutex(&trigger_bounds) = Some(*bounds);
                 }
+                *lock::mutex(&direction) = layout_direction(cx);
             }
         })
         .id(id)
@@ -481,6 +488,7 @@ where
             let presence = overlay_state.presence_snapshot();
             let placement = resolve_tabs_overlay_placement(
                 overlay_state.trigger_bounds(),
+                *lock::mutex(&overlay_state.direction),
                 overlay.placement,
                 overlay.content_size,
                 overlay.offset_y,
@@ -503,6 +511,7 @@ where
             {
                 let placement = resolve_tabs_overlay_placement(
                     overlay_state.trigger_bounds(),
+                    *lock::mutex(&overlay_state.direction),
                     cached.placement,
                     cached.content_size,
                     cached.offset_y,
@@ -527,6 +536,7 @@ where
 
 fn resolve_tabs_overlay_placement(
     trigger_bounds: Option<Bounds<Pixels>>,
+    direction: LayoutDirection,
     placement: TabsOverlayPlacement,
     content_size: Size<Pixels>,
     offset_y: Pixels,
@@ -538,6 +548,7 @@ fn resolve_tabs_overlay_placement(
     };
     // The overlay never flips, so the viewport is not needed; `anchored()` clamps it.
     PopupPlacementRequest::new(trigger_bounds, PopupSide::Below, Size::default())
+        .direction(direction)
         .align(align)
         .gap(offset_y)
         .content_size(Some(content_size))
@@ -755,6 +766,7 @@ mod tests {
     fn overlay_below_start_anchors_to_trigger_bottom_left() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            LayoutDirection::LeftToRight,
             TabsOverlayPlacement::BelowStart,
             size(px(200.0), px(120.0)),
             px(6.0),
@@ -769,6 +781,7 @@ mod tests {
     fn overlay_below_center_anchors_to_trigger_center_with_content_offset() {
         let placement = resolve_tabs_overlay_placement(
             Some(Bounds::new(point(px(40.0), px(10.0)), size(px(80.0), px(32.0)))),
+            LayoutDirection::LeftToRight,
             TabsOverlayPlacement::BelowCenter,
             size(px(200.0), px(120.0)),
             px(6.0),

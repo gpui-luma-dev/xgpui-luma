@@ -80,6 +80,7 @@ pub struct SidebarControlModel {
     pub(crate) presentation: SidebarPresentation,
     pub(crate) enabled: bool,
     pub(crate) motion_enabled: bool,
+    pub(crate) rail_dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(crate) selected_id: Option<SharedString>,
     pub(crate) drag_drop: Option<super::SidebarDragDrop>,
     pub(crate) sidebar: Option<SidebarPanelModel>,
@@ -654,6 +655,7 @@ impl SidebarControlBuilder {
                 presentation: SidebarPresentation::Expanded,
                 enabled: true,
                 motion_enabled: true,
+                rail_dismiss: crate::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
                 selected_id: None,
                 drag_drop: None,
                 sidebar: None,
@@ -681,6 +683,12 @@ impl SidebarControlBuilder {
 
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.model.enabled = enabled;
+        self
+    }
+
+    /// What closes the icon rail's flyout menu; an outside click or Escape by default.
+    pub fn rail_dismiss(mut self, dismiss: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.model.rail_dismiss = dismiss;
         self
     }
 

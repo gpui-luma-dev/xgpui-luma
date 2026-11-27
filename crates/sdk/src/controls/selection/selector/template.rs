@@ -10,7 +10,7 @@ use super::item_template::render_item_content;
 
 use crate::controls::button::face::{Face, FaceShape};
 use crate::infra::ElementExt;
-use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide};
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::selector_list::{
     SelectorItem, SelectorItemLike, SelectorItemsRenderModel, SelectorItemsTemplate, SelectorItemsTemplateHandlers,
     default_selector_items_template,
@@ -268,7 +268,7 @@ where
                 model.placement,
                 &look,
                 model.items.len(),
-                window.viewport_size(),
+                PopupSpace::of(window, cx),
             );
             let centered = model.opening_mode == SelectorOpeningMode::Centered && !model.items.is_empty();
             if centered {
@@ -375,8 +375,9 @@ pub(crate) fn resolve_selector_popup_metrics(
     placement: SelectorPlacement,
     look: &SelectorLook,
     item_count: usize,
-    viewport_size: Size<Pixels>,
+    viewport_size: impl Into<PopupSpace>,
 ) -> ResolvedSelectorPlacement {
+    let space: PopupSpace = viewport_size.into();
     let trigger_bounds = trigger_bounds.unwrap_or_else(|| {
         Bounds::new(point(px(0.0), px(0.0)), Size { width: px(0.0), height: px(look.trigger_height) })
     });
@@ -386,7 +387,7 @@ pub(crate) fn resolve_selector_popup_metrics(
 
     if placement == SelectorPlacement::OverlayOnTrigger {
         // Covers the trigger and runs down to the window margin.
-        let available = (viewport_size.height - viewport_margin - trigger_bounds.top()).max(minimum_height);
+        let available = (space.viewport.height - viewport_margin - trigger_bounds.top()).max(minimum_height);
         let max_height = menu_size.height.min(available);
         return ResolvedSelectorPlacement {
             anchor: Anchor::TopLeft,
@@ -403,7 +404,7 @@ pub(crate) fn resolve_selector_popup_metrics(
         SelectorPlacement::Smart => (PopupSide::Below, true),
         _ => (PopupSide::Below, false),
     };
-    let request = PopupPlacementRequest::new(trigger_bounds, side, viewport_size)
+    let request = PopupPlacementRequest::new(trigger_bounds, side, space)
         .flip(flip)
         .gap(px(look.menu_offset_y))
         .content_size(Some(menu_size))

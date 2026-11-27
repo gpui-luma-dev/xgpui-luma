@@ -21,15 +21,6 @@ pub enum PopoverPlacement {
     AboveStart,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum PopoverDismissPolicy {
-    #[default]
-    CloseOnClickAway,
-    CloseOnFocusLoss,
-    CloseOnClickAwayOrFocusLoss,
-    KeepOpen,
-}
-
 pub struct PopoverRenderModel<'a, D> {
     pub id: &'a SharedString,
     pub data: &'a D,
@@ -45,7 +36,7 @@ pub struct PopoverButtonBuilder<D = ()> {
     pub(super) trigger: PopoverTrigger<D>,
     pub(super) content: PopoverContent<D>,
     pub(super) placement: PopoverPlacement,
-    pub(super) dismiss_policy: PopoverDismissPolicy,
+    pub(super) dismiss: crate::infra::popup_dismiss::PopupDismiss,
     pub(super) explicit_offset_y: bool,
     pub(super) explicit_window_margin: bool,
     pub(super) offset_y: Pixels,
@@ -95,7 +86,7 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
             trigger: Arc::new(|_, _| div().into_any_element()),
             content: Arc::new(|_, _, _| div().into_any_element()),
             placement: PopoverPlacement::default(),
-            dismiss_policy: PopoverDismissPolicy::default(),
+            dismiss: crate::infra::popup_dismiss::PopupDismiss::CLICK_OUTSIDE,
             explicit_offset_y: false,
             explicit_window_margin: false,
             offset_y: px(geometry.button_offset_y),
@@ -131,8 +122,9 @@ impl<D: Default + 'static> PopoverButtonBuilder<D> {
         self.placement = value;
         self
     }
-    pub fn dismiss_policy(mut self, value: PopoverDismissPolicy) -> Self {
-        self.dismiss_policy = value;
+    /// What closes the popover; an outside click or Escape by default.
+    pub fn dismiss(mut self, value: crate::infra::popup_dismiss::PopupDismiss) -> Self {
+        self.dismiss = value;
         self
     }
     pub fn offset_y(mut self, value: impl Into<Pixels>) -> Self {

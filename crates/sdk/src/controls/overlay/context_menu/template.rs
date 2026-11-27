@@ -6,7 +6,7 @@ use gpui::{
 };
 
 use super::ContextMenuRenderModel;
-use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide};
+use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace};
 use crate::controls::floating_menu::render_floating_menu_with_submenu_presence_and_transition;
 use crate::controls::context_menu::{ContextMenuTheme, default_context_menu_theme};
 
@@ -206,7 +206,7 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
             let placement = PopupPlacementRequest::new(
                 Bounds::new(position, gpui::Size::default()),
                 PopupSide::Below,
-                window.viewport_size(),
+                PopupSpace::of(window, cx),
             )
             .flip(true)
             .content_size(Some(menu_size))

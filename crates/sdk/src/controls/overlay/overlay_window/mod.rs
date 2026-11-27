@@ -7,8 +7,8 @@ pub(crate) mod theme;
 
 pub use control::OverlayWindowControl;
 pub use model::{
-    OverlayWindowBuilder, OverlayWindowDismissPolicy, OverlayWindowElementRenderer, OverlayWindowEvent,
-    OverlayWindowMode, OverlayWindowModel, OverlayWindowPosition, OverlayWindowRenderModel, new as overlay_window,
+    OverlayWindowBuilder, OverlayWindowElementRenderer, OverlayWindowEvent, OverlayWindowMode, OverlayWindowModel,
+    OverlayWindowPosition, OverlayWindowRenderModel, new as overlay_window,
 };
 pub use template::{
     OverlayWindowTemplate, OverlayWindowTemplateHandlers, OverlayWindowTemplateModifier, OverlayWindowTemplateParts,

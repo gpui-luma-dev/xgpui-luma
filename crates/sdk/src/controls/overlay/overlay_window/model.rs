@@ -1,3 +1,4 @@
+use crate::infra::popup_dismiss::PopupDismiss;
 use std::sync::Arc;
 
 use gpui::{AnyElement, App, AppContext, Context, Entity, IntoElement, SharedString, Window, point, px};
@@ -13,14 +14,6 @@ pub enum OverlayWindowMode {
     #[default]
     Modal,
     Modeless,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum OverlayWindowDismissPolicy {
-    #[default]
-    KeepOpen,
-    CloseOnClickAway,
-    CloseOnFocusLoss,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -52,18 +45,28 @@ pub struct OverlayWindowModel {
     pub(crate) open: bool,
     pub(crate) mode: OverlayWindowMode,
     pub(crate) position: OverlayWindowPosition,
-    pub(crate) dismiss_policy: OverlayWindowDismissPolicy,
-    pub(crate) dismissible: bool,
+    /// `None` uses the mode's default; see [`OverlayWindowModel::dismiss`].
+    pub(crate) dismiss: Option<PopupDismiss>,
     pub(crate) draggable: bool,
     pub(crate) width: Option<f32>,
     pub(crate) template: Arc<dyn OverlayWindowTemplate>,
+}
+
+impl OverlayWindowModel {
+    /// The policy in force: the one set, or the mode's default.
+    pub(crate) fn dismiss(&self) -> PopupDismiss {
+        self.dismiss.unwrap_or(match self.mode {
+            OverlayWindowMode::Modal => PopupDismiss::CLICK_OUTSIDE,
+            OverlayWindowMode::Modeless => PopupDismiss::ESCAPE,
+        })
+    }
 }
 
 pub struct OverlayWindowRenderModel<'a> {
     pub id: &'a SharedString,
     pub mode: OverlayWindowMode,
     pub position: OverlayWindowPosition,
-    pub dismissible: bool,
+    pub dismiss: PopupDismiss,
     pub draggable: bool,
     pub width: Option<f32>,
     pub focused: bool,
@@ -143,8 +146,7 @@ impl OverlayWindowBuilder {
                 open: false,
                 mode: OverlayWindowMode::Modal,
                 position: OverlayWindowPosition::Center,
-                dismiss_policy: OverlayWindowDismissPolicy::KeepOpen,
-                dismissible: true,
+                dismiss: None,
                 draggable: false,
                 width: None,
                 template: default_overlay_window_template(),
@@ -208,13 +210,10 @@ impl OverlayWindowBuilder {
         self
     }
 
-    pub fn dismiss_policy(mut self, dismiss_policy: OverlayWindowDismissPolicy) -> Self {
-        self.model.dismiss_policy = dismiss_policy;
-        self
-    }
-
-    pub fn dismissible(mut self, dismissible: bool) -> Self {
-        self.model.dismissible = dismissible;
+    /// What closes the window. By default a modal window closes on a backdrop
+    /// click or Escape, and a modeless one on Escape.
+    pub fn dismiss(mut self, dismiss: PopupDismiss) -> Self {
+        self.model.dismiss = Some(dismiss);
         self
     }
 

@@ -6,8 +6,7 @@ pub(crate) mod panel;
 
 pub use control::PopoverButton;
 pub use model::{
-    PopoverButtonBuilder, PopoverButtonEvent, PopoverContent, PopoverDismissPolicy, PopoverPlacement,
-    PopoverRenderModel, PopoverTrigger,
+    PopoverButtonBuilder, PopoverButtonEvent, PopoverContent, PopoverPlacement, PopoverRenderModel, PopoverTrigger,
 };
 
 mod callback;

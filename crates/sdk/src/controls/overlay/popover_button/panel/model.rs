@@ -7,6 +7,7 @@ use std::sync::Arc;
 use gpui::{AnyElement, App, AppContext, Bounds, Context, Entity, IntoElement, Pixels, SharedString, Size, Window};
 
 use super::control::PopoverPanel;
+use crate::infra::popup_dismiss::PopupDismiss;
 
 pub type PopoverPanelContent = Arc<dyn Fn(&PopoverPanelRenderModel<'_>, &mut Window, &mut App) -> AnyElement>;
 
@@ -19,15 +20,6 @@ pub enum PopoverPanelPlacement {
     SmartStart,
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum PopoverPanelDismissPolicy {
-    #[default]
-    KeepOpen,
-    CloseOnClickAway,
-    CloseOnFocusLoss,
-    CloseOnClickAwayOrFocusLoss,
-}
-
 #[derive(Clone)]
 pub struct PopoverPanelModel {
     pub(crate) motion: crate::motion::MotionConfig<PopoverMotion>,
@@ -37,8 +29,7 @@ pub struct PopoverPanelModel {
     pub(crate) motion_enabled: bool,
     pub(crate) anchor_bounds: Option<Bounds<Pixels>>,
     pub(crate) placement: PopoverPanelPlacement,
-    pub(crate) dismiss_policy: PopoverPanelDismissPolicy,
-    pub(crate) dismissible: bool,
+    pub(crate) dismiss: PopupDismiss,
     pub(crate) offset_y: Pixels,
     pub(crate) window_margin: Pixels,
     pub(crate) focus_on_open: bool,
@@ -52,8 +43,7 @@ pub struct PopoverPanelRenderModel<'a> {
     pub open: bool,
     pub anchor_bounds: Option<Bounds<Pixels>>,
     pub placement: PopoverPanelPlacement,
-    pub dismiss_policy: PopoverPanelDismissPolicy,
-    pub dismissible: bool,
+    pub dismiss: PopupDismiss,
     pub focused: bool,
     pub content_bounds: Option<Bounds<Pixels>>,
 }
@@ -84,8 +74,7 @@ impl PopoverPanelBuilder {
                 motion_enabled: true,
                 anchor_bounds: None,
                 placement: PopoverPanelPlacement::BelowStart,
-                dismiss_policy: PopoverPanelDismissPolicy::KeepOpen,
-                dismissible: true,
+                dismiss: PopupDismiss::ESCAPE,
                 offset_y: gpui::px(geometry.panel_offset_y),
                 window_margin: gpui::px(geometry.window_margin),
                 focus_on_open: true,
@@ -123,13 +112,9 @@ impl PopoverPanelBuilder {
         self
     }
 
-    pub fn dismiss_policy(mut self, dismiss_policy: PopoverPanelDismissPolicy) -> Self {
-        self.model.dismiss_policy = dismiss_policy;
-        self
-    }
-
-    pub fn dismissible(mut self, dismissible: bool) -> Self {
-        self.model.dismissible = dismissible;
+    /// What closes the panel; only Escape by default.
+    pub fn dismiss(mut self, dismiss: PopupDismiss) -> Self {
+        self.model.dismiss = dismiss;
         self
     }
 

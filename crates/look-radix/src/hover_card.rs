@@ -5,7 +5,8 @@ use gpui::{
     prelude::*, px,
 };
 use xgpui_luma::controls::button::{Button, ButtonEvent};
-use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent, PopoverDismissPolicy};
+use xgpui_luma::infra::popup_dismiss::PopupDismiss;
+use xgpui_luma::controls::popover_button::{PopoverButton, PopoverButtonEvent};
 use xgpui_luma::controls::overlay_window::{OverlayWindowLook, OverlayWindowMode};
 use xgpui_luma::theme::{ThemeMode};
 use crate::{Look, ScaleFamily};
@@ -168,7 +169,7 @@ impl HoverCardBuilder {
                             .into_any_element()
                     })
                     .focus_on_open(false)
-                    .dismiss_policy(PopoverDismissPolicy::CloseOnClickAway)
+                    .dismiss(PopupDismiss::CLICK_OUTSIDE)
                     .offset_y(px(6.0))
                     .initial_content_size(gpui::size(px(440.0), px(180.0)))
                     .trigger_on_pointer_down(false)
