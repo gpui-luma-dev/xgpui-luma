@@ -1,6 +1,8 @@
 //! Text-field and textarea themes read from `.lss` (issue #285): `textfield.lss`, and `textarea`, which
 //! extends it. They plug into the existing templates and every control that takes a text-input theme.
 
+use crate::theme::InteractionState;
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use gpui::SharedString;
 use xgpui_luma_style::{PartView, Resolved};
@@ -17,9 +19,14 @@ struct Input {
 
 impl Input {
     fn resolve(binding: &StyleBinding, hovered: bool, focused: bool, invalid: bool, enabled: bool) -> Self {
-        let states =
-            [("hover", hovered && enabled), ("focused", focused), ("invalid", invalid), ("disabled", !enabled)];
-        Self { resolved: binding.resolve(&states, 1.0) }
+        let interaction = InteractionState {
+            hovered: hovered && enabled,
+            focused,
+            invalid,
+            disabled: !enabled,
+            ..Default::default()
+        };
+        Self { resolved: binding.resolve_states(StyleStates::new(interaction), 1.0) }
     }
 
     fn root(&self) -> PartView<'_> {

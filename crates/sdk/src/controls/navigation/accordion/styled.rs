@@ -1,6 +1,7 @@
 //! The accordion's trigger, content and layout read from `.lss` (issue #285): `accordion.lss`. Looks keep
 //! their own drag preview, handle icon and tooltip, and delegate the rest to [`StyledAccordion`].
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 
 use super::theme::{AccordionContentPalette, AccordionPalette, AccordionScale, AccordionTheme};
@@ -25,13 +26,8 @@ impl StyledAccordion {
 
     /// The trigger row in `state`.
     pub fn trigger(&self, state: InteractionState) -> AccordionPalette {
-        let states = [
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
+        let states = StyleStates::new(state);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let root = resolved.root();
         let background = root.color("background");
         let foreground = root.color("foreground");

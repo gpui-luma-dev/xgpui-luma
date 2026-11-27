@@ -1,5 +1,6 @@
 //! The slider read from `.lss` (issue #285): `slider.lss`.
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use xgpui_luma_style::PartId;
 
@@ -9,13 +10,8 @@ use crate::theme::InteractionState;
 
 /// The slider for `binding` (the `slider` control) in `state`.
 pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> SliderLook {
-    let states = [
-        ("hover", state.hovered),
-        ("pressed", state.pressed),
-        ("focused", state.focused),
-        ("disabled", state.disabled),
-    ];
-    let resolved = binding.resolve(&states, 1.0);
+    let states = StyleStates::new(state);
+    let resolved = binding.resolve_states(states, 1.0);
     let root = resolved.root();
     let (track, fill, thumb) = (
         resolved.part(PartId::new("track")),

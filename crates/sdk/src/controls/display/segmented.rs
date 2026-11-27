@@ -1,6 +1,8 @@
 //! The segmented choice read from `.lss` (issue #285): `segmented.lss`. Looks render the track and
 //! segments from [`SegmentedLook`] and [`SegmentLook`].
 
+use crate::style::StyleStates;
+use crate::theme::InteractionState;
 use crate::style::PartRead;
 use gpui::Hsla;
 use xgpui_luma_style::PartId;
@@ -61,13 +63,15 @@ impl StyledSegmented {
     }
 
     pub fn segment(&self, state: SegmentState) -> SegmentLook {
-        let states = [
-            ("selected", state.selected),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("disabled", state.disabled),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
+        // The focus ring is drawn from `focus_visible` below, not a style state.
+        let interaction = InteractionState {
+            hovered: state.hovered,
+            pressed: state.pressed,
+            disabled: state.disabled,
+            ..InteractionState::default()
+        };
+        let states = StyleStates::new(interaction).selected(state.selected);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
         SegmentLook {
             background: item.color("background"),

@@ -162,15 +162,7 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
         let key = StyleKey::new(control).scale(scale);
         let key = self.states.iter().fold(key, |key, state| key.state(*state));
         let mut key = self.attrs.iter().fold(key, |key, (attr, value)| key.attr(*attr, *value));
-        let values = [
-            model_state.hovered,
-            model_state.pressed,
-            model_state.focused,
-            model_state.disabled,
-            model_state.invalid,
-            selected,
-        ];
-        for (name, on) in BUTTON_STYLE_STATES.into_iter().zip(values) {
+        for (name, on) in crate::style::StyleStates::new(model_state).selected(selected).pairs() {
             if let Some(state) = config.state(name) {
                 key = key.state_if(state, on);
             }
@@ -255,7 +247,8 @@ impl<D: ButtonData> StyledButtonTemplate<D> {
     }
 }
 
-/// The states a styled button sets in its key, in the order [`StyledButtonTemplate::key`] reads them.
+/// The states a styled button draws, for tools ([`ButtonTemplate::style_states`]); its key takes them from
+/// [`crate::style::StyleStates`].
 const BUTTON_STYLE_STATES: [&str; 6] = ["hover", "pressed", "focused", "disabled", "invalid", "selected"];
 
 impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {

@@ -2,6 +2,7 @@
 //! layout, typography roles, section font features and drag preview, and delegate the rows to
 //! [`StyledSidebar`].
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use gpui::Hsla;
 use xgpui_luma_style::{PartId, PartView, Value};
@@ -48,15 +49,8 @@ impl StyledSidebar {
 
     /// A row, selected (the current page) or not, in `state`.
     pub fn item(&self, selected: bool, state: InteractionState) -> SidebarItemLook {
-        let states = [
-            ("selected", selected),
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-            ("invalid", state.invalid),
-        ];
-        let resolved = self.binding.resolve(&states, 1.0);
+        let states = StyleStates::new(state).selected(selected);
+        let resolved = self.binding.resolve_states(states, 1.0);
         let (root, item) = (resolved.root(), resolved.part(PartId::new("item")));
         let foreground = item.color("foreground");
         SidebarItemLook {

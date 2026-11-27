@@ -1,6 +1,7 @@
 //! The popup-menu trigger read from `.lss` (issue #285): `popup_menu.lss`, which extends the button. The
 //! menu is supplied separately (a floating menu, which has its own `.lss`).
 
+use crate::style::StyleStates;
 use crate::style::PartRead;
 use std::sync::Arc;
 
@@ -52,15 +53,8 @@ impl StyledPopupMenuTheme {
             PopupMenuTriggerStyle::Outline => &[("variant", "outline")],
             PopupMenuTriggerStyle::Ghost => &[("variant", "ghost")],
         };
-        let states = [
-            ("hover", state.hovered),
-            ("pressed", state.pressed),
-            ("focused", state.focused),
-            ("disabled", state.disabled),
-            ("invalid", state.invalid),
-            ("open", open),
-        ];
-        self.binding.resolve_for(variant, &states, scale)
+        let states = StyleStates::new(state).open(open);
+        self.binding.resolve_states_for(variant, states, scale)
     }
 }
 
