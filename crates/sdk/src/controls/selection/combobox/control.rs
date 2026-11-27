@@ -8,7 +8,7 @@ use gpui::{
     ScrollEvent, SharedString, Subscription, TextRun, Window, font, px,
 };
 
-use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::controls::scrollbar::ScrollbarEvent;
 use crate::controls::textfield::TextFieldState;
 use crate::theme::observe_theme_revision;
@@ -695,7 +695,14 @@ impl Render for ComboBoxControl {
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
-            let visible_rows = item_count.clamp(min_visible_rows, max_visible_rows) as f32;
+            let wanted_rows = item_count.clamp(min_visible_rows, max_visible_rows);
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(trigger, trigger.size.width, &look, px(0.0), wanted_rows, window.viewport_size())
+            });
+            // Rows beyond the space on the opening side scroll.
+            let max_visible_rows = fit.map_or(max_visible_rows, |fit| max_visible_rows.min(fit.max_rows));
+            let popup_placement = fit.map(|fit| fit.placement);
+            let visible_rows = wanted_rows.min(max_visible_rows) as f32;
             let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > max_visible_rows;
 
@@ -731,6 +738,7 @@ impl Render for ComboBoxControl {
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
+                    popup_placement,
                     popup_look: look.clone(),
                     list_content: self.popup_surface.render_with_scroll_wheel(
                         list_content.into_any_element(),

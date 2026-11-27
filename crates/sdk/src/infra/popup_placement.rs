@@ -273,6 +273,25 @@ impl PopupPlacementRequest {
     }
 }
 
+/// Draw `child` as a popup at `placement`: deferred above other content and
+/// kept `window_margin` inside the window.
+pub fn anchored_popup(
+    placement: &ResolvedPopupPlacement,
+    window_margin: Pixels,
+    child: impl gpui::IntoElement,
+) -> gpui::Deferred {
+    use gpui::ParentElement as _;
+    gpui::deferred(
+        gpui::anchored()
+            .snap_to_window_with_margin(window_margin)
+            .anchor(placement.anchor)
+            .position(placement.position)
+            .offset(placement.offset)
+            .child(child),
+    )
+    .with_priority(1)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Physical {
     Below,

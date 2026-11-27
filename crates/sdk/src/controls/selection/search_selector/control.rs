@@ -9,7 +9,7 @@ use gpui::{
     px,
 };
 
-use crate::controls::selector_list::{SelectorItemsPanelLook, SelectorPanelClickHandler, SelectorPanelHoverHandler};
+use crate::controls::selector_list::{SelectorPanelClickHandler, SelectorPanelHoverHandler, fit_list_popup};
 use crate::motion::DisclosureMotion;
 use crate::controls::selector::SelectorVisualState;
 use crate::infra::interaction::ControlInteraction;
@@ -803,17 +803,30 @@ impl Render for SearchSelectorControl {
             let item_count = visible_indices.len();
             let min_visible_rows = self.model.min_visible_rows.max(1);
             let max_visible_rows = self.model.max_visible_rows.max(min_visible_rows);
-            let effective_max_visible_rows = if self.model.fill_popup_viewport {
-                max_visible_rows_for_viewport(
-                    self.trigger_bounds,
-                    window.viewport_size().height,
-                    &look,
-                    min_visible_rows,
-                    geometry.search_chrome_height,
-                )
+            // Filling the viewport, the popup asks for every row; otherwise for its row limit.
+            let fill = self.model.fill_popup_viewport;
+            let wanted_rows = if fill {
+                item_count.max(min_visible_rows)
             } else {
-                max_visible_rows
+                item_count.max(1).clamp(min_visible_rows, max_visible_rows)
             };
+            let fit = self.trigger_bounds.map(|trigger| {
+                fit_list_popup(
+                    trigger,
+                    trigger.size.width,
+                    &look,
+                    px(geometry.search_chrome_height),
+                    wanted_rows,
+                    window.viewport_size(),
+                )
+            });
+            let popup_placement = fit.map(|fit| fit.placement);
+            let effective_max_visible_rows = match fit {
+                Some(fit) if fill => fit.max_rows.max(min_visible_rows),
+                Some(fit) => max_visible_rows.min(fit.max_rows),
+                None => max_visible_rows,
+            };
+            let min_visible_rows = min_visible_rows.min(effective_max_visible_rows);
             let visible_rows = item_count.max(1).clamp(min_visible_rows, effective_max_visible_rows) as f32;
             let viewport_height = px((look.padding * 2.0) + (look.item_height * visible_rows));
             let allow_scrolling = self.model.scrolling && item_count > effective_max_visible_rows;
@@ -869,6 +882,7 @@ impl Render for SearchSelectorControl {
                     enabled: self.model.enabled,
                     item_template: self.model.item_template.as_ref(),
                     popup_bounds: self.trigger_bounds,
+                    popup_placement,
                     popup_look: look.clone(),
                     search_content: Some(self.popup_search_textfield.clone().into_any_element()),
                     list_content: self
@@ -951,25 +965,6 @@ impl Render for SearchSelectorControl {
     }
 }
 
-fn max_visible_rows_for_viewport(
-    trigger_bounds: Option<Bounds<Pixels>>,
-    viewport_height: Pixels,
-    look: &SelectorItemsPanelLook,
-    min_visible_rows: usize,
-    search_chrome_height: f32,
-) -> usize {
-    if look.item_height <= 0.0 {
-        return min_visible_rows.max(1);
-    }
-    let viewport_bottom = viewport_height - px(look.window_margin);
-    let available_below = trigger_bounds
-        .map(|bounds| (viewport_bottom - (bounds.bottom() + px(look.popup_offset_y))).max(px(0.0)))
-        .unwrap_or(viewport_bottom)
-        .as_f32();
-    let list_area = (available_below - search_chrome_height - (look.padding * 2.0)).max(look.item_height);
-    ((list_area / look.item_height).floor() as usize).max(min_visible_rows).max(1)
-}
-
 #[cfg(all(test, feature = "test-support"))]
 #[test]
 fn escape_from_popup_search_restores_trigger_focus() {
@@ -1010,25 +1005,5 @@ impl AttachmentTarget for SearchSelectorControl {
     }
     fn attachment_anchor(&self, bounds: Bounds<Pixels>) -> Bounds<Pixels> {
         self.trigger_bounds.unwrap_or(bounds)
-    }
-}
-
-#[cfg(test)]
-mod geometry_tests {
-    use super::*;
-
-    #[test]
-    fn viewport_row_budget_uses_resolved_placement_and_handles_zero_row_height() {
-        let mut look =
-            crate::controls::selector_list::default_selector_items_panel_look(&crate::theme::ThemeTokens::default());
-        look.item_height = 10.0;
-        look.padding = 2.0;
-        let trigger = Some(Bounds::new(gpui::point(px(0.0), px(10.0)), gpui::size(px(80.0), px(20.0))));
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 1, 57.0), 1);
-        look.window_margin = 0.0;
-        look.popup_offset_y = 0.0;
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 1, 10.0), 5);
-        look.item_height = 0.0;
-        assert_eq!(max_visible_rows_for_viewport(trigger, px(100.0), &look, 3, 0.0), 3);
     }
 }

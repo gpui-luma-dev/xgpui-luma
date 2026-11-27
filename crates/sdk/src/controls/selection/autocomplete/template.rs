@@ -1,8 +1,8 @@
 use std::sync::{Arc, OnceLock};
 
 use gpui::{
-    AnyElement, App, Bounds, ClickEvent, Hsla, KeyDownEvent, Pixels, ScrollEvent, SharedString, Stateful, Window,
-    anchored, deferred, div, point, prelude::*, px,
+    AnyElement, App, Bounds, ClickEvent, Hsla, KeyDownEvent, Pixels, ScrollEvent, SharedString, Stateful, Window, div,
+    prelude::*, px,
 };
 
 use crate::controls::selector_list::{
@@ -55,7 +55,8 @@ pub struct AutocompleteRenderModel {
     pub status_color: Hsla,
     pub status_typography: LumaTextStyle,
     pub muted_text_color: Hsla,
-    pub popup_bounds: Option<Bounds<Pixels>>,
+    /// Where the popup opens beside the field; without it the popup is not drawn.
+    pub popup_placement: Option<crate::infra::popup_placement::ResolvedPopupPlacement>,
     pub popup_look: SelectorItemsPanelLook,
     pub popup_content: Option<AnyElement>,
     pub presence: OverlayPresence,
@@ -232,30 +233,20 @@ impl AutocompleteTemplate for DefaultAutocompleteTemplate {
                     }),
             )
             .when_some(model.popup_content, |root, popup_content| {
-                root.when_some(model.popup_bounds, |root, bounds| {
-                    root.child(
-                        deferred(
-                            anchored()
-                                .snap_to_window_with_margin(px(model.popup_look.window_margin))
-                                .anchor(gpui::Anchor::TopLeft)
-                                .position(point(bounds.left(), bounds.bottom()))
-                                .offset(point(px(0.0), px(model.popup_look.popup_offset_y)))
-                                .child(
-                                    div()
-                                        .id("prototype-autocomplete-popup-shell")
-                                        .w(model.popup_width)
-                                        .bg(model.popup_look.background)
-                                        .border(px(model.popup_look.border_width))
-                                        .border_color(model.popup_look.border)
-                                        .rounded(px(model.popup_look.radius))
-                                        .shadow(model.popup_look.shadow)
-                                        .overflow_hidden()
-                                        .block_mouse_except_scroll()
-                                        .child(div().opacity(model.presence.opacity()).child(popup_content)),
-                                ),
-                        )
-                        .with_priority(1),
-                    )
+                root.when_some(model.popup_placement, |root, placement| {
+                    let look = &model.popup_look;
+                    let shell = div()
+                        .id("prototype-autocomplete-popup-shell")
+                        .w(model.popup_width)
+                        .bg(look.background)
+                        .border(px(look.border_width))
+                        .border_color(look.border)
+                        .rounded(px(look.radius))
+                        .shadow(look.shadow.clone())
+                        .overflow_hidden()
+                        .block_mouse_except_scroll()
+                        .child(div().opacity(model.presence.opacity()).child(popup_content));
+                    root.child(crate::infra::popup_placement::anchored_popup(&placement, px(look.window_margin), shell))
                 })
             });
 

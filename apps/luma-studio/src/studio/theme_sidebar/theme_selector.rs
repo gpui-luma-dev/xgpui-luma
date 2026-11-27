@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use gpui::{
-    AnyElement, App, Hsla, MouseButton, Pixels, SharedString, Stateful, Window, anchored, deferred, div, point,
-    prelude::*, px, transparent_black,
+    AnyElement, App, Hsla, MouseButton, Pixels, SharedString, Stateful, Window, div, prelude::*, px, transparent_black,
 };
 use xgpui_luma::infra::icon::{DisclosureIcons, render_disclosure_icon};
+use xgpui_luma::infra::popup_placement::anchored_popup;
 use xgpui_luma::controls::search_selector::{
     SearchSelectorItemRenderModel, SearchSelectorPanelRenderModel, SearchSelectorPanelTemplate,
     SearchSelectorRenderModel, SearchSelectorTemplate, SearchSelectorTemplateHandlers, SelectionItem,
@@ -294,7 +294,7 @@ struct ThemeSearchSelectorPanelTemplate {
 
 impl SearchSelectorPanelTemplate for ThemeSearchSelectorPanelTemplate {
     fn render(&self, model: SearchSelectorPanelRenderModel<'_>, cx: &mut App) -> AnyElement {
-        let Some(bounds) = model.popup_bounds else {
+        let (Some(bounds), Some(placement)) = (model.popup_bounds, model.popup_placement) else {
             return self.inner.render(model, cx);
         };
 
@@ -309,27 +309,17 @@ impl SearchSelectorPanelTemplate for ThemeSearchSelectorPanelTemplate {
             })
             .child(model.list_content);
 
-        deferred(
-            anchored()
-                .snap_to_window_with_margin(px(8.0))
-                .anchor(gpui::Anchor::TopLeft)
-                .position(point(bounds.left(), bounds.bottom()))
-                .offset(point(px(0.0), px(4.0)))
-                .child(
-                    div()
-                        .id(format!("{}-popup-shell", model.id))
-                        .w(popup_width)
-                        .bg(look.background)
-                        .border_1()
-                        .border_color(look.border)
-                        .rounded(px(look.radius))
-                        .shadow(look.shadow)
-                        .overflow_hidden()
-                        .occlude()
-                        .child(panel_content),
-                ),
-        )
-        .with_priority(1)
-        .into_any_element()
+        let shell = div()
+            .id(format!("{}-popup-shell", model.id))
+            .w(popup_width)
+            .bg(look.background)
+            .border_1()
+            .border_color(look.border)
+            .rounded(px(look.radius))
+            .shadow(look.shadow)
+            .overflow_hidden()
+            .occlude()
+            .child(panel_content);
+        anchored_popup(&placement, px(look.window_margin), shell).into_any_element()
     }
 }
