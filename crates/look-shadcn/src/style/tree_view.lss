@@ -1,6 +1,6 @@
 // Shadcn tree view. Layer: look. Rows and icons in the foreground; the accent's hover and pressed layers
-// under the pointer; the selected node in the primary colors; muted when disabled. Row text at the control
-// font size.
+// under the pointer; the selected node in the primary colors; faded over its resting colors when
+// disabled. Row text at the control font size.
 
 tree_view {
   icon_color = css.foreground
@@ -14,7 +14,7 @@ tree_view {
     :selected          { background = css.primary  foreground = css.primary_foreground  icon_color = css.primary_foreground }
     :selected:hover    { background = css.primary }
     :selected:pressed  { background = css.primary }
-    :disabled          { background = transparent  foreground = css.muted_foreground  icon_color = css.muted_foreground }
-    :selected:disabled { background = transparent  foreground = css.muted_foreground  icon_color = css.muted_foreground }
+    :disabled          { background = transparent  foreground = css.foreground  icon_color = css.foreground  opacity = 0.56 }
+    :selected:disabled { background = css.primary  foreground = css.primary_foreground  icon_color = css.primary_foreground }
   }
 }

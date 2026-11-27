@@ -427,6 +427,10 @@ fn disabled_controls_fade_over_resting_colors() {
         "context_menu",
         "radio_group",
         "floating_menu",
+        "tree_view",
+        "accordion",
+        "table",
+        "sidebar",
     ] {
         for variant in [None, Some("secondary"), Some("outline"), Some("ghost"), Some("soft")] {
             let attrs: Vec<(&str, &str)> = variant.map(|v| ("variant", v)).into_iter().collect();

@@ -13,8 +13,7 @@ table {
   column_resize_vertical_extension: length = exact(4)
   header_divider_width: length = exact(1)
   header_padding_bottom_scale: number = 0.75
-  /// Disabled rows' opacity, muted cells' opacity, emphasized cells' weight, and the label baseline shift.
-  row_disabled_opacity: number = 0.56
+  /// Muted cells' opacity, emphasized cells' weight, and the label baseline shift.
   column_muted_opacity: number = 0.65
   column_emphasis_weight: number = typography.text.title.weight
   label_baseline_shift: length = exact(geometry.label_baseline)

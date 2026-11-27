@@ -424,6 +424,11 @@ mod disabled_opacity_tests {
             "context_menu",
             "radio_group",
             "floating_menu",
+            "tree_view",
+            "accordion",
+            "table",
+            "sidebar",
+            "pager",
         ] {
             let sheet = theme.stylesheet();
             let id = sheet.control(control).expect("declared");

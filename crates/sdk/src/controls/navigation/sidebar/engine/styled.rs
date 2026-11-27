@@ -85,6 +85,7 @@ impl StyledSidebar {
             padding_x: number(item, "padding_x"),
             gap: number(item, "gap"),
             icon_size: number(root, "item_icon_size"),
+            opacity: crate::style::part_opacity(item),
         }
     }
 

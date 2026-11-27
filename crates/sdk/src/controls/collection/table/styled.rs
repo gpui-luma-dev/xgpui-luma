@@ -124,7 +124,7 @@ impl StyledTable {
             row_divider_width: number(root, "row_divider_width"),
             column_padding_x: number(root, "column_padding_x"),
             column_muted_opacity: number(root, "column_muted_opacity"),
-            disabled_opacity: number(root, "row_disabled_opacity"),
+            opacity: crate::style::part_opacity(row),
             background: color(row, "background"),
             label_color: color(row, "foreground"),
             divider: color(row, "border"),

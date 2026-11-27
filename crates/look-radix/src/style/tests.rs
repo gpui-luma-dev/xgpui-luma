@@ -409,6 +409,11 @@ fn disabled_controls_draw_colors_without_fading() {
         "context_menu",
         "radio_group",
         "floating_menu",
+        "tree_view",
+        "accordion",
+        "table",
+        "sidebar",
+        "pager",
     ] {
         let key = theme.key_named(control, &[], &["disabled"]).expect("key");
         let resolved = theme.resolve(&key);

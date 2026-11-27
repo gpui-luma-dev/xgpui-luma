@@ -61,7 +61,6 @@ pub fn styled_pager_look(binding: &StyleBinding, enabled: bool, style: PagerStyl
         padding_y: number(root, "padding_y"),
         gap: number(root, "gap"),
         group_gap: number(root, "group_gap"),
-        disabled_opacity: number(root, "disabled_opacity"),
     }
 }
 

@@ -191,7 +191,7 @@ mod tests {
             row_divider_width: 1.0,
             column_padding_x: 12.0,
             column_muted_opacity: 0.65,
-            disabled_opacity: 0.56,
+            opacity: 1.0,
             background: gpui::transparent_black(),
             label_color: gpui::black(),
             divider: gpui::black(),

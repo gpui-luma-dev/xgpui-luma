@@ -23,6 +23,8 @@ pub struct SidebarItemLook {
     pub padding_x: f32,
     pub gap: f32,
     pub icon_size: f32,
+    /// The row's opacity: the `item` part's resolved `opacity`, which a look sets under `:disabled`.
+    pub opacity: f32,
 }
 
 pub trait SidebarTheme: Send + Sync {

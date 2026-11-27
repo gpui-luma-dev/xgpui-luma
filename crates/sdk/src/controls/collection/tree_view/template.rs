@@ -276,7 +276,7 @@ impl ThemedTreeViewTemplate {
             .w_full()
             .h(px(row_height))
             .overflow_hidden()
-            .opacity(height_factor.max(0.0))
+            .opacity(height_factor.max(0.0) * palette.opacity)
             .pl(px(left_padding))
             .pr(px(scale.base_padding_x))
             .rounded(px(scale.radius))
@@ -300,11 +300,6 @@ impl ThemedTreeViewTemplate {
                 .on_mouse_up(gpui::MouseButton::Left, move |event, window, cx| (handlers.mouse_up)(event, window, cx))
                 .on_click(move |event, window, cx| (handlers.click)(event, window, cx));
         }
-        // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-        if node.state.disabled {
-            row = row.opacity(scale.disabled_opacity * height_factor.max(0.0));
-        }
-
         if node.has_children {
             let chevron = div()
                 .id((node.id.clone(), 2usize))
