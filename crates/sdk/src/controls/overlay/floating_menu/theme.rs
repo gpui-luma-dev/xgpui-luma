@@ -28,7 +28,8 @@ pub struct FloatingMenuLook {
     pub item_gap: f32,
     pub item_icon_size: f32,
     pub item_radius: f32,
-    pub disabled_opacity: f32,
+    /// A disabled row's opacity: the `item` part's `:disabled { opacity }`.
+    pub item_disabled_opacity: f32,
     pub submenu_offset_x: f32,
     /// Divider line color.
     pub separator_color: Hsla,

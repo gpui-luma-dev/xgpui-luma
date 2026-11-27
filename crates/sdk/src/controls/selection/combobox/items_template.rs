@@ -190,7 +190,7 @@ impl ComboBoxItemsTemplate for DefaultComboBoxItemsTemplate {
                     row = row.on_click(click);
                 }
             } else {
-                row = row.opacity(look.disabled_opacity);
+                row = crate::style::fade(row, look.item_disabled_opacity);
             }
 
             root = root.child(row);

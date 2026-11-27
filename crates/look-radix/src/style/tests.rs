@@ -373,8 +373,8 @@ fn look_defines_the_visual_variants() {
     }
 }
 
-/// Radix's radio group: side-by-side rows 8 apart and disabled rows at full opacity (the radio template
-/// dims the whole row); the stacked and item gaps are the SDK's (#287).
+/// Radix's radio group: side-by-side rows 8 apart and disabled rows' content unfaded (the radio draws its
+/// gray disabled colors); the stacked and item gaps are the SDK's (#287).
 #[test]
 fn radio_group_layout_comes_from_the_look_lss() {
     use xgpui_luma::controls::radio_group::RadioGroupGeometry;
@@ -384,7 +384,7 @@ fn radio_group_layout_comes_from_the_look_lss() {
         crate::textfield::live_source(&look),
     ));
     let sdk = RadioGroupGeometry::sdk();
-    assert_eq!((geometry.horizontal_gap, geometry.disabled_opacity), (8.0, 1.0));
+    assert_eq!((geometry.horizontal_gap, geometry.content_disabled_opacity), (8.0, 1.0));
     assert_eq!((geometry.vertical_gap, geometry.item_gap), (sdk.vertical_gap, sdk.item_gap));
 }
 
@@ -405,6 +405,10 @@ fn disabled_controls_draw_colors_without_fading() {
         "scrollbar",
         "slider",
         "resizable_panels",
+        "control_group",
+        "context_menu",
+        "radio_group",
+        "floating_menu",
     ] {
         let key = theme.key_named(control, &[], &["disabled"]).expect("key");
         let resolved = theme.resolve(&key);
@@ -412,18 +416,5 @@ fn disabled_controls_draw_colors_without_fading() {
             let opacity = resolved.part(part).get(xgpui_luma::style::lss::props::OPACITY);
             assert!(opacity.is_none_or(|value| value >= 1.0), "{control} {part:?}: {opacity:?}");
         }
-    }
-}
-
-/// Not yet moved to `:disabled { opacity }` (#413): Radix still pins the separate fade.
-#[test]
-fn disabled_controls_keep_the_radix_fade() {
-    let theme = Look::built_in().style_theme();
-    let opacity = |control: &str| {
-        let key = theme.key_named(control, &[], &[]).expect("key");
-        theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number)
-    };
-    for control in ["control_group", "context_menu"] {
-        assert!(opacity(control).is_some_and(|value| value < 1.0), "{control}: {:?}", opacity(control));
     }
 }

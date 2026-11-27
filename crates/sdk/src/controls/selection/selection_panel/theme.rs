@@ -9,8 +9,8 @@ pub struct SelectionPanelLook {
     pub border: Hsla,
     /// Panel border thickness in logical pixels; zero removes it.
     pub border_width: f32,
-    /// Additional opacity applied to disabled rows.
-    pub disabled_opacity: f32,
+    /// A disabled row's opacity (the floating menu's `item` part).
+    pub item_disabled_opacity: f32,
     pub shadow: Vec<BoxShadow>,
     pub radius: f32,
     pub padding: f32,
@@ -49,7 +49,7 @@ impl SelectionPanelLook {
             foreground: panel.foreground,
             border: panel.border,
             border_width: panel.border_width,
-            disabled_opacity: panel.disabled_opacity,
+            item_disabled_opacity: panel.item_disabled_opacity,
             shadow: panel.shadow,
             radius: panel.radius,
             padding: panel.padding,

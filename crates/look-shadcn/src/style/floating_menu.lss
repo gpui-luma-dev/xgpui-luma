@@ -1,5 +1,6 @@
 // Shadcn floating menu. Layer: look. The popover panel with `shadow-md`, rows in the label font at the
 // control size that highlight with the accent color, and dividers in the border color.
+// A disabled row fades over its resting colors.
 
 floating_menu {
   item_icon_size = metrics.control.icon_size
@@ -20,7 +21,7 @@ floating_menu {
     line_height = font_size * typography.text.label.line_height / typography.text.label.size
     font_weight = typography.text.label.weight
     :hover    { background = css.accent  foreground = css.accent_foreground }
-    :disabled { foreground = css.muted_foreground }
+    :disabled { foreground = css.popover_foreground  opacity = 0.56 }
   }
 
   part separator { background = css.border }

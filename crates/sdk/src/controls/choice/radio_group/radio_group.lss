@@ -1,5 +1,5 @@
 // SDK radio group. Layer: sdk. The layout around a set of radio rows, read by the radio group templates
-// (template.rs); the rows are the radio button (`radio.lss`).
+// (template.rs); the rows are the radio button (`radio.lss`), which draws its own `:disabled` look.
 
 /// A set of radio choices.
 radio_group {
@@ -8,6 +8,8 @@ radio_group {
   horizontal_gap: length = exact(12)
   /// Space between a custom row's indicator and its content.
   item_gap: length = exact(8)
-  /// Disabled rows' opacity; 1, since a row's radio draws its own `:disabled` colors (#397).
-  disabled_opacity: number = 1
+
+  /// A custom row's content beside its radio. Its `:disabled { opacity }` fades a disabled row's content;
+  /// the radio fades (or not) itself.
+  part content {}
 }

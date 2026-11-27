@@ -56,7 +56,7 @@ impl ContextMenuTheme for StyledContextMenuTheme {
         let root = resolved.root();
         ContextMenuLook {
             border_width: number(root, "border_width"),
-            disabled_opacity: number(root, "disabled_opacity"),
+            opacity: crate::style::part_opacity(root),
             window_margin: number(root, "window_margin"),
             target_background: color(root, "background"),
             target_foreground: color(root, "foreground"),

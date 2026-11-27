@@ -1,7 +1,6 @@
-// Radix radio group. Layer: look. Side-by-side rows sit closer, and disabled rows keep full opacity: the
-// radio template already dims the whole row.
+// Radix radio group. Layer: look. Side-by-side rows sit closer; disabled rows draw the radio's gray colors
+// and do not fade.
 
 radio_group {
-  horizontal_gap   = exact(8)
-  disabled_opacity = 1
+  horizontal_gap = exact(8)
 }

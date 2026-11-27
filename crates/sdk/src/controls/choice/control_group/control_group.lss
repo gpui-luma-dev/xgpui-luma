@@ -3,9 +3,8 @@
 
 /// A frame holding a set of choices.
 control_group {
-  /// Space between rows in a vertical group, and default rows' opacity when disabled.
+  /// Space between rows in a vertical group.
   vertical_gap: length = exact(8)
-  disabled_opacity: number = 1
 
   /// The frame.
   part root {
@@ -18,4 +17,7 @@ control_group {
     gap          = exact(6)
     :disabled { background = palette.state.disabled.background }
   }
+
+  /// A default row (custom row templates draw their own). Its `:disabled { opacity }` fades a disabled row.
+  part item {}
 }

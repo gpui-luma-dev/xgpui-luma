@@ -171,9 +171,7 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
                 .child(model.label.clone());
         }
 
-        if !model.enabled {
-            target = target.opacity(look.disabled_opacity);
-        }
+        target = crate::style::fade(target, look.opacity);
 
         let mut root = div()
             .on_children_prepainted(move |bounds, window, cx| {

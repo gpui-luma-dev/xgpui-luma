@@ -423,6 +423,10 @@ fn disabled_controls_fade_over_resting_colors() {
         "scrollbar",
         "slider",
         "resizable_panels",
+        "control_group",
+        "context_menu",
+        "radio_group",
+        "floating_menu",
     ] {
         for variant in [None, Some("secondary"), Some("outline"), Some("ghost"), Some("soft")] {
             let attrs: Vec<(&str, &str)> = variant.map(|v| ("variant", v)).into_iter().collect();
@@ -438,15 +442,5 @@ fn disabled_controls_fade_over_resting_colors() {
                 );
             }
         }
-    }
-}
-
-/// Not yet moved to `:disabled { opacity }` (#413): Shadcn still pins the separate fade.
-#[test]
-fn disabled_controls_keep_the_shadcn_fade() {
-    let look = ShadcnLook::built_in();
-    for control in ["control_group", "context_menu", "radio_group"] {
-        let opacity = resolve(control, &look, &[], &[]).root().value("disabled_opacity").and_then(Value::as_number);
-        assert!(opacity.is_some_and(|value| value < 1.0), "{control}: {opacity:?}");
     }
 }
