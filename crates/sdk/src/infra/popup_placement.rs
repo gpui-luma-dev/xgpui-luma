@@ -292,6 +292,171 @@ pub fn anchored_popup(
     .with_priority(1)
 }
 
+impl ResolvedPopupPlacement {
+    /// The popup's window bounds for a `size`d popup, kept `window_margin`
+    /// inside `viewport` (the same snapping `anchored()` does).
+    pub fn bounds(&self, size: Size<Pixels>, viewport: Size<Pixels>, window_margin: Pixels) -> Bounds<Pixels> {
+        let mut bounds = Bounds::from_anchor_and_size(self.anchor, self.position + self.offset, size);
+        let max_x = viewport.width - window_margin - size.width;
+        let max_y = viewport.height - window_margin - size.height;
+        bounds.origin.x = bounds.origin.x.min(max_x).max(window_margin);
+        bounds.origin.y = bounds.origin.y.min(max_y).max(window_margin);
+        bounds
+    }
+}
+
+/// A popup attached to the box it is drawn in, such as a submenu beside its
+/// row. Unlike [`anchored_popup`], it needs no bounds up front: at prepaint it
+/// takes its target from its own layout (a band of the parent, or all of it),
+/// measures the child, and places it with a [`PopupPlacementRequest`], so it
+/// flips at the window edge.
+///
+/// The parent must be positioned (`relative()`), as for any absolute child.
+pub struct AttachedPopup {
+    child: gpui::AnyElement,
+    side: PopupSide,
+    align: PopupAlign,
+    flip: bool,
+    gap: Pixels,
+    window_margin: Pixels,
+    direction: LayoutDirection,
+    band: Option<(Pixels, Pixels)>,
+}
+
+/// Attach `child` beside its parent; see [`AttachedPopup`].
+pub fn attached_popup(side: PopupSide, child: impl gpui::IntoElement) -> AttachedPopup {
+    AttachedPopup {
+        child: child.into_any_element(),
+        side,
+        align: PopupAlign::Start,
+        flip: true,
+        gap: px(0.0),
+        window_margin: px(0.0),
+        direction: LayoutDirection::LeftToRight,
+        band: None,
+    }
+}
+
+impl AttachedPopup {
+    pub fn align(mut self, align: PopupAlign) -> Self {
+        self.align = align;
+        self
+    }
+
+    pub fn flip(mut self, flip: bool) -> Self {
+        self.flip = flip;
+        self
+    }
+
+    pub fn gap(mut self, gap: Pixels) -> Self {
+        self.gap = gap;
+        self
+    }
+
+    pub fn window_margin(mut self, margin: Pixels) -> Self {
+        self.window_margin = margin;
+        self
+    }
+
+    pub fn direction(mut self, direction: LayoutDirection) -> Self {
+        self.direction = direction;
+        self
+    }
+
+    /// Attach to a horizontal band of the parent, `top` down from its padding
+    /// edge and `height` tall (a menu row), instead of the whole parent.
+    pub fn band(mut self, top: Pixels, height: Pixels) -> Self {
+        self.band = Some((top, height));
+        self
+    }
+}
+
+pub struct AttachedPopupLayout {
+    holder: gpui::LayoutId,
+}
+
+impl gpui::Element for AttachedPopup {
+    type RequestLayoutState = AttachedPopupLayout;
+    type PrepaintState = ();
+
+    fn id(&self) -> Option<gpui::ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static core::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _id: Option<&gpui::GlobalElementId>,
+        _inspector_id: Option<&gpui::InspectorElementId>,
+        window: &mut gpui::Window,
+        cx: &mut gpui::App,
+    ) -> (gpui::LayoutId, Self::RequestLayoutState) {
+        use gpui::{Display, Position, Style};
+
+        let child = self.child.request_layout(window, cx);
+        // The holder sizes to the child; it never stretches to the target.
+        let holder_style = Style { position: Position::Absolute, display: Display::Flex, ..Style::default() };
+        let holder = window.request_layout(holder_style, [child], cx);
+
+        let mut target = Style { position: Position::Absolute, ..Style::default() };
+        target.inset.left = px(0.0).into();
+        target.inset.right = px(0.0).into();
+        match self.band {
+            Some((top, height)) => {
+                target.inset.top = top.into();
+                target.size.height = height.into();
+            }
+            None => {
+                target.inset.top = px(0.0).into();
+                target.inset.bottom = px(0.0).into();
+            }
+        }
+        (window.request_layout(target, [holder], cx), AttachedPopupLayout { holder })
+    }
+
+    fn prepaint(
+        &mut self,
+        _id: Option<&gpui::GlobalElementId>,
+        _inspector_id: Option<&gpui::InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        layout: &mut Self::RequestLayoutState,
+        window: &mut gpui::Window,
+        cx: &mut gpui::App,
+    ) {
+        let holder = window.layout_bounds(layout.holder);
+        let viewport = window.viewport_size();
+        let placement = PopupPlacementRequest::new(bounds, self.side, viewport)
+            .align(self.align)
+            .flip(self.flip)
+            .gap(self.gap)
+            .content_size(Some(holder.size))
+            .window_margin(self.window_margin)
+            .direction(self.direction)
+            .resolve();
+        let target = placement.bounds(holder.size, viewport, self.window_margin);
+        let offset = target.origin - holder.origin;
+        window.with_element_offset(point(offset.x.round(), offset.y.round()), |window| {
+            self.child.prepaint(window, cx);
+        });
+    }
+
+    fn paint(
+        &mut self,
+        _id: Option<&gpui::GlobalElementId>,
+        _inspector_id: Option<&gpui::InspectorElementId>,
+        _bounds: Bounds<Pixels>,
+        _layout: &mut Self::RequestLayoutState,
+        _prepaint: &mut Self::PrepaintState,
+        window: &mut gpui::Window,
+        cx: &mut gpui::App,
+    ) {
+        self.child.paint(window, cx);
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Physical {
     Below,
@@ -460,5 +625,71 @@ mod tests {
         assert_eq!(end.offset, point(px(-4.0), px(0.0)));
         // 200 left - 4 gap - 8 margin.
         assert_eq!(end.max_size.width, px(188.0));
+    }
+}
+
+#[cfg(test)]
+mod bounds_tests {
+    use gpui::size;
+
+    use super::*;
+
+    #[test]
+    fn bounds_snap_inside_the_window_margin() {
+        let anchor = Bounds::new(point(px(460.0), px(10.0)), size(px(30.0), px(20.0)));
+        let placement = PopupPlacementRequest::new(anchor, PopupSide::Below, size(px(500.0), px(500.0))).resolve();
+        let bounds = placement.bounds(size(px(100.0), px(40.0)), size(px(500.0), px(500.0)), px(8.0));
+        assert_eq!(bounds.origin, point(px(392.0), px(30.0)));
+    }
+}
+
+#[cfg(all(test, feature = "test-support"))]
+mod attached_tests {
+    use gpui::{Context, IntoElement, Render, TestAppContext, Window, div, prelude::*, px};
+
+    use super::*;
+
+    /// A 80×20 box `left` from the window's left edge, with a 200×50 popup attached to its end.
+    struct Host {
+        left: Option<f32>,
+    }
+
+    impl Render for Host {
+        fn render(&mut self, window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+            let left = self.left.unwrap_or(window.viewport_size().width.as_f32() - 100.0);
+            div().size_full().child(
+                div()
+                    .debug_selector(|| "target".into())
+                    .absolute()
+                    .left(px(left))
+                    .top(px(10.0))
+                    .w(px(80.0))
+                    .h(px(20.0))
+                    .child(attached_popup(
+                        PopupSide::End,
+                        div().debug_selector(|| "popup".into()).w(px(200.0)).h(px(50.0)),
+                    )),
+            )
+        }
+    }
+
+    fn popup_and_target(cx: &mut TestAppContext, left: Option<f32>) -> (Bounds<Pixels>, Bounds<Pixels>) {
+        let (_, cx) = cx.add_window_view(|_, _| Host { left });
+        cx.run_until_parked();
+        (cx.debug_bounds("popup").expect("popup drawn"), cx.debug_bounds("target").expect("target drawn"))
+    }
+
+    #[gpui::test]
+    fn attached_popup_opens_at_the_end_when_it_fits(cx: &mut TestAppContext) {
+        let (popup, target) = popup_and_target(cx, Some(20.0));
+        assert_eq!(popup.left(), target.right());
+        assert_eq!(popup.top(), target.top());
+    }
+
+    #[gpui::test]
+    fn attached_popup_flips_to_the_start_at_the_window_edge(cx: &mut TestAppContext) {
+        let (popup, target) = popup_and_target(cx, None);
+        assert_eq!(popup.right(), target.left());
+        assert_eq!(popup.top(), target.top());
     }
 }
