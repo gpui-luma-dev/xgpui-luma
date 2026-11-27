@@ -82,13 +82,8 @@ impl TreeViewTheme for PinnedTreeTheme {
         MetricTokens::default()
     }
 
-    /// A matrix cell's tree takes no input, which fades every row; only a picked `:disabled` fades them (#397).
     fn resolve_scale(&self, scale_factor: f32) -> TreeViewScale {
-        let scale = self.base.scale(scale_factor);
-        match &self.pinned {
-            Some(states) if !states.has("disabled") => TreeViewScale { disabled_opacity: 1.0, ..scale },
-            _ => scale,
-        }
+        self.base.scale(scale_factor)
     }
 }
 
@@ -106,7 +101,7 @@ struct TreeHost {
 
 impl Render for TreeHost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div().size_full().child(self.tree.clone())
+        div().debug_selector(|| "workshop-tree-host".into()).size_full().child(self.tree.clone())
     }
 }
 
@@ -259,19 +254,34 @@ mod tests {
         let styled = StyledTreeView::new(StyleBinding::new("tree_view", ThemeSource::Fixed(theme)));
         let hover = styled.row(InteractionState { hovered: true, ..Default::default() }, false).background;
         let hover = gpui::Background::from(hover.expect("a hovered row has a fill"));
-        let hovered =
-            cx.update(|window, _| window.painted_quads().iter().filter(|quad| quad.background == hover).count());
+        // Count the tree's quads only: elsewhere on the page a disabled control can share the hover gray.
+        let host = cx.debug_bounds("workshop-tree-host").expect("the tree draws");
+        let hovered = cx.update(|window, _| {
+            let host = host.scale(window.scale_factor());
+            window
+                .painted_quads()
+                .iter()
+                .filter(|quad| quad.background == hover && host.contains(&quad.bounds.origin))
+                .count()
+        });
         assert_eq!(hovered, 1, "only the first row draws hovered");
     }
 
     /// A matrix cell's tree takes no input; its rows fade only when `:disabled` is picked (#397).
     #[test]
     fn cell_rows_fade_only_for_a_picked_disabled() {
-        let theme = xgpui_luma::style::default_theme;
-        let fade = |pinned: Option<StateSet>| PinnedTreeTheme::new(theme(), pinned).resolve_scale(1.0).disabled_opacity;
-        let sdk = fade(None);
-        assert!(sdk < 1.0, "the SDK tree fades disabled rows: {sdk}");
+        let theme = xgpui_luma::style::default_theme();
+        let fade_lss =
+            xgpui_luma::style::lss::Source::new("fade.lss", "tree_view { part root { :disabled { opacity = 0.5 } } }");
+        let sheet = theme.stylesheet().with_source("app", fade_lss).expect("compiles");
+        let theme = theme.with_stylesheet(&sheet).expect("binds");
+        // The cell's own state: input off.
+        let input_off = InteractionState { disabled: true, ..Default::default() };
+        let fade = |pinned: Option<StateSet>| {
+            PinnedTreeTheme::new(theme.clone(), pinned).resolve_row(input_off, false).opacity
+        };
+        assert_eq!(fade(None), 0.5, "a disabled row fades");
         assert_eq!(fade(Some(StateSet::new(["pressed"]))), 1.0, "input off in Design, but not :disabled");
-        assert_eq!(fade(Some(StateSet::new(["disabled"]))), sdk, "a picked :disabled fades");
+        assert_eq!(fade(Some(StateSet::new(["disabled"]))), 0.5, "a picked :disabled fades");
     }
 }

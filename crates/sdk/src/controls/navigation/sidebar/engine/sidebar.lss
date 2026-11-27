@@ -11,7 +11,7 @@ sidebar {
   /// Shell layout (`SidebarGeometry`): widths expanded, as an icon rail and on mobile; the host row height;
   /// the rail's hit width and popover offset; container and region gaps; header, footer, title and section
   /// spacing; the disclosure icon; the rail submenu's offset, edge margin, branch indicator and overhang;
-  /// the engine's row, section and padding sizes; and the subtitle and disabled opacities.
+  /// the engine's row, section and padding sizes; and the subtitle opacity.
   width_expanded: length = exact(256)
   width_icon_rail: length = exact(48)
   width_mobile: length = exact(288)
@@ -34,7 +34,6 @@ sidebar {
   engine_section_height: length = exact(20)
   engine_item_padding_x: length = exact(8)
   subtitle_opacity: number = 0.72
-  disabled_opacity: number = 0.56
 
   /// A section label.
   part section {

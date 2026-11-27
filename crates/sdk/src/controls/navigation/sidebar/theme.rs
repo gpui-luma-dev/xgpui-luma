@@ -72,7 +72,6 @@ crate::theme::stylesheet::geometry::lss_geometry!(
         engine_item_padding_x,
         rail_branch_indicator_size,
         rail_branch_overhang,
-        subtitle_opacity,
-        disabled_opacity
+        subtitle_opacity
     ]
 );

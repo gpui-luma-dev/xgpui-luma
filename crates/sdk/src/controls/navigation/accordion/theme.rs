@@ -7,9 +7,8 @@ use crate::theme::{InteractionState, LumaTextStyle, MetricTokens, ThemeTokens};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AccordionScale {
-    /// Drag-handle padding in pixels and disabled-trigger opacity.
+    /// Drag-handle padding in pixels.
     pub drag_handle_padding: f32,
-    pub disabled_opacity: f32,
     pub trigger_height: f32,
     pub padding_x: f32,
     pub padding_y: f32,
@@ -30,7 +29,6 @@ impl AccordionScale {
         let content_share = sdk("content_padding_scale");
         Self {
             drag_handle_padding: sdk("drag_handle_padding"),
-            disabled_opacity: sdk("disabled_opacity"),
             trigger_height: snap_to_pixel(metrics.control_height(), scale_factor),
             padding_x: snap_to_pixel(metrics.padding_x(), scale_factor),
             padding_y: snap_to_pixel(metrics.padding_y(), scale_factor),
@@ -53,6 +51,8 @@ pub struct AccordionPalette {
     pub chevron_color: Hsla,
     pub typography: LumaTextStyle,
     pub font_family: SharedString,
+    /// The trigger's opacity: the resolved `opacity`, which a look sets under `:disabled`.
+    pub opacity: f32,
 }
 
 #[derive(Clone, Debug)]

@@ -60,6 +60,7 @@ impl StyledTreeView {
                 weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
             },
             font_family: root.font_family().unwrap_or("").to_string().into(),
+            opacity: crate::style::part_opacity(root),
         }
     }
 
@@ -77,7 +78,6 @@ impl StyledTreeView {
             drag_insert_width: number(root, "drag_insert_width"),
             drag_opacity: number(root, "drag_opacity"),
             scrollbar_width: number(root, "scrollbar_width"),
-            disabled_opacity: number(root, "disabled_opacity"),
             preview_padding_x: number(root, "preview_padding_x"),
             preview_padding_y: number(root, "preview_padding_y"),
             row_height: number(root, "height"),

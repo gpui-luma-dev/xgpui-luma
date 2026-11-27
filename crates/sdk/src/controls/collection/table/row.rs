@@ -46,9 +46,8 @@ pub fn render_table_row(
 
     if enabled {
         row = row.cursor_pointer();
-    } else {
-        row = row.opacity(look.disabled_opacity);
     }
+    row = crate::style::fade(row, look.opacity);
 
     row
 }

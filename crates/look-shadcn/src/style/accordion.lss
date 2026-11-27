@@ -1,5 +1,6 @@
 // Shadcn accordion. Layer: look. Triggers fill with the accent and take the accent foreground (chevron too)
-// while hovered or pressed; muted when disabled. Sizes sm, md, lg from the control metrics.
+// while hovered or pressed; faded over its resting colors when disabled. Sizes sm, md, lg from the control
+// metrics.
 
 accordion {
   part root {
@@ -9,6 +10,6 @@ accordion {
     content_foreground = css.foreground
     :hover    { background = css.accent  foreground = css.accent_foreground  chevron = css.accent_foreground }
     :pressed  { background = css.accent  foreground = css.accent_foreground  chevron = css.accent_foreground }
-    :disabled { background = transparent  foreground = css.muted_foreground  chevron = css.muted_foreground }
+    :disabled { background = transparent  foreground = css.foreground  chevron = css.muted_foreground  opacity = 0.56 }
   }
 }
