@@ -58,7 +58,16 @@ impl FloatingMenuLook {
 }
 
 pub trait FloatingMenuTheme: Send + Sync {
-    fn resolve(&self) -> FloatingMenuLook;
+    /// The menu's style (#433): the binding menu templates resolve and draw from.
+    fn style(&self) -> crate::style::StyleBinding {
+        crate::style::StyleBinding::sdk("floating_menu")
+    }
+
+    /// The look built from [`Self::style`], for code that still reads a [`FloatingMenuLook`].
+    #[deprecated(note = "menu templates draw from `style()`; resolve that binding and read its parts instead (#433)")]
+    fn resolve(&self) -> FloatingMenuLook {
+        super::styled::styled_floating_menu_look(&self.style())
+    }
 }
 
 pub fn default_floating_menu_theme() -> Arc<dyn FloatingMenuTheme> {

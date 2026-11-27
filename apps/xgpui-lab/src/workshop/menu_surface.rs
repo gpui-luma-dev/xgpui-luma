@@ -15,7 +15,7 @@ use xgpui_luma::controls::context_menu::{
 };
 use xgpui_luma::controls::floating_menu::{
     FloatingMenuClickHandler, FloatingMenuHoverHandler, FloatingMenuRenderModel, FloatingMenuTemplateHandlers,
-    FloatingMenuLook, default_floating_menu_template, floating_menu_source, styled_floating_menu_look,
+    default_floating_menu_template, floating_menu_source,
 };
 use xgpui_luma::infra::icon::DisclosureIcons;
 use xgpui_luma::infra::menu_item::MenuItem;
@@ -89,7 +89,7 @@ fn menu_panel(
         })
         .collect();
     let active_path = pinned.is_some_and(|states| states.has("hover")).then_some(MenuPath::Root(0));
-    let look = styled_floating_menu_look(&StyleBinding::new("floating_menu", ThemeSource::Fixed(theme.clone())));
+    let style = StyleBinding::new("floating_menu", ThemeSource::Fixed(theme.clone()));
     let icons = DisclosureIcons::default();
     let live = handlers.is_some();
     let (item_hovers, item_clicks) = handlers.unwrap_or_else(|| {
@@ -104,7 +104,7 @@ fn menu_panel(
         active_path,
         highlight: None,
         submenu_presence: OverlayPresence::new(true, false),
-        look,
+        style,
         disclosure_icons: &icons,
         submenu_transition: None,
     };
@@ -250,7 +250,7 @@ impl ContextMenuTheme for PinnedContextMenuTheme {
             .fold(base, |binding, name| binding.state(name, pinned.has(name)))
     }
 
-    fn menu(&self) -> FloatingMenuLook {
+    fn menu(&self) -> StyleBinding {
         self.base.menu()
     }
 

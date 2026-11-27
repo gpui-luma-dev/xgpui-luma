@@ -32,12 +32,13 @@ pub fn floating_menu_look(look: &Look, variant: PopupMenuVariant, tone: Tone) ->
 
 /// Size-aware shared menu chrome. Size keys are Radix `1`, `2`, and `3`.
 /// Like [`floating_menu_look`], this resolves a snapshot from the supplied Look.
-pub fn floating_menu_look_for(
+/// The size-aware Radix menu style (the `floating_menu` control): what menu templates resolve and draw from (#433).
+pub fn floating_menu_binding_for(
     look: &Look,
     variant: PopupMenuVariant,
     tone: Tone,
     size: crate::RadixSize,
-) -> FloatingMenuLook {
+) -> xgpui_luma::style::StyleBinding {
     let binding = xgpui_luma::style::StyleBinding::new("floating_menu", crate::textfield::live_source(look));
     let binding = match variant {
         PopupMenuVariant::Solid => binding,
@@ -53,7 +54,19 @@ pub fn floating_menu_look_for(
     } else {
         binding
     };
-    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&binding)
+    binding
+}
+
+/// Size-aware shared menu chrome as a look snapshot, from [`floating_menu_binding_for`].
+pub fn floating_menu_look_for(
+    look: &Look,
+    variant: PopupMenuVariant,
+    tone: Tone,
+    size: crate::RadixSize,
+) -> FloatingMenuLook {
+    xgpui_luma::controls::floating_menu::styled_floating_menu_look(&floating_menu_binding_for(
+        look, variant, tone, size,
+    ))
 }
 
 pub fn popup_menu_theme(look: &Look, variant: PopupMenuVariant, tone: Tone) -> Arc<dyn PopupMenuTheme> {
@@ -73,7 +86,7 @@ fn styled_popup_menu_theme(
     Arc::new(
         StyledPopupMenuTheme::new(
             crate::textfield::live_source(look),
-            Arc::new(move || floating_menu_look_for(&menu_look, variant, tone, menu_size)),
+            Arc::new(move || floating_menu_binding_for(&menu_look, variant, tone, menu_size)),
         )
         .with(|binding| {
             let binding = if tone == Tone::Gray {

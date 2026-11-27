@@ -14,7 +14,9 @@ pub fn context_menu_theme(look: &Look, variant: ContextMenuVariant, tone: Tone) 
     Arc::new(
         StyledContextMenuTheme::new(
             crate::textfield::live_source(look),
-            Arc::new(move || crate::popup_menu::floating_menu_look(&menu_look, variant, tone)),
+            Arc::new(move || {
+                crate::popup_menu::floating_menu_binding_for(&menu_look, variant, tone, crate::RadixSize::Two)
+            }),
         )
         .with(|binding| {
             if tone == Tone::Gray {
@@ -43,7 +45,9 @@ mod tests {
             look.set_mode(mode);
             for variant in [ContextMenuVariant::Solid, ContextMenuVariant::Soft] {
                 for tone in [Tone::Accent, Tone::Gray] {
-                    let actual = context_menu_theme(&look, variant, tone).menu();
+                    let actual = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+                        &context_menu_theme(&look, variant, tone).menu(),
+                    );
                     let expected = crate::popup_menu::floating_menu_look(&look, variant, tone);
                     assert_eq!(actual.background, expected.background);
                     assert_eq!(actual.border, expected.border);

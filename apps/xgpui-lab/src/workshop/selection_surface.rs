@@ -799,7 +799,9 @@ mod tests {
         let want = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
             &xgpui_luma::style::StyleBinding::new("floating_menu", ThemeSource::Fixed(dark.clone())),
         );
-        let sdk = xgpui_luma::controls::floating_menu::default_floating_menu_theme().resolve();
+        let sdk = xgpui_luma::controls::floating_menu::styled_floating_menu_look(
+            &xgpui_luma::controls::floating_menu::default_floating_menu_theme().style(),
+        );
         assert_ne!(want.background, sdk.background, "the dark menu differs from the SDK's");
 
         let popup = popup_menu_theme(dark.clone(), None).resolve(
@@ -807,7 +809,11 @@ mod tests {
             PopupMenuTriggerMetrics::default(),
             InteractionState::default(),
         );
-        assert_eq!(popup.floating_menu.background, want.background, "popup menu and split button");
+        assert_eq!(
+            xgpui_luma::controls::floating_menu::styled_floating_menu_look(&popup.floating_menu).background,
+            want.background,
+            "popup menu and split button"
+        );
         let selector = search_selector_trigger(dark.clone(), None).resolve(
             SelectorTriggerStyle::default(),
             InteractionState::default(),

@@ -186,7 +186,10 @@ pub use card::{Card, CardSize, CardStyle, CardVariant};
 pub use checkbox::{CheckboxSize, CheckboxVariant, checkbox_template, checkbox_template_for};
 pub use checkbox_builder::Checkbox;
 pub use checkbox_group::{CheckboxGroup, checkbox_group_template};
-pub use popup_menu::{PopupMenuVariant, floating_menu_look, floating_menu_look_for, popup_menu_template, popup_menu_theme};
+pub use popup_menu::{
+    PopupMenuVariant, floating_menu_binding_for, floating_menu_look, floating_menu_look_for, popup_menu_template,
+    popup_menu_theme,
+};
 pub use popup_menu_builder::PopupMenu;
 pub use progress::{
     ProgressSize, ProgressVariant, progress_template, progress_theme, progress_theme_with, resolve_progress_radius,

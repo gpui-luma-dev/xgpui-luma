@@ -7,12 +7,11 @@ use std::sync::Arc;
 
 use super::PopupMenuTriggerStyle;
 use super::theme::{PopupMenuLook, PopupMenuPalette, PopupMenuTheme, PopupMenuTriggerMetrics};
-use crate::controls::floating_menu::FloatingMenuLook;
 use crate::style::{StyleBinding, ThemeSource};
 use crate::theme::{FocusMetricTokens, InteractionState, MetricTokens};
 
-/// Supplies a popup's menu look.
-pub type MenuSource = Arc<dyn Fn() -> FloatingMenuLook + Send + Sync>;
+/// Supplies a popup's menu style (the `floating_menu` control, #433); menu templates resolve it and draw from it.
+pub type MenuSource = Arc<dyn Fn() -> StyleBinding + Send + Sync>;
 
 /// A popup-menu theme whose trigger is read from `.lss`.
 #[derive(Clone)]
@@ -31,7 +30,7 @@ impl StyledPopupMenuTheme {
     pub fn sdk() -> Self {
         Self {
             binding: StyleBinding::sdk("popup_menu"),
-            menu: Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve()),
+            menu: Arc::new(|| crate::style::StyleBinding::sdk("floating_menu")),
         }
     }
 

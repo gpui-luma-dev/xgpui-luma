@@ -22,7 +22,7 @@ pub fn autocomplete_theme(look: &Look) -> Arc<dyn AutocompleteTheme> {
     };
     Arc::new(autocomplete::StyledAutocompleteTheme::new(
         binding,
-        Arc::new(move || crate::floating_menu_look_for(&menu_look, PopupMenuVariant::Solid, Tone::Accent, size)),
+        Arc::new(move || crate::floating_menu_binding_for(&menu_look, PopupMenuVariant::Solid, Tone::Accent, size)),
     ))
 }
 

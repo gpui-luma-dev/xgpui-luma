@@ -100,7 +100,7 @@ fn a_disabled_selector_fades(cx: &mut TestAppContext) {
 #[gpui::test]
 fn a_disabled_popup_menu_fades(cx: &mut TestAppContext) {
     let template = || {
-        let menu = Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve());
+        let menu = Arc::new(|| crate::style::StyleBinding::sdk("floating_menu"));
         Arc::new(ThemedPopupMenuTemplate::new(Arc::new(StyledPopupMenuTheme::new(
             ThemeSource::Fixed(faded_theme()),
             menu,
@@ -186,7 +186,7 @@ fn the_open_state_reaches_every_trigger(cx: &mut TestAppContext) {
     assert!(close(at(true), red()), "an open selector");
     assert!(!close(at(false), red()), "a closed selector");
 
-    let menu = Arc::new(|| crate::controls::floating_menu::default_floating_menu_theme().resolve());
+    let menu = Arc::new(|| crate::style::StyleBinding::sdk("floating_menu"));
     let popup = StyledPopupMenuTheme::new(ThemeSource::Fixed(open_theme()), menu);
     let open = PopupMenuTriggerMetrics { open: true, ..Default::default() };
     // The template draws an open popup menu hovered.

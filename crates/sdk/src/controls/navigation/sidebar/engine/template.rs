@@ -16,7 +16,7 @@ use crate::infra::popup_placement::{PopupPlacementRequest, PopupSide, PopupSpace
 use crate::controls::floating_menu::{FloatingMenuClickHandler, FloatingMenuHoverHandler, render_floating_menu};
 use crate::controls::scroll_container::ScrollContainer;
 use crate::theme::{InteractionState, LumaTextStyle, LumaTypography};
-use crate::controls::floating_menu::{FloatingMenuLook, FloatingMenuTheme, default_floating_menu_theme};
+use crate::controls::floating_menu::{FloatingMenuTheme, default_floating_menu_theme};
 use crate::infra::icon::{DisclosureIcons, render_disclosure_icon, render_icon_source};
 use crate::infra::ElementExt;
 use super::{SidebarTheme, default_sidebar_theme};
@@ -208,7 +208,7 @@ impl SidebarPanelTemplate for ThemedSidebarPanelTemplate {
                 root = root.child(
                     deferred(render_rail_submenu_overlay(
                         rail_submenu,
-                        self.floating_menu_theme.resolve(),
+                        self.floating_menu_theme.style(),
                         self.theme.geometry(),
                         rail_submenu_item_hovers,
                         rail_submenu_item_clicks,
@@ -807,7 +807,7 @@ fn render_collapsed_rail_node(
 #[allow(clippy::too_many_arguments)]
 fn render_rail_submenu_overlay(
     submenu: RenderedRailSubmenu,
-    look: FloatingMenuLook,
+    menu_style: crate::style::StyleBinding,
     geometry: crate::theme::stylesheet::SidebarGeometry,
     item_hovers: Vec<FloatingMenuHoverHandler>,
     item_clicks: Vec<FloatingMenuClickHandler>,
@@ -820,7 +820,7 @@ fn render_rail_submenu_overlay(
         &submenu.items,
         submenu.open_submenu,
         submenu.active_path,
-        look.clone(),
+        menu_style,
         item_hovers,
         item_clicks,
     );

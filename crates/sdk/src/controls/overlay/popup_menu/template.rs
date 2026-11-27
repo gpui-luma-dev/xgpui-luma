@@ -366,7 +366,9 @@ impl PopupMenuTemplate for ThemedPopupMenuTemplate {
                 .when(placement.scrolling, |menu| menu.max_h(placement.max_size.height).overflow_y_scroll()),
             );
             let overlay = anchored()
-                .snap_to_window_with_margin(px(look.floating_menu.window_margin))
+                .snap_to_window_with_margin(crate::controls::floating_menu::floating_menu_window_margin(
+                    &look.floating_menu,
+                ))
                 .anchor(placement.anchor)
                 .position(placement.position)
                 .offset(offset)
@@ -394,14 +396,14 @@ fn estimated_menu_size(
     items: &[crate::infra::menu_item::MenuItem],
     trigger_width: Pixels,
 ) -> Size<Pixels> {
-    let menu_min_width = px(look.floating_menu.min_width);
+    let menu = crate::controls::floating_menu::floating_menu_size(&look.floating_menu, items);
     Size {
-        width: if trigger_width > menu_min_width {
+        width: if trigger_width > menu.width {
             trigger_width
         } else {
-            menu_min_width
+            menu.width
         },
-        height: px(look.floating_menu.padding * 2.0) + px(look.floating_menu.rows_height(items)),
+        height: menu.height,
     }
 }
 
@@ -429,7 +431,7 @@ fn resolve_popup_menu_placement(
         .flip(flip)
         .gap(px(look.menu_offset_y))
         .content_size(Some(menu_size))
-        .window_margin(px(look.floating_menu.window_margin));
+        .window_margin(crate::controls::floating_menu::floating_menu_window_margin(&look.floating_menu));
     if placement == PopupMenuPlacement::CenteredOnTrigger {
         request.resolve_centered()
     } else {
@@ -479,21 +481,26 @@ mod tests {
     fn smart_placement_accounts_for_short_separator_rows() {
         use crate::infra::menu_item::MenuItem;
         let mut look = look();
-        look.floating_menu.padding = 4.0;
-        look.floating_menu.item_height = 30.0;
-        look.floating_menu.separator_thickness = 2.0;
-        look.floating_menu.separator_spacing = 3.0;
-        look.floating_menu.window_margin = 8.0;
         look.menu_offset_y = 4.0;
         let items = [MenuItem::new("first"), MenuItem::separator("divider"), MenuItem::new("last")];
         let trigger = Bounds::new(point(px(12.0), px(200.0)), size(px(160.0), px(32.0)));
-        assert_eq!(estimated_menu_size(&look, &items, trigger.size.width).height, px(76.0));
+        // A divider is shorter than a row: the estimate is the menu's own size for these rows.
+        let menu = crate::controls::floating_menu::floating_menu_size(&look.floating_menu, &items);
+        let size_of =
+            |rows: &[MenuItem]| crate::controls::floating_menu::floating_menu_size(&look.floating_menu, rows).height;
+        let (two_rows, one_row) = (size_of(&[items[0].clone(), items[2].clone()]), size_of(&items[..1]));
+        assert!(menu.height - two_rows < two_rows - one_row, "the divider adds less than a row");
+        assert_eq!(estimated_menu_size(&look, &items, trigger.size.width).height, menu.height);
+        // Room below for the menu with its short divider, but not if the divider were a full row: it opens below.
+        let (row, divider) = (two_rows - one_row, menu.height - two_rows);
+        let margin = crate::controls::floating_menu::floating_menu_window_margin(&look.floating_menu);
+        let height = trigger.bottom() + px(look.menu_offset_y) + menu.height + margin + (row - divider) * 0.5;
         let placement = resolve_popup_menu_placement(
             Some(trigger),
             PopupMenuPlacement::Smart,
             &look,
             &items,
-            size(px(320.0), px(320.0)),
+            size(px(320.0), height),
         );
         assert_eq!(placement.anchor, Anchor::TopLeft);
     }
