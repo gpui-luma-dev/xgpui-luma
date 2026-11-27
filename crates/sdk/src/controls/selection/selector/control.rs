@@ -1,9 +1,10 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use std::sync::Arc;
 
 use gpui::{
     App, Bounds, ClickEvent, Context, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,
-    MouseUpEvent, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
+    MouseUpEvent, Pixels, Render, SharedString, Window, div, prelude::*,
 };
 
 use super::{SelectorBuilder, SelectorPlacement, SelectorRenderModel, SelectorTemplateHandlers};
@@ -41,9 +42,8 @@ where
     selected_index: Option<usize>,
     active_index: Option<usize>,
     interaction: ControlInteraction,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    emitted_focused: bool,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    focus_report: crate::infra::focus_report::FocusReport,
     popup_scroll: gpui::ScrollHandle,
     popup_geometry: Option<crate::controls::selector_list::SelectorPopupGeometry>,
     initialize_popup_scroll: bool,
@@ -98,9 +98,8 @@ where
             selected_index,
             active_index: None,
             interaction: ControlInteraction::new_with_tab_stop(enabled, tab_stop, cx),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
-            emitted_focused: false,
+            focus_subscriptions: Default::default(),
+            focus_report: Default::default(),
             popup_scroll: gpui::ScrollHandle::new(),
             popup_geometry: None,
             initialize_popup_scroll: false,
@@ -178,8 +177,7 @@ where
     pub fn set_enabled(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.model.enabled = enabled;
         self.interaction.set_enabled(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.close_menu();
             self.emit_focus_changed(false, cx);
@@ -204,8 +202,7 @@ where
     pub fn set_tab_stop(&mut self, tab_stop: bool, cx: &mut Context<Self>) {
         self.model.tab_stop = tab_stop;
         self.interaction.set_tab_stop(self.model.enabled, tab_stop);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         cx.notify();
     }
 
@@ -439,15 +436,6 @@ where
             .filter(|index| self.model.items.get(*index).is_some_and(|item| self.is_selectable_item(item)))
             .or_else(|| self.first_selectable_index());
         self.open_menu_with_active(active, cx)
-    }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-        self.emitted_focused = focused;
-        cx.emit(SelectorEvent::FocusChanged { focused });
-        true
     }
 
     fn select_index(&mut self, index: usize, emit: bool, cx: &mut Context<Self>) -> bool {
@@ -692,14 +680,9 @@ where
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.presence.sync();
         self.presence.schedule_frame(window, cx);
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.interaction.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let mut tip_state = self.interaction.render_state(self.model.enabled, window);
         tip_state.disabled |= self.open;
@@ -810,3 +793,22 @@ mod tests {
 #[cfg(all(test, feature = "test-support"))]
 #[path = "wheel_tests.rs"]
 mod wheel_tests;
+
+impl<T> crate::infra::focus_report::ReportsFocus for Selector<T>
+where
+    T: SelectorItemLike + 'static,
+{
+    type FocusEvent = SelectorEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SelectorEvent {
+        SelectorEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
+    }
+}

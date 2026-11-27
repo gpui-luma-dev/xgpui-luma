@@ -1,7 +1,8 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use crate::infra::attachments::{AttachmentHost, AttachmentTarget};
 use gpui::{
     App, Bounds, ClickEvent, Context, EventEmitter, FocusOutEvent, Focusable, IntoElement, MouseDownEvent,
-    MouseUpEvent, Pixels, Render, SharedString, Subscription, Window, div, prelude::*,
+    MouseUpEvent, Pixels, Render, SharedString, Window, div, prelude::*,
 };
 use lucide_svg_static::Icon as LucideIcon;
 
@@ -47,10 +48,9 @@ pub struct PopupMenu {
     submenu_transition_index: Option<usize>,
     submenu_target_open: bool,
     interaction: ControlInteraction,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     split_state: crate::controls::split_button::SplitButtonState,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
 }
 
 impl EventEmitter<PopupMenuEvent> for PopupMenu {}
@@ -98,10 +98,9 @@ impl PopupMenu {
             submenu_transition_index: None,
             submenu_target_open: false,
             interaction: ControlInteraction::new_with_tab_stop(enabled, tab_stop, cx),
-            emitted_focused: false,
+            focus_report: Default::default(),
             split_state: Default::default(),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
         }
     }
 
@@ -162,8 +161,7 @@ impl PopupMenu {
         let changed = self.model.enabled != enabled;
         self.model.enabled = enabled;
         self.interaction.set_enabled(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.split_state = Default::default();
             self.close_menu(cx);
@@ -217,8 +215,7 @@ impl PopupMenu {
     pub fn set_tab_stop(&mut self, tab_stop: bool, cx: &mut Context<Self>) {
         self.model.tab_stop = tab_stop;
         self.interaction.set_tab_stop(self.model.enabled, tab_stop);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         cx.notify();
     }
 
@@ -432,15 +429,6 @@ impl PopupMenu {
             cx.emit(PopupMenuEvent::OpenChanged { open: true });
         }
         changed
-    }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-        self.emitted_focused = focused;
-        cx.emit(PopupMenuEvent::FocusChanged { focused });
-        true
     }
 
     fn select_item_at_path(&mut self, path: &[usize], cx: &mut Context<Self>) -> bool {
@@ -730,14 +718,9 @@ impl Focusable for PopupMenu {
 impl Render for PopupMenu {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sync_submenu_transition_target();
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.interaction.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.interaction.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         if self.lifecycle.sync() {
             self.lifecycle.schedule_frame(window, cx);
@@ -826,5 +809,21 @@ mod dismiss_tests {
             menu.handle_escape_focus(&EscapeFocus, window, cx);
             assert!(!menu.lifecycle.is_open(), "Escape closes under LIGHT");
         });
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for PopupMenu {
+    type FocusEvent = PopupMenuEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> PopupMenuEvent {
+        PopupMenuEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

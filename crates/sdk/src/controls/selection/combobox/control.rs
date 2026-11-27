@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 #[path = "click_tests.rs"]
 mod click_tests;
@@ -47,6 +48,7 @@ pub struct ComboBoxControl {
     behavior: SelectionBehavior,
     trigger_bounds: Option<Bounds<Pixels>>,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     committed_selection: Option<usize>,
     open_popup_on_next_focus: bool,
@@ -112,6 +114,7 @@ impl ComboBoxControl {
             behavior: SelectionBehavior::new(),
             trigger_bounds: None,
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             committed_selection: None,
             open_popup_on_next_focus: false,
@@ -140,10 +143,9 @@ impl ComboBoxControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 if self.open_popup_on_next_focus {
                     self.open_popup_on_next_focus = false;
@@ -152,12 +154,11 @@ impl ComboBoxControl {
                 cx.notify();
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.open_popup_on_next_focus = false;
                 self.apply_blur_selection_policy(cx);
                 self.behavior.apply(SelectionEvent::Blur, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, true, cx);
                 cx.notify();
             }
@@ -606,15 +607,6 @@ impl ComboBoxControl {
         }
         true
     }
-
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(ComboBoxEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
 }
 
 impl Render for ComboBoxControl {
@@ -906,5 +898,21 @@ mod geometry_tests {
             ..baseline
         };
         assert_eq!(reserved_affordance_width(&zero, true, true), 0.0);
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for ComboBoxControl {
+    type FocusEvent = ComboBoxEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> ComboBoxEvent {
+        ComboBoxEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

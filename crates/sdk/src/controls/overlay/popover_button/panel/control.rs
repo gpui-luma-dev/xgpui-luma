@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     anchored, deferred, App, Bounds, Context, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
     MouseButton, MouseDownEvent, Pixels, Render, SharedString, Size, Subscription, Window, div, prelude::*, px,
@@ -24,7 +25,7 @@ pub struct PopoverPanel {
     content_bounds: Option<Bounds<Pixels>>,
     /// The panel's unscrolled size: its content's natural size plus the panel chrome.
     natural_size: Option<Size<Pixels>>,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     focus_out_subscription: Option<Subscription>,
     pending_focus: bool,
     restore_focus: Option<FocusHandle>,
@@ -51,7 +52,7 @@ impl PopoverPanel {
             focus_handle: cx.focus_handle().tab_stop(true),
             content_bounds: None,
             natural_size: None,
-            emitted_focused: false,
+            focus_report: Default::default(),
             focus_out_subscription: None,
             restore_focus: None,
             pending_focus_restore: false,
@@ -231,14 +232,6 @@ impl PopoverPanel {
 
     fn can_dismiss_on_focus_loss(&self) -> bool {
         self.model.dismiss.allows(DismissReason::FocusLoss)
-    }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) {
-        if self.emitted_focused == focused {
-            return;
-        }
-        self.emitted_focused = focused;
-        cx.emit(PopoverPanelEvent::FocusChanged { focused });
     }
 
     fn handle_focus_out(&mut self, _: FocusOutEvent, window: &mut Window, cx: &mut Context<Self>) {
@@ -527,5 +520,17 @@ mod height_tests {
         let panel = cx.debug_bounds("popover-panel").expect("panel drawn");
         assert!(panel.size.height < px(5000.0), "panel is limited: {panel:?}");
         assert!(panel.bottom() <= viewport.height, "panel stays in the window: {panel:?} in {viewport:?}");
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for PopoverPanel {
+    type FocusEvent = PopoverPanelEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> PopoverPanelEvent {
+        PopoverPanelEvent::FocusChanged { focused }
     }
 }

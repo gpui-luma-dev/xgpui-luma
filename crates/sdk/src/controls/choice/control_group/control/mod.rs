@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 mod input;
 mod render;
 mod selection;
@@ -54,11 +55,10 @@ where
 {
     model: ControlGroupModel<T>,
     focus_handle: gpui::FocusHandle,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
     item_focus_subscriptions: Vec<Subscription>,
     item_focus_subscription_keys: Vec<(SharedString, gpui::FocusHandle)>,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
     hovered_item: Option<usize>,
     pressed_item: Option<usize>,
     /// The items last reported hovered and pressed (see `sync_item_visual_events`).
@@ -108,11 +108,10 @@ where
         Self {
             model: builder.model,
             focus_handle: cx.focus_handle().tab_stop(tab_stop),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
             item_focus_subscriptions: Vec::new(),
             item_focus_subscription_keys: Vec::new(),
-            emitted_focused: false,
+            focus_report: Default::default(),
             hovered_item: None,
             pressed_item: None,
             emitted_hovered: None,
@@ -360,5 +359,24 @@ where
 {
     fn focus_handle(&self, _cx: &App) -> gpui::FocusHandle {
         self.focus_handle.clone()
+    }
+}
+
+impl<T> crate::infra::focus_report::ReportsFocus for ControlGroupControl<T>
+where
+    T: ControlGroupItemLike + 'static,
+{
+    type FocusEvent = ControlGroupEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> ControlGroupEvent {
+        ControlGroupEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

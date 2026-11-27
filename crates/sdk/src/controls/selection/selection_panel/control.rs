@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     App, AppContext, ClickEvent, Context, Entity, EventEmitter, FocusHandle, FocusOutEvent, Focusable, IntoElement,
     MouseDownEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Subscription, Window, div, prelude::*, px,
@@ -52,9 +53,8 @@ where
     pressed_visible_index: Option<usize>,
     focus_handle: FocusHandle,
     popup_surface: PopupScrollSurface,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
-    emitted_focused: bool,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
+    focus_report: crate::infra::focus_report::FocusReport,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -144,9 +144,8 @@ where
             },
             pressed_visible_index: None,
             popup_surface,
-            focus_in_subscription: None,
-            focus_out_subscription: None,
-            emitted_focused: false,
+            focus_subscriptions: Default::default(),
+            focus_report: Default::default(),
             _subscriptions: subscriptions,
         }
     }
@@ -204,8 +203,7 @@ where
 
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
         if !enabled {
             self.state.set_hovered_visible_index(None);
             self.pressed_visible_index = None;
@@ -454,15 +452,6 @@ where
         }
     }
 
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-        self.emitted_focused = focused;
-        cx.emit(SelectionPanelEvent::FocusChanged { focused });
-        true
-    }
-
     fn handle_focus_in(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if self.model.enabled && self.emit_focus_changed(true, cx) {
             cx.notify();
@@ -669,12 +658,9 @@ where
             window.blur(cx);
         }
         self.clamp_state();
-        if self.focus_in_subscription.is_none() {
-            self.focus_in_subscription = Some(cx.on_focus(&self.focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            self.focus_out_subscription = Some(cx.on_focus_out(&self.focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.focus_handle.clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let look = (self.model.look_provider)();
         let panel_min_width = look.min_width;
@@ -934,5 +920,24 @@ mod interaction_tests {
                 assert!(elsewhere.is_focused(window));
             });
         }
+    }
+}
+
+impl<T> crate::infra::focus_report::ReportsFocus for SelectionPanelControl<T>
+where
+    T: SelectionPanelItemLike + 'static,
+{
+    type FocusEvent = SelectionPanelEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> SelectionPanelEvent {
+        SelectionPanelEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }

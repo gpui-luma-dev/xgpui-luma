@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     App, Bounds, ClickEvent, Context, FocusOutEvent, Modifiers, MouseDownEvent, MouseUpEvent, Pixels, SharedString,
     Window,
@@ -187,20 +188,8 @@ where
         cx.notify();
     }
 
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        let focused = self.model.enabled && focused;
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(ControlGroupEvent::FocusChanged { focused });
-        true
-    }
-
     pub(super) fn clear_focus_subscriptions(&mut self) {
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
     }
 
     pub(super) fn clear_item_focus_subscriptions(&mut self) {

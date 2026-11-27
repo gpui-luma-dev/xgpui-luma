@@ -20,8 +20,7 @@ pub struct Button<D = ()> {
     command: CommandCore,
     attachments: AttachmentHost,
     pub(super) callback_subscriptions: Vec<Subscription>,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
 }
 
 impl<D: 'static> EventEmitter<ButtonEvent> for Button<D> {}
@@ -50,8 +49,7 @@ impl<D: Clone + 'static> Button<D> {
             attachments: AttachmentHost::with_accessible_role(gpui::Role::Button),
             command: CommandCore::new_with_tab_stop(enabled, tab_stop, cx),
             callback_subscriptions: Vec::new(),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
         }
     }
 
@@ -171,14 +169,9 @@ impl<D: 'static> Focusable for Button<D> {
 
 impl<D: Clone + 'static> Render for Button<D> {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.command.focus_handle().clone();
-            self.focus_in_subscription = Some(cx.on_focus(&focus_handle, window, Self::handle_focus_in));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.command.focus_handle().clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, Self::handle_focus_out));
-        }
+        let focus_handle = self.command.focus_handle().clone();
+        self.focus_subscriptions
+            .ensure(&focus_handle, window, cx, Self::handle_focus_in, Self::handle_focus_out);
 
         let model = self.render_model(window);
 

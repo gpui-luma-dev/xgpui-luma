@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use std::rc::Rc;
 
 use gpui::{
@@ -580,16 +581,6 @@ impl SidebarPanelEngine {
 
     pub(super) fn any_focus_target_focused(&self, window: &Window) -> bool {
         self.focus_subscription_keys.iter().any(|(_, focus_handle)| focus_handle.is_focused(window))
-    }
-
-    pub(super) fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(SidebarPanelEngineEvent::FocusChanged { focused });
-        true
     }
 }
 

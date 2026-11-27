@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 #[cfg(all(test, feature = "test-support"))]
 use gpui::ScrollEvent;
 use std::{
@@ -89,8 +90,7 @@ where
     drag_scroll_scheduled: bool,
     drag_scroll_last_frame: Option<std::time::Instant>,
     focus_handle: FocusHandle,
-    focus_in_subscription: Option<Subscription>,
-    focus_out_subscription: Option<Subscription>,
+    focus_subscriptions: crate::infra::focus_report::FocusSubscriptions,
     list_state: ListState,
     position: Option<position::PositionRequest>,
     position_frame_scheduled: bool,
@@ -114,7 +114,7 @@ where
     flat_indices: HashMap<SharedString, usize>,
     row_handlers: RefCell<HashMap<SharedString, TreeViewTemplateHandlers>>,
     emitted_scroll_top_index: usize,
-    emitted_focused: bool,
+    focus_report: crate::infra::focus_report::FocusReport,
 }
 
 impl<T> EventEmitter<TreeViewEvent<T>> for TreeViewControl<T> where T: Clone + Send + Sync + 'static {}
@@ -180,8 +180,7 @@ where
             drag_scroll_scheduled: false,
             drag_scroll_last_frame: None,
             focus_handle: cx.focus_handle().tab_stop(enabled),
-            focus_in_subscription: None,
-            focus_out_subscription: None,
+            focus_subscriptions: Default::default(),
             list_state: ListState::new(0, ListAlignment::Top, px(480.0)),
             position: None,
             position_frame_scheduled: false,
@@ -204,7 +203,7 @@ where
             flat_indices: HashMap::new(),
             row_handlers: RefCell::new(HashMap::new()),
             emitted_scroll_top_index: 0,
-            emitted_focused: false,
+            focus_report: Default::default(),
         };
 
         control.populate_initial_expands();
@@ -396,8 +395,7 @@ where
         self.cancel_position();
         self.model.enabled = enabled;
         self.focus_handle = self.focus_handle.clone().tab_stop(enabled);
-        self.focus_in_subscription = None;
-        self.focus_out_subscription = None;
+        self.focus_subscriptions.reset();
 
         if !enabled {
             self.clear_hovered_node_id(cx);
@@ -1124,16 +1122,6 @@ where
         cx.emit(TreeViewEvent::ScrollChanged { top_index });
         true
     }
-
-    fn emit_focus_changed(&mut self, focused: bool, cx: &mut Context<Self>) -> bool {
-        if self.emitted_focused == focused {
-            return false;
-        }
-
-        self.emitted_focused = focused;
-        cx.emit(TreeViewEvent::FocusChanged { focused });
-        true
-    }
 }
 
 impl<T> Focusable for TreeViewControl<T>
@@ -1153,18 +1141,16 @@ where
         if !self.model.enabled && self.focus_handle.contains_focused(window, cx) {
             window.blur(cx);
         }
-        if self.focus_in_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_in_subscription = Some(cx.on_focus_in(&focus_handle, window, |_, window, cx| {
-                cx.defer_in(window, |tree, window, cx| tree.handle_focus_in(window, cx));
-            }));
-        }
-        if self.focus_out_subscription.is_none() {
-            let focus_handle = self.focus_handle.clone();
-            self.focus_out_subscription = Some(cx.on_focus_out(&focus_handle, window, |_, event, window, cx| {
-                cx.defer_in(window, move |tree, window, cx| tree.handle_focus_out(event, window, cx));
-            }));
-        }
+        let focus_handle = self.focus_handle.clone();
+        self.focus_subscriptions.ensure_within(
+            &focus_handle,
+            window,
+            cx,
+            |_, window, cx| cx.defer_in(window, |tree, window, cx| tree.handle_focus_in(window, cx)),
+            |_, event, window, cx| {
+                cx.defer_in(window, move |tree, window, cx| tree.handle_focus_out(event, window, cx))
+            },
+        );
 
         let (was_animating, mut is_animating) = self.sync_expand_transitions();
         if is_animating && self.settle_large_expansions() {
@@ -1424,3 +1410,22 @@ fn wheel_policy_dispatch_matrix() {
 #[cfg(all(test, feature = "test-support"))]
 #[path = "perf_tests.rs"]
 mod perf_tests;
+
+impl<T> crate::infra::focus_report::ReportsFocus for TreeViewControl<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    type FocusEvent = TreeViewEvent<T>;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> TreeViewEvent<T> {
+        TreeViewEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
+    }
+}

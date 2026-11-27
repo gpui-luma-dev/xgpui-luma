@@ -1,3 +1,4 @@
+use crate::infra::focus_report::ReportsFocus as _;
 use gpui::{
     Bounds, ClickEvent, Context, Entity, EventEmitter, IntoElement, KeyDownEvent, Pixels, Render, ScrollEvent,
     SharedString, Subscription, TextRun, Window, font, px,
@@ -38,6 +39,7 @@ pub struct AutocompleteControl {
     trigger_bounds: Option<Bounds<Pixels>>,
     presence: OverlayPresence,
     last_event: SharedString,
+    focus_report: crate::infra::focus_report::FocusReport,
     last_keyboard_event: SharedString,
     _subscriptions: Vec<Subscription>,
 }
@@ -100,6 +102,7 @@ impl AutocompleteControl {
             trigger_bounds: None,
             presence: OverlayPresence::with_motion(false, motion_enabled, motion.presence.clone()),
             last_event: SharedString::from("none"),
+            focus_report: Default::default(),
             last_keyboard_event: SharedString::from("none"),
             _subscriptions: subscriptions,
         }
@@ -125,15 +128,13 @@ impl AutocompleteControl {
                 self.handle_submit_result(result, cx);
             }
             TextSelectionEvent::FocusEnter => {
-                let was_focused = self.behavior.state.focused;
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Focus, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, false, cx);
                 cx.notify();
             }
             TextSelectionEvent::FocusLeave => {
-                let was_focused = self.behavior.state.focused;
                 if self.behavior.state.status == SelectionStatus::Searching
                     && let Some(index) = self
                         .behavior
@@ -146,7 +147,7 @@ impl AutocompleteControl {
 
                 let was_open = self.behavior.state.open;
                 self.behavior.apply(SelectionEvent::Blur, &self.model.items);
-                self.emit_focus_changed_if_needed(was_focused, cx);
+                self.emit_focus_changed(self.behavior.state.focused, cx);
                 self.emit_open_changed_if_needed(was_open, true, cx);
                 cx.notify();
             }
@@ -420,15 +421,6 @@ impl AutocompleteControl {
         }
         true
     }
-
-    fn emit_focus_changed_if_needed(&mut self, was_focused: bool, cx: &mut Context<Self>) -> bool {
-        if was_focused == self.behavior.state.focused {
-            return false;
-        }
-
-        cx.emit(AutocompleteEvent::FocusChanged { focused: self.behavior.state.focused });
-        true
-    }
 }
 
 impl Render for AutocompleteControl {
@@ -585,5 +577,21 @@ impl Render for AutocompleteControl {
         };
 
         self.model.template.render(render_model, handlers, window, cx)
+    }
+}
+
+impl crate::infra::focus_report::ReportsFocus for AutocompleteControl {
+    type FocusEvent = AutocompleteEvent;
+
+    fn focus_report(&mut self) -> &mut crate::infra::focus_report::FocusReport {
+        &mut self.focus_report
+    }
+
+    fn focus_event(focused: bool) -> AutocompleteEvent {
+        AutocompleteEvent::FocusChanged { focused }
+    }
+
+    fn focus_enabled(&self) -> bool {
+        self.model.enabled
     }
 }
