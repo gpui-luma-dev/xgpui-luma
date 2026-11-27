@@ -46,46 +46,6 @@ pub type SelectionPanelItemTemplateModifier<T> = Box<
     dyn for<'a> Fn(AnyElement, &SelectionPanelItemRenderModel<'a, T>, &mut App) -> AnyElement + Send + Sync + 'static,
 >;
 
-struct ModifiedSelectionPanelItemTemplate<T>
-where
-    T: SelectionPanelItemLike + 'static,
-{
-    base: SelectionPanelItemTemplate<T>,
-    modifiers: Vec<SelectionPanelItemTemplateModifier<T>>,
-}
-
-impl<T> ModifiedSelectionPanelItemTemplate<T>
-where
-    T: SelectionPanelItemLike + 'static,
-{
-    fn new(base: SelectionPanelItemTemplate<T>) -> Self {
-        Self { base, modifiers: Vec::new() }
-    }
-
-    fn with_modifier<F>(mut self, modifier: F) -> Self
-    where
-        F: for<'a> Fn(AnyElement, &SelectionPanelItemRenderModel<'a, T>, &mut App) -> AnyElement
-            + Send
-            + Sync
-            + 'static,
-    {
-        self.modifiers.push(Box::new(modifier));
-        self
-    }
-
-    fn into_template(self) -> SelectionPanelItemTemplate<T> {
-        let base = self.base;
-        let modifiers = self.modifiers;
-        Arc::new(move |model, cx| {
-            let mut element = base(model, cx);
-            for modifier in &modifiers {
-                element = modifier(element, model, cx);
-            }
-            element
-        })
-    }
-}
-
 pub(super) fn item_template_with_modifier<T, F>(
     template: SelectionPanelItemTemplate<T>,
     modifier: F,
@@ -94,7 +54,10 @@ where
     T: SelectionPanelItemLike + 'static,
     F: for<'a> Fn(AnyElement, &SelectionPanelItemRenderModel<'a, T>, &mut App) -> AnyElement + Send + Sync + 'static,
 {
-    ModifiedSelectionPanelItemTemplate::new(template).with_modifier(modifier).into_template()
+    Arc::new(move |model, cx| {
+        let element = template(model, cx);
+        modifier(element, model, cx)
+    })
 }
 
 pub type SelectionPanelClickHandler = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;

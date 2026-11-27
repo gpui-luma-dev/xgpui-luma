@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -48,12 +49,12 @@ impl RenderModel for dyn ContextMenuTemplate {
 
 pub struct ThemedContextMenuTemplate {
     theme: Arc<dyn ContextMenuTheme>,
-    modifiers: Vec<ContextMenuTemplateModifier>,
+    modifiers: RootModifiers<dyn ContextMenuTemplate>,
 }
 
 impl ThemedContextMenuTemplate {
     pub fn new(theme: Arc<dyn ContextMenuTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -62,13 +63,6 @@ impl ThemedContextMenuTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ContextMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -206,6 +200,6 @@ impl ContextMenuTemplate for ThemedContextMenuTemplate {
             root = root.child(deferred(overlay).with_priority(1));
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }

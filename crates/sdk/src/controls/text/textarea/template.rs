@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -33,9 +34,6 @@ pub struct TextAreaTemplateHandlers {
     pub drag_move: TextAreaDragMoveHandler,
 }
 
-pub type TextAreaTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &TextAreaRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait TextAreaTemplate: Send + Sync {
     fn theme(&self) -> Option<Arc<dyn TextAreaTheme>> {
         None
@@ -56,12 +54,12 @@ impl RenderModel for dyn TextAreaTemplate {
 
 pub struct ThemedTextAreaTemplate {
     theme: Arc<dyn TextAreaTheme>,
-    modifiers: Vec<TextAreaTemplateModifier>,
+    modifiers: RootModifiers<dyn TextAreaTemplate>,
 }
 
 impl ThemedTextAreaTemplate {
     pub fn new(theme: Arc<dyn TextAreaTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -70,13 +68,6 @@ impl ThemedTextAreaTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TextAreaRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -266,7 +257,8 @@ impl TextAreaTemplate for ThemedTextAreaTemplate {
 
         root = root.child(focus.overlay(look.focus_border, focused, look.radius, false));
 
-        self.apply_modifiers(root, model)
+        self.modifiers
+            .apply(root, model)
             .on_hover(handlers.hover)
             .on_mouse_down(gpui::MouseButton::Left, handlers.mouse_down)
             .on_mouse_move(handlers.mouse_move)

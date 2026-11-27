@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -71,12 +72,15 @@ impl FloatingMenuSeparatorTemplate for ThemedFloatingMenuSeparatorTemplate {
 
 pub struct ThemedFloatingMenuTemplate {
     separator_template: Arc<dyn FloatingMenuSeparatorTemplate>,
-    modifiers: Vec<FloatingMenuTemplateModifier>,
+    modifiers: RootModifiers<dyn FloatingMenuTemplate>,
 }
 
 impl ThemedFloatingMenuTemplate {
     pub fn new() -> Self {
-        Self { separator_template: Arc::new(ThemedFloatingMenuSeparatorTemplate), modifiers: Vec::new() }
+        Self {
+            separator_template: Arc::new(ThemedFloatingMenuSeparatorTemplate),
+            modifiers: RootModifiers::default(),
+        }
     }
 
     /// Customize divider structure while retaining the shared menu behavior.
@@ -91,13 +95,6 @@ impl ThemedFloatingMenuTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &FloatingMenuRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -212,7 +209,7 @@ impl FloatingMenuTemplate for ThemedFloatingMenuTemplate {
             );
         }
 
-        self.apply_modifiers(menu, model)
+        self.modifiers.apply(menu, model)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -46,12 +47,12 @@ impl RenderModel for dyn SplitViewTemplate {
 }
 
 pub struct ThemedSplitViewTemplate {
-    modifiers: Vec<SplitViewTemplateModifier>,
+    modifiers: RootModifiers<dyn SplitViewTemplate>,
 }
 
 impl ThemedSplitViewTemplate {
     pub fn new() -> Self {
-        Self { modifiers: Vec::new() }
+        Self { modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -60,13 +61,6 @@ impl ThemedSplitViewTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &SplitViewRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = (modifier)(root, model);
-        }
-        root
     }
 }
 
@@ -205,7 +199,7 @@ impl SplitViewTemplate for ThemedSplitViewTemplate {
             root = root.child(expand_separator);
         }
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

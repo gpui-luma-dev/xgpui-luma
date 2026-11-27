@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -27,9 +28,6 @@ pub struct ScrollbarTemplateHandlers {
     pub scroll_wheel: ScrollbarScrollWheelHandler,
 }
 
-pub type ScrollbarTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &ScrollbarRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait ScrollbarTemplate: Send + Sync {
     fn render(
         &self,
@@ -53,12 +51,12 @@ impl RenderModel for dyn ScrollbarTemplate {
 
 pub struct ThemedScrollbarTemplate {
     theme: Arc<dyn ScrollbarTheme>,
-    modifiers: Vec<ScrollbarTemplateModifier>,
+    modifiers: RootModifiers<dyn ScrollbarTemplate>,
 }
 
 impl ThemedScrollbarTemplate {
     pub fn new(theme: Arc<dyn ScrollbarTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -67,13 +65,6 @@ impl ThemedScrollbarTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &ScrollbarRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -244,7 +235,7 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
         }
         root = crate::style::fade(root, look.opacity);
 
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

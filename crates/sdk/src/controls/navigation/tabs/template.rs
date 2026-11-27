@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::cell::Cell;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -30,9 +31,6 @@ pub type TabsHoverHandler = ControlGroupHoverHandler;
 pub type TabsMouseDownHandler = ControlGroupMouseDownHandler;
 pub type TabsMouseUpHandler = ControlGroupMouseUpHandler;
 pub type TabsTemplateHandlers = ControlGroupTemplateHandlers;
-
-pub type TabsTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &TabsRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
 
 #[derive(Clone)]
 pub struct TabsOverlayState {
@@ -184,12 +182,12 @@ impl RenderModel for dyn TabsTemplate {
 
 pub struct ThemedTabsTemplate {
     theme: Arc<dyn TabsTheme>,
-    modifiers: Vec<TabsTemplateModifier>,
+    modifiers: RootModifiers<dyn TabsTemplate>,
 }
 
 impl ThemedTabsTemplate {
     pub fn new(theme: Arc<dyn TabsTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -198,13 +196,6 @@ impl ThemedTabsTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &TabsRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -376,7 +367,7 @@ impl TabsTemplate for ThemedTabsTemplate {
         if let Some((motion, _)) = drop_scope {
             root = motion.end_surface(root);
         }
-        self.apply_modifiers(root, model)
+        self.modifiers.apply(root, model)
     }
 }
 

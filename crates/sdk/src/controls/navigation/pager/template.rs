@@ -1,3 +1,4 @@
+use crate::infra::template::RootModifiers;
 use crate::infra::template::{ModifiedTemplate, RenderModel};
 use std::sync::{Arc, OnceLock};
 
@@ -23,9 +24,6 @@ pub struct PagerTemplateHandlers {
     pub set_page_size: PagerPageSizeClickHandler,
 }
 
-pub type PagerTemplateModifier =
-    Box<dyn Fn(Stateful<Div>, &PagerRenderModel<'_>) -> Stateful<Div> + Send + Sync + 'static>;
-
 pub trait PagerTemplate: Send + Sync {
     fn render(
         &self,
@@ -42,12 +40,12 @@ impl RenderModel for dyn PagerTemplate {
 
 pub struct ThemedPagerTemplate {
     theme: Arc<dyn PagerTheme>,
-    modifiers: Vec<PagerTemplateModifier>,
+    modifiers: RootModifiers<dyn PagerTemplate>,
 }
 
 impl ThemedPagerTemplate {
     pub fn new(theme: Arc<dyn PagerTheme>) -> Self {
-        Self { theme, modifiers: Vec::new() }
+        Self { theme, modifiers: RootModifiers::default() }
     }
 
     pub fn with_modifier<F>(mut self, modifier: F) -> Self
@@ -56,13 +54,6 @@ impl ThemedPagerTemplate {
     {
         self.modifiers.push(Box::new(modifier));
         self
-    }
-
-    fn apply_modifiers(&self, mut root: Stateful<Div>, model: &PagerRenderModel<'_>) -> Stateful<Div> {
-        for modifier in &self.modifiers {
-            root = modifier(root, model);
-        }
-        root
     }
 }
 
@@ -108,7 +99,7 @@ impl PagerTemplate for ThemedPagerTemplate {
             PagerStyle::Numeric => render_numeric_pager(model, &look, &self.theme, &handlers, window, cx),
         };
 
-        self.apply_modifiers(root, model).into_any_element()
+        self.modifiers.apply(root, model).into_any_element()
     }
 }
 
