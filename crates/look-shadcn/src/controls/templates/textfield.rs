@@ -120,13 +120,15 @@ mod tests {
     }
 
     #[test]
-    fn primary_is_opaque_with_a_shadow_kept_when_disabled() {
+    fn primary_is_opaque_with_a_shadow_and_fades_when_disabled() {
         let light = look(ThemeMode::Light);
         let field = resolve(light.primary_textfield_theme(), TextFieldState::default(), true);
         assert!(close(field.background, css(&light, "background")));
         assert!(field.shadow.as_ref().is_some_and(|layers| !layers.is_empty()));
         let disabled = resolve(light.primary_textfield_theme(), TextFieldState::default(), false);
-        assert!(close(disabled.background, css(&light, "muted")));
+        // Faded over its resting fill (#413), not a muted fill.
+        assert!(close(disabled.background, css(&light, "background")));
+        assert!(disabled.opacity < 1.0);
         assert!(disabled.shadow.as_ref().is_some_and(|layers| !layers.is_empty()));
     }
 

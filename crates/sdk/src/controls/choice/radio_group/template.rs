@@ -24,8 +24,9 @@ pub struct RadioGroupGeometry {
     pub horizontal_gap: f32,
     /// Space between a custom row's indicator and its content.
     pub item_gap: f32,
-    /// Disabled rows' opacity.
-    pub disabled_opacity: f32,
+    /// A disabled custom row's content opacity: the `content` part's `:disabled { opacity }`. The radio draws
+    /// its own disabled look.
+    pub content_disabled_opacity: f32,
 }
 
 impl RadioGroupGeometry {
@@ -38,7 +39,9 @@ impl RadioGroupGeometry {
             vertical_gap: number("vertical_gap"),
             horizontal_gap: number("horizontal_gap"),
             item_gap: number("item_gap"),
-            disabled_opacity: number("disabled_opacity"),
+            content_disabled_opacity: crate::style::part_opacity(
+                binding.resolve(&[("disabled", true)], 1.0).part(xgpui_luma_style::PartId::new("content")),
+            ),
         }
     }
 
@@ -134,7 +137,13 @@ where
             .items_center()
             .gap(px(geometry.item_gap))
             .child(indicator)
-            .child(div().flex_1().min_w_0().child(content))
+            .child(div().flex_1().min_w_0().child(content).map(|content| {
+                if item.enabled {
+                    content
+                } else {
+                    crate::style::fade(content, geometry.content_disabled_opacity)
+                }
+            }))
     } else {
         let render_model = ButtonRenderModel {
             id: format!("{}-{}", item.group_id, item.item.id()).into(),
@@ -180,8 +189,6 @@ where
 
         if item.enabled {
             row = row.cursor_pointer();
-        } else {
-            row = row.opacity(geometry.disabled_opacity);
         }
 
         rows.push(row.into_any_element());
@@ -234,7 +241,7 @@ mod tests {
                 "sdk",
                 xgpui_luma_style::Source::new(
                     "look.lss",
-                    "radio_group { horizontal_gap = exact(5)  disabled_opacity = 0.5 }",
+                    "radio_group { horizontal_gap = exact(5)  part content { :disabled { opacity = 0.5 } } }",
                 ),
             )
             .expect("compiles");
@@ -242,9 +249,9 @@ mod tests {
             "radio_group",
             ThemeSource::Fixed(theme.with_stylesheet(&sheet).expect("binds")),
         ));
-        assert_eq!((look.horizontal_gap, look.disabled_opacity), (5.0, 0.5));
+        assert_eq!((look.horizontal_gap, look.content_disabled_opacity), (5.0, 0.5));
         assert_eq!((look.vertical_gap, look.item_gap), (sdk.vertical_gap, sdk.item_gap), "unset values are the SDK's");
         assert!(sdk.vertical_gap > 0.0 && sdk.horizontal_gap > 0.0);
-        assert_eq!(sdk.disabled_opacity, 1.0, "the SDK's radios draw their own disabled colors (#397)");
+        assert_eq!(sdk.content_disabled_opacity, 1.0, "the SDK's rows draw their own disabled colors (#397)");
     }
 }

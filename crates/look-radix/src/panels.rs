@@ -128,7 +128,7 @@ mod tests {
                 let role = |r| look.resolve_role(r).hsla();
                 crate::control_group::assert_close(normal.grip_emphasis, role(SemanticRole::Focus));
                 crate::control_group::assert_close(disabled.grip_emphasis, role(SemanticRole::MutedForeground));
-                assert!(disabled.disabled_opacity < normal.disabled_opacity);
+                assert_eq!((disabled.opacity, normal.opacity), (1.0, 1.0), "colors, no fade");
                 assert_eq!(slide_panel_look(&look).divider, normal.divider);
                 let sizes = crate::RadixSize::ALL
                     .map(|size| resizable_panels_theme(&look.with_size(size)).resize_handle_metrics());

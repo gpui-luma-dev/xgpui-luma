@@ -56,6 +56,7 @@ impl StyledAccordion {
                 weight: gpui::FontWeight(number(root, "font_weight").max(100.0)),
             },
             font_family: root.font_family().unwrap_or("").to_string().into(),
+            opacity: crate::style::part_opacity(root),
         }
     }
 
@@ -71,7 +72,6 @@ impl StyledAccordion {
         let root = resolved.root();
         AccordionScale {
             drag_handle_padding: number(root, "drag_handle_padding"),
-            disabled_opacity: number(root, "disabled_opacity"),
             trigger_height: number(root, "height"),
             padding_x: number(root, "padding_x"),
             padding_y: number(root, "padding_y"),

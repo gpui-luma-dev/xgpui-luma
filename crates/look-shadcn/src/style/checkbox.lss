@@ -5,12 +5,13 @@
 // so they own their property (`:=`) against the SDK's hover and pressed rules.
 
 checkbox {
-  disabled_opacity = metrics.disabled_opacity
   size sm { indicator_scale = 0.45  indicator_radius = 2  glyph_inset = 2 }
   size lg { indicator_scale = 0.55  indicator_radius = 6  glyph_inset = 4 }
 
   part root {
     focus_border = first(css.ring, shadcn.fallback_foreground)
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { opacity = metrics.disabled_opacity }
   }
 
   part indicator {
@@ -18,19 +19,17 @@ checkbox {
     border     := first(css.border, shadcn.fallback_foreground)
     shadow     := first(css.shadow_xs, [])
     :checked  { background = action_layer(primary, default)  border = background }
-    :disabled { background = css.muted  border = first(css.border, shadcn.fallback_foreground)  shadow = none }
+    :disabled { shadow = none }
   }
 
   part glyph {
     foreground := css.foreground
     :checked  { foreground = action_foreground(primary) }
-    :disabled { foreground = css.muted_foreground }
   }
 
   part label {
     foreground := css.foreground
     font_size   = shadcn.control_font_size
-    :disabled { foreground = css.muted_foreground }
   }
 
   variant secondary {

@@ -3,7 +3,9 @@
 mod common;
 
 use common::*;
-use xgpui_luma_style::{Easing, Motion, PartId, Resolved, ValueSource, props};
+use std::sync::Arc;
+
+use xgpui_luma_style::{Easing, Motion, NoNativeTokens, PartId, Resolved, Source, Stylesheet, Theme, ValueSource, props};
 
 const INDICATOR: PartId = PartId::new("indicator");
 const LABEL: PartId = PartId::new("label");
@@ -25,13 +27,15 @@ fn checkbox_geometry_comes_from_declared_properties() {
     let checkbox = sheet.control("checkbox").expect("declared");
     let indicator_size = sheet.prop::<f32>(checkbox, "indicator_size").expect("declared length");
     let glyph_size = sheet.prop::<f32>(checkbox, "glyph_size").expect("declared length");
-    let opacity = sheet.prop::<f32>(checkbox, "disabled_opacity").expect("declared number");
 
     let style = theme.resolve(&key(&theme, "checkbox", &[], &[]));
     let root = style.root();
     assert_eq!(root.get(indicator_size), Some(18.0)); // control height 36 × 0.5
     assert_eq!(root.get(glyph_size), Some(12.0)); // 18 − 2 × 3
-    assert_eq!(root.get(opacity), Some(0.56));
+    // The fade is a state property: `:disabled { opacity }` on the root, absent at rest.
+    assert_eq!(root.get(props::OPACITY), None);
+    let disabled = theme.resolve(&key(&theme, "checkbox", &[], &["disabled"]));
+    assert_eq!(disabled.root().get(props::OPACITY), Some(0.56));
     assert_eq!(root.get(props::HEIGHT), Some(36.0));
     assert_eq!(root.radius(), Some(6.0));
 }
@@ -174,4 +178,30 @@ fn checked_animation_lerps_between_resolved_styles() {
     let mid = Resolved::lerp(&off, &on, 0.5);
     let expected = sdk_gray(100.0).mix(sdk_gray(12.0), 0.5);
     assert_color(mid.part(INDICATOR).background(), expected, "halfway");
+}
+
+#[test]
+fn opacity_is_a_state_property_on_parts() {
+    let sheet = Stylesheet::builder(luma_config())
+        .layer("sdk", sdk_sources())
+        .layer(
+            "app",
+            vec![Source::new(
+                "app/fade.lss",
+                "checkbox { part root { :disabled { opacity = 0.5 } } part indicator { :disabled { opacity = 0.25 } } }",
+            )],
+        )
+        .compile()
+        .unwrap_or_else(|d| panic!("{d}"));
+    let theme = Theme::bind(&sheet, Arc::new(NoNativeTokens), "light").unwrap_or_else(|d| panic!("{d}"));
+
+    let resting = theme.resolve(&key(&theme, "checkbox", &[], &[]));
+    assert_eq!(resting.root().get(props::OPACITY), None);
+    assert_eq!(resting.part(INDICATOR).get(props::OPACITY), None);
+
+    let disabled = theme.resolve(&key(&theme, "checkbox", &[], &["disabled"]));
+    assert_eq!(disabled.root().get(props::OPACITY), Some(0.5));
+    // Not inherited: each part resolves its own.
+    assert_eq!(disabled.part(INDICATOR).get(props::OPACITY), Some(0.25));
+    assert_eq!(disabled.part(LABEL).get(props::OPACITY), None);
 }

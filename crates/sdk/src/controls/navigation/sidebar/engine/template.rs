@@ -673,9 +673,7 @@ fn render_item_row(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    if state.disabled {
-        row = row.opacity(theme.geometry().disabled_opacity);
-    }
+    row = crate::style::fade(row, look.opacity);
 
     let RowHandlers { hover, mouse_down, mouse_up, mouse_up_out, click, .. } = handlers;
     let mut row = row;
@@ -791,9 +789,7 @@ fn render_collapsed_rail_node(
         row = row.cursor_pointer();
     }
     // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-    if state.disabled {
-        row = row.opacity(theme.geometry().disabled_opacity);
-    }
+    row = crate::style::fade(row, look.opacity);
 
     let RowHandlers { bounds, hover, mouse_down, mouse_up, mouse_up_out, click } = handlers;
     if state.enabled {

@@ -2,7 +2,6 @@
 // a primary-ringed thumb with `shadow-sm`; secondary uses the secondary foreground. Sizes sm, md, lg.
 
 slider {
-  disabled_opacity = 0.56
   // Corner radius presets for the track and thumb ends: a corner never exceeds half the part, so medium,
   // large and full are all pills.
   radius none   { part track { radius = exact(0) }  part thumb { radius = exact(0) } }
@@ -27,16 +26,18 @@ slider {
   part track {
     background = css.border
     border_width = exact(0)
-    :disabled { background = css.border }
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { background = css.border  opacity = 0.56 }
   }
 
   part fill {
     background = css.primary
     :hover    { background = css.primary_hover }
     :pressed  { background = css.primary_pressed }
-    :disabled { background = css.muted_foreground }
+    :disabled { background = css.primary  opacity = 0.56 }
   }
 
+  // The thumb is not faded, so it draws its own disabled colors.
   part thumb {
     background = first(css.background, css.card)
     border     = css.primary
@@ -47,7 +48,6 @@ slider {
   variant secondary {
     part fill {
       background := css.secondary_foreground
-      :disabled { background = css.muted_foreground }
     }
     part thumb {
       border := css.secondary_foreground

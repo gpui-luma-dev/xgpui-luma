@@ -404,29 +404,67 @@ fn look_defines_the_visual_variants() {
     }
 }
 
-/// The SDK's button family draws `:disabled` without fading; Shadcn keeps its fade on every control that
-/// extends the button, the text field, the choices, groups and bars (#397).
+/// Shadcn fades a disabled control over its resting colors (`disabled:opacity-50`): `:disabled { opacity }` on
+/// the root and no disabled fill, so nothing behind the control shows through a changed fill (#413).
 #[test]
-fn disabled_controls_keep_the_shadcn_fade() {
+fn disabled_controls_fade_over_resting_colors() {
     let look = ShadcnLook::built_in();
+    use xgpui_luma::style::lss::props::OPACITY;
     for control in [
         "button",
         "toggle",
         "popup_menu",
         "selector",
-        "textfield",
-        "textarea",
         "checkbox",
         "radio",
         "switch",
-        "control_group",
-        "context_menu",
+        "textfield",
+        "textarea",
         "scrollbar",
         "slider",
         "resizable_panels",
+        "control_group",
+        "context_menu",
         "radio_group",
+        "floating_menu",
+        "tree_view",
+        "accordion",
+        "table",
+        "sidebar",
     ] {
-        let opacity = resolve(control, &look, &[], &[]).root().value("disabled_opacity").and_then(Value::as_number);
-        assert!(opacity.is_some_and(|value| value < 1.0), "{control}: {opacity:?}");
+        for variant in [None, Some("secondary"), Some("outline"), Some("ghost"), Some("soft")] {
+            let attrs: Vec<(&str, &str)> = variant.map(|v| ("variant", v)).into_iter().collect();
+            let resting = resolve(control, &look, &attrs, &[]);
+            let disabled = resolve(control, &look, &attrs, &["disabled"]);
+            let faded = |part| disabled.part(part).get(OPACITY).is_some_and(|value| value < 1.0);
+            assert!(disabled.parts().any(faded), "{control} {variant:?}: no part fades");
+            for part in disabled.parts().filter(|part| faded(*part)) {
+                assert_eq!(
+                    disabled.part(part).background(),
+                    resting.part(part).background(),
+                    "{control} {variant:?} {part:?}: a faded fill must be the resting fill"
+                );
+            }
+        }
     }
+}
+
+/// No Shadcn control, in any catalog or state, both fades and changes its fill when disabled (#413).
+#[test]
+fn no_disabled_part_fades_a_changed_fill() {
+    std::thread::scope(|scope| {
+        let runs: Vec<_> = catalogs()
+            .into_iter()
+            .map(|(name, css)| {
+                scope.spawn(move || {
+                    let look = ShadcnLook::from_css_str(&css).expect("catalog");
+                    let theme = theme(&look).unwrap_or_else(|d| panic!("{name}: binds:\n{d}"));
+                    let problems = xgpui_luma::style::disabled_fade_problems(&theme);
+                    problems.into_iter().map(|p| format!("{name}: {p}")).collect::<Vec<_>>()
+                })
+            })
+            .collect();
+        let problems: Vec<String> = runs.into_iter().flat_map(|run| run.join().expect("no panic")).collect();
+        assert!(problems.is_empty(), "{}", problems.join("\n"));
+    });
 }

@@ -61,8 +61,8 @@ pub struct TableRowLook {
     pub column_padding_x: f32,
     /// Opacity of default muted cells.
     pub column_muted_opacity: f32,
-    /// Whole-row opacity applied only when disabled.
-    pub disabled_opacity: f32,
+    /// The row's opacity: the `row` part's resolved `opacity`, which a look sets under `:disabled`.
+    pub opacity: f32,
     pub background: Hsla,
     pub label_color: Hsla,
     pub divider: Hsla,

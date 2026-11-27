@@ -1,7 +1,7 @@
-// Radix control group. Layer: look. The surface frame with the border role, enabled or not.
+// Radix control group. Layer: look. The surface frame with the border role, enabled or not. Disabled rows
+// draw the toggle's gray colors and do not fade.
 
 control_group {
-  disabled_opacity = 0.56
   part root {
     background = radix.role.surface
     border     = radix.role.border

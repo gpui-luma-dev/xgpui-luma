@@ -5,7 +5,7 @@ mod common;
 use std::sync::Arc;
 
 use common::*;
-use xgpui_luma_style::{Code, Color, NoNativeTokens, PartId, Source, Stylesheet, Theme, Value};
+use xgpui_luma_style::{Code, Color, NoNativeTokens, PartId, Source, Stylesheet, Theme, Value, props};
 
 const INDICATOR: PartId = PartId::new("indicator");
 
@@ -136,9 +136,12 @@ fn a_length_scale_multiplies_lengths_only() {
     let label = PartId::new("label");
     assert_eq!(double.part(label).font_size(), actual.part(label).font_size().map(|s| s * 2.0));
     // Unitless numbers and colors do not.
-    for name in ["indicator_scale", "disabled_opacity"] {
-        assert_eq!(number(&double, root, name), number(&actual, root, name), "{name}");
-    }
+    assert_eq!(number(&double, root, "indicator_scale"), number(&actual, root, "indicator_scale"));
+    let disabled = key(&theme, "checkbox", &[], &["disabled"]);
+    assert_eq!(
+        zoomed.resolve(&disabled).root().get(props::OPACITY),
+        theme.resolve(&disabled).root().get(props::OPACITY)
+    );
     assert_eq!(double.part(INDICATOR).background(), actual.part(INDICATOR).background());
     // Rebinding keeps the scale; the original theme is unchanged.
     assert_eq!(zoomed.with_mode("dark").expect("mode").length_scale(), 2.0);

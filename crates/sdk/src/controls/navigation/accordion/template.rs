@@ -232,9 +232,7 @@ impl AccordionTemplate for ThemedAccordionTemplate {
                     .on_click(click_handler);
             }
             // The fade follows the drawn state, which a state override can change; input follows `enabled`.
-            if item.state.disabled {
-                trigger = trigger.opacity(scale.disabled_opacity);
-            }
+            trigger = crate::style::fade(trigger, trigger_palette.opacity);
 
             let trigger_content = match &item.trigger.custom_element {
                 Some(renderer) => renderer(window, cx),

@@ -356,10 +356,8 @@ impl<D: ButtonData> ButtonTemplate<D> for StyledButtonTemplate<D> {
             root_element.child(adorned)
         };
         root_element = root_element.child(focus.overlay(look.focus_border, focused, radius, model.compact));
-        if model.state.disabled {
-            root_element =
-                root_element.opacity(root.value("disabled_opacity").and_then(Value::as_number).unwrap_or(1.0));
-        } else {
+        root_element = crate::style::fade(root_element, crate::style::part_opacity(root));
+        if !model.state.disabled {
             root_element = root_element.cursor_pointer();
         }
         root_element
@@ -402,11 +400,10 @@ mod style_states_tests {
 
 #[cfg(test)]
 mod disabled_opacity_tests {
-    use crate::style::default_theme;
-    use xgpui_luma_style::Value;
+    use crate::style::{default_theme, part_opacity};
 
     /// SDK controls whose `:disabled` draws its own fill and text don't also fade: a faded fill lets whatever is
-    /// behind the control show through (#397). The button family, text fields, choices, groups and bars.
+    /// behind the control show through (#397). Migrated controls carry the fade as `:disabled { opacity }` (#413).
     #[test]
     fn sdk_disabled_controls_do_not_fade() {
         let theme = default_theme();
@@ -415,21 +412,63 @@ mod disabled_opacity_tests {
             "toggle",
             "popup_menu",
             "selector",
-            "textfield",
-            "textarea",
             "checkbox",
             "radio",
             "switch",
-            "control_group",
-            "context_menu",
+            "textfield",
+            "textarea",
             "scrollbar",
             "slider",
             "resizable_panels",
+            "control_group",
+            "context_menu",
             "radio_group",
+            "floating_menu",
+            "tree_view",
+            "accordion",
+            "table",
+            "sidebar",
+            "pager",
         ] {
-            let key = theme.key_named(control, &[], &[]).expect("key");
-            let opacity = theme.resolve(&key).root().value("disabled_opacity").and_then(Value::as_number);
-            assert_eq!(opacity, Some(1.0), "{control}");
+            let sheet = theme.stylesheet();
+            let id = sheet.control(control).expect("declared");
+            assert!(sheet.prop::<f32>(id, "disabled_opacity").is_err(), "{control}: no separate fade property");
+            let key = theme.key_named(control, &[], &["disabled"]).expect("key");
+            let resolved = theme.resolve(&key);
+            for part in resolved.parts() {
+                assert_eq!(part_opacity(resolved.part(part)), 1.0, "{control} {part:?}");
+            }
+        }
+    }
+
+    /// The check flags a disabled part that fades and changes its fill, and accepts a fade over the resting fill.
+    #[test]
+    fn the_fade_check_flags_a_faded_changed_fill() {
+        let with = |lss: &str| {
+            let theme = default_theme();
+            let source = crate::style::lss::Source::new("app.lss", lss.to_string());
+            let sheet = theme.stylesheet().with_source("app", source).expect("compiles");
+            crate::style::disabled_fade_problems(&theme.with_stylesheet(&sheet).expect("binds"))
+        };
+        let stacked = with("button { part root { :disabled { background = #ff0000  opacity = 0.5 } } }");
+        assert!(stacked.iter().any(|p| p.starts_with("button")), "{stacked:?}");
+        let resting = with("button { part root { background := #00ff00  :disabled { opacity = 0.5 } } }");
+        assert!(resting.is_empty(), "{resting:?}");
+    }
+
+    /// No SDK control, in any state or mode, both fades and changes its fill when disabled.
+    #[test]
+    fn no_disabled_part_fades_a_changed_fill() {
+        for theme in [default_theme(), crate::style::dark_theme()] {
+            let problems = crate::style::disabled_fade_problems(&theme);
+            assert!(
+                problems.is_empty(),
+                "{}",
+                problems.join(
+                    "
+"
+                )
+            );
         }
     }
 }

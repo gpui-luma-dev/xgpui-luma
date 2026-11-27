@@ -259,9 +259,8 @@ impl ScrollbarTemplate for ThemedScrollbarTemplate {
 
         if model.enabled {
             root = root.cursor_pointer();
-        } else {
-            root = root.opacity(look.disabled_opacity);
         }
+        root = crate::style::fade(root, look.opacity);
 
         self.apply_modifiers(root, model)
     }

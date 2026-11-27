@@ -227,7 +227,7 @@ where
             row = row.on_click(click);
         }
     } else {
-        row = row.opacity(model.look.disabled_opacity);
+        row = crate::style::fade(row, model.look.item_disabled_opacity);
     }
 
     row

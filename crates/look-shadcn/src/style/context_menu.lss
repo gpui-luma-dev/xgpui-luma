@@ -1,14 +1,13 @@
 // Shadcn context-menu target. Layer: look. No fill; the text takes the accent foreground while hovered
-// or pressed, and the muted colors when disabled.
+// or pressed. Disabled, the target fades over its resting colors.
 
 context_menu {
-  disabled_opacity = 0.56
   part root {
-    background = transparent
-    foreground = css.foreground
+    background := transparent
+    foreground := css.foreground
     border     = css.border
     :hover    { background = transparent  foreground = first(css.accent_foreground, css.foreground) }
     :pressed  { background = transparent  foreground = first(css.accent_foreground, css.foreground) }
-    :disabled { background = css.muted  foreground = css.muted_foreground }
+    :disabled { opacity = 0.56 }
   }
 }

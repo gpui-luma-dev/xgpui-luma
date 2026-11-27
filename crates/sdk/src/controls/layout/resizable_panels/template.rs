@@ -330,7 +330,7 @@ pub fn render_resizable_panels_handle(
     let mut handle = div()
         .id(handle_id)
         .absolute()
-        .when(!enabled, |this| this.opacity(look.disabled_opacity))
+        .map(|this| crate::style::fade(this, look.opacity))
         .when(enabled && orientation == ResizablePanelsOrientation::Horizontal, |this| this.cursor_col_resize());
 
     handle = match orientation {

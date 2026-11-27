@@ -3,13 +3,12 @@
 
 /// Nested, expandable rows.
 tree_view {
-  /// Drop markers, drag ghost opacity, the scrollbar lane, disabled rows' opacity, the drag preview's
-  /// padding, and the indent per level.
+  /// Drop markers, drag ghost opacity, the scrollbar lane, the drag preview's padding, and the
+  /// indent per level.
   drag_marker_width: length = exact(1)
   drag_insert_width: length = exact(2)
   drag_opacity: number = 0.12
   scrollbar_width: length = exact(12)
-  disabled_opacity: number = 0.4
   preview_padding_x: length = exact(12)
   preview_padding_y: length = exact(4)
   indentation_width: length = exact(16)

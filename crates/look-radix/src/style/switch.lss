@@ -4,7 +4,6 @@
 // The base is the surface variant at size 2. Hover and pressed do not change it (`:=`).
 
 switch {
-  disabled_opacity = metrics.disabled_opacity
   gap                  = 8
   track_width          = 35
   track_height         = 20

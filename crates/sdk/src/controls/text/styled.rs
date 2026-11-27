@@ -60,7 +60,6 @@ impl Input {
                 width: number(root, "focus_width"),
                 offset: number(root, "focus_offset"),
             },
-            disabled_opacity: number(root, "disabled_opacity"),
             ..MetricTokens::default()
         }
     }
@@ -124,7 +123,7 @@ impl TextFieldTheme for StyledTextFieldTheme {
             helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
             caret_width: number(root, "caret_width"),
             caret_height_extra: number(root, "caret_height_extra"),
-            disabled_opacity: number(root, "disabled_opacity"),
+            opacity: crate::style::part_opacity(root),
             background: color(root, "background"),
             foreground: color(root, "foreground"),
             border: color(root, "border"),
@@ -205,7 +204,7 @@ impl TextAreaTheme for StyledTextAreaTheme {
             helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
             caret_width: number(root, "caret_width"),
             caret_height_extra: number(root, "caret_height_extra"),
-            disabled_opacity: number(root, "disabled_opacity"),
+            opacity: crate::style::part_opacity(root),
             background: color(root, "background"),
             foreground: color(root, "foreground"),
             border: color(root, "border"),

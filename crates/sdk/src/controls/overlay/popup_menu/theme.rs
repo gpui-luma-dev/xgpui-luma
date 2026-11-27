@@ -34,6 +34,8 @@ pub struct PopupMenuLook {
     pub trigger_height: f32,
     pub trigger_icon_size: f32,
     pub menu_offset_y: f32,
+    /// The trigger's fade in this state: the root part's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
+    pub trigger_opacity: f32,
     pub floating_menu: FloatingMenuLook,
 }
 
@@ -93,6 +95,8 @@ pub fn compose_popup_menu_look(palette: &PopupMenuPalette, scale: &StandardBoxSc
         trigger_icon_size: scale.icon_size,
         // The SDK `.lss` offset as a share of its gap, applied to this theme's gap.
         menu_offset_y: scale.gap * crate::style::sdk_menu_offset_share("popup_menu"),
+        // Palette themes draw their own disabled colors; only `.lss` themes fade.
+        trigger_opacity: 1.0,
         floating_menu: palette.floating_menu.clone(),
     }
 }

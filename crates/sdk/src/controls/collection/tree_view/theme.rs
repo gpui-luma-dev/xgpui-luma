@@ -11,8 +11,7 @@ pub struct TreeViewScale {
     pub drag_insert_width: f32,
     pub drag_opacity: f32,
     pub scrollbar_width: f32,
-    /// Disabled-row opacity and drag-preview padding in pixels.
-    pub disabled_opacity: f32,
+    /// Drag-preview padding in pixels.
     pub preview_padding_x: f32,
     pub preview_padding_y: f32,
     pub row_height: f32,
@@ -37,7 +36,6 @@ impl TreeViewScale {
             drag_insert_width: sdk("drag_insert_width"),
             drag_opacity: sdk("drag_opacity"),
             scrollbar_width: sdk("scrollbar_width"),
-            disabled_opacity: sdk("disabled_opacity"),
             preview_padding_x: sdk("preview_padding_x"),
             preview_padding_y: sdk("preview_padding_y"),
             row_height: snap_to_pixel(metrics.control_height() * row_share, scale_factor),
@@ -59,6 +57,8 @@ pub struct TreeViewPalette {
     pub chevron_color: Hsla,
     pub typography: LumaTextStyle,
     pub font_family: SharedString,
+    /// The row's opacity: the resolved `opacity`, which a look sets under `:disabled`.
+    pub opacity: f32,
 }
 
 pub trait TreeViewTheme: Send + Sync {

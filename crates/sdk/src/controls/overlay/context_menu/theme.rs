@@ -9,8 +9,8 @@ use crate::theme::{InteractionState, LumaTextStyle, MetricTokens};
 pub struct ContextMenuLook {
     /// Target stroke thickness in pixels.
     pub border_width: f32,
-    /// Whole-target opacity when disabled.
-    pub disabled_opacity: f32,
+    /// The target's opacity: the root's resolved `opacity`, which a look sets under `:disabled`.
+    pub opacity: f32,
     /// Minimum popup distance from window edges in pixels.
     pub window_margin: f32,
     pub target_background: Hsla,

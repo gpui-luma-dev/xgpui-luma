@@ -3,9 +3,8 @@
 
 /// Rows that expand to show content.
 accordion {
-  /// Drag-handle padding, and disabled triggers' opacity.
+  /// Drag-handle padding.
   drag_handle_padding: length = exact(2)
-  disabled_opacity: number = 0.56
   /// Content padding, space between rows and inside a trigger, and the icon and chevron sizes.
   /// Content padding as a share of the control's vertical padding.
   content_padding_scale: number = 1.5

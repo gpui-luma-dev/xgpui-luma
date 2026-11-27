@@ -54,7 +54,7 @@ impl ThemedControlGroupTemplate {
             ControlGroupLayout::Vertical => root.flex_col().items_start().gap(px(list.vertical_gap)),
         };
 
-        root = root.children(render_control_group_items(model, handlers, window, cx, list.disabled_opacity));
+        root = root.children(render_control_group_items(model, handlers, window, cx, list.item_disabled_opacity));
         self.inner.apply_modifiers(root, &chrome)
     }
 }

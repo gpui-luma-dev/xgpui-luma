@@ -10,13 +10,17 @@ use crate::theme::InteractionState;
 #[derive(Clone, Debug)]
 pub struct SliderLook {
     pub thumb_border_width: f32,
-    /// Captured radial layout and disabled-track presentation.
+    /// Captured radial layout.
     pub decoration: crate::theme::stylesheet::SliderDecoration,
     pub track_background: Hsla,
     /// The track's outline, over its filled and unfilled parts (linear sliders). A zero width draws none.
     pub track_border: Hsla,
     pub track_border_width: f32,
     pub fill_background: Hsla,
+    /// The track's and the filled range's fades in this state: each part's resolved `opacity`
+    /// (`:disabled { opacity }`), 1 when unset.
+    pub track_opacity: f32,
+    pub fill_opacity: f32,
     pub thumb_background: Hsla,
     pub thumb_border: Hsla,
     pub thumb_shadow: Vec<BoxShadow>,
@@ -37,12 +41,11 @@ pub fn default_slider_theme() -> Arc<dyn SliderTheme> {
     THEME.get_or_init(|| Arc::new(super::styled::StyledSliderTheme::sdk())).clone()
 }
 
-/// Nonlinear slider presentation metrics, in logical pixels and unit opacity.
+/// Nonlinear slider presentation metrics, in logical pixels.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SliderDecoration {
     pub dial_size: f32,
     pub track_radius: f32,
-    pub disabled_opacity: f32,
 }
 
 impl SliderMotionStylesheet {

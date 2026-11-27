@@ -1,14 +1,14 @@
 // SDK floating menu. Layer: sdk. The panel every menu, selector popup and selection panel draws, read by
-// `styled_floating_menu_look` (styled.rs). The item part's `hover` and `disabled` states are the row's.
+// `styled_floating_menu_look` (styled.rs). The item part's `hover` and `disabled` states are the row's;
+// a disabled row draws the disabled foreground and does not fade.
 
 /// A floating panel of rows.
 floating_menu {
-  /// Popup edge margin, row icon size, submenu offset, positive marks and disabled rows' extra opacity.
+  /// Popup edge margin, row icon size, submenu offset and positive marks.
   window_margin: length = 8
   item_icon_size: length = metrics.control.icon_size
   submenu_offset_x: length = exact(metrics.control.gap / 2)
   positive: color = palette.data.positive
-  disabled_opacity: number = 0.56
 
   /// The panel.
   part root {

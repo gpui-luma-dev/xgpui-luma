@@ -17,7 +17,7 @@ const SECTION_SPACING: f32 = 8.0;
 
 struct SectionTheme(Arc<Look>);
 impl AccordionTheme for SectionTheme {
-    fn resolve_trigger(&self, _: InteractionState) -> AccordionPalette {
+    fn resolve_trigger(&self, state: InteractionState) -> AccordionPalette {
         let chrome = self.0.chrome();
         AccordionPalette {
             background: None,
@@ -27,6 +27,12 @@ impl AccordionTheme for SectionTheme {
             chevron_color: chrome.muted_text,
             typography: self.0.typography_scale(TextSize::Base),
             font_family: "System UI".into(),
+            // The section colors don't change when disabled, so a disabled trigger fades.
+            opacity: if state.disabled {
+                self.0.metrics().disabled_opacity
+            } else {
+                1.0
+            },
         }
     }
     fn resolve_content(&self, _: bool) -> AccordionContentPalette {
@@ -38,7 +44,6 @@ impl AccordionTheme for SectionTheme {
     fn resolve_scale(&self, _: f32) -> AccordionScale {
         AccordionScale {
             drag_handle_padding: 0.0,
-            disabled_opacity: self.0.metrics().disabled_opacity,
             trigger_height: 14.0,
             padding_x: 0.0,
             padding_y: SECTION_SPACING,

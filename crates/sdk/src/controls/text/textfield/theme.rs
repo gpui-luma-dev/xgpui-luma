@@ -29,8 +29,8 @@ pub struct TextFieldLook {
     /// Painted caret width and extra height in pixels.
     pub caret_width: f32,
     pub caret_height_extra: f32,
-    /// Whole-input opacity when disabled.
-    pub disabled_opacity: f32,
+    /// Whole-input fade in this state: the root's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
+    pub opacity: f32,
     pub background: Hsla,
     pub foreground: Hsla,
     pub border: Hsla,
@@ -89,7 +89,8 @@ pub fn compose_textfield_look(
         helper_geometry: crate::theme::stylesheet::SharedGeometry::sdk(),
         caret_width: crate::style::sdk_number("textfield", "caret_width"),
         caret_height_extra: crate::style::sdk_number("textfield", "caret_height_extra"),
-        disabled_opacity: crate::style::sdk_number("textfield", "disabled_opacity"),
+        // Palette themes draw their own disabled colors; only `.lss` themes fade.
+        opacity: 1.0,
         background: palette.background,
         foreground: palette.foreground,
         border: palette.border,

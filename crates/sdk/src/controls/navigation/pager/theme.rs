@@ -43,7 +43,6 @@ pub struct PagerLook {
     pub padding_y: f32,
     pub gap: f32,
     pub group_gap: f32,
-    pub disabled_opacity: f32,
 }
 
 pub trait PagerTheme: Send + Sync {
