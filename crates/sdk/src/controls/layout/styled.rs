@@ -52,7 +52,7 @@ impl ScrollbarTheme for StyledScrollbarTheme {
         let resolved = self.binding.resolve_for(&[("variant", variant)], &states, 1.0);
         let root = resolved.root();
         ScrollbarLook {
-            disabled_opacity: number(root, "disabled_opacity"),
+            opacity: crate::style::part_opacity(root),
             track_background: color(root, "background"),
             track_border: color(root, "border"),
             track_border_width: number(root, "border_width"),
@@ -146,11 +146,7 @@ impl ResizablePanelsTheme for StyledResizablePanelsTheme {
             divider: color(root, "divider"),
             grip: color(root, "grip"),
             grip_emphasis: color(root, "grip_emphasis"),
-            disabled_opacity: if state.disabled {
-                number(root, "disabled_opacity")
-            } else {
-                1.0
-            },
+            opacity: crate::style::part_opacity(root),
         }
     }
 }

@@ -314,7 +314,8 @@ impl TextFieldTemplate for ThemedTextFieldTemplate {
             .font_family(look.font_family.clone())
             .font_weight(look.typography.weight)
             .when(model.enabled, |root| root.cursor_text())
-            .when(!model.enabled, |root| root.cursor_not_allowed().opacity(look.disabled_opacity))
+            .when(!model.enabled, |root| root.cursor_not_allowed())
+            .map(|root| crate::style::fade(root, look.opacity))
             .child(text_viewport);
 
         if model.enabled

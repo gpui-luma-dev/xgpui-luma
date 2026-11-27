@@ -35,8 +35,9 @@ pub fn styled_slider_look(binding: &StyleBinding, state: InteractionState) -> Sl
         decoration: SliderDecoration {
             dial_size: number(root, "dial_size"),
             track_radius: number(root, "dial_track_radius"),
-            disabled_opacity: number(root, "disabled_opacity"),
         },
+        track_opacity: crate::style::part_opacity(track),
+        fill_opacity: crate::style::part_opacity(fill),
         track_background: color(track, "background"),
         track_border: color(track, "border"),
         track_border_width: number(track, "border_width"),

@@ -1,9 +1,8 @@
 // Shadcn resizable panels. Layer: look. A border frame, dividers and grips; the grip turns the accent, with
-// the accent's hover and pressed layers under the pointer and while dragged; muted foreground when disabled.
+// the accent's hover and pressed layers under the pointer and while dragged; faded handles when disabled.
 // Resize handles grow with the size: sm is the SDK's scale.
 
 resizable_panels {
-  disabled_opacity = 0.45
   lane_width      = exact(12)
   hit_target      = exact(14)
   grip_cross_axis = exact(6)
@@ -19,6 +18,7 @@ resizable_panels {
     border = css.border
     :hover    { grip_emphasis = css.accent_hover }
     :pressed  { grip_emphasis = css.accent_pressed }
-    :disabled { divider = css.muted_foreground  grip = css.muted_foreground  grip_emphasis = css.muted_foreground }
+    // shadcn fades a disabled control over its resting colors (`disabled:opacity-50`), with no disabled colors.
+    :disabled { divider = css.border  grip = css.border  grip_emphasis = css.accent  opacity = 0.45 }
   }
 }

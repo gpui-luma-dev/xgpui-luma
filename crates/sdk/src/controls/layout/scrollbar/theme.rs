@@ -8,8 +8,8 @@ use crate::theme::{InteractionState, MetricTokens};
 
 #[derive(Clone, Copy, Debug)]
 pub struct ScrollbarLook {
-    /// Whole-scrollbar opacity when disabled.
-    pub disabled_opacity: f32,
+    /// Whole-scrollbar fade in this state: the root's resolved `opacity` (`:disabled { opacity }`), 1 when unset.
+    pub opacity: f32,
     pub track_background: Hsla,
     /// The track's outline, under the thumb. The SDK draws none (width 0); a look or design can set one.
     pub track_border: Hsla,

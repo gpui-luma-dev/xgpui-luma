@@ -191,7 +191,7 @@ fn render_horizontal_track(
         .overflow_hidden()
         .when(model.domain_track.is_none() && !uses_sibling_segments, |this| {
             this.bg(track_surface_background(model, look))
-                .when(!model.enabled, |track| track.opacity(look.decoration.disabled_opacity))
+                .map(|track| crate::style::fade(track, look.track_opacity))
         });
 
     if let Some(layer) = render_domain_track_layer(model, track_radius) {
@@ -200,23 +200,14 @@ fn render_horizontal_track(
         track =
             track.children(
                 model.track_segments.iter().filter(|segment| segment.kind == TrackSegmentKind::Blocked).map(
-                    |segment| {
-                        render_fill_segment(
-                            segment,
-                            model.orientation,
-                            model.reversed,
-                            look,
-                            track_radius,
-                            true,
-                            model.enabled,
-                        )
-                    },
+                    |segment| render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, true),
                 ),
             );
     } else {
-        track = track.children(model.track_segments.iter().map(|segment| {
-            render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, true, model.enabled)
-        }));
+        track =
+            track.children(model.track_segments.iter().map(|segment| {
+                render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, true)
+            }));
     }
 
     track.child(track_bounds_canvas(track_bounds))
@@ -244,7 +235,7 @@ fn render_vertical_track(
         .overflow_hidden()
         .when(model.domain_track.is_none() && !uses_sibling_segments, |this| {
             this.bg(track_surface_background(model, look))
-                .when(!model.enabled, |track| track.opacity(look.decoration.disabled_opacity))
+                .map(|track| crate::style::fade(track, look.track_opacity))
         });
 
     if let Some(layer) = render_domain_track_layer(model, track_radius) {
@@ -254,22 +245,15 @@ fn render_vertical_track(
             track.children(
                 model.track_segments.iter().filter(|segment| segment.kind == TrackSegmentKind::Blocked).map(
                     |segment| {
-                        render_fill_segment(
-                            segment,
-                            model.orientation,
-                            model.reversed,
-                            look,
-                            track_radius,
-                            false,
-                            model.enabled,
-                        )
+                        render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, false)
                     },
                 ),
             );
     } else {
-        track = track.children(model.track_segments.iter().map(|segment| {
-            render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, false, model.enabled)
-        }));
+        track =
+            track.children(model.track_segments.iter().map(|segment| {
+                render_fill_segment(segment, model.orientation, model.reversed, look, track_radius, false)
+            }));
     }
 
     track.child(track_bounds_canvas(track_bounds))
@@ -282,17 +266,16 @@ fn render_fill_segment(
     look: &crate::controls::slider::SliderLook,
     track_radius: Pixels,
     horizontal: bool,
-    enabled: bool,
 ) -> Div {
     use gpui::relative;
 
     let (display_start, display_span) = segment_display_span(segment, reversed);
     let background = segment_background(segment.kind, look);
     let corner_radii = segment_corner_radii(display_start, display_span, orientation, track_radius);
-    let dim_active = !enabled && matches!(segment.kind, TrackSegmentKind::Active | TrackSegmentKind::Domain);
+    let opacity = segment_opacity(segment.kind, look);
 
     if horizontal {
-        let mut segment = div()
+        let segment = div()
             .absolute()
             .left(relative(display_start))
             .top(px(0.0))
@@ -300,12 +283,9 @@ fn render_fill_segment(
             .w(relative(display_span))
             .bg(background)
             .corner_radii(corner_radii);
-        if dim_active {
-            segment = segment.opacity(look.decoration.disabled_opacity);
-        }
-        segment
+        crate::style::fade(segment, opacity)
     } else {
-        let mut segment = div()
+        let segment = div()
             .absolute()
             .left(px(0.0))
             .bottom(relative(display_start))
@@ -313,10 +293,15 @@ fn render_fill_segment(
             .h(relative(display_span))
             .bg(background)
             .corner_radii(corner_radii);
-        if dim_active {
-            segment = segment.opacity(look.decoration.disabled_opacity);
-        }
-        segment
+        crate::style::fade(segment, opacity)
+    }
+}
+
+/// A segment fades with the part whose color it draws (`:disabled { opacity }` on `fill` or `track`).
+fn segment_opacity(kind: TrackSegmentKind, look: &crate::controls::slider::SliderLook) -> f32 {
+    match kind {
+        TrackSegmentKind::Active | TrackSegmentKind::Domain => look.fill_opacity,
+        TrackSegmentKind::Inactive | TrackSegmentKind::Blocked => look.track_opacity,
     }
 }
 

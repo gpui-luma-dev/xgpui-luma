@@ -4,7 +4,6 @@
 
 textfield {
   height    = 32
-  disabled_opacity = 0.6
   padding_x = 12
   padding_y = 0
   gap       = 8

@@ -423,10 +423,8 @@ mod tests {
         for (control, property) in [
             ("textfield", "caret_width"),
             ("textfield", "caret_height_extra"),
-            ("textfield", "disabled_opacity"),
             ("textarea", "caret_width"),
             ("textarea", "caret_height_extra"),
-            ("textarea", "disabled_opacity"),
             ("popup_menu", "menu_offset_y"),
             ("popup_menu", "gap"),
             ("selector", "menu_offset_y"),
