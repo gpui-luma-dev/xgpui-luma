@@ -53,8 +53,6 @@
 <p>This is the start of the SDK button (<code>crates/sdk/src/controls/button/button.lss</code>):</p>
 <div class="codebox"><div class="codebar"><span>.lss · SDK button</span><button class="copy" aria-label="Copy SDK button">Copy</button></div><pre><code>/// A pressable face with a label or an icon.
 button {
-  /// Whole-control opacity when disabled.
-  disabled_opacity: number = metrics.disabled_opacity
   height    = metrics.control.control_height
   padding_x = metrics.control.padding_x
   radius    = exact(metrics.control.radius)
@@ -81,7 +79,7 @@ button {
 <tr><td><code>name: kind = expr</code></td><td>A <strong>declaration</strong>: a new property with a kind and, with <code>///</code>, a doc comment. Only the SDK layer declares.</td></tr>
 <tr><td><code>name = expr</code></td><td>An assignment to a core property (<code>background</code>, <code>radius</code>, <code>font_size</code>, …) or a declared one. Unknown names are errors.</td></tr>
 <tr><td><code>part p { … }</code></td><td>A paintable piece of the control: a table has <code>root</code> (the frame), <code>header</code> and <code>row</code>; a slider has <code>track</code>, <code>fill</code> and <code>thumb</code>.</td></tr>
-<tr><td><code>:hover { … }</code>, <code>:selected:pressed { … }</code></td><td>A <strong>state block</strong>: applies when all listed states hold.</td></tr>
+<tr><td><code>:hover { … }</code>, <code>:selected:pressed { … }</code></td><td>A <strong>state block</strong>: applies when all listed states hold. A disabled fade is a state property too: <code>:disabled { opacity = … }</code> on the part it covers. Set disabled colors or a fade, not both: a faded changed fill is see-through.</td></tr>
 <tr><td><code>variant ghost { … }</code>, <code>size sm { … }</code></td><td>A <strong>scope</strong>: applies only when the instance has that attribute value. Scopes nest.</td></tr>
 <tr><td><code>toggle extends button</code></td><td>Start from another control: every layer’s <code>button</code> rules also style <code>toggle</code>, so a Look’s button restyle reaches its toggles.</td></tr>
 <tr><td><code>name := expr</code></td><td>An <strong>owning assignment</strong>: less specific rules for that property (including the base state rules) stop applying, so a variant can replace a property without restating every state.</td></tr>
@@ -103,7 +101,7 @@ button {
     foreground := css.primary_foreground
     :hover    { background = css.primary_hover }
     :pressed  { background = css.primary_pressed }
-    :disabled { background = css.muted  foreground = css.muted_foreground }
+    :disabled { opacity = metrics.disabled_opacity }
   }
 
   variant ghost {
@@ -112,7 +110,6 @@ button {
       foreground := css.foreground
       border     := none
       :hover    { background = shadcn.ghost_active  foreground = css.accent_foreground }
-      :disabled { background = transparent  foreground = css.muted_foreground }
     }
   }
 }</code></pre></div>

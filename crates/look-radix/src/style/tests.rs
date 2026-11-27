@@ -423,3 +423,10 @@ fn disabled_controls_draw_colors_without_fading() {
         }
     }
 }
+
+/// No Radix control, in any state, both fades and changes its fill when disabled (#413).
+#[test]
+fn no_disabled_part_fades_a_changed_fill() {
+    let problems = xgpui_luma::style::disabled_fade_problems(&Look::built_in().style_theme());
+    assert!(problems.is_empty(), "{}", problems.join("\n"));
+}

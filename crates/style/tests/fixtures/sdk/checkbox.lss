@@ -2,8 +2,6 @@
 
 /// An indicator box with a checkmark, and a label.
 checkbox {
-  /// Whole-control opacity when disabled.
-  disabled_opacity: number = metrics.disabled_opacity
   /// Minimum row height.
   height = metrics.control.control_height
   /// Space between the indicator and the label.
@@ -26,6 +24,8 @@ checkbox {
   part root {
     focus_border = palette.focus.ring
     transition   = motion.default
+    // The whole-control fade when disabled.
+    :disabled { opacity = metrics.disabled_opacity }
   }
 
   /// The checkbox box.

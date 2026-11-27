@@ -27,13 +27,15 @@ fn checkbox_geometry_comes_from_declared_properties() {
     let checkbox = sheet.control("checkbox").expect("declared");
     let indicator_size = sheet.prop::<f32>(checkbox, "indicator_size").expect("declared length");
     let glyph_size = sheet.prop::<f32>(checkbox, "glyph_size").expect("declared length");
-    let opacity = sheet.prop::<f32>(checkbox, "disabled_opacity").expect("declared number");
 
     let style = theme.resolve(&key(&theme, "checkbox", &[], &[]));
     let root = style.root();
     assert_eq!(root.get(indicator_size), Some(18.0)); // control height 36 × 0.5
     assert_eq!(root.get(glyph_size), Some(12.0)); // 18 − 2 × 3
-    assert_eq!(root.get(opacity), Some(0.56));
+    // The fade is a state property: `:disabled { opacity }` on the root, absent at rest.
+    assert_eq!(root.get(props::OPACITY), None);
+    let disabled = theme.resolve(&key(&theme, "checkbox", &[], &["disabled"]));
+    assert_eq!(disabled.root().get(props::OPACITY), Some(0.56));
     assert_eq!(root.get(props::HEIGHT), Some(36.0));
     assert_eq!(root.radius(), Some(6.0));
 }
